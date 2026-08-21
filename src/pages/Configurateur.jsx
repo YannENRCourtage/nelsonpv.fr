@@ -12,7 +12,7 @@ import BuildingScene from '../components/configurator/BuildingScene.jsx';
 import { ref, getDownloadURL } from "firebase/storage";
 import { storage } from "@/config/firebase.js";
 import { OfferGenerationModal } from '../components/configurator/ui/OfferGenerationModal.jsx';
-import { generateFicheTechniquePDF } from '@/services/FicheTechniquePDFService.js';
+import { FicheTechniqueModal } from '../components/configurator/ui/FicheTechniqueModal.jsx';
 
 export default function Configurateur() {
     const { user, activeTenantId } = useAuth();
@@ -23,6 +23,9 @@ export default function Configurateur() {
 
     // UI State
     const [showPDFModal, setShowPDFModal] = useState(false);
+    const [showFicheModal, setShowFicheModal] = useState(false);
+    const [ficheImages, setFicheImages] = useState({ imgMain3D: null, imgPignon: null, imgFacadeSud: null });
+    const [isPreparingFiche, setIsPreparingFiche] = useState(false);
 
     // ACAMA: default to EPONA_45 on first load
     useEffect(() => {
@@ -101,17 +104,15 @@ export default function Configurateur() {
         return null;
     };
 
-    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-
-    // Génération Fiche Technique Bâtiment (A4 Portrait)
-    const handleGenerateFicheTechnique = async () => {
-        if (!canvasRef.current || isGeneratingPDF) return;
-        setIsGeneratingPDF(true);
+    // Préparation et capture des visuels pour le modal Fiche Technique
+    const handleOpenFicheTechniqueModal = async () => {
+        if (!canvasRef.current || isPreparingFiche) return;
+        setIsPreparingFiche(true);
         setIsCapturing(true);
         const originalView = viewMode;
 
         try {
-            // 1. Capture du visuel actuel affiché à l'écran
+            // 1. Capture du visuel 3D actuel affiché à l'écran
             await wait(200);
             const imgMain3D = canvasRef.current.toDataURL('image/png', 1.0);
 
@@ -120,33 +121,35 @@ export default function Configurateur() {
             await wait(350);
             const imgPignon = canvasRef.current.toDataURL('image/png', 1.0);
 
-            // 3. Capture du visuel 2D (Élévation / Coupe)
-            setViewMode('2D_FRONT');
-            await wait(350);
-            const img2D = canvasRef.current.toDataURL('image/png', 1.0);
-
-            // 4. Capture de la Façade Sud (Long Pan Solaire)
+            // 3. Capture de la Façade Sud (Long Pan Solaire)
             setViewMode('FACADE_SUD');
             await wait(350);
             const imgFacadeSud = canvasRef.current.toDataURL('image/png', 1.0);
 
-            // 5. Génération du document PDF A4 Portrait
-            await generateFicheTechniquePDF({
-                config,
-                isAcama,
+            setFicheImages({
                 imgMain3D,
                 imgPignon,
-                img2D,
                 imgFacadeSud,
             });
+            setShowFicheModal(true);
         } catch (err) {
-            console.error("Erreur génération Fiche Technique:", err);
-            alert("Une erreur est survenue lors de la génération de la Fiche Technique : " + err.message);
+            console.error("Erreur préparation Fiche Technique:", err);
+            alert("Une erreur est survenue lors de la capture des visuels : " + err.message);
         } finally {
             setViewMode(originalView);
             setIsCapturing(false);
-            setIsGeneratingPDF(false);
+            setIsPreparingFiche(false);
         }
+    };
+
+    // Callback pour recapturer la vue 3D actuelle en haute définition
+    const handleRecaptureCurrent3D = async () => {
+        if (!canvasRef.current) return null;
+        setIsCapturing(true);
+        await wait(150);
+        const img = canvasRef.current.toDataURL('image/png', 1.0);
+        setIsCapturing(false);
+        return img;
     };
 
     // Génération PDF Complète (OFFRE)
@@ -398,13 +401,13 @@ export default function Configurateur() {
                     />
                 </div>
 
-                {/* Progress Overlay for Fiche Technique */}
-                {isGeneratingPDF && (
+                {/* Progress Overlay for Fiche Technique Preparation */}
+                {isPreparingFiche && (
                     <div className="absolute inset-0 z-[150] bg-slate-900/60 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-3 select-none pointer-events-auto">
                         <div className="w-10 h-10 border-4 border-white/20 border-t-blue-500 rounded-full animate-spin" />
                         <div className="text-center">
-                            <h4 className="text-sm font-black tracking-tight">Génération de la Fiche Technique</h4>
-                            <p className="text-xs text-slate-300 mt-0.5">Captures 3D & 2D en haute définition en cours...</p>
+                            <h4 className="text-sm font-black tracking-tight">Préparation de la Fiche Technique</h4>
+                            <p className="text-xs text-slate-300 mt-0.5">Capture des visuels 3D et façades en haute définition...</p>
                         </div>
                     </div>
                 )}
@@ -485,15 +488,15 @@ export default function Configurateur() {
                     {/* Fiche Technique PDF Generation Button */}
                     <button
                         type="button"
-                        onClick={handleGenerateFicheTechnique}
-                        disabled={isGeneratingPDF}
+                        onClick={handleOpenFicheTechniqueModal}
+                        disabled={isPreparingFiche}
                         className="hidden lg:flex w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] items-center justify-center gap-2 text-sm disabled:opacity-75 disabled:cursor-not-allowed"
-                        title="Générer la Fiche Technique PDF (A4 Portrait)"
+                        title="Personnaliser et Générer la Fiche Technique PDF (A4 Portrait)"
                     >
-                        {isGeneratingPDF ? (
+                        {isPreparingFiche ? (
                             <>
                                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                <span>Génération...</span>
+                                <span>Capture...</span>
                             </>
                         ) : (
                             <>
@@ -551,6 +554,16 @@ export default function Configurateur() {
                 config={config}
                 selectedProject={selectedProject}
                 generatedImages={generatedImages}
+            />
+
+            {/* ========== MODAL FICHE TECHNIQUE ========== */}
+            <FicheTechniqueModal
+                isOpen={showFicheModal}
+                onClose={() => setShowFicheModal(false)}
+                config={config}
+                isAcama={isAcama}
+                initialImages={ficheImages}
+                onRecaptureCurrent3D={handleRecaptureCurrent3D}
             />
         </div>
     );

@@ -31,8 +31,8 @@ export async function generateFicheTechniquePDF({
     isAcama = false,
     imgMain3D = null,
     imgPignon = null,
-    img2D = null,
     imgFacadeSud = null,
+    imageSettings = {},
 }) {
     const pdf = new jsPDF('portrait', 'mm', 'a4');
     const pageWidth = 210;
@@ -288,32 +288,12 @@ export async function generateFicheTechniquePDF({
         drawRow('Ratio Struct. / Wc :', `${ratioStructureCostPerWc} € / Wc`);
     }
 
-    // Helper pour rogner une image verticalement (ex: -1cm haut et -1cm bas)
-    const cropImageVertical = (img, topRatio = 0.12, bottomRatio = 0.12) => {
-        if (!img || !img.width || !img.height) return img;
-        try {
-            const canvas = document.createElement('canvas');
-            const srcH = img.height * (1 - topRatio - bottomRatio);
-            const srcY = img.height * topRatio;
-            canvas.width = img.width;
-            canvas.height = srcH;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, srcY, img.width, srcH, 0, 0, img.width, srcH);
-            return canvas;
-        } catch {
-            return img;
-        }
-    };
-
-    // --- PRÉ-CHARGEMENT DES IMAGES POUR UN RATIO & CADRAGE PARFAIT SANS DÉFORMATION ---
-    const [loadedMain3D, loadedPignon, loaded2D, rawFacadeSud] = await Promise.all([
+    // --- PRÉ-CHARGEMENT DES IMAGES ---
+    const [loadedMain3D, loadedPignon, loadedFacadeSud] = await Promise.all([
         loadImage(imgMain3D),
         loadImage(imgPignon),
-        loadImage(img2D),
         loadImage(imgFacadeSud),
     ]);
-
-    const loadedFacadeSud = cropImageVertical(rawFacadeSud, 0.10, 0.10);
 
     // --- LOGO NELSON EN BAS DU CADRE BLEU (CENTRE ET REDUIT) ---
     try {
@@ -330,103 +310,76 @@ export async function generateFicheTechniquePDF({
     }
 
     // ==========================================
-    // 3. ZONE CENTRALE & DROITE : TITRE + 4 VISUELS 3D/2D + À VOTRE CHARGE
+    // 3. ZONE CENTRALE & DROITE : TITRE + 3 VISUELS ÉPURÉS (SANS CADRE NI TITRE) + À VOTRE CHARGE
     // ==========================================
     const mainX = 66;
     const mainW = 138;
     const mainCenterX = mainX + (mainW / 2);
 
-    // --- EN-TÊTE SANS CONTOUR : PLAN DE STRUCTURE (avec espace aéré au-dessus et en-dessous) ---
+    // --- EN-TÊTE : PLAN DE STRUCTURE (avec espacement aéré au-dessus) ---
+    const titleY = 30.5; // Espacement aéré ajouté avant le titre (anciennement 26.5)
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(12.5);
+    pdf.setFontSize(13);
     pdf.setTextColor(15, 23, 42); // Slate 900
-    pdf.text('Plan de structure', mainCenterX, 26.5, { align: 'center' });
+    pdf.text('Plan de structure', mainCenterX, titleY, { align: 'center' });
 
     const subtitleDim = `${length.toFixed(2)}m × ${totalWidth.toFixed(2)}m - ${floorArea} m²${config.hasSolar ? ` - ${installedKwc.toFixed(1)} kWc` : ''}`;
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(9.5);
     pdf.setTextColor(0, 66, 157); // Bleu NELSON
-    pdf.text(subtitleDim, mainCenterX, 31.8, { align: 'center' });
+    pdf.text(subtitleDim, mainCenterX, titleY + 5.5, { align: 'center' });
 
-    // Helper pour dessiner un cadre visuel élégant avec centrage H/V parfait sans débordement
-    const drawImageCard = (title, x, y, w, h, imgObj, shiftX = 0) => {
-        // Fond blanc du cadre avec bordure grise
-        pdf.setFillColor(255, 255, 255);
-        pdf.roundedRect(x, y, w, h, 2, 2, 'FD');
-        pdf.setDrawColor(226, 232, 240);
-        pdf.setLineWidth(0.4);
-        pdf.roundedRect(x, y, w, h, 2, 2, 'S');
+    // Helper pour dessiner une image épurée directement sur fond blanc (sans pourtour, sans titre, sans fond gris)
+    const drawSeamlessImage = (imgObj, x, y, maxW, maxH) => {
+        if (!imgObj) return;
+        try {
+            let imgW = maxW;
+            let imgH = maxH;
+            let imgX = x;
+            let imgY = y;
 
-        // Bandeau titre supérieur
-        pdf.setFillColor(248, 250, 252);
-        pdf.roundedRect(x, y, w, 5.5, 2, 2, 'F');
-        pdf.rect(x, y + 3.5, w, 2, 'F');
-        pdf.setDrawColor(226, 232, 240);
-        pdf.line(x, y + 5.5, x + w, y + 5.5);
+            if (imgObj.width && imgObj.height) {
+                const imgAspect = imgObj.width / imgObj.height;
+                const containerAspect = maxW / maxH;
 
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(6.5);
-        pdf.setTextColor(71, 85, 105);
-        pdf.text(title.toUpperCase(), x + 3, y + 4.0);
-
-        // Insertion Image parfaitement centrée horizontalement et verticalement sans déformation
-        if (imgObj) {
-            try {
-                const imgMargin = 1.5;
-                const containerX = x + imgMargin;
-                const containerY = y + 5.5 + imgMargin;
-                const containerW = w - (imgMargin * 2);
-                const containerH = h - 5.5 - (imgMargin * 2);
-
-                let imgW = containerW;
-                let imgH = containerH;
-                let imgX = containerX + shiftX;
-                let imgY = containerY;
-
-                if (imgObj.width && imgObj.height) {
-                    const imgAspect = imgObj.width / imgObj.height;
-                    const containerAspect = containerW / containerH;
-
-                    if (imgAspect > containerAspect) {
-                        // Image plus large : ajuste à la largeur et centre verticalement
-                        imgW = containerW;
-                        imgH = containerW / imgAspect;
-                        imgY = containerY + (containerH - imgH) / 2;
-                        imgX = containerX + shiftX;
-                    } else {
-                        // Image plus haute : ajuste à la hauteur et centre horizontalement
-                        imgH = containerH;
-                        imgW = containerH * imgAspect;
-                        imgX = containerX + (containerW - imgW) / 2 + shiftX;
-                    }
+                if (imgAspect > containerAspect) {
+                    imgW = maxW;
+                    imgH = maxW / imgAspect;
+                    imgY = y + (maxH - imgH) / 2;
+                    imgX = x;
+                } else {
+                    imgH = maxH;
+                    imgW = maxH * imgAspect;
+                    imgX = x + (maxW - imgW) / 2;
+                    imgY = y;
                 }
-
-                pdf.addImage(imgObj, 'PNG', imgX, imgY, imgW, imgH, undefined, 'FAST');
-            } catch (err) {
-                console.warn('Erreur rendu image:', title, err);
             }
+
+            pdf.addImage(imgObj, 'PNG', imgX, imgY, imgW, imgH, undefined, 'FAST');
+        } catch (err) {
+            console.warn('Erreur rendu image épurée:', err);
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D configurée principale (65mm, commence à 37mm avec bel écart)
-    const topY = 37.0;
-    const topH = 65;
-    drawImageCard('Vue 3D Principale du Bâtiment (Perspective)', mainX, topY, mainW, topH, loadedMain3D);
+    // Hauteurs personnalisables ou valeurs par défaut idéales pour les 3 vues
+    const h3D = Number(imageSettings?.main3DHeight || 62);
+    const hPignon = Number(imageSettings?.pignonHeight || 54);
+    const hFacade = Number(imageSettings?.facadeSudHeight || 54);
 
-    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte (41mm avec écart de 6.5mm)
-    const midY = topY + topH + 6.5; // 108.5 mm
-    const midH = 41;
-    const halfW = (mainW - 3) / 2; // 67.5 mm chacun
-    drawImageCard('Vue Pignon (Gauche)', mainX, midY, halfW, midH, loadedPignon);
-    drawImageCard('Élévation 2D / Coupe Technique', mainX + halfW + 3, midY, halfW, midH, loaded2D);
+    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc
+    const topY = titleY + 10.0; // 40.5 mm
+    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, h3D);
 
-    // VISUEL 4 (Bas) : Vue Façade Sud (avec écart de 6.5mm)
-    const sudY = midY + midH + 6.5; // 156.0 mm
-    const sudH = 59;
-    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, sudY, mainW, sudH, loadedFacadeSud, -2.0);
+    // VISUEL 2 (Milieu) : Vue Pignon épurée sur fond blanc (Plein format horizontal)
+    const midY = topY + h3D + 4.0;
+    drawSeamlessImage(loadedPignon, mainX, midY, mainW, hPignon);
+
+    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc
+    const sudY = midY + hPignon + 4.0;
+    drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, hFacade);
 
     // --- CADRE : À VOTRE CHARGE ---
-    const chargeY = sudY + sudH + 5.5; // 220.5 mm
+    const chargeY = Math.max(sudY + hFacade + 5.0, 222.0);
     const chargeH = 24;
     pdf.setFillColor(248, 250, 252);
     pdf.roundedRect(mainX, chargeY, mainW, chargeH, 2, 2, 'FD');
