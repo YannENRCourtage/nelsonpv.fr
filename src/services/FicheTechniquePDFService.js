@@ -313,61 +313,68 @@ export async function generateFicheTechniquePDF({
 
         // Calcul Amortissement & Performance Financière (identique au Simulateur Structure Métallique)
         if (totalProjectCost > 0 && estimatedProductionKwh > 0) {
-            const tarifAchatNum = installedKwc < 100 ? 0.1141 : (installedKwc <= 500 ? 0.082 : 0.0829);
+            const tarifAchatNum = tarifNum; // 0.011 €/kWh si < 100 kWc, 0.082 si 100-500, 0.0829 si > 500
             const annualGrossRevenue = estimatedProductionKwh * tarifAchatNum;
-            const annualOperatingCost = installedKwc * 22; // TURPE + maintenance
+            const annualOperatingCost = installedKwc * (installedKwc < 100 ? 10 : 22); // TURPE + maintenance
             const annualNetRevenue = annualGrossRevenue - annualOperatingCost;
 
-            let cumul = -totalProjectCost;
-            let foundPayback = null;
-            const cashFlows = [-totalProjectCost];
-
-            for (let yr = 1; yr <= 30; yr++) {
-                const panelEff = Math.pow(0.99, yr - 1);
-                const tariffIdx = Math.pow(1.02, yr - 1);
-                const netYr = Math.round((annualGrossRevenue * panelEff * tariffIdx) - annualOperatingCost);
-                cumul += netYr;
-                cashFlows.push(netYr);
-
-                if (cumul >= 0 && foundPayback === null) {
-                    const prevCumul = cumul - netYr;
-                    const frac = netYr > 0 ? (-prevCumul) / netYr : 0;
-                    foundPayback = Math.round(yr - 1 + Math.max(0, Math.min(1, frac)));
-                }
-            }
-
-            if (foundPayback !== null) {
-                paybackYears = `${Math.max(1, foundPayback)} ans`;
-            } else if (annualNetRevenue > 0) {
-                paybackYears = `${Math.max(1, Math.round(totalProjectCost / annualNetRevenue))} ans`;
-            } else {
+            if (installedKwc < 100) {
+                // Pour < 100 kWc avec un tarif d'achat de 0.011 €/kWh :
+                // Le revenu annuel (ex: 588 €) ne permet pas de couvrir l'investissement de plus de 70k€ sur 30 ans
                 paybackYears = '> 30 ans';
-            }
+                performanceFinanciere = '0.0 % / an';
+            } else {
+                let cumul = -totalProjectCost;
+                let foundPayback = null;
+                const cashFlows = [-totalProjectCost];
 
-            // Calcul TRI (Taux de Rendement Interne 30 ans)
-            let rate = 0.059;
-            for (let iter = 0; iter < 50; iter++) {
-                let npv = 0;
-                let dnpv = 0;
-                for (let t = 0; t <= 30; t++) {
-                    const cf = cashFlows[t] || 0;
-                    const denom = Math.pow(1 + rate, t);
-                    npv += cf / denom;
-                    if (t > 0) {
-                        dnpv -= (t * cf) / Math.pow(1 + rate, t + 1);
+                for (let yr = 1; yr <= 30; yr++) {
+                    const panelEff = Math.pow(0.99, yr - 1);
+                    const tariffIdx = Math.pow(1.02, yr - 1);
+                    const netYr = Math.round((annualGrossRevenue * panelEff * tariffIdx) - annualOperatingCost);
+                    cumul += netYr;
+                    cashFlows.push(netYr);
+
+                    if (cumul >= 0 && foundPayback === null) {
+                        const prevCumul = cumul - netYr;
+                        const frac = netYr > 0 ? (-prevCumul) / netYr : 0;
+                        foundPayback = Math.round(yr - 1 + Math.max(0, Math.min(1, frac)));
                     }
                 }
-                if (Math.abs(npv) < 0.01 || Math.abs(dnpv) < 1e-7) break;
-                const newRate = rate - npv / dnpv;
-                if (isNaN(newRate) || newRate < -0.5 || newRate > 1.0) break;
-                rate = newRate;
-            }
 
-            if (!isNaN(rate) && rate > 0) {
-                performanceFinanciere = `${(rate * 100).toFixed(1)} % / an`;
-            } else {
-                const simpleYield = (annualNetRevenue / totalProjectCost) * 100;
-                performanceFinanciere = `${Math.max(1, simpleYield).toFixed(1)} % / an`;
+                if (foundPayback !== null) {
+                    paybackYears = `${Math.max(1, foundPayback)} ans`;
+                } else if (annualNetRevenue > 0) {
+                    paybackYears = `${Math.max(1, Math.round(totalProjectCost / annualNetRevenue))} ans`;
+                } else {
+                    paybackYears = '> 30 ans';
+                }
+
+                // Calcul TRI (Taux de Rendement Interne 30 ans)
+                let rate = 0.059;
+                for (let iter = 0; iter < 50; iter++) {
+                    let npv = 0;
+                    let dnpv = 0;
+                    for (let t = 0; t <= 30; t++) {
+                        const cf = cashFlows[t] || 0;
+                        const denom = Math.pow(1 + rate, t);
+                        npv += cf / denom;
+                        if (t > 0) {
+                            dnpv -= (t * cf) / Math.pow(1 + rate, t + 1);
+                        }
+                    }
+                    if (Math.abs(npv) < 0.01 || Math.abs(dnpv) < 1e-7) break;
+                    const newRate = rate - npv / dnpv;
+                    if (isNaN(newRate) || newRate < -0.5 || newRate > 1.0) break;
+                    rate = newRate;
+                }
+
+                if (!isNaN(rate) && rate > 0) {
+                    performanceFinanciere = `${(rate * 100).toFixed(1)} % / an`;
+                } else {
+                    const simpleYield = (annualNetRevenue / totalProjectCost) * 100;
+                    performanceFinanciere = `${Math.max(1, simpleYield).toFixed(1)} % / an`;
+                }
             }
         }
     } else {
@@ -381,8 +388,14 @@ export async function generateFicheTechniquePDF({
     if (config.hasSolar) {
         drawRow('Centrale PV :', `${formatNumber(pvInstallationCost)} € HT`);
         drawRow('Total Projet :', `${formatNumber(totalProjectCost)} € HT`, true, [52, 211, 153]);
-        drawRow('Amortissement :', paybackYears, true, [52, 211, 153]);
-        drawRow('Performance Financière :', performanceFinanciere, true, [251, 191, 36]);
+
+        // Couleurs conditionnelles : ROUGE si puissance < 100 kWc
+        const isLowPower = installedKwc < 100;
+        const amortissementColor = isLowPower ? [239, 68, 68] : [52, 211, 153]; // Rouge #ef4444 si < 100 kWc
+        const performanceColor = isLowPower ? [239, 68, 68] : [251, 191, 36]; // Rouge #ef4444 si < 100 kWc
+
+        drawRow('Amortissement :', paybackYears, true, amortissementColor);
+        drawRow('Performance Financière :', performanceFinanciere, true, performanceColor);
     }
     curY += 2.2; // Petit espace au-dessus des 3 lignes de ratio
     drawRow('Ratio / Surface :', `${formatNumber(ratioCostPerM2)} € / m²`, true, [56, 189, 248]);

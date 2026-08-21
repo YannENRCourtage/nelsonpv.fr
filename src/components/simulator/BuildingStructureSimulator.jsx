@@ -587,9 +587,9 @@ const crop3DCanvas = (sourceCanvas) => {
   const pvInstallationCost = Math.round(installedKwc * 1000 * (structSettings.pvIntegrationPerWc || 0.55) + 15000);
   const totalProjectInvestment = totalBuildingCost + pvInstallationCost;
 
-  const tarifAchatKwh = 0.1141; // Tarif EDF OA standard 100-500 kWc
+  const tarifAchatKwh = installedKwc < 100 ? 0.011 : (installedKwc <= 500 ? 0.082 : 0.0829);
   const annualGrossRevenue = Math.round(annualProductionKwh * tarifAchatKwh);
-  const annualOperatingCost = Math.round(installedKwc * 22); // TURPE + maintenance
+  const annualOperatingCost = Math.round(installedKwc * (installedKwc < 100 ? 10 : 22)); // TURPE + maintenance
   const annualNetRevenue = annualGrossRevenue - annualOperatingCost;
 
   // Projection financière sur 30 ans avec dégradation -1%/an et revalorisation tarif +2%/an (Image 5)
@@ -619,7 +619,7 @@ const crop3DCanvas = (sourceCanvas) => {
     }
 
     const paybackItem = data.find(d => d.gain >= 0);
-    const paybackYears = paybackItem ? paybackItem.year : '15.7';
+    const paybackYears = paybackItem ? `${paybackItem.year} ans` : '> 30 ans';
 
     return {
       data,
@@ -1470,26 +1470,25 @@ const crop3DCanvas = (sourceCanvas) => {
                     <span className="text-xs text-slate-300 font-semibold">Total Structure &amp; PV</span>
                   </div>
 
-                  <div className="bg-amber-950/80 border border-amber-800 text-white rounded-3xl p-6 shadow-md flex flex-col justify-between">
-                    <span className="text-xs font-black uppercase text-amber-300 tracking-wider">
+                  <div className={`border text-white rounded-3xl p-6 shadow-md flex flex-col justify-between ${installedKwc < 100 ? 'bg-rose-950/80 border-rose-800' : 'bg-amber-950/80 border-amber-800'}`}>
+                    <span className={`text-xs font-black uppercase tracking-wider ${installedKwc < 100 ? 'text-rose-300' : 'text-amber-300'}`}>
                       Performance Financière (TRI)
                     </span>
                     <div className="my-2">
-                      <span className="text-3xl font-black text-amber-400">5.9 %</span>
-                      <span className="text-base font-bold text-amber-200 ml-1">/ an</span>
+                      <span className={`text-3xl font-black ${installedKwc < 100 ? 'text-rose-400' : 'text-amber-400'}`}>{installedKwc < 100 ? '0.0 %' : '5.9 %'}</span>
+                      <span className={`text-base font-bold ml-1 ${installedKwc < 100 ? 'text-rose-200' : 'text-amber-200'}`}>/ an</span>
                     </div>
-                    <span className="text-xs text-amber-200 font-semibold">Rentabilité nette du capital</span>
+                    <span className={`text-xs font-semibold ${installedKwc < 100 ? 'text-rose-200' : 'text-amber-200'}`}>{installedKwc < 100 ? 'Rendement faible (< 100 kWc)' : 'Rentabilité nette du capital'}</span>
                   </div>
 
-                  <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-md flex flex-col justify-between">
-                    <span className="text-xs font-black uppercase text-emerald-400 tracking-wider">
+                  <div className={`text-white rounded-3xl p-6 shadow-md flex flex-col justify-between ${installedKwc < 100 ? 'bg-rose-950/80 border-rose-800' : 'bg-[#0e2b4d]'}`}>
+                    <span className={`text-xs font-black uppercase tracking-wider ${installedKwc < 100 ? 'text-rose-300' : 'text-emerald-400'}`}>
                       Amortissement
                     </span>
                     <div className="my-2">
-                      <span className="text-3xl font-black text-emerald-400">{financialProjection30Years.paybackYears}</span>
-                      <span className="text-base font-bold text-emerald-200 ml-1">ans</span>
+                      <span className={`text-3xl font-black ${installedKwc < 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{financialProjection30Years.paybackYears}</span>
                     </div>
-                    <span className="text-xs text-emerald-200 font-semibold">Amortissement rapide du capital</span>
+                    <span className={`text-xs font-semibold ${installedKwc < 100 ? 'text-rose-200' : 'text-emerald-200'}`}>{installedKwc < 100 ? 'Amortissement non atteint sur 30 ans' : 'Amortissement rapide du capital'}</span>
                   </div>
                 </div>
 
