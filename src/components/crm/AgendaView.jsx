@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
     ChevronLeft, 
     ChevronRight, 
@@ -24,7 +24,8 @@ import {
     subscribeToUserAppointments, 
     createAppointment, 
     updateAppointment, 
-    deleteAppointment 
+    deleteAppointment,
+    getLocalAppointments
 } from '@/services/firebase/agenda.service.js';
 import AppointmentModal from './AppointmentModal.jsx';
 
@@ -40,6 +41,15 @@ const HOURS = Array.from({ length: 15 }, (_, i) => i + 7); // 07:00 to 21:00
 
 // Helper pour formater une date en YYYY-MM-DD
 const formatDateKey = (date) => {
+    if (!date) return '';
+    if (typeof date === 'string') {
+        if (date.includes('T')) return date.split('T')[0];
+        if (date.includes('/')) {
+            const parts = date.split('/');
+            if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        return date;
+    }
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
@@ -58,7 +68,9 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     // Vue active : 'day' | 'week' | 'month' | 'year'
     const [viewMode, setViewMode] = useState('month');
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [appointments, setAppointments] = useState([]);
+    
+    const userId = user?.uid || user?.id || user?.email || 'default_user';
+    const [appointments, setAppointments] = useState(() => getLocalAppointments(userId));
     
     // Filtre par catégorie
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -71,13 +83,12 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     const [hoveredAppt, setHoveredAppt] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-    const userId = user?.uid || user?.id || 'demo_user';
-
     // Synchronisation des rendez-vous de l'utilisateur
     useEffect(() => {
-        if (!userId) return;
         const unsubscribe = subscribeToUserAppointments(userId, activeTenantId, (list) => {
-            setAppointments(list);
+            if (list) {
+                setAppointments(list);
+            }
         });
         return () => unsubscribe && unsubscribe();
     }, [userId, activeTenantId]);
@@ -88,12 +99,14 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
         return appointments.filter(a => a.type === selectedCategory);
     }, [appointments, selectedCategory]);
 
-    // Indexation des RDVs par date pour accès rapide
+    // Indexation des RDVs par date normalisée pour accès rapide
     const appointmentsByDate = useMemo(() => {
         const map = {};
         filteredAppointments.forEach(appt => {
-            if (!map[appt.date]) map[appt.date] = [];
-            map[appt.date].push(appt);
+            const dateKey = formatDateKey(appt.date);
+            if (!dateKey) return;
+            if (!map[dateKey]) map[dateKey] = [];
+            map[dateKey].push(appt);
         });
         return map;
     }, [filteredAppointments]);
@@ -157,9 +170,13 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     const handleSaveAppointment = async (data) => {
         try {
             if (data.id && appointments.some(a => a.id === data.id)) {
-                await updateAppointment(data.id, data, userId);
+                const updated = await updateAppointment(data.id, data, userId);
+                setAppointments(prev => prev.map(a => a.id === data.id ? { ...a, ...data } : a));
             } else {
-                await createAppointment(data, userId, activeTenantId);
+                const created = await createAppointment(data, userId, activeTenantId);
+                if (created) {
+                    setAppointments(prev => [created, ...prev.filter(a => a.id !== created.id)]);
+                }
             }
         } catch (err) {
             console.error('Erreur sauvegarde RDV:', err);
@@ -169,6 +186,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     const handleDeleteAppointment = async (apptId) => {
         try {
             await deleteAppointment(apptId, userId);
+            setAppointments(prev => prev.filter(a => a.id !== apptId));
         } catch (err) {
             console.error('Erreur suppression RDV:', err);
         }
@@ -472,8 +490,8 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                         const timeStr = `${String(hour).padStart(2, '0')}:00`;
                         const hourAppts = dayAppts.filter(appt => {
                             if (appt.isAllDay) return hour === 7;
-                            const apptHour = parseInt((appt.startTime || '09:00').split(':')[0], 10);
-                            return apptHour === hour;
+                            const startH = parseInt((appt.startTime || '09:00').split(':')[0], 10);
+                            return startH === hour;
                         });
 
                         return (

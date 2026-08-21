@@ -204,7 +204,7 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
     const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
         ? project.buildings
         : [{
-            name: 'Bâtiment 1 (Principal)',
+            name: 'Bâtiment 1',
             length: Number(project?.longueur || 30),
             width: Number(project?.largeur || 20),
             masse_capture: captures?.masse_projet || captures?.satellite
@@ -223,12 +223,15 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                             const bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
                             const bW = Number(b.width || project?.largeur || 20);
                             const bArea = Math.round(bLen * bW);
+                            const bDisplayName = b.name 
+                                ? b.name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() 
+                                : `Bâtiment ${idx + 1}`;
 
                             return (
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                         <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                            PC2 — Plan de Masse : {b.name || `Bâtiment ${idx + 1}`}
+                                            PC2 — Plan de Masse : {bDisplayName}
                                         </span>
                                         <span style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 1.5mm', borderRadius: '2mm' }}>
                                             {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
@@ -239,8 +242,8 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                                             isInteractive={isInteractive} 
                                             photo={bPhoto} 
                                             onUpload={(data) => onUpload && onUpload(`masse_projet_${idx}`, data)} 
-                                            defaultText={`Plan de masse : ${b.name || `Bâtiment ${idx + 1}`}`} 
-                                            label={`Plan de Masse (${b.name || `Bât. ${idx + 1}`})`}
+                                            defaultText={`Plan de masse : ${bDisplayName}`} 
+                                            label={`Plan de Masse (${bDisplayName})`}
                                         />
                                     </div>
                                 </div>
@@ -253,12 +256,15 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                     const bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
                     const bW = Number(b?.width || project?.largeur || 20);
                     const bArea = Math.round(bLen * bW);
+                    const bDisplayName = b?.name 
+                        ? b.name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() 
+                        : 'Bâtiment 1';
 
                     return (
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                 <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                    PC2 — Plan de Masse : {b?.name || 'Bâtiment 1 (Principal)'} (OpenStreetMap Zoom 19)
+                                    PC2 — Plan de Masse : {bDisplayName} (OpenStreetMap Zoom 19)
                                 </span>
                                 <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 2mm', borderRadius: '2mm' }}>
                                     {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)

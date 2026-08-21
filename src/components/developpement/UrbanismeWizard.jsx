@@ -192,29 +192,19 @@ const DOSSIER_INFO = {
 
 export default function UrbanismeWizard({ isOpen, onClose, type, project, onGenerate }) {
   const isDP = type === 'dp';
-  const isPC = type === 'pc';
+  const isPC = type === 'pc'; 
+  const hasInitializedRef = React.useRef(false);
+  const prevProjectIdRef = React.useRef(null);
 
   const getBuildingDisplayName = useCallback((b, idx) => {
     if (!b) return isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
     let name = b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
-    if (isDP) {
-      name = name
-        .replace(/Bâtiment/gi, 'Ombrière')
-        .replace(/Principalee+/gi, 'Principale')
-        .replace(/\bPrincipal\b/g, 'Principale');
-      if (idx === 0 && !name.includes('Principale') && !name.includes('Secondaire')) {
-        name = 'Ombrière 1 (Principale)';
-      }
-    } else {
-      name = name
-        .replace(/Ombrière/gi, 'Bâtiment')
-        .replace(/Principalee+/gi, 'Principal')
-        .replace(/\bPrincipale\b/g, 'Principal');
-      if (idx === 0 && !name.includes('Principal') && !name.includes('Secondaire')) {
-        name = 'Bâtiment 1 (Principal)';
-      }
-    }
-    return name;
+    name = name
+      .replace(/Bâtiment/gi, isDP ? 'Ombrière' : 'Bâtiment')
+      .replace(/Ombrière/gi, isDP ? 'Ombrière' : 'Bâtiment')
+      .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
+      .trim();
+    return name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
   }, [isDP]);
 
   const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
@@ -228,7 +218,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [buildings, setBuildings] = useState([
     {
       id: 'bat-1',
-      name: isDP ? 'Ombrière 1 (Principale)' : 'Bâtiment 1 (Principal)',
+      name: isDP ? 'Ombrière 1' : 'Bâtiment 1',
       length: 37.5,
       width: 16.4,
       eaveHeight: 4,
@@ -242,74 +232,6 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       photos: {}
     }
   ]);
-
-  // Initialisation synchronisée avec le projet existant
-  useEffect(() => {
-    if (project) {
-      let initialBuildings = [];
-
-      if (project.buildings && Array.isArray(project.buildings) && project.buildings.length > 0) {
-        initialBuildings = project.buildings.map((b, idx) => ({
-          ...b,
-          id: b.id || `bat-${idx + 1}`,
-          name: b.name
-            ? (isDP ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principalee+/gi, 'Principale').replace(/\bPrincipal\b/g, 'Principale') : b.name)
-            : (isDP ? (idx === 0 ? 'Ombrière 1 (Principale)' : `Ombrière ${idx + 1} (Secondaire)`) : (idx === 0 ? 'Bâtiment 1 (Principal)' : `Bâtiment ${idx + 1} (Secondaire)`)),
-          length: Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || 37.5),
-          width: Number(b.width || 16.4),
-          eaveHeight: Number(b.eaveHeight || 4),
-          roofPitch: Number(b.roofPitch || 15),
-          buildingType: b.buildingType || 'asymetrique_1',
-          leftSide: b.leftSide || 'none',
-          rightSide: b.rightSide || 'none',
-          leftWidth: Number(b.leftWidth) || 9.3,
-          rightWidth: Number(b.rightWidth) || 9.3,
-          bayCount: Number(b.bayCount || 5),
-          baySpacing: Number(b.baySpacing || 7.5),
-          captures: b.captures || {},
-          photos: b.photos || {},
-          rotation: Number(b.rotation || 0)
-        }));
-      }
-
-      if (initialBuildings.length === 0) {
-        const pRightSide = project.rightSide || (project.appentis ? 'appentis' : project.auvent ? 'auvent' : 'none');
-        const pLeftSide = project.leftSide || 'none';
-        const pRightWidth = Number(project.rightWidth) || (pRightSide === 'appentis' ? 9.3 : 4.0);
-        const pLeftWidth = Number(project.leftWidth) || (pLeftSide === 'appentis' ? 9.3 : 4.0);
-
-        initialBuildings = [
-          {
-            id: 'bat-1',
-            name: isDP ? 'Ombrière 1 (Principale)' : 'Bâtiment 1 (Principal)',
-            length: Number(project.longueur || project.length || 37.5),
-            width: Number(project.largeur || project.width || 16.4),
-            eaveHeight: Number(project.hauteur_egout || project.eaveHeight || 4),
-            roofPitch: Number(project.pente || project.roofPitch || 15),
-            buildingType: project.buildingType || 'asymetrique_1',
-            leftSide: pLeftSide,
-            rightSide: pRightSide,
-            leftWidth: pLeftWidth,
-            rightWidth: pRightWidth,
-            bayCount: Number(project.bayCount || 5),
-            baySpacing: Number(project.baySpacing || 7.5),
-            captures: project.urbanisme_captures || project.captures || {},
-            photos: project.pc_photos || project.photos || {},
-            rotation: Number(project.rotation || 0)
-          }
-        ];
-      }
-
-      setBuildings(initialBuildings);
-      setActiveBuildingIndex(0);
-
-      // Charger immédiatement le premier bâtiment dans le store 3D
-      const b1 = initialBuildings[0];
-      if (b1) {
-        useConfiguratorStore.getState().loadBuildingConfig(b1);
-      }
-    }
-  }, [project, isDP]);
 
   const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
 
@@ -501,9 +423,11 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
   // Gestion des bâtiments / ombrières multiples avec isolation stricte des onglets
   const handleAddBuilding = () => {
     const newIdx = buildings.length + 1;
+    const projLat = Number(editedProject?.lat || project?.lat || 43.5612);
+    const projLng = Number(editedProject?.lng || project?.lng || 0.9168);
     const newBuilding = {
       id: `bat-${newIdx}`,
-      name: isDP ? `Ombrière ${newIdx} (Secondaire)` : `Bâtiment ${newIdx} (Secondaire)`,
+      name: isDP ? `Ombrière ${newIdx}` : `Bâtiment ${newIdx}`,
       length: 30,
       width: isDP ? 15.8 : 16.4,
       eaveHeight: isDP ? 5.08 : 4.0,
@@ -516,6 +440,9 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       leftWidth: 9.3,
       rightWidth: 9.3,
       hasSolar: true,
+      lat: projLat,
+      lng: projLng,
+      gps: `${projLat},${projLng}`,
       rotation: 0,
       captures: {},
       photos: {}
@@ -554,66 +481,117 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
 
   const dossierInfo = DOSSIER_INFO[type] || DOSSIER_INFO.pc;
 
-  // Synchronisation du projet initial à l'ouverture
+  // Synchronisation du projet initial à l'ouverture (exécutée uniquement à l'ouverture ou changement de projet)
   useEffect(() => {
-    if (project && isOpen) {
-      const names = resolveDemandeurNames(project);
-      const cleanDemandeur = names.lastName || project.name || '';
-      const projEmail = project.email || project.clientEmail || project.contactEmail || project.client_email || 'isabelle.dupond@gmail.com';
-      const projAddress = project.address || project.clientAddress || project.projectAddress || project.siteAddress || project.street || project.adresse || '';
-      const projZip = project.zip || project.postalCode || project.code_postal || project.clientZip || '';
-      const projCity = project.city || project.commune || project.clientCity || project.cadastre_commune || '';
-
-      const isOmbriere = (project.type || '').toLowerCase().includes('ombriere') || (project.buildingType || '').toLowerCase().includes('ombriere');
-
-      // Restaurer fidèlement les bâtiments existants ou initialiser le Bâtiment 1 avec les paramètres précis du projet
-      let initialBuildings = [];
-      if (project.buildings && Array.isArray(project.buildings) && project.buildings.length > 0) {
-        initialBuildings = project.buildings;
-      } else {
-        const pLen = Number(project.longueur || 37.5);
-        const pW = Number(project.largeur || 16.4);
-        const pBc = Number(project.bayCount) || Math.max(1, Math.round(pLen / 7.5)) || 5;
-        const pBs = Number(project.baySpacing) || 7.5;
-        const pType = project.buildingType || 'asymetrique_1';
-        const pEave = Number(project.hauteur_egout) || (pType === 'ombriere_pl' ? 5.08 : (pType === 'ombriere_vl_double' ? 3.0 : (pType.startsWith('asymetrique') || pType === 'monopente' ? 4.0 : 5.5)));
-        const pPitch = Number(project.pente) || ((pType.startsWith('asymetrique') || pType === 'monopente') ? 15 : 10);
-        const pRightSide = project.rightSide || (project.appentis ? 'appentis' : project.auvent ? 'auvent' : 'none');
-        const pLeftSide = project.leftSide || 'none';
-        const pRightWidth = Number(project.rightWidth) || (pRightSide === 'appentis' ? 9.3 : 4.0);
-        const pLeftWidth = Number(project.leftWidth) || (pLeftSide === 'appentis' ? 9.3 : 4.0);
-
-        initialBuildings = [
-          {
-            id: 'bat-1',
-            name: isDP ? 'Ombrière 1 (Principale)' : 'Bâtiment 1 (Principal)',
-            length: pBc * pBs,
-            width: pW,
-            eaveHeight: pEave,
-            roofPitch: pPitch,
-            buildingType: pType,
-            leftSide: pLeftSide,
-            rightSide: pRightSide,
-            leftWidth: pLeftWidth,
-            rightWidth: pRightWidth,
-            bayCount: pBc,
-            baySpacing: pBs,
-            hasSolar: true,
-            captures: project.urbanisme_captures || {},
-            photos: project.pc_photos || {},
-            rotation: Number(project.rotation || 0)
-          }
-        ];
+    if (!isOpen || !project) {
+      if (!isOpen) {
+        hasInitializedRef.current = false;
       }
+      return;
+    }
 
-      setBuildings(initialBuildings);
-      setActiveBuildingIndex(0);
+    if (hasInitializedRef.current && prevProjectIdRef.current === project.id) {
+      return;
+    }
+    hasInitializedRef.current = true;
+    prevProjectIdRef.current = project.id;
 
-      // Charger immédiatement le premier bâtiment dans le store 3D
-      const b1 = initialBuildings[0];
-      if (b1) {
-        useConfiguratorStore.getState().loadBuildingConfig(b1);
-      }
+    const names = resolveDemandeurNames(project);
+    const cleanDemandeur = names.lastName || project.name || '';
+    const projEmail = project.email || project.clientEmail || project.contactEmail || project.client_email || 'isabelle.dupond@gmail.com';
+    const projAddress = project.address || project.clientAddress || project.projectAddress || project.siteAddress || project.street || project.adresse || '';
+    const projZip = project.zip || project.postalCode || project.code_postal || project.clientZip || '';
+    const projCity = project.city || project.commune || project.clientCity || project.cadastre_commune || '';
+
+    const isOmbriere = (project.type || '').toLowerCase().includes('ombriere') || (project.buildingType || '').toLowerCase().includes('ombriere');
+    const pGps = project.gps || (project.lat && project.lng ? `${project.lat},${project.lng}` : '43.5612,0.9168');
+    const [defLat, defLng] = pGps.split(',').map(Number);
+
+    // Restaurer fidèlement les bâtiments existants ou initialiser le Bâtiment 1 avec les paramètres précis du projet
+    let initialBuildings = [];
+    if (project.buildings && Array.isArray(project.buildings) && project.buildings.length > 0) {
+      initialBuildings = project.buildings.map((b, idx) => {
+        let cleanName = b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
+        cleanName = cleanName
+          .replace(/Bâtiment/gi, isDP ? 'Ombrière' : 'Bâtiment')
+          .replace(/Ombrière/gi, isDP ? 'Ombrière' : 'Bâtiment')
+          .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
+          .trim();
+        if (!cleanName) cleanName = isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
+
+        const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || defLat);
+        const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || defLng);
+
+        return {
+          ...b,
+          id: b.id || `bat-${idx + 1}`,
+          name: cleanName,
+          lat: bLat,
+          lng: bLng,
+          gps: `${bLat},${bLng}`,
+          rotation: Number(b.rotation || 0),
+          length: Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || 37.5),
+          width: Number(b.width || 16.4),
+          eaveHeight: Number(b.eaveHeight || 4),
+          roofPitch: Number(b.roofPitch || 15),
+          buildingType: b.buildingType || 'asymetrique_1',
+          leftSide: b.leftSide || 'none',
+          rightSide: b.rightSide || 'none',
+          leftWidth: Number(b.leftWidth) || 9.3,
+          rightWidth: Number(b.rightWidth) || 9.3,
+          bayCount: Number(b.bayCount || 5),
+          baySpacing: Number(b.baySpacing || 7.5),
+          captures: b.captures || {},
+          photos: b.photos || {}
+        };
+      });
+    } else {
+      const pLen = Number(project.longueur || 37.5);
+      const pW = Number(project.largeur || 16.4);
+      const pBc = Number(project.bayCount) || Math.max(1, Math.round(pLen / 7.5)) || 5;
+      const pBs = Number(project.baySpacing) || 7.5;
+      const pType = project.buildingType || 'asymetrique_1';
+      const pEave = Number(project.hauteur_egout) || (pType === 'ombriere_pl' ? 5.08 : (pType === 'ombriere_vl_double' ? 3.0 : (pType.startsWith('asymetrique') || pType === 'monopente' ? 4.0 : 5.5)));
+      const pPitch = Number(project.pente) || ((pType.startsWith('asymetrique') || pType === 'monopente') ? 15 : 10);
+      const pRightSide = project.rightSide || (project.appentis ? 'appentis' : project.auvent ? 'auvent' : 'none');
+      const pLeftSide = project.leftSide || 'none';
+      const pRightWidth = Number(project.rightWidth) || (pRightSide === 'appentis' ? 9.3 : 4.0);
+      const pLeftWidth = Number(project.leftWidth) || (pLeftSide === 'appentis' ? 9.3 : 4.0);
+
+      initialBuildings = [
+        {
+          id: 'bat-1',
+          name: isDP ? 'Ombrière 1' : 'Bâtiment 1',
+          length: pBc * pBs,
+          width: pW,
+          eaveHeight: pEave,
+          roofPitch: pPitch,
+          buildingType: pType,
+          leftSide: pLeftSide,
+          rightSide: pRightSide,
+          leftWidth: pLeftWidth,
+          rightWidth: pRightWidth,
+          bayCount: pBc,
+          baySpacing: pBs,
+          hasSolar: true,
+          lat: defLat,
+          lng: defLng,
+          gps: `${defLat},${defLng}`,
+          captures: project.urbanisme_captures || {},
+          photos: project.pc_photos || {},
+          rotation: Number(project.rotation || 0)
+        }
+      ];
+    }
+
+    setBuildings(initialBuildings);
+    setActiveBuildingIndex(0);
+
+    // Charger immédiatement le premier bâtiment dans le store 3D
+    const b1 = initialBuildings[0];
+    if (b1) {
+      useConfiguratorStore.getState().loadBuildingConfig(b1);
+    }
 
       const initialNotice = project?.noticeText || buildAutoNoticeText();
       setNoticeText(initialNotice);
@@ -761,7 +739,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     }
   }, [step, buildings, additionalRoof, batteryStorage, buildAutoNoticeText, isNoticeUserModified]);
 
-  // Mise à jour de la position GPS individuelle d'un bâtiment (PC2)
+  // Mise à jour de la position GPS individuelle d'un bâtiment (PC2 / DP2)
   const handleBuildingGpsUpdate = (bIdx, newLat, newLng) => {
     setBuildings(prev => {
       const next = [...prev];
@@ -775,14 +753,22 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       }
       return next;
     });
-    if (bIdx === 0) {
-      setEditedProject(prev => ({
+    setEditedProject(prev => {
+      const nextBuildings = [...(prev.buildings || buildings)];
+      if (nextBuildings[bIdx]) {
+        nextBuildings[bIdx] = {
+          ...nextBuildings[bIdx],
+          lat: newLat,
+          lng: newLng,
+          gps: `${newLat},${newLng}`
+        };
+      }
+      return {
         ...prev,
-        lat: newLat,
-        lng: newLng,
-        gps: `${newLat},${newLng}`
-      }));
-    }
+        buildings: nextBuildings,
+        ...(bIdx === 0 ? { lat: newLat, lng: newLng, gps: `${newLat},${newLng}` } : {})
+      };
+    });
   };
 
   // Sauvegarde simulation 3D après projet (PC6)
@@ -1000,6 +986,9 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       const bMasse = await generateStaticMapImage(bLat, bLng, 'map', 19, [b]);
       return {
         ...b,
+        lat: bLat,
+        lng: bLng,
+        gps: `${bLat},${bLng}`,
         masse_capture: bMasse || null
       };
     }));

@@ -159,7 +159,7 @@ export const PlateMasse = ({ project, captures }) => {
     const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
         ? project.buildings
         : [{
-            name: 'Ombrière 1 (Principale)',
+            name: 'Ombrière 1',
             length: Number(project?.longueur || 30),
             width: Number(project?.largeur || 20),
             masse_capture: captures?.masse_projet || captures?.satellite
@@ -178,7 +178,9 @@ export const PlateMasse = ({ project, captures }) => {
                             const bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
                             const bW = Number(b.width || project?.largeur || 20);
                             const bArea = Math.round(bLen * bW);
-                            const bDisplayName = b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principalee+/gi, 'Principale').replace(/\bPrincipal\b/g, 'Principale') : `Ombrière ${idx + 1}`;
+                            const bDisplayName = b.name 
+                                ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() 
+                                : `Ombrière ${idx + 1}`;
 
                             return (
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
@@ -203,7 +205,9 @@ export const PlateMasse = ({ project, captures }) => {
                     const bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
                     const bW = Number(b?.width || project?.largeur || 20);
                     const bArea = Math.round(bLen * bW);
-                    const bDisplayName = b?.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principalee+/gi, 'Principale').replace(/\bPrincipal\b/g, 'Principale') : 'Ombrière 1 (Principale)';
+                    const bDisplayName = b?.name 
+                        ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() 
+                        : 'Ombrière 1';
 
                     return (
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
