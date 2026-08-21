@@ -312,19 +312,20 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const effectiveNoticeText = (candidateNotice && candidateNotice.length > 50) ? candidateNotice : null;
     
     // Détection stricte du type d'ouvrage
-    const rawType = (project?.buildingType || project?.installationType || project?.type || 'asymetrique_1').toLowerCase();
-    const isOmbriere = rawType.includes('ombriere');
+    const rawType = (project?.buildingType || '').toLowerCase();
+    const isOmbriere = rawType.startsWith('ombriere');
     const isPL = isOmbriere && (rawType.includes('ombriere_pl') || (rawType.includes('pl') && !rawType.includes('simple')) || largeur >= 13.0);
     const isSimple = isOmbriere && !isPL && (rawType.includes('simple') || largeur <= 7.5);
     const isDouble = isOmbriere && !isPL && !isSimple;
     const isMonopente = !isOmbriere && rawType.includes('monopente');
     const isSym = !isOmbriere && rawType.includes('symetrique') && !rawType.includes('asym');
     const isAsym2 = !isOmbriere && (rawType.includes('asymetrique_2') || (!isSym && (Math.abs(largeur - 25.5) < 0.8 || Math.abs(largeur - 29.1) < 0.8)));
-    const isAsym = !isOmbriere && !isMonopente && !isSym;
+    const isAsym1 = !isOmbriere && !isMonopente && !isSym && !isAsym2;
+    const isAsym = isAsym1 || isAsym2;
 
     // Détection des extensions (Auvent / Appentis)
     const hasAppentisLeft = project?.leftSide === 'appentis';
-    const hasAuventLeft = !hasAppentisLeft && project?.leftSide === 'auvent';
+    const hasAuventLeft = !hasAppentisLeft && (project?.leftSide === 'auvent' || Boolean(project?.auvent && project?.auvent !== 'none' && project?.auvent !== false));
     const hasExtLeft = hasAuventLeft || hasAppentisLeft;
 
     const hasAppentisRight = project?.rightSide === 'appentis' || (!project?.rightSide && Boolean(project?.appentis && project?.appentis !== 'none' && project?.appentis !== false));
@@ -407,11 +408,19 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
         ridgeHeight = leftEaveHeight + ((largeur / 2) * Math.tan(effectivePitch * Math.PI / 180));
         realRoofWidth = largeur;
         realGroundWidth = largeur;
+    } else if (isAsym2) {
+        effectivePitch = pente || 10;
+        rightEaveHeight = hauteurEgout || 4.00;
+        ridgeHeight = (Math.abs(largeur - 25.5) < 0.8) ? 8.90 : (Math.abs(largeur - 29.1) < 0.8 ? 9.80 : (rightEaveHeight + (largeur * 0.75 * Math.tan(effectivePitch * Math.PI / 180))));
+        leftEaveHeight = (Math.abs(largeur - 25.5) < 0.8) ? 6.90 : (Math.abs(largeur - 29.1) < 0.8 ? 7.90 : (ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180))));
+        realRoofWidth = largeur;
+        realGroundWidth = largeur;
     } else {
+        // Asymétrique 1 zone (16.4m, 20m, etc.)
         effectivePitch = pente || 15;
         rightEaveHeight = hauteurEgout || 4.00;
         ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan(effectivePitch * Math.PI / 180));
-        leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180)));
+        leftEaveHeight = ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180));
         realRoofWidth = largeur;
         realGroundWidth = largeur;
     }
@@ -469,8 +478,17 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const extLeftSvgY = leftEaveSvgY + (mainLeftSvgX - extLeftSvgX) * leftSlopeSvg;
 
     // Hauteur d'égout de l'extension : 3.90m pour Appentis, ou calculée pour Auvent
-    const extRightHeight = hasAppentisRight ? 3.90 : Math.max(2.4, rightEaveHeight - extRightWidth * Math.tan((displayPitch * Math.PI) / 180));
-    const extLeftHeight = hasAppentisLeft ? 3.90 : Math.max(2.4, leftEaveHeight - extLeftWidth * Math.tan((displayPitch * Math.PI) / 180));
+    let extRightHeight = hasAppentisRight ? 3.90 : Math.max(2.4, rightEaveHeight - extRightWidth * Math.tan((displayPitch * Math.PI) / 180));
+    let extLeftHeight = hasAppentisLeft ? 3.90 : Math.max(2.4, leftEaveHeight - extLeftWidth * Math.tan((displayPitch * Math.PI) / 180));
+    if (hasAuventLeft) {
+        if (isAsym2 && Math.abs(largeur - 25.5) < 0.8) extLeftHeight = 5.90;
+        else if (isAsym2 && Math.abs(largeur - 29.1) < 0.8) extLeftHeight = 6.90;
+        else if (isAsym1 && Math.abs(largeur - 20.0) < 0.5) extLeftHeight = 6.40;
+        else if (isAsym1 && Math.abs(largeur - 16.4) < 0.5) extLeftHeight = 5.40;
+    }
+    if (hasAuventRight) {
+        if (isAsym2 && Math.abs(largeur - 25.5) < 0.8) extRightHeight = 3.30;
+    }
 
     // Échelle métrique
     const scaleTotalWidth = 10 * pxPerMeter;

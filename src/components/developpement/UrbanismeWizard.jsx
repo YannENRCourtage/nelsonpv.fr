@@ -413,13 +413,6 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     });
   }, [activeBuildingIndex]);
 
-  // Synchronisation automatique de la 3D dès qu'on change d'onglet de bâtiment
-  useEffect(() => {
-    if (buildings[activeBuildingIndex]) {
-      useConfiguratorStore.getState().loadBuildingConfig(buildings[activeBuildingIndex]);
-    }
-  }, [activeBuildingIndex]);
-
   // Gestion des bâtiments / ombrières multiples avec isolation stricte des onglets
   const handleAddBuilding = () => {
     const newIdx = buildings.length + 1;
@@ -450,29 +443,41 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     const updated = [...buildings, newBuilding];
     const newIdxPos = updated.length - 1;
 
+    isSwitchingBuildingRef.current = true;
+    useConfiguratorStore.getState().loadBuildingConfig(newBuilding);
     setBuildings(updated);
     setActiveBuildingIndex(newIdxPos);
-    useConfiguratorStore.getState().loadBuildingConfig(newBuilding);
+    setTimeout(() => {
+      isSwitchingBuildingRef.current = false;
+    }, 150);
   };
 
   const handleSelectBuilding = (index) => {
     if (index === activeBuildingIndex || !buildings[index]) return;
 
-    setActiveBuildingIndex(index);
+    isSwitchingBuildingRef.current = true;
     const target = buildings[index];
     useConfiguratorStore.getState().loadBuildingConfig(target);
+    setActiveBuildingIndex(index);
+    setTimeout(() => {
+      isSwitchingBuildingRef.current = false;
+    }, 150);
   };
 
   const handleRemoveBuilding = (index, e) => {
     e.stopPropagation();
     if (buildings.length <= 1) return;
     const updated = buildings.filter((_, i) => i !== index);
+    isSwitchingBuildingRef.current = true;
     setBuildings(updated);
     setActiveBuildingIndex(0);
     const first = updated[0];
     if (first) {
       useConfiguratorStore.getState().loadBuildingConfig(first);
     }
+    setTimeout(() => {
+      isSwitchingBuildingRef.current = false;
+    }, 150);
   };
 
   // Modales
@@ -677,57 +682,75 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
 
   // Synchronisation continue des valeurs du configurateur vers le projet (sans écraser le kWc du client)
   useEffect(() => {
-    if (config && buildings[activeBuildingIndex]) {
-      const isOmbriere = (config.buildingType || '').startsWith('ombriere');
-      const category = isOmbriere ? 'ombriere' : 'batiment_solaire';
-      const kwcEstimate = config.solarStats?.power ? Math.round(config.solarStats.power) : Math.round((config.width * config.length * 0.22) / 5) * 5;
+    if (isSwitchingBuildingRef.current) return;
+    if (!config || !buildings[activeBuildingIndex]) return;
 
-      setBuildings(prev => {
-        if (!prev[activeBuildingIndex]) return prev;
-        const next = [...prev];
-        next[activeBuildingIndex] = {
-          ...next[activeBuildingIndex],
-          buildingType: config.buildingType,
-          width: config.width,
-          length: config.length,
-          eaveHeight: config.eaveHeight,
-          roofPitch: config.roofPitch,
-          bayCount: config.bayCount,
-          baySpacing: config.baySpacing,
-          leftSide: config.leftSide,
-          rightSide: config.rightSide,
-          leftWidth: config.leftWidth,
-          rightWidth: config.rightWidth,
-          hasSolar: config.hasSolar,
-          solarStats: config.solarStats,
-        };
-        return next;
-      });
+    const isOmbriere = (config.buildingType || '').startsWith('ombriere');
+    const category = isOmbriere ? 'ombriere' : 'batiment_solaire';
+    const kwcEstimate = config.solarStats?.power ? Math.round(config.solarStats.power) : Math.round((config.width * config.length * 0.22) / 5) * 5;
 
-      setEditedProject(prev => {
-        const clientKwc = project?.kwc || project?.puissance || project?.projectSize || prev?.kwc || kwcEstimate;
-        return {
-          ...prev,
-          type: category,
-          installationType: category,
-          buildingType: config.buildingType,
-          largeur: String(config.width.toFixed(2)),
-          longueur: String(config.length.toFixed(2)),
-          hauteur_egout: String(config.eaveHeight.toFixed(2)),
-          pente: String(config.roofPitch),
-          leftSide: config.leftSide || 'none',
-          rightSide: config.rightSide || 'none',
-          leftWidth: config.leftWidth,
-          rightWidth: config.rightWidth,
-          bayCount: config.bayCount,
-          baySpacing: config.baySpacing,
-          kwc: clientKwc,
-          projectSize: clientKwc,
-          puissance: clientKwc,
-        };
-      });
-    }
-  }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, config.bayCount, config.baySpacing, project?.kwc, project?.puissance, project?.projectSize]);
+    setBuildings(prev => {
+      const cur = prev[activeBuildingIndex];
+      if (!cur) return prev;
+
+      const hasChanged = 
+        cur.buildingType !== config.buildingType ||
+        cur.width !== config.width ||
+        cur.length !== config.length ||
+        cur.eaveHeight !== config.eaveHeight ||
+        cur.roofPitch !== config.roofPitch ||
+        cur.bayCount !== config.bayCount ||
+        cur.baySpacing !== config.baySpacing ||
+        cur.leftSide !== (config.leftSide || 'none') ||
+        cur.rightSide !== (config.rightSide || 'none') ||
+        cur.leftWidth !== config.leftWidth ||
+        cur.rightWidth !== config.rightWidth;
+
+      if (!hasChanged) return prev;
+
+      const next = [...prev];
+      next[activeBuildingIndex] = {
+        ...cur,
+        buildingType: config.buildingType,
+        width: config.width,
+        length: config.length,
+        eaveHeight: config.eaveHeight,
+        roofPitch: config.roofPitch,
+        bayCount: config.bayCount,
+        baySpacing: config.baySpacing,
+        leftSide: config.leftSide || 'none',
+        rightSide: config.rightSide || 'none',
+        leftWidth: config.leftWidth,
+        rightWidth: config.rightWidth,
+        hasSolar: config.hasSolar,
+        solarStats: config.solarStats,
+      };
+      return next;
+    });
+
+    setEditedProject(prev => {
+      const clientKwc = project?.kwc || project?.puissance || project?.projectSize || prev?.kwc || kwcEstimate;
+      return {
+        ...prev,
+        type: category,
+        installationType: category,
+        buildingType: config.buildingType,
+        largeur: String(config.width.toFixed(2)),
+        longueur: String(config.length.toFixed(2)),
+        hauteur_egout: String(config.eaveHeight.toFixed(2)),
+        pente: String(config.roofPitch),
+        leftSide: config.leftSide || 'none',
+        rightSide: config.rightSide || 'none',
+        leftWidth: config.leftWidth,
+        rightWidth: config.rightWidth,
+        bayCount: config.bayCount,
+        baySpacing: config.baySpacing,
+        kwc: clientKwc,
+        projectSize: clientKwc,
+        puissance: clientKwc,
+      };
+    });
+  }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, config.bayCount, config.baySpacing, activeBuildingIndex]);
 
   // Mise à jour automatique de la notice selon les paramètres actuels et le nombre réel de bâtiments
   useEffect(() => {
