@@ -17,30 +17,30 @@ import { generateFicheTechniquePDF } from '@/services/FicheTechniquePDFService.j
 // Réglages par défaut optimisés et personnalisés
 const DEFAULT_SETTINGS = {
     main3D: {
-        cropTop: 7,
-        cropBottom: 8,
-        cropLeft: 7,
-        cropRight: 8,
-        zoom: 1.55,
-        offsetX: 22,
-        offsetY: -42,
+        cropTop: 0,
+        cropBottom: 0,
+        cropLeft: 0,
+        cropRight: 0,
+        zoom: 1.0,
+        offsetX: 0,
+        offsetY: 0,
     },
     pignon: {
-        cropTop: 13,
-        cropBottom: 12,
-        cropLeft: 8,
-        cropRight: 9,
-        zoom: 1.05,
+        cropTop: 10,
+        cropBottom: 10,
+        cropLeft: 5,
+        cropRight: 5,
+        zoom: 1.0,
         offsetX: 0,
         offsetY: 0,
     },
     facadeSud: {
-        cropTop: 4,
-        cropBottom: 4,
+        cropTop: 0,
+        cropBottom: 0,
         cropLeft: 0,
         cropRight: 0,
         zoom: 1.0,
-        offsetX: -30,
+        offsetX: 0,
         offsetY: 0,
     },
 };
@@ -528,8 +528,8 @@ export function FicheTechniqueModal({
                                         const isSym = bType.includes('symetrique') || bType.includes('bipente') || bType === 'epona';
                                         const isAsym1 = bType.includes('asymetrique_1');
                                         const isAsym2 = bType.includes('asymetrique_2');
-                                        const isOmbriereVLSimpleGauche = bType.includes('ombriere_vl_simple_gauche') || (bType.includes('ombriere') && bType.includes('simple') && bType.includes('gauche'));
-                                        const hasPhoto = isSym || isAsym1 || isAsym2 || isOmbriereVLSimpleGauche;
+                                        const isOmbriere = bType.includes('ombriere');
+                                        const hasPhoto = isSym || isAsym1 || isAsym2 || isOmbriere;
 
                                         return (
                                             <>
@@ -579,11 +579,11 @@ export function FicheTechniqueModal({
                                                         />
                                                     </div>
                                                 )}
-                                                {isOmbriereVLSimpleGauche && (
+                                                {isOmbriere && (
                                                     <div className="flex justify-center items-center w-full pt-1 pb-1">
                                                         <img 
                                                             src="/ombriere_vl_simple_gauche.png" 
-                                                            alt="Rendu 3D Réaliste Ombrière VL Simple Gauche" 
+                                                            alt="Rendu 3D Réaliste Ombrière" 
                                                             className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
                                                         />
                                                     </div>

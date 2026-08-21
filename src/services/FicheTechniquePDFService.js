@@ -344,14 +344,13 @@ export async function generateFicheTechniquePDF({
         rawTypo.includes('asymétrique 2') || 
         rawTypo.includes('asymetrique 2');
 
-    const isOmbriereVLSimpleGauche = 
-        rawType.includes('ombriere_vl_simple_gauche') || 
-        rawGamme.includes('ombriere_vl_simple_gauche') || 
-        rawTypo.includes('simple (gauche)') || 
-        rawTypo.includes('simple gauche') || 
-        (rawType.includes('ombriere') && rawType.includes('simple') && rawType.includes('gauche'));
+    const isOmbriere = 
+        rawType.includes('ombriere') || 
+        rawGamme.includes('ombriere') || 
+        rawTypo.includes('ombrière') || 
+        rawTypo.includes('ombriere');
 
-    const hasExtraPhoto = isSymetrique || isAsym1 || isAsym2 || isOmbriereVLSimpleGauche;
+    const hasExtraPhoto = isSymetrique || isAsym1 || isAsym2 || isOmbriere;
 
     let photoUrlToLoad = null;
     if (isSymetrique) {
@@ -360,7 +359,7 @@ export async function generateFicheTechniquePDF({
         photoUrlToLoad = '/hangar_asymetrique_1_zone.png';
     } else if (isAsym2) {
         photoUrlToLoad = '/hangar_asymetrique_2_zones.png';
-    } else if (isOmbriereVLSimpleGauche) {
+    } else if (isOmbriere) {
         photoUrlToLoad = '/ombriere_vl_simple_gauche.png';
     }
 
@@ -405,14 +404,12 @@ export async function generateFicheTechniquePDF({
     pdf.setTextColor(0, 66, 157); // Bleu NELSON
     pdf.text(subtitleDim, mainCenterX, titleY + 5.5, { align: 'center' });
 
-    // Helper pour dessiner une image épurée directement sur fond blanc
+    // Helper pour dessiner une image épurée directement sur fond blanc en restant strictement dans son cadre
     const drawSeamlessImage = (imgObj, x, y, maxW, maxH, alignLeft = false) => {
         if (!imgObj) return;
         try {
             let imgW = maxW;
             let imgH = maxH;
-            let imgX = x;
-            let imgY = y;
 
             if (imgObj.width && imgObj.height) {
                 const imgAspect = imgObj.width / imgObj.height;
@@ -421,15 +418,24 @@ export async function generateFicheTechniquePDF({
                 if (imgAspect > containerAspect) {
                     imgW = maxW;
                     imgH = maxW / imgAspect;
-                    imgY = y + (maxH - imgH) / 2;
-                    imgX = alignLeft ? x : x + (maxW - imgW) / 2;
                 } else {
                     imgH = maxH;
                     imgW = maxH * imgAspect;
-                    imgX = alignLeft ? x : x + (maxW - imgW) / 2;
-                    imgY = y + (maxH - imgH) / 2;
+                }
+
+                // Sécurité stricte pour ne jamais déborder du cadre prévu
+                if (imgW > maxW) {
+                    imgW = maxW;
+                    imgH = maxW / imgAspect;
+                }
+                if (imgH > maxH) {
+                    imgH = maxH;
+                    imgW = imgH * imgAspect;
                 }
             }
+
+            const imgX = alignLeft ? x : x + (maxW - imgW) / 2;
+            const imgY = y + (maxH - imgH) / 2;
 
             pdf.addImage(imgObj, 'PNG', imgX, imgY, imgW, imgH, undefined, 'FAST');
         } catch (err) {
@@ -437,13 +443,13 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (Agrandie x2 et centrée horizontalement)
+    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (Centrée horizontalement et bornée strictement)
     const topY = 48.0;
-    const topH = hasExtraPhoto ? 66.0 : 80.0; // Agrandie x2
-    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, false); // Centrée horizontalement
+    const topH = hasExtraPhoto ? 64.0 : 78.0;
+    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, false); // Centrée et contenue dans mainW
 
     // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (abaissée en conséquence, alignée à gauche)
-    const midY = hasExtraPhoto ? 120.0 : 136.0;
+    const midY = hasExtraPhoto ? 118.0 : 134.0;
     const midH = 38.0;
     const pignonW = 75.0;
     drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true); // Cadre laissé à sa place à gauche

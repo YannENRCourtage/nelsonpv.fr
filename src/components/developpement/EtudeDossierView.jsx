@@ -345,7 +345,7 @@ export default function EtudeDossierView({
     return (
       <div
         key={step.id}
-        className={`bg-white rounded-xl p-3 border transition-all shadow-2xs hover:shadow-xs relative overflow-hidden flex flex-col justify-between ${
+        className={`bg-white rounded-2xl p-3.5 border transition-all shadow-2xs hover:shadow-xs relative overflow-hidden flex flex-col justify-between min-h-[175px] ${
           s.status === 'validated'
             ? 'border-emerald-300 bg-emerald-50/10'
             : isOverdue
@@ -356,16 +356,16 @@ export default function EtudeDossierView({
         {/* Barre supérieure couleur Monday selon statut */}
         <div className={`absolute top-0 left-0 right-0 h-1.5 ${currentStatusOpt.bg}`} />
 
-        <div className="space-y-2 pt-0.5">
+        <div className="space-y-3 pt-0.5">
           {/* Header carte : Titre & Badge Statut interactif */}
-          <div className="flex items-start justify-between gap-1.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${step.color}`}>
-                <step.icon className="w-3.5 h-3.5" />
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${step.color}`}>
+                <step.icon className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <h4 className="font-extrabold text-xs text-slate-900 leading-tight truncate" title={step.title}>{step.title}</h4>
-                <p className="text-[9.5px] text-slate-500 font-medium line-clamp-1">{step.subtitle}</p>
+                <h4 className="font-black text-sm text-slate-900 leading-tight truncate" title={step.title}>{step.title}</h4>
+                <p className="text-[11px] text-slate-500 font-medium line-clamp-1">{step.subtitle}</p>
               </div>
             </div>
 
@@ -374,7 +374,7 @@ export default function EtudeDossierView({
               <select
                 value={s.status || 'pending'}
                 onChange={(e) => updateStep(step.id, { status: e.target.value })}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-black cursor-pointer appearance-none border-none outline-none shadow-2xs transition-all ${currentStatusOpt.bg} ${currentStatusOpt.text}`}
+                className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer appearance-none border-none outline-none shadow-2xs transition-all ${currentStatusOpt.bg} ${currentStatusOpt.text}`}
               >
                 <option value="pending" className="bg-slate-700 text-white font-bold">En attente</option>
                 <option value="in_progress" className="bg-amber-600 text-white font-bold">En cours</option>
@@ -386,29 +386,29 @@ export default function EtudeDossierView({
 
           {/* Alerte si date de fin dépassée */}
           {isOverdue && (
-            <div className="flex items-center gap-1 p-1.5 bg-rose-100 text-rose-800 rounded-lg text-[10px] font-extrabold animate-pulse border border-rose-200">
-              <AlertTriangle className="w-3 h-3 text-rose-600 flex-shrink-0" />
+            <div className="flex items-center gap-1.5 p-2 bg-rose-100 text-rose-800 rounded-xl text-xs font-extrabold animate-pulse border border-rose-200">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
               <span>Échéance dépassée !</span>
             </div>
           )}
 
           {/* Section Dates (Dernière intervention & Date de fin) */}
-          <div className="grid grid-cols-2 gap-1.5 text-[9.5px] bg-slate-50 p-2 rounded-lg border border-slate-100">
+          <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
             <div>
-              <span className="text-slate-400 font-semibold block text-[9px]">Dernière intervention :</span>
-              <span className="font-bold text-slate-700 flex items-center gap-1">
-                <Clock className="w-2.5 h-2.5 text-slate-400" />
+              <span className="text-slate-400 font-semibold block text-[10.5px]">Dernière intervention :</span>
+              <span className="font-black text-slate-800 flex items-center gap-1 text-xs">
+                <Clock className="w-3 h-3 text-slate-400" />
                 {s.lastIntervention || '14/08/2026'}
               </span>
             </div>
 
             <div>
-              <span className="text-slate-400 font-semibold block text-[9px]">Date de fin (Échéance) :</span>
+              <span className="text-slate-400 font-semibold block text-[10.5px]">Date de fin (Échéance) :</span>
               <input
                 type="date"
                 value={s.deadline || ''}
                 onChange={(e) => updateStep(step.id, { deadline: e.target.value })}
-                className={`w-full bg-white border rounded px-1 py-0 text-[9.5px] font-bold outline-none ${
+                className={`w-full bg-white border rounded-lg px-1.5 py-0.5 text-xs font-bold outline-none ${
                   isOverdue ? 'border-rose-400 text-rose-700 bg-rose-50' : 'border-slate-200 text-slate-800'
                 }`}
               />
@@ -417,13 +417,13 @@ export default function EtudeDossierView({
         </div>
 
         {/* Bouton d'action principal de l'étape */}
-        <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+        <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
           <button
             onClick={() => handleStepAction(step)}
-            className="w-full py-1.5 px-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-2xs hover:shadow-xs transition-all"
+            className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs transition-all"
           >
             {step.actionLabel}
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -625,11 +625,11 @@ export default function EtudeDossierView({
         {/* COLONNE 1 : URBANISME (CUo, DP, PC) */}
         <div className="bg-slate-50/70 rounded-2xl p-3 border border-slate-200/80 flex flex-col gap-2.5 shadow-2xs">
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/70">
-            <h3 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
               1. Urbanisme (Autorisations de construire)
             </h3>
-            <span className="text-[10px] text-slate-400 font-bold">Pièces &amp; Cerfas</span>
+            <span className="text-xs text-slate-400 font-bold">Pièces &amp; Cerfas</span>
           </div>
 
           <div className="flex flex-col gap-2.5">
@@ -640,11 +640,11 @@ export default function EtudeDossierView({
         {/* COLONNE 2 : MANDATEMENT (Huissier, Géomètre, Notaire) */}
         <div className="bg-slate-50/70 rounded-2xl p-3 border border-slate-200/80 flex flex-col gap-2.5 shadow-2xs">
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/70">
-            <h3 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
               2. Mandatement (Partenaires tiers &amp; Foncier)
             </h3>
-            <span className="text-[10px] text-slate-400 font-bold">Mails auto</span>
+            <span className="text-xs text-slate-400 font-bold">Mails auto</span>
           </div>
 
           <div className="flex flex-col gap-2.5">
@@ -655,11 +655,11 @@ export default function EtudeDossierView({
         {/* COLONNE 3 : ACTION EXTERNE (Raccordement, AOS/AO, Consuel) */}
         <div className="bg-slate-50/70 rounded-2xl p-3 border border-slate-200/80 flex flex-col gap-2.5 shadow-2xs">
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/70">
-            <h3 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
               3. Action externe (Réseau, CRE &amp; Consuel)
             </h3>
-            <span className="text-[10px] text-slate-400 font-bold">ENEDIS &amp; Consuel</span>
+            <span className="text-xs text-slate-400 font-bold">ENEDIS &amp; Consuel</span>
           </div>
 
           <div className="flex flex-col gap-2.5">
