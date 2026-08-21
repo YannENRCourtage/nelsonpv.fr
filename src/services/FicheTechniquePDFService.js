@@ -344,6 +344,10 @@ export async function generateFicheTechniquePDF({
         rawTypo.includes('asymétrique 2') || 
         rawTypo.includes('asymetrique 2');
 
+    const isOmbriereDouble = 
+        (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
+        (rawType.includes('double') || rawGamme.includes('double') || rawTypo.includes('double'));
+
     const isOmbriere = 
         rawType.includes('ombriere') || 
         rawGamme.includes('ombriere') || 
@@ -359,6 +363,8 @@ export async function generateFicheTechniquePDF({
         photoUrlToLoad = '/hangar_asymetrique_1_zone.png';
     } else if (isAsym2) {
         photoUrlToLoad = '/hangar_asymetrique_2_zones.png';
+    } else if (isOmbriereDouble) {
+        photoUrlToLoad = '/ombriere_vl_double.png';
     } else if (isOmbriere) {
         photoUrlToLoad = '/ombriere_vl_simple_gauche.png';
     }

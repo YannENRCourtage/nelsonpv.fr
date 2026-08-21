@@ -350,8 +350,8 @@ export function FicheTechniqueModal({
                                     </div>
                                     <Slider
                                         value={[currentSettings.zoom]}
-                                        min={0.8}
-                                        max={2.0}
+                                        min={0.5}
+                                        max={5.0}
                                         step={0.05}
                                         onValueChange={([val]) => updateSetting(currentKey, 'zoom', val)}
                                         className="py-1"
@@ -367,8 +367,8 @@ export function FicheTechniqueModal({
                                         </div>
                                         <Slider
                                             value={[currentSettings.offsetX]}
-                                            min={-80}
-                                            max={80}
+                                            min={-160}
+                                            max={160}
                                             step={2}
                                             onValueChange={([val]) => updateSetting(currentKey, 'offsetX', val)}
                                             className="py-1"
@@ -382,8 +382,8 @@ export function FicheTechniqueModal({
                                         </div>
                                         <Slider
                                             value={[currentSettings.offsetY]}
-                                            min={-80}
-                                            max={80}
+                                            min={-160}
+                                            max={160}
                                             step={2}
                                             onValueChange={([val]) => updateSetting(currentKey, 'offsetY', val)}
                                             className="py-1"
@@ -582,7 +582,7 @@ export function FicheTechniqueModal({
                                                 {isOmbriere && (
                                                     <div className="flex justify-center items-center w-full pt-1 pb-1">
                                                         <img 
-                                                            src="/ombriere_vl_simple_gauche.png" 
+                                                            src={bType.includes('double') ? "/ombriere_vl_double.png" : "/ombriere_vl_simple_gauche.png"} 
                                                             alt="Rendu 3D Réaliste Ombrière" 
                                                             className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
                                                         />

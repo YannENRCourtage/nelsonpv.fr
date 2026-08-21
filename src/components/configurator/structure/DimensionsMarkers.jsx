@@ -925,24 +925,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 12. SURFACE AREA TEXT OVER BUILDING */}
-            <Text
-                position={[
-                    buildingType === 'epona_talian5' ? -11.27 : (isCustom ? (-width / 2 + spans.left) : 0),
-                    isCustom ? (cp.ridgeHeight + 0.52 + 0.0) : (Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 1.5 : 3)),
-                    -length / 2
-                ]}
-                rotation={[-Math.PI / 2, 0, Math.PI / 2]} 
-                fontSize={3}
-                color="#ffffff"
-                anchorX="center"
-                anchorY="middle"
-                outlineWidth={0.2}
-                outlineColor="#000000"
-            >
-                {`${surfaceArea} m²`}
-            </Text>
-
         </group>
     );
 }
