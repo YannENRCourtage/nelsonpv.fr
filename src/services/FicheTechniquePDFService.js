@@ -316,8 +316,8 @@ export async function generateFicheTechniquePDF({
     const mainW = 138;
     const mainCenterX = mainX + (mainW / 2);
 
-    // --- EN-TÊTE : PLAN DE STRUCTURE (avec espacement aéré au-dessus) ---
-    const titleY = 30.5; // Espacement aéré ajouté avant le titre (anciennement 26.5)
+    // --- EN-TÊTE : PLAN DE STRUCTURE (Positionné en haut avec espace aéré) ---
+    const titleY = 28.0;
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(13);
     pdf.setTextColor(15, 23, 42); // Slate 900
@@ -329,8 +329,8 @@ export async function generateFicheTechniquePDF({
     pdf.setTextColor(0, 66, 157); // Bleu NELSON
     pdf.text(subtitleDim, mainCenterX, titleY + 5.5, { align: 'center' });
 
-    // Helper pour dessiner une image épurée directement sur fond blanc (sans pourtour, sans titre, sans fond gris)
-    const drawSeamlessImage = (imgObj, x, y, maxW, maxH) => {
+    // Helper pour dessiner une image épurée directement sur fond blanc avec alignement gauche strict
+    const drawSeamlessImage = (imgObj, x, y, maxW, maxH, alignLeft = true) => {
         if (!imgObj) return;
         try {
             let imgW = maxW;
@@ -350,7 +350,7 @@ export async function generateFicheTechniquePDF({
                 } else {
                     imgH = maxH;
                     imgW = maxH * imgAspect;
-                    imgX = x + (maxW - imgW) / 2;
+                    imgX = alignLeft ? x : x + (maxW - imgW) / 2;
                     imgY = y;
                 }
             }
@@ -361,42 +361,57 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (cadre agrandi)
-    const topY = 35.0;
-    const topH = 72.0; // Cadre agrandi (anciennement 65.0)
-    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH);
+    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (descendue de 2cm à topY = 55.0mm)
+    const topY = 55.0; // Descendu de 2cm (anciennement 35.0) pour ne pas être en surimposition du titre
+    const topH = 58.0;
+    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, true);
 
-    // VISUEL 2 (Milieu) : Vue Pignon épurée sur fond blanc (cadre élargi et agrandi à gauche)
-    const midY = 108.0;
-    const midH = 48.0; // Cadre agrandi en hauteur (anciennement 43.0)
-    const pignonW = 92.0; // Cadre élargi en largeur (anciennement 67.5)
-    drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH);
+    // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (alignée à gauche avec la 3D)
+    const midY = 120.0;
+    const midH = 46.0;
+    const pignonW = 80.0;
+    drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true);
 
-    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (emplacement d'origine bas)
-    const sudY = 157.5;
-    const sudH = 58.0;
-    drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH);
+    // --- CADRE : À VOTRE CHARGE (Positionné à droite de l'image du pignon) ---
+    const chargeX = 149.0;
+    const chargeY = 120.0; // Même niveau vertical que le pignon
+    const chargeW = 55.0;  // Remplit l'espace jusqu'à la marge droite (204mm)
+    const chargeH = 46.0;  // Même hauteur que le pignon
 
-    // --- CADRE : À VOTRE CHARGE ---
-    const chargeY = 219.0;
-    const chargeH = 24.0;
     pdf.setFillColor(248, 250, 252);
-    pdf.roundedRect(mainX, chargeY, mainW, chargeH, 2, 2, 'FD');
+    pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2, 2, 'FD');
     pdf.setDrawColor(226, 232, 240);
     pdf.setLineWidth(0.4);
-    pdf.roundedRect(mainX, chargeY, mainW, chargeH, 2, 2, 'S');
+    pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2, 2, 'S');
 
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(7.2);
+    pdf.setFontSize(6.8);
     pdf.setTextColor(15, 23, 42); // Slate 900
-    pdf.text('À votre charge :', mainX + 4, chargeY + 5.2);
+    pdf.text('À votre charge :', chargeX + 3.5, chargeY + 5.5);
 
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(6.5);
+    pdf.setFontSize(5.6);
     pdf.setTextColor(51, 65, 85); // Slate 700
-    pdf.text('•  Terrassement / empièrement (si nécessaire)', mainX + 5.5, chargeY + 10.5);
-    pdf.text('•  Tranchée du bâtiment jusqu’au point de livraison (compteur)', mainX + 5.5, chargeY + 15.0);
-    pdf.text('•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..', mainX + 5.5, chargeY + 19.5);
+
+    const chargeItems = [
+        "•  Terrassement / empièrement (si nécessaire)",
+        "•  Tranchée du bâtiment jusqu'au point de livraison (compteur)",
+        "•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres.."
+    ];
+
+    const maxTextW = chargeW - 6.5; // ~48.5mm
+    let textCursorY = chargeY + 10.5;
+
+    chargeItems.forEach((item) => {
+        const lines = pdf.splitTextToSize(item, maxTextW);
+        pdf.text(lines, chargeX + 3.5, textCursorY);
+        textCursorY += (lines.length * 2.8) + 1.6;
+    });
+
+    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (redescendue plus bas sous le pignon et à votre charge)
+    const sudY = 176.0;
+    const sudH = 70.0;
+    drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH, true);
 
     // ==========================================
     // 4. PIED DE PAGE (FOOTER)

@@ -397,7 +397,7 @@ export default function Configurateur() {
                         ref={canvasRef}
                         viewMode={viewMode}
                         isCapturing={isCapturing}
-                        transparent={isCapturing && !showPDFModal} // Hacky but effective: if capturing but NOT for PDF modal, it's for image
+                        transparent={isCapturing && !showPDFModal && !isPreparingFiche}
                     />
                 </div>
 

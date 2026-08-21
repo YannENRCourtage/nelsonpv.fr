@@ -472,12 +472,12 @@ export function FicheTechniqueModal({
                                 </div>
 
                                 {/* Disposition exacte des 3 visuels sur fond blanc */}
-                                <div className="space-y-4">
-                                    {/* 1. Vue 3D Principale (Haut, Pleine largeur, cadre agrandi) */}
-                                    <div className="flex justify-center items-center w-full h-[200px]">
+                                <div className="space-y-4 pt-2">
+                                    {/* 1. Vue 3D Principale (Haut, Pleine largeur, alignée à gauche) */}
+                                    <div className="flex justify-start items-center w-full h-[180px]">
                                         {images.main3D ? (
                                             <div 
-                                                className="w-full h-full flex items-center justify-center overflow-hidden"
+                                                className="w-full h-full flex items-center justify-start overflow-hidden"
                                                 style={{
                                                     clipPath: `inset(${settings.main3D.cropTop}% ${settings.main3D.cropRight}% ${settings.main3D.cropBottom}% ${settings.main3D.cropLeft}%)`,
                                                 }}
@@ -485,19 +485,20 @@ export function FicheTechniqueModal({
                                                 <img 
                                                     src={images.main3D} 
                                                     alt="Vue 3D Principale" 
-                                                    className="max-h-full max-w-full object-contain"
+                                                    className="max-h-full max-w-full object-contain object-left"
                                                     style={{ transform: `scale(${settings.main3D.zoom}) translate(${settings.main3D.offsetX}px, ${settings.main3D.offsetY}px)` }}
                                                 />
                                             </div>
                                         ) : null}
                                     </div>
 
-                                    {/* 2. Vue Pignon (Milieu, Cadre élargi à gauche) */}
-                                    <div className="flex items-center w-full h-[135px]">
-                                        <div className="w-[70%] h-full flex items-center justify-start">
+                                    {/* 2. Ligne Milieu : Vue Pignon (Gauche) + Cadre À votre charge (Droite) */}
+                                    <div className="flex items-stretch justify-between gap-3 w-full min-h-[125px]">
+                                        {/* Vue Pignon (Gauche, 58%) */}
+                                        <div className="w-[58%] flex items-center justify-start overflow-hidden">
                                             {images.pignon ? (
                                                 <div 
-                                                    className="w-full h-full flex items-center justify-center overflow-hidden"
+                                                    className="w-full h-full flex items-center justify-start overflow-hidden"
                                                     style={{
                                                         clipPath: `inset(${settings.pignon.cropTop}% ${settings.pignon.cropRight}% ${settings.pignon.cropBottom}% ${settings.pignon.cropLeft}%)`,
                                                     }}
@@ -505,19 +506,27 @@ export function FicheTechniqueModal({
                                                     <img 
                                                         src={images.pignon} 
                                                         alt="Vue Pignon" 
-                                                        className="max-h-full max-w-full object-contain"
+                                                        className="max-h-full max-w-full object-contain object-left"
                                                         style={{ transform: `scale(${settings.pignon.zoom}) translate(${settings.pignon.offsetX}px, ${settings.pignon.offsetY}px)` }}
                                                     />
                                                 </div>
                                             ) : null}
                                         </div>
+
+                                        {/* Cadre À votre charge (Droite, 40%) */}
+                                        <div className="w-[40%] bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[9px] text-slate-700 flex flex-col justify-center space-y-1">
+                                            <p className="font-bold text-slate-900 text-[9.5px]">À votre charge :</p>
+                                            <p className="leading-tight">• Terrassement / empièrement (si nécessaire)</p>
+                                            <p className="leading-tight">• Tranchée du bâtiment jusqu'au point de livraison (compteur)</p>
+                                            <p className="leading-tight">• Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..</p>
+                                        </div>
                                     </div>
 
-                                    {/* 3. Vue Façade Sud (Bas, Pleine largeur, emplacement d'origine) */}
-                                    <div className="flex justify-center items-center w-full h-[160px]">
+                                    {/* 3. Vue Façade Sud (Bas, Pleine largeur, redescendue plus bas) */}
+                                    <div className="flex justify-start items-center w-full h-[180px] pt-1">
                                         {images.facadeSud ? (
                                             <div 
-                                                className="w-full h-full flex items-center justify-center overflow-hidden"
+                                                className="w-full h-full flex items-center justify-start overflow-hidden"
                                                 style={{
                                                     clipPath: `inset(${settings.facadeSud.cropTop}% ${settings.facadeSud.cropRight}% ${settings.facadeSud.cropBottom}% ${settings.facadeSud.cropLeft}%)`,
                                                 }}
@@ -525,19 +534,11 @@ export function FicheTechniqueModal({
                                                 <img 
                                                     src={images.facadeSud} 
                                                     alt="Façade Sud" 
-                                                    className="max-h-full max-w-full object-contain"
+                                                    className="max-h-full max-w-full object-contain object-left"
                                                     style={{ transform: `scale(${settings.facadeSud.zoom}) translate(${settings.facadeSud.offsetX}px, ${settings.facadeSud.offsetY}px)` }}
                                                 />
                                             </div>
                                         ) : null}
-                                    </div>
-
-                                    {/* Bloc À votre charge simulé */}
-                                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[10px] text-slate-700">
-                                        <p className="font-bold text-slate-900 mb-0.5">À votre charge :</p>
-                                        <p>• Terrassement / empièrement (si nécessaire)</p>
-                                        <p>• Tranchée du bâtiment jusqu'au point de livraison (compteur)</p>
-                                        <p>• Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..</p>
                                     </div>
                                 </div>
                             </div>

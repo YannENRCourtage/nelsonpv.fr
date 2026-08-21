@@ -25,7 +25,7 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             gl={{ preserveDrawingBuffer: true, antialias: true, alpha: true }} // Essential for PDF capture
             style={{ borderRadius: '1rem', height: '100%', width: '100%' }}
         >
-            {!transparent && <color attach="background" args={[bgColor]} />}
+            {(!transparent || isCapturing) && <color attach="background" args={[bgColor]} />}
 
             {/* Lighting: Photorealism setup for Heavy Industry */}
             <ambientLight intensity={0.5} />
