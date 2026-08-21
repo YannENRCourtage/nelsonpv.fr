@@ -41,7 +41,7 @@ export default function AppointmentModal({
         contact: '',
         location: '',
         notes: '',
-        reminder: '1h',
+        reminder: 'none',
         completed: false,
     });
 
@@ -61,7 +61,7 @@ export default function AppointmentModal({
                 contact: appointment.contact || '',
                 location: appointment.location || '',
                 notes: appointment.notes || '',
-                reminder: appointment.reminder || '1h',
+                reminder: appointment.reminder !== undefined ? appointment.reminder : 'none',
                 completed: !!appointment.completed,
             });
         }

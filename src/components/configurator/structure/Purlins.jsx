@@ -489,6 +489,8 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
         ridge = 4.0 + (w * 0.75 * Math.tan(rS));
         leftEave = ridge - (w * 0.25 * Math.tan(rS));
 
+        const apexX = -w / 2 + (w * 0.25);
+
         const rightSpan = w * 0.75;
         const rRise = ridge - rightEave;
         const rAngle = Math.atan(rRise / rightSpan);
@@ -497,7 +499,7 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
         const lRise = ridge - leftEave;
         const lAngle = Math.atan(lRise / lSpan);
 
-        // --- Left Side (Steep) ---
+        // --- Left Side (Steep - 1/4) ---
         const leftSlopeLen = lSpan / Math.cos(lAngle);
         const numPurlinsLeft = Math.floor(leftSlopeLen / purlinSpacing);
 
@@ -530,7 +532,7 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
             }
         }
 
-        // --- Right Side (Shallow - 15 deg) ---
+        // --- Right Side (Shallow - 15 deg, 3/4) ---
         const rightSlopeLen = rightSpan / Math.cos(rAngle);
         const numPurlinsRight = Math.floor(rightSlopeLen / purlinSpacing);
 
@@ -540,15 +542,10 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
             for (let i = 0; i <= numPurlinsRight; i++) {
                 const dist = i * purlinSpacing;
 
-                // Right Side Logic: Starts at Right Eave (Width/2, EaveHeight)
-                // Goes Up-Left.
-                // Local X = - dist * cos(rAngle)
-                // Local Y = dist * sin(rAngle)
-
-                const xLocal = -dist * Math.cos(rAngle);
+                const xLocal = dist * Math.cos(rAngle);
                 const yLocal = dist * Math.sin(rAngle);
 
-                // Perp Offset (Normal points UP-RIGHT) -> (sin, cos)
+                // Perp Offset (Normal points UP-RIGHT)
                 const xPerp = perpOffset * Math.sin(rAngle);
                 const yPerp = perpOffset * Math.cos(rAngle);
 
@@ -558,8 +555,8 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                         geometry={bayGeometry}
                         material={material}
                         position={[
-                            halfWidth + xLocal + xPerp,
-                            eaveHeight - 1.5 + yLocal + yPerp, // Lower by 1.5m
+                            apexX + xLocal + xPerp,
+                            ridge - yLocal + yPerp,
                             zStart
                         ]}
                         rotation={[0, Math.PI, rAngle]}

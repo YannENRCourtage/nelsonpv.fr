@@ -29,6 +29,7 @@ const LOGO_NELSON = "https://horizons-cdn.hostinger.com/350bc103-daf8-48b5-9a02-
 
 export const PlateHeader = ({ title, project, showBranding }) => {
     const clientFullName = `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Client';
+    const buildingNameSuffix = project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : '';
     return (
         <div style={HEADER_STYLE}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -43,7 +44,7 @@ export const PlateHeader = ({ title, project, showBranding }) => {
                 </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '12.5pt', fontWeight: 'bold', color: '#00429d' }}>{title}</div>
+                <div style={{ fontSize: '12.5pt', fontWeight: 'bold', color: '#00429d' }}>{title}{buildingNameSuffix}</div>
                 <div style={{ fontSize: '8.5pt', color: '#333' }}>
                     Projet : {clientFullName} — {project?.city || project?.cadastre_commune || ''} ({project?.zip || project?.zipCode || ''})
                 </div>
@@ -877,7 +878,7 @@ Le projet s'intègre harmonieusement dans son environnement immédiat et préser
                     <div style={{ height: '62mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '1.5mm 4mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5mm' }}>
                             <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                DP3 — COUPE DE TERRAIN & DU BÂTIMENT (COUPE TRANSVERSALE AA')
+                                DP3 — COUPE DE TERRAIN & DU BÂTIMENT (COUPE TRANSVERSALE AA'){project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}
                             </span>
                             <span style={{ fontSize: '7pt', color: '#64748b' }}>
                                 Dimensions : {displayDimensionsWidth}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
