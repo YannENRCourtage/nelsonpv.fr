@@ -582,11 +582,23 @@ export function FicheTechniqueModal({
                                                 {isOmbriere && (
                                                     <div className="flex justify-center items-center w-full pt-1 pb-1">
                                                         <img 
-                                                            src={
-                                                                bType.includes('pl') || (Number(config?.width || 0) >= 15)
-                                                                    ? "/ombriere_pl.png"
-                                                                    : (bType.includes('double') ? "/ombriere_vl_double.png" : "/ombriere_vl_simple_gauche.png")
-                                                            } 
+                                                            src={(() => {
+                                                                const w = Number(config?.width || 0);
+                                                                const g = (config?.gamme || '').toLowerCase();
+                                                                if (w >= 18 || bType.includes('20') || bType.includes('25') || g.includes('20') || g.includes('25')) {
+                                                                    return "/ombriere_pl_large.png";
+                                                                }
+                                                                if (bType.includes('pl') || (w >= 14 && w < 18) || g.includes('16')) {
+                                                                    return "/ombriere_pl.png";
+                                                                }
+                                                                if (bType.includes('plus') || g.includes('+') || (w >= 10.5 && w <= 13.5)) {
+                                                                    return "/ombriere_vl_double_plus.png";
+                                                                }
+                                                                if (bType.includes('double')) {
+                                                                    return "/ombriere_vl_double.png";
+                                                                }
+                                                                return "/ombriere_vl_simple_gauche.png";
+                                                            })()} 
                                                             alt="Rendu 3D Réaliste Ombrière" 
                                                             className="max-w-full max-h-[140px] rounded-xl shadow-sm object-contain"
                                                         />

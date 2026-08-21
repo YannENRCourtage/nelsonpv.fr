@@ -340,12 +340,24 @@ export async function generateFicheTechniquePDF({
         rawTypo.includes('asymetrique 2') ||
         (rawType.includes('asym') && (rawType.includes('2') || rawTypo.includes('2')));
 
-    const isOmbrierePL = 
+    // Ombrières PL (16m vs 20m/25m)
+    const isOmbrierePLLarge = 
         (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
-        (rawType.includes('pl') || rawGamme.includes('pl') || rawTypo.includes('pl') || Math.abs(totalWidth - 15.8) < 0.6 || totalWidth >= 15.0);
+        (totalWidth >= 18.0 || rawType.includes('20') || rawType.includes('25') || rawGamme.includes('20') || rawGamme.includes('25'));
+
+    const isOmbrierePL16 = 
+        !isOmbrierePLLarge &&
+        (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
+        (rawType.includes('pl') || rawGamme.includes('pl') || rawTypo.includes('pl') || (totalWidth >= 14.0 && totalWidth < 18.0) || Math.abs(totalWidth - 15.8) < 0.6);
+
+    // Ombrières VL Double (9.1m) et Double+ (11.3m)
+    const isOmbriereDoublePlus = 
+        !isOmbrierePLLarge && !isOmbrierePL16 &&
+        (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
+        (rawType.includes('double+') || rawType.includes('double_plus') || rawType.includes('plus') || rawGamme.includes('double+') || rawGamme.includes('double_plus') || rawGamme.includes('+') || (totalWidth >= 10.5 && totalWidth <= 13.5));
 
     const isOmbriereDouble = 
-        !isOmbrierePL &&
+        !isOmbrierePLLarge && !isOmbrierePL16 && !isOmbriereDoublePlus &&
         (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
         (rawType.includes('double') || rawGamme.includes('double') || rawTypo.includes('double'));
 
@@ -372,8 +384,12 @@ export async function generateFicheTechniquePDF({
         photoUrlToLoad = '/hangar_asymetrique_1_zone.png';
     } else if (isAsym2) {
         photoUrlToLoad = '/hangar_asymetrique_2_zones.png';
-    } else if (isOmbrierePL) {
+    } else if (isOmbrierePLLarge) {
+        photoUrlToLoad = '/ombriere_pl_large.png';
+    } else if (isOmbrierePL16) {
         photoUrlToLoad = '/ombriere_pl.png';
+    } else if (isOmbriereDoublePlus) {
+        photoUrlToLoad = '/ombriere_vl_double_plus.png';
     } else if (isOmbriereDouble) {
         photoUrlToLoad = '/ombriere_vl_double.png';
     } else if (isOmbriere) {

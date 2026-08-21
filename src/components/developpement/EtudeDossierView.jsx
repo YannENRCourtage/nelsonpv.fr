@@ -4,7 +4,7 @@ import {
   FileText, Users, Zap, CheckCircle2, Clock, AlertCircle, AlertTriangle,
   Calendar, MapPin, Building, Sun, Battery, Ruler, Navigation, MessageSquare,
   Sparkles, Mail, ShieldCheck, ChevronRight, Check, ArrowLeft, RefreshCw,
-  FolderKanban, ExternalLink
+  FolderKanban, ExternalLink, Copy
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { getUserColor } from '@/lib/utils';
@@ -345,7 +345,7 @@ export default function EtudeDossierView({
     return (
       <div
         key={step.id}
-        className={`bg-white rounded-2xl p-3.5 border transition-all shadow-2xs hover:shadow-xs relative overflow-hidden flex flex-col justify-between min-h-[175px] ${
+        className={`bg-white rounded-2xl p-4 border transition-all shadow-2xs hover:shadow-xs relative overflow-hidden flex flex-col justify-between min-h-[195px] ${
           s.status === 'validated'
             ? 'border-emerald-300 bg-emerald-50/10'
             : isOverdue
@@ -356,7 +356,7 @@ export default function EtudeDossierView({
         {/* Barre supérieure couleur Monday selon statut */}
         <div className={`absolute top-0 left-0 right-0 h-1.5 ${currentStatusOpt.bg}`} />
 
-        <div className="space-y-3 pt-0.5">
+        <div className="space-y-3.5 pt-0.5">
           {/* Header carte : Titre & Badge Statut interactif */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -393,7 +393,7 @@ export default function EtudeDossierView({
           )}
 
           {/* Section Dates (Dernière intervention & Date de fin) */}
-          <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <div className="grid grid-cols-2 gap-2.5 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
             <div>
               <span className="text-slate-400 font-semibold block text-[10.5px]">Dernière intervention :</span>
               <span className="font-black text-slate-800 flex items-center gap-1 text-xs">
@@ -420,7 +420,7 @@ export default function EtudeDossierView({
         <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
           <button
             onClick={() => handleStepAction(step)}
-            className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs transition-all"
+            className="w-full py-2.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs transition-all"
           >
             {step.actionLabel}
             <ChevronRight className="w-4 h-4" />
@@ -519,9 +519,6 @@ export default function EtudeDossierView({
                       {commercialName}
                     </span>
                   )}
-                  <span className="text-[10px] font-semibold text-slate-400">
-                    Saisi le {dateSaisie}
-                  </span>
                 </div>
               </div>
               <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
@@ -549,10 +546,42 @@ export default function EtudeDossierView({
                 )}
               </div>
 
-              <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-xs">
-                <span className="text-[9.5px] font-bold text-slate-400 block mb-0.5">Coordonnées GPS</span>
-                <span className="font-extrabold text-slate-900 truncate block text-xs font-mono" title={project?.gps || '-'}>
-                  {project?.gps ? `${project.gps.slice(0, 18)}...` : '-'}
+              {/* Coordonnées GPS complètes avec copie en 1 clic */}
+              <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-xs flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9.5px] font-bold text-slate-400 block mb-0.5">Coordonnées GPS</span>
+                  {project?.gps && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(project.gps);
+                        toast({
+                          title: "Coordonnées GPS copiées !",
+                          description: project.gps,
+                        });
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-800 font-extrabold flex items-center gap-0.5 px-1 py-0.5 rounded hover:bg-blue-50 transition-colors"
+                      title="Copier les coordonnées GPS"
+                    >
+                      <Copy className="w-2.5 h-2.5" /> Copier
+                    </button>
+                  )}
+                </div>
+                <span 
+                  onClick={() => {
+                    if (project?.gps) {
+                      navigator.clipboard.writeText(project.gps);
+                      toast({
+                        title: "Coordonnées GPS copiées !",
+                        description: project.gps,
+                      });
+                    }
+                  }}
+                  className={`font-extrabold text-slate-900 block text-[11px] font-mono leading-tight ${project?.gps ? 'cursor-pointer hover:text-blue-600 transition-colors' : ''}`}
+                  title={project?.gps ? "Cliquez pour copier" : "-"}
+                >
+                  {project?.gps || '-'}
                 </span>
               </div>
 
@@ -567,29 +596,30 @@ export default function EtudeDossierView({
 
           {/* DROITE (4/12) : Zone Commentaires du Dossier */}
           <div className="lg:col-span-4 bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between text-xs font-bold text-slate-800 mb-1">
+            <div className="space-y-1.5 flex-1 flex flex-col">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-800">
                 <span className="flex items-center gap-1 text-blue-700">
                   <MessageSquare className="w-3.5 h-3.5" />
                   Commentaires du dossier
                 </span>
-                {isCommentSaved && (
-                  <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
-                    <Check className="w-3 h-3" /> Enregistré
-                  </span>
-                )}
+                <span className="text-[10px] text-slate-400 font-normal italic">
+                  {isCommentSaved ? (
+                    <span className="text-emerald-600 font-bold flex items-center gap-0.5">
+                      <Check className="w-3 h-3" /> Enregistré
+                    </span>
+                  ) : (
+                    "Synchronisé auto"
+                  )}
+                </span>
               </div>
               <textarea
-                rows={2}
+                rows={3}
                 value={projectComments}
                 onChange={(e) => handleCommentChange(e.target.value)}
                 placeholder="Ajoutez des remarques ou suivis spécifiques..."
-                className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none shadow-2xs"
+                className="w-full flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none shadow-2xs min-h-[75px]"
               />
             </div>
-            <p className="text-[9.5px] text-slate-400 italic mt-0.5">
-              Synchronisé automatiquement avec la fiche dossier.
-            </p>
           </div>
         </div>
       </div>
