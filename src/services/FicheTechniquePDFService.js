@@ -344,7 +344,12 @@ export async function generateFicheTechniquePDF({
         rawTypo.includes('asymétrique 2') || 
         rawTypo.includes('asymetrique 2');
 
+    const isOmbrierePL = 
+        (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
+        (rawType.includes('pl') || rawGamme.includes('pl') || rawTypo.includes('pl') || Math.abs(totalWidth - 15.8) < 0.6 || totalWidth >= 15.0);
+
     const isOmbriereDouble = 
+        !isOmbrierePL &&
         (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
         (rawType.includes('double') || rawGamme.includes('double') || rawTypo.includes('double'));
 
@@ -363,6 +368,8 @@ export async function generateFicheTechniquePDF({
         photoUrlToLoad = '/hangar_asymetrique_1_zone.png';
     } else if (isAsym2) {
         photoUrlToLoad = '/hangar_asymetrique_2_zones.png';
+    } else if (isOmbrierePL) {
+        photoUrlToLoad = '/ombriere_pl.png';
     } else if (isOmbriereDouble) {
         photoUrlToLoad = '/ombriere_vl_double.png';
     } else if (isOmbriere) {
@@ -507,7 +514,7 @@ export async function generateFicheTechniquePDF({
     // ==========================================
     const footerY = 278.0; // Remonté pour laisser un bel espace d'aération sous la ligne
 
-    // Rendu de l'image 3D réaliste (Image en pièce jointe) si symétrique, asymétrique 1 ou 2 zones, ou ombrière VL simple gauche
+    // Rendu de l'image 3D réaliste avec coins arrondis (Image en bas de page)
     if (hasExtraPhoto && loadedHangarPhoto && loadedHangarPhoto.width && loadedHangarPhoto.height) {
         const maxPhotoW = mainW; // 138mm
         const maxPhotoH = 56; // max 56mm height
@@ -522,7 +529,40 @@ export async function generateFicheTechniquePDF({
 
         const photoX = mainCenterX - (photoW / 2);
         const photoY = (footerY - 9.5) - photoH; // Remontée au-dessus de la phrase disclaimer pour un bel écart
-        pdf.addImage(loadedHangarPhoto, 'PNG', photoX, photoY, photoW, photoH, undefined, 'FAST');
+
+        // Génération d'un canvas avec coins arrondis
+        try {
+            const canvas = document.createElement('canvas');
+            const w = loadedHangarPhoto.naturalWidth || loadedHangarPhoto.width || 1200;
+            const h = loadedHangarPhoto.naturalHeight || loadedHangarPhoto.height || 600;
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.beginPath();
+            const r = Math.min(28, w * 0.035, h * 0.05); // Rayon arrondi doux et moderne
+            if (ctx.roundRect) {
+                ctx.roundRect(0, 0, w, h, r);
+            } else {
+                ctx.moveTo(r, 0);
+                ctx.lineTo(w - r, 0);
+                ctx.quadraticCurveTo(w, 0, w, r);
+                ctx.lineTo(w, h - r);
+                ctx.quadraticCurveTo(w, h, w - r, h);
+                ctx.lineTo(r, h);
+                ctx.quadraticCurveTo(0, h, 0, h - r);
+                ctx.lineTo(0, r);
+                ctx.quadraticCurveTo(0, 0, r, 0);
+                ctx.closePath();
+            }
+            ctx.clip();
+            ctx.drawImage(loadedHangarPhoto, 0, 0, w, h);
+
+            pdf.addImage(canvas, 'PNG', photoX, photoY, photoW, photoH, undefined, 'FAST');
+        } catch (err) {
+            console.warn('Fallback image normale:', err);
+            pdf.addImage(loadedHangarPhoto, 'PNG', photoX, photoY, photoW, photoH, undefined, 'FAST');
+        }
     }
 
     // Phrase centrée horizontalement par rapport à la zone des images (mainCenterX)

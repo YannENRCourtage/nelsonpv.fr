@@ -72,14 +72,14 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
                 <>
                     <PerspectiveCamera
                         makeDefault
-                        position={[Math.max(config.width * 1.40, 24), config.eaveHeight * 0.55, -config.length * 0.42]}
-                        fov={45}
+                        position={[Math.max(config.width * 1.50, 26), (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.45, -config.length * 0.50]}
+                        fov={42}
                         near={0.1}
                         far={2000}
                     />
                     <OrbitControls
                         enableRotate={false}
-                        target={[0, config.eaveHeight * 0.55, -config.length * 0.42]}
+                        target={[0, (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.45, -config.length * 0.50]}
                     />
                 </>
             )}
@@ -104,8 +104,8 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             )}
 
             {/* Auto-Centering logic: Re-fits whenever config changes */}
-            {/* Capture: margin=0.90 pour Façade Sud (vue agrandie), 0.70 pour 3D, 0.75 pour Pignon */}
-            <Bounds fit clip observe margin={isCapturing ? (viewMode === 'FACADE_SUD' ? 0.90 : (viewMode === '3D' ? 0.70 : 0.75)) : 1.1}>
+            {/* Capture: margin=1.15 pour Façade Sud (cadrage élargi sans coupure), 0.70 pour 3D, 0.75 pour Pignon */}
+            <Bounds fit clip observe margin={isCapturing ? (viewMode === 'FACADE_SUD' ? 1.15 : (viewMode === '3D' ? 0.70 : 0.75)) : 1.1}>
                 <Structure forceHideDimensions={viewMode !== '3D' && viewMode !== 'DEFAULT' && viewMode !== 'PERSPECTIVE'} />
             </Bounds>
 

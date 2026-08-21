@@ -582,9 +582,13 @@ export function FicheTechniqueModal({
                                                 {isOmbriere && (
                                                     <div className="flex justify-center items-center w-full pt-1 pb-1">
                                                         <img 
-                                                            src={bType.includes('double') ? "/ombriere_vl_double.png" : "/ombriere_vl_simple_gauche.png"} 
+                                                            src={
+                                                                bType.includes('pl') || (Number(config?.width || 0) >= 15)
+                                                                    ? "/ombriere_pl.png"
+                                                                    : (bType.includes('double') ? "/ombriere_vl_double.png" : "/ombriere_vl_simple_gauche.png")
+                                                            } 
                                                             alt="Rendu 3D Réaliste Ombrière" 
-                                                            className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
+                                                            className="max-w-full max-h-[140px] rounded-xl shadow-sm object-contain"
                                                         />
                                                     </div>
                                                 )}
