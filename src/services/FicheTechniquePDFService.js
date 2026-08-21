@@ -548,12 +548,13 @@ export async function generateFicheTechniquePDF({
     // ==========================================
     const mainX = 66.0;
     const mainW = pageWidth - mainX - 6.0; // 138mm
+    const mainCenterX = mainX + (mainW / 2);
 
     // Titre "Plan de structure" centré
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(14.0);
     pdf.setTextColor(15, 23, 42); // Slate 900
-    pdf.text('Plan de structure', mainX + (mainW / 2), 34.0, { align: 'center' });
+    pdf.text('Plan de structure', mainCenterX, 34.0, { align: 'center' });
 
     // Sous-titre centré : Dimensions - Surface - Puissance kWc
     pdf.setFont('helvetica', 'bold');

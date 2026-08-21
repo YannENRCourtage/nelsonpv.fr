@@ -318,6 +318,7 @@ export const useConfiguratorStore = create(
     baySpacing: 7.5,
     bayCount: 4,
     showDimensions: true,
+    hasSolar: true,
     isAcama: false, // NEW: Interface isolation flag
 
     // EXTENSIONS (Left/Right)
@@ -560,7 +561,7 @@ export const useConfiguratorStore = create(
         });
     },
 
-    hasSolar: false,
+    hasSolar: true,
     toggleSolar: () => set((state) => ({ hasSolar: !state.hasSolar })),
     toggleDimensions: () => set((state) => ({ showDimensions: !state.showDimensions })),
 
@@ -665,7 +666,7 @@ export const useConfiguratorStore = create(
         leftSide: 'none',
         rightSide: 'none',
         showDimensions: true,
-        hasSolar: false,
+        hasSolar: true,
         selectedEponaModel: 'EPONA_45',
         selectedTalianModel: 'TALIAN_4_MIN',
         selectedTalian1Model: 'TALIAN_1_MIN',
