@@ -4,9 +4,38 @@ import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
 /**
  * Charge une image et retourne une promesse avec son instance HTMLImageElement
  */
-const loadImage = (src) => {
+const loadImage = async (src) => {
+    if (!src) return null;
+    if (typeof src === 'object' && src.src) return src;
+
+    // Si c'est déjà une Data URL ou Blob URL
+    if (src.startsWith('data:') || src.startsWith('blob:')) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => resolve(null);
+            img.src = src;
+        });
+    }
+
+    // Chargement par fetch pour garantir l'accès sans faille aux assets publics
+    try {
+        const res = await fetch(src);
+        if (res.ok) {
+            const blob = await res.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = objectUrl;
+            });
+        }
+    } catch (e) {
+        // Fallback standard
+    }
+
     return new Promise((resolve) => {
-        if (!src) return resolve(null);
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
@@ -290,8 +319,24 @@ export async function generateFicheTechniquePDF({
 
     // --- PRÉ-CHARGEMENT DES IMAGES ---
     const rawType = (config?.buildingType || '').toLowerCase();
-    const isSymetrique = rawType.startsWith('symetrique') || rawType === 'epona';
-    const isAsym1 = config?.buildingType === 'asymetrique_1';
+    const rawGamme = (gammeName || '').toLowerCase();
+    const rawTypo = (typologyLabel || '').toLowerCase();
+
+    // Modèle symétrique avec ou sans appentis ou auvent
+    const isSymetrique = 
+        rawType.includes('symetrique') || 
+        rawType.includes('bipente') || 
+        rawType === 'epona' || 
+        rawGamme.includes('helios') || 
+        rawTypo.includes('symétrique') || 
+        rawTypo.includes('symetrique');
+
+    const isAsym1 = 
+        rawType.includes('asymetrique_1') || 
+        rawGamme.includes('orion') || 
+        rawTypo.includes('asymétrique 1') || 
+        rawTypo.includes('asymetrique 1');
+
     const hasExtraPhoto = isSymetrique || isAsym1;
 
     let photoUrlToLoad = null;

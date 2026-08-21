@@ -523,43 +523,54 @@ export function FicheTechniqueModal({
                                     </div>
 
                                     {/* 3. Vue Façade Sud (Descendue vers le bas) */}
-                                    <div className={`flex justify-center items-center w-full ${(config?.buildingType === 'asymetrique_1' || (config?.buildingType || '').startsWith('symetrique') || config?.buildingType === 'epona') ? 'h-[130px]' : 'h-[170px]'} pt-2`}>
-                                        {images.facadeSud ? (
-                                            <div 
-                                                className="w-full h-full flex items-center justify-center overflow-hidden"
-                                                style={{
-                                                    clipPath: `inset(${settings.facadeSud.cropTop}% ${settings.facadeSud.cropRight}% ${settings.facadeSud.cropBottom}% ${settings.facadeSud.cropLeft}%)`,
-                                                }}
-                                            >
-                                                <img 
-                                                    src={images.facadeSud} 
-                                                    alt="Façade Sud" 
-                                                    className="max-h-full max-w-full object-contain"
-                                                    style={{ transform: `scale(${settings.facadeSud.zoom}) translate(${settings.facadeSud.offsetX}px, ${settings.facadeSud.offsetY}px)` }}
-                                                />
-                                            </div>
-                                        ) : null}
-                                    </div>
+                                    {(() => {
+                                        const bType = (config?.buildingType || '').toLowerCase();
+                                        const isSym = bType.includes('symetrique') || bType.includes('bipente') || bType === 'epona';
+                                        const isAsym = bType.includes('asymetrique_1');
+                                        const hasPhoto = isSym || isAsym;
 
-                                    {/* 4. Visuel Réaliste 3D (Symétrique ou Asymétrique 1 zone) */}
-                                    {((config?.buildingType || '').startsWith('symetrique') || config?.buildingType === 'epona') && (
-                                        <div className="flex justify-center items-center w-full pt-1 pb-1">
-                                            <img 
-                                                src="/hangar_symetrique.png" 
-                                                alt="Rendu 3D Réaliste Symétrique" 
-                                                className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
-                                            />
-                                        </div>
-                                    )}
-                                    {config?.buildingType === 'asymetrique_1' && (
-                                        <div className="flex justify-center items-center w-full pt-1 pb-1">
-                                            <img 
-                                                src="/hangar_asymetrique_1_zone.png" 
-                                                alt="Rendu 3D Réaliste Asymétrique 1 zone" 
-                                                className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
-                                            />
-                                        </div>
-                                    )}
+                                        return (
+                                            <>
+                                                <div className={`flex justify-center items-center w-full ${hasPhoto ? 'h-[130px]' : 'h-[170px]'} pt-2`}>
+                                                    {images.facadeSud ? (
+                                                        <div 
+                                                            className="w-full h-full flex items-center justify-center overflow-hidden"
+                                                            style={{
+                                                                clipPath: `inset(${settings.facadeSud.cropTop}% ${settings.facadeSud.cropRight}% ${settings.facadeSud.cropBottom}% ${settings.facadeSud.cropLeft}%)`,
+                                                            }}
+                                                        >
+                                                            <img 
+                                                                src={images.facadeSud} 
+                                                                alt="Façade Sud" 
+                                                                className="max-h-full max-w-full object-contain"
+                                                                style={{ transform: `scale(${settings.facadeSud.zoom}) translate(${settings.facadeSud.offsetX}px, ${settings.facadeSud.offsetY}px)` }}
+                                                            />
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+
+                                                {/* 4. Visuel Réaliste 3D (Symétrique ou Asymétrique 1 zone) */}
+                                                {isSym && (
+                                                    <div className="flex justify-center items-center w-full pt-1 pb-1">
+                                                        <img 
+                                                            src="/hangar_symetrique.png" 
+                                                            alt="Rendu 3D Réaliste Symétrique" 
+                                                            className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
+                                                        />
+                                                    </div>
+                                                )}
+                                                {isAsym && (
+                                                    <div className="flex justify-center items-center w-full pt-1 pb-1">
+                                                        <img 
+                                                            src="/hangar_asymetrique_1_zone.png" 
+                                                            alt="Rendu 3D Réaliste Asymétrique 1 zone" 
+                                                            className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
