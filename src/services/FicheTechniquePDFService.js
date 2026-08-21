@@ -180,8 +180,8 @@ export async function generateFicheTechniquePDF({
     const sideX = 6;
     const sideY = 29.5; // Démarre sous le nouveau header
     const sideW = 56;
-    const sideH = 252.0; // Hauteur réduite en conséquence (s'arrête proprement au-dessus du footer)
-
+    const sideH = 246.0; // Hauteur ajustée pour s'arrêter proprement au-dessus de footerY
+    
     // Fond sombre élégant de la sidebar (Bleu Ardoise Nuit #0f172a)
     pdf.setFillColor(15, 23, 42);
     pdf.roundedRect(sideX, sideY, sideW, sideH, 2.5, 2.5, 'F');
@@ -241,14 +241,14 @@ export async function generateFicheTechniquePDF({
     drawRow('Surface au sol :', `${floorArea} m²`, true, [56, 189, 248]);
     drawRow('Travées :', barcMatch.travees || `${config.bayCount} × ${config.baySpacing} m`);
     
-    // Indication altitude sous travées
+    // Indication altitude sous travées avec écart aéré après
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(7.0); // +2pt
+    pdf.setFontSize(6.5);
     pdf.setTextColor(148, 163, 184);
     pdf.text('(travées 7,5m jusqu’à 200m d’altitude,', padL, curY);
-    curY += 2.0;
+    curY += 2.8;
     pdf.text('et 6,00m de 200m à 500m d’altitude)', padL, curY);
-    curY += 2.2;
+    curY += 4.2; // Écart ajouté après la phrase d'altitude
 
     drawRow('Avants-toit :', 'environ 50 cm');
     drawRow('Niveau fondations :', '+/- 0.0 m');
@@ -275,12 +275,12 @@ export async function generateFicheTechniquePDF({
         drawRow('Technologie :', `${isAcama ? 460 : 465} Wc`);
         drawRow('Prod. estimée :', `~${formatNumber(estimatedProductionKwh)} kWh/an`);
         
-        // Sous-ligne hypothèse
+        // Sous-ligne hypothèse avec écart aéré après
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(7.2); // +2pt
+        pdf.setFontSize(6.5);
         pdf.setTextColor(203, 213, 225);
         pdf.text('(hypothèse 1150 kWh/kWc)', padR, curY, { align: 'right' });
-        curY += 3.0;
+        curY += 4.5; // Écart ajouté après l'hypothèse
 
         // Tarif achat estimé selon puissance
         let tarifAchat = '0.011 € / kWh';
@@ -370,14 +370,14 @@ export async function generateFicheTechniquePDF({
         photoUrlToLoad ? loadImage(photoUrlToLoad) : Promise.resolve(null),
     ]);
 
-    // --- LOGO NELSON EN BAS DU CADRE BLEU (CENTRE ET REDUIT) ---
+    // --- LOGO NELSON EN BAS DU CADRE BLEU (LÉGÈREMENT AGRANDI ET CENTRÉ) ---
     try {
         const logoNelson = await loadImage('/logo-nelson.png');
         if (logoNelson) {
-            const nelsonW = 15;
-            const nelsonH = 5.8;
+            const nelsonW = 20; // Légèrement agrandi (était 15)
+            const nelsonH = 7.8; // Était 5.8
             const nelsonX = sideX + (sideW - nelsonW) / 2;
-            const nelsonY = sideY + sideH - 9.5;
+            const nelsonY = sideY + sideH - 11.5;
             pdf.addImage(logoNelson, 'PNG', nelsonX, nelsonY, nelsonW, nelsonH, undefined, 'FAST');
         }
     } catch (e) {
@@ -491,19 +491,19 @@ export async function generateFicheTechniquePDF({
     });
 
     // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Descendue vers le bas)
-    const sudY = hasExtraPhoto ? 164.0 : 180.0;
-    const sudH = hasExtraPhoto ? 44.0 : 54.0;
+    const sudY = hasExtraPhoto ? 162.0 : 178.0;
+    const sudH = hasExtraPhoto ? 42.0 : 52.0;
     drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH, false);
 
     // ==========================================
     // 4. PIED DE PAGE (FOOTER) & PHOTO 3D RÉALISTE (SYMÉTRIQUE / ASYMÉTRIQUE 1&2 / OMBRIÈRE VL SIMPLE)
     // ==========================================
-    const footerY = 285;
+    const footerY = 278.0; // Remonté pour laisser un bel espace d'aération sous la ligne
 
     // Rendu de l'image 3D réaliste (Image en pièce jointe) si symétrique, asymétrique 1 ou 2 zones, ou ombrière VL simple gauche
     if (hasExtraPhoto && loadedHangarPhoto && loadedHangarPhoto.width && loadedHangarPhoto.height) {
         const maxPhotoW = mainW; // 138mm
-        const maxPhotoH = 58; // max 58mm height
+        const maxPhotoH = 56; // max 56mm height
         const photoAspect = loadedHangarPhoto.width / loadedHangarPhoto.height;
 
         let photoW = maxPhotoW;
@@ -514,40 +514,44 @@ export async function generateFicheTechniquePDF({
         }
 
         const photoX = mainCenterX - (photoW / 2);
-        const photoY = (footerY - 4.5) - photoH; // Juste au dessus de la phrase disclaimer
+        const photoY = (footerY - 9.5) - photoH; // Remontée au-dessus de la phrase disclaimer pour un bel écart
         pdf.addImage(loadedHangarPhoto, 'PNG', photoX, photoY, photoW, photoH, undefined, 'FAST');
     }
 
     // Phrase centrée horizontalement par rapport à la zone des images (mainCenterX)
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(8.2); // +2pt (was 6.2)
+    pdf.setFontSize(8.0); // +2pt (was 6.2)
     pdf.setTextColor(148, 163, 184); // Slate 400
     const disclaimerText = "Des modifications mineures pourront être apportées en fonction de l’évolution des panneaux photovoltaïques";
-    pdf.text(disclaimerText, mainCenterX, footerY - 2.5, { align: 'center' });
+    pdf.text(disclaimerText, mainCenterX, footerY - 3.0, { align: 'center' });
 
+    // Ligne de séparation du footer
     pdf.setDrawColor(203, 213, 225);
     pdf.setLineWidth(0.4);
     pdf.line(sideX, footerY, pageWidth - sideX, footerY);
 
+    // Ligne 1 sous le trait de séparation : Droits à gauche, Contact à droite
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(8.3); // +2pt (was 6.3)
+    pdf.setFontSize(8.0);
     pdf.setTextColor(100, 116, 139);
-    const legalNotice = "Les droits d'exploitation et de propriété intellectuelle appartiennent à ENR COURTAGE. Document confidentiel et non contractuel.";
-    pdf.text(legalNotice, sideX, footerY + 4.5);
+    const legalNotice = "Les droits d'exploitation et de propriété intellectuelle appartiennent à ENR COURTAGE.";
+    pdf.text(legalNotice, sideX, footerY + 5.0);
 
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(8.5); // +2pt (was 6.5)
+    pdf.setFontSize(8.2);
     pdf.setTextColor(30, 58, 138); // Bleu Marine
     const contactInfo = "contact@enr-courtage.fr   •   enr-courtage.fr";
-    pdf.text(contactInfo, pageWidth - sideX, footerY + 4.5, { align: 'right' });
+    pdf.text(contactInfo, pageWidth - sideX, footerY + 5.0, { align: 'right' });
 
-    // Date de génération
+    // Ligne 2 sous le trait de séparation : Mention confidentiel & Date de génération sur la droite
     const now = new Date();
     const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(7.8); // +2pt (was 5.8)
+    pdf.setFontSize(7.6);
     pdf.setTextColor(148, 163, 184);
-    pdf.text(`Document généré le ${dateStr}`, sideX, footerY + 8.5);
+    const rightFooterText = `Document confidentiel et non contractuel.   •   Document généré le ${dateStr}`;
+    pdf.text(rightFooterText, pageWidth - sideX, footerY + 9.5, { align: 'right' });
 
     // Téléchargement du fichier
     const cleanName = (gammeName || 'Batiment').replace(/[^a-zA-Z0-9_-]/g, '_');
