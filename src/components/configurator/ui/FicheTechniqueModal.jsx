@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS = {
         cropLeft: 0,
         cropRight: 0,
         zoom: 1.0,
-        offsetX: 0,
+        offsetX: -30,
         offsetY: 0,
     },
 };
@@ -462,8 +462,8 @@ export function FicheTechniqueModal({
                         <div className="flex flex-col items-center">
                             <div className="w-full max-w-xl bg-white text-slate-900 rounded-xl p-6 shadow-2xl border border-slate-200">
                                 
-                                {/* Header simulé avec espacement ajouté */}
-                                <div className="text-center pt-2 pb-4">
+                                {/* Header simulé avec espacement supplémentaire */}
+                                <div className="text-center pt-5 pb-3">
                                     <h2 className="text-lg font-bold text-slate-900 tracking-tight">Plan de structure</h2>
                                     <p className="text-xs font-bold text-blue-700 mt-0.5">
                                         {Number(config.length || 30).toFixed(2)}m × {Number(config.width || 25.5).toFixed(2)}m - {Math.round((config.length || 30) * (config.width || 25.5))} m²
@@ -472,12 +472,12 @@ export function FicheTechniqueModal({
                                 </div>
 
                                 {/* Disposition exacte des 3 visuels sur fond blanc */}
-                                <div className="space-y-4 pt-2">
-                                    {/* 1. Vue 3D Principale (Haut, Pleine largeur, alignée à gauche) */}
-                                    <div className="flex justify-start items-center w-full h-[180px]">
+                                <div className="space-y-4 pt-1">
+                                    {/* 1. Vue 3D Principale (Haut, Agrandie x2 et centrée horizontalement) */}
+                                    <div className="flex justify-center items-center w-full h-[210px]">
                                         {images.main3D ? (
                                             <div 
-                                                className="w-full h-full flex items-center justify-start overflow-hidden"
+                                                className="w-full h-full flex items-center justify-center overflow-hidden"
                                                 style={{
                                                     clipPath: `inset(${settings.main3D.cropTop}% ${settings.main3D.cropRight}% ${settings.main3D.cropBottom}% ${settings.main3D.cropLeft}%)`,
                                                 }}
@@ -485,7 +485,7 @@ export function FicheTechniqueModal({
                                                 <img 
                                                     src={images.main3D} 
                                                     alt="Vue 3D Principale" 
-                                                    className="max-h-full max-w-full object-contain object-left"
+                                                    className="max-h-full max-w-full object-contain"
                                                     style={{ transform: `scale(${settings.main3D.zoom}) translate(${settings.main3D.offsetX}px, ${settings.main3D.offsetY}px)` }}
                                                 />
                                             </div>
@@ -522,11 +522,11 @@ export function FicheTechniqueModal({
                                         </div>
                                     </div>
 
-                                    {/* 3. Vue Façade Sud */}
-                                    <div className={`flex justify-start items-center w-full ${config?.buildingType === 'asymetrique_1' ? 'h-[130px]' : 'h-[170px]'} pt-1`}>
+                                    {/* 3. Vue Façade Sud (Descendue vers le bas) */}
+                                    <div className={`flex justify-center items-center w-full ${(config?.buildingType === 'asymetrique_1' || (config?.buildingType || '').startsWith('symetrique') || config?.buildingType === 'epona') ? 'h-[130px]' : 'h-[170px]'} pt-2`}>
                                         {images.facadeSud ? (
                                             <div 
-                                                className="w-full h-full flex items-center justify-start overflow-hidden"
+                                                className="w-full h-full flex items-center justify-center overflow-hidden"
                                                 style={{
                                                     clipPath: `inset(${settings.facadeSud.cropTop}% ${settings.facadeSud.cropRight}% ${settings.facadeSud.cropBottom}% ${settings.facadeSud.cropLeft}%)`,
                                                 }}
@@ -534,14 +534,23 @@ export function FicheTechniqueModal({
                                                 <img 
                                                     src={images.facadeSud} 
                                                     alt="Façade Sud" 
-                                                    className="max-h-full max-w-full object-contain object-left"
+                                                    className="max-h-full max-w-full object-contain"
                                                     style={{ transform: `scale(${settings.facadeSud.zoom}) translate(${settings.facadeSud.offsetX}px, ${settings.facadeSud.offsetY}px)` }}
                                                 />
                                             </div>
                                         ) : null}
                                     </div>
 
-                                    {/* 4. Visuel Réaliste 3D (Uniquement Asymétrique 1 zone) */}
+                                    {/* 4. Visuel Réaliste 3D (Symétrique ou Asymétrique 1 zone) */}
+                                    {((config?.buildingType || '').startsWith('symetrique') || config?.buildingType === 'epona') && (
+                                        <div className="flex justify-center items-center w-full pt-1 pb-1">
+                                            <img 
+                                                src="/hangar_symetrique.png" 
+                                                alt="Rendu 3D Réaliste Symétrique" 
+                                                className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
+                                            />
+                                        </div>
+                                    )}
                                     {config?.buildingType === 'asymetrique_1' && (
                                         <div className="flex justify-center items-center w-full pt-1 pb-1">
                                             <img 

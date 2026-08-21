@@ -289,12 +289,23 @@ export async function generateFicheTechniquePDF({
     }
 
     // --- PRÉ-CHARGEMENT DES IMAGES ---
+    const rawType = (config?.buildingType || '').toLowerCase();
+    const isSymetrique = rawType.startsWith('symetrique') || rawType === 'epona';
     const isAsym1 = config?.buildingType === 'asymetrique_1';
+    const hasExtraPhoto = isSymetrique || isAsym1;
+
+    let photoUrlToLoad = null;
+    if (isSymetrique) {
+        photoUrlToLoad = '/hangar_symetrique.png';
+    } else if (isAsym1) {
+        photoUrlToLoad = '/hangar_asymetrique_1_zone.png';
+    }
+
     const [loadedMain3D, loadedPignon, loadedFacadeSud, loadedHangarPhoto] = await Promise.all([
         loadImage(imgMain3D),
         loadImage(imgPignon),
         loadImage(imgFacadeSud),
-        isAsym1 ? loadImage('/hangar_asymetrique_1_zone.png') : Promise.resolve(null),
+        photoUrlToLoad ? loadImage(photoUrlToLoad) : Promise.resolve(null),
     ]);
 
     // --- LOGO NELSON EN BAS DU CADRE BLEU (CENTRE ET REDUIT) ---
@@ -318,8 +329,8 @@ export async function generateFicheTechniquePDF({
     const mainW = 138;
     const mainCenterX = mainX + (mainW / 2);
 
-    // --- EN-TÊTE : PLAN DE STRUCTURE (Positionné en haut avec espace aéré) ---
-    const titleY = isAsym1 ? 26.5 : 28.0;
+    // --- EN-TÊTE : PLAN DE STRUCTURE (Avec espace aéré supplémentaire au-dessus) ---
+    const titleY = 32.0; // Espace ajouté avant les mots "Plan de structure"
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(13);
     pdf.setTextColor(15, 23, 42); // Slate 900
@@ -331,8 +342,8 @@ export async function generateFicheTechniquePDF({
     pdf.setTextColor(0, 66, 157); // Bleu NELSON
     pdf.text(subtitleDim, mainCenterX, titleY + 5.5, { align: 'center' });
 
-    // Helper pour dessiner une image épurée directement sur fond blanc avec alignement gauche strict
-    const drawSeamlessImage = (imgObj, x, y, maxW, maxH, alignLeft = true) => {
+    // Helper pour dessiner une image épurée directement sur fond blanc
+    const drawSeamlessImage = (imgObj, x, y, maxW, maxH, alignLeft = false) => {
         if (!imgObj) return;
         try {
             let imgW = maxW;
@@ -348,12 +359,12 @@ export async function generateFicheTechniquePDF({
                     imgW = maxW;
                     imgH = maxW / imgAspect;
                     imgY = y + (maxH - imgH) / 2;
-                    imgX = x;
+                    imgX = alignLeft ? x : x + (maxW - imgW) / 2;
                 } else {
                     imgH = maxH;
                     imgW = maxH * imgAspect;
                     imgX = alignLeft ? x : x + (maxW - imgW) / 2;
-                    imgY = y;
+                    imgY = y + (maxH - imgH) / 2;
                 }
             }
 
@@ -363,21 +374,21 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc
-    const topY = isAsym1 ? 42.0 : 55.0;
-    const topH = isAsym1 ? 44.0 : 58.0;
-    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, true);
+    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (Agrandie x2 et centrée horizontalement)
+    const topY = 46.0;
+    const topH = hasExtraPhoto ? 68.0 : 82.0; // Agrandie x2
+    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, false); // Centrée horizontalement
 
-    // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (alignée à gauche avec la 3D)
-    const midY = isAsym1 ? 89.0 : 120.0;
-    const midH = isAsym1 ? 38.0 : 46.0;
-    const pignonW = isAsym1 ? 75.0 : 80.0;
-    drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true);
+    // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (abaissée en conséquence, alignée à gauche)
+    const midY = hasExtraPhoto ? 118.0 : 134.0;
+    const midH = 38.0;
+    const pignonW = 75.0;
+    drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true); // Cadre laissé à sa place à gauche
 
-    // --- CADRE : À VOTRE CHARGE (Positionné à droite de l'image du pignon) ---
-    const chargeX = isAsym1 ? 145.0 : 149.0;
+    // --- CADRE : À VOTRE CHARGE (Positionné à droite de l'image du pignon, abaissé au même niveau) ---
+    const chargeX = 145.0;
     const chargeY = midY;
-    const chargeW = isAsym1 ? 59.0 : 55.0;
+    const chargeW = 59.0;
     const chargeH = midH;
 
     pdf.setFillColor(248, 250, 252);
@@ -410,18 +421,18 @@ export async function generateFicheTechniquePDF({
         textCursorY += (lines.length * 2.7) + 1.4;
     });
 
-    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc
-    const sudY = isAsym1 ? 130.0 : 176.0;
-    const sudH = isAsym1 ? 46.0 : 70.0;
-    drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH, true);
+    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Descendue de 3cm supplémentaires vers le bas)
+    const sudY = hasExtraPhoto ? 162.0 : 178.0; // Descendue de 3cm (30mm) supplémentaires
+    const sudH = hasExtraPhoto ? 44.0 : 54.0;
+    drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH, false);
 
     // ==========================================
-    // 4. PIED DE PAGE (FOOTER) & PHOTO ASYMÉTRIQUE 1 ZONE
+    // 4. PIED DE PAGE (FOOTER) & PHOTO 3D RÉALISTE (SYMÉTRIQUE / ASYMÉTRIQUE 1 ZONE)
     // ==========================================
     const footerY = 285;
 
-    // Rendu de l'image 3D réaliste (Image 1 en pièce jointe) si asymétrique 1 zone
-    if (isAsym1 && loadedHangarPhoto && loadedHangarPhoto.width && loadedHangarPhoto.height) {
+    // Rendu de l'image 3D réaliste (Image 1 en pièce jointe) si symétrique ou asymétrique 1 zone
+    if (hasExtraPhoto && loadedHangarPhoto && loadedHangarPhoto.width && loadedHangarPhoto.height) {
         const maxPhotoW = mainW; // 138mm
         const maxPhotoH = 58; // max 58mm height
         const photoAspect = loadedHangarPhoto.width / loadedHangarPhoto.height;
