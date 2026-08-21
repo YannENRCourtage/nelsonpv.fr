@@ -21,6 +21,7 @@ import UserSettingsModal from '@/components/crm/UserSettingsModal.jsx';
 import ContactModal from '@/components/crm/ContactModal.jsx';
 import UserAvatar from '@/components/UserAvatar.jsx';
 import ProjectsMap from '@/components/crm/ProjectsMap.jsx';
+import AgendaView from '@/components/crm/AgendaView.jsx';
 
 // UserAvatar replaced by import
 
@@ -124,11 +125,11 @@ export default function Crm() {
 
   // États principaux
   const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl || 'dashboard');
+  const [activeTab, setActiveTab] = useState(tabFromUrl === 'calendar' ? 'agenda' : (tabFromUrl || 'dashboard'));
 
   useEffect(() => {
-    if (tabFromUrl && ['dashboard', 'contacts', 'projects', 'calendar', 'reports'].includes(tabFromUrl)) {
-      setActiveTab(tabFromUrl);
+    if (tabFromUrl && ['dashboard', 'contacts', 'projects', 'agenda', 'calendar', 'reports'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl === 'calendar' ? 'agenda' : tabFromUrl);
     }
   }, [tabFromUrl]);
   const [viewMode, setViewMode] = useState('list');
@@ -444,7 +445,7 @@ export default function Crm() {
     { id: 'dashboard', label: 'Mon tableau de bord', icon: LayoutDashboard },
     { id: 'contacts', label: 'Contacts', icon: Users },
     { id: 'projects', label: 'Projets', icon: FolderHeart },
-    { id: 'calendar', label: 'Calendrier', icon: Calendar },
+    { id: 'agenda', label: 'Agenda', icon: Calendar },
     { id: 'reports', label: 'Rapports', icon: FileText },
   ];
 
@@ -1465,128 +1466,7 @@ export default function Crm() {
     </div>
   );
 
-  // Rendu du Calendrier
-  const renderCalendar = () => {
-    const year = calendarDate.getFullYear();
-    const month = calendarDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
 
-    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-    const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-
-    const days = [];
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(i);
-    }
-
-    const prevMonth = () => setCalendarDate(new Date(year, month - 1, 1));
-    const nextMonth = () => setCalendarDate(new Date(year, month + 1, 1));
-
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-slate-900">
-              {monthNames[month]} {year}
-            </h2>
-            <div className="flex gap-2">
-              <button onClick={prevMonth} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button onClick={nextMonth} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-7 gap-2">
-            {dayNames.map((day) => (
-              <div key={day} className="text-center font-semibold text-slate-600 text-sm py-2">
-                {day}
-              </div>
-            ))}
-            {days.map((day, idx) => {
-              const dateStr = day ? `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : null;
-              const dayTasks = day ? tasks.filter(t => t.dueDate === dateStr) : [];
-              const isToday = day && new Date().toDateString() === new Date(year, month, day).toDateString();
-
-              return (
-                <div
-                  key={idx}
-                  className={`min-h-[80px] p-2 rounded-lg border cursor-pointer transition-colors ${day ? 'bg-white border-slate-200 hover:bg-blue-50' : 'bg-slate-50 border-transparent'
-                    } ${isToday ? 'ring-2 ring-blue-500' : ''}`}
-                  onClick={() => {
-                    if (day) {
-                      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                      setEditingTask({
-                        id: Date.now(),
-                        title: '',
-                        contact: '',
-                        dueDate: dateStr,
-                        priority: 'Moyenne',
-                        completed: false,
-                        color: 'bg-orange-500'
-                      });
-                      setShowTaskModal(true);
-                    }
-                  }}
-                >
-                  {day && (
-                    <>
-                      <div className={`text-sm font-semibold mb-1 ${isToday ? 'text-blue-600' : 'text-slate-900'}`}>
-                        {day}
-                      </div>
-                      <div className="space-y-1">
-                        {dayTasks.map((task) => {
-                          const priorityColor = task.priority === 'Haute' ? 'bg-red-500' :
-                            task.priority === 'Moyenne' ? 'bg-orange-500' :
-                              'bg-green-500';
-                          const textColor = task.priority === 'Haute' ? 'text-red-700' :
-                            task.priority === 'Moyenne' ? 'text-orange-700' :
-                              'text-green-700';
-
-                          return (
-                            <div
-                              key={task.id}
-                              className={`group flex items-center justify-between text-xs px-1.5 py-0.5 rounded ${priorityColor} bg-opacity-20 ${textColor} transition-all hover:bg-opacity-35 cursor-pointer`}
-                              title={task.title}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingTask(task);
-                                setShowTaskModal(true);
-                              }}
-                            >
-                              <span className="truncate flex-1">{task.title}</span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteTask(task.id);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-red-100 rounded text-red-600 transition-opacity ml-1 flex-shrink-0"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // Filtered Projects Logic (Lifted for Count)
   const filteredProjects = projects.filter(p => {
@@ -2333,7 +2213,7 @@ export default function Crm() {
               {activeTab === 'dashboard' && 'Vue d\'ensemble de votre activité'}
               {activeTab === 'contacts' && 'Gérez vos contacts et leurs projets'}
               {activeTab === 'projects' && 'Gérer les projets de construction et de location de toitures'}
-              {activeTab === 'calendar' && 'Planifiez vos rendez-vous'}
+              {(activeTab === 'agenda' || activeTab === 'calendar') && 'Gérez votre planning et vos rendez-vous personnels'}
               {activeTab === 'reports' && 'Analysez vos performances'}
             </p>
           </div>
@@ -2342,8 +2222,9 @@ export default function Crm() {
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'contacts' && renderContacts()}
           {activeTab === 'projects' && renderProjects()}
-
-          {activeTab === 'calendar' && renderCalendar()}
+          {(activeTab === 'agenda' || activeTab === 'calendar') && (
+            <AgendaView user={user} activeTenantId={activeTenantId} contacts={contacts} />
+          )}
           {activeTab === 'reports' && renderReports()}
         </div>
       </div >
