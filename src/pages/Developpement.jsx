@@ -96,23 +96,46 @@ export default function Developpement() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [captureStep, setCaptureStep] = useState('');
 
-  // ── Load Projects ───────────────────────────────────────────────
+  // ── Load & Subscribe Projects in Real-Time ─────────────────────
   useEffect(() => {
-    const loadProjects = async () => {
+    let unsubscribe = () => {};
+    setLoadingProjects(true);
+
+    const setupSubscription = async () => {
       try {
-        setLoadingProjects(true);
-        const data = await apiService.getProjects(activeTenantId);
-        setProjects(data || []);
-        if (data && data.length > 0 && !selectedProject) {
-          setSelectedProject(data[0]);
+        const unsub = await apiService.subscribeToProjects((data) => {
+          setProjects(data || []);
+          setLoadingProjects(false);
+
+          // Maintenir selectedProject synchronisé en temps réel avec Firestore
+          setSelectedProject(prev => {
+            if (!prev) return (data && data.length > 0) ? data[0] : null;
+            const updated = data.find(p => p.id === prev.id);
+            return updated || prev;
+          });
+        }, activeTenantId);
+        if (typeof unsub === 'function') unsubscribe = unsub;
+      } catch (err) {
+        console.error('Erreur souscription temps réel projets:', err);
+        try {
+          const fallbackData = await apiService.getProjects(activeTenantId);
+          setProjects(fallbackData || []);
+          if (fallbackData && fallbackData.length > 0 && !selectedProject) {
+            setSelectedProject(fallbackData[0]);
+          }
+        } catch (e) {
+          console.error('Erreur fallback projets:', e);
+        } finally {
+          setLoadingProjects(false);
         }
-      } catch (e) {
-        console.error('Erreur chargement projets', e);
-      } finally {
-        setLoadingProjects(false);
       }
     };
-    loadProjects();
+
+    setupSubscription();
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, [activeTenantId]);
 
   // ── Load Professionals ──────────────────────────────────────────

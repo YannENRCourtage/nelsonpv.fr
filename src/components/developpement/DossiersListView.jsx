@@ -3,15 +3,16 @@ import { motion } from 'framer-motion';
 import {
   Folder, Search, MapPin, Zap, User, UserCheck, Building, Sun, Battery,
   CheckCircle2, Clock, AlertCircle, XCircle, Calendar, MessageSquare,
-  Filter, Sparkles, Check
+  Filter, Sparkles, Check, TrendingUp
 } from 'lucide-react';
 import { getUserColor } from '@/lib/utils';
+import { apiService } from '@/services/api';
 
 /**
  * DossiersListView — Vue Monday.com des dossiers de développement (sur 2 lignes par projet)
  * Contient le toggle "Mes projets", filtres par statut colorés, lignes épaisses 2 lignes,
- * zone commentaire élargie en hauteur sans bouton redondant, synchronisation stricte CRM
- * du nom de projet et du chef de projet.
+ * pourcentage d'avancement sur 7 étapes (urbanisme, mandatement, raccordement...),
+ * zone commentaire élargie en hauteur, synchronisation stricte CRM du nom de projet et chef de projet.
  */
 export default function DossiersListView({
   projects = [],
@@ -34,7 +35,6 @@ export default function DossiersListView({
     abandonne: { label: 'Abandonné', bg: 'bg-[#e2445c]', text: 'text-white', lightBg: 'bg-rose-50', border: 'border-rose-200' },
   };
 
-  // Normalisation du statut du projet pour correspondre à nos 4 statuts clés
   const normalizeStatus = (rawStatus) => {
     const s = (rawStatus || '').toLowerCase();
     if (s.includes('termin') || s.includes('valid') || s.includes('conforme') || s.includes('gagn')) return 'termine';
@@ -43,7 +43,6 @@ export default function DossiersListView({
     return 'en_cours';
   };
 
-  // Formatage propre de la date de mise à jour (avec 14/08/2026 par défaut si non renseigné/invalide)
   const formatUpdatedDate = (dateVal) => {
     if (!dateVal) return '14/08/2026';
     const d = new Date(dateVal);
@@ -51,7 +50,6 @@ export default function DossiersListView({
     return d.toLocaleDateString('fr-FR');
   };
 
-  // Nom complet du projet identique au CRM (ex: "DEVEAU 17210 ORIGNOLLES")
   const getFullProjectName = (p) => {
     if (!p) return 'Projet sans nom';
     if (p.projectName) return p.projectName;
@@ -60,18 +58,40 @@ export default function DossiersListView({
     return p.name || 'Projet sans nom';
   };
 
-  // Chef de projet fidèle au CRM (champ assignedUser en priorité)
   const getChefProjet = (p) => {
     const chef = p.assignedUser || p.chef_projet || p.chefProjet || p.project_manager || p.manager;
     return (chef && chef !== 'Contact' && chef !== '-') ? chef : '-';
   };
 
-  // Commercial fidèle au CRM
   const getCommercial = (p) => {
     return p.commercial || p.commercial_name || p.assignedTo || '-';
   };
 
-  // Toggle du filtre de statut
+  // Calcul du % d'avancement strict sur 7 étapes pour chaque projet
+  const getProjectDevProgress = (p) => {
+    let steps = p.devWorkflow || p.workflow || p.stepsState;
+    if (!steps && p.id) {
+      try {
+        const local = localStorage.getItem(`nelson_workflow_${p.id}`);
+        if (local) steps = JSON.parse(local);
+      } catch {}
+    }
+    if (!steps) return { count: 0, totalSteps: 7, percent: 0 };
+
+    let count = 0;
+    const totalSteps = 7;
+    if (steps.dp?.status === 'validated' || steps.pc?.status === 'validated') count += 1;
+    if (steps.huissier?.status === 'validated') count += 1;
+    if (steps.geometre?.status === 'validated') count += 1;
+    if (steps.notaire?.status === 'validated') count += 1;
+    if (steps.raccordement?.status === 'validated') count += 1;
+    if (steps.aos_ao?.status === 'validated') count += 1;
+    if (steps.consuel?.status === 'validated') count += 1;
+
+    const percent = Math.round((count / totalSteps) * 100);
+    return { count, totalSteps, percent };
+  };
+
   const handleToggleStatus = (statusKey) => {
     if (statusKey === 'all') {
       setSelectedStatuses(['all']);
@@ -87,15 +107,12 @@ export default function DossiersListView({
     setSelectedStatuses(updated);
   };
 
-  // Filtrage des projets
   const filteredProjects = useMemo(() => {
     return projects.filter(p => {
-      // 1. Filtre "Mes projets" (l'utilisateur connecté est Commercial OU Chef de projet)
       if (onlyMyProjects && currentUser) {
         const uName = (currentUser.name || currentUser.displayName || '').toLowerCase();
         const uFirst = (currentUser.firstName || '').toLowerCase();
         const uEmail = (currentUser.email || '').toLowerCase();
-
         const commercial = getCommercial(p).toLowerCase();
         const chef = getChefProjet(p).toLowerCase();
         const createdBy = (p.createdBy || p.author || '').toLowerCase();
@@ -104,50 +121,60 @@ export default function DossiersListView({
         const isChef = chef.includes(uName) || chef.includes(uFirst) || (uEmail && chef.includes(uEmail));
         const isCreator = createdBy.includes(uName) || createdBy.includes(uFirst);
 
-        if (!isCommercial && !isChef && !isCreator && !p.is_mine) {
-          return false;
-        }
+        if (!isCommercial && !isChef && !isCreator && !p.is_mine) return false;
       }
 
-      // 2. Filtre de statut
       if (!selectedStatuses.includes('all')) {
         const pStatus = normalizeStatus(p.status || p.crm_status);
         if (!selectedStatuses.includes(pStatus)) return false;
       }
 
-      // 3. Filtre de recherche texte
       if (searchTerm.trim() !== '') {
         const clean = searchTerm.toLowerCase().trim();
-        const fullTitle = getFullProjectName(p).toLowerCase();
-        const matchName = fullTitle.includes(clean);
-        const matchClient = (p.firstName || '').toLowerCase().includes(clean) || (p.name || '').toLowerCase().includes(clean);
-        const matchCity = (p.city || p.cadastre_commune || '').toLowerCase().includes(clean);
-        const matchAddr = (p.address || '').toLowerCase().includes(clean);
-        const matchZip = (p.zip || p.zipCode || '').toString().toLowerCase().includes(clean);
-        const matchComm = getCommercial(p).toLowerCase().includes(clean);
-        const matchChef = getChefProjet(p).toLowerCase().includes(clean);
+        const fullProjName = getFullProjectName(p).toLowerCase();
+        const client = `${p.name || ''} ${p.firstName || ''}`.toLowerCase();
+        const city = (p.city || '').toLowerCase();
+        const addr = (p.address || '').toLowerCase();
+        const zip = (p.zip || p.zipCode || '').toLowerCase();
+        const comm = getCommercial(p).toLowerCase();
+        const chef = getChefProjet(p).toLowerCase();
 
-        if (!matchName && !matchClient && !matchCity && !matchAddr && !matchZip && !matchComm && !matchChef) {
-          return false;
-        }
+        const matchName = fullProjName.includes(clean);
+        const matchClient = client.includes(clean);
+        const matchCity = city.includes(clean);
+        const matchAddr = addr.includes(clean);
+        const matchZip = zip.includes(clean);
+        const matchComm = comm.includes(clean);
+        const matchChef = chef.includes(clean);
+
+        if (!matchName && !matchClient && !matchCity && !matchAddr && !matchZip && !matchComm && !matchChef) return false;
       }
-
       return true;
     });
   }, [projects, onlyMyProjects, currentUser, selectedStatuses, searchTerm]);
 
-  // Sauvegarde rapide du commentaire
-  const handleSaveComment = (projectId, e) => {
+  // Sauvegarde rapide du commentaire (Local + Firestore en temps réel)
+  const handleSaveComment = async (projectId, e) => {
     e.stopPropagation();
     const comment = commentInputs[projectId];
     if (comment !== undefined) {
       localStorage.setItem(`nelson_comment_${projectId}`, comment);
       setEditingCommentId(null);
+      try {
+        await apiService.updateProject(projectId, {
+          devComments: comment,
+          notes: comment,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('Erreur mise à jour commentaire Firestore:', err);
+      }
     }
   };
 
-  const getSavedComment = (projectId, fallback) => {
-    return localStorage.getItem(`nelson_comment_${projectId}`) || fallback || '';
+  const getSavedComment = (p) => {
+    if (!p) return '';
+    return p.devComments || p.notes || (p.id ? localStorage.getItem(`nelson_comment_${p.id}`) : '') || p.description || '';
   };
 
   const getTypeIcon = (type) => {
@@ -157,56 +184,30 @@ export default function DossiersListView({
     return <Building className="w-3.5 h-3.5 text-blue-600" />;
   };
 
-  // Numérotation stricte des dossiers au format 6 chiffres : YYDDNN (ex: 263206 pour le 6ème dossier 2026 dans le Gers 32)
   const dossierNumbersMap = useMemo(() => {
     const deptYearCounters = {};
     const map = {};
-
-    // Trier les projets pour une numérotation chronologique et stable
-    const sorted = [...projects].sort((a, b) => {
-      const da = new Date(a.createdAt || a.created_at || a.date || 0).getTime();
-      const db = new Date(b.createdAt || b.created_at || b.date || 0).getTime();
-      return da - db;
-    });
-
+    const sorted = [...projects].sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
     sorted.forEach((p, idx) => {
-      // 1. Année sur 2 chiffres (ex: "26")
       let year = '26';
       const dateVal = p.createdAt || p.created_at || p.updatedAt;
       if (dateVal) {
         const d = new Date(dateVal);
-        if (!isNaN(d.getTime())) {
-          year = String(d.getFullYear()).slice(-2);
-        }
+        if (!isNaN(d.getTime())) year = String(d.getFullYear()).slice(-2);
       }
-
-      // 2. Département sur 2 chiffres (ex: "32", "24", "17", "33")
-      const rawZip = String(p.zip || p.zipCode || p.code_postal || p.postalCode || '');
+      const rawZip = String(p.zip || p.zipCode || p.code_postal || '');
       let dept = '32';
-      if (rawZip && rawZip.length >= 2) {
-        dept = rawZip.substring(0, 2);
-      } else if (p.address) {
-        const match = p.address.match(/\b(0[1-9]|[1-8][0-9]|9[0-8]|2[ABab])\d{3}\b/);
-        if (match) dept = match[1];
-      }
-
-      // 3. Numérotation séquentielle par Année + Département
+      if (rawZip && rawZip.length >= 2) dept = rawZip.substring(0, 2);
       const key = `${year}_${dept}`;
       deptYearCounters[key] = (deptYearCounters[key] || 0) + 1;
-      const numInDept = String(deptYearCounters[key]).padStart(2, '0');
-
-      // Numéro à 6 chiffres : YYDDNN (ex: 263206)
-      map[p.id || idx] = `${year}${dept}${numInDept}`;
+      map[p.id || idx] = `${year}${dept}${String(deptYearCounters[key]).padStart(2, '0')}`;
     });
-
     return map;
   }, [projects]);
 
   return (
     <div className="w-full space-y-5">
-      {/* ── BARRE D'OUTILS ET FILTRES (Style Monday.com) ────────────────── */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        {/* Titre & Compteur */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs">
             <Folder className="w-5 h-5" />
@@ -214,74 +215,35 @@ export default function DossiersListView({
           <div>
             <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
               Dossiers de Développement
-              <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-extrabold">
-                {filteredProjects.length}
-              </span>
+              <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-extrabold">{filteredProjects.length}</span>
             </h2>
-            <p className="text-xs text-slate-500">
-              Suivi exhaustif des démarches d'urbanisme, mandatements et raccordement.
-            </p>
+            <p className="text-xs text-slate-500">Suivi exhaustif des démarches d'urbanisme, mandatements et raccordement.</p>
           </div>
         </div>
-
-        {/* Contrôles de filtrage */}
         <div className="flex items-center flex-wrap gap-3">
-          {/* Recherche */}
           <div className="relative min-w-[240px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Rechercher nom, client, ville..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-            />
+            <input type="text" placeholder="Rechercher nom, client, ville..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
           </div>
-
-          {/* Toggle "Mes projets" */}
-          <button
-            onClick={() => setOnlyMyProjects(!onlyMyProjects)}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
-              onlyMyProjects
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-            }`}
-          >
+          <button onClick={() => setOnlyMyProjects(!onlyMyProjects)} className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${onlyMyProjects ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}>
             <UserCheck className="w-3.5 h-3.5" />
             <span>Mes projets</span>
             {onlyMyProjects && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>}
           </button>
-
-          {/* Filtres Statuts Monday.com */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
-              const isActive = selectedStatuses.includes(key);
-              return (
-                <button
-                  key={key}
-                  onClick={() => handleToggleStatus(key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-                    isActive
-                      ? `${cfg.bg} ${cfg.text} shadow-xs scale-102`
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
-                >
-                  {cfg.label}
-                </button>
-              );
-            })}
+            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+              <button key={key} onClick={() => handleToggleStatus(key)} className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${selectedStatuses.includes(key) ? `${cfg.bg} ${cfg.text} shadow-xs scale-102` : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'}`}>
+                {cfg.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ── LISTE DES LIGNES PROJETS (Cartes épaisses 2 sous-lignes) ──── */}
       {filteredProjects.length === 0 ? (
         <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-slate-200 space-y-3">
           <Folder className="w-12 h-12 text-slate-300 mx-auto" />
           <h3 className="text-base font-bold text-slate-700">Aucun dossier trouvé</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Ajustez vos filtres ou effectuez une nouvelle recherche pour afficher les dossiers de développement.
-          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -294,9 +256,10 @@ export default function DossiersListView({
             const commercialName = getCommercial(p);
             const chefProjetName = getChefProjet(p);
             const projectType = p.type || 'Construction';
-            const savedComment = getSavedComment(p.id, p.notes || p.description);
+            const savedComment = getSavedComment(p);
             const lastUpdated = formatUpdatedDate(p.updatedAt);
             const isSelected = activeProjectId === p.id;
+            const devProgress = getProjectDevProgress(p);
 
             return (
               <motion.div
@@ -315,8 +278,8 @@ export default function DossiersListView({
                 <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${statusCfg.bg}`} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-                  {/* ── PARTIE GAUCHE (6/12) : 2 Sous-lignes Élargies ──────────────── */}
-                  <div className="lg:col-span-6 p-4 pl-6 space-y-2 flex flex-col justify-center">
+                  {/* ── PARTIE GAUCHE (5/12) : 2 Sous-lignes Élargies ──────────────── */}
+                  <div className="lg:col-span-5 p-4 pl-6 space-y-2 flex flex-col justify-center">
                     {/* Ligne 1 : N° Dossier (6 chiffres) | Nom du projet | Puissance */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -348,10 +311,10 @@ export default function DossiersListView({
                     </div>
                   </div>
 
-                  {/* ── PARTIE CENTRALE (3/12) : 2 Sous-lignes ─────────────── */}
-                  <div className="lg:col-span-3 p-4 space-y-2 flex flex-col justify-center bg-slate-50/40">
-                    {/* Ligne 1 : Statut du projet | Nom du Commercial */}
-                    <div className="flex items-center justify-between gap-2">
+                  {/* ── PARTIE CENTRALE (4/12) : Statut & Avancement Workflow ─────────────── */}
+                  <div className="lg:col-span-4 p-4 space-y-2.5 flex flex-col justify-center bg-slate-50/40">
+                    {/* Ligne 1 : Statut du projet | Avancement % | Nom du Commercial */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <span className="text-[10px] font-semibold text-slate-400">Statut :</span>
                         <span className={`px-2.5 py-0.5 rounded-lg text-xs font-extrabold ${statusCfg.bg} ${statusCfg.text} shadow-2xs`}>
@@ -359,9 +322,36 @@ export default function DossiersListView({
                         </span>
                       </div>
 
+                      {/* Badge Avancement & % (7 étapes au total) */}
+                      <div 
+                        className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded-lg border border-slate-200/80 shadow-2xs"
+                        title={`Progression du développement : ${devProgress.count} sur ${devProgress.totalSteps} étapes validées (${devProgress.percent}%)`}
+                      >
+                        <TrendingUp className="w-3 h-3 text-blue-600 flex-shrink-0" />
+                        <span className="text-[10px] font-bold text-slate-500">Avanc. :</span>
+                        <span className={`text-[11px] font-black px-1.5 py-0.2 rounded ${
+                          devProgress.percent === 100 
+                            ? 'bg-emerald-500 text-white' 
+                            : devProgress.percent > 0 
+                              ? 'bg-blue-600 text-white' 
+                              : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {devProgress.percent}%
+                        </span>
+                        <span className="text-[9.5px] font-bold text-slate-400">({devProgress.count}/{devProgress.totalSteps})</span>
+                        <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60 hidden sm:block">
+                          <div 
+                            className={`h-full transition-all duration-300 rounded-full ${
+                              devProgress.percent === 100 ? 'bg-emerald-500' : 'bg-blue-600'
+                            }`}
+                            style={{ width: `${devProgress.percent}%` }}
+                          />
+                        </div>
+                      </div>
+
                       {commercialName && (
                         <span
-                          className={`px-2.5 py-0.5 rounded-full ${getUserColor(commercialName)} text-xs font-bold truncate max-w-[110px] text-center shadow-2xs`}
+                          className={`px-2.5 py-0.5 rounded-full ${getUserColor(commercialName)} text-xs font-bold truncate max-w-[100px] text-center shadow-2xs`}
                           title={`Commercial : ${commercialName}`}
                         >
                           {commercialName}

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { getUserColor } from '@/lib/utils';
+import { apiService } from '@/services/api';
 
 /**
  * EtudeDossierView — Vue détaillée du workflow de développement d'un projet solaire
@@ -144,72 +145,97 @@ export default function EtudeDossierView({
   const [projectComments, setProjectComments] = useState('');
   const [isCommentSaved, setIsCommentSaved] = useState(false);
 
-  // Charger les données sauvegardées pour ce projet
+  // Charger les données sauvegardées pour ce projet (Firestore en priorité)
   useEffect(() => {
     if (!project?.id) return;
 
     // Charger les commentaires
-    const savedComment = localStorage.getItem(`nelson_comment_${project.id}`) || project.notes || project.description || '';
+    const savedComment = project.devComments || project.notes || project.description || localStorage.getItem(`nelson_comment_${project.id}`) || '';
     setProjectComments(savedComment);
 
-    // Charger l'état des 9 étapes
-    const savedSteps = localStorage.getItem(`nelson_workflow_${project.id}`);
-    if (savedSteps) {
-      try {
-        setStepsState(JSON.parse(savedSteps));
-      } catch (e) {
-        console.error('Erreur chargement workflow local:', e);
+    // Charger l'état des 9 étapes (Firestore en priorité, fallback localStorage)
+    let savedSteps = project.devWorkflow || project.workflow || project.stepsState;
+    if (!savedSteps) {
+      const local = localStorage.getItem(`nelson_workflow_${project.id}`);
+      if (local) {
+        try {
+          savedSteps = JSON.parse(local);
+        } catch (e) {
+          console.error('Erreur chargement workflow local:', e);
+        }
       }
+    }
+
+    if (savedSteps) {
+      setStepsState(savedSteps);
     } else {
       // Initialisation par défaut
       const defaultState = {};
       INITIAL_STEPS_CONFIG.forEach(s => {
         defaultState[s.id] = {
           status: 'pending',
-          lastIntervention: '14/08/2026',
+          lastIntervention: new Date().toLocaleDateString('fr-FR'),
           deadline: '',
           notes: '',
         };
       });
       setStepsState(defaultState);
     }
-  }, [project?.id]);
+  }, [project?.id, project?.devWorkflow, project?.devComments]);
 
-  // Sauvegarde d'une étape avec synchronisation mutuelle DP / PC
-  const updateStep = (stepId, updates) => {
+  // Sauvegarde d'une étape avec synchronisation mutuelle DP / PC et mise à jour Firestore temps réel
+  const updateStep = async (stepId, updates) => {
+    const todayStr = new Date().toLocaleDateString('fr-FR');
     let newStepsState = {
       ...stepsState,
       [stepId]: {
         ...(stepsState[stepId] || {}),
         ...updates,
-        lastIntervention: '14/08/2026',
+        lastIntervention: todayStr,
       }
     };
 
     // Si DP validé -> PC passe automatiquement à 'ns' s'il était en attente (et vice-versa)
     if (stepId === 'dp' && updates.status === 'validated') {
       if (!newStepsState.pc || newStepsState.pc.status === 'pending') {
-        newStepsState.pc = { ...(newStepsState.pc || {}), status: 'ns', lastIntervention: '14/08/2026' };
+        newStepsState.pc = { ...(newStepsState.pc || {}), status: 'ns', lastIntervention: todayStr };
       }
     } else if (stepId === 'pc' && updates.status === 'validated') {
       if (!newStepsState.dp || newStepsState.dp.status === 'pending') {
-        newStepsState.dp = { ...(newStepsState.dp || {}), status: 'ns', lastIntervention: '14/08/2026' };
+        newStepsState.dp = { ...(newStepsState.dp || {}), status: 'ns', lastIntervention: todayStr };
       }
     }
 
     setStepsState(newStepsState);
     if (project?.id) {
       localStorage.setItem(`nelson_workflow_${project.id}`, JSON.stringify(newStepsState));
+      try {
+        await apiService.updateProject(project.id, {
+          devWorkflow: newStepsState,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('Erreur mise à jour devWorkflow Firestore:', err);
+      }
     }
   };
 
-  // Sauvegarde des commentaires
-  const handleCommentChange = (val) => {
+  // Sauvegarde des commentaires en temps réel sur Firestore
+  const handleCommentChange = async (val) => {
     setProjectComments(val);
     if (project?.id) {
       localStorage.setItem(`nelson_comment_${project.id}`, val);
       setIsCommentSaved(true);
       setTimeout(() => setIsCommentSaved(false), 2000);
+      try {
+        await apiService.updateProject(project.id, {
+          devComments: val,
+          notes: val,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('Erreur mise à jour devComments Firestore:', err);
+      }
     }
   };
 
