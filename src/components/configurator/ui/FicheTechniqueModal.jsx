@@ -194,7 +194,7 @@ export function FicheTechniqueModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !isGenerating && !open && onClose()}>
-            <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-900 text-white border-slate-700 shadow-2xl rounded-2xl">
+            <DialogContent className="max-w-5xl w-[95vw] max-h-[95vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-900 text-white border-slate-700 shadow-2xl rounded-2xl">
                 
                 {/* HEADER */}
                 <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between">
@@ -269,10 +269,10 @@ export function FicheTechniqueModal({
                                     <span>Aperçu de la vue (Rendu fond blanc pur)</span>
                                 </div>
 
-                                {/* White Canvas Container */}
+                                {/* White Canvas Container (+20% hauteur) */}
                                 <div 
                                     className="relative w-full rounded-xl bg-white flex items-center justify-center overflow-hidden border border-slate-300 shadow-inner"
-                                    style={{ height: '340px' }}
+                                    style={{ height: '410px' }}
                                 >
                                     {currentImg ? (
                                         <div className="relative w-full h-full flex items-center justify-center p-3">

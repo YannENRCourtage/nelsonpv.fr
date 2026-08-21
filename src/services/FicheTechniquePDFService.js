@@ -562,6 +562,45 @@ export async function generateFicheTechniquePDF({
     const titleDetails = `${length.toFixed(2)}m × ${totalWidth.toFixed(2)}m - ${floorArea} m²${config.hasSolar ? ` - ${installedKwc.toFixed(1)} kWc` : ''}`;
     pdf.text(titleDetails, mainX + (mainW / 2), 39.5, { align: 'center' });
 
+    // Helper pour dessiner une image épurée directement sur fond blanc en restant strictement dans son cadre
+    const drawSeamlessImage = (imgObj, x, y, maxW, maxH, alignLeft = false) => {
+        if (!imgObj) return;
+        try {
+            let imgW = maxW;
+            let imgH = maxH;
+
+            if (imgObj.width && imgObj.height) {
+                const imgAspect = imgObj.width / imgObj.height;
+                const containerAspect = maxW / maxH;
+
+                if (imgAspect > containerAspect) {
+                    imgW = maxW;
+                    imgH = maxW / imgAspect;
+                } else {
+                    imgH = maxH;
+                    imgW = maxH * imgAspect;
+                }
+
+                // Sécurité stricte pour ne jamais déborder du cadre prévu
+                if (imgW > maxW) {
+                    imgW = maxW;
+                    imgH = maxW / imgAspect;
+                }
+                if (imgH > maxH) {
+                    imgH = maxH;
+                    imgW = imgH * imgAspect;
+                }
+            }
+
+            const imgX = alignLeft ? x : x + (maxW - imgW) / 2;
+            const imgY = y + (maxH - imgH) / 2;
+
+            pdf.addImage(imgObj, 'PNG', imgX, imgY, imgW, imgH, undefined, 'FAST');
+        } catch (err) {
+            console.warn('Erreur rendu image épurée:', err);
+        }
+    };
+
     // VISUEL 1 (Haut) : Vue 3D Principale épurée sur fond blanc (Cadre agrandi pour visuel plus gros)
     const topY = 46.0;
     const topH = hasExtraPhoto ? 68.0 : 84.0; // Cadre agrandi
