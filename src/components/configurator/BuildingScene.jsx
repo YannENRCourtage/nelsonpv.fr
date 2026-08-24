@@ -106,7 +106,7 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             {/* Auto-Centering logic: Re-fits whenever config changes */}
             {/* Capture: margin=1.15 pour Façade Sud (cadrage élargi sans coupure), 0.70 pour 3D, 0.75 pour Pignon */}
             <Bounds fit clip observe margin={isCapturing ? (viewMode === 'FACADE_SUD' ? 1.15 : (viewMode === '3D' ? 0.70 : 0.75)) : 1.1}>
-                <Structure forceHideDimensions={viewMode !== '3D' && viewMode !== 'DEFAULT' && viewMode !== 'PERSPECTIVE'} />
+                <Structure viewMode={viewMode} isCapturing={isCapturing} />
             </Bounds>
 
             {/* Ground / Shadows */}
