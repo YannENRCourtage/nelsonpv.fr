@@ -420,7 +420,10 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                     <SolarPanels surfaceWidth={rightGeoLength} surfaceLength={length + 1.0} />
                 </group>
             </group>
-        );    // --- B. ASYMETRIQUE 2 ZONES ---
+        );
+    }
+
+    // --- B. ASYMETRIQUE 2 ZONES ---
     if (isAsymetrique2) {
         const w = width;
         const mainSlope = 15 * (Math.PI / 180);
