@@ -113,5 +113,12 @@ service cloud.firestore {
     match /dev_professionals/{professionalId} {
       allow read, write: if isAuthenticated();
     }
+
+    // Agenda & Appointments collection
+    match /agenda_events/{eventId} {
+      allow read, write: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
   }
 }

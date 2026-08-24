@@ -29,7 +29,8 @@ import {
     createAppointment, 
     updateAppointment, 
     deleteAppointment,
-    getLocalAppointments
+    getLocalAppointments,
+    normalizeDateString
 } from '@/services/firebase/agenda.service.js';
 import AppointmentModal from './AppointmentModal.jsx';
 
@@ -45,19 +46,7 @@ const HOURS = Array.from({ length: 15 }, (_, i) => i + 7); // 07:00 to 21:00
 
 // Helper pour formater une date en YYYY-MM-DD
 const formatDateKey = (date) => {
-    if (!date) return '';
-    if (typeof date === 'string') {
-        if (date.includes('T')) return date.split('T')[0];
-        if (date.includes('/')) {
-            const parts = date.split('/');
-            if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-        }
-        return date;
-    }
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    return normalizeDateString(date);
 };
 
 // Helper pour obtenir le lundi de la semaine d'une date
@@ -74,7 +63,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     const [currentDate, setCurrentDate] = useState(new Date());
     
     const userId = user?.uid || user?.id || user?.email || 'default_user';
-    const [appointments, setAppointments] = useState(() => getLocalAppointments(userId));
+    const [appointments, setAppointments] = useState(() => getLocalAppointments(userId, activeTenantId));
     
     // Filtre par catégorie
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -182,7 +171,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
             if (cleanedData.id && appointments.some(a => a.id === cleanedData.id)) {
                 // Mise à jour optimiste immédiate dans le state React
                 setAppointments(prev => prev.map(a => a.id === cleanedData.id ? { ...a, ...cleanedData } : a));
-                await updateAppointment(cleanedData.id, cleanedData, userId);
+                await updateAppointment(cleanedData.id, cleanedData, userId, activeTenantId);
             } else {
                 const tempId = cleanedData.id || `rdv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
                 const newAppt = {
@@ -207,7 +196,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
         try {
             // Suppression optimiste immédiate
             setAppointments(prev => prev.filter(a => a.id !== apptId));
-            await deleteAppointment(apptId, userId);
+            await deleteAppointment(apptId, userId, activeTenantId);
         } catch (err) {
             console.error('Erreur suppression RDV:', err);
         }
@@ -301,7 +290,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                         return (
                             <div 
                                 key={name} 
-                                className={`py-3.5 text-center text-xs font-black uppercase tracking-wider ${
+                                className={`py-2.5 sm:py-3.5 text-center text-[10px] sm:text-xs font-black uppercase tracking-wider ${
                                     isWeekend 
                                         ? 'text-amber-800 bg-amber-100/50 border-l border-amber-200/50' 
                                         : 'text-slate-700'
@@ -323,7 +312,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                             <div
                                 key={idx}
                                 onClick={() => handleOpenCreateModal(cell.dateStr)}
-                                className={`min-h-[118px] p-2 transition-all cursor-pointer group flex flex-col justify-between ${
+                                className={`min-h-[85px] sm:min-h-[118px] p-1 sm:p-2 transition-all cursor-pointer group flex flex-col justify-between ${
                                     !cell.isCurrentMonth 
                                         ? 'bg-slate-50/40 opacity-40' 
                                         : cell.isWeekend 
@@ -332,7 +321,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                                 }`}
                             >
                                 <div className="flex items-center justify-between">
-                                    <span className={`text-xs font-black w-6 h-6 flex items-center justify-center rounded-full transition-all ${
+                                    <span className={`text-[11px] sm:text-xs font-black w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full transition-all ${
                                         isToday 
                                             ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black shadow-md shadow-blue-500/30 ring-2 ring-blue-300' 
                                             : cell.isWeekend 
@@ -344,34 +333,34 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                                         {cell.day}
                                     </span>
                                     {dayAppts.length > 0 && (
-                                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                                        <span className="text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-700">
                                             {dayAppts.length}
                                         </span>
                                     )}
                                 </div>
 
-                                {/* Liste des badges de rendez-vous avec couleurs riches */}
-                                <div className="space-y-1.5 mt-1.5 flex-1 overflow-y-auto max-h-[82px] scrollbar-none">
+                                {/* Liste des badges de rendez-vous avec support mobile */}
+                                <div className="space-y-1 sm:space-y-1.5 mt-1 sm:mt-1.5 flex-1 overflow-y-auto max-h-[60px] sm:max-h-[82px] scrollbar-none">
                                     {dayAppts.slice(0, 3).map((appt) => (
                                         <div
                                             key={appt.id}
                                             onClick={(e) => handleOpenEditModal(appt, e)}
                                             onMouseEnter={(e) => handleMouseEnterAppt(appt, e)}
                                             onMouseLeave={handleMouseLeaveAppt}
-                                            className="px-2 py-1.5 rounded-lg text-[11px] font-bold truncate flex items-center gap-1.5 shadow-sm transition-all hover:scale-[1.03] text-white border border-white/20"
+                                            className="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold truncate flex items-center gap-1 sm:gap-1.5 shadow-xs transition-all hover:scale-[1.02] text-white border border-white/20"
                                             style={{ 
                                                 backgroundColor: appt.color || '#2563eb',
                                                 boxShadow: `0 2px 6px ${appt.color ? `${appt.color}40` : 'rgba(37,99,235,0.25)'}`
                                             }}
                                         >
-                                            <span className="text-[9px] font-extrabold bg-black/25 px-1 py-0.5 rounded shrink-0">
+                                            <span className="text-[8px] sm:text-[9px] font-extrabold bg-black/25 px-1 py-0.2 rounded shrink-0">
                                                 {appt.isAllDay ? 'Jour' : appt.startTime}
                                             </span>
                                             <span className="truncate">{appt.title}</span>
                                         </div>
                                     ))}
                                     {dayAppts.length > 3 && (
-                                        <div className="text-[10px] text-blue-600 font-bold px-1 py-0.5 rounded bg-blue-50 text-center">
+                                        <div className="text-[9px] sm:text-[10px] text-blue-600 font-bold px-1 py-0.2 rounded bg-blue-50 text-center">
                                             +{dayAppts.length - 3} de plus
                                         </div>
                                     )}
@@ -400,93 +389,97 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
 
         return (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col">
-                {/* Header Semaine avec puces colorées */}
-                <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
-                    <div className="p-3 text-center text-xs font-black text-slate-400 border-r border-slate-200 flex items-center justify-center">
-                        <Clock className="w-4 h-4 text-slate-400 mr-1" />
-                        <span>Heure</span>
-                    </div>
-                    {weekDays.map((col, idx) => (
-                        <div
-                            key={col.dateStr}
-                            className={`p-3 text-center border-r border-slate-200 last:border-r-0 ${
-                                col.isToday 
-                                    ? 'bg-blue-50/90 border-b-2 border-b-blue-600 ring-1 ring-blue-200' 
-                                    : col.isWeekend 
-                                        ? 'bg-amber-50/60' 
-                                        : 'bg-slate-50/60'
-                            }`}
-                        >
-                            <div className="text-xs font-black uppercase tracking-wider text-slate-500">
-                                {col.name}
+                <div className="overflow-x-auto">
+                    <div className="min-w-[650px] sm:min-w-0">
+                        {/* Header Semaine avec puces colorées */}
+                        <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+                            <div className="p-3 text-center text-xs font-black text-slate-400 border-r border-slate-200 flex items-center justify-center">
+                                <Clock className="w-4 h-4 text-slate-400 mr-1" />
+                                <span>Heure</span>
                             </div>
-                            <div className={`text-sm font-black mt-1 inline-flex w-8 h-8 items-center justify-center rounded-full transition-all ${
-                                col.isToday 
-                                    ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-300' 
-                                    : col.isWeekend 
-                                        ? 'bg-amber-100 text-amber-900 font-extrabold' 
-                                        : 'text-slate-900'
-                            }`}>
-                                {col.date.getDate()}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Corps de la grille horaire */}
-                <div className="overflow-y-auto max-h-[640px] divide-y divide-slate-100">
-                    {HOURS.map((hour) => {
-                        const timeStr = `${String(hour).padStart(2, '0')}:00`;
-                        return (
-                            <div key={hour} className="grid grid-cols-8 min-h-[58px]">
-                                {/* Colonne Horaire */}
-                                <div className="p-2 text-right pr-3 text-xs font-extrabold text-slate-400 border-r border-slate-200 bg-slate-50/40 select-none flex items-center justify-end">
-                                    {timeStr}
+                            {weekDays.map((col) => (
+                                <div
+                                    key={col.dateStr}
+                                    className={`p-2.5 sm:p-3 text-center border-r border-slate-200 last:border-r-0 ${
+                                        col.isToday 
+                                            ? 'bg-blue-50/90 border-b-2 border-b-blue-600 ring-1 ring-blue-200' 
+                                            : col.isWeekend 
+                                                ? 'bg-amber-50/60' 
+                                                : 'bg-slate-50/60'
+                                    }`}
+                                >
+                                    <div className="text-xs font-black uppercase tracking-wider text-slate-500">
+                                        {col.name}
+                                    </div>
+                                    <div className={`text-sm font-black mt-1 inline-flex w-7 h-7 sm:w-8 sm:h-8 items-center justify-center rounded-full transition-all ${
+                                        col.isToday 
+                                            ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-300' 
+                                            : col.isWeekend 
+                                                ? 'bg-amber-100 text-amber-900 font-extrabold' 
+                                                : 'text-slate-900'
+                                    }`}>
+                                        {col.date.getDate()}
+                                    </div>
                                 </div>
+                            ))}
+                        </div>
 
-                                {/* 7 Colonnes Jours */}
-                                {weekDays.map((col) => {
-                                    const dayAppts = (appointmentsByDate[col.dateStr] || []).filter(appt => {
-                                        if (appt.isAllDay) return hour === 7;
-                                        const apptHour = parseInt((appt.startTime || '09:00').split(':')[0], 10);
-                                        return apptHour === hour;
-                                    });
-
-                                    return (
-                                        <div
-                                            key={col.dateStr}
-                                            onClick={() => handleOpenCreateModal(col.dateStr, timeStr)}
-                                            className={`p-1.5 border-r border-slate-100 last:border-r-0 relative transition-colors cursor-pointer group ${
-                                                col.isWeekend 
-                                                    ? 'bg-amber-50/20 hover:bg-amber-100/30' 
-                                                    : 'bg-white hover:bg-blue-50/40'
-                                            }`}
-                                        >
-                                            {dayAppts.map((appt) => (
-                                                <div
-                                                    key={appt.id}
-                                                    onClick={(e) => handleOpenEditModal(appt, e)}
-                                                    onMouseEnter={(e) => handleMouseEnterAppt(appt, e)}
-                                                    onMouseLeave={handleMouseLeaveAppt}
-                                                    className="p-2 rounded-xl text-xs font-bold text-white shadow-md transition-all hover:scale-[1.03] cursor-pointer mb-1 border border-white/20"
-                                                    style={{ 
-                                                        backgroundColor: appt.color || '#2563eb',
-                                                        boxShadow: `0 3px 8px ${appt.color ? `${appt.color}45` : 'rgba(37,99,235,0.3)'}`
-                                                    }}
-                                                >
-                                                    <div className="text-[10px] font-black bg-black/20 px-1.5 py-0.5 rounded inline-block mb-0.5">
-                                                        {appt.isAllDay ? 'Journée' : `${appt.startTime} - ${appt.endTime}`}
-                                                    </div>
-                                                    <div className="font-extrabold truncate text-[11px] leading-tight">{appt.title}</div>
-                                                    {appt.contact && <div className="text-[10px] opacity-90 truncate mt-0.5">👤 {appt.contact}</div>}
-                                                </div>
-                                            ))}
+                        {/* Corps de la grille horaire */}
+                        <div className="overflow-y-auto max-h-[640px] divide-y divide-slate-100">
+                            {HOURS.map((hour) => {
+                                const timeStr = `${String(hour).padStart(2, '0')}:00`;
+                                return (
+                                    <div key={hour} className="grid grid-cols-8 min-h-[58px]">
+                                        {/* Colonne Horaire */}
+                                        <div className="p-2 text-right pr-3 text-xs font-extrabold text-slate-400 border-r border-slate-200 bg-slate-50/40 select-none flex items-center justify-end">
+                                            {timeStr}
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        );
-                    })}
+
+                                        {/* 7 Colonnes Jours */}
+                                        {weekDays.map((col) => {
+                                            const dayAppts = (appointmentsByDate[col.dateStr] || []).filter(appt => {
+                                                if (appt.isAllDay) return hour === 7;
+                                                const apptHour = parseInt((appt.startTime || '09:00').split(':')[0], 10);
+                                                return apptHour === hour;
+                                            });
+
+                                            return (
+                                                <div
+                                                    key={col.dateStr}
+                                                    onClick={() => handleOpenCreateModal(col.dateStr, timeStr)}
+                                                    className={`p-1.5 border-r border-slate-100 last:border-r-0 relative transition-colors cursor-pointer group ${
+                                                        col.isWeekend 
+                                                            ? 'bg-amber-50/20 hover:bg-amber-100/30' 
+                                                            : 'bg-white hover:bg-blue-50/40'
+                                                    }`}
+                                                >
+                                                    {dayAppts.map((appt) => (
+                                                        <div
+                                                            key={appt.id}
+                                                            onClick={(e) => handleOpenEditModal(appt, e)}
+                                                            onMouseEnter={(e) => handleMouseEnterAppt(appt, e)}
+                                                            onMouseLeave={handleMouseLeaveAppt}
+                                                            className="p-1.5 sm:p-2 rounded-xl text-xs font-bold text-white shadow-md transition-all hover:scale-[1.03] cursor-pointer mb-1 border border-white/20"
+                                                            style={{ 
+                                                                backgroundColor: appt.color || '#2563eb',
+                                                                boxShadow: `0 3px 8px ${appt.color ? `${appt.color}45` : 'rgba(37,99,235,0.3)'}`
+                                                            }}
+                                                        >
+                                                            <div className="text-[9px] sm:text-[10px] font-black bg-black/20 px-1 py-0.2 rounded inline-block mb-0.5">
+                                                                {appt.isAllDay ? 'Journée' : `${appt.startTime} - ${appt.endTime}`}
+                                                            </div>
+                                                            <div className="font-extrabold truncate text-[10px] sm:text-[11px] leading-tight">{appt.title}</div>
+                                                            {appt.contact && <div className="text-[9px] sm:text-[10px] opacity-90 truncate mt-0.5">👤 {appt.contact}</div>}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
             </div>
         );
@@ -503,7 +496,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
         return (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col">
                 {/* Hero Header coloré */}
-                <div className="p-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-between shadow-md">
+                <div className="p-4 sm:p-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
                     <div>
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-black uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full text-white backdrop-blur-sm">
@@ -513,14 +506,14 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                                 {dayAppts.length} {dayAppts.length > 1 ? 'rendez-vous' : 'rendez-vous'}
                             </span>
                         </div>
-                        <h3 className="text-2xl lg:text-3xl font-black text-white mt-1 capitalize tracking-tight">
+                        <h3 className="text-xl sm:text-2xl lg:text-3xl font-black text-white mt-1 capitalize tracking-tight">
                             {headerTitle}
                         </h3>
                     </div>
                     <Button
                         size="sm"
                         onClick={() => handleOpenCreateModal(dateStr)}
-                        className="bg-white hover:bg-slate-100 text-blue-700 text-xs font-black gap-1.5 shadow-lg rounded-xl h-10 px-4"
+                        className="bg-white hover:bg-slate-100 text-blue-700 text-xs font-black gap-1.5 shadow-lg rounded-xl h-9 sm:h-10 px-4"
                     >
                         <Plus className="w-4 h-4 text-blue-600" />
                         <span>Nouveau RDV</span>
@@ -543,31 +536,31 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                                 onClick={() => handleOpenCreateModal(dateStr, timeStr)}
                                 className="grid grid-cols-12 min-h-[66px] hover:bg-blue-50/30 cursor-pointer transition-colors"
                             >
-                                <div className="col-span-2 p-3 text-right pr-4 text-xs font-black text-slate-400 border-r border-slate-200 bg-slate-50/50 select-none flex items-center justify-end">
+                                <div className="col-span-3 sm:col-span-2 p-2 sm:p-3 text-right pr-2 sm:pr-4 text-xs font-black text-slate-400 border-r border-slate-200 bg-slate-50/50 select-none flex items-center justify-end">
                                     {timeStr}
                                 </div>
-                                <div className="col-span-10 p-2.5 space-y-2">
+                                <div className="col-span-9 sm:col-span-10 p-2 sm:p-2.5 space-y-2">
                                     {hourAppts.map((appt) => (
                                         <div
                                             key={appt.id}
                                             onClick={(e) => handleOpenEditModal(appt, e)}
                                             onMouseEnter={(e) => handleMouseEnterAppt(appt, e)}
                                             onMouseLeave={handleMouseLeaveAppt}
-                                            className="p-3.5 rounded-2xl text-white shadow-md flex items-center justify-between transition-all hover:scale-[1.01] border border-white/20"
+                                            className="p-3 sm:p-3.5 rounded-2xl text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 transition-all hover:scale-[1.01] border border-white/20"
                                             style={{ 
                                                 backgroundColor: appt.color || '#2563eb',
                                                 boxShadow: `0 4px 12px ${appt.color ? `${appt.color}40` : 'rgba(37,99,235,0.3)'}`
                                             }}
                                         >
                                             <div className="space-y-1">
-                                                <div className="flex items-center gap-2.5">
-                                                    <span className="text-xs font-black bg-black/25 px-2.5 py-0.5 rounded-lg">
+                                                <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                                                    <span className="text-[11px] sm:text-xs font-black bg-black/25 px-2 sm:px-2.5 py-0.5 rounded-lg">
                                                         {appt.isAllDay ? 'Journée' : `${appt.startTime} - ${appt.endTime}`}
                                                     </span>
-                                                    <span className="font-black text-base">{appt.title}</span>
+                                                    <span className="font-black text-sm sm:text-base">{appt.title}</span>
                                                 </div>
                                                 {appt.contact && (
-                                                    <div className="text-xs opacity-95 flex items-center gap-2 pt-0.5">
+                                                    <div className="text-xs opacity-95 flex items-center gap-2 pt-0.5 flex-wrap">
                                                         <span className="bg-white/20 px-2 py-0.5 rounded-md flex items-center gap-1">
                                                             <User className="w-3.5 h-3.5" />
                                                             <span>{appt.contact}</span>
@@ -583,8 +576,8 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                                             </div>
 
                                             {appt.reminder && appt.reminder !== 'none' && (
-                                                <div className="flex items-center gap-1.5 text-xs font-bold bg-black/25 px-3 py-1.5 rounded-xl">
-                                                    <Bell className="w-4 h-4 text-amber-300" />
+                                                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold bg-black/25 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl self-end sm:self-auto">
+                                                    <Bell className="w-3.5 h-3.5 text-amber-300" />
                                                     <span>Rappel {REMINDER_OPTIONS.find(r => r.id === appt.reminder)?.label.split(' ')[0]}</span>
                                                 </div>
                                             )}
@@ -674,19 +667,19 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             
             {/* Top Bar : Navigation & Sélecteur de vues avec design moderne et coloré */}
-            <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-4 flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-3 sm:p-4 flex flex-col lg:flex-row items-center justify-between gap-3 sm:gap-4">
                 
                 {/* Navigation Gauche */}
-                <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start">
-                    <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto justify-between lg:justify-start">
+                    <div className="flex items-center gap-1 sm:gap-1.5">
                         <Button
                             variant="outline"
                             size="icon"
                             onClick={handlePrev}
-                            className="h-9 w-9 text-slate-700 hover:bg-slate-100 rounded-xl"
+                            className="h-8 w-8 sm:h-9 sm:w-9 text-slate-700 hover:bg-slate-100 rounded-xl"
                             title="Précédent"
                         >
                             <ChevronLeft className="w-4 h-4" />
@@ -695,7 +688,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                             variant="outline"
                             size="icon"
                             onClick={handleNext}
-                            className="h-9 w-9 text-slate-700 hover:bg-slate-100 rounded-xl"
+                            className="h-8 w-8 sm:h-9 sm:w-9 text-slate-700 hover:bg-slate-100 rounded-xl"
                             title="Suivant"
                         >
                             <ChevronRight className="w-4 h-4" />
@@ -704,27 +697,27 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                             variant="outline"
                             size="sm"
                             onClick={handleToday}
-                            className="h-9 text-xs font-black text-blue-700 bg-blue-50 border-blue-200 rounded-xl px-3.5 hover:bg-blue-100"
+                            className="h-8 sm:h-9 text-[11px] sm:text-xs font-black text-blue-700 bg-blue-50 border-blue-200 rounded-xl px-2.5 sm:px-3.5 hover:bg-blue-100"
                         >
                             Aujourd'hui
                         </Button>
                     </div>
 
-                    <h2 className="text-lg lg:text-xl font-black text-slate-900 capitalize tracking-tight ml-1 flex items-center gap-2">
-                        <CalendarIcon className="w-5 h-5 text-blue-600" />
+                    <h2 className="text-base sm:text-lg lg:text-xl font-black text-slate-900 capitalize tracking-tight ml-1 flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                         <span>{headerTitle}</span>
                     </h2>
                 </div>
 
                 {/* Actions Droite : 4 Boutons de Vue + Nouveau RDV */}
-                <div className="flex items-center gap-2.5 w-full lg:w-auto justify-end flex-wrap">
+                <div className="flex items-center gap-2 sm:gap-2.5 w-full lg:w-auto justify-between sm:justify-end flex-wrap">
                     
                     {/* Les 4 boutons de vue avec fond et sélecteur coloré */}
-                    <div className="bg-slate-100 p-1 rounded-xl flex gap-1 border border-slate-200">
+                    <div className="bg-slate-100 p-1 rounded-xl flex gap-0.5 sm:gap-1 border border-slate-200">
                         <button
                             type="button"
                             onClick={() => handleSwitchView('day')}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
+                            className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-black transition-all ${
                                 viewMode === 'day'
                                     ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                                     : 'text-slate-600 hover:text-slate-900'
@@ -735,7 +728,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                         <button
                             type="button"
                             onClick={() => handleSwitchView('week')}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
+                            className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-black transition-all ${
                                 viewMode === 'week'
                                     ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                                     : 'text-slate-600 hover:text-slate-900'
@@ -746,7 +739,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                         <button
                             type="button"
                             onClick={() => handleSwitchView('month')}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
+                            className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-black transition-all ${
                                 viewMode === 'month'
                                     ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                                     : 'text-slate-600 hover:text-slate-900'
@@ -757,7 +750,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                         <button
                             type="button"
                             onClick={() => handleSwitchView('year')}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
+                            className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-black transition-all ${
                                 viewMode === 'year'
                                     ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                                     : 'text-slate-600 hover:text-slate-900'
@@ -770,7 +763,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                     {/* Bouton Nouveau Rendez-vous avec dégradé vif */}
                     <Button
                         onClick={() => handleOpenCreateModal()}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-black rounded-xl h-9 px-4 gap-1.5 shadow-md shadow-blue-500/25"
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-[11px] sm:text-xs font-black rounded-xl h-8 sm:h-9 px-3 sm:px-4 gap-1.5 shadow-md shadow-blue-500/25"
                     >
                         <Plus className="w-4 h-4" />
                         <span>Nouveau RDV</span>
@@ -835,7 +828,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
             {/* Hover Tooltip Flottant résumant le RDV */}
             {hoveredAppt && (
                 <div
-                    className="fixed z-[999] pointer-events-none bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border border-slate-700 max-w-xs space-y-2 animate-in fade-in zoom-in-95 duration-100"
+                    className="fixed z-[999] pointer-events-none bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border border-slate-700 max-w-xs space-y-2 animate-in fade-in zoom-in-95 duration-100 hidden sm:block"
                     style={{
                         left: `${tooltipPos.x}px`,
                         top: `${tooltipPos.y}px`,
