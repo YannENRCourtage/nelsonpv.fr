@@ -112,8 +112,8 @@ export function Structure({ hideBracing = false, forceHideDimensions = false, vi
                         const rSpan = width * 0.75;
                         const frameRidgeH = eaveHeight + (rSpan * Math.tan(rAngle));
                         if (buildingType === 'asymetrique_2') {
-                            // Abaisse la bande lisse de 1m sur l'asymétrique 2 zones (sur les 2 largeurs)
-                            return frameRidgeH - 0.50;
+                            // Abaisse la bande lisse de 0.3m supplémentaire sur l'asymétrique 2 zones (-0.80m)
+                            return frameRidgeH - 0.80;
                         }
                         // Pour asymétrique 1 zone
                         return frameRidgeH + 0.50;
