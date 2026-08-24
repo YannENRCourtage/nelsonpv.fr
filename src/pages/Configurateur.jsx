@@ -118,12 +118,12 @@ export default function Configurateur() {
 
             // 2. Capture du Pignon (gauche)
             setViewMode('PIGNON');
-            await wait(350);
+            await wait(500);
             const imgPignon = canvasRef.current.toDataURL('image/png', 1.0);
 
             // 3. Capture de la Façade Sud (Long Pan Solaire)
             setViewMode('FACADE_SUD');
-            await wait(350);
+            await wait(500);
             const imgFacadeSud = canvasRef.current.toDataURL('image/png', 1.0);
 
             setFicheImages({

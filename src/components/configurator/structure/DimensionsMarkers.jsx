@@ -635,7 +635,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     ))}
                     <mesh position={widthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     {buildingType !== 'epona_talian5' && (
-                        <Text position={[0, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        <Text position={[0, isPignonView ? 0.6 : 0.2, 3.5]} rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                             {`${width} m`}
                         </Text>
                     )}
@@ -650,8 +650,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={lengthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[xSide, 0.2, -length / 2]}
-                        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+                        position={[xSide, isFacadeSudView ? 0.6 : 0.2, -length / 2]}
+                        rotation={isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
@@ -672,8 +672,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={baySpacingData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={baySpacingData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[baySpacingData.xBay, 0.2, -baySpacingData.effectiveBaySpacing / 2]}
-                        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+                        position={[baySpacingData.xBay, isFacadeSudView ? 0.6 : 0.2, -baySpacingData.effectiveBaySpacing / 2]}
+                        rotation={isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
@@ -766,7 +766,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                     <mesh position={rightExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                 </>
                             )}
-                            <Text position={[width / 2 + rightExtData.extWidth / 2, 0.2, isTalian4 ? 4.5 : 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            <Text position={[width / 2 + rightExtData.extWidth / 2, isPignonView ? 0.6 : 0.2, isTalian4 ? 4.5 : 3.5]} rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                                 {isEpona ? '7.8 m' : `${rightExtData.extWidth} m`}
                             </Text>
                         </group>
@@ -803,8 +803,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                 </>
                             )}
                             <Text
-                                position={[-width / 2 - leftExtData.extWidth / 2, 0.2, isTalian4 ? 4.5 : 3.5]}
-                                rotation={[-Math.PI / 2, 0, 0]}
+                                position={[-width / 2 - leftExtData.extWidth / 2, isPignonView ? 0.6 : 0.2, isTalian4 ? 4.5 : 3.5]}
+                                rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
                                 fontSize={0.8}
                                 color={textColor}
                                 anchorX="center"
@@ -841,8 +841,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asym2MiddleColData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2MiddleColData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[asym2MiddleColData.wMid.x, 0.2, 1.5]}
-                        rotation={[-Math.PI / 2, 0, 0]}
+                        position={[asym2MiddleColData.wMid.x, isPignonView ? 0.6 : 0.2, 1.5]}
+                        rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
@@ -863,8 +863,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asym2RightDistData.rStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2RightDistData.rEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[asym2RightDistData.rMid.x, 0.2, 1.5]}
-                        rotation={[-Math.PI / 2, 0, 0]}
+                        position={[asym2RightDistData.rMid.x, isPignonView ? 0.6 : 0.2, 1.5]}
+                        rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
@@ -885,8 +885,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={acamaTotalWidthData.xStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={acamaTotalWidthData.xEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[acamaTotalWidthData.xMid.x, 0.2, acamaTotalWidthData.zPos + 0.5]}
-                        rotation={[-Math.PI / 2, 0, 0]}
+                        position={[acamaTotalWidthData.xMid.x, isPignonView ? 0.6 : 0.2, acamaTotalWidthData.zPos + 0.5]}
+                        rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
@@ -931,7 +931,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <Line points={eponaMarkers.rSpanPoints[1]} color={lineColor} lineWidth={lineWidth} />
                             <mesh position={eponaMarkers.rSpanStart}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                             <mesh position={eponaMarkers.rSpanEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                            <Text position={[eponaMarkers.rSpanMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            <Text position={[eponaMarkers.rSpanMid.x, isPignonView ? 0.6 : 0.2, 3.5]} rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                                 {eponaMarkers.rightSpanLabel}
                             </Text>
 
@@ -942,7 +942,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                     <Line points={eponaMarkers.lCenterPoints[1]} color={lineColor} lineWidth={lineWidth} />
                                     <mesh position={eponaMarkers.lCenterStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                     <mesh position={eponaMarkers.lCenterEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                    <Text position={[eponaMarkers.lCenterMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                                    <Text position={[eponaMarkers.lCenterMid.x, isPignonView ? 0.6 : 0.2, 3.5]} rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                                         {eponaMarkers.lCenterLabel}
                                     </Text>
                                 </>
@@ -955,7 +955,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                     <Line points={eponaMarkers.lAwningPoints[1]} color={lineColor} lineWidth={lineWidth} />
                                     <mesh position={eponaMarkers.lAwningStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                     <mesh position={eponaMarkers.lAwningEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                    <Text position={[eponaMarkers.lAwningMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                                    <Text position={[eponaMarkers.lAwningMid.x, isPignonView ? 0.6 : 0.2, 3.5]} rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                                         2.5 m
                                     </Text>
                                 </>
