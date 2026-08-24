@@ -1,4 +1,5 @@
 // Agenda and Appointments Service for Nelson CRM
+// Personal Agenda for each user (strictly isolated)
 import {
     collection,
     doc,
@@ -71,28 +72,18 @@ export const normalizeDateString = (dateInput) => {
 };
 
 /**
- * Charge les rendez-vous en cache local
+ * Charge les rendez-vous personnels en cache local pour cet utilisateur STRICTEMENT
  */
-export const getLocalAppointments = (userId, tenantId) => {
+export const getLocalAppointments = (userId) => {
+    if (!userId || userId === 'default_user') return [];
     try {
-        if (userId) {
-            const userStored = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${userId}`);
-            if (userStored) {
-                const parsed = JSON.parse(userStored);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        const userStored = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${userId}`);
+        if (userStored) {
+            const parsed = JSON.parse(userStored);
+            if (Array.isArray(parsed)) {
+                // S'assurer que tous les rendez-vous appartiennent bien à cet userId
+                return parsed.filter(item => item && (item.userId === userId || !item.userId));
             }
-        }
-        if (tenantId) {
-            const tenantStored = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${tenantId}`);
-            if (tenantStored) {
-                const parsed = JSON.parse(tenantStored);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-            }
-        }
-        const globalStored = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}global`);
-        if (globalStored) {
-            const parsed = JSON.parse(globalStored);
-            if (Array.isArray(parsed)) return parsed;
         }
     } catch (e) {
         console.warn('Erreur lecture cache local agenda:', e);
@@ -101,24 +92,30 @@ export const getLocalAppointments = (userId, tenantId) => {
 };
 
 /**
- * Sauvegarde les rendez-vous en cache local et notifie toutes les instances
+ * Sauvegarde les rendez-vous en cache local STRICTEMENT pour cet utilisateur
  */
-export const saveLocalAppointments = (userId, tenantId, appointments) => {
-    if (!Array.isArray(appointments)) return;
+export const saveLocalAppointments = (userId, appointments) => {
+    if (!userId || userId === 'default_user' || !Array.isArray(appointments)) return;
     try {
+        // Nettoyer les anciens caches globaux qui partageaient à tort les rendez-vous
+        try {
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}global`);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}green-invest`);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}acama`);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}enr-courtage-energie`);
+        } catch { }
+
         const dataStr = JSON.stringify(appointments);
-        if (userId) localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${userId}`, dataStr);
-        if (tenantId) localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${tenantId}`, dataStr);
-        localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}global`, dataStr);
+        localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${userId}`, dataStr);
 
         // 1. Événement local sur la fenêtre courante
         if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent(AGENDA_SYNC_EVENT, { detail: { userId, tenantId, appointments } }));
+            window.dispatchEvent(new CustomEvent(AGENDA_SYNC_EVENT, { detail: { userId, appointments } }));
         }
 
         // 2. BroadcastChannel inter-onglets et inter-fenêtres
         if (broadcastChannel) {
-            broadcastChannel.postMessage({ type: 'AGENDA_SYNC', userId, tenantId, appointments });
+            broadcastChannel.postMessage({ type: 'AGENDA_SYNC', userId, appointments });
         }
     } catch (e) {
         console.warn('Erreur écriture cache local agenda:', e);
@@ -126,7 +123,7 @@ export const saveLocalAppointments = (userId, tenantId, appointments) => {
 };
 
 /**
- * Nettoie et formate un objet de rendez-vous
+ * Nettoie et formate un objet de rendez-vous personnel
  */
 const formatAppointmentObject = (appointmentData, userId, tenantId) => {
     const effectiveUserId = userId || 'default_user';
@@ -158,7 +155,7 @@ const formatAppointmentObject = (appointmentData, userId, tenantId) => {
 };
 
 /**
- * Crée un nouveau rendez-vous pour un utilisateur
+ * Crée un nouveau rendez-vous personnel pour un utilisateur
  */
 export const createAppointment = async (appointmentData, userId, tenantId = 'green-invest') => {
     const effectiveUserId = userId || 'default_user';
@@ -166,11 +163,11 @@ export const createAppointment = async (appointmentData, userId, tenantId = 'gre
     const newAppointment = formatAppointmentObject(appointmentData, effectiveUserId, effectiveTenantId);
 
     // 1. Mise à jour optimiste locale immédiate (0 ms)
-    const current = getLocalAppointments(effectiveUserId, effectiveTenantId);
+    const current = getLocalAppointments(effectiveUserId);
     const updated = [newAppointment, ...current.filter(item => item.id !== newAppointment.id)];
-    saveLocalAppointments(effectiveUserId, effectiveTenantId, updated);
+    saveLocalAppointments(effectiveUserId, updated);
 
-    // 2. Écriture distante Firestore avec réessai
+    // 2. Écriture distante Firestore
     try {
         if (db) {
             const docRef = doc(db, 'agenda_events', newAppointment.id);
@@ -199,11 +196,12 @@ export const updateAppointment = async (appointmentId, data, userId, tenantId = 
     const patch = {
         ...data,
         ...(normalizedDate ? { date: normalizedDate } : {}),
+        userId: effectiveUserId,
         updatedAt: new Date().toISOString(),
     };
 
     // 1. Mise à jour optimiste locale immédiate (0 ms)
-    const current = getLocalAppointments(effectiveUserId, effectiveTenantId);
+    const current = getLocalAppointments(effectiveUserId);
     let updatedAppt = null;
     const updated = current.map(item => {
         if (item.id === appointmentId) {
@@ -218,7 +216,7 @@ export const updateAppointment = async (appointmentId, data, userId, tenantId = 
         updated.unshift(updatedAppt);
     }
 
-    saveLocalAppointments(effectiveUserId, effectiveTenantId, updated);
+    saveLocalAppointments(effectiveUserId, updated);
 
     // 2. Synchronisation Firestore distante
     try {
@@ -241,13 +239,12 @@ export const updateAppointment = async (appointmentId, data, userId, tenantId = 
  */
 export const deleteAppointment = async (appointmentId, userId, tenantId = 'green-invest') => {
     const effectiveUserId = userId || 'default_user';
-    const effectiveTenantId = tenantId || 'green-invest';
     if (!appointmentId) return;
 
     // 1. Suppression optimiste locale immédiate (0 ms)
-    const current = getLocalAppointments(effectiveUserId, effectiveTenantId);
+    const current = getLocalAppointments(effectiveUserId);
     const updated = current.filter(item => item.id !== appointmentId);
-    saveLocalAppointments(effectiveUserId, effectiveTenantId, updated);
+    saveLocalAppointments(effectiveUserId, updated);
 
     // 2. Suppression Firestore distante
     try {
@@ -261,14 +258,14 @@ export const deleteAppointment = async (appointmentId, userId, tenantId = 'green
 };
 
 /**
- * Synchronise les rendez-vous stockés uniquement en local vers Firestore (Migration auto)
+ * Synchronise les rendez-vous personnels stockés uniquement en local vers Firestore (Migration auto pour ce userId)
  */
 const syncLocalAppointmentsToFirestore = async (localList, firestoreIds, userId, tenantId) => {
-    if (!db || !Array.isArray(localList) || localList.length === 0) return;
-    const missingInFirestore = localList.filter(item => item && item.id && !firestoreIds.has(item.id));
+    if (!db || !Array.isArray(localList) || localList.length === 0 || !userId || userId === 'default_user') return;
+    const missingInFirestore = localList.filter(item => item && item.id && !firestoreIds.has(item.id) && (item.userId === userId || !item.userId));
     if (missingInFirestore.length === 0) return;
 
-    console.info(`[Agenda] Migration automatique de ${missingInFirestore.length} rendez-vous locaux vers Firestore...`);
+    console.info(`[Agenda] Synchronisation de ${missingInFirestore.length} rendez-vous de ${userId} vers Firestore...`);
     for (const appt of missingInFirestore) {
         try {
             const formatted = formatAppointmentObject(appt, userId, tenantId);
@@ -300,28 +297,33 @@ const sortAppointmentsChronologically = (list) => {
 };
 
 /**
- * Écoute en temps réel les rendez-vous (Firestore onSnapshot + BroadcastChannel + LocalStorage)
+ * Écoute en temps réel les rendez-vous STRICTEMENT PERSONNELS de l'utilisateur
  */
 export const subscribeToUserAppointments = (userId, tenantId = 'green-invest', callback) => {
     const effectiveUserId = userId || 'default_user';
     const effectiveTenantId = tenantId || 'green-invest';
 
-    // 1. Délivrer instantanément le cache local existant (0 ms)
-    const initialLocal = getLocalAppointments(effectiveUserId, effectiveTenantId);
+    if (!userId || userId === 'default_user') {
+        callback([]);
+        return () => { };
+    }
+
+    // 1. Délivrer instantanément le cache local personnel (0 ms)
+    const initialLocal = getLocalAppointments(effectiveUserId);
     callback(sortAppointmentsChronologically(initialLocal));
 
-    // 2. Écouteurs de synchronisation locale & BroadcastChannel
+    // 2. Écouteurs de synchronisation locale & BroadcastChannel filtrés par userId
     const handleLocalSync = (e) => {
-        if (e.detail && Array.isArray(e.detail.appointments)) {
+        if (e.detail && e.detail.userId === effectiveUserId && Array.isArray(e.detail.appointments)) {
             callback(sortAppointmentsChronologically(e.detail.appointments));
-        } else {
-            const fresh = getLocalAppointments(effectiveUserId, effectiveTenantId);
+        } else if (!e.detail || e.detail.userId === effectiveUserId) {
+            const fresh = getLocalAppointments(effectiveUserId);
             callback(sortAppointmentsChronologically(fresh));
         }
     };
 
     const handleBroadcastMessage = (event) => {
-        if (event.data && event.data.type === 'AGENDA_SYNC' && Array.isArray(event.data.appointments)) {
+        if (event.data && event.data.type === 'AGENDA_SYNC' && event.data.userId === effectiveUserId && Array.isArray(event.data.appointments)) {
             callback(sortAppointmentsChronologically(event.data.appointments));
         }
     };
@@ -340,12 +342,11 @@ export const subscribeToUserAppointments = (userId, tenantId = 'green-invest', c
         };
     }
 
-    // 3. Écouteur Firestore temps réel faisant autorité
+    // 3. Écouteur Firestore temps réel filtré strictement par userId
     try {
-        // Requête sur la collection agenda_events
         const q = query(
             collection(db, 'agenda_events'),
-            where('tenantId', '==', effectiveTenantId)
+            where('userId', '==', effectiveUserId)
         );
 
         let initialSnapshotProcessed = false;
@@ -358,28 +359,27 @@ export const subscribeToUserAppointments = (userId, tenantId = 'green-invest', c
                     id: d.id,
                     date: normalizeDateString(data.date),
                 };
-            });
+            }).filter(item => item.userId === effectiveUserId);
 
             const firestoreIds = new Set(firestoreList.map(item => item.id));
 
-            // Lors de la première réception, on migre d'éventuels rendez-vous locaux orphelins vers Firestore
+            // Lors de la première réception, migrer les RDVs locaux orphelins de cet utilisateur
             if (!initialSnapshotProcessed) {
                 initialSnapshotProcessed = true;
-                const localList = getLocalAppointments(effectiveUserId, effectiveTenantId);
-                // Si le cache local contient des éléments non présents sur Firestore, les migrer
+                const localList = getLocalAppointments(effectiveUserId);
                 syncLocalAppointmentsToFirestore(localList, firestoreIds, effectiveUserId, effectiveTenantId);
             }
 
             const sorted = sortAppointmentsChronologically(firestoreList);
 
-            // Mise à jour du cache local avec la liste Firestore authoritative
-            saveLocalAppointments(effectiveUserId, effectiveTenantId, sorted);
+            // Mise à jour du cache local personnel
+            saveLocalAppointments(effectiveUserId, sorted);
 
             // Déclenchement du callback réactif
             callback(sorted);
         }, (err) => {
-            console.warn('Erreur abonnement Firestore agenda (utilisation du cache local):', err);
-            const fallbackList = getLocalAppointments(effectiveUserId, effectiveTenantId);
+            console.warn('Erreur abonnement Firestore agenda personnel:', err);
+            const fallbackList = getLocalAppointments(effectiveUserId);
             callback(sortAppointmentsChronologically(fallbackList));
         });
 
@@ -389,7 +389,7 @@ export const subscribeToUserAppointments = (userId, tenantId = 'green-invest', c
             unsubscribeFirestore();
         };
     } catch (e) {
-        console.warn('Échec initialisation écouteur agenda:', e);
+        console.warn('Échec initialisation écouteur agenda personnel:', e);
         return () => {
             if (typeof window !== 'undefined') window.removeEventListener(AGENDA_SYNC_EVENT, handleLocalSync);
             if (broadcastChannel) broadcastChannel.removeEventListener('message', handleBroadcastMessage);

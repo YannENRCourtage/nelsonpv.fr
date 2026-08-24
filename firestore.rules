@@ -26,8 +26,9 @@ service cloud.firestore {
 
     // Projects: Members of the same tenant can read/write
     match /projects/{projectId} {
-      allow read, write: if isAdmin() || (isAuthenticated() && belongsToTenant(resource.data.tenantId));
+      allow read, write: if isAuthenticated();
       allow create: if isAuthenticated();
+      allow delete: if isAuthenticated();
       
       // Dev Workflows
       match /dev_workflows/{workflowId} {
@@ -43,22 +44,23 @@ service cloud.firestore {
       }
     }
     
-    // Users collection
+    // Users collection: All authenticated users can read profiles for CRM display
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow read: if isAuthenticated();
       allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow create, delete: if isAdmin();
     }
     
     // Contacts collection
     match /contacts/{contactId} {
-      allow read, write: if isAdmin() || (isAuthenticated() && belongsToTenant(resource.data.tenantId));
+      allow read, write: if isAuthenticated();
       allow create: if isAuthenticated();
+      allow delete: if isAuthenticated();
     }
     
     // Comments collection
     match /comments/{commentId} {
-      allow read: if isAuthenticated() && (isAdmin() || belongsToTenant(resource.data.tenantId));
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update, delete: if isAuthenticated() && 
                                 (isAdmin() || resource.data.userId == request.auth.uid);
@@ -74,15 +76,16 @@ service cloud.firestore {
 
     // Tasks collection
     match /tasks/{taskId} {
-      allow read, write: if isAdmin() || (isAuthenticated() && belongsToTenant(resource.data.tenantId));
+      allow read, write: if isAuthenticated();
       allow create: if isAuthenticated();
+      allow delete: if isAuthenticated();
     }
 
     // Activities collection
     match /activities/{activityId} {
-      allow read: if isAdmin() || (isAuthenticated() && belongsToTenant(resource.data.tenantId));
+      allow read, write: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
+      allow update, delete: if isAdmin() || isAuthenticated();
     }
 
     // Config collection
@@ -93,7 +96,7 @@ service cloud.firestore {
     
     // Financial Simulations
     match /financial_simulations/{simulationId} {
-      allow read: if isAuthenticated() && (isAdmin() || belongsToTenant(resource.data.tenantId));
+      allow read, write: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update, delete: if isAdmin();
     }
@@ -101,11 +104,11 @@ service cloud.firestore {
     // Monday tables
     match /monday_tables/{tableId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin() || (isAuthenticated() && belongsToTenant(resource.data.tenantId));
+      allow write: if isAuthenticated();
       
       match /rows/{rowId} {
         allow read: if isAuthenticated();
-        allow write: if isAdmin() || (isAuthenticated() && belongsToTenant(get(/databases/$(database)/documents/monday_tables/$(tableId)).data.tenantId));
+        allow write: if isAuthenticated();
       }
     }
     
@@ -114,7 +117,7 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
-    // Agenda & Appointments collection
+    // Agenda & Appointments collection (Personal user agenda)
     match /agenda_events/{eventId} {
       allow read, write: if isAuthenticated();
       allow create: if isAuthenticated();

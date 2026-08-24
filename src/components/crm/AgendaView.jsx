@@ -63,7 +63,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     const [currentDate, setCurrentDate] = useState(new Date());
     
     const userId = user?.uid || user?.id || user?.email || 'default_user';
-    const [appointments, setAppointments] = useState(() => getLocalAppointments(userId, activeTenantId));
+    const [appointments, setAppointments] = useState(() => getLocalAppointments(userId));
     
     // Filtre par catégorie
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -76,8 +76,13 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     const [hoveredAppt, setHoveredAppt] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-    // Synchronisation temps réel des rendez-vous
+    // Synchronisation temps réel des rendez-vous personnels
     useEffect(() => {
+        if (!userId || userId === 'default_user') {
+            setAppointments([]);
+            return;
+        }
+        setAppointments(getLocalAppointments(userId));
         const unsubscribe = subscribeToUserAppointments(userId, activeTenantId, (list) => {
             if (list) {
                 setAppointments(list);

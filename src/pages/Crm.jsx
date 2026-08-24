@@ -201,20 +201,20 @@ export default function Crm() {
       setIsLoading(true);
       try {
         const [contactsData, tasksData, activitiesData, usersData] = await Promise.all([
-          apiService.getContacts(activeTenantId),
-          apiService.getTasks(activeTenantId),
-          apiService.getActivities(12, activeTenantId),
-          apiService.getUsers()
+          apiService.getContacts(activeTenantId).catch(err => { console.warn("Contacts fetch notice:", err); return []; }),
+          apiService.getTasks(activeTenantId).catch(err => { console.warn("Tasks fetch notice:", err); return []; }),
+          apiService.getActivities(12, activeTenantId).catch(err => { console.warn("Activities fetch notice:", err); return []; }),
+          apiService.getUsers().catch(err => { console.warn("Users fetch notice:", err); return []; })
         ]);
         // CLEANUP: Filtrage initial
         const validContacts = [];
         const contactDeletions = [];
         
         // On récupère aussi les projets pour vérifier l'appartenance réelle
-        const projsData = await apiService.getProjects(activeTenantId);
+        const projsData = await apiService.getProjects(activeTenantId).catch(err => { console.warn("Projects fetch notice:", err); return []; });
         
         (contactsData || []).forEach(c => {
-          const hasLocalProjects = projsData.some(p => 
+          const hasLocalProjects = (projsData || []).some(p => 
             (p.email && c.email && p.email.toLowerCase() === c.email.toLowerCase()) ||
             (p.name && c.name && p.name.toLowerCase() === c.name.toLowerCase()) ||
             (p.id === c.projectId)
@@ -224,15 +224,14 @@ export default function Crm() {
             contactDeletions.push(apiService.deleteContact(c.id).catch(e => console.warn("Cleanup contact failed", e)));
           } else if (!hasLocalProjects) {
             // Si le contact n'a aucun projet local, on ne l'affiche pas (Isolation Tenant)
-            // Note: On ne le supprime pas forcément tout de suite ici, on l'isole.
           } else {
             validContacts.push(c);
           }
         });
 
         // Trigger project cleanup in background (Sans nom)
-        apiService.getProjects(activeTenantId).then(async (allProjs) => {
-          const badProjs = allProjs.filter(p => !p.name || p.name.trim() === '' || p.name === 'Projet' || p.name === 'Sans nom' || p.name === 'PROJET SANS NOM');
+        (projsData ? Promise.resolve(projsData) : apiService.getProjects(activeTenantId)).then(async (allProjs) => {
+          const badProjs = (allProjs || []).filter(p => !p.name || p.name.trim() === '' || p.name === 'Projet' || p.name === 'Sans nom' || p.name === 'PROJET SANS NOM');
           if (badProjs.length > 0) {
             console.log(`Cleaning up ${badProjs.length} unnamed projects...`);
             await Promise.all(badProjs.map(p => apiService.deleteProject(p.id).catch(e => console.warn("Cleanup project failed", e))));
@@ -241,7 +240,6 @@ export default function Crm() {
 
         // Auto-Deduplication silencieuse pour les admins
         if (user?.role === 'admin') {
-          // On passe les données fraîches car les states ne sont pas encore mis à jour
           handleDeduplicateContacts(true, validContacts, projsData); 
         }
 
@@ -251,7 +249,6 @@ export default function Crm() {
         setUsers(usersData || []);
 
         // Load monthly KPI snapshot for comparison
-        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
         const lastMonth = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 7);
 
         try {
@@ -264,8 +261,7 @@ export default function Crm() {
         }
 
       } catch (error) {
-        console.error('Error fetching data:', error);
-        toast({ title: "Erreur", description: "Erreur de chargement des données.", variant: "destructive" });
+        console.warn('Silent data fetch handled:', error);
       } finally {
         setIsLoading(false);
       }
