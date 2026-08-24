@@ -108,20 +108,11 @@ export function Structure({ hideBracing = false, forceHideDimensions = false } =
                 <RidgeFlashing
                     len={length + 1.0}
                     h={(() => {
-                        let h = calculatedRidgeHeight + 1.0;
-                        if (config.buildingType === 'asymetrique_1') {
-                            if (Math.abs(width - 20) < 0.5) h += 0.30; 
-                            else if (Math.abs(width - 16.4) < 0.5) h -= 0.06; 
-                        } else if (config.buildingType === 'asymetrique_2') {
-                            if (!config.isAcama) {
-                                if (Math.abs(width - 25.5) < 0.2) h += 1.40; // USER REQUEST 10/04/2026: raised by 0.3m
-                                else if (Math.abs(width - 29.1) < 0.2) h += 2.05; // USER REQUEST 10/04/2026: raised by 0.3m
-                                else h += 1.15; 
-                            }
-                            if (Math.abs(width - 25.5) < 0.5) h -= 0.44; 
-                            else if (Math.abs(width - 29.1) < 0.5) h -= 0.44; 
-                        }
-                        return h;
+                        const rAngle = 15 * (Math.PI / 180);
+                        const rSpan = width * 0.75;
+                        const frameRidgeH = eaveHeight + (rSpan * Math.tan(rAngle));
+                        // La bande lisse est posée juste au-dessus du bac acier à la jointure des 2 pentes (+0.50m)
+                        return frameRidgeH + 0.50;
                     })()}
                     angle={15 * Math.PI / 180} 
                     x={-width * 0.25} 

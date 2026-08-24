@@ -117,30 +117,22 @@ export function PortalFrame({
         }
     } else if (isAsymetrique2) {
         // Standard Asymetrique 2 zones
-        let mainPitch = 15 * (Math.PI / 180);
+        const mainPitch = 15 * (Math.PI / 180);
         rightEaveHeight = 4.0;
         middleColumnX = -width / 2 + 13.1;
         leftSpan = width * 0.25;
         rightSpan = width * 0.75;
         apexX = -width / 2 + leftSpan;
-
-        if (Math.abs(width - 25.5) < 0.1) {
-            leftEaveHeight = 6.9;
-            effectiveRidgeHeight = 8.9;
-        } else if (Math.abs(width - 29.1) < 0.1) {
-            leftEaveHeight = 7.9;
-            effectiveRidgeHeight = 9.8;
-        } else {
-            leftEaveHeight = 6.9;
-            effectiveRidgeHeight = rightEaveHeight + (rightSpan * Math.tan(mainPitch));
-        }
-
         rAngle = mainPitch;
         lAngle = mainPitch;
+
+        effectiveRidgeHeight = rightEaveHeight + (rightSpan * Math.tan(rAngle));
+        leftEaveHeight = effectiveRidgeHeight - (leftSpan * Math.tan(lAngle));
+
         const distApexToMiddle = middleColumnX - apexX;
         middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
         leftSectionSpan = leftSpan;
-        leftSectionAngle = Math.atan((effectiveRidgeHeight - leftEaveHeight) / leftSectionSpan);
+        leftSectionAngle = lAngle;
         middleSectionSpan = distApexToMiddle;
         middleSectionAngle = rAngle;
         rightSectionSpan = rightSpan - distApexToMiddle;

@@ -389,33 +389,15 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
     else if (buildingType === 'asymetrique_2') {
         const w = width;
         const rightEave = 4.0;
-        let leftEave, ridge;
-
-        // Heights based on width
-        if (Math.abs(width - 25.5) < 0.1) {
-            leftEave = 6.9;
-            ridge = 8.9;
-        } else if (Math.abs(width - 29.1) < 0.1) {
-            leftEave = 7.9;
-            ridge = 9.8;
-        } else {
-            const rAngle = 15 * (Math.PI / 180);
-            ridge = rightEave + (w * 0.75 * Math.tan(rAngle));
-            leftEave = ridge - (w * 0.25 * Math.tan(rAngle));
-        }
+        const rAngle = 15 * (Math.PI / 180);
+        const lAngle = 15 * (Math.PI / 180);
+        const rightSpan = w * 0.75;
+        const leftSpan = w * 0.25;
+        const ridge = rightEave + (rightSpan * Math.tan(rAngle));
+        const leftEave = ridge - (leftSpan * Math.tan(lAngle));
 
         // Apex at 1/4 from left
-        const apexX = -w / 2 + (w * 0.25);
-
-        // Left slope: left eave to apex (1/4 of width)
-        const leftSpan = w * 0.25;
-        const lRise = ridge - leftEave;
-        const lAngle = Math.atan(lRise / leftSpan);
-
-        // Right slope: apex to right eave (3/4 of width)
-        const rightSpan = w * 0.75;
-        const rRise = ridge - rightEave;
-        const rAngle = Math.atan(rRise / rightSpan);
+        const apexX = -w / 2 + leftSpan;
 
         // --- Left Side (Short - 1/4) ---
         const leftSlopeLen = leftSpan / Math.cos(lAngle);

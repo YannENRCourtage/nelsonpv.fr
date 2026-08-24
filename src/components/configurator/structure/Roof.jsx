@@ -420,35 +420,32 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                     <SolarPanels surfaceWidth={rightGeoLength} surfaceLength={length + 1.0} />
                 </group>
             </group>
-        );
-    }
-
-    // --- B. ASYMETRIQUE 2 ZONES ---
+        );    // --- B. ASYMETRIQUE 2 ZONES ---
     if (isAsymetrique2) {
         const w = width;
         const mainSlope = 15 * (Math.PI / 180);
+        const rAngle = mainSlope;
+        const lAngle = mainSlope;
         const rightSpan = w * 0.75;
-        const distRightToMiddle = rightSpan * 0.6; 
-        const ridgeHAsym2 = 4.0 + (rightSpan * Math.tan(mainSlope));
-        const middleColumnHeightAsym2 = ridgeHAsym2 - ((rightSpan - distRightToMiddle) * Math.tan(mainSlope));
-
+        const leftSpan = w * 0.25;
         const asymRightEaveH = 4.0;
-        const asymLeftEaveH = 4.0;
-        const middleColumnHeight = middleColumnHeightAsym2;
-        const middleColumnX = width / 2 - distRightToMiddle;
+        const ridgeH = asymRightEaveH + (rightSpan * Math.tan(rAngle));
+        const asymLeftEaveH = ridgeH - (leftSpan * Math.tan(lAngle));
 
+        const middleColumnX = -w / 2 + 13.1;
+        const distRightToMiddle = w / 2 - middleColumnX;
+        const middleColumnHeight = asymRightEaveH + (distRightToMiddle * Math.tan(rAngle));
+
+        // Section 1: Right Column to Middle Column
         const section1Span = distRightToMiddle;
-        const section1Length = section1Span / Math.cos(mainSlope);
-        const section1Overhang = 0.50;
-        const section1RoofLength = section1Length + section1Overhang;
+        const section1RoofLength = (section1Span / Math.cos(rAngle)) + 0.50; // 50cm right eave overhang
 
+        // Section 2: Middle Column to Apex
         const section2Span = rightSpan - section1Span;
-        const section2Length = section2Span / Math.cos(mainSlope);
-        const section2RoofLength = section2Length + 0.25; 
+        const section2RoofLength = section2Span / Math.cos(rAngle);
 
-        const leftSpan = width * 0.25;
-        const section3Length = leftSpan / Math.cos(mainSlope);
-        const section3RoofLength = section3Length; 
+        // Section 3: Left Eave to Apex (Left slope)
+        const section3RoofLength = leftSpan / Math.cos(lAngle);
 
         const section1Profile = createTrapezoidalProfile(section1RoofLength, 0.035, 0.25);
         const section2Profile = createTrapezoidalProfile(section2RoofLength, 0.035, 0.25);
@@ -457,58 +454,6 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const section1Geo = new THREE.ExtrudeGeometry(section1Profile, { depth: length + 1.0, bevelEnabled: false });
         const section2Geo = new THREE.ExtrudeGeometry(section2Profile, { depth: length + 1.0, bevelEnabled: false });
         const section3Geo = new THREE.ExtrudeGeometry(section3Profile, { depth: length + 1.0, bevelEnabled: false });
-
-        const isWidth29 = Math.abs(width - 29.1) < 0.1;
-        const isWidth25 = Math.abs(width - 25.5) < 0.1;
-
-        const rightAngle = 15 * (Math.PI / 180);
-        const section1Angle = 15 * (Math.PI / 180);
-        const leftAngle = 15 * (Math.PI / 180);
-
-        const leftRefOffset = -0.25;
-        let leftOffset = leftRefOffset;
-        if (isWidth25) leftOffset = leftRefOffset - 0.20;
-        if (isWidth29) leftOffset = leftRefOffset + 0.10;
-
-        const rightRefOffset = -0.10;
-        let section1Offset = rightRefOffset; 
-        let section2Offset = rightRefOffset; 
-
-        if (isWidth25) {
-            section1Offset += 0.10;
-            section2Offset += 0.10;
-        }
-        if (isWidth29) {
-            section1Offset += 0.20;
-            section2Offset += 0.20;
-        }
-
-        const leftSpanVisible = width * 0.25;
-        const rightSpanVisible = width * 0.75;
-        let leftAngleGI = 15 * (Math.PI / 180);
-        let rightAngleGI = 15 * (Math.PI / 180);
-
-        if (!isAcama) {
-            let leftEaveAdjustment = -0.3; 
-            let rightEaveAdjustment = 0.2;
-
-            if (isWidth25) {
-                leftEaveAdjustment = -1.0; // USER REQUEST 10/04/2026: abaisse de 0.1m supplémentaire (total -1.0m)
-                rightEaveAdjustment = 0.3; 
-            }
-            if (isWidth29) {
-                leftEaveAdjustment = 0.4; // USER REQUEST 10/04/2026: remonte de 0.2m supplémentaire (total +0.4)
-                rightEaveAdjustment = 0.3; 
-            }
-
-            leftAngleGI = Math.atan(Math.tan(15 * Math.PI / 180) + (-leftEaveAdjustment / leftSpanVisible));
-            rightAngleGI = Math.atan(Math.tan(15 * Math.PI / 180) - (rightEaveAdjustment / rightSpanVisible));
-            const offsetDist = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10; 
-            const baseBottomH = offsetDist * Math.cos(15 * Math.PI / 180);
-            leftOffset = (baseBottomH + 3.62 + leftEaveAdjustment) - (offsetDist * Math.cos(leftAngleGI));
-            section1Offset = (baseBottomH - 0.2 + rightEaveAdjustment) - (offsetDist * Math.cos(rightAngleGI));
-            section2Offset = section1Offset; 
-        }
 
         const positioningHelper = (slopeLen, angle, isRight, overhang) => {
             const centerDist = (slopeLen - overhang) / 2;
@@ -523,47 +468,51 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             return { x: localX + (offsetDist * nX), y: localY + (offsetDist * nY), rot: isRight ? -angle : angle };
         };
 
-        const section1Props = positioningHelper(section1RoofLength, rightAngleGI, true, section1Overhang);
-        const section2Props = positioningHelper(section2RoofLength, rightAngleGI, true, 0.25);
-        const section3Props = positioningHelper(section3Length, leftAngleGI, false, 0);
+        const section1Props = positioningHelper(section1RoofLength, rAngle, true, 0.50);
+        const section2Props = positioningHelper(section2RoofLength, rAngle, true, 0.0);
+        const section3Props = positioningHelper(section3RoofLength, lAngle, false, 0.0);
 
         return (
             <group>
+                {/* Section 1: Right Eave to Middle Column */}
                 <mesh geometry={section1Geo} material={roofMaterial}
-                    position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y + section1Offset, -length - 0.5]}
+                    position={[w / 2 - section1Props.x, asymRightEaveH + section1Props.y, -length - 0.5]}
                     rotation={[0, 0, section1Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
-                <group position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y + section1Offset, -length / 2]}
+                <group position={[w / 2 - section1Props.x, asymRightEaveH + section1Props.y, -length / 2]}
                     rotation={[0, 0, section1Props.rot]}
                     scale={[-1, 1, 1]}>
                     <SolarPanels surfaceWidth={section1RoofLength} surfaceLength={length + 1.0} />
                 </group>
 
+                {/* Section 2: Middle Column to Apex */}
                 <mesh geometry={section2Geo} material={roofMaterial}
-                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y + section2Offset, -length - 0.5]}
+                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y, -length - 0.5]}
                     rotation={[0, 0, section2Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
-                <group position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y + section2Offset, -length / 2]}
+                <group position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y, -length / 2]}
                     rotation={[0, 0, section2Props.rot]}
                     scale={[-1, 1, 1]}>
                     <SolarPanels surfaceWidth={section2RoofLength} surfaceLength={length + 1.0} />
                 </group>
 
+                {/* Section 3: Left Slope (Apex to Left Eave) */}
                 <mesh geometry={section3Geo} material={roofMaterial}
-                    position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y + leftOffset, -length - 0.5]}
+                    position={[-w / 2 + section3Props.x, asymLeftEaveH + section3Props.y - 0.02, -length - 0.5]}
                     rotation={[0, 0, section3Props.rot]}
                     castShadow receiveShadow />
 
-                <group position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y + leftOffset, -length / 2]}
+                <group position={[-w / 2 + section3Props.x, asymLeftEaveH + section3Props.y - 0.02, -length / 2]}
                     rotation={[0, 0, section3Props.rot]}>
                     <SolarPanels surfaceWidth={section3RoofLength} surfaceLength={length + 1.0} />
                 </group>
             </group>
         );
+    }   );
     }
 
     // --- C. ASYMETRIQUE (1 ZONE) ---

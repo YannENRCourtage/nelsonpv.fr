@@ -684,7 +684,9 @@ export const useConfiguratorStore = create(
         // Fallback or explicit map
         const ridgeHeight = state.buildingType === 'monopente'
             ? (state.eaveHeight + (state.width * Math.tan(state.roofPitch * Math.PI / 180)))
-            : (WIDTH_HEIGHT_MAP[state.width] || (state.eaveHeight + (state.width / 2) * Math.tan(state.roofPitch * Math.PI / 180)));
+            : ((state.buildingType === 'asymetrique_1' || state.buildingType === 'asymetrique_2')
+                ? (state.eaveHeight + (state.width * 0.75 * Math.tan(state.roofPitch * Math.PI / 180)))
+                : (WIDTH_HEIGHT_MAP[state.width] || (state.eaveHeight + (state.width / 2) * Math.tan(state.roofPitch * Math.PI / 180))));
         return {
             buildingType: state.buildingType,
             width: state.width,
@@ -726,6 +728,9 @@ export const useConfiguratorValues = () => {
         }
         if (state.buildingType === 'monopente') {
             return (state.eaveHeight + (state.width * Math.tan(state.roofPitch * Math.PI / 180)));
+        }
+        if (state.buildingType === 'asymetrique_1' || state.buildingType === 'asymetrique_2') {
+            return (state.eaveHeight + (state.width * 0.75 * Math.tan(state.roofPitch * Math.PI / 180)));
         }
 
         // Default calculation
