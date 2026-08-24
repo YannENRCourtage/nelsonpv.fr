@@ -1,6 +1,7 @@
 import React from 'react';
 import { getInstallationTypeInfo } from '@/services/UrbanismeDocService';
-import batteryPhotoDefault from '@/assets/battery_photo.jpg';
+
+const batteryPhotoDefault = '/images/battery_photo.jpg';
 
 // Dimensions A4 Paysage : 297 x 210 mm avec marges équilibrées et espace pour le footer rehaussé
 const PAGE_STYLE = {
