@@ -5489,12 +5489,16 @@ export function findBarconniereBuilding({
       candidateGammes = ['OMBRIERE VL SIMPLE GAUCHE', 'OMBRIERE VL SIMPLE DROITE', 'OMBRIERE VL DOUBLE', 'OMBRIERE VL DOUBLE+', 'OMBRIERE PL 16m', 'OMBRIERE PL 20m', 'OMBRIERE PL 25m'];
     }
   } else if (bType.startsWith('mono')) {
-    candidateGammes = ['ATLAS 12', 'ATLAS 16'];
-  } else if (bType.startsWith('asym')) {
-    if (totalWidth > 23.5) {
-      candidateGammes = ['CYRUS 25', 'CYRUS 29', 'ORION 20'];
+    if (width >= 14.5 || totalWidth >= 22.0) {
+      candidateGammes = ['ATLAS 16'];
     } else {
-      candidateGammes = ['ORION 16', 'ORION 20'];
+      candidateGammes = ['ATLAS 12'];
+    }
+  } else if (bType.startsWith('asym')) {
+    if (bType.includes('2') || width >= 23.5) {
+      candidateGammes = width >= 27.0 ? ['CYRUS 29', 'CYRUS 25'] : ['CYRUS 25', 'CYRUS 29'];
+    } else {
+      candidateGammes = width >= 18.0 ? ['ORION 20', 'ORION 16'] : ['ORION 16', 'ORION 20'];
     }
   } else if (leftSide === 'appentis' && rightSide === 'appentis') {
     candidateGammes = ['YOKO 33', 'YOKO 37', 'YOKO 41', 'YOKO 45', 'YOKO 48'];
@@ -5507,12 +5511,24 @@ export function findBarconniereBuilding({
     candidateGammes = ['HELIOS 15', 'HELIOS 18', 'HELIOS 22', 'HELIOS 26', 'HELIOS 29', 'HELIOS 33'];
   }
 
+  const hasExtensions = leftSide !== 'none' || rightSide !== 'none';
+
   // Chercher match exact
   let matches = BARCONNIERE_CATALOG.filter(item => {
     const matchGamme = candidateGammes.length === 0 || candidateGammes.includes(item.gamme);
-    const matchWidth = Math.abs(item.largeur - totalWidth) < 0.6 || Math.abs(item.largeur - width) < 0.6;
+    const matchWidth = hasExtensions
+      ? Math.abs(item.largeur - totalWidth) < 0.6
+      : (Math.abs(item.largeur - totalWidth) < 0.6 || Math.abs(item.largeur - width) < 0.6);
     const matchLength = Math.abs(item.longueur - length) < 1.0;
-    return matchGamme && matchWidth && matchLength;
+
+    let matchAuvents = true;
+    if (bType.startsWith('mono')) {
+      const wantAuventSud = (rightSide === 'auvent');
+      const itemAuventSud = (item.auventSud === 'Oui');
+      matchAuvents = (wantAuventSud === itemAuventSud);
+    }
+
+    return matchGamme && matchWidth && matchLength && matchAuvents;
   });
 
   if (matches.length > 0) {
@@ -5527,7 +5543,7 @@ export function findBarconniereBuilding({
     const isPreferredGamme = candidateGammes.includes(cur.gamme);
     const widthDiff = Math.abs(cur.largeur - totalWidth);
     const lengthDiff = Math.abs(cur.longueur - length);
-    const score = (widthDiff * 3) + lengthDiff + (isPreferredGamme ? 0 : 25);
+    const score = (widthDiff * 3) + lengthDiff + (isPreferredGamme ? 0 : 100);
 
     if (!best || score < best.score) {
       return { item: cur, score };
