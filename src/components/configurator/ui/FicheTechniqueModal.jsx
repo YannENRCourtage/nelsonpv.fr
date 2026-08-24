@@ -559,7 +559,7 @@ export function FicheTechniqueModal({
                                                 {isSym && (
                                                     <div className="flex justify-center items-center w-full pt-1 pb-1">
                                                         <img 
-                                                            src="/hangar_symetrique.png" 
+                                                            src="/hangar_symetrique.jpg" 
                                                             alt="Rendu 3D Réaliste Symétrique" 
                                                             className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
                                                         />
@@ -568,7 +568,7 @@ export function FicheTechniqueModal({
                                                 {isAsym1 && (
                                                     <div className="flex justify-center items-center w-full pt-1 pb-1">
                                                         <img 
-                                                            src="/hangar_asymetrique_1_zone.png" 
+                                                            src="/hangar_asymetrique_1_zone.jpg" 
                                                             alt="Rendu 3D Réaliste Asymétrique 1 zone" 
                                                             className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
                                                         />
@@ -577,7 +577,7 @@ export function FicheTechniqueModal({
                                                 {isAsym2 && (
                                                     <div className="flex justify-center items-center w-full pt-1 pb-1">
                                                         <img 
-                                                            src="/hangar_asymetrique_2_zones.png" 
+                                                            src="/hangar_asymetrique_2_zones.jpg" 
                                                             alt="Rendu 3D Réaliste Asymétrique 2 zones" 
                                                             className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
                                                         />
@@ -586,7 +586,7 @@ export function FicheTechniqueModal({
                                                 {isMonopente && (
                                                     <div className="flex justify-center items-center w-full pt-1 pb-1">
                                                         <img 
-                                                            src="/hangar_monopente.png" 
+                                                            src="/hangar_monopente.jpg" 
                                                             alt="Rendu 3D Réaliste Monopente Atlas" 
                                                             className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
                                                         />
@@ -600,21 +600,21 @@ export function FicheTechniqueModal({
                                                                 const g = (config?.gamme || '').toLowerCase();
                                                                 const isSimple = bType.includes('simple') || bType.includes('gauche') || bType.includes('droite');
                                                                 if (!isSimple && (w >= 18 || bType.includes('20') || bType.includes('25') || g.includes('20') || g.includes('25'))) {
-                                                                    return "/ombriere_pl_large.png";
+                                                                    return "/ombriere_pl_large.jpg";
                                                                 }
                                                                 if (!isSimple && (bType.includes('ombriere_pl') || (w >= 14 && w < 18) || g.includes('16'))) {
-                                                                    return "/ombriere_pl.png";
+                                                                    return "/ombriere_pl.jpg";
                                                                 }
                                                                 if (!isSimple && (bType.includes('plus') || g.includes('+') || (w >= 10.5 && w <= 13.5))) {
-                                                                    return "/ombriere_vl_double_plus.png";
+                                                                    return "/ombriere_vl_double_plus.jpg";
                                                                 }
                                                                 if (!isSimple && bType.includes('double')) {
-                                                                    return "/ombriere_vl_double.png";
+                                                                    return "/ombriere_vl_double.jpg";
                                                                 }
                                                                 if (bType.includes('droite') || g.includes('droite')) {
-                                                                    return "/ombriere_vl_simple_droite.png";
+                                                                    return "/ombriere_vl_simple_droite.jpg";
                                                                 }
-                                                                return "/ombriere_vl_simple_gauche.png";
+                                                                return "/ombriere_vl_simple_gauche.jpg";
                                                             })()} 
                                                             alt="Rendu 3D Réaliste Ombrière" 
                                                             className="max-w-full max-h-[140px] rounded-xl shadow-sm object-contain"
