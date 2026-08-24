@@ -288,6 +288,8 @@ export default defineConfig({
 		},
 	},
 	build: {
+		target: 'es2020',
+		chunkSizeWarningLimit: 2000,
 		rollupOptions: {
 			external: [
 				'@babel/parser',
