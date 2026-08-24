@@ -2,7 +2,9 @@ import React from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { generateSatelliteSnapshot, generateBeforeAfterDualSnapshot } from '@/utils/satelliteSnapshot';
-import { BORNE_DOUBLE_BASE64, BORNE_7_4KW_BASE64 } from '@/assets/irveImagesBase64';
+
+const BORNE_7_4KW_IMG = '/images/borne_irve_7_4kw.jpg';
+const BORNE_DOUBLE_IMG = '/images/borne_irve_double.jpg';
 
 // ─── Générateur de Graphique Financier Haute Résolution pour le PDF (30 ans) ──
 const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
@@ -251,7 +253,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
   // Photo et titre de borne IRVE selon puissance
   const irvePower = Number(sim.power || (sim.selectedStation && sim.selectedStation.power) || 22);
-  const bornePhoto = irvePower <= 7.4 ? BORNE_7_4KW_BASE64 : BORNE_DOUBLE_BASE64;
+  const bornePhoto = irvePower <= 7.4 ? BORNE_7_4KW_IMG : BORNE_DOUBLE_IMG;
   const borneTitle = irvePower <= 7.4 ? 'Borne de Recharge IRVE (7.4 kW)' : `Borne de Recharge IRVE (${irvePower} kW)`;
 
   // HTML conditionnel selon la solution

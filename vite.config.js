@@ -233,13 +233,16 @@ logger.error = (msg, options) => {
 	loggerError(msg, options);
 }
 
-export default defineConfig({
-	customLogger: logger,
-	plugins: [
-		...(isDev ? [inlineEditPlugin(), editModeDevPlugin(), iframeRouteRestorationPlugin(), selectionModePlugin()] : []),
-		react(),
-		addTransformIndexHtml
-	],
+export default defineConfig(({ command, mode }) => {
+	const isDev = command === 'serve' && mode !== 'production';
+
+	return {
+		customLogger: logger,
+		plugins: [
+			...(isDev ? [inlineEditPlugin(), editModeDevPlugin(), iframeRouteRestorationPlugin(), selectionModePlugin()] : []),
+			react(),
+			addTransformIndexHtml
+		],
 	server: {
 		cors: true,
 		headers: {
@@ -287,17 +290,18 @@ export default defineConfig({
 			'@': path.resolve(__dirname, './src'),
 		},
 	},
-	build: {
-		target: 'es2020',
-		chunkSizeWarningLimit: 2000,
-		sourcemap: false,
-		rollupOptions: {
-			external: [
-				'@babel/parser',
-				'@babel/traverse',
-				'@babel/generator',
-				'@babel/types'
-			]
+		build: {
+			target: 'es2020',
+			chunkSizeWarningLimit: 2000,
+			sourcemap: false,
+			rollupOptions: {
+				external: [
+					'@babel/parser',
+					'@babel/traverse',
+					'@babel/generator',
+					'@babel/types'
+				]
+			}
 		}
-	}
+	};
 });

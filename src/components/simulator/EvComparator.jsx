@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Car, Zap, Battery, Plug } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CONNECTEURS_IRVE_BASE64 } from '@/assets/irveImagesBase64';
 
 const translateVehicleType = (type) => {
   if (!type) return 'Véhicule';
