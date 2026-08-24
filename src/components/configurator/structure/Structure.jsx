@@ -115,8 +115,8 @@ export function Structure({ hideBracing = false, forceHideDimensions = false, vi
                             // Abaisse la bande lisse de 0.3m supplémentaire sur l'asymétrique 2 zones (-0.80m)
                             return frameRidgeH - 0.80;
                         }
-                        // Pour asymétrique 1 zone (abaissé de 1m sur les 2 largeurs 16.4m et 20m)
-                        return frameRidgeH - 0.50;
+                        // Pour asymétrique 1 zone (abaissé de 0.4m supplémentaire : -0.90m)
+                        return frameRidgeH - 0.90;
                     })()}
                     angle={15 * Math.PI / 180} 
                     x={-width * 0.25} 
