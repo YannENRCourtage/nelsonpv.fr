@@ -347,15 +347,16 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
 
     if (buildingType === 'asymetrique_2') {
-        // USER REQUEST 05/03/2026: Align with building roof continuity
         const w = buildingWidth;
         if (side === 'right') {
             roofY = -0.20;
         } else {
             if (Math.abs(w - 29.1) < 0.1) {
-                roofY = 0.245; // Calculated to match Roof.jsx continuity
+                // Abaisse de 20cm sur 29.1m (0.245 - 0.20 = 0.045)
+                roofY = 0.245 - 0.20;
             } else {
-                roofY = -0.155; // Calculated to match Roof.jsx continuity
+                // Réhausse de 15cm sur 25.5m (-0.155 + 0.15 = -0.005)
+                roofY = -0.155 + 0.15;
             }
         }
     } else if (buildingType === 'symetrique') {

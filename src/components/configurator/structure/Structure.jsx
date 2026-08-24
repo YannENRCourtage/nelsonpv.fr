@@ -111,7 +111,11 @@ export function Structure({ hideBracing = false, forceHideDimensions = false, vi
                         const rAngle = 15 * (Math.PI / 180);
                         const rSpan = width * 0.75;
                         const frameRidgeH = eaveHeight + (rSpan * Math.tan(rAngle));
-                        // La bande lisse est posée juste au-dessus du bac acier à la jointure des 2 pentes (+0.50m)
+                        if (buildingType === 'asymetrique_2') {
+                            // Abaisse la bande lisse de 1m sur l'asymétrique 2 zones (sur les 2 largeurs)
+                            return frameRidgeH - 0.50;
+                        }
+                        // Pour asymétrique 1 zone
                         return frameRidgeH + 0.50;
                     })()}
                     angle={15 * Math.PI / 180} 
