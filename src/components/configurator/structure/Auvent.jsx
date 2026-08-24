@@ -120,29 +120,18 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 startHeight = eaveHeight; // USER REQUEST 05/03/2026: Lower to eave level
             }
         } else {
-            // Monopente (Force 15 deg)
-            angleRad = 15 * (Math.PI / 180);
-            const rise = auventWidth * Math.tan(angleRad);
-
+            // Monopente
             if (side === 'right') {
-                // Right: High Point descending to Tip at 3.0m
-                // High = Tip + Rise
-                startHeight = 3.0 + rise;
+                // Auvent Sud (droit / sablière) : même pente que le bâtiment lui-même (15°)
+                angleRad = 15 * (Math.PI / 180);
+                startHeight = eaveHeight; // 4.0m
             } else {
-                // Left: Different Tip Targets based on Width
-                let tipHeight = 6.4; // Default/Fallback for ~12.7m
-
-                // Width 16.4m -> Tip 7.4m
-                if (Math.abs(buildingWidth - 16.4) < 0.5 || Math.abs(buildingWidth - 16) < 0.5) {
-                    tipHeight = 7.4;
-                }
-                // Width 12.7m -> Tip 6.4m (Already default, but explicit check)
-                else if (Math.abs(buildingWidth - 12.7) < 0.5) {
-                    tipHeight = 6.4;
-                }
-
-                // High = Tip + Rise
-                startHeight = tipHeight + rise;
+                // Auvent Gauche (faîtage) :
+                // Le plus haut du auvent gauche est exactement au niveau du faîtage,
+                // puis redescend d'un mètre de hauteur pour atteindre la sablière 4m plus vers la gauche.
+                startHeight = ridgeHeight;
+                const drop = 1.0; // 1m drop
+                angleRad = Math.atan(drop / auventWidth);
             }
         }
     }

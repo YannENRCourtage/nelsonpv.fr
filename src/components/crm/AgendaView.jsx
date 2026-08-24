@@ -152,7 +152,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
             contact: '',
             location: '',
             notes: '',
-            reminder: '1h',
+            reminder: 'none',
             completed: false,
         });
         setShowModal(true);

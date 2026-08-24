@@ -682,7 +682,9 @@ export const useConfiguratorStore = create(
         const state = get();
         const length = state.baySpacing * state.bayCount;
         // Fallback or explicit map
-        const ridgeHeight = WIDTH_HEIGHT_MAP[state.width] || (state.eaveHeight + (state.width / 2) * Math.tan(state.roofPitch * Math.PI / 180));
+        const ridgeHeight = state.buildingType === 'monopente'
+            ? (state.eaveHeight + (state.width * Math.tan(state.roofPitch * Math.PI / 180)))
+            : (WIDTH_HEIGHT_MAP[state.width] || (state.eaveHeight + (state.width / 2) * Math.tan(state.roofPitch * Math.PI / 180)));
         return {
             buildingType: state.buildingType,
             width: state.width,
@@ -721,6 +723,9 @@ export const useConfiguratorValues = () => {
         }
         if (state.isAcama && state.buildingType === 'epona' && Math.abs(state.width - 23.6) < 0.1) {
             return 9.41; // EPONA Fixed Ridge Height
+        }
+        if (state.buildingType === 'monopente') {
+            return (state.eaveHeight + (state.width * Math.tan(state.roofPitch * Math.PI / 180)));
         }
 
         // Default calculation
