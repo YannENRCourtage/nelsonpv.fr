@@ -512,7 +512,6 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                 </group>
             </group>
         );
-    }   );
     }
 
     // --- C. ASYMETRIQUE (1 ZONE) ---
