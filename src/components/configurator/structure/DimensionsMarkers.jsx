@@ -92,21 +92,23 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     }, [width, gapSize]);
 
     // 2. Length Arrow (Right Side)
-    const { lengthPoints, lengthStart, lengthEnd, xSide } = useMemo(() => {
+    const { lengthPoints, lengthStart, lengthEnd, xSide, yLength } = useMemo(() => {
         const x = width / 2 + rightWidth + (buildingType === 'epona_talian5' && !isCustom ? -6.0 : 3.0); 
-        const start = new THREE.Vector3(x, 0.1, 0);
-        const end = new THREE.Vector3(x, 0.1, -length);
-        const mid = new THREE.Vector3(x, 0.1, -length / 2);
+        const y = isFacadeSudView ? -0.7 : 0.1;
+        const start = new THREE.Vector3(x, y, 0);
+        const end = new THREE.Vector3(x, y, -length);
+        const mid = new THREE.Vector3(x, y, -length / 2);
         return {
             xSide: x,
+            yLength: y,
             lengthStart: start,
             lengthEnd: end,
             lengthPoints: [
-                [start, new THREE.Vector3(x, 0.1, mid.z + gapSize / 2)],
-                [new THREE.Vector3(x, 0.1, mid.z - gapSize / 2), end]
+                [start, new THREE.Vector3(x, y, mid.z + gapSize / 2)],
+                [new THREE.Vector3(x, y, mid.z - gapSize / 2), end]
             ]
         };
-    }, [width, length, rightWidth, gapSize, buildingType, isCustom]);
+    }, [width, length, rightWidth, gapSize, buildingType, isCustom, isFacadeSudView]);
 
     // 2b. Single Left Bay Marker (Façade Sud ONLY - cote travée de gauche)
     const baySpacingData = useMemo(() => {
@@ -152,7 +154,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, h, 0);
         const mid = new THREE.Vector3(x, h / 2, 0);
-        const hGap = 1.8;
+        const hGap = Math.min(Math.max(h * 0.55, 2.8), 3.0);
         return {
             xEave: x,
             heightStart: start,
@@ -229,7 +231,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         const finalLabel = !isCustom && isTalian4 ? 5.9 : (!isCustom && isTalian1 ? 6.7 : h);
 
-        const rGap = 2.0;
+        const rGap = 3.2;
 
         return {
             xRidge: x,
@@ -283,7 +285,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, h, 0);
         const mid = new THREE.Vector3(x, h / 2, 0);
-        const hGap = 1.8;
+        const hGap = Math.min(Math.max(h * 0.55, 2.8), 3.2);
 
         return {
             xLeft: x,
@@ -311,7 +313,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, h, 0);
         const mid = new THREE.Vector3(x, h / 2, 0);
-        const hGap = 1.8;
+        const hGap = Math.min(Math.max(h * 0.55, 2.8), 3.0);
 
         return {
             xRight: x,
@@ -664,7 +666,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={lengthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[xSide, 0.1, -length / 2]}
+                        position={[xSide, yLength !== undefined ? yLength : (isFacadeSudView ? -0.7 : 0.1), -length / 2]}
                         rotation={isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2]}
                         fontSize={0.8}
                         color={textColor}
