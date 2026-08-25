@@ -82,6 +82,7 @@ export default function Developpement() {
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [pdfProjectState, setPdfProjectState] = useState(null);
 
   // ── Professionals State ─────────────────────────────────────────
   const [professionals, setProfessionals] = useState([]);
@@ -275,18 +276,12 @@ export default function Developpement() {
       setCaptureStep('Chargement et sécurisation des images (Proxy CORS)...');
       const projectToUse = await preloadProjectImages(initialProjectToUse);
 
+      setPdfProjectState(projectToUse);
       setSelectedProject(projectToUse);
-      setProjects(prev => prev.map(p => p.id === initialProjectToUse.id ? initialProjectToUse : p));
-      if (initialProjectToUse?.id) {
-        try {
-          await apiService.updateProject(initialProjectToUse.id, initialProjectToUse, activeTenantId);
-        } catch (saveErr) {
-          console.warn('Erreur sauvegarde projet dans Firestore:', saveErr);
-        }
-      }
+      setProjects(prev => prev.map(p => p.id === initialProjectToUse.id ? projectToUse : p));
 
       // Laisser le temps à React de monter les planches dans le DOM avec les images en mémoire (Data URLs)
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 450));
 
       const isPC = docType === 'pc';
       const isCU = docType === 'cu';
@@ -345,6 +340,7 @@ export default function Developpement() {
     } finally {
       setIsGenerating(false);
       setCaptureStep('');
+      setPdfProjectState(null);
     }
   };
 
@@ -572,125 +568,129 @@ export default function Developpement() {
       />
 
       {/* ═══ ZONE DE RENDU HTML2CANVAS POUR LE PDF CERFA ════════════ */}
-      {selectedProject && (
-        <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '297mm', pointerEvents: 'none', zIndex: -100, opacity: 1 }}>
-          {/* DP & CU Plates */}
-          <div id="dev-plate-cover"><PlateCover project={selectedProject} installationType={selectedProject.type || 'batiment_solaire'} /></div>
-          <div id="dev-plate-situation"><PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-          <div id="dev-plate-masse"><PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
+      {(() => {
+        const activeProj = pdfProjectState || selectedProject;
+        if (!activeProj) return null;
+        return (
+          <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '297mm', pointerEvents: 'none', zIndex: -100, opacity: 1 }}>
+            {/* DP & CU Plates */}
+            <div id="dev-plate-cover"><PlateCover project={activeProj} installationType={activeProj.type || 'batiment_solaire'} /></div>
+            <div id="dev-plate-situation"><PlateSituation project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
+            <div id="dev-plate-masse"><PlateMasse project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
 
-          {((selectedProject.buildings && selectedProject.buildings.length > 0) ? selectedProject.buildings : [selectedProject]).map((b, bIdx) => {
-            const mergedCaptures = {
-              ...(selectedProject.urbanisme_captures || {}),
-              ...(selectedProject.captures || {}),
-              ...(b.captures || {}),
-              ...(b.urbanisme_captures || {}),
-            };
-            const mergedPhotos = {
-              ...(selectedProject.pc_photos || {}),
-              ...(selectedProject.photos || {}),
-              ...(b.photos || {}),
-              ...(b.pc_photos || {}),
-            };
-            const bProj = {
-              ...selectedProject,
-              ...b,
-              largeur: String(b.width || b.largeur || 20.0),
-              longueur: String(b.length || b.longueur || 30.0),
-              hauteur_egout: String(b.eaveHeight || b.hauteur_egout || 4.0),
-              pente: String(b.roofPitch || b.pente || 15),
-              buildingType: b.buildingType || 'asymetrique_1',
-              leftSide: b.leftSide || 'none',
-              rightSide: b.rightSide || 'none',
-              leftWidth: b.leftWidth || 4.0,
-              rightWidth: b.rightWidth || 4.0,
-              buildingName: b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Ombrière ${bIdx + 1}`,
-              urbanisme_captures: mergedCaptures,
-              captures: mergedCaptures,
-              pc_photos: mergedPhotos,
-              photos: mergedPhotos,
-            };
-            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
-            return (
-              <React.Fragment key={`dp-b-${b.id || bIdx}`}>
-                <div id={`dev-plate-section${suffix}`}>
-                  <PlateSection 
-                    project={bProj} 
-                    captures={bProj.urbanisme_captures || {}} 
-                    includeNotice={selectedProject?.selectedPages?.dp_notice !== false}
-                    noticeText={selectedProject.noticeText || selectedProject.noticeAgricole || selectedProject.pc_notice || selectedProject.description}
-                  />
-                </div>
-                <div id={`dev-plate-facades${suffix}`}><PlateFacades project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
-                <div id={`dev-plate-insertion${suffix}`}><DPPlateInsertion project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
-                <div id={`dev-plate-env${suffix}`}>
-                  <PlateEnv 
-                    project={bProj} 
-                    captures={bProj.urbanisme_captures || {}} 
-                    photos={bProj.pc_photos || {}} 
-                    includeLointain={selectedProject?.selectedPages?.dp8 !== false}
-                  />
-                </div>
-                <div id={`dev-plate-env-proche${suffix}`}><PlateEnvProche project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
-                <div id={`dev-plate-env-lointain${suffix}`}><PlateEnvLointain project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
-                <div id={`dev-plate-notice${suffix}`}><PlateInsertionNotice project={bProj} noticeText={selectedProject.noticeText || selectedProject.noticeAgricole || selectedProject.pc_notice || selectedProject.description} /></div>
-              </React.Fragment>
-            );
-          })}
+            {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
+              const mergedCaptures = {
+                ...(activeProj.urbanisme_captures || {}),
+                ...(activeProj.captures || {}),
+                ...(b.captures || {}),
+                ...(b.urbanisme_captures || {}),
+              };
+              const mergedPhotos = {
+                ...(activeProj.pc_photos || {}),
+                ...(activeProj.photos || {}),
+                ...(b.photos || {}),
+                ...(b.pc_photos || {}),
+              };
+              const bProj = {
+                ...activeProj,
+                ...b,
+                largeur: String(b.width || b.largeur || 20.0),
+                longueur: String(b.length || b.longueur || 30.0),
+                hauteur_egout: String(b.eaveHeight || b.hauteur_egout || 4.0),
+                pente: String(b.roofPitch || b.pente || 15),
+                buildingType: b.buildingType || 'asymetrique_1',
+                leftSide: b.leftSide || 'none',
+                rightSide: b.rightSide || 'none',
+                leftWidth: b.leftWidth || 4.0,
+                rightWidth: b.rightWidth || 4.0,
+                buildingName: b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Ombrière ${bIdx + 1}`,
+                urbanisme_captures: mergedCaptures,
+                captures: mergedCaptures,
+                pc_photos: mergedPhotos,
+                photos: mergedPhotos,
+              };
+              const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+              return (
+                <React.Fragment key={`dp-b-${b.id || bIdx}`}>
+                  <div id={`dev-plate-section${suffix}`}>
+                    <PlateSection 
+                      project={bProj} 
+                      captures={bProj.urbanisme_captures || {}} 
+                      includeNotice={activeProj?.selectedPages?.dp_notice !== false}
+                      noticeText={activeProj.noticeText || activeProj.noticeAgricole || activeProj.pc_notice || activeProj.description}
+                    />
+                  </div>
+                  <div id={`dev-plate-facades${suffix}`}><PlateFacades project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
+                  <div id={`dev-plate-insertion${suffix}`}><DPPlateInsertion project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
+                  <div id={`dev-plate-env${suffix}`}>
+                    <PlateEnv 
+                      project={bProj} 
+                      captures={bProj.urbanisme_captures || {}} 
+                      photos={bProj.pc_photos || {}} 
+                      includeLointain={activeProj?.selectedPages?.dp8 !== false}
+                    />
+                  </div>
+                  <div id={`dev-plate-env-proche${suffix}`}><PlateEnvProche project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
+                  <div id={`dev-plate-env-lointain${suffix}`}><PlateEnvLointain project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
+                  <div id={`dev-plate-notice${suffix}`}><PlateInsertionNotice project={bProj} noticeText={activeProj.noticeText || activeProj.noticeAgricole || activeProj.pc_notice || activeProj.description} /></div>
+                </React.Fragment>
+              );
+            })}
 
-          {/* PC Plates — Multi-Bâtiments */}
-          <div id="dev-pc-plate-cover"><PCPlateCover project={selectedProject} installationType={selectedProject.type || 'batiment_solaire'} /></div>
-          <div id="dev-pc-plate-situation"><PCPlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-          <div id="dev-pc-plate-masse"><PCPlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
+            {/* PC Plates — Multi-Bâtiments */}
+            <div id="dev-pc-plate-cover"><PCPlateCover project={activeProj} installationType={activeProj.type || 'batiment_solaire'} /></div>
+            <div id="dev-pc-plate-situation"><PCPlateSituation project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
+            <div id="dev-pc-plate-masse"><PCPlateMasse project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
 
-          {((selectedProject.buildings && selectedProject.buildings.length > 0) ? selectedProject.buildings : [selectedProject]).map((b, bIdx) => {
-            const mergedCaptures = {
-              ...(selectedProject.urbanisme_captures || {}),
-              ...(selectedProject.captures || {}),
-              ...(b.captures || {}),
-              ...(b.urbanisme_captures || {}),
-            };
-            const mergedPhotos = {
-              ...(selectedProject.pc_photos || {}),
-              ...(selectedProject.photos || {}),
-              ...(b.photos || {}),
-              ...(b.pc_photos || {}),
-            };
-            const bProj = {
-              ...selectedProject,
-              ...b,
-              largeur: String(b.width || b.largeur || 20.0),
-              longueur: String(b.length || b.longueur || 30.0),
-              hauteur_egout: String(b.eaveHeight || b.hauteur_egout || 4.0),
-              pente: String(b.roofPitch || b.pente || 15),
-              buildingType: b.buildingType || 'asymetrique_1',
-              leftSide: b.leftSide || 'none',
-              rightSide: b.rightSide || 'none',
-              leftWidth: b.leftWidth || 4.0,
-              rightWidth: b.rightWidth || 4.0,
-              buildingName: b.name ? b.name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Bâtiment ${bIdx + 1}`,
-              urbanisme_captures: mergedCaptures,
-              captures: mergedCaptures,
-              pc_photos: mergedPhotos,
-              photos: mergedPhotos,
-            };
-            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
-            return (
-              <React.Fragment key={`pc-b-${b.id || bIdx}`}>
-                <div id={`dev-pc-plate-section-notice${suffix}`}>
-                  <PCPlateSectionAndNotice 
-                    project={bProj} 
-                    noticeText={selectedProject.noticeText || selectedProject.noticeAgricole || selectedProject.pc_notice || selectedProject.description} 
-                  />
-                </div>
-                <div id={`dev-pc-plate-facades${suffix}`}><PCPlateFacades project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
-                <div id={`dev-pc-plate-insertion${suffix}`}><PCPlateInsertion project={bProj} photos={bProj.pc_photos || {}} /></div>
-                <div id={`dev-pc-plate-env${suffix}`}><PCPlateEnv project={bProj} photos={bProj.pc_photos || {}} /></div>
-              </React.Fragment>
-            );
-          })}
-        </div>
-      )}
+            {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
+              const mergedCaptures = {
+                ...(activeProj.urbanisme_captures || {}),
+                ...(activeProj.captures || {}),
+                ...(b.captures || {}),
+                ...(b.urbanisme_captures || {}),
+              };
+              const mergedPhotos = {
+                ...(activeProj.pc_photos || {}),
+                ...(activeProj.photos || {}),
+                ...(b.photos || {}),
+                ...(b.pc_photos || {}),
+              };
+              const bProj = {
+                ...activeProj,
+                ...b,
+                largeur: String(b.width || b.largeur || 20.0),
+                longueur: String(b.length || b.longueur || 30.0),
+                hauteur_egout: String(b.eaveHeight || b.hauteur_egout || 4.0),
+                pente: String(b.roofPitch || b.pente || 15),
+                buildingType: b.buildingType || 'asymetrique_1',
+                leftSide: b.leftSide || 'none',
+                rightSide: b.rightSide || 'none',
+                leftWidth: b.leftWidth || 4.0,
+                rightWidth: b.rightWidth || 4.0,
+                buildingName: b.name ? b.name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Bâtiment ${bIdx + 1}`,
+                urbanisme_captures: mergedCaptures,
+                captures: mergedCaptures,
+                pc_photos: mergedPhotos,
+                photos: mergedPhotos,
+              };
+              const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+              return (
+                <React.Fragment key={`pc-b-${b.id || bIdx}`}>
+                  <div id={`dev-pc-plate-section-notice${suffix}`}>
+                    <PCPlateSectionAndNotice 
+                      project={bProj} 
+                      noticeText={activeProj.noticeText || activeProj.noticeAgricole || activeProj.pc_notice || activeProj.description} 
+                    />
+                  </div>
+                  <div id={`dev-pc-plate-facades${suffix}`}><PCPlateFacades project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
+                  <div id={`dev-pc-plate-insertion${suffix}`}><PCPlateInsertion project={bProj} photos={bProj.pc_photos || {}} /></div>
+                  <div id={`dev-pc-plate-env${suffix}`}><PCPlateEnv project={bProj} photos={bProj.pc_photos || {}} /></div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 }

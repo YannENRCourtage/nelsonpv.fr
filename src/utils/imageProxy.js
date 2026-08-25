@@ -157,6 +157,8 @@ export function blobToDataUrl(blob) {
     });
 }
 
+import { getAllCachedMediaForProject } from '@/services/urbanismeMediaService';
+
 /**
  * Précharge et convertit toutes les images d'un projet (urbanisme_captures, pc_photos, photos, bâtiments)
  * en Base64 Data URLs avant la génération de PDF.
@@ -170,11 +172,34 @@ export async function preloadProjectImages(project) {
 
     const cloned = JSON.parse(JSON.stringify(project));
 
+    // Récupérer le cache local IndexedDB si disponible (accès instantané 0ms)
+    let cached = null;
+    if (cloned.id) {
+        try {
+            cached = await getAllCachedMediaForProject(cloned.id);
+        } catch (e) {
+            console.warn('Erreur lecture cache local dans preloadProjectImages:', e);
+        }
+    }
+
+    if (cached) {
+        if (cached.captures && Object.keys(cached.captures).length > 0) {
+            cloned.urbanisme_captures = { ...cached.captures, ...(cloned.urbanisme_captures || {}) };
+        }
+        if (cached.photos && Object.keys(cached.photos).length > 0) {
+            cloned.pc_photos = { ...cached.photos, ...(cloned.pc_photos || {}) };
+        }
+    }
+
     // 1. Convertir urbanisme_captures
     if (cloned.urbanisme_captures && typeof cloned.urbanisme_captures === 'object') {
         const keys = Object.keys(cloned.urbanisme_captures);
         await Promise.all(
             keys.map(async (k) => {
+                if (cached?.captures?.[k]) {
+                    cloned.urbanisme_captures[k] = cached.captures[k];
+                    return;
+                }
                 const val = cloned.urbanisme_captures[k];
                 if (val && typeof val === 'string' && !val.startsWith('data:')) {
                     const dataUrl = await fetchImageAsDataUrl(val);
@@ -214,13 +239,20 @@ export async function preloadProjectImages(project) {
     // 4. Convertir pour chaque bâtiment configuré
     if (Array.isArray(cloned.buildings)) {
         await Promise.all(
-            cloned.buildings.map(async (b) => {
+            cloned.buildings.map(async (b, bIdx) => {
                 if (b && typeof b === 'object') {
+                    const bKey = b.id || `bat-${bIdx + 1}`;
+                    const bCache = cached?.buildingsMedia?.[bKey] || cached?.buildingsMedia?.[`b${bIdx}`] || {};
+
                     // Captures du bâtiment
                     if (b.captures && typeof b.captures === 'object') {
                         const bKeys = Object.keys(b.captures);
                         await Promise.all(
                             bKeys.map(async (k) => {
+                                if (bCache?.captures?.[k]) {
+                                    b.captures[k] = bCache.captures[k];
+                                    return;
+                                }
                                 const val = b.captures[k];
                                 if (val && typeof val === 'string' && !val.startsWith('data:')) {
                                     const dataUrl = await fetchImageAsDataUrl(val);
@@ -233,6 +265,10 @@ export async function preloadProjectImages(project) {
                         const bKeys = Object.keys(b.urbanisme_captures);
                         await Promise.all(
                             bKeys.map(async (k) => {
+                                if (bCache?.captures?.[k]) {
+                                    b.urbanisme_captures[k] = bCache.captures[k];
+                                    return;
+                                }
                                 const val = b.urbanisme_captures[k];
                                 if (val && typeof val === 'string' && !val.startsWith('data:')) {
                                     const dataUrl = await fetchImageAsDataUrl(val);
@@ -246,6 +282,10 @@ export async function preloadProjectImages(project) {
                         const bKeys = Object.keys(b.photos);
                         await Promise.all(
                             bKeys.map(async (k) => {
+                                if (bCache?.photos?.[k]) {
+                                    b.photos[k] = bCache.photos[k];
+                                    return;
+                                }
                                 const val = b.photos[k];
                                 if (val && typeof val === 'string' && !val.startsWith('data:')) {
                                     const dataUrl = await fetchImageAsDataUrl(val);
@@ -258,6 +298,10 @@ export async function preloadProjectImages(project) {
                         const bKeys = Object.keys(b.pc_photos);
                         await Promise.all(
                             bKeys.map(async (k) => {
+                                if (bCache?.photos?.[k]) {
+                                    b.pc_photos[k] = bCache.photos[k];
+                                    return;
+                                }
                                 const val = b.pc_photos[k];
                                 if (val && typeof val === 'string' && !val.startsWith('data:')) {
                                     const dataUrl = await fetchImageAsDataUrl(val);

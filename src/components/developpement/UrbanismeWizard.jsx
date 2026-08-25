@@ -12,6 +12,8 @@ import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '
 import { cadastreService } from '@/services/CadastreService';
 import { getOrGenerateProjectMaps, generateStaticMapImage } from '@/services/AutoMapService';
 import { useConfiguratorStore, useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
+import { cacheMediaLocal, getAllCachedMediaForProject, uploadUrbanismeDataUrl, persistProjectUrbanismeMedia } from '@/services/urbanismeMediaService';
+import { useAuth } from '@/contexts/AuthContext.jsx';
 import { ControlPanel } from '../configurator/ui/ControlPanel.jsx';
 import { BuildingSummaryCard } from '../configurator/ui/BuildingSummaryCard.jsx';
 import BuildingScene from '../configurator/BuildingScene.jsx';
@@ -209,6 +211,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
   const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT'
+  const { activeTenantId } = useAuth() || {};
   
   // Zustand Store du Configurateur Nelson
   const config = useConfiguratorValues();
@@ -657,6 +660,30 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       setCaptures(b1?.captures || b1?.urbanisme_captures || project?.urbanisme_captures || project?.captures || {});
       setPhotos(b1?.photos || b1?.pc_photos || project?.pc_photos || project?.photos || {});
 
+      // Restaurer fidèlement depuis le cache local IndexedDB pour ne jamais perdre d'images
+      if (project?.id) {
+        getAllCachedMediaForProject(project.id).then(cached => {
+          if (cached && (Object.keys(cached.captures).length > 0 || Object.keys(cached.photos).length > 0 || Object.keys(cached.buildingsMedia).length > 0)) {
+            setCaptures(prev => ({ ...cached.captures, ...prev }));
+            setPhotos(prev => ({ ...cached.photos, ...prev }));
+            setEditedProject(prev => ({
+              ...prev,
+              urbanisme_captures: { ...(cached.captures || {}), ...(prev.urbanisme_captures || {}) },
+              pc_photos: { ...(cached.photos || {}), ...(prev.pc_photos || {}) }
+            }));
+            setBuildings(prev => prev.map((b, idx) => {
+              const bKey = b.id || `bat-${idx + 1}`;
+              const bMedia = cached.buildingsMedia[bKey] || cached.buildingsMedia[`b${idx}`] || {};
+              return {
+                ...b,
+                captures: { ...(bMedia.captures || {}), ...(b.captures || {}) },
+                photos: { ...(bMedia.photos || {}), ...(b.photos || {}) }
+              };
+            }));
+          }
+        }).catch(err => console.warn('Erreur récupération cache media IndexedDB:', err));
+      }
+
       // 1. Cadastre IGN automatique
       if ((initProj.gps || initProj.lat) && (!initProj.cadastre_section || !initProj.cadastre_numero)) {
         setFetchingCadastre(true);
@@ -801,8 +828,31 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     });
   };
 
+  // Helper de persistance automatique média (IndexedDB + Storage + Firestore)
+  const persistMediaItem = (bKey, key, dataUrl, category = 'photos') => {
+    if (!project?.id || !dataUrl) return;
+    // 1. Sauvegarde instantanée en cache local IndexedDB (accès immédiat sans délai)
+    cacheMediaLocal(project.id, bKey, key, dataUrl);
+
+    // 2. Téléversement asynchrone Firebase Storage + mise à jour Firestore propre
+    uploadUrbanismeDataUrl(dataUrl, project.id, bKey, key).then(async (url) => {
+      if (url && url !== dataUrl) {
+        try {
+          const updateField = category === 'photos' ? 'pc_photos' : 'urbanisme_captures';
+          await apiService.updateProject(project.id, {
+            [`${updateField}.${key}`]: url,
+            updatedAt: new Date().toISOString()
+          }, activeTenantId);
+        } catch (e) {
+          console.warn('[UrbanismeWizard] Sync Firestore photo échouée:', e);
+        }
+      }
+    }).catch(err => console.warn('[UrbanismeWizard] Upload Storage échoué:', err));
+  };
+
   // Sauvegarde simulation 3D après projet (DP6 / PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
+    const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
     setPhotos(prev => ({ ...prev, apres: simulatedDataUrl }));
     setEditedProject(prev => ({
       ...prev,
@@ -818,10 +868,12 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       }
       return updated;
     });
+    persistMediaItem(bKey, 'apres', simulatedDataUrl, 'photos');
   };
 
   // Sauvegarde des captures de façades pour DP4 / PC5
   const handleCaptureSnapshotPC5 = (dataUrl, slotKey = 'facade_sud') => {
+    const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
     setCaptures(prev => ({ ...prev, [slotKey]: dataUrl, facades_projet: dataUrl }));
     setEditedProject(prev => ({
       ...prev,
@@ -838,10 +890,12 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       }
       return updated;
     });
+    persistMediaItem(bKey, slotKey, dataUrl, 'captures');
   };
 
   const handleCaptureAll5ViewsPC5 = (fiveViewsObj) => {
     if (!fiveViewsObj) return;
+    const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
     setCaptures(prev => ({ ...prev, ...fiveViewsObj, facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture }));
     setEditedProject(prev => ({
       ...prev,
@@ -862,6 +916,9 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       }
       return updated;
     });
+    Object.entries(fiveViewsObj).forEach(([k, v]) => {
+      if (v) persistMediaItem(bKey, k, v, 'captures');
+    });
   };
 
   // Chargement direct de photo (sans pop-up automatique de recadrage)
@@ -872,6 +929,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target.result;
+      const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
       if (category === 'photos') {
         setPhotos(prev => ({ ...prev, [key]: dataUrl }));
         setEditedProject(prev => ({
@@ -888,6 +946,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
           }
           return updated;
         });
+        persistMediaItem(bKey, key, dataUrl, 'photos');
       } else if (category === 'captures') {
         if (key === 'situation_ign' || key === 'satellite' || key === 'masse_projet') {
           setCaptures(prev => ({ ...prev, [key]: dataUrl }));
@@ -895,6 +954,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
             ...prev,
             urbanisme_captures: { ...(prev.urbanisme_captures || {}), [key]: dataUrl }
           }));
+          persistMediaItem('general', key, dataUrl, 'captures');
         } else {
           setBuildings(prev => {
             const updated = [...prev];
@@ -906,6 +966,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
             }
             return updated;
           });
+          persistMediaItem(bKey, key, dataUrl, 'captures');
         }
       }
     };
@@ -919,6 +980,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
 
   const handleCropComplete = (croppedDataUrl) => {
     const { category, key } = cropModal;
+    const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
     if (category === 'photos') {
       const updated = { ...photos, [key]: croppedDataUrl };
       setPhotos(updated);
@@ -930,12 +992,14 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
         }
         return updated;
       });
+      persistMediaItem(bKey, key, croppedDataUrl, 'photos');
     }
     if (category === 'captures') {
       if (key === 'situation_ign' || key === 'satellite' || key === 'masse_projet') {
         const updated = { ...captures, [key]: croppedDataUrl };
         setCaptures(updated);
         setEditedProject(prev => ({ ...prev, urbanisme_captures: updated }));
+        persistMediaItem('general', key, croppedDataUrl, 'captures');
       } else {
         setBuildings(prev => {
           const updated = [...prev];
@@ -944,6 +1008,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
           }
           return updated;
         });
+        persistMediaItem(bKey, key, croppedDataUrl, 'captures');
       }
     }
   };
@@ -1119,6 +1184,14 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       additionalRoof: additionalRoof,
       batteryStorage: batteryStorage,
     };
+
+    // Sauvegarder automatiquement dans Firebase Storage et Firestore
+    if (project?.id) {
+      persistProjectUrbanismeMedia(project.id, activeTenantId, finalCaptures, finalPhotos, enrichedBuildings).catch(err => {
+        console.warn('[UrbanismeWizard] Persistance Firebase Storage & Firestore:', err);
+      });
+    }
+
     try {
       await onGenerate(type, finalTypeLabel, finalProject, selectedPages);
     } finally {
@@ -1561,8 +1634,19 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
 
               {/* ÉTAPE 3 — Visionneuse 3D (DP4/PC5 5 VUES) & Insertion Paysagère 3D (DP6/PC6) */}
               {step === 3 && (() => {
-                const currentPhotos = buildings[activeBuildingIndex]?.photos || {};
-                const currentCaptures = buildings[activeBuildingIndex]?.captures || {};
+                const b = buildings[activeBuildingIndex] || {};
+                const currentPhotos = {
+                  ...(photos || {}),
+                  ...(editedProject?.pc_photos || {}),
+                  ...(b.photos || {}),
+                  ...(b.pc_photos || {})
+                };
+                const currentCaptures = {
+                  ...(captures || {}),
+                  ...(editedProject?.urbanisme_captures || {}),
+                  ...(b.captures || {}),
+                  ...(b.urbanisme_captures || {})
+                };
                 return (
                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-5 space-y-3 overflow-y-auto max-h-[70vh]">
