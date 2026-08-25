@@ -11,6 +11,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     const isPignonView = viewMode === 'PIGNON';
     const isFacadeSudView = viewMode === 'FACADE_SUD';
+    const isFacadeNordView = viewMode === 'FACADE_NORD';
+    const isFacadeView = isFacadeSudView || isFacadeNordView;
 
     const textColor = "#000000";
     const lineColor = "#000000";
@@ -91,10 +93,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         };
     }, [width, gapSize]);
 
-    // 2. Length Arrow (Right Side)
+    // 2. Length Arrow (Right Side for Sud, Left Side for Nord)
     const { lengthPoints, lengthStart, lengthEnd, xSide, yLength } = useMemo(() => {
-        const x = width / 2 + rightWidth + (buildingType === 'epona_talian5' && !isCustom ? -6.0 : 3.0); 
-        const y = isFacadeSudView ? -0.7 : 0.1;
+        let x = width / 2 + rightWidth + (buildingType === 'epona_talian5' && !isCustom ? -6.0 : 3.0); 
+        if (isFacadeNordView) {
+            x = -width / 2 - leftWidth - (buildingType === 'epona_talian5' && !isCustom ? -6.0 : 3.0);
+        }
+        const y = isFacadeView ? -0.7 : 0.1;
         const start = new THREE.Vector3(x, y, 0);
         const end = new THREE.Vector3(x, y, -length);
         const mid = new THREE.Vector3(x, y, -length / 2);
@@ -108,12 +113,15 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(x, y, mid.z - gapSize / 2), end]
             ]
         };
-    }, [width, length, rightWidth, gapSize, buildingType, isCustom, isFacadeSudView]);
+    }, [width, length, rightWidth, leftWidth, gapSize, buildingType, isCustom, isFacadeView, isFacadeNordView]);
 
-    // 2b. Single Left Bay Marker (Façade Sud ONLY - cote travée de gauche)
+    // 2b. Single Left Bay Marker (Façade Sud & Nord ONLY - cote travée de gauche)
     const baySpacingData = useMemo(() => {
         const effectiveBaySpacing = Number(baySpacing) || 7.5;
-        const x = width / 2 + rightWidth + (buildingType === 'epona_talian5' && !isCustom ? -6.0 : 3.0) - 1.2;
+        let x = width / 2 + rightWidth + (buildingType === 'epona_talian5' && !isCustom ? -6.0 : 3.0) - 1.2;
+        if (isFacadeNordView) {
+            x = -width / 2 - leftWidth - (buildingType === 'epona_talian5' && !isCustom ? -6.0 : 3.0) + 1.2;
+        }
         const start = new THREE.Vector3(x, 0.1, 0);
         const end = new THREE.Vector3(x, 0.1, -effectiveBaySpacing);
         const mid = new THREE.Vector3(x, 0.1, -effectiveBaySpacing / 2);
@@ -130,7 +138,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(x, 0.1, mid.z - textGap / 2), end]
             ]
         };
-    }, [width, rightWidth, baySpacing, buildingType, isCustom]);
+    }, [width, rightWidth, leftWidth, baySpacing, buildingType, isCustom, isFacadeNordView]);
 
     // 3. Eave Height (Standard / Right for Asym/Monopente)
     const { heightPoints, heightStart, heightEnd, xEave } = useMemo(() => {
@@ -630,12 +638,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         return `${parseFloat(eaveHeight.toFixed(2))} m`;
     };
 
-    if (!showDimensions && !isPignonView && !isFacadeSudView) return null;
+    if (!showDimensions && !isPignonView && !isFacadeView) return null;
 
     return (
         <group>
-            {/* 1. WIDTH MARKER (Affiché si standard ou Vue Pignon, masqué sur Façade Sud) */}
-            {!isFacadeSudView && widthPoints && (
+            {/* 1. WIDTH MARKER (Affiché si standard ou Vue Pignon, masqué sur Façades Sud et Nord) */}
+            {!isFacadeView && widthPoints && (
                 <group>
                     {widthPoints.map((p, i) => (
                         <Line key={`wp-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
@@ -658,7 +666,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 2. LENGTH MARKER (Affiché si standard ou Vue Façade Sud, masqué sur Pignon) */}
+            {/* 2. LENGTH MARKER (Affiché si standard ou Vue Façade Sud/Nord, masqué sur Pignon) */}
             {!isPignonView && lengthPoints && (
                 <group>
                     <Line points={lengthPoints[0]} color={lineColor} lineWidth={lineWidth} />
@@ -666,8 +674,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={lengthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[xSide, yLength !== undefined ? yLength : (isFacadeSudView ? -0.7 : 0.1), -length / 2]}
-                        rotation={isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2]}
+                        position={[xSide, yLength !== undefined ? yLength : (isFacadeView ? -0.7 : 0.1), -length / 2]}
+                        rotation={isFacadeNordView ? [0, -Math.PI / 2, 0] : (isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2])}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
@@ -680,8 +688,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 2b. SINGLE LEFT BAY SPACING (Vue Façade Sud ONLY - cote travée de gauche) */}
-            {isFacadeSudView && baySpacingData && (
+            {/* 2b. SINGLE LEFT BAY SPACING (Vue Façade Sud & Nord ONLY - cote travée de gauche) */}
+            {isFacadeView && baySpacingData && (
                 <group>
                     <Line points={baySpacingData.points[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={baySpacingData.points[1]} color={lineColor} lineWidth={lineWidth} />
@@ -689,7 +697,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={baySpacingData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
                         position={[baySpacingData.xBay, 0.1, -baySpacingData.effectiveBaySpacing / 2]}
-                        rotation={isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2]}
+                        rotation={isFacadeNordView ? [0, -Math.PI / 2, 0] : (isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2])}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"

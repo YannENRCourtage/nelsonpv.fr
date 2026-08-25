@@ -154,6 +154,14 @@ export default function Building3DViewer({
     setIsCapturingAll(false);
   };
 
+  const getViewModeForSlot = (slot) => {
+    if (slot === 'facade_sud') return 'FACADE_SUD';
+    if (slot === 'facade_nord') return 'FACADE_NORD';
+    if (slot === 'facade_est' || slot === 'facade_ouest') return 'PIGNON';
+    if (slot === 'vue_couverture') return 'COUVERTURE';
+    return '3D';
+  };
+
   return (
     <div className={`relative rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-xs flex flex-col ${className}`} style={{ height }}>
       {/* Three.js R3F Canvas */}
@@ -190,7 +198,7 @@ export default function Building3DViewer({
             minDistance={2}
           />
 
-          <Structure hideBracing={true} forceHideDimensions={true} />
+          <Structure hideBracing={true} forceHideDimensions={false} viewMode={getViewModeForSlot(activeSlot)} />
 
           <ContactShadows
             position={[0, 0, targetZ]}
