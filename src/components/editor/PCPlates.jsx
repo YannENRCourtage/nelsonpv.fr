@@ -67,7 +67,8 @@ const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Clique
             <img 
                 src={proxiedSrc} 
                 alt={label} 
-                crossOrigin="anonymous"
+                loading="eager"
+                decoding="sync"
                 style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', maxWidth: '100%', maxHeight: '100%', ...imageStyle }} 
             />
         );
@@ -79,7 +80,8 @@ const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Clique
                 <img 
                     src={proxiedSrc} 
                     alt={label} 
-                    crossOrigin="anonymous"
+                    loading="eager"
+                    decoding="sync"
                     style={{ width: '100%', height: '100%', objectFit: 'contain', maxWidth: '100%', maxHeight: '100%', ...imageStyle }} 
                 />
             ) : (

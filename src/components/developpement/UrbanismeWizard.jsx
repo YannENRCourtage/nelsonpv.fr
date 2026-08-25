@@ -554,8 +554,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
           rightWidth: b.rightWidth !== undefined ? Number(b.rightWidth) : (b.rightSide === 'appentis' ? 9.3 : (b.rightSide === 'auvent' ? 4.0 : 0)),
           bayCount: Number(b.bayCount || 5),
           baySpacing: Number(b.baySpacing || 7.5),
-          captures: b.captures || {},
-          photos: b.photos || {}
+          captures: b.captures || b.urbanisme_captures || project.urbanisme_captures || project.captures || {},
+          photos: b.photos || b.pc_photos || project.pc_photos || project.photos || {}
         };
       });
     } else {
@@ -590,8 +590,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
           lat: defLat,
           lng: defLng,
           gps: `${defLat},${defLng}`,
-          captures: project.urbanisme_captures || {},
-          photos: project.pc_photos || {},
+          captures: project.urbanisme_captures || project.captures || {},
+          photos: project.pc_photos || project.photos || {},
           rotation: Number(project.rotation || 0)
         }
       ];
@@ -613,13 +613,13 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
         ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
         : (isPC
           ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-          : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque");
+          : "Demande d'urbanisme photovoltaïque");
 
       const initProj = {
         ...project,
         type: isOmbriere ? 'ombriere' : (project.type || 'batiment_solaire'),
         buildingType: b1?.buildingType || project.buildingType || 'asymetrique_1',
-        lastName: cleanDemandeur,
+        lastName: names.lastName || project.name || '',
         firstName: names.firstName || '',
         demandeur: cleanDemandeur,
         email: projEmail,
@@ -654,8 +654,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
         buildings: initialBuildings,
       };
       setEditedProject(initProj);
-      setCaptures(project?.urbanisme_captures || {});
-      setPhotos(project?.pc_photos || {});
+      setCaptures(b1?.captures || b1?.urbanisme_captures || project?.urbanisme_captures || project?.captures || {});
+      setPhotos(b1?.photos || b1?.pc_photos || project?.pc_photos || project?.photos || {});
 
       // 1. Cadastre IGN automatique
       if ((initProj.gps || initProj.lat) && (!initProj.cadastre_section || !initProj.cadastre_numero)) {

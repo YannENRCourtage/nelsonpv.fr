@@ -282,16 +282,34 @@ async function captureplate(doc, elementId, landscape = true) {
     return;
   }
 
-  await new Promise(r => setTimeout(r, 250));
+  // 1. Attendre que toutes les balises <img> soient complètement chargées et décodées
+  const images = Array.from(el.querySelectorAll('img'));
+  await Promise.all(
+    images.map(img => {
+      if (!img.src) return Promise.resolve();
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        if (img.decode) {
+          img.decode().then(resolve).catch(resolve);
+        }
+        setTimeout(resolve, 1500); // Sécurité timeout max 1.5s par image
+      });
+    })
+  );
+
+  // Stabilisation de rendu
+  await new Promise(r => setTimeout(r, 200));
 
   try {
     const canvas = await html2canvas(el, {
       scale: 2,
       useCORS: true,
-      allowTaint: false,
+      allowTaint: true,
       logging: false,
       backgroundColor: '#ffffff',
-      imageTimeout: 15000,
+      imageTimeout: 20000,
     });
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
@@ -299,8 +317,6 @@ async function captureplate(doc, elementId, landscape = true) {
     const dims = landscape ? [841.89, 595.28] : [595.28, 841.89];
     const page = doc.addPage(dims);
     page.drawImage(img, { x: 0, y: 0, width: dims[0], height: dims[1] });
-
-    // Notice descriptive: texte déjà capturé par html2canvas, pas de champ AcroForm superposé
   } catch (err) {
     console.error(`[UrbanismeDoc] Error capturing #${elementId}:`, err);
   }

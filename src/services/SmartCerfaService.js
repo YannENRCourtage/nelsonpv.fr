@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFName, PDFString } from 'pdf-lib';
 
 /**
  * SmartCerfaService — Moteur de mapping intelligent des CERFA PDF
@@ -252,10 +252,17 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
           try {
             const f = form.getTextField(name);
             if (f) {
-              f.setText(String(value));
               if (fixedFontSize !== null) {
-                f.setFontSize(fixedFontSize);
+                try {
+                  f.acroField.dict.set(PDFName.of('DA'), PDFString.of(`/Helv ${fixedFontSize} Tf 0 g`));
+                  f.setFontSize(fixedFontSize);
+                } catch (fontErr) {
+                  try {
+                    f.acroField.dict.set(PDFName.of('DA'), PDFString.of(`/Helv ${fixedFontSize} Tf 0 g`));
+                  } catch (_) {}
+                }
               }
+              f.setText(String(value));
               return true;
             }
           } catch (_) {}
@@ -307,8 +314,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       setField(fieldMap.parcelle,       parcelle, 9.5);
       setField(fieldMap.surface,        surface, 9.5);
 
-      // 4. Projet & Description — Directive 5 : Police réduite et bien proportionnée
-      setField(fieldMap.description,    objet, 7.5);
+      // 4. Projet & Description — Taille de police harmonisée avec les coordonnées (9.5pt)
+      setField(fieldMap.description,    objet, 9.5);
       setField(fieldMap.puissance,      kwc ? `${kwc} kWc` : '', 8.5);
 
       if (isNewConstruction) {

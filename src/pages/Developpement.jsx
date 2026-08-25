@@ -573,7 +573,7 @@ export default function Developpement() {
 
       {/* ═══ ZONE DE RENDU HTML2CANVAS POUR LE PDF CERFA ════════════ */}
       {selectedProject && (
-        <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none' }}>
+        <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '297mm', pointerEvents: 'none', zIndex: -100, opacity: 1 }}>
           {/* DP & CU Plates */}
           <div id="dev-plate-cover"><PlateCover project={selectedProject} installationType={selectedProject.type || 'batiment_solaire'} /></div>
           <div id="dev-plate-situation"><PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>

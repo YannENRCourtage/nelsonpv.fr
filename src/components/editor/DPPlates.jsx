@@ -29,6 +29,28 @@ const HEADER_STYLE = {
 
 const LOGO_NELSON = "/logo-nelson.png"; 
 
+export const SafePlateImage = ({ src, alt = '', style = {}, className = '' }) => {
+    const finalSrc = getProxiedImageUrl(src);
+    if (!finalSrc) {
+        return (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', color: '#94a3b8', fontSize: '7.5pt', textAlign: 'center', padding: '4px', boxSizing: 'border-box', ...style }}>
+                <span>{alt || 'Visuel non disponible'}</span>
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={finalSrc}
+            alt={alt}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', ...style }}
+            className={className}
+            loading="eager"
+            decoding="sync"
+        />
+    );
+}; 
+
 export const PlateHeader = ({ title, project, showBranding }) => {
     const clientFullName = `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Client';
     const buildingNameSuffix = project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : '';
@@ -946,13 +968,13 @@ export const PlateFacades = ({ project, captures }) => {
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>1. FAÇADE SUD</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <img src={getProxiedImageUrl(sud || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Sud" crossOrigin="anonymous" />
+                            <SafePlateImage src={sud} alt="Façade Sud" />
                         </div>
                     </div>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>2. FAÇADE NORD</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <img src={getProxiedImageUrl(nord || sud || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Nord" crossOrigin="anonymous" />
+                            <SafePlateImage src={nord || sud} alt="Façade Nord" />
                         </div>
                     </div>
                 </div>
@@ -965,7 +987,7 @@ export const PlateFacades = ({ project, captures }) => {
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON GAUCHE)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <img src={getProxiedImageUrl(est || sud || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Est" crossOrigin="anonymous" />
+                            <SafePlateImage src={est || sud} alt="Façade Est" />
                         </div>
                     </div>
                     {/* Ouest */}
@@ -975,14 +997,14 @@ export const PlateFacades = ({ project, captures }) => {
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON DROIT)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <img src={getProxiedImageUrl(ouest || sud || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Ouest" crossOrigin="anonymous" />
+                            <SafePlateImage src={ouest || sud} alt="Façade Ouest" />
                         </div>
                     </div>
                     {/* Toiture */}
                     <div style={{ flex: 1.6, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>5. VUE COUVERTURE (PAYSAGE)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <img src={getProxiedImageUrl(toiture || sud || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Toiture" crossOrigin="anonymous" />
+                            <SafePlateImage src={toiture || sud} alt="Vue Toiture" />
                         </div>
                     </div>
                 </div>
@@ -1010,8 +1032,8 @@ export const PlateInsertion = ({ project, captures, photos }) => {
                         <div>1. VUE DE L'ÉTAT INITIAL</div>
                         <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '1px' }}>(AVANT TRAVAUX)</div>
                     </div>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        <img src={getProxiedImageUrl(photoAvant)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Avant" crossOrigin="anonymous" />
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm', background: '#ffffff' }}>
+                        <SafePlateImage src={photoAvant} alt="État Initial (Avant Travaux)" />
                     </div>
                 </div>
 
@@ -1020,8 +1042,8 @@ export const PlateInsertion = ({ project, captures, photos }) => {
                         <div>2. VUE APRÈS PROJET</div>
                         <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#15803d', marginTop: '1px' }}>(SIMULATION 3D D'INSERTION PAYSAGÈRE)</div>
                     </div>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        <img src={getProxiedImageUrl(photoApres)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Après" crossOrigin="anonymous" />
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm', background: '#ffffff' }}>
+                        <SafePlateImage src={photoApres} alt="Vue après projet (Simulation 3D)" />
                     </div>
                 </div>
             </div>
@@ -1048,8 +1070,8 @@ export const PlateEnv = ({ project, captures, photos, includeLointain = true }) 
                     <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                         DP7 — Photographie dans l'environnement proche
                     </div>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
-                        <img src={getProxiedImageUrl(photoProche)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Proche" crossOrigin="anonymous" />
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm', background: '#ffffff' }}>
+                        <SafePlateImage src={photoProche} alt="Environnement Proche" />
                     </div>
                 </div>
 
@@ -1058,8 +1080,8 @@ export const PlateEnv = ({ project, captures, photos, includeLointain = true }) 
                         <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                             DP8 — Photographie dans le paysage lointain
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
-                            <img src={getProxiedImageUrl(photoLointain)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm', background: '#ffffff' }}>
+                            <SafePlateImage src={photoLointain} alt="Paysage Lointain" />
                         </div>
                     </div>
                 )}
@@ -1076,8 +1098,8 @@ export const PlateEnvProche = ({ project, captures, photos }) => {
     return (
         <div style={PAGE_STYLE} id="dp-plate-env-proche">
             <PlateHeader title="DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE" project={project} />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm' }}>
-                <img src={getProxiedImageUrl(photoProche)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Proche" crossOrigin="anonymous" />
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm', padding: '1mm' }}>
+                <SafePlateImage src={photoProche} alt="Environnement Proche" />
             </div>
             <Footer project={project} />
         </div>
