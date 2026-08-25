@@ -640,7 +640,7 @@ export default function EtudeDossierView({
         </div>
 
         {/* Barre colorée de progression */}
-        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-200">
+        <div className="w-full bg-slate-100 h-5 rounded-full overflow-hidden p-1 border border-slate-200 shadow-inner">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${progressPercent}%` }}

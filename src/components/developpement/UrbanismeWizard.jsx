@@ -2016,10 +2016,10 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
                                 return upd;
                               });
                             }}
-                            className="w-full h-3.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 my-1"
+                            className="w-full h-7 bg-slate-200 rounded-xl appearance-none cursor-pointer accent-blue-600 my-1.5 shadow-inner"
                           />
 
-                          <div className="bg-blue-50 border border-blue-200 rounded-xl py-1 px-2 text-center text-xs font-bold text-blue-900 shadow-2xs">
+                          <div className="bg-blue-50 border border-blue-200 rounded-xl py-2 px-3 text-center text-xs font-black text-blue-900 shadow-2xs">
                             {(() => {
                               const r = Number(currentRotation) || 0;
                               const norm = ((((r + 180) % 360) + 360) % 360) - 180;

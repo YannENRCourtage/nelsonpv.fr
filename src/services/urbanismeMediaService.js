@@ -268,11 +268,31 @@ export async function persistProjectUrbanismeMedia(projectId, activeTenantId, ca
       await Promise.all(uploadTasks);
     }
 
-    // 4. Mettre à jour Firestore avec les URLs Firebase Storage nettoyées
+    // 4. Filtrer les chaînes base64 restantes pour ne pas dépasser la limite de 1MB de Firestore
+    const stripDataUrls = (obj) => {
+      const sanitized = {};
+      for (const [k, v] of Object.entries(obj || {})) {
+        if (typeof v === 'string' && v.startsWith('data:')) {
+          continue; // Conservé dans IndexedDB localement, non envoyé à Firestore pour éviter l'erreur de quota
+        }
+        sanitized[k] = v;
+      }
+      return sanitized;
+    };
+
+    const firestoreCaptures = stripDataUrls(cleanCaptures);
+    const firestorePhotos = stripDataUrls(cleanPhotos);
+    const firestoreBuildings = cleanBuildings.map(b => ({
+      ...b,
+      captures: stripDataUrls(b.captures),
+      photos: stripDataUrls(b.photos),
+    }));
+
+    // 5. Mettre à jour Firestore avec les URLs Firebase Storage nettoyées
     const updates = {
-      urbanisme_captures: cleanCaptures,
-      pc_photos: cleanPhotos,
-      buildings: cleanBuildings,
+      urbanisme_captures: firestoreCaptures,
+      pc_photos: firestorePhotos,
+      buildings: firestoreBuildings,
       updatedAt: new Date().toISOString(),
     };
 
