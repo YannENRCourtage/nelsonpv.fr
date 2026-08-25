@@ -801,24 +801,37 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     });
   };
 
-  // Sauvegarde simulation 3D après projet (PC6)
+  // Sauvegarde simulation 3D après projet (DP6 / PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
+    setPhotos(prev => ({ ...prev, apres: simulatedDataUrl }));
+    setEditedProject(prev => ({
+      ...prev,
+      pc_photos: { ...(prev.pc_photos || {}), apres: simulatedDataUrl }
+    }));
     setBuildings(prev => {
       const updated = [...prev];
       if (updated[activeBuildingIndex]) {
-        updated[activeBuildingIndex].photos = { ...updated[activeBuildingIndex].photos, apres: simulatedDataUrl };
+        updated[activeBuildingIndex].photos = { 
+          ...(updated[activeBuildingIndex].photos || {}), 
+          apres: simulatedDataUrl 
+        };
       }
       return updated;
     });
   };
 
-  // Sauvegarde des captures de façades pour PC5
+  // Sauvegarde des captures de façades pour DP4 / PC5
   const handleCaptureSnapshotPC5 = (dataUrl, slotKey = 'facade_sud') => {
+    setCaptures(prev => ({ ...prev, [slotKey]: dataUrl, facades_projet: dataUrl }));
+    setEditedProject(prev => ({
+      ...prev,
+      urbanisme_captures: { ...(prev.urbanisme_captures || {}), [slotKey]: dataUrl, facades_projet: dataUrl }
+    }));
     setBuildings(prev => {
       const updated = [...prev];
       if (updated[activeBuildingIndex]) {
         updated[activeBuildingIndex].captures = {
-          ...updated[activeBuildingIndex].captures,
+          ...(updated[activeBuildingIndex].captures || {}),
           [slotKey]: dataUrl,
           facades_projet: dataUrl
         };
@@ -829,11 +842,20 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
 
   const handleCaptureAll5ViewsPC5 = (fiveViewsObj) => {
     if (!fiveViewsObj) return;
+    setCaptures(prev => ({ ...prev, ...fiveViewsObj, facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture }));
+    setEditedProject(prev => ({
+      ...prev,
+      urbanisme_captures: { 
+        ...(prev.urbanisme_captures || {}), 
+        ...fiveViewsObj, 
+        facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture 
+      }
+    }));
     setBuildings(prev => {
       const updated = [...prev];
       if (updated[activeBuildingIndex]) {
         updated[activeBuildingIndex].captures = {
-          ...updated[activeBuildingIndex].captures,
+          ...(updated[activeBuildingIndex].captures || {}),
           ...fiveViewsObj,
           facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture || updated[activeBuildingIndex].captures?.facades_projet
         };
@@ -1025,14 +1047,43 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
 
     const masseMap = buildingsWithMasse[0]?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 19, updatedBuildings);
 
+    const allBuildingsCaptures = updatedBuildings.reduce((acc, b) => ({
+      ...acc,
+      ...(b.captures || {}),
+      ...(b.urbanisme_captures || {})
+    }), {});
+
+    const allBuildingsPhotos = updatedBuildings.reduce((acc, b) => ({
+      ...acc,
+      ...(b.photos || {}),
+      ...(b.pc_photos || {})
+    }), {});
+
     const finalCaptures = {
       ...captures,
+      ...(editedProject.urbanisme_captures || {}),
+      ...allBuildingsCaptures,
       ...(ignMap ? { ign: ignMap } : {}),
       ...(satMap ? { satellite: satMap } : {}),
       ...(masseMap ? { masse_projet: masseMap } : {}),
     };
 
-    const b1 = buildingsWithMasse[0] || {};
+    const finalPhotos = {
+      ...photos,
+      ...(editedProject.pc_photos || {}),
+      ...allBuildingsPhotos,
+    };
+
+    // Propager toutes les captures et photos à chaque bâtiment pour garantir leur présence en DP4 et DP6
+    const enrichedBuildings = buildingsWithMasse.map(b => ({
+      ...b,
+      captures: { ...finalCaptures, ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
+      urbanisme_captures: { ...finalCaptures, ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
+      photos: { ...finalPhotos, ...(b.photos || {}), ...(b.pc_photos || {}) },
+      pc_photos: { ...finalPhotos, ...(b.photos || {}), ...(b.pc_photos || {}) },
+    }));
+
+    const b1 = enrichedBuildings[0] || {};
     const finalProject = {
       ...editedProject,
       ...fieldValues,
@@ -1061,8 +1112,10 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       pc_notice: effectiveNotice,
       notice_descriptive: effectiveNotice,
       urbanisme_captures: finalCaptures,
-      pc_photos: photos,
-      buildings: buildingsWithMasse,
+      captures: finalCaptures,
+      pc_photos: finalPhotos,
+      photos: finalPhotos,
+      buildings: enrichedBuildings,
       additionalRoof: additionalRoof,
       batteryStorage: batteryStorage,
     };
@@ -1876,7 +1929,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                                 return upd;
                               });
                             }}
-                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            className="w-full h-3.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 my-1"
                           />
 
                           <div className="bg-blue-50 border border-blue-200 rounded-xl py-1 px-2 text-center text-xs font-bold text-blue-900 shadow-2xs">
@@ -1899,7 +1952,22 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                             })()}
                           </div>
 
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-5 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBuildings(prev => {
+                                  const upd = [...prev];
+                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: 90 };
+                                  return upd;
+                                });
+                              }}
+                              className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
+                                currentRotation === 90 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              Ouest (90°)
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -1909,7 +1977,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                                   return upd;
                                 });
                               }}
-                              className={`py-1 rounded-xl text-xs font-black transition-all border ${
+                              className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
                                 currentRotation === 45 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                               }`}
                             >
@@ -1924,7 +1992,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                                   return upd;
                                 });
                               }}
-                              className={`py-1 rounded-xl text-xs font-black transition-all border ${
+                              className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
                                 currentRotation === 0 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                               }`}
                             >
@@ -1939,11 +2007,26 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                                   return upd;
                                 });
                               }}
-                              className={`py-1 rounded-xl text-xs font-black transition-all border ${
+                              className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
                                 currentRotation === -45 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                               }`}
                             >
                               Sud-Est (-45°)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBuildings(prev => {
+                                  const upd = [...prev];
+                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: -90 };
+                                  return upd;
+                                });
+                              }}
+                              className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
+                                currentRotation === -90 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              Est (-90°)
                             </button>
                           </div>
                         </div>
@@ -1969,9 +2052,6 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                             <PC2MapScaleBar />
                           </MapContainer>
                         </div>
-                        <p className="text-[10px] text-gray-500 text-center flex-shrink-0">
-                          Zoom et dézoom libres • Déplacez le repère et pivotez l'emprise pour ajuster l'implantation
-                        </p>
                       </div>
                     );
                   })()}

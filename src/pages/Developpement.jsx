@@ -580,6 +580,18 @@ export default function Developpement() {
           <div id="dev-plate-masse"><PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
 
           {((selectedProject.buildings && selectedProject.buildings.length > 0) ? selectedProject.buildings : [selectedProject]).map((b, bIdx) => {
+            const mergedCaptures = {
+              ...(selectedProject.urbanisme_captures || {}),
+              ...(selectedProject.captures || {}),
+              ...(b.captures || {}),
+              ...(b.urbanisme_captures || {}),
+            };
+            const mergedPhotos = {
+              ...(selectedProject.pc_photos || {}),
+              ...(selectedProject.photos || {}),
+              ...(b.photos || {}),
+              ...(b.pc_photos || {}),
+            };
             const bProj = {
               ...selectedProject,
               ...b,
@@ -593,8 +605,10 @@ export default function Developpement() {
               leftWidth: b.leftWidth || 4.0,
               rightWidth: b.rightWidth || 4.0,
               buildingName: b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Ombrière ${bIdx + 1}`,
-              urbanisme_captures: { ...(selectedProject.urbanisme_captures || {}), ...(b.captures || {}) },
-              pc_photos: { ...(selectedProject.pc_photos || {}), ...(b.photos || {}) },
+              urbanisme_captures: mergedCaptures,
+              captures: mergedCaptures,
+              pc_photos: mergedPhotos,
+              photos: mergedPhotos,
             };
             const suffix = bIdx === 0 ? '' : `-${bIdx}`;
             return (
@@ -630,6 +644,18 @@ export default function Developpement() {
           <div id="dev-pc-plate-masse"><PCPlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
 
           {((selectedProject.buildings && selectedProject.buildings.length > 0) ? selectedProject.buildings : [selectedProject]).map((b, bIdx) => {
+            const mergedCaptures = {
+              ...(selectedProject.urbanisme_captures || {}),
+              ...(selectedProject.captures || {}),
+              ...(b.captures || {}),
+              ...(b.urbanisme_captures || {}),
+            };
+            const mergedPhotos = {
+              ...(selectedProject.pc_photos || {}),
+              ...(selectedProject.photos || {}),
+              ...(b.photos || {}),
+              ...(b.pc_photos || {}),
+            };
             const bProj = {
               ...selectedProject,
               ...b,
@@ -643,8 +669,10 @@ export default function Developpement() {
               leftWidth: b.leftWidth || 4.0,
               rightWidth: b.rightWidth || 4.0,
               buildingName: b.name ? b.name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Bâtiment ${bIdx + 1}`,
-              urbanisme_captures: { ...(selectedProject.urbanisme_captures || {}), ...(b.captures || {}) },
-              pc_photos: { ...(selectedProject.pc_photos || {}), ...(b.photos || {}) },
+              urbanisme_captures: mergedCaptures,
+              captures: mergedCaptures,
+              pc_photos: mergedPhotos,
+              photos: mergedPhotos,
             };
             const suffix = bIdx === 0 ? '' : `-${bIdx}`;
             return (

@@ -336,7 +336,7 @@ export async function generateFullUrbanismePDF({ type, project, installationType
         const cerfaUrl = type === 'pc'
           ? '/templates/cerfa_13404.pdf'
           : type === 'dp'
-            ? '/templates/cerfa_13404.pdf'
+            ? '/cerfa_16702-02.pdf'
             : '/cerfa_16702-02.pdf';
 
         const cerfaType = type === 'cu' ? 'cu' : type === 'pc' ? 'pc' : 'dp';

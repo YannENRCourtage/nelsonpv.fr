@@ -931,11 +931,12 @@ export const PlateSection = PlateCoupe;
  * PLANCHE DP4 : FAÇADES ET TOITURES (5 Vues 3D)
  */
 export const PlateFacades = ({ project, captures }) => {
-    const sud = captures?.facade_sud || captures?.facades_projet;
-    const nord = captures?.facade_nord;
-    const est = captures?.facade_est;
-    const ouest = captures?.facade_ouest;
-    const toiture = captures?.vue_couverture || captures?.toiture;
+    const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
+    const sud = safeCaptures.facade_sud || safeCaptures.facades_projet || project?.urbanisme_captures?.facade_sud || project?.captures?.facade_sud || project?.facade_sud;
+    const nord = safeCaptures.facade_nord || project?.urbanisme_captures?.facade_nord || project?.captures?.facade_nord || project?.facade_nord;
+    const est = safeCaptures.facade_est || project?.urbanisme_captures?.facade_est || project?.captures?.facade_est || project?.facade_est;
+    const ouest = safeCaptures.facade_ouest || project?.urbanisme_captures?.facade_ouest || project?.captures?.facade_ouest || project?.facade_ouest;
+    const toiture = safeCaptures.vue_couverture || safeCaptures.toiture || project?.urbanisme_captures?.vue_couverture || project?.captures?.vue_couverture || project?.vue_couverture;
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-facades">
@@ -995,8 +996,10 @@ export const PlateFacades = ({ project, captures }) => {
  * PLANCHE DP6 : DOCUMENT GRAPHIQUE D'INSERTION (Side-by-Side)
  */
 export const PlateInsertion = ({ project, captures, photos }) => {
-    const photoAvant = photos?.avant || captures?.photo_avant || '';
-    const photoApres = photos?.apres || captures?.photo_apres || '';
+    const safePhotos = photos || project?.pc_photos || project?.photos || {};
+    const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
+    const photoAvant = safePhotos.avant || safeCaptures.photo_avant || project?.pc_photos?.avant || project?.photos?.avant || project?.urbanisme_captures?.photo_avant || project?.avant || '';
+    const photoApres = safePhotos.apres || safeCaptures.photo_apres || project?.pc_photos?.apres || project?.photos?.apres || project?.urbanisme_captures?.photo_apres || project?.apres || '';
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-insertion">
@@ -1028,9 +1031,11 @@ export const PlateInsertion = ({ project, captures, photos }) => {
 };
 
 export const PlateEnv = ({ project, captures, photos, includeLointain = true }) => {
-    const photoProche = photos?.proche || captures?.env_proche || captures?.satellite || '';
-    const photoLointain = photos?.lointain || captures?.env_lointain || captures?.satellite || '';
-    const showBoth = Boolean(includeLointain && (photoLointain || photos?.lointain || project?.hasLointain));
+    const safePhotos = photos || project?.pc_photos || project?.photos || {};
+    const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
+    const photoProche = safePhotos.proche || safeCaptures.env_proche || safeCaptures.satellite || project?.pc_photos?.proche || project?.photos?.proche || project?.urbanisme_captures?.env_proche || project?.proche || '';
+    const photoLointain = safePhotos.lointain || safeCaptures.env_lointain || safeCaptures.satellite || project?.pc_photos?.lointain || project?.photos?.lointain || project?.urbanisme_captures?.env_lointain || project?.lointain || '';
+    const showBoth = Boolean(includeLointain && (photoLointain || safePhotos.lointain || project?.hasLointain));
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-env">
@@ -1065,7 +1070,9 @@ export const PlateEnv = ({ project, captures, photos, includeLointain = true }) 
 };
 
 export const PlateEnvProche = ({ project, captures, photos }) => {
-    const photoProche = photos?.proche || captures?.env_proche || captures?.satellite || '';
+    const safePhotos = photos || project?.pc_photos || project?.photos || {};
+    const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
+    const photoProche = safePhotos.proche || safeCaptures.env_proche || safeCaptures.satellite || project?.pc_photos?.proche || project?.photos?.proche || project?.urbanisme_captures?.env_proche || project?.proche || '';
     return (
         <div style={PAGE_STYLE} id="dp-plate-env-proche">
             <PlateHeader title="DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE" project={project} />

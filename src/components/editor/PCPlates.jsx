@@ -1070,11 +1070,12 @@ export const PlateNotice = (props) => <PlateSectionAndNotice {...props} />;
  * PLANCHE PC5 : PLAN DES FAÇADES ET TOITURES (5 VUES 3D)
  */
 export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => {
-    const sud = captures?.facade_sud || captures?.facades_projet;
-    const nord = captures?.facade_nord;
-    const est = captures?.facade_est;
-    const ouest = captures?.facade_ouest;
-    const toiture = captures?.vue_couverture || captures?.toiture;
+    const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
+    const sud = safeCaptures.facade_sud || safeCaptures.facades_projet || project?.urbanisme_captures?.facade_sud || project?.captures?.facade_sud || project?.facade_sud;
+    const nord = safeCaptures.facade_nord || project?.urbanisme_captures?.facade_nord || project?.captures?.facade_nord || project?.facade_nord;
+    const est = safeCaptures.facade_est || project?.urbanisme_captures?.facade_est || project?.captures?.facade_est || project?.facade_est;
+    const ouest = safeCaptures.facade_ouest || project?.urbanisme_captures?.facade_ouest || project?.captures?.facade_ouest || project?.facade_ouest;
+    const toiture = safeCaptures.vue_couverture || safeCaptures.toiture || project?.urbanisme_captures?.vue_couverture || project?.captures?.vue_couverture || project?.vue_couverture;
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-facades">
@@ -1175,83 +1176,97 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
     );
 };
 
-export const PlateInsertion = ({ project, photos, isInteractive, onUpload }) => (
-    <div style={PAGE_STYLE} id="pc-plate-insertion">
-        <PlateHeader title="PC6 : DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE" project={project} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '124mm', marginBottom: '6mm' }}>
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', position: 'relative', background: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ padding: '2mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.25' }}>
-                    <div>1. VUE DE L'ÉTAT INITIAL DU SITE</div>
-                    <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '1px' }}>(AVANT TRAVAUX)</div>
-                </div>
-                <div style={{ flex: 1, background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    <ImageUploadZone 
-                        isInteractive={isInteractive} 
-                        photo={photos?.avant} 
-                        onUpload={(data) => onUpload && onUpload('avant', data)} 
-                        defaultText="Photo du terrain existant" 
-                        label="État Initial"
-                    />
-                </div>
-            </div>
+export const PlateInsertion = ({ project, captures, photos, isInteractive, onUpload }) => {
+    const safePhotos = photos || project?.pc_photos || project?.photos || {};
+    const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
+    const photoAvant = safePhotos.avant || safeCaptures.photo_avant || project?.pc_photos?.avant || project?.photos?.avant || project?.urbanisme_captures?.photo_avant || project?.avant || '';
+    const photoApres = safePhotos.apres || safeCaptures.photo_apres || project?.pc_photos?.apres || project?.photos?.apres || project?.urbanisme_captures?.photo_apres || project?.apres || '';
 
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', position: 'relative', background: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ padding: '2mm', background: '#dcfce7', borderBottom: '1px solid #86efac', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#166534', lineHeight: '1.25' }}>
-                    <div>2. VUE APRÈS PROJET</div>
-                    <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#15803d', marginTop: '1px' }}>(SIMULATION 3D D'INSERTION PAYSAGÈRE)</div>
+    return (
+        <div style={PAGE_STYLE} id="pc-plate-insertion">
+            <PlateHeader title="PC6 : DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE" project={project} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '124mm', marginBottom: '6mm' }}>
+                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', position: 'relative', background: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <div style={{ padding: '2mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.25' }}>
+                        <div>1. VUE DE L'ÉTAT INITIAL DU SITE</div>
+                        <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '1px' }}>(AVANT TRAVAUX)</div>
+                    </div>
+                    <div style={{ flex: 1, background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        <ImageUploadZone 
+                            isInteractive={isInteractive} 
+                            photo={photoAvant} 
+                            onUpload={(data) => onUpload && onUpload('avant', data)} 
+                            defaultText="Photo du terrain existant" 
+                            label="État Initial"
+                        />
+                    </div>
                 </div>
-                <div style={{ flex: 1, background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    <ImageUploadZone 
-                        isInteractive={isInteractive} 
-                        photo={photos?.apres} 
-                        onUpload={(data) => onUpload && onUpload('apres', data)} 
-                        defaultText="Incrustation 3D du projet sur le terrain" 
-                        label="Projet 3D"
-                    />
+
+                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', position: 'relative', background: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <div style={{ padding: '2mm', background: '#dcfce7', borderBottom: '1px solid #86efac', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#166534', lineHeight: '1.25' }}>
+                        <div>2. VUE APRÈS PROJET</div>
+                        <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#15803d', marginTop: '1px' }}>(SIMULATION 3D D'INSERTION PAYSAGÈRE)</div>
+                    </div>
+                    <div style={{ flex: 1, background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        <ImageUploadZone 
+                            isInteractive={isInteractive} 
+                            photo={photoApres} 
+                            onUpload={(data) => onUpload && onUpload('apres', data)} 
+                            defaultText="Incrustation 3D du projet sur le terrain" 
+                            label="Projet 3D"
+                        />
+                    </div>
                 </div>
             </div>
+            <Footer project={project} />
         </div>
-        <Footer project={project} />
-    </div>
-);
+    );
+};
 
-export const PlateEnv = ({ project, photos, isInteractive, onUpload }) => (
-    <div style={PAGE_STYLE} id="pc-plate-env">
-        <PlateHeader title="PC7 & PC8 : ENVIRONNEMENT PROCHE ET LOINTAIN" project={project} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
-                <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
-                    PC7 — Photographie dans l'environnement proche
+export const PlateEnv = ({ project, captures, photos, isInteractive, onUpload }) => {
+    const safePhotos = photos || project?.pc_photos || project?.photos || {};
+    const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
+    const photoProche = safePhotos.proche || safeCaptures.env_proche || safeCaptures.satellite || project?.pc_photos?.proche || project?.photos?.proche || project?.urbanisme_captures?.env_proche || project?.proche || '';
+    const photoLointain = safePhotos.lointain || safeCaptures.env_lointain || safeCaptures.satellite || project?.pc_photos?.lointain || project?.photos?.lointain || project?.urbanisme_captures?.env_lointain || project?.lointain || '';
+
+    return (
+        <div style={PAGE_STYLE} id="pc-plate-env">
+            <PlateHeader title="PC7 & PC8 : ENVIRONNEMENT PROCHE ET LOINTAIN" project={project} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                    <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                        PC7 — Photographie dans l'environnement proche
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                        <ImageUploadZone 
+                            isInteractive={isInteractive} 
+                            photo={photoProche} 
+                            onUpload={(data) => onUpload && onUpload('proche', data)} 
+                            defaultText="Photo environnement proche" 
+                            label="Env. Proche"
+                        />
+                    </div>
                 </div>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
-                    <ImageUploadZone 
-                        isInteractive={isInteractive} 
-                        photo={photos?.proche} 
-                        onUpload={(data) => onUpload && onUpload('proche', data)} 
-                        defaultText="Photo environnement proche (vue depuis la voie publique)" 
-                        label="Env. Proche"
-                    />
+
+                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                    <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                        PC8 — Photographie dans le paysage lointain
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                        <ImageUploadZone 
+                            isInteractive={isInteractive} 
+                            photo={photoLointain} 
+                            onUpload={(data) => onUpload && onUpload('lointain', data)} 
+                            defaultText="Photo paysage lointain" 
+                            label="Paysage Lointain"
+                        />
+                    </div>
                 </div>
             </div>
-
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
-                <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
-                    PC8 — Photographie dans le paysage lointain
-                </div>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
-                    <ImageUploadZone 
-                        isInteractive={isInteractive} 
-                        photo={photos?.lointain} 
-                        onUpload={(data) => onUpload && onUpload('lointain', data)} 
-                        defaultText="Photo paysage lointain (vue panoramique du site)" 
-                        label="Env. Lointain"
-                    />
-                </div>
-            </div>
+            <Footer project={project} />
         </div>
-        <Footer project={project} />
-    </div>
-);
+    );
+};
 
 export const PlateEnvProche = (props) => <PlateEnv {...props} />;
 export const PlateEnvLointain = (props) => <PlateEnv {...props} />;
