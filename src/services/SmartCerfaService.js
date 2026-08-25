@@ -182,8 +182,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const names = resolveDemandeurNames(project);
     const lastName  = names.lastName || project?.lastName || project?.name || '';
     const firstName = names.firstName || project?.firstName || '';
-    const birthDate = project?.birthDate || '14/02/1970';
-    const birthCity = project?.birthCity || project?.city || 'AUCH';
+    const birthDate = project?.birthDate || '';
+    const birthCity = project?.birthCity || ''; // Strict: uniquement lieu de naissance. Si vide, reste vide.
     const birthDept = project?.birthDept || (project?.zip ? project.zip.substring(0, 2) : '32');
     const birthCountry = project?.birthCountry || 'FRANCE';
 
@@ -192,15 +192,17 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const city      = project?.city || project?.commune || project?.cadastre_commune || '';
     const section   = project?.cadastre_section || '';
     const parcelle  = project?.cadastre_numero || '';
-    const surface   = project?.cadastre_surface ? `${project.cadastre_surface} m²` : '';
-    const rawKwc    = project?.kwc || project?.projectSize || project?.power || (project?.solarStats?.power ? Math.round(project.solarStats.power) : '');
-    const kwcStr    = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc).trim() : `${rawKwc} kWc`) : '100 kWc';
+    const rawSurface = project?.cadastre_surface ? String(project.cadastre_surface).replace(/\D/g, '') : '';
+    const surface   = rawSurface ? `${rawSurface}` : '';
+    const rawKwc    = project?.kwc || project?.projectSize || project?.puissance || project?.power || (project?.solarStats?.power ? Math.round(project.solarStats.power) : '');
+    const kwcStr    = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc).trim() : `${rawKwc} kWc`) : '';
+    const cleanKwcVal = rawKwc ? String(rawKwc).replace(/kWc/gi, '').trim() : '';
     const email     = (project?.cerfaEmailChoice === 'email2' && project?.email2)
       ? project.email2
       : (project?.email || project?.clientEmail || 'isabelle.dupond@gmail.com');
-    const tel       = project?.phone || project?.clientPhone || '06 47 92 34 24';
+    const tel       = project?.phone || project?.clientPhone || '';
     const dateStr   = new Date().toLocaleDateString('fr-FR');
-    const lieuStr   = city || 'Mairie';
+    const lieuStr   = project?.terrain_commune || project?.cadastre_commune || city || 'CONDOM';
 
     let emailLeft = email;
     let emailRight = '';
@@ -214,16 +216,16 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
 
     const typeLabels = {
       batiment_solaire: isDP
-        ? `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire d'une puissance de ${kwcStr}.`
-        : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
+        ? `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`
+        : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
       batiment: isDP
-        ? `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire d'une puissance de ${kwcStr}.`
-        : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
+        ? `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`
+        : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
       construction: isDP
-        ? `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire d'une puissance de ${kwcStr}.`
-        : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
-      ombriere:         `Installation d'une structure ombrière photovoltaïque d'une puissance de ${kwcStr}.`,
-      toiture:          `Installation de modules solaires photovoltaïques en toiture d'une puissance de ${kwcStr}.`,
+        ? `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`
+        : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
+      ombriere:         `Installation d'une structure ombrière photovoltaïque${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
+      toiture:          `Installation de modules solaires photovoltaïques en toiture${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
       batterie:         `Installation d'un système de stockage d'énergie par batterie.`,
     };
 
@@ -231,7 +233,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     if (isDP && objet && typeof objet === 'string') {
       objet = objet.replace(/bâtiment\s+agricole/gi, 'ombrière photovoltaïque').replace(/bâtiments/gi, 'ombrières').replace(/bâtiment/gi, 'ombrière').replace(/Bâtiment/g, 'Ombrière');
     }
-    if (rawKwc && !objet.includes(kwcStr)) {
+    if (rawKwc && kwcStr && !objet.includes(kwcStr)) {
       objet = objet.replace(/\d+\s*kWc/gi, kwcStr);
     }
     const isNewConstruction = !['toiture'].includes(installationType);
@@ -239,6 +241,12 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const addrParts = address.trim().split(' ');
     const addrNum   = /^\d+/.test(addrParts[0]) ? addrParts[0] : '';
     const addrVoie  = addrNum ? addrParts.slice(1).join(' ') : address;
+
+    const terrainNum = project?.terrain_numero || addrNum;
+    const terrainVoie = project?.terrain_voie || addrVoie;
+    const terrainLieudit = project?.terrain_lieudit || project?.lieudit || '';
+    const terrainCity = project?.terrain_commune || project?.cadastre_commune || city || 'CONDOM';
+    const terrainZip = project?.terrain_code_postal || zip || '32100';
 
     // ── Remplissage des champs AcroForm ────────────────────────────
     const fieldMap = CERFA_FIELDS[type] || CERFA_FIELDS.dp;
@@ -252,6 +260,16 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
           try {
             const f = form.getTextField(name);
             if (f) {
+              let strVal = String(value).trim();
+              const max = f.getMaxLength();
+              if (max && strVal.length > max) {
+                const digits = strVal.replace(/\D/g, '');
+                if (digits.length <= max && digits.length > 0) {
+                  strVal = digits;
+                } else {
+                  strVal = strVal.substring(0, max);
+                }
+              }
               if (fixedFontSize !== null) {
                 try {
                   f.acroField.dict.set(PDFName.of('DA'), PDFString.of(`/Helv ${fixedFontSize} Tf 0 g`));
@@ -262,7 +280,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
                   } catch (_) {}
                 }
               }
-              f.setText(String(value));
+              f.setText(strVal);
               return true;
             }
           } catch (_) {}
@@ -284,12 +302,14 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         return false;
       };
 
-      // 1. Identité du déclarant (Page 2 du CERFA) — Directive 4
+      // 1. Identité du déclarant (Page 2 du CERFA)
       setCheck(['topmostSubform[0].Page2[0].D1H_homme[0]', 'D1H_homme'], true);
       setField(fieldMap.nom,            lastName, 9.5);
       setField(fieldMap.prenom,         firstName, 9.5);
       setField(fieldMap.naissance,      birthDate, 9);
-      setField(fieldMap.commune_naiss,  birthCity, 9);
+      if (birthCity) {
+        setField(fieldMap.commune_naiss, birthCity, 9);
+      }
       setField(fieldMap.dept_naiss,     birthDept, 9);
       setField(fieldMap.pays_naiss,     birthCountry, 9);
       setField(fieldMap.siret,          project?.siret || '', 9);
@@ -297,7 +317,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       setField(fieldMap.raison,         project?.raison || '', 9);
       setField(fieldMap.type_societe,   project?.companyType || '', 9);
 
-      // 2. Coordonnées du déclarant (Page 2 du CERFA) — Directive 4
+      // 2. Coordonnées du déclarant (Page 2 du CERFA)
       setField(fieldMap.adresse_num,    addrNum, 9.5);
       setField(fieldMap.adresse_voie,   addrVoie, 9.5);
       setField(fieldMap.adresse_lieudit,project?.lieudit || '', 9);
@@ -305,31 +325,57 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       setField(fieldMap.cp,             zip, 9.5);
       setField(fieldMap.tel,            tel, 9.5);
       setField(fieldMap.pays,           'FRANCE', 9.5);
-
-      // 3. Email & Terrain (Page 3 du CERFA)
       setField(fieldMap.email_left,     emailLeft, 8.5);
       setField(fieldMap.email_right,    emailRight, 8.5);
+
+      // Case d'acceptation par voie électronique (Page 2 du CERFA)
+      setCheck(['topmostSubform[0].Page2[0].D5A_acceptation[0]', 'D5A_acceptation'], true);
+
+      // 3. Le terrain & Cadastre (Page 3 du CERFA)
+      // Adresse du terrain (Section 2.1)
+      setField(['topmostSubform[0].Page3[0].T2Q_numero[0]', 'T2Q_numero'], terrainNum, 9.5);
+      setField(['topmostSubform[0].Page3[0].T2V_voie[0]', 'T2V_voie'], terrainVoie, 9.5);
+      setField(['topmostSubform[0].Page3[0].T2W_lieudit[0]', 'T2W_lieudit'], terrainLieudit, 9.5);
+      setField(['topmostSubform[0].Page3[0].T2L_localite[0]', 'T2L_localite'], terrainCity, 9.5);
+      setField(['topmostSubform[0].Page3[0].T2C_code[0]', 'T2C_code'], terrainZip, 9.5);
+
+      // Références cadastrales (Section 2.2)
       setField(fieldMap.prefixe,        project?.cadastre_prefixe || '', 9);
       setField(fieldMap.section,        section, 9.5);
       setField(fieldMap.parcelle,       parcelle, 9.5);
       setField(fieldMap.surface,        surface, 9.5);
+      // Superficie totale du terrain (en m²)
+      setField(['topmostSubform[0].Page3[0].D5T_total[0]', 'D5T_total'], surface, 9.5);
 
-      // 4. Projet & Description — Taille de police harmonisée avec les coordonnées (9.5pt)
-      setField(fieldMap.description,    objet, 9.5);
-      setField(fieldMap.puissance,      kwc ? `${kwc} kWc` : '', 8.5);
+      // Section 3.2 : Situation juridique du terrain — Cocher "Je ne sais pas" sur toutes les lignes
+      setCheck(['topmostSubform[0].Page3[0].T3B_CUnc[0]', 'T3B_CUnc'], true);
+      setCheck(['topmostSubform[0].Page3[0].T3S_lotnc[0]', 'T3S_lotnc'], true);
+      setCheck(['topmostSubform[0].Page3[0].T3T_ZACnc[0]', 'T3T_ZACnc'], true);
+      setCheck(['topmostSubform[0].Page3[0].T3E_AFUnc[0]', 'T3E_AFUnc'], true);
+      setCheck(['topmostSubform[0].Page3[0].T3F_PUPnc[0]', 'T3F_PUPnc'], true);
 
+      // 4. Page 4 : Nature des travaux & Description
+      // Cocher "Nouvelle construction" par défaut
       if (isNewConstruction) {
-        setCheck(['topmostSubform[0].Page5[0].C2ZA1_nouvelle[0]', 'C2ZA1_nouvelle'], true);
+        setCheck(['topmostSubform[0].Page4[0].C2ZA1_nouvelle[0]', 'topmostSubform[0].Page5[0].C2ZA1_nouvelle[0]', 'C2ZA1_nouvelle'], true);
       } else {
-        setCheck(['topmostSubform[0].Page5[0].C2ZB1_existante[0]', 'C2ZB1_existante'], true);
+        setCheck(['topmostSubform[0].Page4[0].C2ZB1_existante[0]', 'topmostSubform[0].Page5[0].C2ZB1_existante[0]', 'C2ZB1_existante'], true);
+      }
+      setField(fieldMap.description,    objet, 9.5);
+
+      // 5. Page 5 : Partie 4.2.1 Puissance crête (ex: 256)
+      if (cleanKwcVal) {
+        setField(['topmostSubform[0].Page5[0].C2ZP1_crete[0]', 'C2ZP1_crete'], cleanKwcVal, 9.5);
+        setField(['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'], cleanKwcVal, 9.5);
       }
 
-      // 5. Engagement & Signature — Directive 6 : Laisser la signature vide pour signature manuscrite
-      setField(fieldMap.sig_lieu,       lieuStr, 9.5);
+      // 6. Page 9 : Engagement & Signature
+      const fullDeclarantName = `${firstName} ${lastName}`.trim() || lastName || project?.demandeur || '';
+      setField(fieldMap.sig_lieu,       terrainCity || city || 'CONDOM', 9.5);
       setField(fieldMap.sig_date,       dateStr, 9.5);
-      // Signature volontairement laissée vide pour signature manuscrite
+      setField(['topmostSubform[0].Page9[0].E1S_signature[0]', 'E1S_signature'], fullDeclarantName, 9.5);
 
-      // 6. Bordereau des pièces jointes
+      // 7. Bordereau des pièces jointes
       ALL_BORDEREAU_CHECKBOXES.forEach(name => setCheck(name, false));
       const plateList = Array.isArray(plateIds) ? plateIds : [];
 
@@ -401,13 +447,16 @@ export function buildCerfaDataSummary(project, installationType) {
     typeLabel = 'Bâtiment et Ombrière';
   }
 
+  const rawKwc = project?.kwc || project?.projectSize || project?.puissance || '';
+  const displayKwc = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc) : `${rawKwc} kWc`) : '—';
+
   return {
     demandeur: fullName,
     email: email,
     adresse: fullAddress,
     cadastre: `Section ${project?.cadastre_section || '—'} n° ${project?.cadastre_numero || '—'} (${project?.cadastre_surface ? project.cadastre_surface + ' m²' : '—'})`,
     commune: rawCity || '—',
-    puissance: '0',
+    puissance: displayKwc,
     type: typeLabel,
     siret: project?.siret || '—',
     date: new Date().toLocaleDateString('fr-FR'),

@@ -114,8 +114,8 @@ async function drawCoverPage(doc, project, type, installationType) {
   const clientName = `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Demandeur';
   const communeName = project?.city || project?.cadastre_commune || project?.commune || '—';
   const sectionVal = (project?.cadastre_section || project?.section) ? `${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : '—';
-  const surfaceVal = (project?.cadastre_surface || project?.surface) ? `${project.cadastre_surface || project.surface} m²` : '—';
-  const puissanceVal = '0';
+  const rawKwcVal = project?.kwc || project?.projectSize || project?.puissance || '';
+  const puissanceVal = rawKwcVal ? (String(rawKwcVal).includes('kWc') ? String(rawKwcVal) : `${rawKwcVal} kWc`) : '—';
   // Dynamic type label based on configured buildings
   const isDP = type === 'dp';
   let installCode = isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière';

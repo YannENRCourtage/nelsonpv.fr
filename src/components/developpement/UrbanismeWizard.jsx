@@ -1148,6 +1148,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       pc_photos: { ...finalPhotos, ...(b.photos || {}), ...(b.pc_photos || {}) },
     }));
 
+    const preservedKwc = project?.kwc || editedProject?.kwc || project?.projectSize || editedProject?.projectSize || project?.puissance || editedProject?.puissance || '';
     const b1 = enrichedBuildings[0] || {};
     const finalProject = {
       ...editedProject,
@@ -1167,9 +1168,9 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       rightWidth: b1.rightWidth || config.rightWidth,
       bayCount: b1.bayCount || config.bayCount,
       baySpacing: b1.baySpacing || config.baySpacing,
-      kwc: '0',
-      projectSize: '0',
-      puissance: '0',
+      kwc: preservedKwc,
+      projectSize: preservedKwc,
+      puissance: preservedKwc,
       objet_travaux: shortObjet,
       description: shortObjet,
       noticeText: effectiveNotice,
@@ -1202,12 +1203,14 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
 
   if (!isOpen) return null;
 
+  const preservedKwc = project?.kwc || editedProject?.kwc || project?.projectSize || editedProject?.projectSize || project?.puissance || editedProject?.puissance || '';
   const summary = buildCerfaDataSummary(
     {
       ...editedProject,
       ...fieldValues,
-      puissance: '0',
-      kwc: '0',
+      puissance: preservedKwc,
+      kwc: preservedKwc,
+      projectSize: preservedKwc,
       type: isDP ? (buildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière',
       docType: type,
       buildings
@@ -2169,28 +2172,6 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                     <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto flex-wrap">
                       <button
                         type="button"
-                        onClick={() => setShowRoofModal(true)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 ${
-                          additionalRoof.enabled ? 'bg-amber-500 text-white' : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-50'
-                        }`}
-                      >
-                        <Sun className="w-3.5 h-3.5" />
-                        {additionalRoof.enabled ? `⚡ Toiture (${additionalRoof.kwc} kWc)` : '+ Ajouter une Toiture'}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowBatteryModal(true)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 ${
-                          batteryStorage.enabled ? 'bg-purple-600 text-white' : 'bg-white border border-purple-300 text-purple-800 hover:bg-purple-50'
-                        }`}
-                      >
-                        <Battery className="w-3.5 h-3.5" />
-                        {batteryStorage.enabled ? `🔋 Batterie (${batteryStorage.capacityKwh} kWh)` : '+ Ajouter une Batterie'}
-                      </button>
-
-                      <button
-                        type="button"
                         onClick={() => {
                           setIsNoticeUserModified(false);
                           const auto = buildAutoNoticeText();
@@ -2284,68 +2265,26 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                     </div>
                   </div>
 
-                  {/* Modules d'Ajout Optionnel Toiture & Batterie avant validation */}
+                  {/* Résumé des composants du projet configurés */}
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                         <Layers className="w-4 h-4 text-blue-600" />
                         Composants du projet configurés
                       </span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowRoofModal(true)}
-                          className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 text-xs font-bold transition-all flex items-center gap-1"
-                        >
-                          <Sun className="w-3.5 h-3.5" />
-                          {additionalRoof.enabled ? 'Modifier Toiture' : '+ Toiture'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowBatteryModal(true)}
-                          className="px-2.5 py-1 rounded-lg bg-white border border-purple-300 text-purple-800 hover:bg-purple-50 text-xs font-bold transition-all flex items-center gap-1"
-                        >
-                          <Battery className="w-3.5 h-3.5" />
-                          {batteryStorage.enabled ? 'Modifier Batterie' : '+ Batterie'}
-                        </button>
-                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                      <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                        <div className="flex items-center justify-between font-bold text-slate-800 mb-1">
-                          <span className="flex items-center gap-1 text-blue-600"><Building2 className="w-3.5 h-3.5" /> {buildings.length} {isDP ? 'Ombrière(s)' : 'Bâtiment(s)'}</span>
-                          <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">Configuré</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500">
-                          {config.length.toFixed(1)}m × {config.width.toFixed(1)}m ({Math.round(config.length * config.width)} m²)
-                          {buildings.length > 1 && ` + ${buildings.length - 1} secondaire(s)`}
-                        </p>
+                    <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                      <div className="flex items-center justify-between font-bold text-slate-800 mb-1">
+                        <span className="flex items-center gap-1 text-blue-600">
+                          <Building2 className="w-3.5 h-3.5" /> {buildings.length} {isDP ? 'Ombrière(s)' : 'Bâtiment(s)'}
+                        </span>
+                        <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">Configuré</span>
                       </div>
-
-                      <div className={`p-2.5 rounded-xl border transition-all ${additionalRoof.enabled ? 'bg-amber-50/70 border-amber-200 shadow-2xs' : 'bg-white/60 border-slate-200 opacity-60'}`}>
-                        <div className="flex items-center justify-between font-bold mb-1">
-                          <span className="flex items-center gap-1 text-amber-800"><Sun className="w-3.5 h-3.5" /> Toiture existante</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${additionalRoof.enabled ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-600'}`}>
-                            {additionalRoof.enabled ? `${additionalRoof.kwc} kWc` : 'Non ajouté'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500">
-                          {additionalRoof.enabled ? `${additionalRoof.surface} m² • ${additionalRoof.roofType}` : 'Centrale en toiture existante optionnelle'}
-                        </p>
-                      </div>
-
-                      <div className={`p-2.5 rounded-xl border transition-all ${batteryStorage.enabled ? 'bg-purple-50/70 border-purple-200 shadow-2xs' : 'bg-white/60 border-slate-200 opacity-60'}`}>
-                        <div className="flex items-center justify-between font-bold mb-1">
-                          <span className="flex items-center gap-1 text-purple-800"><Battery className="w-3.5 h-3.5" /> Stockage Batterie</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${batteryStorage.enabled ? 'bg-purple-200 text-purple-900' : 'bg-slate-200 text-slate-600'}`}>
-                            {batteryStorage.enabled ? `${batteryStorage.capacityKwh} kWh` : 'Non ajouté'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500">
-                          {batteryStorage.enabled ? `${batteryStorage.model} (${batteryStorage.powerKw} kW)` : 'Armoires de stockage stationnaire optionnelles'}
-                        </p>
-                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        {config.length.toFixed(1)}m × {config.width.toFixed(1)}m ({Math.round(config.length * config.width)} m²)
+                        {buildings.length > 1 && ` + ${buildings.length - 1} secondaire(s)`}
+                      </p>
                     </div>
                   </div>
 
