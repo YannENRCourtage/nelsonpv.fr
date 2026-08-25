@@ -115,7 +115,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const start = new THREE.Vector3(x, 0.1, 0);
         const end = new THREE.Vector3(x, 0.1, -effectiveBaySpacing);
         const mid = new THREE.Vector3(x, 0.1, -effectiveBaySpacing / 2);
-        const textGap = 1.5;
+        const textGap = Math.min(3.0, effectiveBaySpacing * 0.45); // Élargi à 3.0m pour laisser la place à l'indication (7.5m)
 
         return {
             xBay: x,
@@ -152,16 +152,17 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, h, 0);
         const mid = new THREE.Vector3(x, h / 2, 0);
+        const hGap = 1.8;
         return {
             xEave: x,
             heightStart: start,
             heightEnd: end,
             heightPoints: [
-                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
-                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+                [start, new THREE.Vector3(mid.x, mid.y - hGap / 2, mid.z)],
+                [new THREE.Vector3(mid.x, mid.y + hGap / 2, mid.z), end]
             ]
         };
-    }, [width, eaveHeight, leftSide, rightSide, gapSize, buildingType, isCustom]);
+    }, [width, eaveHeight, leftSide, rightSide, buildingType, isCustom, cp]);
 
     // 3b. Ridge Height
     const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge, ridgeLabelValue } = useMemo(() => {
@@ -228,6 +229,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         const finalLabel = !isCustom && isTalian4 ? 5.9 : (!isCustom && isTalian1 ? 6.7 : h);
 
+        const rGap = 2.0;
+
         return {
             xRidge: x,
             zRidge: z,
@@ -235,11 +238,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             ridgeStart: start,
             ridgeEnd: end,
             ridgePoints: [
-                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
-                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+                [start, new THREE.Vector3(mid.x, mid.y - rGap / 2, mid.z)],
+                [new THREE.Vector3(mid.x, mid.y + rGap / 2, mid.z), end]
             ]
         };
-    }, [width, ridgeHeight, gapSize, buildingType, isEpona, isTalian4, isTalian1, isCustom, cp, spans]);
+    }, [width, ridgeHeight, buildingType, isEpona, isTalian4, isTalian1, isCustom, cp, spans]);
 
 
     // 3c. Left Eave Height (Asymmetrical ONLY — masqué pour EPONA)
@@ -280,17 +283,18 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, h, 0);
         const mid = new THREE.Vector3(x, h / 2, 0);
+        const hGap = 1.8;
 
         return {
             xLeft: x,
             hVal: h,
             start, end,
             points: [
-                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
-                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+                [start, new THREE.Vector3(mid.x, mid.y - hGap / 2, mid.z)],
+                [new THREE.Vector3(mid.x, mid.y + hGap / 2, mid.z), end]
             ]
         };
-    }, [buildingType, width, leftSide, gapSize, isEpona, isCustom, cp, ridgeHeight]);
+    }, [buildingType, width, leftSide, isEpona, isCustom, cp, ridgeHeight]);
 
     // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY + Custom)
     const asym2RightEaveData = useMemo(() => {
@@ -307,17 +311,18 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, h, 0);
         const mid = new THREE.Vector3(x, h / 2, 0);
+        const hGap = 1.8;
 
         return {
             xRight: x,
             hVal: h,
             start, end,
             points: [
-                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
-                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+                [start, new THREE.Vector3(mid.x, mid.y - hGap / 2, mid.z)],
+                [new THREE.Vector3(mid.x, mid.y + hGap / 2, mid.z), end]
             ]
         };
-    }, [buildingType, width, isEpona, gapSize, isCustom, cp]);
+    }, [buildingType, width, isEpona, isCustom, cp]);
 
     // 5. Left Extension Dimensions
     const leftExtData = useMemo(() => {
@@ -603,12 +608,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             mHeightPoints.push([new THREE.Vector3(x, 0.1, 0), new THREE.Vector3(x, h / 2 - 0.6, 0)], [new THREE.Vector3(x, h / 2 + 0.6, 0), new THREE.Vector3(x, h, 0)]);
         }
 
-        const lHeightVal = buildingType === 'epona_talian5' ? 7.9 : 5.0;
-        const lHeightX = buildingType === 'epona_talian5' ? leftPostX - 2.0 : leftPostX - 3.0;
-        const lHeightPoints = [[new THREE.Vector3(lHeightX, 0.1, markerZ), new THREE.Vector3(lHeightX, lHeightVal / 2 - 0.6, markerZ)], [new THREE.Vector3(lHeightX, lHeightVal / 2 + 0.6, markerZ), new THREE.Vector3(lHeightX, lHeightVal, markerZ)]];
+        const mHeightX = buildingType === 'epona_talian5' ? midPostX - 0.5 : 0;
+        const mHeightVal = 6.0;
+        const midHeightZ = 0;
 
-        return { rSpanStart, rSpanEnd, rSpanMid, rSpanPoints, rightSpanLabel, lCenterStart, lCenterEnd, lCenterMid, lCenterPoints, lAwningStart, lAwningEnd, lAwningMid, lAwningPoints, rHeightPoints, rHeightVal, rHeightX, mHeightPoints, lHeightPoints, lHeightVal, lHeightX, markerZ, lCenterLabel };
-    }, [isEpona, gapSize, buildingType, length]);
+        return { rSpanStart, rSpanEnd, rSpanMid, rSpanPoints, rightSpanLabel, lCenterStart, lCenterEnd, lCenterMid, lCenterPoints, lAwningStart, lAwningEnd, lAwningMid, lAwningPoints, rHeightPoints, rHeightVal, rHeightX, mHeightPoints, mHeightX, mHeightVal, midHeightZ, lHeightPoints, lHeightVal, lHeightX, markerZ, lCenterLabel };
+    }, [isEpona, buildingType, length]);
 
     const getEaveText = () => {
         if (buildingType === 'asymetrique_1' || buildingType === 'asymetrique_2') return '4 m';
@@ -635,7 +640,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     ))}
                     <mesh position={widthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     {buildingType !== 'epona_talian5' && (
-                        <Text position={[0, isPignonView ? 0.6 : 0.2, 3.5]} rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        <Text
+                            position={[0, 0.1, 3.0]}
+                            rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
+                            fontSize={0.8}
+                            color={textColor}
+                            anchorX="center"
+                            anchorY="middle"
+                            outlineWidth={0.1}
+                            outlineColor="#ffffff"
+                        >
                             {`${width} m`}
                         </Text>
                     )}
@@ -650,12 +664,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={lengthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[xSide, isFacadeSudView ? 0.6 : 0.2, -length / 2]}
+                        position={[xSide, 0.1, -length / 2]}
                         rotation={isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
-                        anchorY="bottom"
+                        anchorY="middle"
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
@@ -672,12 +686,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={baySpacingData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={baySpacingData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[baySpacingData.xBay, isFacadeSudView ? 0.6 : 0.2, -baySpacingData.effectiveBaySpacing / 2]}
+                        position={[baySpacingData.xBay, 0.1, -baySpacingData.effectiveBaySpacing / 2]}
                         rotation={isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
-                        anchorY="bottom"
+                        anchorY="middle"
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
@@ -697,7 +711,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <mesh position={heightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                             <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                             <Text
-                                position={[xEave - 0.5, heightEnd.y / 2, 0]}
+                                position={[xEave, heightEnd.y / 2, 0]}
                                 rotation={[0, 0, Math.PI / 2]} 
                                 fontSize={0.8}
                                 color={textColor}
@@ -720,7 +734,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Line points={ridgePoints[1]} color={lineColor} lineWidth={lineWidth} />
                     <mesh position={ridgeStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={ridgeEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[xRidge + 0.5, (isEpona ? (ridgeLabelValue || ridgeHeight) - 0.5 : (ridgeLabelValue || ridgeHeight)) / 2, zRidge]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                    <Text
+                        position={[xRidge, (isEpona ? (ridgeLabelValue || ridgeHeight) - 0.5 : (ridgeLabelValue || ridgeHeight)) / 2, zRidge]}
+                        rotation={[0, 0, Math.PI / 2]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="middle"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
                         {`${Number(ridgeLabelValue || ridgeHeight).toFixed(2)} m`}
                     </Text>
                 </group>
@@ -733,7 +756,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Line points={asymLeftEaveData.points[1]} color={lineColor} lineWidth={lineWidth} />
                     <mesh position={asymLeftEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asymLeftEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[asymLeftEaveData.xLeft - 0.5, asymLeftEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                    <Text
+                        position={[asymLeftEaveData.xLeft, asymLeftEaveData.hVal / 2, 0]}
+                        rotation={[0, 0, Math.PI / 2]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="middle"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
                         {`${parseFloat(Number(asymLeftEaveData.hVal).toFixed(2))} m`}
                     </Text>
                 </group>
@@ -746,7 +778,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Line points={asym2RightEaveData.points[1]} color={lineColor} lineWidth={lineWidth} />
                     <mesh position={asym2RightEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2RightEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[asym2RightEaveData.xRight + 0.5, asym2RightEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                    <Text
+                        position={[asym2RightEaveData.xRight, asym2RightEaveData.hVal / 2, 0]}
+                        rotation={[0, 0, Math.PI / 2]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="middle"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
                         {buildingType === 'epona_talian5' ? '4.3 m' : (isCustom ? `${asym2RightEaveData.hVal.toFixed(1)} m` : '4 m')}
                     </Text>
                 </group>
@@ -766,7 +807,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                     <mesh position={rightExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                 </>
                             )}
-                            <Text position={[width / 2 + rightExtData.extWidth / 2, isPignonView ? 0.6 : 0.2, isTalian4 ? 4.5 : 3.5]} rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            <Text
+                                position={[width / 2 + rightExtData.extWidth / 2, 0.1, isTalian4 ? 5.0 : 3.0]}
+                                rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
+                                fontSize={0.8}
+                                color={textColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                outlineWidth={0.1}
+                                outlineColor="#ffffff"
+                            >
                                 {isEpona ? '7.8 m' : `${rightExtData.extWidth} m`}
                             </Text>
                         </group>
@@ -780,7 +830,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                 <mesh position={rightExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                             )}
                             <mesh position={rightExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                            <Text position={[rightExtData.xH, (isEpona || isTalian4 || isTalian1 ? (rightExtData.extHeight - (isEpona ? 0 : (isTalian4 ? 1.2 : 0))) : rightExtData.extHeight) / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                            <Text
+                                position={[rightExtData.xH, (isEpona || isTalian4 || isTalian1 ? (rightExtData.extHeight - (isEpona ? 0 : (isTalian4 ? 1.2 : 0))) : rightExtData.extHeight) / 2, 0]}
+                                rotation={[0, 0, Math.PI / 2]}
+                                fontSize={0.8}
+                                color={textColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                outlineWidth={0.1}
+                                outlineColor="#ffffff"
+                            >
                                 {`${parseFloat(Number(isTalian4 ? 4.5 : (isTalian1 ? 3.8 : rightExtData.extHeight)).toFixed(2))} m`}
                             </Text>
                         </>
@@ -803,12 +862,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                 </>
                             )}
                             <Text
-                                position={[-width / 2 - leftExtData.extWidth / 2, isPignonView ? 0.6 : 0.2, isTalian4 ? 4.5 : 3.5]}
+                                position={[-width / 2 - leftExtData.extWidth / 2, 0.1, isTalian4 ? 5.0 : 3.0]}
                                 rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
                                 fontSize={0.8}
                                 color={textColor}
                                 anchorX="center"
-                                anchorY="bottom"
+                                anchorY="middle"
                                 outlineWidth={0.1}
                                 outlineColor="#ffffff"
                             >
@@ -825,7 +884,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                 <mesh position={leftExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                             )}
                             <mesh position={leftExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                            <Text position={[leftExtData.xH, (isEpona ? leftExtData.extHeight : (isTalian4 ? leftExtData.extHeight - 1.2 : (isTalian1 ? leftExtData.extHeight : leftExtData.extHeight))) / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                            <Text
+                                position={[leftExtData.xH, (isEpona ? leftExtData.extHeight : (isTalian4 ? leftExtData.extHeight - 1.2 : (isTalian1 ? leftExtData.extHeight : leftExtData.extHeight))) / 2, 0]}
+                                rotation={[0, 0, Math.PI / 2]}
+                                fontSize={0.8}
+                                color={textColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                outlineWidth={0.1}
+                                outlineColor="#ffffff"
+                            >
                                 {`${parseFloat(Number(isTalian4 ? 4.5 : (isTalian1 ? 3.8 : leftExtData.extHeight)).toFixed(2))} m`}
                             </Text>
                         </>
@@ -841,12 +909,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asym2MiddleColData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2MiddleColData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[asym2MiddleColData.wMid.x, isPignonView ? 0.6 : 0.2, 1.5]}
+                        position={[asym2MiddleColData.wMid.x, 0.1, 1.5]}
                         rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
-                        anchorY="bottom"
+                        anchorY="middle"
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
@@ -863,12 +931,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asym2RightDistData.rStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2RightDistData.rEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[asym2RightDistData.rMid.x, isPignonView ? 0.6 : 0.2, 1.5]}
+                        position={[asym2RightDistData.rMid.x, 0.1, 1.5]}
                         rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
-                        anchorY="bottom"
+                        anchorY="middle"
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
@@ -885,12 +953,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={acamaTotalWidthData.xStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={acamaTotalWidthData.xEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[acamaTotalWidthData.xMid.x, isPignonView ? 0.6 : 0.2, acamaTotalWidthData.zPos + 0.5]}
+                        position={[acamaTotalWidthData.xMid.x, 0.1, acamaTotalWidthData.zPos]}
                         rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
-                        anchorY="bottom"
+                        anchorY="middle"
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
@@ -931,7 +999,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <Line points={eponaMarkers.rSpanPoints[1]} color={lineColor} lineWidth={lineWidth} />
                             <mesh position={eponaMarkers.rSpanStart}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                             <mesh position={eponaMarkers.rSpanEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                            <Text position={[eponaMarkers.rSpanMid.x, isPignonView ? 0.6 : 0.2, 3.5]} rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            <Text
+                                position={[eponaMarkers.rSpanMid.x, 0.1, 3.0]}
+                                rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
+                                fontSize={0.8}
+                                color={textColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                outlineWidth={0.1}
+                                outlineColor="#ffffff"
+                            >
                                 {eponaMarkers.rightSpanLabel}
                             </Text>
 
@@ -942,7 +1019,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                     <Line points={eponaMarkers.lCenterPoints[1]} color={lineColor} lineWidth={lineWidth} />
                                     <mesh position={eponaMarkers.lCenterStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                     <mesh position={eponaMarkers.lCenterEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                    <Text position={[eponaMarkers.lCenterMid.x, isPignonView ? 0.6 : 0.2, 3.5]} rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                                    <Text
+                                        position={[eponaMarkers.lCenterMid.x, 0.1, 3.0]}
+                                        rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
+                                        fontSize={0.8}
+                                        color={textColor}
+                                        anchorX="center"
+                                        anchorY="middle"
+                                        outlineWidth={0.1}
+                                        outlineColor="#ffffff"
+                                    >
                                         {eponaMarkers.lCenterLabel}
                                     </Text>
                                 </>
@@ -955,7 +1041,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                     <Line points={eponaMarkers.lAwningPoints[1]} color={lineColor} lineWidth={lineWidth} />
                                     <mesh position={eponaMarkers.lAwningStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                     <mesh position={eponaMarkers.lAwningEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                    <Text position={[eponaMarkers.lAwningMid.x, isPignonView ? 0.6 : 0.2, 3.5]} rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                                    <Text
+                                        position={[eponaMarkers.lAwningMid.x, 0.1, 3.0]}
+                                        rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
+                                        fontSize={0.8}
+                                        color={textColor}
+                                        anchorX="center"
+                                        anchorY="middle"
+                                        outlineWidth={0.1}
+                                        outlineColor="#ffffff"
+                                    >
                                         2.5 m
                                     </Text>
                                 </>
@@ -970,15 +1065,42 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             {eponaMarkers.mHeightPoints?.map((p, i) => <Line key={`mh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />)}
                             {eponaMarkers.lHeightPoints?.map((p, i) => <Line key={`lh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />)}
                             
-                            <Text position={[eponaMarkers.rHeightX, eponaMarkers.rHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                            <Text
+                                position={[eponaMarkers.rHeightX, eponaMarkers.rHeightVal / 2, eponaMarkers.markerZ || 0]}
+                                rotation={[0, 0, Math.PI / 2]}
+                                fontSize={0.8}
+                                color={textColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                outlineWidth={0.1}
+                                outlineColor="#ffffff"
+                            >
                                 {`${eponaMarkers.rHeightVal} m`}
                             </Text>
                             {eponaMarkers.mHeightPoints?.length > 0 && (
-                                <Text position={[eponaMarkers.mHeightX - 0.7, eponaMarkers.mHeightVal / 2, eponaMarkers.midHeightZ]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                                <Text
+                                    position={[eponaMarkers.mHeightX, eponaMarkers.mHeightVal / 2, eponaMarkers.midHeightZ || 0]}
+                                    rotation={[0, 0, Math.PI / 2]}
+                                    fontSize={0.8}
+                                    color={textColor}
+                                    anchorX="center"
+                                    anchorY="middle"
+                                    outlineWidth={0.1}
+                                    outlineColor="#ffffff"
+                                >
                                     6 m
                                 </Text>
                             )}
-                            <Text position={[eponaMarkers.lHeightX - 0.5, eponaMarkers.lHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                            <Text
+                                position={[eponaMarkers.lHeightX, eponaMarkers.lHeightVal / 2, eponaMarkers.markerZ || 0]}
+                                rotation={[0, 0, Math.PI / 2]}
+                                fontSize={0.8}
+                                color={textColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                outlineWidth={0.1}
+                                outlineColor="#ffffff"
+                            >
                                 {`${eponaMarkers.lHeightVal} m`}
                             </Text>
                         </>
