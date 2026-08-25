@@ -1,5 +1,6 @@
 import React from 'react';
 import { resolveDemandeurNames } from '@/services/SmartCerfaService';
+import { getProxiedImageUrl } from '@/utils/imageProxy';
 
 const PAGE_STYLE = {
     width: '297mm',
@@ -59,11 +60,14 @@ const Footer = ({ project }) => {
 };
 
 const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Cliquez pour ajouter l'image", label = "Image", imageStyle = {} }) => {
+    const proxiedSrc = getProxiedImageUrl(photo);
+
     if (!isInteractive && photo) {
         return (
             <img 
-                src={photo} 
+                src={proxiedSrc} 
                 alt={label} 
+                crossOrigin="anonymous"
                 style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', maxWidth: '100%', maxHeight: '100%', ...imageStyle }} 
             />
         );
@@ -72,7 +76,12 @@ const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Clique
     return (
         <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {photo ? (
-                <img src={photo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain', maxWidth: '100%', maxHeight: '100%', ...imageStyle }} />
+                <img 
+                    src={proxiedSrc} 
+                    alt={label} 
+                    crossOrigin="anonymous"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', maxWidth: '100%', maxHeight: '100%', ...imageStyle }} 
+                />
             ) : (
                 <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '9pt', padding: '10px' }}>
                     <div style={{ fontSize: '18pt', marginBottom: '4px' }}>📷</div>

@@ -48,6 +48,7 @@ import {
 
 // Services & Data
 import { generateFullUrbanismePDF } from '@/services/UrbanismeDocService';
+import { preloadProjectImages } from '@/utils/imageProxy';
 import {
   getProfessionals, addProfessional, updateProfessional, deleteProfessional
 } from '@/services/devWorkflowService';
@@ -263,24 +264,29 @@ export default function Developpement() {
     setCaptureStep('Initialisation du dossier...');
 
     try {
-      const projectToUse = {
+      const initialProjectToUse = {
         ...selectedProject,
         ...(finalProject || {}),
         type: chosenType || finalProject?.type || selectedProject.type || 'batiment_solaire',
         installationType: chosenType || finalProject?.installationType || selectedProject.installationType || 'batiment_solaire'
       };
+
+      // 1. Précharger et convertir toutes les images (Firebase Storage, satellite, cadastres, etc.) en Base64 Data URLs
+      setCaptureStep('Chargement et sécurisation des images (Proxy CORS)...');
+      const projectToUse = await preloadProjectImages(initialProjectToUse);
+
       setSelectedProject(projectToUse);
-      setProjects(prev => prev.map(p => p.id === projectToUse.id ? projectToUse : p));
-      if (projectToUse?.id) {
+      setProjects(prev => prev.map(p => p.id === initialProjectToUse.id ? initialProjectToUse : p));
+      if (initialProjectToUse?.id) {
         try {
-          await apiService.updateProject(projectToUse.id, projectToUse, activeTenantId);
+          await apiService.updateProject(initialProjectToUse.id, initialProjectToUse, activeTenantId);
         } catch (saveErr) {
           console.warn('Erreur sauvegarde projet dans Firestore:', saveErr);
         }
       }
 
-      // Laisser le temps à React de monter les planches dans le DOM avec les nouvelles données
-      await new Promise(r => setTimeout(r, 200));
+      // Laisser le temps à React de monter les planches dans le DOM avec les images en mémoire (Data URLs)
+      await new Promise(r => setTimeout(r, 400));
 
       const isPC = docType === 'pc';
       const isCU = docType === 'cu';

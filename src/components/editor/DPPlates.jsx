@@ -1,5 +1,6 @@
 import React from 'react';
 import { getInstallationTypeInfo } from '@/services/UrbanismeDocService';
+import { getProxiedImageUrl } from '@/utils/imageProxy';
 
 const batteryPhotoDefault = '/images/battery_photo.jpg';
 
@@ -26,7 +27,7 @@ const HEADER_STYLE = {
     marginBottom: '3.5mm'
 };
 
-const LOGO_NELSON = "https://horizons-cdn.hostinger.com/350bc103-daf8-48b5-9a02-076489f36a7d/338201d787e373b4c0b156cb07a5b792.png"; 
+const LOGO_NELSON = "/logo-nelson.png"; 
 
 export const PlateHeader = ({ title, project, showBranding }) => {
     const clientFullName = `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Client';
@@ -34,7 +35,7 @@ export const PlateHeader = ({ title, project, showBranding }) => {
     return (
         <div style={HEADER_STYLE}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <img src={LOGO_NELSON} alt="Nelson" style={{ height: '10.5mm' }} />
+                <img src={getProxiedImageUrl(LOGO_NELSON)} alt="Nelson" style={{ height: '10.5mm' }} />
                 <div style={{ borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
                     <div style={{ fontSize: '9.5pt', fontWeight: 'bold', color: '#00429d' }}>NELSON</div>
                     {showBranding ? (
@@ -75,7 +76,7 @@ export const PlateCover = ({ project, installationType }) => {
                 
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <img src={LOGO_NELSON} alt="Nelson" style={{ height: '14mm' }} />
+                    <img src={getProxiedImageUrl(LOGO_NELSON)} alt="Nelson" style={{ height: '14mm' }} />
                     <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '11pt', fontWeight: 'bold', color: '#00429d' }}>DOSSIER D'URBANISME</div>
                         <div style={{ fontSize: '9pt', color: '#666' }}>Déclaration Préalable de Travaux</div>
@@ -135,7 +136,7 @@ export const PlateSituation = ({ project, captures }) => {
                         <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '1px' }}>(IGN / Cadastre)</div>
                     </div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        <img src={captures?.ign || captures?.cadastre || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Carte IGN" crossOrigin="anonymous" />
+                        <img src={getProxiedImageUrl(captures?.ign || captures?.cadastre || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Carte IGN" crossOrigin="anonymous" />
                     </div>
                 </div>
 
@@ -145,7 +146,7 @@ export const PlateSituation = ({ project, captures }) => {
                         <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '1px' }}>(Géoportail / Satellite)</div>
                     </div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        <img src={captures?.satellite || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Vue Aérienne" crossOrigin="anonymous" />
+                        <img src={getProxiedImageUrl(captures?.satellite || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Vue Aérienne" crossOrigin="anonymous" />
                     </div>
                 </div>
             </div>
@@ -195,7 +196,7 @@ export const PlateMasse = ({ project, captures }) => {
                                         </span>
                                     </div>
                                     <div style={{ flex: 1, position: 'relative', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <img src={bPhoto || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
+                                        <img src={getProxiedImageUrl(bPhoto || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
                                     </div>
                                 </div>
                             );
@@ -222,7 +223,7 @@ export const PlateMasse = ({ project, captures }) => {
                                 </span>
                             </div>
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff' }}>
-                                <img src={bPhoto || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
+                                <img src={getProxiedImageUrl(bPhoto || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
                             </div>
                         </div>
                     );
@@ -944,13 +945,13 @@ export const PlateFacades = ({ project, captures }) => {
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>1. FAÇADE SUD</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <img src={sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Sud" />
+                            <img src={getProxiedImageUrl(sud || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Sud" crossOrigin="anonymous" />
                         </div>
                     </div>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>2. FAÇADE NORD</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <img src={nord || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Nord" />
+                            <img src={getProxiedImageUrl(nord || sud || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Nord" crossOrigin="anonymous" />
                         </div>
                     </div>
                 </div>
@@ -963,7 +964,7 @@ export const PlateFacades = ({ project, captures }) => {
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON GAUCHE)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <img src={est || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Est" />
+                            <img src={getProxiedImageUrl(est || sud || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Est" crossOrigin="anonymous" />
                         </div>
                     </div>
                     {/* Ouest */}
@@ -973,14 +974,14 @@ export const PlateFacades = ({ project, captures }) => {
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON DROIT)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <img src={ouest || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Ouest" />
+                            <img src={getProxiedImageUrl(ouest || sud || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Ouest" crossOrigin="anonymous" />
                         </div>
                     </div>
                     {/* Toiture */}
                     <div style={{ flex: 1.6, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>5. VUE COUVERTURE (PAYSAGE)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <img src={toiture || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Toiture" />
+                            <img src={getProxiedImageUrl(toiture || sud || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Toiture" crossOrigin="anonymous" />
                         </div>
                     </div>
                 </div>
@@ -1007,7 +1008,7 @@ export const PlateInsertion = ({ project, captures, photos }) => {
                         <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '1px' }}>(AVANT TRAVAUX)</div>
                     </div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        <img src={photoAvant} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Avant" crossOrigin="anonymous" />
+                        <img src={getProxiedImageUrl(photoAvant)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Avant" crossOrigin="anonymous" />
                     </div>
                 </div>
 
@@ -1017,7 +1018,7 @@ export const PlateInsertion = ({ project, captures, photos }) => {
                         <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#15803d', marginTop: '1px' }}>(SIMULATION 3D D'INSERTION PAYSAGÈRE)</div>
                     </div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        <img src={photoApres} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Après" crossOrigin="anonymous" />
+                        <img src={getProxiedImageUrl(photoApres)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Après" crossOrigin="anonymous" />
                     </div>
                 </div>
             </div>
@@ -1043,7 +1044,7 @@ export const PlateEnv = ({ project, captures, photos, includeLointain = true }) 
                         DP7 — Photographie dans l'environnement proche
                     </div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
-                        <img src={photoProche} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Proche" crossOrigin="anonymous" />
+                        <img src={getProxiedImageUrl(photoProche)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Proche" crossOrigin="anonymous" />
                     </div>
                 </div>
 
@@ -1053,7 +1054,7 @@ export const PlateEnv = ({ project, captures, photos, includeLointain = true }) 
                             DP8 — Photographie dans le paysage lointain
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
-                            <img src={photoLointain} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
+                            <img src={getProxiedImageUrl(photoLointain)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
                         </div>
                     </div>
                 )}
@@ -1069,7 +1070,7 @@ export const PlateEnvProche = ({ project, captures, photos }) => {
         <div style={PAGE_STYLE} id="dp-plate-env-proche">
             <PlateHeader title="DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE" project={project} />
             <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm' }}>
-                <img src={photoProche} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Proche" crossOrigin="anonymous" />
+                <img src={getProxiedImageUrl(photoProche)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Proche" crossOrigin="anonymous" />
             </div>
             <Footer project={project} />
         </div>
@@ -1101,9 +1102,10 @@ export const PlateAspect = ({ project, batteryPhoto }) => {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6mm', padding: '4mm', maxHeight: '135mm', marginBottom: '5mm' }}>
                 <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', flex: 1 }}>
                     <img 
-                        src={batteryPhoto || project?.urbanisme_captures?.facades_projet || "https://nelsonpv.fr/mercury_product_photo.jpg"} 
+                        src={getProxiedImageUrl(batteryPhoto || project?.urbanisme_captures?.facades_projet || "https://nelsonpv.fr/mercury_product_photo.jpg")} 
                         style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#ffffff' }} 
                         alt="Aspect extérieur" 
+                        crossOrigin="anonymous"
                     />
                 </div>
             </div>
@@ -1116,7 +1118,7 @@ export const PlateEnvLointain = ({ project, captures, photos }) => (
     <div style={PAGE_STYLE} id="dp-plate-env-lointain">
         <PlateHeader title="DP8 : PHOTOGRAPHIE DE L'ENVIRONNEMENT LOINTAIN" project={project} />
         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm' }}>
-            <img src={photos?.lointain || captures?.env_lointain || captures?.satellite || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
+            <img src={getProxiedImageUrl(photos?.lointain || captures?.env_lointain || captures?.satellite || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
         </div>
         <Footer project={project} />
     </div>

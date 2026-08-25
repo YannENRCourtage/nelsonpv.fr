@@ -53,6 +53,9 @@
         }
     ],
     "functions": {
+        "api/proxy-image.js": {
+            "maxDuration": 60
+        },
         "api/pvgis.js": {
             "maxDuration": 60
         },

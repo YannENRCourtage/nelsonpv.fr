@@ -8,6 +8,7 @@ import { cadastreService } from "@/services/CadastreService";
 import { toast } from "@/components/ui/use-toast";
 import { PlateSituation, PlateMasse, PlateNotice, PlateCover, PlateSection, PlateFacades, PlateInsertionNotice, PlateAspect, PlateInsertion, PlateEnvProche, PlateEnvLointain } from './DPPlates';
 import html2canvas from 'html2canvas';
+import { preloadProjectImages } from '@/utils/imageProxy';
 
 const BATTERY_PHOTO = "https://nelsonpv.fr/mercury_product_photo.jpg"; // Placeholder for image 3
 
@@ -184,16 +185,24 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
                 'dp-plate-notice-insertion'
             ];
             
+            // Préchargement sécurisé des images via le proxy
+            setCaptureStep('Sécurisation des images (Proxy CORS)...');
+            const safeProject = await preloadProjectImages(project);
+            if (safeProject.urbanisme_captures) {
+                setCaptures(safeProject.urbanisme_captures);
+            }
+            await new Promise(r => setTimeout(r, 250));
+
             const platePromises = plateIds.map(async (id) => {
                 const el = document.getElementById(id);
                 if (el) {
-                    // Petit délai pour laisser le temps au moteur de rendu (important pour les maps et images)
                     await new Promise(r => setTimeout(r, 200));
                     const canvas = await html2canvas(el, { 
-                        scale: 2, // Haute qualité
+                        scale: 2,
                         useCORS: true,
-                        allowTaint: true,
-                        logging: false
+                        allowTaint: false,
+                        logging: false,
+                        imageTimeout: 15000
                     });
                     return { id, data: canvas.toDataURL('image/jpeg', 0.95) };
                 }
@@ -207,7 +216,7 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
             // 7. Génération PDF via le service
             setCaptureStep('Assemblage PDF...');
             const { generateDPDossier } = await import("@/services/DPGeneratorService");
-            await generateDPDossier({ ...project, dp_data: dpData }, platesMap);
+            await generateDPDossier({ ...safeProject, dp_data: dpData }, platesMap);
 
             toast({ title: "Succès", description: "Le dossier DP a été généré avec succès." });
         } catch (err) {

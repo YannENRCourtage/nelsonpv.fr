@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import html2canvas from 'html2canvas';
 import { PDFDocument } from 'pdf-lib';
+import { preloadProjectImages } from '@/utils/imageProxy';
 
 import {
     PlateCover,
@@ -102,7 +103,17 @@ export default function PCBatimentTab({
         setCaptureStep('Préparation des planches…');
 
         try {
+            setCaptureStep('Sécurisation des photos (Proxy CORS)...');
+            const safeProject = await preloadProjectImages(project);
+            if (safeProject.pc_photos) {
+                setPhotos(safeProject.pc_photos);
+            }
+            if (safeProject.urbanisme_captures) {
+                setCaptures(safeProject.urbanisme_captures);
+            }
+
             const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+            await wait(300);
 
             const plateIds = [
                 'pc-plate-cover',
@@ -125,8 +136,9 @@ export default function PCBatimentTab({
                 const canvas = await html2canvas(el, {
                     scale: 2,
                     useCORS: true,
-                    allowTaint: true,
+                    allowTaint: false,
                     logging: false,
+                    imageTimeout: 15000
                 });
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
 

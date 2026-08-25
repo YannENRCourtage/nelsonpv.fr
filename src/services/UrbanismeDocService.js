@@ -1,6 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import html2canvas from 'html2canvas';
 import { smartFillCerfa, resolveDemandeurNames } from './SmartCerfaService';
+import { preloadProjectImages } from '@/utils/imageProxy';
 
 // ─── Types d'installation ────────────────────────────────────────────────────
 
@@ -281,15 +282,16 @@ async function captureplate(doc, elementId, landscape = true) {
     return;
   }
 
-  await new Promise(r => setTimeout(r, 200));
+  await new Promise(r => setTimeout(r, 250));
 
   try {
     const canvas = await html2canvas(el, {
       scale: 2,
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false,
       logging: false,
       backgroundColor: '#ffffff',
+      imageTimeout: 15000,
     });
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
@@ -310,10 +312,13 @@ export async function generateFullUrbanismePDF({ type, project, installationType
   try {
     const finalDoc = await PDFDocument.create();
 
+    // S'assurer que toutes les images distantes du projet sont bien en Base64 Data URLs
+    const safeProject = await preloadProjectImages(project);
+
     // 1. Page de couverture qualité architecte
     if (includeCover) {
       if (onProgress) onProgress('Génération de la page de couverture...');
-      await drawCoverPage(finalDoc, project, type, installationType || 'batiment_solaire');
+      await drawCoverPage(finalDoc, safeProject, type, installationType || 'batiment_solaire');
     }
 
     // 2. Capture des planches graphiques

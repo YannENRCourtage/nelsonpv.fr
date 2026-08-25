@@ -10,6 +10,7 @@ import { PDFViewer } from '../components/PDFViewer';
 import { signDocument } from '../services/docusignService';
 import { PlateSituation, PlateMasse, PlateNotice } from '../components/editor/DPPlates';
 import html2canvas from 'html2canvas';
+import { preloadProjectImages } from '@/utils/imageProxy';
 
 export default function CDP() {
     const { user } = useAuth();
@@ -404,20 +405,23 @@ export default function CDP() {
 
                         toast({ title: "Génération DP...", description: "Veuillez patienter, rendu des planches en cours." });
                         
+                        // Sécuriser et précharger les images via le proxy
+                        const safeTargetProject = await preloadProjectImages(targetProject);
+
                         // Attendre un peu que le DOM masqué soit prêt si on vient de changer de projet
-                        await new Promise(r => setTimeout(r, 1000));
+                        await new Promise(r => setTimeout(r, 600));
                         
                         const plates = {};
                         const plateIds = ['dp-plate-situation', 'dp-plate-masse', 'dp-plate-notice'];
                         for (const id of plateIds) {
                             const el = document.getElementById(id);
                             if (el) {
-                                // FIX: Ajout de useCORS pour les images hébergées sur Firebase Storage
                                 const canvas = await html2canvas(el, { 
                                     scale: 2,
                                     useCORS: true,
                                     allowTaint: false,
-                                    logging: false
+                                    logging: false,
+                                    imageTimeout: 15000
                                 });
                                 plates[id] = canvas.toDataURL('image/png');
                             }
@@ -426,7 +430,7 @@ export default function CDP() {
                         const { generateDPDossier } = await import("@/services/DPGeneratorService");
                         // On injecte les données du formulaire CDP dans l'objet projet pour la génération
                         const projectWithForm = {
-                            ...targetProject,
+                            ...safeTargetProject,
                             ...clientData,
                             name: clientData.nom,
                             firstName: clientData.prenom,
