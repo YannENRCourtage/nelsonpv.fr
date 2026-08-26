@@ -368,6 +368,20 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     const middleColSvgX = mainLeftSvgX + asym2LeftDist * pxPerM;
     const middleColTopY = apexSvgY + (rightEaveSvgY - apexSvgY) * ((middleColSvgX - apexSvgX) / (mainRightSvgX - apexSvgX));
 
+    const displayPitch = effectivePitch;
+    let extRightHeight = hasAppentisRight ? 3.90 : Math.max(2.4, rightEaveHeight - extRightWidth * Math.tan((effectivePitch * Math.PI) / 180));
+    let extLeftHeight = hasAppentisLeft ? 3.90 : Math.max(2.4, leftEaveHeight - extLeftWidth * Math.tan((effectivePitch * Math.PI) / 180));
+    if (hasAuventLeft) {
+        if (isAsym2 && Math.abs(largeur - 25.5) < 0.8) extLeftHeight = 5.90;
+        else if (isAsym2 && Math.abs(largeur - 29.1) < 0.8) extLeftHeight = 6.90;
+        else if (isAsym1 && Math.abs(largeur - 20.0) < 0.5) extLeftHeight = 6.40;
+        else if (isAsym1 && Math.abs(largeur - 16.4) < 0.5) extLeftHeight = 5.40;
+    }
+    if (hasAuventRight) {
+        if (isAsym2 && Math.abs(largeur - 25.5) < 0.8) extRightHeight = 3.30;
+        else if (isAsym2 && Math.abs(largeur - 29.1) < 0.8) extRightHeight = 3.30;
+    }
+
     const roofTypeLabel = isOmbriere ? 'monopente (ombrière VL/PL)' : isAsym ? (isAsym2 ? 'double pente asymétrique 2 zones' : 'double pente asymétrique') : isSym ? 'double pente symétrique' : 'photovoltaïque';
 
     const coupeSvgContent = (
