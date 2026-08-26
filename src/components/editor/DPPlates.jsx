@@ -194,7 +194,7 @@ export const PlateMasse = ({ project, captures }) => {
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-masse">
-            <PlateHeader title="DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS" project={project} />
+            <PlateHeader title={`DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS${project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}`} project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '135mm', marginBottom: '5mm' }}>
                 {isMulti ? (
                     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(rawBuildings.length, 2)}, 1fr)`, gap: '4mm', flex: 1, height: '100%' }}>
@@ -837,7 +837,7 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
     return (
         <div style={PAGE_STYLE} id="dp-plate-coupe">
             <PlateHeader 
-                title={hasNotice ? "DP3 : PLAN EN COUPE & NOTICE DESCRIPTIVE" : "DP3 — PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION"} 
+                title={`${hasNotice ? "DP3 : PLAN EN COUPE & NOTICE DESCRIPTIVE" : "DP3 — PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION"}${project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}`} 
                 project={project} 
             />
             {hasNotice ? (
@@ -965,7 +965,7 @@ export const PlateFacades = ({ project, captures }) => {
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-facades">
-            <PlateHeader title="DP4 — PLAN DES FAÇADES ET TOITURES / VUES 3D" project={project} />
+            <PlateHeader title={`DP4 — PLAN DES FAÇADES ET TOITURES / VUES 3D${project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}`} project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '148mm', marginBottom: '4mm' }}>
                 <div style={{ flex: 1, display: 'flex', gap: '3.5mm', minHeight: '62mm' }}>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
@@ -1028,7 +1028,7 @@ export const PlateInsertion = ({ project, captures, photos }) => {
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-insertion">
-            <PlateHeader title="DP6 — DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE" project={project} />
+            <PlateHeader title={`DP6 — DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE${project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}`} project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '124mm', marginBottom: '6mm' }}>
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
                     <div style={{ padding: '2mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#1e293b', lineHeight: '1.25' }}>
@@ -1065,7 +1065,7 @@ export const PlateEnv = ({ project, captures, photos, includeLointain = true }) 
     return (
         <div style={PAGE_STYLE} id="dp-plate-env">
             <PlateHeader 
-                title={showBoth ? "DP7 & DP8 : ENVIRONNEMENT PROCHE ET LOINTAIN" : "DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE"} 
+                title={`${showBoth ? "DP7 & DP8 : ENVIRONNEMENT PROCHE ET LOINTAIN" : "DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE"}${project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}`} 
                 project={project} 
             />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>
