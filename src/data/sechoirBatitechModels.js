@@ -16,8 +16,10 @@ export const BATITECH_MODELS = {
     investissementBrut: 327053,
     zones: 1,
     description: 'Séchoir compact — 1 zone de séchage',
-    dimensions: '30m × 10m',
-    surfaceToiture: 300,
+    dimensions: '18m × 20m',
+    surfaceToiture: 360,
+    length: 18,
+    width: 20,
     // Décomposition investissement (proportionnelle au modèle BP Excel K23 = 426 700€ pour ~100 kWc)
     postesInvestissement: {
       lotCentraleThermovoltaique: 26850,   // proportionné
@@ -51,8 +53,10 @@ export const BATITECH_MODELS = {
     investissementBrut: 564986,
     zones: 2,
     description: 'Séchoir intermédiaire — 2 zones de séchage',
-    dimensions: '60m × 10m',
-    surfaceToiture: 600,
+    dimensions: '36m × 20m',
+    surfaceToiture: 720,
+    length: 36,
+    width: 20,
     postesInvestissement: {
       lotCentraleThermovoltaique: 34716,
       processAeraulique: 33145,
@@ -84,8 +88,10 @@ export const BATITECH_MODELS = {
     investissementBrut: 764501,
     zones: 3,
     description: 'Séchoir grande capacité — 3 zones de séchage',
-    dimensions: '80m × 10m',
-    surfaceToiture: 800,
+    dimensions: '48m × 20m',
+    surfaceToiture: 960,
+    length: 48,
+    width: 20,
     postesInvestissement: {
       lotCentraleThermovoltaique: 51500,
       processAeraulique: 49100,

@@ -24,16 +24,16 @@ export default function Step2Model() {
       className="space-y-6"
     >
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Building2 className="text-amber-500 w-6 h-6" />
+        <h2 className="text-2xl font-black text-white flex items-center gap-2.5">
+          <Building2 className="text-amber-500 w-7 h-7" />
           Modèle BatiTech®
         </h2>
-        <p className="text-slate-300">
+        <p className="text-base text-slate-300">
           Sélectionnez la configuration de séchoir adaptée à votre exploitation.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-4">
         {Object.entries(BATITECH_MODELS).map(([modelId, model], index) => {
           const isSelected = selectedModelId === modelId;
           
@@ -45,46 +45,46 @@ export default function Step2Model() {
               key={modelId}
               onClick={() => setModel(modelId)}
               className={`
-                relative cursor-pointer rounded-2xl p-6 transition-all duration-300
+                relative cursor-pointer rounded-3xl p-6 transition-all duration-300
                 ${isSelected 
-                  ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-400/20 bg-slate-800/80' 
-                  : 'bg-slate-800/40 border border-slate-700/50 hover:border-amber-400/30 hover:shadow-amber-400/10'}
+                  ? 'ring-2 ring-amber-400 shadow-xl shadow-amber-400/20 bg-slate-800/90' 
+                  : 'bg-slate-800/40 border border-slate-700/60 hover:border-amber-400/40 hover:shadow-amber-400/10'}
               `}
             >
               {isSelected && (
-                <div className="absolute top-4 right-4">
-                  <CheckCircle2 className="w-6 h-6 text-amber-400" />
+                <div className="absolute top-5 right-5">
+                  <CheckCircle2 className="w-7 h-7 text-amber-400" />
                 </div>
               )}
               
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
-                  <div className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-medium bg-amber-500/10 text-amber-400 rounded-full mb-2">
+                  <div className="inline-flex items-center justify-center px-3 py-1 text-xs font-bold bg-amber-500/15 text-amber-400 rounded-full mb-2 border border-amber-500/30">
                     {model.zones} {model.zones > 1 ? 'zones' : 'zone'}
                   </div>
-                  <h3 className="text-xl font-bold text-white">{model.name}</h3>
+                  <h3 className="text-2xl font-black text-white">{model.name}</h3>
                 </div>
 
-                <div className="space-y-2 text-sm text-slate-300">
-                  <div className="flex justify-between border-b border-slate-700/50 pb-2">
-                    <span className="text-slate-400">Puissance</span>
-                    <span className="font-semibold text-white">{model.puissanceKwc.toFixed(2)} kWc</span>
+                <div className="space-y-3 text-base text-slate-300">
+                  <div className="flex justify-between border-b border-slate-700/60 pb-2.5">
+                    <span className="text-slate-400 font-medium">Puissance</span>
+                    <span className="font-bold text-white text-base">{model.puissanceKwc.toFixed(2)} kWc</span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-700/50 pb-2">
-                    <span className="text-slate-400">Modules</span>
-                    <span className="font-semibold text-white">{model.nbModules} Cogen'Air®</span>
+                  <div className="flex justify-between border-b border-slate-700/60 pb-2.5">
+                    <span className="text-slate-400 font-medium">Modules</span>
+                    <span className="font-bold text-white text-base">{model.nbModules} Cogen'Air®</span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-700/50 pb-2">
-                    <span className="text-slate-400">Dimensions</span>
-                    <span className="font-semibold text-white">{model.dimensions}</span>
+                  <div className="flex justify-between border-b border-slate-700/60 pb-2.5">
+                    <span className="text-slate-400 font-medium">Dimensions</span>
+                    <span className="font-bold text-amber-400 text-base">{model.dimensions}</span>
                   </div>
                   <div className="flex justify-between pt-2">
-                    <span className="text-slate-400">Investissement</span>
-                    <span className="font-bold text-amber-400">{formatCurrency(model.investissementBrut)} HT</span>
+                    <span className="text-slate-400 font-medium">Investissement</span>
+                    <span className="font-black text-white text-lg">{formatCurrency(model.investissementBrut)} HT</span>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-400 mt-4 leading-relaxed">
+                <p className="text-sm text-slate-400 mt-4 leading-relaxed">
                   {model.description}
                 </p>
               </div>

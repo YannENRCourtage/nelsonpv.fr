@@ -60,10 +60,14 @@ const useSechoirStore = create(
 
       setModel: (modelId) => set({ selectedModelId: modelId }),
 
-      // ═══ ÉTAPE 3 — ORIENTATION ═════════════════════════════════════════════
+      // ═══ ÉTAPE 3 — ORIENTATION & IMPLANTATION ═════════════════════════════
       orientation: 'sud',
+      rotation: 0,
+      mapCenter: null,
 
       setOrientation: (orientation) => set({ orientation }),
+      setRotation: (rotation) => set({ rotation }),
+      setMapCenter: (mapCenter) => set({ mapCenter }),
 
       // ═══ ÉTAPE 4 — BESOINS EN SÉCHAGE & VALORISATION ══════════════════════
       materials: DRYING_MATERIALS.map(m => ({
@@ -124,6 +128,7 @@ const useSechoirStore = create(
         addressLabel: '',
         latitude: null,
         longitude: null,
+        mapCenter: null,
         departement: '',
         commune: '',
         codePostal: '',
@@ -131,6 +136,7 @@ const useSechoirStore = create(
         zoneSechage: '',
         selectedModelId: null,
         orientation: 'sud',
+        rotation: 0,
         materials: DRYING_MATERIALS.map(m => ({
           id: m.id,
           label: m.label,

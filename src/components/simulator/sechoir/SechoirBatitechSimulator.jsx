@@ -90,23 +90,77 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
 
   useEffect(() => {
     if (onStateUpdate && results) {
+      const activeMats = (store.materials || []).filter(m => m.enabled && m.volume > 0);
+      const activeMatsText = activeMats.map(m => `${m.shortLabel || m.label} (${m.volume} t)`).join(', ') || 'Fourrage en vrac, Bottes carrées, Céréales';
+      
+      const rot = store.rotation !== undefined ? store.rotation : (
+        store.orientation === 'ouest' ? 90 :
+        store.orientation === 'sud-ouest' ? 45 :
+        store.orientation === 'sud-est' ? -45 :
+        store.orientation === 'est' ? -90 : 0
+      );
+
+      const center = store.mapCenter || (store.latitude && store.longitude ? [Number(store.latitude), Number(store.longitude)] : [43.6047, 1.4442]);
+
       onStateUpdate({
         type: 'sechoir_batitech',
-        title: `Séchoir BatiTech® ${results.model?.name || ''} — ${store.commune || 'Étude'}`,
+        title: `Séchoir Multi-Matières BatiTech® — ${results.model?.name || ''}`,
         cityName: store.commune || '',
         address: store.addressLabel || store.address || '',
-        departement: store.departement,
-        kwc: results.model?.puissanceKwc || 0,
+        departement: store.departement || '33',
+        departmentCode: store.departement || '33',
+        modelName: results.model?.name || 'BatiTech 3.1.15',
+        dimensions: results.model?.dimensions || '18m × 20m',
+        length: results.model?.length || 18,
+        width: results.model?.width || 20,
+        roofSurface: results.model?.surfaceToiture || 360,
+        floorArea: results.model?.surfaceToiture || 360,
+        kwc: results.model?.puissanceKwc || 30.15,
+        nbModules: results.model?.nbModules || 90,
+        orientation: store.orientation,
+        orientationLabel: rot === 0 ? 'Plein Sud (0°)' : rot > 0 ? `Sud-Ouest (+${rot}°)` : `Sud-Est (${rot}°)`,
         annualProductionKwh: results.productionPV || 0,
-        investissementBrut: results.model?.investissementBrut || 0,
-        primeCEE: results.cee?.primeTotal || 0,
-        roi: results.roi || 0,
+        deltaProduits: results.produits?.deltaProduits || 0,
+        annualBenefitYear1: results.deltaEBE || 0,
         deltaEBE: results.deltaEBE || 0,
+        totalInvestmentHT: results.model?.investissementBrut || 0,
+        primeCEE: results.cee?.primeTotal || 0,
+        subventionsPAE: results.financing?.subventionsTotal || 0,
+        investissementNet: results.financing?.investissementNet || 0,
+        emprunt: results.financing?.emprunt || 0,
+        annuite: results.annuite || 0,
+        gainNetAnnuel: results.gainNetAnnuel || 0,
+        paybackYear: results.roi || 7.29,
+        roi: results.roi || 7.29,
         van: results.van || 0,
         tri: results.triPercent || 'N/A',
+        triPercent: results.triPercent || 'N/A',
+        mapCenter: center,
+        rotation: rot,
+        buildings: [{
+          name: `Séchoir ${results.model?.name || 'BatiTech'}`,
+          length: results.model?.length || 18,
+          width: results.model?.width || 20,
+          rotation: rot,
+        }],
+        activeMaterialsText: activeMatsText,
+        cashFlows: results.treasury?.cashFlows || [],
       });
     }
-  }, [results, onStateUpdate, store.commune, store.addressLabel, store.address, store.departement]);
+  }, [
+    results,
+    onStateUpdate,
+    store.commune,
+    store.addressLabel,
+    store.address,
+    store.departement,
+    store.latitude,
+    store.longitude,
+    store.mapCenter,
+    store.rotation,
+    store.orientation,
+    store.materials
+  ]);
 
   // ─── Validation par étape ────────────────────────────────────────────────
 
@@ -170,18 +224,18 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
     <div className="min-h-[calc(100vh-180px)] bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 rounded-3xl overflow-hidden border border-slate-800/60 shadow-2xl">
 
       {/* ═══ HEADER — Barre de progression ═══════════════════════════════════ */}
-      <div className="px-4 sm:px-8 pt-6 pb-4">
+      <div className="px-5 sm:px-8 pt-6 pb-4">
         {/* Titre */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-              <Leaf className="w-5 h-5 text-amber-400" />
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center">
+              <Leaf className="w-6 h-6 text-amber-400" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-white tracking-tight">
-                Séchoir BatiTech<sup className="text-amber-400 text-xs">®</sup>
+              <h1 className="text-2xl font-black text-white tracking-tight">
+                Séchoir BatiTech<sup className="text-amber-400 text-sm">®</sup>
               </h1>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-sm text-slate-400 font-medium">
                 Simulateur de rentabilité — Séchoir solaire thermovoltaïque Cogen'Air®
               </p>
             </div>
@@ -189,15 +243,15 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
 
           <button
             onClick={reset}
-            className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/80 text-slate-400 hover:text-white transition-all"
+            className="p-2.5 rounded-2xl bg-slate-800/60 hover:bg-slate-700/80 text-slate-400 hover:text-white transition-all"
             title="Réinitialiser la simulation"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-5 h-5" />
           </button>
         </div>
 
         {/* Barre de progression — étapes */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           {STEPS.map((step, index) => {
             const Icon = step.icon;
             const isActive = currentStep === step.id;
@@ -219,7 +273,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
                 <button
                   onClick={() => handleStepClick(step.id)}
                   disabled={!isReachable}
-                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
                     isActive
                       ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40 shadow-lg shadow-amber-500/10'
                       : isCompleted
@@ -244,7 +298,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
       </div>
 
       {/* ═══ CONTENU — Étape active ═══════════════════════════════════════════ */}
-      <div className="px-4 sm:px-8 pb-6 relative z-20 overflow-visible">
+      <div className="px-5 sm:px-8 pb-6 relative z-20 overflow-visible">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentStep}
@@ -266,50 +320,43 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
       </div>
 
       {/* ═══ FOOTER — Navigation ═════════════════════════════════════════════ */}
-      <div className="px-4 sm:px-8 pb-6 relative z-10">
+      <div className="px-5 sm:px-8 pb-6 relative z-10">
         <div className="flex items-center justify-between pt-4 border-t border-slate-800/60">
           {/* Bouton Précédent */}
           <button
             onClick={handlePrev}
             disabled={currentStep === 1}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-base font-bold transition-all ${
               currentStep === 1
                 ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
                 : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700/80 hover:text-white'
             }`}
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-5 h-5" />
             Précédent
           </button>
 
           {/* Indicateur central */}
-          <span className="text-xs text-slate-500 font-medium">
+          <span className="text-sm text-slate-400 font-semibold">
             Étape {currentStep} / 5
           </span>
 
-          {/* Bouton Suivant / Télécharger PDF */}
+          {/* Bouton Suivant */}
           {currentStep < 5 ? (
             <button
               onClick={handleNext}
               disabled={!canProceed}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all ${
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-base font-black transition-all ${
                 canProceed
                   ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 shadow-lg shadow-amber-500/30 hover:shadow-amber-400/40 hover:scale-105'
                   : 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
               }`}
             >
               Suivant
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-5 h-5" />
             </button>
           ) : (
-            <button
-              onClick={handleExportPDF}
-              disabled={!results}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-400 hover:to-teal-400 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-400/40 hover:scale-105 transition-all"
-            >
-              <FileDown className="w-4 h-4" />
-              Télécharger PDF
-            </button>
+            <div />
           )}
         </div>
       </div>

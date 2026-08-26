@@ -183,8 +183,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       finalMapScreenshot = sim.mapScreenshot || await generateSatelliteSnapshot({
         center: sim.mapCenter || [43.6047, 1.4442],
         polygonPoints: sim.polygonPoints || [],
-        buildings: sim.buildings || (isSechoir ? [{ length: Number(sim.length || 30), width: Number(sim.width || 10), rotation: Number(sim.rotation || 0) }] : []),
-        building: isSechoir ? { length: Number(sim.length || 30), width: Number(sim.width || 10), rotation: Number(sim.rotation || 0) } : null,
+        buildings: sim.buildings || (isSechoir ? [{ length: Number(sim.length || 18), width: Number(sim.width || 20), rotation: Number(sim.rotation || 0) }] : []),
+        building: isSechoir ? { length: Number(sim.length || 18), width: Number(sim.width || 20), rotation: Number(sim.rotation || 0) } : null,
         width: 800,
         height: 650,
         zoom: 19
@@ -355,11 +355,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             <td style="padding: 2px 0; color: #64748b;">Adresse du site :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Modèle étudié :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #d97706;">${sim.modelName || 'BatiTech 3.1.15'} — ${sim.dimensions || '30m × 10m'}</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #d97706;">${sim.modelName || 'BatiTech 3.1.15'} — ${sim.dimensions || '18m × 20m'}</td>
           </tr>
           <tr style="border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 2px 0; color: #64748b;">Générateur Cogen'Air® :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${calculatedPower} (${sim.nbModules || 189} modules)</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${calculatedPower} (${sim.nbModules || 90} modules)</td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Productible solaire :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #0284c7;">${(sim.annualProductionKwh || 75000).toLocaleString('fr-FR')} kWh / an</td>
           </tr>
@@ -457,25 +457,25 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 6px; text-align: center;">
             <div style="font-size: 6.5pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Puissance</div>
             <div style="font-size: 13pt; font-weight: 900; color: #00429d; margin: 1px 0;">${calculatedPower}</div>
-            <div style="font-size: 6.5pt; color: #64748b;">${sim.roofSurface ? `${sim.roofSurface} m² toiture` : sim.quantity ? `${sim.quantity} borne(s)` : ''}</div>
+            <div style="font-size: 6.5pt; color: #64748b;">${isSechoir ? `${sim.nbModules || 90} panneaux Cogen'Air` : (sim.roofSurface ? `${sim.roofSurface} m² toiture` : sim.quantity ? `${sim.quantity} borne(s)` : '')}</div>
           </div>
 
           <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 6px; text-align: center;">
-            <div style="font-size: 6.5pt; font-weight: bold; color: #64748b; text-transform: uppercase;">${isIrve ? 'Revenus Annuels' : 'Production Annuelle'}</div>
-            <div style="font-size: 13pt; font-weight: 900; color: #0284c7; margin: 1px 0;">${isIrve ? `${(sim.annualRevenue || 0).toLocaleString('fr-FR')} €` : (sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh` : '-')}</div>
-            <div style="font-size: 6.5pt; color: #64748b;">${isIrve ? 'Recettes estimées' : `Région ${sim.departmentCode || '33'}`}</div>
+            <div style="font-size: 6.5pt; font-weight: bold; color: #64748b; text-transform: uppercase;">${isSechoir ? 'Valorisation Matière' : isIrve ? 'Revenus Annuels' : 'Production Annuelle'}</div>
+            <div style="font-size: 13pt; font-weight: 900; color: ${isSechoir ? '#16a34a' : '#0284c7'}; margin: 1px 0;">${isSechoir ? `+${(sim.deltaProduits || 25720).toLocaleString('fr-FR')} €` : isIrve ? `${(sim.annualRevenue || 0).toLocaleString('fr-FR')} €` : (sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh` : '-')}</div>
+            <div style="font-size: 6.5pt; color: #64748b;">${isSechoir ? 'Gains séchage + économies' : isIrve ? 'Recettes estimées' : `Région ${sim.departmentCode || '33'}`}</div>
           </div>
 
           <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 6px; text-align: center;">
-            <div style="font-size: 6.5pt; font-weight: bold; color: #166534; text-transform: uppercase;">${isIrve ? 'Investissement net' : 'Gains / an (An 1)'}</div>
-            <div style="font-size: 13pt; font-weight: 900; color: #16a34a; margin: 1px 0;">${isIrve ? `${(sim.totalInvestmentHT || sim.resteACharge || 3960).toLocaleString('fr-FR')} € HT` : annualGainFormatted}</div>
-            <div style="font-size: 6.5pt; color: #166534;">${isIrve ? `Coût ${sim.quantity || 1} borne(s)` : isStruct ? edfOaTarifLabel : isToiture ? `Tarif EDF OA : ${sim.tarifEdfOaKwh || '0.082'} €/kWh` : `${Math.round(sim.annualSavingsAutoconso || ((sim.annualBenefitYear1 || 1462) * 0.88)).toLocaleString('fr-FR')} € écon. + ${Math.round(sim.annualRevenueSurplus || ((sim.annualBenefitYear1 || 1462) * 0.12)).toLocaleString('fr-FR')} € surplus`}</div>
+            <div style="font-size: 6.5pt; font-weight: bold; color: #166534; text-transform: uppercase;">${isSechoir ? 'Prime CEE (AGRI-EQ-110)' : isIrve ? 'Investissement net' : 'Gains / an (An 1)'}</div>
+            <div style="font-size: 13pt; font-weight: 900; color: #16a34a; margin: 1px 0;">${isSechoir ? `-${(sim.primeCEE || 38790).toLocaleString('fr-FR')} €` : isIrve ? `${(sim.totalInvestmentHT || sim.resteACharge || 3960).toLocaleString('fr-FR')} € HT` : annualGainFormatted}</div>
+            <div style="font-size: 6.5pt; color: #166534;">${isSechoir ? 'Cogen\'Air® Certifiée' : isIrve ? `Coût ${sim.quantity || 1} borne(s)` : isStruct ? edfOaTarifLabel : isToiture ? `Tarif EDF OA : ${sim.tarifEdfOaKwh || '0.082'} €/kWh` : `${Math.round(sim.annualSavingsAutoconso || ((sim.annualBenefitYear1 || 1462) * 0.88)).toLocaleString('fr-FR')} € écon. + ${Math.round(sim.annualRevenueSurplus || ((sim.annualBenefitYear1 || 1462) * 0.12)).toLocaleString('fr-FR')} € surplus`}</div>
           </div>
 
           <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 8px; padding: 6px; text-align: center;">
             <div style="font-size: 6.5pt; font-weight: bold; color: #6b21a8; text-transform: uppercase;">Amortissement</div>
-            <div style="font-size: 13pt; font-weight: 900; color: #9333ea; margin: 1px 0;">${sim.paybackYear || 8} ans</div>
-            <div style="font-size: 6.5pt; color: #6b21a8;">${isIrve ? `Soit ${sim.paybackMonths || Math.round((Number(sim.paybackYear) || 0.4) * 12)} mois` : `Invest. : ${sim.totalInvestmentHT ? sim.totalInvestmentHT.toLocaleString('fr-FR') : sim.resteACharge ? sim.resteACharge.toLocaleString('fr-FR') : '-'} € HT`}</div>
+            <div style="font-size: 13pt; font-weight: 900; color: #9333ea; margin: 1px 0;">${isSechoir ? `${Number(sim.paybackYear || sim.roi || 7.29).toFixed(2)} ans` : `${sim.paybackYear || 8} ans`}</div>
+            <div style="font-size: 6.5pt; color: #6b21a8;">${isSechoir ? `Invest. : ${(sim.investissementNet || sim.totalInvestmentHT || 327053).toLocaleString('fr-FR')} € HT` : isIrve ? `Soit ${sim.paybackMonths || Math.round((Number(sim.paybackYear) || 0.4) * 12)} mois` : `Invest. : ${sim.totalInvestmentHT ? sim.totalInvestmentHT.toLocaleString('fr-FR') : sim.resteACharge ? sim.resteACharge.toLocaleString('fr-FR') : '-'} € HT`}</div>
           </div>
         </div>
 
@@ -489,34 +489,34 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 Plan de Financement &amp; Rentabilité
               </div>
               <table style="width: 100%; border-collapse: collapse; font-size: 6.8pt;">
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #64748b;">Investissement Brut Séchoir :</td><td style="text-align: right; font-weight: bold;">${(sim.totalInvestmentHT || 426700).toLocaleString('fr-FR')} € HT</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #16a34a;">Prime CEE Cogen'Air (AGRI-EQ-110) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">-${(sim.primeCEE || 16500).toLocaleString('fr-FR')} €</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #16a34a;">Subventions (PAE Éleveurs) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">-${(sim.subventionsPAE || 100000).toLocaleString('fr-FR')} €</td></tr>
-                <tr style="border-bottom: 1px solid #cbd5e1; background: #fffbeb;"><td style="padding: 2px 0; font-weight: bold; color: #b45309;">Investissement Net Réel :</td><td style="text-align: right; font-weight: 900; color: #b45309;">${((sim.totalInvestmentHT || 426700) - (sim.primeCEE || 16500) - (sim.subventionsPAE || 100000)).toLocaleString('fr-FR')} € HT</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #64748b;">Montant de l'emprunt (25 ans) :</td><td style="text-align: right; font-weight: bold;">${(sim.emprunt || 310200).toLocaleString('fr-FR')} €</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #dc2626;">Montant moyen de l'annuité :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${(sim.annuite || 18617).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #16a34a;">Impact annuel sur l'EBE :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${(sim.deltaEBE || 32450).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="background: #f0fdf4;"><td style="padding: 2.5px 0; font-weight: 900; color: #166534;">Gain Net Annuel d'Exploitation :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 7.5pt;">+${(sim.gainNetAnnuel || 13833).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #64748b;">Investissement Brut Séchoir :</td><td style="text-align: right; font-weight: bold;">${(sim.totalInvestmentHT || 127053).toLocaleString('fr-FR')} € HT</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #16a34a;">Prime CEE Cogen'Air (AGRI-EQ-110) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">-${(sim.primeCEE || 38790).toLocaleString('fr-FR')} €</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #16a34a;">Subventions (PAE Éleveurs) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">-${(sim.subventionsPAE || 138790).toLocaleString('fr-FR')} €</td></tr>
+                <tr style="border-bottom: 1px solid #cbd5e1; background: #fffbeb;"><td style="padding: 2px 0; font-weight: bold; color: #b45309;">Investissement Net Réel :</td><td style="text-align: right; font-weight: 900; color: #b45309;">${(sim.investissementNet || 327053).toLocaleString('fr-FR')} € HT</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #64748b;">Montant de l'emprunt (25 ans) :</td><td style="text-align: right; font-weight: bold;">${(sim.emprunt || 188261).toLocaleString('fr-FR')} €</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #dc2626;">Montant moyen de l'annuité :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${(sim.annuite || 11299).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #16a34a;">Impact annuel sur l'EBE :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${(sim.deltaEBE || 24220).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="background: #f0fdf4;"><td style="padding: 2.5px 0; font-weight: 900; color: #166534;">Gain Net Annuel d'Exploitation :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 7.5pt;">+${(sim.gainNetAnnuel || 12921).toLocaleString('fr-FR')} €/an</td></tr>
               </table>
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; border-top: 1px solid #e2e8f0; padding-top: 3px; text-align: center;">
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px;">
-                  <span style="font-size: 5.5pt; color: #64748b; text-transform: uppercase;">VAN (20 ans)</span>
-                  <div style="font-size: 7pt; font-weight: 900; color: #16a34a;">+${(sim.van || 127853).toLocaleString('fr-FR')} €</div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; border-top: 1px solid #e2e8f0; padding-top: 2px; margin-top: 2px; text-align: center;">
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 2px 3px 2px;">
+                  <span style="font-size: 5.5pt; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; display: block; margin: 0; padding: 0;">VAN (20 ans)</span>
+                  <div style="font-size: 7.5pt; font-weight: 900; color: #16a34a; line-height: 1.1; margin-top: 1px;">+${(sim.van || 127853).toLocaleString('fr-FR')} €</div>
                 </div>
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px;">
-                  <span style="font-size: 5.5pt; color: #64748b; text-transform: uppercase;">TRI (20 ans)</span>
-                  <div style="font-size: 7pt; font-weight: 900; color: #d97706;">${sim.triPercent || '7.06'} %</div>
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 2px 3px 2px;">
+                  <span style="font-size: 5.5pt; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; display: block; margin: 0; padding: 0;">TRI (20 ans)</span>
+                  <div style="font-size: 7.5pt; font-weight: 900; color: #d97706; line-height: 1.1; margin-top: 1px;">${sim.triPercent || '7.06'} %</div>
                 </div>
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px;">
-                  <span style="font-size: 5.5pt; color: #64748b; text-transform: uppercase;">ROI net</span>
-                  <div style="font-size: 7pt; font-weight: 900; color: #0284c7;">${Number(sim.paybackYear || 11.44).toFixed(2)} ans</div>
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 2px 3px 2px;">
+                  <span style="font-size: 5.5pt; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; display: block; margin: 0; padding: 0;">ROI net</span>
+                  <div style="font-size: 7.5pt; font-weight: 900; color: #0284c7; line-height: 1.1; margin-top: 1px;">${Number(sim.paybackYear || sim.roi || 7.29).toFixed(2)} ans</div>
                 </div>
               </div>
             </div>
 
             <!-- 4b. IMPLANTATION SATELLITE DU SÉCHOIR -->
             <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; display: flex; flex-direction: column; position: relative; height: 100%;">
-              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">Implantation Satellite Séchoir BatiTech® (${sim.dimensions || '30m × 10m'})</div>
+              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">Implantation Satellite Séchoir BatiTech® (${sim.dimensions || '18m × 20m'})</div>
               ${finalMapScreenshot ? `
                 <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite du site" />
               ` : `

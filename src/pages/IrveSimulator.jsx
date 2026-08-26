@@ -247,21 +247,39 @@ export default function IrveSimulator() {
 
   // Export PDF A4 Portrait
   const handleExportPDF = async (simToExport = null) => {
+    const isSechoirSolution = activeSolution === 'sechoir';
     const targetSim = simToExport || activeSimulationState || {
       type: activeSolution === 'autoconso' ? 'autoconsommation'
         : activeSolution === 'toiture' ? 'toiture_pv'
         : activeSolution === 'structure' ? 'structure_metallique'
         : activeSolution === 'sechoir' ? 'sechoir_batitech'
         : 'irve',
-      title: `Simulation ${activeSolution.toUpperCase()} — ${selectedProject?.name || 'Étude'}`,
-      cityName: selectedProject?.city || 'Condom',
+      title: isSechoirSolution ? `Séchoir Multi-Matières BatiTech® — ${selectedProject?.name || 'Étude'}` : `Simulation ${activeSolution.toUpperCase()} — ${selectedProject?.name || 'Étude'}`,
+      cityName: selectedProject?.city || 'Saint-Jean-d\'Illac',
       address: selectedProject?.address || 'Site du Projet',
-      kwc: selectedProject?.kwc || 9,
-      roofSurface: 83,
-      annualProductionKwh: 11250,
-      annualBenefitYear1: 2450,
-      paybackYear: 7,
-      totalInvestmentHT: 13500
+      modelName: 'BatiTech 3.1.15',
+      dimensions: '18m × 20m',
+      length: 18,
+      width: 20,
+      roofSurface: isSechoirSolution ? 360 : 83,
+      floorArea: isSechoirSolution ? 360 : 83,
+      kwc: isSechoirSolution ? 30.15 : (selectedProject?.kwc || 9),
+      nbModules: isSechoirSolution ? 90 : 24,
+      annualProductionKwh: isSechoirSolution ? 35049 : 11250,
+      deltaProduits: isSechoirSolution ? 25720 : 0,
+      annualBenefitYear1: isSechoirSolution ? 24220 : 2450,
+      deltaEBE: isSechoirSolution ? 24220 : 2450,
+      totalInvestmentHT: isSechoirSolution ? 127053 : 13500,
+      primeCEE: isSechoirSolution ? 38790 : 0,
+      subventionsPAE: isSechoirSolution ? 138790 : 0,
+      investissementNet: isSechoirSolution ? 327053 : 13500,
+      emprunt: isSechoirSolution ? 188261 : 0,
+      annuite: isSechoirSolution ? 11299 : 0,
+      gainNetAnnuel: isSechoirSolution ? 12921 : 2450,
+      paybackYear: isSechoirSolution ? 7.29 : 7,
+      roi: isSechoirSolution ? 7.29 : 7,
+      van: isSechoirSolution ? 127853 : 0,
+      triPercent: isSechoirSolution ? '7.06' : '0.00',
     };
 
     await generateCommercialOfferPDF({

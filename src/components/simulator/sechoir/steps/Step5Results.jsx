@@ -1,33 +1,39 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, Zap, TrendingUp, Clock, FileDown, ShieldCheck, Euro } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
+import { BarChart3, TrendingUp, Zap, Clock, ShieldCheck } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+  Cell,
+} from 'recharts';
 import useSechoirStore from '@/stores/useSechoirStore.js';
-import { BATITECH_MODELS, DEFAULT_FINANCIAL_PARAMS } from '@/data/sechoirBatitechModels.js';
+import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 import { calculateFullSimulation } from '@/components/simulator/sechoir/sechoirCalculations.js';
 
-const fmt = (n) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n || 0);
-
-export default function Step5Results({ onExportPDF }) {
-  const selectedModelId = useSechoirStore((state) => state.selectedModelId) || 'BT-6.2.15';
-  const orientation = useSechoirStore((state) => state.orientation) || 'Sud';
-  const departement = useSechoirStore((state) => state.departement) || '32';
-  const materials = useSechoirStore((state) => state.materials) || [];
-  const financialParams = useSechoirStore((state) => state.financialParams) || DEFAULT_FINANCIAL_PARAMS;
+export default function Step5Results() {
+  const selectedModelId = useSechoirStore((state) => state.selectedModelId) || 'BT-3.1.15';
+  const orientation = useSechoirStore((state) => state.orientation) || 'sud';
+  const departement = useSechoirStore((state) => state.departement) || '33';
+  const materials = useSechoirStore((state) => state.materials);
+  const financialParams = useSechoirStore((state) => state.financialParams);
   const setLastResults = useSechoirStore((state) => state.setLastResults);
 
-  const model = BATITECH_MODELS[selectedModelId] || BATITECH_MODELS['BT-6.2.15'];
-
+  // Recalculer les résultats complets
   const results = useMemo(() => {
     return calculateFullSimulation({
-      model,
-      selectedModelId,
+      model: selectedModelId,
       orientation,
       departement,
       materials,
-      financialParams
+      financialParams,
     });
-  }, [model, selectedModelId, orientation, departement, materials, financialParams]);
+  }, [selectedModelId, orientation, departement, materials, financialParams]);
 
   useEffect(() => {
     if (results) {
@@ -35,111 +41,102 @@ export default function Step5Results({ onExportPDF }) {
     }
   }, [results, setLastResults]);
 
-  if (!results) {
-    return (
-      <div className="text-center py-12 text-slate-400">
-        Calcul en cours...
-      </div>
-    );
-  }
+  const fmt = (n) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n || 0);
 
   const {
-    cee,
-    productionPV,
-    produits,
-    financing,
-    annuite,
-    deltaEBE,
-    gainNetAnnuel,
-    treasury,
-    roi,
-    van,
-    triPercent
-  } = results;
+    model = BATITECH_MODELS[selectedModelId] || BATITECH_MODELS['BT-3.1.15'],
+    cee = { primeTotal: 0 },
+    productionPV = 0,
+    produits = { deltaProduits: 0 },
+    deltaEBE = 0,
+    financing = { investissementNet: 0, subventionsTotal: 0, emprunt: 0 },
+    annuite = 0,
+    gainNetAnnuel = 0,
+    treasury = { cashFlows: [] },
+    roi = 0,
+    van = 0,
+    triPercent = '0.00',
+  } = results || {};
 
-  const chartData = treasury?.cashFlows || [];
+  const chartData = useMemo(() => {
+    return (treasury.cashFlows || []).map((cf) => ({
+      annee: cf.annee,
+      fluxNet: cf.fluxNet,
+      cumul: cf.cumul,
+    }));
+  }, [treasury.cashFlows]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
+      exit={{ opacity: 0, y: -20 }}
       className="space-y-6"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3 text-amber-500">
-          <BarChart3 className="w-8 h-8 shrink-0" />
-          <div>
-            <h2 className="text-2xl font-bold text-white">Bilan Financier & Modèle Économique</h2>
-            <p className="text-slate-300 text-sm">
-              Étude de rentabilité : <strong>{model.name}</strong> ({model.puissanceKwc} kWc — {model.nbModules} panneaux Cogen'Air®)
-            </p>
-          </div>
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
+            <BarChart3 className="text-amber-500 w-8 h-8" />
+            Bilan Financier & Modèle Économique
+          </h2>
+          <p className="text-base text-slate-300 mt-1">
+            Étude de rentabilité : {model.name} ({model.puissanceKwc.toFixed(2)} kWc — {model.nbModules} panneaux Cogen'Air® — {model.dimensions})
+          </p>
         </div>
-        {onExportPDF && (
-          <button 
-            type="button"
-            onClick={onExportPDF}
-            className="flex items-center justify-center space-x-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black px-5 py-2.5 rounded-xl shadow-lg shadow-amber-500/20 transition-all hover:scale-105"
-          >
-            <FileDown className="w-5 h-5" />
-            <span>Télécharger l'Étude PDF</span>
-          </button>
-        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Colonne Gauche : KPIs Clés */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Production Solaire */}
-          <div className="bg-slate-800/70 p-4 sm:p-5 rounded-2xl border border-slate-700 shadow-md">
+          <div className="bg-slate-800/80 p-5 rounded-3xl border border-slate-700 shadow-md">
             <div className="flex items-center space-x-2.5 text-amber-400 mb-2">
               <Zap className="w-5 h-5" />
-              <h3 className="font-bold text-xs uppercase text-slate-300">Production Solaire</h3>
+              <h3 className="font-bold text-xs uppercase text-slate-300 tracking-wider">Production Solaire</h3>
             </div>
-            <p className="text-2xl font-black text-white">{fmt(productionPV)} <span className="text-xs font-normal text-slate-400">kWh/an</span></p>
-            <span className="text-[11px] text-slate-400 mt-1 block">Gisement zone {departement} • Orientation {orientation}</span>
+            <p className="text-3xl font-black text-white">{fmt(productionPV)} <span className="text-sm font-normal text-slate-400">kWh/an</span></p>
+            <span className="text-xs text-slate-400 mt-1.5 block">Gisement zone {departement} • Orientation {orientation}</span>
           </div>
 
-          {/* Valorisation Agricole */}
-          <div className="bg-slate-800/70 p-4 sm:p-5 rounded-2xl border border-slate-700 shadow-md">
+          {/* Valorisation Matière */}
+          <div className="bg-slate-800/80 p-5 rounded-3xl border border-slate-700 shadow-md">
             <div className="flex items-center space-x-2.5 text-emerald-400 mb-2">
               <TrendingUp className="w-5 h-5" />
-              <h3 className="font-bold text-xs uppercase text-slate-300">Valorisation Matière</h3>
+              <h3 className="font-bold text-xs uppercase text-slate-300 tracking-wider">Valorisation Matière</h3>
             </div>
-            <p className="text-2xl font-black text-emerald-400">+{fmt(produits?.deltaProduits)} <span className="text-xs font-normal text-slate-400">€/an</span></p>
-            <span className="text-[11px] text-slate-400 mt-1 block">Gains séchage + économies fossiles</span>
+            <p className="text-3xl font-black text-emerald-400">+{fmt(produits?.deltaProduits)} <span className="text-sm font-normal text-slate-400">€/an</span></p>
+            <span className="text-xs text-slate-400 mt-1.5 block">Gains séchage + économies fossiles</span>
           </div>
 
           {/* Impact EBE */}
-          <div className="bg-slate-800/70 p-4 sm:p-5 rounded-2xl border border-slate-700 shadow-md">
+          <div className="bg-slate-800/80 p-5 rounded-3xl border border-slate-700 shadow-md">
             <div className="flex items-center space-x-2.5 text-blue-400 mb-2">
               <BarChart3 className="w-5 h-5" />
-              <h3 className="font-bold text-xs uppercase text-slate-300">Impact EBE Annuel</h3>
+              <h3 className="font-bold text-xs uppercase text-slate-300 tracking-wider">Impact EBE Annuel</h3>
             </div>
-            <p className="text-2xl font-black text-blue-400">+{fmt(deltaEBE)} <span className="text-xs font-normal text-slate-400">€/an</span></p>
-            <span className="text-[11px] text-slate-400 mt-1 block">Surplus brut d'exploitation</span>
+            <p className="text-3xl font-black text-blue-400">+{fmt(deltaEBE)} <span className="text-sm font-normal text-slate-400">€/an</span></p>
+            <span className="text-xs text-slate-400 mt-1.5 block">Surplus brut d'exploitation</span>
           </div>
 
           {/* ROI */}
-          <div className="bg-slate-800/70 p-4 sm:p-5 rounded-2xl border border-slate-700 shadow-md relative overflow-hidden">
+          <div className="bg-slate-800/80 p-5 rounded-3xl border border-slate-700 shadow-md relative overflow-hidden">
             <div className="flex items-center space-x-2.5 text-cyan-400 mb-2">
               <Clock className="w-5 h-5" />
-              <h3 className="font-bold text-xs uppercase text-slate-300">Retour Investissement</h3>
+              <h3 className="font-bold text-xs uppercase text-slate-300 tracking-wider">Retour Investissement</h3>
             </div>
-            <p className="text-2xl font-black text-cyan-400">{roi !== null && roi !== undefined ? Number(roi).toFixed(2) : '—'} <span className="text-xs font-normal text-slate-400">ans</span></p>
-            <span className="text-[11px] text-slate-400 mt-1 block">Temps de retour net d'aides</span>
+            <p className="text-3xl font-black text-cyan-400">{roi !== null && roi !== undefined ? Number(roi).toFixed(2) : '—'} <span className="text-sm font-normal text-slate-400">ans</span></p>
+            <span className="text-xs text-slate-400 mt-1.5 block">Temps de retour net d'aides</span>
           </div>
         </div>
 
         {/* Colonne Droite : Plan de Financement */}
-        <div className="bg-slate-800/70 rounded-2xl border border-slate-700 p-5 sm:p-6 shadow-md flex flex-col justify-between">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 mb-3 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-amber-400" />
+        <div className="bg-slate-800/80 rounded-3xl border border-slate-700 p-6 shadow-md flex flex-col justify-between">
+          <h3 className="text-base font-bold uppercase tracking-wider text-slate-200 mb-4 flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-amber-400" />
             Plan de Financement & Subventions
           </h3>
           
-          <div className="space-y-2 text-xs sm:text-sm">
+          <div className="space-y-3 text-sm">
             <div className="flex justify-between text-slate-300">
               <span>Investissement Brut Séchoir :</span>
               <span className="font-bold text-white">{fmt(model.investissementBrut)} € HT</span>
@@ -153,12 +150,12 @@ export default function Step5Results({ onExportPDF }) {
               <span className="font-bold">-{fmt(financing?.subventionsTotal)} €</span>
             </div>
             
-            <div className="pt-2 border-t border-slate-700 flex justify-between font-bold text-sm">
+            <div className="pt-2.5 border-t border-slate-700 flex justify-between font-bold text-base">
               <span className="text-white">Investissement Net Réel :</span>
               <span className="text-amber-400 font-black">{fmt(financing?.investissementNet)} € HT</span>
             </div>
             
-            <div className="pt-2 border-t border-slate-700 flex justify-between text-slate-300">
+            <div className="pt-2.5 border-t border-slate-700 flex justify-between text-slate-300">
               <span>Montant financé par Emprunt :</span>
               <span className="font-bold text-white">{fmt(financing?.emprunt)} €</span>
             </div>
@@ -167,18 +164,18 @@ export default function Step5Results({ onExportPDF }) {
               <span className="font-bold">-{fmt(annuite)} €/an</span>
             </div>
             
-            <div className="pt-2.5 mt-1 border-t border-slate-700 flex justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
-              <span className="font-bold text-white text-xs uppercase">Gain Net Annuel d'Exploitation :</span>
-              <span className="text-xl font-black text-amber-400">+{fmt(gainNetAnnuel)} €/an</span>
+            <div className="pt-3 mt-1 border-t border-slate-700 flex justify-between items-center bg-slate-900/90 p-4 rounded-2xl border border-slate-700/60">
+              <span className="font-bold text-white text-sm uppercase">Gain Net Annuel d'Exploitation :</span>
+              <span className="text-2xl font-black text-amber-400">+{fmt(gainNetAnnuel)} €/an</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Graphique de Trésorerie Cumulée sur 25 ans */}
-      <div className="bg-slate-800/70 rounded-2xl border border-slate-700 p-5 sm:p-6 shadow-md">
+      <div className="bg-slate-800/80 rounded-3xl border border-slate-700 p-6 shadow-md">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-amber-400" />
             Évolution de la Trésorerie Cumulée (25 ans)
           </h3>
@@ -189,14 +186,14 @@ export default function Step5Results({ onExportPDF }) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="annee" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <XAxis dataKey="annee" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} />
               <YAxis 
                 stroke="#94a3b8" 
-                tick={{ fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fill: '#94a3b8', fontSize: 12 }}
                 tickFormatter={(val) => `${fmt(val / 1000)} k€`}
               />
               <Tooltip 
-                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '0.75rem', color: '#fff', fontSize: '12px' }}
+                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '0.75rem', color: '#fff', fontSize: '13px' }}
                 formatter={(value) => [`${fmt(value)} €`, 'Trésorerie Cumulée']}
                 labelFormatter={(label) => `Année ${label}`}
               />
@@ -211,7 +208,7 @@ export default function Step5Results({ onExportPDF }) {
                     value: `ROI : ${Number(roi).toFixed(2)} ans`, 
                     fill: '#22d3ee', 
                     position: 'top', 
-                    fontSize: 11, 
+                    fontSize: 12, 
                     fontWeight: 'bold' 
                   }} 
                 />
@@ -225,18 +222,18 @@ export default function Step5Results({ onExportPDF }) {
           </ResponsiveContainer>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-slate-700 text-center">
-          <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-slate-700 text-center">
+          <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/60">
             <p className="text-xs text-slate-400 uppercase font-semibold">Valeur Actuelle Nette (VAN)</p>
-            <p className="text-lg font-black text-emerald-400 mt-0.5">+{fmt(van)} €</p>
+            <p className="text-xl font-black text-emerald-400 mt-1">+{fmt(van)} €</p>
           </div>
-          <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+          <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/60">
             <p className="text-xs text-slate-400 uppercase font-semibold">Taux de Rendement Interne (TRI)</p>
-            <p className="text-lg font-black text-amber-400 mt-0.5">{triPercent} %</p>
+            <p className="text-xl font-black text-amber-400 mt-1">{triPercent} %</p>
           </div>
-          <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+          <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/60">
             <p className="text-xs text-slate-400 uppercase font-semibold">Temps de Retour sur Investissement</p>
-            <p className="text-lg font-black text-cyan-400 mt-0.5">{roi !== null && roi !== undefined ? Number(roi).toFixed(2) : '—'} ans</p>
+            <p className="text-xl font-black text-cyan-400 mt-1">{roi !== null && roi !== undefined ? Number(roi).toFixed(2) : '—'} ans</p>
           </div>
         </div>
       </div>
