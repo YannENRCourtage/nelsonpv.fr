@@ -634,16 +634,6 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
                     <rect x={mainLeftSvgX} y={leftEaveSvgY} width="8" height={groundYLeft - leftEaveSvgY} fill="#1e293b" />
                     <rect x={mainRightSvgX - 8} y={rightEaveSvgY} width="8" height={groundYRight - rightEaveSvgY} fill="#1e293b" />
 
-                    {/* Poteau intermédiaire sous faîtage pour asymétrique 1 zone */}
-                    {isAsym1 && (
-                        <>
-                            <rect x={apexSvgX - 4} y={apexSvgY} width="8" height={groundY - apexSvgY} fill="#1e293b" />
-                            {/* Bracons / Renforts de faîtage */}
-                            <line x1={apexSvgX} y1={apexSvgY + 22} x2={apexSvgX - 18} y2={apexSvgY + 5} stroke="#475569" strokeWidth="2.5" />
-                            <line x1={apexSvgX} y1={apexSvgY + 22} x2={apexSvgX + 32} y2={apexSvgY + 8} stroke="#475569" strokeWidth="2.5" />
-                        </>
-                    )}
-
                     {/* Poteau intermédiaire pour asymétrique 2 zones */}
                     {isAsym2 && (
                         <>
@@ -655,16 +645,16 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
                     {hasAppentisRight && <rect x={extRightSvgX - 7} y={extRightSvgY} width="7" height={groundYRight - extRightSvgY} fill="#1e293b" />}
                     {hasAppentisLeft && <rect x={extLeftSvgX} y={extLeftSvgY} width="7" height={groundYLeft - extLeftSvgY} fill="#1e293b" />}
 
-                    {/* Versant Nord */}
+                    {/* Versant Nord (Couverture Solaire Photovoltaïque Intégrale) */}
                     <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
-                    <polygon points={`${mainLeftSvgX - 4},${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 7} ${mainLeftSvgX - 4},${leftEaveSvgY - 7}`} fill="#475569" stroke="#64748b" strokeWidth="1" />
+                    <polygon points={`${mainLeftSvgX - 4},${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 7} ${mainLeftSvgX - 4},${leftEaveSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                     {[0.25, 0.5, 0.75].map((ratio, idx) => {
                         const px = mainLeftSvgX + (apexSvgX - mainLeftSvgX) * ratio;
                         const py = leftEaveSvgY + (apexSvgY - leftEaveSvgY) * ratio;
-                        return <line key={idx} x1={px} y1={py - 7} x2={px} y2={py - 2} stroke="#94a3b8" strokeWidth="1" />;
+                        return <line key={idx} x1={px} y1={py - 7} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
                     })}
 
-                    {/* Versant Sud (Photovoltaïque) */}
+                    {/* Versant Sud (Couverture Solaire Photovoltaïque Intégrale) */}
                     <line x1={apexSvgX} y1={apexSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
                     <polygon points={`${apexSvgX},${apexSvgY - 2} ${mainRightSvgX + 4},${rightEaveSvgY - 2} ${mainRightSvgX + 4},${rightEaveSvgY - 7} ${apexSvgX},${apexSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                     {[0.12, 0.25, 0.38, 0.5, 0.63, 0.76, 0.88].map((ratio, idx) => {
@@ -700,7 +690,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
 
             {/* 3. Titre et description toiture */}
             <text x={350} y={8} textAnchor="middle" fill="#1e3a8a" fontSize="8" fontWeight="bold">
-                Toiture {roofTypeLabel} : pente {displayPitch}° ({Math.round(Math.tan((displayPitch * Math.PI) / 180) * 100)}%) {isOmbriere ? '• Façade EST (Pignon) ' : ''}• {isOmbriere ? 'Structure métallique & Modules solaires' : 'Bac acier RAL 7016 + Modules solaires'}
+                Toiture {roofTypeLabel} : pente {displayPitch}° ({Math.round(Math.tan((displayPitch * Math.PI) / 180) * 100)}%) {isOmbriere ? '• Façade EST (Pignon) ' : ''}• {isOmbriere ? 'Structure métallique & Modules solaires' : 'Couverture solaire intégrale'}
             </text>
 
             {/* 4. Cotes de Hauteur (Sablière Haute / Égout Nord) */}
@@ -757,24 +747,24 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
             )}
 
             {/* 5. Cotes d'emprise au sol */}
-            {isAsym ? (
+            {isAsym2 ? (
                 <g>
                     <line x1={mainLeftSvgX} y1={groundY} x2={mainLeftSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
-                    <line x1={isAsym2 ? middleColSvgX : apexSvgX} y1={groundY} x2={isAsym2 ? middleColSvgX : apexSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+                    <line x1={middleColSvgX} y1={groundY} x2={middleColSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
                     <line x1={mainRightSvgX} y1={groundY} x2={mainRightSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
 
-                    <line x1={mainLeftSvgX} y1="150" x2={isAsym2 ? middleColSvgX : apexSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
+                    <line x1={mainLeftSvgX} y1="150" x2={middleColSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
                     <line x1={mainLeftSvgX} y1={146} x2={mainLeftSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
-                    <line x1={isAsym2 ? middleColSvgX : apexSvgX} y1={146} x2={isAsym2 ? middleColSvgX : apexSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
-                    <text x={(mainLeftSvgX + (isAsym2 ? middleColSvgX : apexSvgX)) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">
-                        {isAsym2 ? `${asym2LeftDist.toFixed(2)} m` : `${(largeur * 0.25).toFixed(2)} m`}
+                    <line x1={middleColSvgX} y1={146} x2={middleColSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
+                    <text x={(mainLeftSvgX + middleColSvgX) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">
+                        {asym2LeftDist.toFixed(2)} m
                     </text>
 
-                    <line x1={isAsym2 ? middleColSvgX : apexSvgX} y1="150" x2={mainRightSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
-                    <line x1={isAsym2 ? middleColSvgX : apexSvgX} y1={146} x2={isAsym2 ? middleColSvgX : apexSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
+                    <line x1={middleColSvgX} y1="150" x2={mainRightSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
+                    <line x1={middleColSvgX} y1={146} x2={middleColSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
                     <line x1={mainRightSvgX} y1={146} x2={mainRightSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
-                    <text x={((isAsym2 ? middleColSvgX : apexSvgX) + mainRightSvgX) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">
-                        {isAsym2 ? `${asym2RightDist.toFixed(2)} m` : `${(largeur * 0.75).toFixed(2)} m`}
+                    <text x={(middleColSvgX + mainRightSvgX) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">
+                        {asym2RightDist.toFixed(2)} m
                     </text>
 
                     <line x1={mainLeftSvgX} y1="162" x2={mainRightSvgX} y2="162" stroke="#0284c7" strokeWidth="1.2" />
