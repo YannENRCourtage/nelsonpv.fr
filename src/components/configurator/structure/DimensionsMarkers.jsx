@@ -9,7 +9,9 @@ import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
  */
 export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roofPitch, leftSide, rightSide, showDimensions, buildingType = 'symetrique', viewMode = '3D', baySpacing = 7.5 }) {
 
-    const isPignonView = viewMode === 'PIGNON';
+    const isPignonEstView = viewMode === 'PIGNON' || viewMode === 'PIGNON_EST';
+    const isPignonOuestView = viewMode === 'PIGNON_OUEST';
+    const isPignonView = isPignonEstView || isPignonOuestView;
     const isFacadeSudView = viewMode === 'FACADE_SUD';
     const isFacadeNordView = viewMode === 'FACADE_NORD';
     const isFacadeView = isFacadeSudView || isFacadeNordView;
@@ -642,8 +644,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     return (
         <group>
-            {/* 1. WIDTH MARKER (Affiché si standard ou Vue Pignon, masqué sur Façades Sud et Nord) */}
-            {!isFacadeView && widthPoints && (
+            {/* 1. WIDTH MARKER (Affiché si standard ou Vue Pignon Est, masqué sur Façades Sud/Nord et Pignon Ouest) */}
+            {!isFacadeView && !isPignonOuestView && widthPoints && (
                 <group>
                     {widthPoints.map((p, i) => (
                         <Line key={`wp-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
@@ -710,8 +712,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 3. EAVE HEIGHT (Left/Standard - masqué sur Pignon et Façade Sud) */}
-            {!isPignonView && !isFacadeSudView && heightPoints && buildingType !== 'asymetrique_2' && !isEpona && !isTalian && (
+            {/* 3. EAVE HEIGHT (Left/Standard - masqué sur Pignon et Façades Sud/Nord) */}
+            {!isPignonView && !isFacadeView && heightPoints && buildingType !== 'asymetrique_2' && !isEpona && !isTalian && (
                 <group>
                     {/* Pour Monopente, on évite le doublon si une extension droite est présente */}
                     {!(buildingType === 'monopente' && rightSide !== 'none') && (
@@ -737,8 +739,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 4. RIDGE HEIGHT (Masqué sur Pignon et Façade Sud) */}
-            {!isPignonView && !isFacadeSudView && ridgePoints && (
+            {/* 4. RIDGE HEIGHT (Masqué sur Pignon et Façades Sud/Nord) */}
+            {!isPignonView && !isFacadeView && ridgePoints && (
                 <group>
                     <Line points={ridgePoints[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={ridgePoints[1]} color={lineColor} lineWidth={lineWidth} />
@@ -759,8 +761,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 4b. ASYM LEFT EAVE HEIGHT (Masqué sur Pignon et Façade Sud) */}
-            {!isPignonView && !isFacadeSudView && asymLeftEaveData && buildingType !== 'monopente' && (
+            {/* 4b. ASYM LEFT EAVE HEIGHT (Masqué sur Pignon et Façades Sud/Nord) */}
+            {!isPignonView && !isFacadeView && asymLeftEaveData && buildingType !== 'monopente' && (
                 <group>
                     <Line points={asymLeftEaveData.points[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={asymLeftEaveData.points[1]} color={lineColor} lineWidth={lineWidth} />
@@ -781,8 +783,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 4c. ASYM 2 RIGHT EAVE HEIGHT (Masqué sur Pignon et Façade Sud) */}
-            {!isPignonView && !isFacadeSudView && asym2RightEaveData && (
+            {/* 4c. ASYM 2 RIGHT EAVE HEIGHT (Masqué sur Pignon et Façades Sud/Nord) */}
+            {!isPignonView && !isFacadeView && asym2RightEaveData && (
                 <group>
                     <Line points={asym2RightEaveData.points[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={asym2RightEaveData.points[1]} color={lineColor} lineWidth={lineWidth} />
@@ -806,7 +808,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {/* 5. RIGHT EXTENSION */}
             {rightExtData && (
                 <>
-                    {!isFacadeSudView && (
+                    {!isFacadeView && !isPignonOuestView && (
                         <group>
                             {!isTalian4 && (
                                 <>
@@ -831,7 +833,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             </Text>
                         </group>
                     )}
-                    {!isPignonView && !isFacadeSudView && (
+                    {!isPignonView && !isFacadeView && (
                         <>
                             {rightExtData.heightPoints?.map((p, i) => (
                                 <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
@@ -860,7 +862,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {/* 6. LEFT EXTENSION */}
             {leftExtData && (
                 <group>
-                    {!isFacadeSudView && (
+                    {!isFacadeView && !isPignonOuestView && (
                         <>
                             {!isTalian4 && (
                                 <>
@@ -885,7 +887,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             </Text>
                         </>
                     )}
-                    {!isPignonView && !isFacadeSudView && (
+                    {!isPignonView && !isFacadeView && (
                         <>
                             {leftExtData.heightPoints?.map((p, i) => (
                                 <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
@@ -911,8 +913,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 7. ASYMMETRIC 2 ZONES MIDDLE COLUMN DISTANCE (Affiché si Pignon/Standard, masqué sur Façade Sud) */}
-            {!isFacadeSudView && asym2MiddleColData && (
+            {/* 7. ASYMMETRIC 2 ZONES MIDDLE COLUMN DISTANCE (Affiché en 3D libre seulement, masqué sur Pignon et Façades) */}
+            {!isFacadeView && !isPignonView && asym2MiddleColData && (
                 <group>
                     <Line points={asym2MiddleColData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={asym2MiddleColData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
@@ -933,8 +935,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 8. ASYMMETRIC 2 ZONES RIGHT DISTANCE (Affiché si Pignon/Standard, masqué sur Façade Sud) */}
-            {!isFacadeSudView && asym2RightDistData && (
+            {/* 8. ASYMMETRIC 2 ZONES RIGHT DISTANCE (Affiché en 3D libre seulement, masqué sur Pignon et Façades) */}
+            {!isFacadeView && !isPignonView && asym2RightDistData && (
                 <group>
                     <Line points={asym2RightDistData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={asym2RightDistData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
@@ -955,8 +957,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 9. ACAMA TOTAL WIDTH MARKER (Affiché si Pignon/Standard, masqué sur Façade Sud) */}
-            {!isFacadeSudView && acamaTotalWidthData && (
+            {/* 9. ACAMA TOTAL WIDTH MARKER (Affiché si Pignon Est/Standard, masqué sur Façades et Pignon Ouest) */}
+            {!isFacadeView && !isPignonOuestView && acamaTotalWidthData && (
                 <group>
                     <Line points={acamaTotalWidthData.points[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={acamaTotalWidthData.points[1]} color={lineColor} lineWidth={lineWidth} />
@@ -977,8 +979,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 10. CROSS HEIGHT MARKER (Masqué sur Pignon et Façade Sud) */}
-            {!isPignonView && !isFacadeSudView && crossHeightData && (
+            {/* 10. CROSS HEIGHT MARKER (Masqué sur Pignon et Façades) */}
+            {!isPignonView && !isFacadeView && crossHeightData && (
                 <group>
                     <Line points={crossHeightData.points[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={crossHeightData.points[1]} color={lineColor} lineWidth={lineWidth} />
@@ -1002,7 +1004,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {/* 11. EPONA SPECIFIC MARKERS */}
             {eponaMarkers && (
                 <group>
-                    {!isFacadeSudView && (
+                    {!isFacadeView && !isPignonOuestView && (
                         <>
                             {/* Right Span */}
                             <Line points={eponaMarkers.rSpanPoints[0]} color={lineColor} lineWidth={lineWidth} />
@@ -1068,8 +1070,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         </>
                     )}
 
-                    {/* Heights (Masqués sur Pignon et Façade Sud) */}
-                    {!isPignonView && !isFacadeSudView && (
+                    {/* Heights (Masqués sur Pignon et Façades) */}
+                    {!isPignonView && !isFacadeView && (
                         <>
                             {eponaMarkers.rHeightPoints?.map((p, i) => <Line key={`rh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />)}
                             {eponaMarkers.mHeightPoints?.map((p, i) => <Line key={`mh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />)}
@@ -1117,7 +1119,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     )}
                 </group>
             )}
-
         </group>
     );
 }

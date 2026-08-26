@@ -37,11 +37,12 @@ function SceneCameraController({ activeSlot, onReady, controlsRef }) {
     const hasAuvent = config.rightSide === 'auvent' || config.leftSide === 'auvent';
     const totalGableWidth = width + (hasAuvent ? 4.0 : 0);
     const gableCenterX = hasAuvent ? (config.rightSide === 'auvent' ? 2.0 : -2.0) : 0;
-    const gableCenterY = (eaveHeight + (config.ridgeHeight || 8.0)) * 0.45;
+    const gableCenterY = (eaveHeight + (config.ridgeHeight || 8.0)) * 0.38;
 
     // Distances adaptées aux proportions réelles de chaque élément
     const distLong = Math.max(length * 1.05, 36);
-    const distGable = Math.max(totalGableWidth * 0.95, 20);
+    // Rapprochement de caméra pour élargir et agrandir les vues pignons Est et Ouest dans leur cadre
+    const distGable = Math.max(totalGableWidth * 0.58, 12);
     const distRoof = Math.max(length * 0.95, 28);
 
     if (activeSlot === 'facade_sud') {
@@ -55,12 +56,12 @@ function SceneCameraController({ activeSlot, onReady, controlsRef }) {
       ctrl.target.set(targetX, targetY, targetZ);
       camera.lookAt(targetX, targetY, targetZ);
     } else if (activeSlot === 'facade_est') {
-      // 3. Pignon Est (Gable gauche Z=0) : Cadrage ajusté aux proportions réelles
+      // 3. Pignon Est (Gable gauche Z=0) : Cadrage rapproché pour remplir le cadre
       camera.position.set(gableCenterX, gableCenterY, distGable);
       ctrl.target.set(gableCenterX, gableCenterY, 0);
       camera.lookAt(gableCenterX, gableCenterY, 0);
     } else if (activeSlot === 'facade_ouest') {
-      // 4. Pignon Ouest (Gable droit Z=-length) : Cadrage ajusté aux proportions réelles
+      // 4. Pignon Ouest (Gable droit Z=-length) : Cadrage rapproché pour remplir le cadre
       camera.position.set(gableCenterX, gableCenterY, -length - distGable);
       ctrl.target.set(gableCenterX, gableCenterY, -length);
       camera.lookAt(gableCenterX, gableCenterY, -length);
@@ -157,7 +158,8 @@ export default function Building3DViewer({
   const getViewModeForSlot = (slot) => {
     if (slot === 'facade_sud') return 'FACADE_SUD';
     if (slot === 'facade_nord') return 'FACADE_NORD';
-    if (slot === 'facade_est' || slot === 'facade_ouest') return 'PIGNON';
+    if (slot === 'facade_est') return 'PIGNON';
+    if (slot === 'facade_ouest') return 'PIGNON_OUEST';
     if (slot === 'vue_couverture') return 'COUVERTURE';
     return '3D';
   };
