@@ -295,7 +295,7 @@ export default function Step3Orientation() {
               </div>
               <div className="flex justify-between">
                 <span>Puissance Solaire Globale :</span>
-                <span className="font-bold text-amber-400">{model.puissanceKwc} kWc</span>
+                <span className="font-bold text-amber-400">{model?.puissanceKwc || 30.15} kWc</span>
               </div>
             </div>
           </div>

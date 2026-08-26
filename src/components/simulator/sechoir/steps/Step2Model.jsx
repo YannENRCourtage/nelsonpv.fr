@@ -68,7 +68,7 @@ export default function Step2Model() {
                 <div className="space-y-3 text-base text-slate-300">
                   <div className="flex justify-between border-b border-slate-700/60 pb-2.5">
                     <span className="text-slate-400 font-medium">Puissance</span>
-                    <span className="font-bold text-white text-base">{model.puissanceKwc.toFixed(2)} kWc</span>
+                    <span className="font-bold text-white text-base">{(model?.puissanceKwc ? Number(model.puissanceKwc) : 30.15).toFixed(2)} kWc</span>
                   </div>
                   <div className="flex justify-between border-b border-slate-700/60 pb-2.5">
                     <span className="text-slate-400 font-medium">Modules</span>

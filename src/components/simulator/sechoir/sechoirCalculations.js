@@ -354,7 +354,17 @@ export function calculateFullSimulation({
   materials = [],
   financialParams = {},
 }) {
-  const resolvedModel = model || (selectedModelId ? BATITECH_MODELS[selectedModelId] : null) || BATITECH_MODELS['BT-6.2.15'];
+  let resolvedModel = null;
+  if (model && typeof model === 'object' && model.puissanceKwc) {
+    resolvedModel = model;
+  } else if (typeof model === 'string' && BATITECH_MODELS[model]) {
+    resolvedModel = BATITECH_MODELS[model];
+  } else if (selectedModelId && BATITECH_MODELS[selectedModelId]) {
+    resolvedModel = BATITECH_MODELS[selectedModelId];
+  } else {
+    resolvedModel = BATITECH_MODELS['BT-3.1.15'] || BATITECH_MODELS['BT-6.2.15'];
+  }
+
   if (!resolvedModel) {
     return null;
   }
@@ -362,10 +372,10 @@ export function calculateFullSimulation({
   const fp = { ...DEFAULT_FINANCIAL_PARAMS, ...financialParams };
 
   // 1. Prime CEE
-  const cee = calculateCEEPrime(resolvedModel.nbModules || 189);
+  const cee = calculateCEEPrime(resolvedModel.nbModules || 90);
 
   // 2. Production PV
-  const productionPV = calculateProductionPV(resolvedModel.puissanceKwc || 63.3, departement, orientation);
+  const productionPV = calculateProductionPV(resolvedModel.puissanceKwc || 30.15, departement, orientation);
 
   // 3. Delta Produits (valorisation agricole uniquement)
   const produits = calculateDeltaProduits(materials, fp.venteElectricitePV || 0);
@@ -378,7 +388,7 @@ export function calculateFullSimulation({
 
   // 6. Plan de financement
   const financing = calculateFinancingPlan({
-    investissementBrut: resolvedModel.investissementBrut || 564986,
+    investissementBrut: resolvedModel.investissementBrut || 327053,
     primeCEE: cee.primeTotal || 0,
     subventionPAE: fp.subventionPAE || 0,
     apportsEnPropre: fp.apportsEnPropre || 0,
@@ -389,7 +399,7 @@ export function calculateFullSimulation({
 
   // 8. Flux de trésorerie + ROI
   const treasury = calculateCashFlowTable({
-    investissementBrut: resolvedModel.investissementBrut || 564986,
+    investissementBrut: resolvedModel.investissementBrut || 327053,
     subventionsTotal: financing.subventionsTotal,
     apportsEnPropre: fp.apportsEnPropre,
     deltaEBE,
@@ -407,11 +417,15 @@ export function calculateFullSimulation({
 
   return {
     model: {
-      id: resolvedModel.id,
-      name: resolvedModel.name,
-      puissanceKwc: resolvedModel.puissanceKwc,
-      nbModules: resolvedModel.nbModules,
-      investissementBrut: resolvedModel.investissementBrut,
+      id: resolvedModel.id || 'BT-3.1.15',
+      name: resolvedModel.name || 'BatiTech 3.1.15',
+      puissanceKwc: resolvedModel.puissanceKwc || 30.15,
+      nbModules: resolvedModel.nbModules || 90,
+      investissementBrut: resolvedModel.investissementBrut || 327053,
+      dimensions: resolvedModel.dimensions || '18m × 20m',
+      length: resolvedModel.length || 18,
+      width: resolvedModel.width || 20,
+      surfaceToiture: resolvedModel.surfaceToiture || 360,
     },
     cee,
     productionPV,

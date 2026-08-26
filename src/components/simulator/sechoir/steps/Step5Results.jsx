@@ -58,6 +58,9 @@ export default function Step5Results() {
     triPercent = '0.00',
   } = results || {};
 
+  const activeModel = model || BATITECH_MODELS[selectedModelId] || BATITECH_MODELS['BT-3.1.15'];
+  const puissanceKwcVal = activeModel?.puissanceKwc ? Number(activeModel.puissanceKwc) : 30.15;
+
   const chartData = useMemo(() => {
     return (treasury.cashFlows || []).map((cf) => ({
       annee: cf.annee,
@@ -80,7 +83,7 @@ export default function Step5Results() {
             Bilan Financier & Modèle Économique
           </h2>
           <p className="text-base text-slate-300 mt-1">
-            Étude de rentabilité : {model.name} ({model.puissanceKwc.toFixed(2)} kWc — {model.nbModules} panneaux Cogen'Air® — {model.dimensions})
+            Étude de rentabilité : {activeModel?.name || 'BatiTech 3.1.15'} ({puissanceKwcVal.toFixed(2)} kWc — {activeModel?.nbModules || 90} panneaux Cogen'Air® — {activeModel?.dimensions || '18m × 20m'})
           </p>
         </div>
       </div>
