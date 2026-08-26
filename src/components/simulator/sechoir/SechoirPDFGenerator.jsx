@@ -205,8 +205,10 @@ export async function generateSechoirPDF({
         <table style="width:100%;font-size:11px;border-collapse:collapse;">
           <tr><td style="padding:2mm 0;color:#94a3b8;">Investissement Brut</td><td style="text-align:right;color:#e2e8f0;font-weight:bold;">${fmt(r.model?.investissementBrut)} €</td></tr>
           <tr><td style="padding:2mm 0;color:#94a3b8;">Prime CEE (Cogen'Air®)</td><td style="text-align:right;color:#10b981;font-weight:bold;">- ${fmt(r.cee?.primeTotal)} €</td></tr>
-          <tr><td style="padding:2mm 0;color:#94a3b8;">Subventions (PAE)</td><td style="text-align:right;color:#10b981;font-weight:bold;">- ${fmt(financialParams?.subventionPAE || 100000)} €</td></tr>
-          <tr style="border-top:1px solid #334155;"><td style="padding:3mm 0;color:#f59e0b;font-weight:bold;">Investissement Net</td><td style="text-align:right;color:#f59e0b;font-weight:bold;font-size:13px;">${fmt(r.financing?.investissementNet)} €</td></tr>
+          <tr style="border-top:1px solid #334155;"><td style="padding:3mm 0;color:#f59e0b;font-weight:bold;">Investissement Net à Financer</td><td style="text-align:right;color:#f59e0b;font-weight:bold;font-size:13px;">${fmt(r.financing?.investissementNet)} €</td></tr>
+          ${r.subventionsEligibles?.montantEstime ? `
+            <tr><td style="padding:1.5mm 0;color:#94a3b8;font-size:9.5px;"><em>Aide régionale estimée (${r.subventionsEligibles?.subventionRegionale?.nom || 'PCAE'})</em></td><td style="text-align:right;color:#d97706;font-size:9.5px;"><em>jusqu'à ${fmt(r.subventionsEligibles.montantEstime)} € (indicatif)</em></td></tr>
+          ` : ''}
           <tr><td style="padding:2mm 0;color:#94a3b8;">Emprunt</td><td style="text-align:right;color:#e2e8f0;font-weight:bold;">${fmt(r.financing?.emprunt)} €</td></tr>
           <tr><td style="padding:2mm 0;color:#94a3b8;">Annuité (${financialParams?.dureeEmprunt || 25} ans, ${fmtDec((financialParams?.tauxEmprunt || 0.034) * 100)}%)</td><td style="text-align:right;color:#ef4444;font-weight:bold;">- ${fmt(r.annuite)} €/an</td></tr>
         </table>

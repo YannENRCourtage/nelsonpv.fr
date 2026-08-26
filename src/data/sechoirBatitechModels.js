@@ -312,13 +312,14 @@ export const DRYING_MATERIALS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 // 8. PARAMÈTRES FINANCIERS PAR DÉFAUT
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DEFAULT_FINANCIAL_PARAMS = {
   tauxEmprunt: 0.034,        // 3.40%
   dureeEmprunt: 25,          // ans
-  subventionPAE: 100000,     // Plan Ambitions Éleveurs
+  subventionPAE: 0,           // Non déduite de base (affichée à titre indicatif)
   apportsEnPropre: 0,        // €
   inflationProduits: 0.02,   // 2%
   inflationCharges: 0.02,    // 2%
@@ -442,3 +443,111 @@ export const getRegionForDepartment = (deptCode) => {
   const clean = String(deptCode).trim().toUpperCase();
   return DEPARTEMENTS_REGIONS[clean] || 'France';
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 10. SUBVENTIONS RÉGIONALES & ADEME (Base de données & Règles de calcul)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const SUBVENTIONS_CONFIG = [
+  {
+    id: "ademe_fonds_chaleur_national",
+    nom: "Fonds Chaleur ADEME (National)",
+    regions: ["TOUTES"],
+    typeCalcul: "sur_mesure",
+    description: "Aide nationale. Montant variable post-étude."
+  },
+  {
+    id: "pcae_pays_de_la_loire",
+    nom: "PCAE - Pays de la Loire",
+    regions: ["Pays de la Loire"],
+    typeCalcul: "pourcentage_plafonne",
+    tauxBase: 0.30, 
+    montantMax: 150000,
+    majorationJA: 0.10, 
+    description: "Plan de Compétitivité et d'Adaptation des Exploitations."
+  },
+  {
+    id: "ambition_eleveurs_grand_est",
+    nom: "Plan Ambition Éleveurs - Grand Est",
+    regions: ["Grand Est"],
+    typeCalcul: "pourcentage_plafonne",
+    tauxBase: 0.40, 
+    montantMax: 60000,
+    description: "Aide aux investissements (Plafond 60k€)."
+  },
+  {
+    id: "pcae_nouvelle_aquitaine",
+    nom: "PCAE / PME - Nouvelle-Aquitaine",
+    regions: ["Nouvelle-Aquitaine"],
+    typeCalcul: "pourcentage_plafonne",
+    tauxBase: 0.30, 
+    montantMax: 100000, 
+    majorationJA: 0.10,
+    description: "Plan de Modernisation des Exploitations."
+  },
+  {
+    id: "pcae_bretagne",
+    nom: "PCAE - Bretagne",
+    regions: ["Bretagne"],
+    typeCalcul: "pourcentage_plafonne",
+    tauxBase: 0.30,
+    montantMax: 80000,
+    description: "Soutien aux investissements matériels."
+  }
+];
+
+/**
+ * Détermine la ou les subventions régionales éligibles pour une région / département donné.
+ * L'assiette éligible est : Investissement Brut HT - Prime CEE.
+ *
+ * @param {string} departement - Code département (ex: '33', '59', '67') ou nom de région
+ * @param {number} investissementBrut - Investissement Brut Séchoir HT
+ * @param {number} primeCEE - Montant de la prime CEE
+ * @returns {{
+ *   region: string,
+ *   subventionRegionale: object|null,
+ *   assietteEligible: number,
+ *   montantEstime: number,
+ *   tauxTexte: string,
+ *   description: string,
+ *   fondsChaleurAdeme: object
+ * }}
+ */
+export function calculateEligibleSubventions(departement, investissementBrut = 0, primeCEE = 0) {
+  const region = getRegionForDepartment(departement) || 'France';
+  const assietteEligible = Math.max(0, (Number(investissementBrut) || 0) - (Number(primeCEE) || 0));
+
+  const fondsChaleurAdeme = SUBVENTIONS_CONFIG.find(s => s.id === "ademe_fonds_chaleur_national");
+  const specificSub = SUBVENTIONS_CONFIG.find(s => s.regions && s.regions.includes(region) && s.id !== "ademe_fonds_chaleur_national");
+
+  if (specificSub) {
+    let montantEstime = 0;
+    if (specificSub.typeCalcul === 'pourcentage_plafonne') {
+      montantEstime = Math.min(assietteEligible * (specificSub.tauxBase || 0), specificSub.montantMax || Infinity);
+    }
+    const tauxPct = Math.round((specificSub.tauxBase || 0) * 100);
+    const majorationJA = specificSub.majorationJA ? ` (+${Math.round(specificSub.majorationJA * 100)}% JA)` : '';
+    const tauxTexte = `${tauxPct}%${majorationJA}`;
+
+    return {
+      region,
+      subventionRegionale: specificSub,
+      assietteEligible,
+      montantEstime: Math.round(montantEstime),
+      tauxTexte,
+      description: specificSub.description,
+      fondsChaleurAdeme,
+    };
+  }
+
+  // Fallback si pas de subvention régionale spécifique listée : ADEME Fonds Chaleur national / PCAE local
+  return {
+    region,
+    subventionRegionale: null,
+    assietteEligible,
+    montantEstime: 0,
+    tauxTexte: 'Sur étude',
+    description: `Dispositifs régionaux ${region} (PCAE / FEADER) ou Fonds Chaleur ADEME selon éligibilité.`,
+    fondsChaleurAdeme,
+  };
+}

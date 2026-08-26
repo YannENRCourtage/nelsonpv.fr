@@ -154,11 +154,12 @@ const useSechoirStore = create(
     }),
     {
       name: 'nelson-sechoir-batitech',
-      version: 3,
+      version: 4,
       migrate: (persistedState, version) => {
-        if (!persistedState || version < 3) {
+        if (!persistedState || version < 4) {
           return {
             ...persistedState,
+            financialParams: { ...DEFAULT_FINANCIAL_PARAMS },
             materials: DRYING_MATERIALS.map(m => {
               const existing = (persistedState?.materials || []).find(em => em.id === m.id);
               return {

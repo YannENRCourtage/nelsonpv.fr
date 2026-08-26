@@ -17,6 +17,8 @@ import {
   PRODUCTION_SOLAIRE_DEPT,
   ORIENTATION_COEFFICIENTS,
   DEFAULT_FINANCIAL_PARAMS,
+  calculateEligibleSubventions,
+  getRegionForDepartment,
 } from '@/data/sechoirBatitechModels.js';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -147,38 +149,33 @@ export function calculateAnnuity(capital, tauxAnnuel, dureeAns) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 6. PLAN DE FINANCEMENT
+// 6. PLAN DE FINANCEMENT (Investissement Initial)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Calcule le plan de financement complet.
- * Investissement Net Réel = Investissement Brut - Prime CEE - Subventions PAE
- * Emprunt = Investissement Net Réel - Apports en propre
+ * Calcule le plan de financement contractuel.
+ * Règle métier : l'Investissement Net à Financer ne déduit QUE la Prime CEE.
+ * Les subventions régionales sont affichées à titre informatif et ne sont pas déduites.
  *
  * @param {object} params
- * @param {number} params.investissementBrut - Investissement total (€)
+ * @param {number} params.investissementBrut - Investissement total brut HT (€)
  * @param {number} params.primeCEE - Prime CEE totale (€)
- * @param {number} params.subventionPAE - Subventions Plan Ambitions Éleveurs (€)
- * @param {number} params.apportsEnPropre - Apports en propre (€)
- * @returns {{ investissementNet: number, emprunt: number, subventionsTotal: number, subventionPAE: number, primeCEE: number }}
+ * @param {number} [params.apportsEnPropre=0] - Apports en propre (€)
+ * @returns {{ investissementNet: number, emprunt: number, subventionsTotal: number, primeCEE: number }}
  */
 export function calculateFinancingPlan({
   investissementBrut,
   primeCEE = 0,
-  subventionPAE = DEFAULT_FINANCIAL_PARAMS.subventionPAE,
   apportsEnPropre = DEFAULT_FINANCIAL_PARAMS.apportsEnPropre,
 }) {
   const pCee = Number(primeCEE) || 0;
-  const sPae = Number(subventionPAE) || 0;
-  const subventionsTotal = pCee + sPae;
-  const investissementNet = Math.max(0, investissementBrut - subventionsTotal);
+  const investissementNet = Math.max(0, (Number(investissementBrut) || 0) - pCee);
   const emprunt = Math.max(0, investissementNet - (Number(apportsEnPropre) || 0));
 
   return {
     investissementNet,
     emprunt,
-    subventionsTotal,
-    subventionPAE: sPae,
+    subventionsTotal: pCee,
     primeCEE: pCee,
   };
 }
@@ -402,18 +399,24 @@ export function calculateFullSimulation({
   // 5. Delta EBE
   const deltaEBE = calculateDeltaEBE(produits.deltaProduits, charges.deltaCharges);
 
-  // 6. Plan de financement
+  // 6. Plan de financement (Déduction uniquement de la Prime CEE)
   const financing = calculateFinancingPlan({
     investissementBrut: resolvedModel.investissementBrut || 327053,
     primeCEE: cee.primeTotal || 0,
-    subventionPAE: fp.subventionPAE !== undefined ? fp.subventionPAE : 100000,
     apportsEnPropre: fp.apportsEnPropre || 0,
   });
 
-  // 7. Annuité d'emprunt
+  // 7. Subventions régionales éligibles (Calculées à titre informatif sur l'assiette éligible Brut - CEE)
+  const subventionsEligibles = calculateEligibleSubventions(
+    departement,
+    resolvedModel.investissementBrut || 327053,
+    cee.primeTotal || 0
+  );
+
+  // 8. Annuité d'emprunt
   const annuite = calculateAnnuity(financing.emprunt, fp.tauxEmprunt, fp.dureeEmprunt);
 
-  // 8. Flux de trésorerie + ROI
+  // 9. Flux de trésorerie + ROI (calcul contractuel prudent de base)
   const treasury = calculateCashFlowTable({
     investissementBrut: resolvedModel.investissementBrut || 327053,
     subventionsTotal: financing.subventionsTotal,
@@ -425,10 +428,28 @@ export function calculateFullSimulation({
     dureeEmprunt: fp.dureeEmprunt,
   });
 
-  // 9. VAN
+  // ROI Bonifié si obtention de la subvention régionale estimée
+  let roiBonifie = null;
+  if (subventionsEligibles.montantEstime > 0) {
+    const montantFinanceBonifie = Math.max(0, financing.investissementNet - subventionsEligibles.montantEstime - (Number(fp.apportsEnPropre) || 0));
+    let cumulAmort = 0;
+    for (let n = 1; n <= fp.dureeSimulation; n++) {
+      const fluxOp = deltaEBE * Math.pow(1 + fp.inflationProduits, n - 1);
+      cumulAmort += fluxOp;
+      if (roiBonifie === null && cumulAmort >= montantFinanceBonifie && fluxOp > 0) {
+        const prev = cumulAmort - fluxOp;
+        roiBonifie = (n - 1) + ((montantFinanceBonifie - prev) / fluxOp);
+      }
+    }
+    if (roiBonifie !== null) {
+      roiBonifie = Math.round(roiBonifie * 100) / 100;
+    }
+  }
+
+  // 10. VAN
   const van = calculateVAN(treasury.cashFlows, fp.tauxActualisation);
 
-  // 10. TRI
+  // 11. TRI
   const tri = calculateTRI(treasury.cashFlows);
 
   return {
@@ -450,6 +471,8 @@ export function calculateFullSimulation({
     charges,
     deltaEBE,
     financing,
+    subventionsEligibles,
+    roiBonifie,
     annuite: Math.round(annuite),
     gainNetAnnuel: Math.round(deltaEBE - annuite),
     treasury,

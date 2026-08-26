@@ -793,10 +793,10 @@ export default function SimulatorDatabaseTab() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Subvention PAE (Plan Ambitions Éleveurs) (€)</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Aide Régionale Indicative par défaut (€)</label>
                 <input
                   type="number"
-                  value={sechoirFinancial.subventionPAE ?? 100000}
+                  value={sechoirFinancial.subventionPAE ?? 0}
                   onChange={(e) => updateSechoirFinancial({ subventionPAE: Number(e.target.value) })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
                 />

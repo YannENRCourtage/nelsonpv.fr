@@ -198,7 +198,7 @@ export const DEFAULT_DATABASE_SETTINGS = {
     financialParams: {
       tauxEmprunt: 3.40,           // en % (3.40%)
       dureeEmprunt: 25,            // en années (25 ans)
-      subventionPAE: 100000,       // en €
+      subventionPAE: 0,            // en € (affiché à titre indicatif)
       tauxActualisation: 3.40,     // en % (3.40%)
       inflationProduits: 2.00,     // en % (2.00%)
       dureeVieProjet: 20,          // en années (20 ans)
@@ -540,7 +540,7 @@ export const useSimulatorSettingsStore = create(
       }
     }),
     {
-      name: 'nelson_simulator_database_v5',
+      name: 'nelson_simulator_database_v6',
     }
   )
 );
