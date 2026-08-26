@@ -45,8 +45,8 @@ function ScaledBuildingMapOverlay({ length = 18, width = 20, rotation = 0, model
           transform: `rotate(${rotation}deg)`,
         }}
       >
-        {/* Ligne de faîtage pointillée orange */}
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-amber-400 pointer-events-none" />
+        {/* Ligne de faîtage pointillée orange (3/4 côté Sud, 1/4 côté Nord) */}
+        <div className="absolute inset-x-0 top-[25%] -translate-y-1/2 border-t-2 border-dashed border-amber-400 pointer-events-none" />
 
         {/* Rond avec le numéro du bâtiment ① */}
         <div className="w-8 h-8 rounded-full bg-white text-slate-900 font-black text-sm border-2 border-slate-900 flex items-center justify-center shadow-xl pointer-events-none z-10">

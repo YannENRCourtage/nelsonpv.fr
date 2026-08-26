@@ -125,9 +125,9 @@ export const generateSatelliteSnapshot = async ({
         ctx.lineWidth = 3.5;
         ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
 
-        // Ligne de Faîtage en pointillés orange
-        const isAsym = (b.buildingType || '').startsWith('asym') || b.buildingType === 'epona';
-        const ridgeY = isAsym ? (-rectH / 2 + rectH * 0.32) : 0;
+        // Ligne de Faîtage en pointillés orange (3/4 côté Sud pour asymétrique et séchoir BatiTech)
+        const isAsym = (b.buildingType || '').startsWith('asym') || b.buildingType === 'epona' || (b.name || '').toLowerCase().includes('séchoir') || (b.name || '').toLowerCase().includes('batitech');
+        const ridgeY = isAsym ? (-rectH / 2 + rectH * 0.25) : 0;
         ctx.beginPath();
         ctx.setLineDash([6, 4]);
         ctx.strokeStyle = '#f59e0b';
