@@ -1,5 +1,5 @@
 /**
- * SechoirBatitechSimulator — Composant Principal (Wizard 5 étapes)
+ * SechoirBatitechSimulator — Composant Principal (Wizard 4 étapes)
  * ──────────────────────────────────────────────────────────────────────────────
  * Simulateur interactif "Séchoir BatiTech®" pour la plateforme nelsonpv.fr
  * Design mode sombre, navigation par étapes avec Framer Motion.
@@ -8,8 +8,8 @@
 import React, { useEffect, useMemo, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  MapPin, Building2, Compass, Leaf, BarChart3,
-  ChevronLeft, ChevronRight, RotateCcw, FileDown,
+  MapPin, Compass, Leaf, BarChart3,
+  ChevronLeft, ChevronRight, RotateCcw,
   CheckCircle2,
 } from 'lucide-react';
 
@@ -19,7 +19,6 @@ import { calculateFullSimulation } from '@/components/simulator/sechoir/sechoirC
 
 // Étapes du wizard
 import Step1Location from '@/components/simulator/sechoir/steps/Step1Location.jsx';
-import Step2Model from '@/components/simulator/sechoir/steps/Step2Model.jsx';
 import Step3Orientation from '@/components/simulator/sechoir/steps/Step3Orientation.jsx';
 import Step4Drying from '@/components/simulator/sechoir/steps/Step4Drying.jsx';
 import Step5Results from '@/components/simulator/sechoir/steps/Step5Results.jsx';
@@ -27,14 +26,13 @@ import Step5Results from '@/components/simulator/sechoir/steps/Step5Results.jsx'
 // Génération PDF
 import { generateSechoirPDF } from '@/components/simulator/sechoir/SechoirPDFGenerator.jsx';
 
-// ─── Configuration des étapes ──────────────────────────────────────────────────
+// ─── Configuration des 4 étapes ────────────────────────────────────────────────
 
 const STEPS = [
-  { id: 1, label: 'Localisation',   shortLabel: 'Lieu',        icon: MapPin },
-  { id: 2, label: 'Modèle',         shortLabel: 'Modèle',      icon: Building2 },
-  { id: 3, label: 'Orientation',    shortLabel: 'Orientation',  icon: Compass },
-  { id: 4, label: 'Séchage',        shortLabel: 'Séchage',      icon: Leaf },
-  { id: 5, label: 'Résultats',      shortLabel: 'Résultats',    icon: BarChart3 },
+  { id: 1, label: 'Localisation & Modèle', shortLabel: 'Projet',      icon: MapPin },
+  { id: 2, label: 'Orientation',           shortLabel: 'Orientation', icon: Compass },
+  { id: 3, label: 'Séchage',               shortLabel: 'Séchage',     icon: Leaf },
+  { id: 4, label: 'Résultats',             shortLabel: 'Résultats',   icon: BarChart3 },
 ];
 
 // ─── Animations ────────────────────────────────────────────────────────────────
@@ -61,17 +59,15 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
   // ─── Calcul des résultats (mémoïsé) ──────────────────────────────────────
 
   const results = useMemo(() => {
-    if (!selectedModelId || !departement) return null;
-    const model = BATITECH_MODELS[selectedModelId];
-    if (!model) return null;
-
+    const modelKey = selectedModelId || 'BT-3.1.15';
+    const deptKey = departement || '33';
     try {
       return calculateFullSimulation({
-        model,
-        departement,
-        orientation,
-        materials,
-        financialParams,
+        model: modelKey,
+        departement: deptKey,
+        orientation: orientation || 'sud',
+        materials: materials || [],
+        financialParams: financialParams || {},
       });
     } catch (err) {
       console.error('Erreur calcul simulation:', err);
@@ -91,7 +87,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
   useEffect(() => {
     if (onStateUpdate && results) {
       const activeMats = (store.materials || []).filter(m => m.enabled && m.volume > 0);
-      const activeMatsText = activeMats.map(m => `${m.shortLabel || m.label} (${m.volume} t)`).join(', ') || 'Fourrage en vrac, Bottes carrées, Céréales';
+      const activeMatsText = activeMats.map(m => `${m.shortLabel || m.label} (${m.volume} t)`).join(', ') || 'Fourrage vrac (50 t), Bottes carrées (150 t), Blé tendre (20 t), Maïs grain (80 t)';
       
       const rot = store.rotation !== undefined ? store.rotation : (
         store.orientation === 'ouest' ? 90 :
@@ -109,6 +105,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         address: store.addressLabel || store.address || '',
         departement: store.departement || '33',
         departmentCode: store.departement || '33',
+        modelId: results.model?.id || selectedModelId || 'BT-3.1.15',
         modelName: results.model?.name || 'BatiTech 3.1.15',
         dimensions: results.model?.dimensions || '18m × 20m',
         length: results.model?.length || 18,
@@ -159,18 +156,18 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
     store.mapCenter,
     store.rotation,
     store.orientation,
-    store.materials
+    store.materials,
+    selectedModelId
   ]);
 
-  // ─── Validation par étape ────────────────────────────────────────────────
+  // ─── Validation par étape (4 étapes) ──────────────────────────────────────
 
   const canProceed = useMemo(() => {
     switch (currentStep) {
-      case 1: return !!departement && !!address;
-      case 2: return !!selectedModelId;
-      case 3: return !!orientation;
-      case 4: return true; // pas de validation obligatoire
-      case 5: return true;
+      case 1: return !!departement && !!address && !!selectedModelId;
+      case 2: return !!orientation;
+      case 3: return true;
+      case 4: return true;
       default: return false;
     }
   }, [currentStep, departement, address, selectedModelId, orientation]);
@@ -178,7 +175,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
   // ─── Navigation ──────────────────────────────────────────────────────────
 
   const handleNext = useCallback(() => {
-    if (canProceed && currentStep < 5) {
+    if (canProceed && currentStep < 4) {
       setDirection(1);
       nextStep();
     }
@@ -250,8 +247,8 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
           </button>
         </div>
 
-        {/* Barre de progression — étapes */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5">
+        {/* Barre de progression — 4 étapes */}
+        <div className="flex items-center gap-2 sm:gap-4">
           {STEPS.map((step, index) => {
             const Icon = step.icon;
             const isActive = currentStep === step.id;
@@ -273,7 +270,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
                 <button
                   onClick={() => handleStepClick(step.id)}
                   disabled={!isReachable}
-                  className={`flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                  className={`flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-2xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
                     isActive
                       ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40 shadow-lg shadow-amber-500/10'
                       : isCompleted
@@ -284,9 +281,9 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
                   }`}
                 >
                   {isCompleted ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   ) : (
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-amber-400' : ''}`} />
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-400' : ''}`} />
                   )}
                   <span className="hidden sm:inline">{step.label}</span>
                   <span className="inline sm:hidden">{step.shortLabel}</span>
@@ -311,10 +308,9 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
             className="overflow-visible"
           >
             {currentStep === 1 && <Step1Location />}
-            {currentStep === 2 && <Step2Model />}
-            {currentStep === 3 && <Step3Orientation />}
-            {currentStep === 4 && <Step4Drying />}
-            {currentStep === 5 && <Step5Results onExportPDF={handleExportPDF} />}
+            {currentStep === 2 && <Step3Orientation />}
+            {currentStep === 3 && <Step4Drying />}
+            {currentStep === 4 && <Step5Results onExportPDF={handleExportPDF} />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -338,11 +334,11 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
 
           {/* Indicateur central */}
           <span className="text-sm text-slate-400 font-semibold">
-            Étape {currentStep} / 5
+            Étape {currentStep} / 4
           </span>
 
           {/* Bouton Suivant */}
-          {currentStep < 5 ? (
+          {currentStep < 4 ? (
             <button
               onClick={handleNext}
               disabled={!canProceed}

@@ -21,7 +21,7 @@ const useSechoirStore = create(
       })),
 
       nextStep: () => set((state) => {
-        const next = Math.min(state.currentStep + 1, 5);
+        const next = Math.min(state.currentStep + 1, 4);
         return {
           currentStep: next,
           maxStepReached: Math.max(state.maxStepReached, next),
@@ -32,7 +32,7 @@ const useSechoirStore = create(
         currentStep: Math.max(state.currentStep - 1, 1),
       })),
 
-      // ═══ ÉTAPE 1 — LOCALISATION & IMPLANTATION ════════════════════════════
+      // ═══ ÉTAPE 1 — LOCALISATION & MODÈLE ══════════════════════════════════
       address: '',
       addressLabel: '',
       latitude: null,
@@ -55,8 +55,7 @@ const useSechoirStore = create(
         zoneSechage: data.zoneSechage || '',
       }),
 
-      // ═══ ÉTAPE 2 — MODÈLE BATITECH ════════════════════════════════════════
-      selectedModelId: null,
+      selectedModelId: 'BT-3.1.15',
 
       setModel: (modelId) => set({ selectedModelId: modelId }),
 

@@ -29,12 +29,13 @@ const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
     ctx.stroke();
   }
 
-  // Calcul des données 30 ans
+  // Calcul des données (20 ans pour Séchoir, 30 ans pour les autres)
   const isSechoir = sim.type === 'sechoir_batitech' || sim.type === 'sechoir';
+  const maxYears = isSechoir ? 20 : 30;
   const totalInv = sim.totalInvestmentHT || sim.resteACharge || 13500;
-  const annualGain = isSechoir ? (sim.gainNetAnnuel || sim.deltaEBE || 13833) : (sim.annualBenefitYear1 || sim.annualRevenueReventeTotale || sim.annualRevenue || 1800);
+  const annualGain = isSechoir ? (sim.gainNetAnnuel || sim.deltaEBE || 12921) : (sim.annualBenefitYear1 || sim.annualRevenueReventeTotale || sim.annualRevenue || 1800);
   const inflation = isSechoir ? 0.02 : 0.035;
-  const paybackYear = Number(sim.paybackYear || sim.roi) || (isSechoir ? 11.44 : 8);
+  const paybackYear = Number(sim.paybackYear || sim.roi) || (isSechoir ? 7.29 : 8);
 
   const points = [];
   let minCumul = isSechoir ? 0 : -totalInv;
@@ -42,7 +43,7 @@ const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
 
   if (isSechoir && Array.isArray(sim.cashFlows) && sim.cashFlows.length > 0) {
     sim.cashFlows.forEach(cf => {
-      if (cf.annee >= 1 && cf.annee <= 30) {
+      if (cf.annee >= 1 && cf.annee <= maxYears) {
         const c = Number(cf.cumul || 0);
         if (c < minCumul) minCumul = c;
         if (c > maxCumul) maxCumul = c;
@@ -51,7 +52,7 @@ const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
     });
   } else {
     let cumul = isSechoir ? 0 : -totalInv;
-    for (let yr = 1; yr <= 30; yr++) {
+    for (let yr = 1; yr <= maxYears; yr++) {
       const yrFactor = Math.pow(1 + inflation, yr - 1);
       cumul += Math.round(annualGain * yrFactor);
       if (cumul < minCumul) minCumul = cumul;
@@ -61,7 +62,7 @@ const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
   }
 
   const range = maxCumul - minCumul || 1;
-  const getX = (yr) => 60 + ((yr - 1) * (width - 95)) / 29;
+  const getX = (yr) => 60 + ((yr - 1) * (width - 95)) / (maxYears - 1);
   const getY = (c) => height - 35 - ((c - minCumul) * (height - 75)) / range;
 
   // Ligne 0 € (Point mort)
@@ -75,8 +76,8 @@ const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Barres ou zone bicolore 30 ans
-  const barWidth = (width - 110) / 32;
+  // Barres
+  const barWidth = (width - 110) / (maxYears + 2);
   points.forEach(p => {
     const bx = getX(p.yr) - barWidth / 2;
     const by = getY(p.cumul);
@@ -100,8 +101,8 @@ const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
   ctx.stroke();
 
   // Point d'amortissement rouge
-  const paybackPt = points.find(p => p.yr === Math.round(paybackYear)) || points[7];
-  const pbX = getX(paybackPt ? paybackPt.yr : 8);
+  const paybackPt = points.find(p => p.yr === Math.round(paybackYear)) || points[Math.min(points.length - 1, Math.round(paybackYear) || 7)];
+  const pbX = getX(paybackPt ? paybackPt.yr : Math.min(maxYears, Math.round(paybackYear) || 7));
   const pbY = getY(0);
 
   ctx.strokeStyle = '#ef4444';
@@ -125,13 +126,14 @@ const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
   ctx.fillStyle = '#ef4444';
   ctx.font = 'bold 12px Arial';
   ctx.textAlign = 'center';
-  ctx.fillText(`Amortissement (${paybackYear} ans)`, pbX, 16);
+  ctx.fillText(`Amortissement (${Number(paybackYear).toFixed(2)} ans)`, pbX, 16);
 
   // Labels Axes X
   ctx.fillStyle = '#64748b';
   ctx.font = '11px Arial';
   ctx.textAlign = 'center';
-  [1, 5, 10, 15, 20, 25, 30].forEach(yr => {
+  const xLabels = isSechoir ? [1, 5, 10, 15, 20] : [1, 5, 10, 15, 20, 25, 30];
+  xLabels.forEach(yr => {
     ctx.fillText(`An ${yr}`, getX(yr), height - 12);
   });
 
@@ -344,6 +346,28 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       </div>
     `;
   } else if (isSechoir) {
+    // Helper pour insérer un retour à la ligne avant le code postal
+    const formatAddressWithPostalBreak = (addr) => {
+      if (!addr) return 'Site du Projet';
+      const match = addr.match(/^(.*?)\s*(\b\d{5}\b.*)$/);
+      if (match && match[1] && match[2]) {
+        return `${match[1].trim()}<br/>${match[2].trim()}`;
+      }
+      return addr;
+    };
+
+    // Helper pour le nombre de cellules de chauffage BatiTech
+    const getCellulesText = (modelId, modelName) => {
+      const str = `${modelId || ''} ${modelName || ''}`.toLowerCase();
+      if (str.includes('8.3') || str.includes('3 zone') || str.includes('3 cell')) {
+        return '3 Cellules 6×15m (270 m² utiles)';
+      }
+      if (str.includes('6.2') || str.includes('2 zone') || str.includes('2 cell')) {
+        return '2 Cellules 6×15m (180 m² utiles)';
+      }
+      return '1 Cellule 6×15m (90 m² utiles)';
+    };
+
     // Cadre Hypothèses spécifique Séchoir BatiTech
     technicalHypothesesHtml = `
       <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 12px; margin-top: 10px; margin-bottom: 10px;">
@@ -352,21 +376,24 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         </div>
         <table style="width: 100%; font-size: 7.5pt; border-collapse: collapse;">
           <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 2px 0; color: #64748b;">Adresse du site :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
-            <td style="padding: 2px 0 2px 15px; color: #64748b;">Modèle étudié :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #d97706;">${sim.modelName || 'BatiTech 3.1.15'} — ${sim.dimensions || '18m × 20m'}</td>
+            <td style="padding: 2px 0; color: #64748b; vertical-align: top; white-space: nowrap; width: 18%;">Adresse du site&nbsp;:</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold; vertical-align: top; width: 32%;">${formatAddressWithPostalBreak(clientAddress)}</td>
+            <td style="padding: 2px 0 2px 15px; color: #64748b; vertical-align: top; white-space: nowrap; width: 18%;">Modèle étudié&nbsp;:</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #d97706; vertical-align: top; width: 32%;">
+              <div>${sim.modelName || 'BatiTech 3.1.15'} — ${sim.dimensions || '18m × 20m'}</div>
+              <div style="font-size: 6.8pt; color: #64748b; font-weight: 600; margin-top: 1px;">${getCellulesText(sim.modelId, sim.modelName)}</div>
+            </td>
           </tr>
           <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 2px 0; color: #64748b;">Générateur Cogen'Air® :</td>
+            <td style="padding: 2px 0; color: #64748b; white-space: nowrap;">Générateur Cogen'Air®&nbsp;:</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold;">${calculatedPower} (${sim.nbModules || 90} modules)</td>
-            <td style="padding: 2px 0 2px 15px; color: #64748b;">Productible solaire :</td>
+            <td style="padding: 2px 0 2px 15px; color: #64748b; white-space: nowrap;">Productible solaire&nbsp;:</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #0284c7;">${(sim.annualProductionKwh || 75000).toLocaleString('fr-FR')} kWh / an</td>
           </tr>
           <tr>
-            <td style="padding: 2px 0; color: #64748b;">Orientation / Pente :</td>
+            <td style="padding: 2px 0; color: #64748b; white-space: nowrap;">Orientation / Pente&nbsp;:</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold;">${resolveOrientationName(sim)} (15° standard)</td>
-            <td style="padding: 2px 0 2px 15px; color: #64748b;">Filières de séchage :</td>
+            <td style="padding: 2px 0 2px 15px; color: #64748b; white-space: nowrap;">Filières de séchage&nbsp;:</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #16a34a;">${sim.activeMaterialsText || 'Fourrage en vrac, Bottes, Céréales'}</td>
           </tr>
         </table>
@@ -498,18 +525,18 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.5px 0; color: #16a34a;">Impact annuel sur l'EBE :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${(sim.deltaEBE || 24220).toLocaleString('fr-FR')} €/an</td></tr>
                 <tr style="background: #f0fdf4;"><td style="padding: 2.5px 0; font-weight: 900; color: #166534;">Gain Net Annuel d'Exploitation :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 7.5pt;">+${(sim.gainNetAnnuel || 12921).toLocaleString('fr-FR')} €/an</td></tr>
               </table>
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; border-top: 1px solid #e2e8f0; padding-top: 2px; margin-top: 2px; text-align: center;">
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 2px 3px 2px;">
-                  <span style="font-size: 5.5pt; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; display: block; margin: 0; padding: 0;">VAN (20 ans)</span>
-                  <div style="font-size: 7.5pt; font-weight: 900; color: #16a34a; line-height: 1.1; margin-top: 1px;">+${(sim.van || 127853).toLocaleString('fr-FR')} €</div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; border-top: 1px solid #e2e8f0; padding-top: 4px; margin-top: 4px; text-align: center;">
+                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; height: 38px; min-height: 38px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+                  <span style="font-size: 5.8pt; color: #64748b; font-weight: 800; text-transform: uppercase; line-height: 1; margin-bottom: 2px;">VAN (20 ans)</span>
+                  <div style="font-size: 8.5pt; font-weight: 900; color: #16a34a; line-height: 1;">+${(sim.van || 127853).toLocaleString('fr-FR')} €</div>
                 </div>
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 2px 3px 2px;">
-                  <span style="font-size: 5.5pt; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; display: block; margin: 0; padding: 0;">TRI (20 ans)</span>
-                  <div style="font-size: 7.5pt; font-weight: 900; color: #d97706; line-height: 1.1; margin-top: 1px;">${sim.triPercent || '7.06'} %</div>
+                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; height: 38px; min-height: 38px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+                  <span style="font-size: 5.8pt; color: #64748b; font-weight: 800; text-transform: uppercase; line-height: 1; margin-bottom: 2px;">TRI (20 ans)</span>
+                  <div style="font-size: 8.5pt; font-weight: 900; color: #d97706; line-height: 1;">${sim.triPercent || '7.06'} %</div>
                 </div>
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 2px 3px 2px;">
-                  <span style="font-size: 5.5pt; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; display: block; margin: 0; padding: 0;">ROI net</span>
-                  <div style="font-size: 7.5pt; font-weight: 900; color: #0284c7; line-height: 1.1; margin-top: 1px;">${Number(sim.paybackYear || sim.roi || 7.29).toFixed(2)} ans</div>
+                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; height: 38px; min-height: 38px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+                  <span style="font-size: 5.8pt; color: #64748b; font-weight: 800; text-transform: uppercase; line-height: 1; margin-bottom: 2px;">ROI net</span>
+                  <div style="font-size: 8.5pt; font-weight: 900; color: #0284c7; line-height: 1;">${Number(sim.paybackYear || sim.roi || 7.29).toFixed(2)} ans</div>
                 </div>
               </div>
             </div>
@@ -525,7 +552,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                   <div style="font-size: 7.5pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
                 </div>
               `}
-              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">Orientation : ${sim.orientationLabel || 'Plein Sud (0°)'}</div>
+              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">Orientation : ${sim.orientationLabel || 'Sud'}</div>
             </div>
           </div>
         ` : isStruct ? `
@@ -600,13 +627,13 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             </div>
           </div>
         ` : `
-          <!-- 4. VISUEL SATELLITE / AVANT-APRÈS CÔTE À CÔTE (+10% HAUTEUR : 365px) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 365px; display: flex; align-items: center; justify-content: center; position: relative;">
+          <!-- 4. VISUEL DUAL AVANT / APRÈS (TOITURE & AUTOCONSO) OU UNIQUE (AUTRES) -->
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; position: relative; height: 195px; display: flex; align-items: center; justify-content: center;">
             ${finalMapScreenshot ? `
-              <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite du site" />
+              <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Implantation Visuelle du Projet" />
             ` : `
-              <div style="color: #94a3b8; font-size: 10pt; text-align: center; padding: 15px;">
-                <strong style="color: #ffffff;">Repérage Satellite du Site</strong>
+              <div style="color: #94a3b8; font-size: 9pt; text-align: center; padding: 15px;">
+                <strong style="color: #ffffff; display: block; font-size: 11pt; margin-bottom: 4px;">Plan d'Implantation Solaire</strong>
                 <div style="font-size: 8pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
               </div>
             `}
@@ -617,51 +644,51 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT -->
         <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
           <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
-            Projection Financière des Gains Cumulés (30 ans)
+            ${isSechoir ? 'Projection Financière des Gains Cumulés (20 ans)' : 'Projection Financière des Gains Cumulés (30 ans)'}
           </div>
           <div style="height: ${isStruct && sim.buildings && sim.buildings.length > 1 ? '195px' : '225px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
           </div>
 
-          <!-- 3 CARTES DE CUMULS SANS PADDING SUPÉRIEUR INUTILE (10, 20, 30 ANS) -->
+          <!-- 3 CARTES DE CUMULS VERTICALEMENT CENTRÉES (10, 20, 30 ANS) -->
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px; text-align: center;">
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 2px 4px 4px 4px;">
-              <span style="font-size: 6pt; color: #64748b; font-weight: bold; text-transform: uppercase; margin: 0; padding: 0; display: block;">sur 10 ans</span>
-              <div style="font-size: 9.5pt; font-weight: 900; color: #0f172a; margin: 0;">+${dispCumul10.toLocaleString('fr-FR')} €</div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: 38px; min-height: 38px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <span style="font-size: 6pt; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 2px;">sur 10 ans</span>
+              <div style="font-size: 9.5pt; font-weight: 900; color: #0f172a; line-height: 1;">+${dispCumul10.toLocaleString('fr-FR')} €</div>
             </div>
 
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 2px 4px 4px 4px;">
-              <span style="font-size: 6pt; color: #64748b; font-weight: bold; text-transform: uppercase; margin: 0; padding: 0; display: block;">sur 20 ans</span>
-              <div style="font-size: 9.5pt; font-weight: 900; color: #0f172a; margin: 0;">+${dispCumul20.toLocaleString('fr-FR')} €</div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: 38px; min-height: 38px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <span style="font-size: 6pt; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 2px;">sur 20 ans</span>
+              <div style="font-size: 9.5pt; font-weight: 900; color: #0f172a; line-height: 1;">+${dispCumul20.toLocaleString('fr-FR')} €</div>
             </div>
 
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 2px 4px 4px 4px;">
-              <span style="font-size: 6pt; color: #166534; font-weight: bold; text-transform: uppercase; margin: 0; padding: 0; display: block;">sur 30 ans</span>
-              <div style="font-size: 9.5pt; font-weight: 900; color: #16a34a; margin: 0;">+${dispCumul30.toLocaleString('fr-FR')} €</div>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; height: 38px; min-height: 38px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <span style="font-size: 6pt; color: #166534; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 2px;">${isSechoir ? 'sur 20 ans (net)' : 'sur 30 ans'}</span>
+              <div style="font-size: 9.5pt; font-weight: 900; color: #16a34a; line-height: 1;">+${(isSechoir ? dispCumul20 : dispCumul30).toLocaleString('fr-FR')} €</div>
             </div>
           </div>
         </div>
 
-        <!-- 6. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT -->
+        <!-- 6. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT VERTICALEMENT CENTRÉE -->
         <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 9px 12px; margin-bottom: 4px;">
           <div style="font-size: 8pt; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 5px;">
             🌱 Votre Impact sur l'Environnement
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center;">
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 7px 4px;">
-              <div style="font-size: 10.5pt; font-weight: 900; color: #16a34a;">${co2Avoided} tonnes</div>
-              <div style="font-size: 6.5pt; color: #64748b;">de CO₂ évitées par an</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: 44px; min-height: 44px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <div style="font-size: 10pt; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 2px;">${co2Avoided} tonnes</div>
+              <div style="font-size: 6.5pt; color: #64748b; line-height: 1;">de CO₂ évitées par an</div>
             </div>
 
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 7px 4px;">
-              <div style="font-size: 10.5pt; font-weight: 900; color: #16a34a;">${treesPlanted}</div>
-              <div style="font-size: 6.5pt; color: #64748b;">arbres plantés par an</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: 44px; min-height: 44px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <div style="font-size: 10pt; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 2px;">${treesPlanted}</div>
+              <div style="font-size: 6.5pt; color: #64748b; line-height: 1;">arbres plantés par an</div>
             </div>
 
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 7px 4px;">
-              <div style="font-size: 10.5pt; font-weight: 900; color: #0d9488;">${householdsFed}</div>
-              <div style="font-size: 6.5pt; color: #64748b;">foyer(s) alimenté(s) en électricité</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: 44px; min-height: 44px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <div style="font-size: 10pt; font-weight: 900; color: #0d9488; line-height: 1; margin-bottom: 2px;">${householdsFed}</div>
+              <div style="font-size: 6.5pt; color: #64748b; line-height: 1;">foyer(s) alimenté(s) en électricité</div>
             </div>
           </div>
         </div>
