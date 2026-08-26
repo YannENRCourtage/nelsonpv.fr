@@ -19,6 +19,7 @@ import SechoirBatitechSimulator from '@/components/simulator/sechoir/SechoirBati
 import SimulatorDatabaseTab from '@/components/simulator/SimulatorDatabaseTab';
 import SimulatorArchivesTab from '@/components/simulator/SimulatorArchivesTab';
 import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
+import useSechoirStore from '@/stores/useSechoirStore.js';
 
 // ─── Sélecteur de projet CRM dans la barre latérale ─────────────────────────
 const ProjectSelect = ({ projects, activeProjectId, onSelect }) => {
@@ -440,7 +441,12 @@ export default function IrveSimulator() {
                     <button
                       key={sol.id}
                       type="button"
-                      onClick={() => setActiveSolution(sol.id)}
+                      onClick={() => {
+                        if (sol.id === 'sechoir') {
+                          useSechoirStore.getState().resetAll();
+                        }
+                        setActiveSolution(sol.id);
+                      }}
                       className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all ${
                         isSelected
                           ? 'bg-[#0e2b4d] text-white shadow-md'

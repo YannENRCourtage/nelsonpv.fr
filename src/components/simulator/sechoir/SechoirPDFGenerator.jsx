@@ -452,9 +452,11 @@ export async function generateSechoirPDF({
             <img src="${chargesChartImg}" alt="Impact Réduction des Charges" style="max-width:96%;height:auto;display:block;margin:0 auto;" />
           </div>
 
-          <!-- Ligne unique de pied de page -->
-          <div style="position:absolute;bottom:10mm;left:15mm;right:15mm;text-align:center;border-top:1px solid #D0D6E0;padding-top:10px;font-size:9pt;color:#0D3660;font-weight:600;white-space:nowrap;font-family:Montserrat,Arial,sans-serif;">
-            NELSON — nelsonpv.fr <span style="color:#D0D6E0;margin:0 15px;font-weight:normal;">|</span> <span style="color:#888888;font-weight:400;">Simulation BatiTech®</span> <span style="color:#D0D6E0;margin:0 15px;font-weight:normal;">|</span> contact@enr-courtage.fr
+          <!-- Pied de page identique à la page 1 -->
+          <div style="position: absolute; bottom: 10mm; left: 15mm; right: 15mm; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 4px; font-size: 7pt; color: #475569; font-family: Montserrat, Arial, sans-serif;">
+            <span style="font-weight: bold; color: #00429d;">NELSON — nelsonpv.fr</span>
+            <span>Courtage en Énergies Renouvelables &amp; Ingénierie Solaire</span>
+            <span>contact@enr-courtage.fr</span>
           </div>
 
         </div>
