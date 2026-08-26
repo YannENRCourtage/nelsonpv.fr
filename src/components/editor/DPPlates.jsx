@@ -271,9 +271,12 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     const isOmbriere = rawType.startsWith('ombriere') || Boolean(project?.buildingName && project.buildingName.toLowerCase().includes('ombrière'));
     const isPL = isOmbriere && (rawType.includes('ombriere_pl') || (rawType.includes('pl') && !rawType.includes('simple')) || largeur >= 13.0);
     const isSimple = isOmbriere && !isPL && (rawType.includes('simple') || largeur <= 7.5);
+    const isDouble = isOmbriere && !isPL && !isSimple;
     const isMonopente = !isOmbriere && rawType.includes('monopente');
     const isSym = !isOmbriere && rawType.includes('symetrique') && !rawType.includes('asym');
     const isAsym2 = !isOmbriere && (rawType.includes('asymetrique_2') || (!isSym && (Math.abs(largeur - 25.5) < 0.8 || Math.abs(largeur - 29.1) < 0.8)));
+    const isAsym1 = !isOmbriere && !isMonopente && !isSym && !isAsym2;
+    const isAsym = isAsym1 || isAsym2;
 
     const hasAppentisLeft = project?.leftSide === 'appentis';
     const hasAuventLeft = !hasAppentisLeft && (project?.leftSide === 'auvent' || Boolean(project?.auvent && project?.auvent !== 'none' && project?.auvent !== false));
@@ -368,7 +371,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     const roofTypeLabel = isOmbriere ? 'monopente (ombrière VL/PL)' : isAsym ? (isAsym2 ? 'double pente asymétrique 2 zones' : 'double pente asymétrique') : isSym ? 'double pente symétrique' : 'photovoltaïque';
 
     const coupeSvgContent = (
-        <svg width="680" height="186" viewBox="0 0 680 186" style={{ width: '100%', height: '100%', maxHeight: hasNotice ? '54mm' : '85mm' }}>
+        <svg width="680" height="186" viewBox="0 0 680 186" style={{ width: '100%', height: '100%', maxHeight: isMulti ? '50mm' : '85mm' }}>
             {/* Badges d'Orientation NORD / SUD */}
             <rect x="70" y="6" width="44" height="14" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.2" />
             <text x="92" y="16" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">NORD</text>
