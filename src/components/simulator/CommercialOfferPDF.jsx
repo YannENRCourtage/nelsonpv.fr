@@ -29,9 +29,9 @@ const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
     ctx.stroke();
   }
 
-  // Calcul des données (20 ans pour Séchoir, 30 ans pour les autres)
+  // Calcul des données (25 ans pour Séchoir, 30 ans pour les autres)
   const isSechoir = sim.type === 'sechoir_batitech' || sim.type === 'sechoir';
-  const maxYears = isSechoir ? 20 : 30;
+  const maxYears = isSechoir ? 25 : 30;
   const totalInv = sim.totalInvestmentHT || sim.resteACharge || 13500;
   const annualGain = isSechoir ? (sim.gainNetAnnuel || sim.deltaEBE || 12921) : (sim.annualBenefitYear1 || sim.annualRevenueReventeTotale || sim.annualRevenue || 1800);
   const inflation = isSechoir ? 0.02 : 0.035;
@@ -132,7 +132,7 @@ const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
   ctx.fillStyle = '#64748b';
   ctx.font = '11px Arial';
   ctx.textAlign = 'center';
-  const xLabels = isSechoir ? [1, 5, 10, 15, 20] : [1, 5, 10, 15, 20, 25, 30];
+  const xLabels = isSechoir ? [1, 5, 10, 15, 20, 25] : [1, 5, 10, 15, 20, 25, 30];
   xLabels.forEach(yr => {
     ctx.fillText(`An ${yr}`, getX(yr), height - 12);
   });
@@ -552,7 +552,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                   <div style="font-size: 7.5pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
                 </div>
               `}
-              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">Orientation : ${sim.orientationLabel || 'Sud'}</div>
+              <div style="position: absolute; bottom: 6px; right: 6px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 6.8pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">Orientation : ${sim.orientationLabel || 'Sud'}</div>
             </div>
           </div>
         ` : isStruct ? `
@@ -644,7 +644,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT -->
         <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
           <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
-            ${isSechoir ? 'Projection Financière des Gains Cumulés (20 ans)' : 'Projection Financière des Gains Cumulés (30 ans)'}
+            ${isSechoir ? 'Projection Financière des Gains Cumulés (25 ans)' : 'Projection Financière des Gains Cumulés (30 ans)'}
           </div>
           <div style="height: ${isStruct && sim.buildings && sim.buildings.length > 1 ? '195px' : '225px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />

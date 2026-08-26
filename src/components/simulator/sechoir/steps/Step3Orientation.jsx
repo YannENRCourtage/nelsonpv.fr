@@ -187,43 +187,43 @@ export default function Step3Orientation() {
           
           {/* Titre & Description */}
           <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 shadow-lg">
-            <h3 className="text-xl font-black text-white flex items-center gap-2.5">
-              <Compass className="w-6 h-6 text-amber-400" />
+            <h3 className="text-2xl font-black text-white flex items-center gap-2.5">
+              <Compass className="w-7 h-7 text-amber-400" />
               Implantation Satellite
             </h3>
-            <p className="text-sm text-slate-300 mt-1.5 leading-relaxed">
+            <p className="text-base text-slate-300 mt-1.5 leading-relaxed">
               L'emprise ({currentDims.length}.0m × {currentDims.width}.0m — {surface} m²) reste au centre. Déplacez la carte ci-contre pour caler votre parcelle sous le bâtiment.
             </p>
           </div>
 
           {/* Sélecteur de bâtiment */}
           <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 shadow-lg space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+            <span className="text-sm font-bold uppercase tracking-wider text-slate-400 block">
               BÂTIMENTS (1)
             </span>
-            <div className="w-full bg-blue-600/30 border border-blue-400/60 text-blue-200 font-bold px-3.5 py-2.5 rounded-xl text-sm flex items-center justify-between shadow-inner">
+            <div className="w-full bg-blue-600/30 border border-blue-400/60 text-blue-200 font-bold px-4 py-3 rounded-xl text-base flex items-center justify-between shadow-inner">
               <span className="flex items-center gap-2">
                 <Building className="w-5 h-5 text-amber-400" />
                 Bâtiment 1 ({model.name})
               </span>
-              <span className="text-xs bg-blue-500/20 px-2.5 py-0.5 rounded border border-blue-400/30 font-semibold">Actif</span>
+              <span className="text-xs bg-blue-500/20 px-2.5 py-1 rounded border border-blue-400/30 font-bold">Actif</span>
             </div>
           </div>
 
           {/* Curseur et Presets d'Orientation */}
           <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 shadow-lg space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <span className="text-base font-bold text-slate-200 flex items-center gap-2">
                 <Compass className="w-5 h-5 text-blue-400" />
                 Orientation (Bâtiment 1)
               </span>
-              <span className="text-base font-black text-blue-400 bg-blue-500/10 px-3 py-1 rounded-xl border border-blue-500/30">
+              <span className="text-lg font-black text-blue-400 bg-blue-500/10 px-3.5 py-1 rounded-xl border border-blue-500/30">
                 {rotation > 0 ? `+${rotation}°` : `${rotation}°`}
               </span>
             </div>
 
             {/* CURSEUR RANGE SLIDER */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <input
                 type="range"
                 min="-180"
@@ -231,9 +231,9 @@ export default function Step3Orientation() {
                 step="1"
                 value={rotation}
                 onChange={(e) => handleRotationChange(Number(e.target.value))}
-                className="w-full h-2.5 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                className="w-full h-3 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-blue-500"
               />
-              <div className="flex justify-between text-xs font-semibold text-slate-400">
+              <div className="flex justify-between text-sm font-semibold text-slate-400">
                 <span>-180° (Nord)</span>
                 <span>0° (Sud)</span>
                 <span>+180° (Nord)</span>
@@ -244,7 +244,7 @@ export default function Step3Orientation() {
             <button
               type="button"
               onClick={() => setPresetAngle(0)}
-              className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all border ${
+              className={`w-full py-3 rounded-xl text-base font-bold transition-all border ${
                 rotation === 0
                   ? 'bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-600/30'
                   : 'bg-slate-900/80 text-slate-300 border-slate-700 hover:bg-slate-700/70 hover:text-white'
@@ -267,7 +267,7 @@ export default function Step3Orientation() {
                   key={item.label}
                   type="button"
                   onClick={() => setPresetAngle(item.angle)}
-                  className={`py-2 px-1.5 rounded-xl text-xs font-bold transition-all border truncate ${
+                  className={`py-2.5 px-2 rounded-xl text-sm font-bold transition-all border truncate ${
                     rotation === item.angle
                       ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
                       : 'bg-slate-900/60 text-slate-400 border-slate-700/80 hover:bg-slate-800 hover:text-slate-200'
@@ -280,11 +280,11 @@ export default function Step3Orientation() {
           </div>
 
           {/* SPÉCIFICATIONS GLOBALES */}
-          <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 shadow-lg space-y-2.5 text-sm">
-            <span className="font-bold uppercase tracking-wider text-slate-400 block text-xs">
+          <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 shadow-lg space-y-3 text-base">
+            <span className="font-bold uppercase tracking-wider text-slate-400 block text-sm">
               SPÉCIFICATIONS GLOBALES (1 BÂT.) :
             </span>
-            <div className="space-y-2 text-slate-300">
+            <div className="space-y-2.5 text-slate-300 text-base">
               <div className="flex justify-between">
                 <span>Bâtiment 1 ({model.name}) :</span>
                 <span className="font-bold text-white">{currentDims.length}.0m × {currentDims.width}.0m ({surface} m²)</span>
@@ -306,7 +306,7 @@ export default function Step3Orientation() {
           <div className="relative w-full h-[480px] sm:h-[560px] rounded-3xl overflow-hidden shadow-2xl border border-slate-700 bg-slate-950 isolate">
             
             {/* Encart guide flottant */}
-            <div className="absolute top-4 left-20 right-4 z-[1100] bg-slate-900/85 backdrop-blur-md text-white text-sm font-bold px-4 py-2.5 rounded-2xl border border-white/20 shadow-md text-center pointer-events-none">
+            <div className="absolute top-4 left-20 right-4 z-[1100] bg-slate-900/85 backdrop-blur-md text-white text-base font-bold px-4 py-2.5 rounded-2xl border border-white/20 shadow-md text-center pointer-events-none">
               + Glissez la carte pour ajuster l'emplacement de votre parcelle sous les bâtiments
             </div>
 
@@ -340,10 +340,10 @@ export default function Step3Orientation() {
           </div>
 
           {/* Badge adresse sous le bâtiment */}
-          <div className="bg-emerald-950/70 border border-emerald-500/30 rounded-2xl p-3.5 flex items-center gap-2.5 text-sm text-emerald-300 shadow-md">
-            <MapPin className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span className="font-bold uppercase text-xs text-emerald-400">Adresse actuelle sous le bâtiment :</span>
-            <strong className="truncate text-white text-sm">{addressLabel || address || 'Parcelle sélectionnée'}</strong>
+          <div className="bg-emerald-950/70 border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-3 text-base text-emerald-300 shadow-md">
+            <MapPin className="w-6 h-6 text-emerald-400 shrink-0" />
+            <span className="font-bold uppercase text-sm text-emerald-400">Adresse actuelle sous le bâtiment :</span>
+            <strong className="truncate text-white text-base">{addressLabel || address || 'Parcelle sélectionnée'}</strong>
           </div>
         </div>
 

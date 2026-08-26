@@ -181,11 +181,11 @@ export default function Step1Location() {
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 shadow-lg space-y-4">
             <div className="space-y-1">
-              <h2 className="text-xl font-black text-white flex items-center gap-2.5">
+              <h2 className="text-2xl font-black text-white flex items-center gap-2.5">
                 <MapPin className="text-amber-400 w-6 h-6 shrink-0" />
                 Localisation &amp; Implantation
               </h2>
-              <p className="text-xs text-slate-300">
+              <p className="text-sm text-slate-300">
                 Renseignez l'adresse du projet pour déterminer les zones climatiques et le productible.
               </p>
             </div>
@@ -199,17 +199,17 @@ export default function Step1Location() {
                   onChange={handleInputChange}
                   onFocus={() => { if (isUserTypingRef.current && results.length > 0) setShowDropdown(true); }}
                   placeholder="Saisissez une adresse ou commune..."
-                  className="w-full bg-slate-900/90 border border-slate-700 rounded-2xl py-3 pl-11 pr-10 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm font-medium shadow-inner"
+                  className="w-full bg-slate-900/90 border border-slate-700 rounded-2xl py-3.5 pl-12 pr-11 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 text-base font-medium shadow-inner"
                 />
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                  {isSearching ? <Loader2 className="w-4 h-4 animate-spin text-amber-400" /> : <Search className="w-4 h-4" />}
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  {isSearching ? <Loader2 className="w-5 h-5 animate-spin text-amber-400" /> : <Search className="w-5 h-5" />}
                 </div>
 
                 {query && (
                   <button
                     type="button"
                     onClick={handleClear}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
                     title="Effacer l'adresse"
                   >
                     <X className="w-4 h-4" />
@@ -232,10 +232,10 @@ export default function Step1Location() {
                         onClick={() => handleSelectAddress(feature)}
                         className="px-4 py-3 hover:bg-slate-800/90 cursor-pointer flex items-start gap-3 transition-colors text-left"
                       >
-                        <MapPinned className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <MapPinned className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-slate-100 font-bold text-sm truncate">{feature.properties.name || feature.properties.label}</div>
-                          <div className="text-xs text-slate-400">
+                          <div className="text-slate-100 font-bold text-base truncate">{feature.properties.name || feature.properties.label}</div>
+                          <div className="text-sm text-slate-300">
                             {feature.properties.postcode} {feature.properties.city}
                           </div>
                         </div>
@@ -249,29 +249,29 @@ export default function Step1Location() {
             {/* 4 Badges géographiques : Région, Zone CEE, Séchage, Fiche CEE */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
               <div className="bg-slate-900/80 border border-purple-500/30 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center shadow-inner">
-                <span className="text-lg" role="img" aria-label="Région">🏛️</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Région</span>
-                <span className="text-[11px] font-black text-purple-300 leading-tight mt-0.5" title={regionName}>
+                <span className="text-xl" role="img" aria-label="Région">🏛️</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Région</span>
+                <span className="text-sm font-black text-purple-300 leading-tight mt-0.5" title={regionName}>
                   {regionName}
                 </span>
               </div>
 
               <div className="bg-slate-900/80 border border-blue-500/30 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center shadow-inner">
-                <span className="text-lg" role="img" aria-label="Montagne">🏔️</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Zone CEE</span>
-                <span className="text-sm font-black text-blue-400 mt-0.5">{zoneClimatique || 'H1'}</span>
+                <span className="text-xl" role="img" aria-label="Montagne">🏔️</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Zone CEE</span>
+                <span className="text-base font-black text-blue-400 mt-0.5">{zoneClimatique || 'H1'}</span>
               </div>
 
               <div className="bg-slate-900/80 border border-amber-500/30 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center shadow-inner">
-                <span className="text-lg" role="img" aria-label="Blé">🌾</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Séchage</span>
-                <span className="text-sm font-black text-amber-400 mt-0.5">Zone {zoneSechage || 1}</span>
+                <span className="text-xl" role="img" aria-label="Blé">🌾</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Séchage</span>
+                <span className="text-base font-black text-amber-400 mt-0.5">Zone {zoneSechage || 1}</span>
               </div>
 
               <div className="bg-slate-900/80 border border-emerald-500/30 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center shadow-inner">
-                <span className="text-lg" role="img" aria-label="Fiche CEE">📋</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Fiche CEE</span>
-                <span className="text-[10px] font-black text-emerald-400 mt-0.5">AGRI-EQ-110</span>
+                <span className="text-xl" role="img" aria-label="Fiche CEE">📋</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Fiche CEE</span>
+                <span className="text-xs font-black text-emerald-400 mt-0.5">AGRI-EQ-110</span>
               </div>
             </div>
           </div>
@@ -281,11 +281,11 @@ export default function Step1Location() {
         <div className="lg:col-span-7 space-y-4">
           <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 shadow-lg space-y-3">
             <div className="space-y-1">
-              <h2 className="text-xl font-black text-white flex items-center gap-2.5">
+              <h2 className="text-2xl font-black text-white flex items-center gap-2.5">
                 <Building2 className="text-amber-400 w-6 h-6 shrink-0" />
                 Modèle BatiTech®
               </h2>
-              <p className="text-xs text-slate-300">
+              <p className="text-sm text-slate-300">
                 Sélectionnez la configuration de séchoir adaptée à votre exploitation.
               </p>
             </div>
@@ -310,20 +310,20 @@ export default function Step1Location() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-black bg-amber-500/20 text-amber-400 rounded-lg border border-amber-500/30 uppercase tracking-wider">
+                          <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-black bg-amber-500/20 text-amber-400 rounded-lg border border-amber-500/30 uppercase tracking-wider">
                             {model.zones} {model.zones > 1 ? 'zones' : 'zone'}
                           </span>
-                          <h3 className="text-base font-black text-white">{model.name}</h3>
+                          <h3 className="text-lg font-black text-white">{model.name}</h3>
                         </div>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <p className="text-sm text-slate-300 mt-1">
                           {model.description}
                         </p>
                       </div>
 
                       <div className="text-right flex items-center gap-2.5 shrink-0">
                         <div>
-                          <span className="text-[11px] text-slate-400 uppercase font-semibold block">Investissement</span>
-                          <span className="text-base font-black text-white">{formatCurrency(model.investissementBrut)} HT</span>
+                          <span className="text-xs text-slate-400 uppercase font-semibold block">Investissement</span>
+                          <span className="text-lg font-black text-white">{formatCurrency(model.investissementBrut)} HT</span>
                         </div>
                         {isSelected ? (
                           <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0" />
@@ -334,18 +334,18 @@ export default function Step1Location() {
                     </div>
 
                     {/* Données techniques en ligne */}
-                    <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-slate-800 text-xs text-slate-300">
+                    <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-slate-800 text-sm text-slate-300">
                       <div>
-                        <span className="text-slate-500 font-medium block text-[11px]">Puissance</span>
-                        <span className="font-bold text-white">{pKwc.toFixed(2)} kWc</span>
+                        <span className="text-slate-400 font-medium block text-xs">Puissance</span>
+                        <span className="font-bold text-white text-sm">{pKwc.toFixed(2)} kWc</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 font-medium block text-[11px]">Modules</span>
-                        <span className="font-bold text-white">{model.nbModules} Cogen'Air®</span>
+                        <span className="text-slate-400 font-medium block text-xs">Modules</span>
+                        <span className="font-bold text-white text-sm">{model.nbModules} Cogen'Air®</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 font-medium block text-[11px]">Dimensions</span>
-                        <span className="font-bold text-amber-400">{model.dimensions}</span>
+                        <span className="text-slate-400 font-medium block text-xs">Dimensions</span>
+                        <span className="font-bold text-amber-400 text-sm">{model.dimensions}</span>
                       </div>
                     </div>
                   </div>

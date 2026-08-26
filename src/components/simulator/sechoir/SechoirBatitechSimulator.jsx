@@ -226,13 +226,13 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center">
-              <Leaf className="w-6 h-6 text-amber-400" />
+              <Leaf className="w-7 h-7 text-amber-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 Séchoir BatiTech<sup className="text-amber-400 text-sm">®</sup>
               </h1>
-              <p className="text-sm text-slate-400 font-medium">
+              <p className="text-base text-slate-300 font-medium">
                 Simulateur de rentabilité — Séchoir solaire thermovoltaïque Cogen'Air®
               </p>
             </div>
@@ -244,13 +244,13 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
             <button
               onClick={handlePrev}
               disabled={currentStep === 1}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-sm sm:text-base font-bold transition-all ${
                 currentStep === 1
                   ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed border border-slate-800/40'
                   : 'bg-slate-800/80 text-slate-200 hover:bg-slate-700 hover:text-white border border-slate-700 shadow-sm'
               }`}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-5 h-5" />
               Précédent
             </button>
 
@@ -259,14 +259,14 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
               <button
                 onClick={handleNext}
                 disabled={!canProceed}
-                className={`flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all ${
+                className={`flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm sm:text-base font-black transition-all ${
                   canProceed
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 shadow-md shadow-amber-500/20 hover:scale-105'
                     : 'bg-slate-800/30 text-slate-600 cursor-not-allowed border border-slate-800/40'
                 }`}
               >
                 Suivant
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             )}
 
@@ -276,7 +276,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
               className="p-2.5 rounded-2xl bg-slate-800/60 hover:bg-slate-700/80 text-slate-400 hover:text-white border border-slate-700 transition-all"
               title="Réinitialiser la simulation"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -304,7 +304,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
                 <button
                   onClick={() => handleStepClick(step.id)}
                   disabled={!isReachable}
-                  className={`flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-2xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                  className={`flex items-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-2xl text-base font-bold transition-all duration-300 whitespace-nowrap ${
                     isActive
                       ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40 shadow-lg shadow-amber-500/10'
                       : isCompleted
@@ -315,9 +315,9 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
                   }`}
                 >
                   {isCompleted ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                   ) : (
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-400' : ''}`} />
+                    <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-amber-400' : ''}`} />
                   )}
                   <span className="hidden sm:inline">{step.label}</span>
                   <span className="inline sm:hidden">{step.shortLabel}</span>

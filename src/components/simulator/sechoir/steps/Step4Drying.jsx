@@ -35,10 +35,10 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
               <span>{material.icon || '🌿'}</span>
             </div>
             <div className="min-w-0">
-              <span className={`font-black text-sm sm:text-base block truncate ${material.enabled ? 'text-white' : 'text-slate-300'}`} title={material.label}>
+              <span className={`font-black text-base sm:text-lg block truncate ${material.enabled ? 'text-white' : 'text-slate-300'}`} title={material.label}>
                 {material.shortLabel || material.label}
               </span>
-              <span className="text-xs text-slate-400 block truncate font-medium">{material.unit}</span>
+              <span className="text-sm text-slate-300 block truncate font-medium">{material.unit}</span>
             </div>
           </div>
           
@@ -55,7 +55,7 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
         </div>
 
         {/* Description */}
-        <p className="text-xs text-slate-300 line-clamp-2 min-h-[34px] leading-relaxed">
+        <p className="text-sm text-slate-300 line-clamp-2 min-h-[38px] leading-relaxed">
           {material.description || material.label}
         </p>
       </div>
@@ -67,9 +67,9 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
             <button 
               type="button"
               onClick={(e) => { e.stopPropagation(); onChangeVolume(Math.max(0, vol - 10)); }}
-              className="w-7 h-7 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0"
+              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0"
             >
-              <Minus className="w-3.5 h-3.5" />
+              <Minus className="w-4 h-4" />
             </button>
             <input 
               type="number"
@@ -79,21 +79,21 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
               onChange={(e) => onChangeVolume(Math.max(0, Number(e.target.value) || 0))}
               placeholder="0"
               onClick={(e) => e.stopPropagation()}
-              className="w-20 text-center font-black bg-transparent text-white focus:outline-none text-sm"
+              className="w-20 text-center font-black bg-transparent text-white focus:outline-none text-base"
             />
             <button 
               type="button"
               onClick={(e) => { e.stopPropagation(); onChangeVolume(vol + 10); }}
-              className="w-7 h-7 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0"
+              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
             </button>
           </div>
 
           {/* Badge gain temps réel */}
-          <div className="bg-emerald-950/80 border border-emerald-500/40 rounded-2xl p-2 text-center shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Gain estimé</span>
-            <strong className="text-sm font-black text-emerald-300">+{fmt(totalMatiere)} €/an</strong>
+          <div className="bg-emerald-950/80 border border-emerald-500/40 rounded-2xl p-2.5 text-center shadow-sm">
+            <span className="text-xs uppercase font-bold text-emerald-400 block tracking-wider">Gain estimé</span>
+            <strong className="text-base font-black text-emerald-300">+{fmt(totalMatiere)} €/an</strong>
           </div>
 
           {/* Paramètres avancés ajustables */}
@@ -101,10 +101,10 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
             <button 
               type="button"
               onClick={(e) => { e.stopPropagation(); setExpandedSettings(!expandedSettings); }}
-              className="flex items-center justify-between w-full text-xs font-bold text-slate-400 hover:text-white transition-colors"
+              className="flex items-center justify-between w-full text-sm font-bold text-slate-400 hover:text-white transition-colors"
             >
               <span>Ajuster barèmes</span>
-              {expandedSettings ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {expandedSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             
             <AnimatePresence>
@@ -115,7 +115,7 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="space-y-2 pt-2.5 text-xs bg-slate-900/90 p-2.5 rounded-2xl border border-slate-800 mt-1.5">
+                  <div className="space-y-2 pt-2.5 text-sm bg-slate-900/90 p-3 rounded-2xl border border-slate-800 mt-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-slate-300">Qualité (€/t)</span>
                       <input 
@@ -123,7 +123,7 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
                         value={material.plusValueQualite}
                         onChange={(e) => onChangeParams({ plusValueQualite: Number(e.target.value) || 0 })}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-14 text-right bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-white font-bold"
+                        className="w-16 text-right bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-sm"
                       />
                     </div>
                     <div className="flex justify-between items-center">
@@ -133,7 +133,7 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
                         value={material.economieEnergie}
                         onChange={(e) => onChangeParams({ economieEnergie: Number(e.target.value) || 0 })}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-14 text-right bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-white font-bold"
+                        className="w-16 text-right bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-sm"
                       />
                     </div>
                   </div>
@@ -144,7 +144,7 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
         </div>
       ) : (
         <div className="mt-3 pt-2.5 border-t border-slate-700/40 text-center">
-          <span className="text-xs text-slate-400 italic">Cliquer pour activer</span>
+          <span className="text-sm text-slate-400 italic">Cliquer pour activer</span>
         </div>
       )}
     </div>
@@ -172,10 +172,10 @@ export default function Step4Drying() {
       className="space-y-6 relative"
     >
       <div className="flex items-center space-x-3 text-emerald-400">
-        <Leaf className="w-8 h-8 shrink-0" />
+        <Leaf className="w-9 h-9 shrink-0" />
         <div>
-          <h2 className="text-2xl font-black text-white">Besoins en Séchage & Valorisation</h2>
-          <p className="text-base text-slate-300">
+          <h2 className="text-3xl font-black text-white">Besoins en Séchage &amp; Valorisation</h2>
+          <p className="text-lg text-slate-300">
             Activez et configurez vos besoins de séchage parmi les 5 filières pour estimer vos gains d'exploitation.
           </p>
         </div>
@@ -197,21 +197,21 @@ export default function Step4Drying() {
       {/* SYNTHÈSE STICKY EN BAS */}
       <div className="fixed bottom-0 left-0 right-0 sm:sticky bg-slate-900/95 backdrop-blur-md border-t border-slate-700 p-5 sm:rounded-3xl sm:border sm:bg-slate-800/90 shadow-2xl z-20">
         <div className="flex items-center justify-between mb-2.5">
-          <h3 className="text-base font-black text-white flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-400" />
-            Valorisation Agricole & Chaleur Solaire Totale
+          <h3 className="text-lg font-black text-white flex items-center gap-2">
+            <Sparkles className="w-6 h-6 text-amber-400" />
+            Valorisation Agricole &amp; Chaleur Solaire Totale
           </h3>
-          <span className="text-sm text-emerald-400 font-bold">
+          <span className="text-base text-emerald-400 font-bold">
             {activeMaterials.length} filière(s) active(s)
           </span>
         </div>
 
         {activeMaterials.length > 0 ? (
-          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3.5 text-sm text-slate-300">
+          <div className="flex flex-wrap gap-x-4 gap-y-2 mb-3.5 text-base text-slate-200">
             {activeMaterials.map(m => {
               const subtotal = Number(m.volume || 0) * ((Number(m.plusValueQualite) || 0) + (Number(m.economieEnergie) || 0));
               return (
-                <span key={m.id} className="bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
+                <span key={m.id} className="bg-slate-900/80 px-3.5 py-1.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
                   <span>{m.shortLabel || m.label} ({m.volume} {m.unit}):</span>
                   <strong className="text-emerald-400 font-bold">+{fmt(subtotal)} €/an</strong>
                 </span>
@@ -219,14 +219,14 @@ export default function Step4Drying() {
             })}
           </div>
         ) : (
-          <p className="text-sm text-slate-400 mb-3.5 italic">
+          <p className="text-base text-slate-400 mb-3.5 italic">
             Activez au moins une filière ci-dessus et indiquez votre tonnage pour calculer les économies.
           </p>
         )}
 
         <div className="flex justify-between items-center pt-3 border-t border-slate-700">
-          <span className="font-black text-base text-white">Gain Annuel Total (Delta Produits)</span>
-          <span className="text-2xl sm:text-3xl font-black text-amber-400">+{fmt(totalDeltaProduits)} €/an</span>
+          <span className="font-black text-lg text-white">Gain Annuel Total (Delta Produits)</span>
+          <span className="text-3xl sm:text-4xl font-black text-amber-400">+{fmt(totalDeltaProduits)} €/an</span>
         </div>
       </div>
     </motion.div>
