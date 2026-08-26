@@ -263,6 +263,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [showRoofModal, setShowRoofModal] = useState(false);
   const [showBatteryModal, setShowBatteryModal] = useState(false);
   const isSwitchingBuildingRef = React.useRef(false);
+  const lastActiveBuildingIdxRef = React.useRef(0);
 
   const [editedProject, setEditedProject] = useState(project || {});
   const [captures, setCaptures] = useState(project?.urbanisme_captures || {});
@@ -298,7 +299,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     
     // Bâtiment / Ombrière 1
     const b1 = buildings[0] || {};
-    const longueur1 = Number(b1.length || config.length || 37.5);
+    const longueur1 = Number(b1.length || (b1.bayCount ? b1.bayCount * (b1.baySpacing || 7.5) : (config.length || 37.5)));
     const largeur1 = Number(b1.width || config.width || 16.4);
     const totalSurface1 = (largeur1 * longueur1).toFixed(2);
     const b1Type = b1.buildingType || config.buildingType || 'asymetrique_1';
@@ -306,11 +307,11 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const isB1Asym = b1Type.startsWith('asym');
     const isB1Sym = b1Type.startsWith('sym');
     const b1RoofLabel = isB1Ombriere ? 'monopente (10°)' : isB1Asym ? 'double pente asymétrique (15°)' : isB1Sym ? 'double pente symétrique (10°)' : 'photovoltaïque';
-    const b1Eave = Number(b1.eaveHeight || config.eaveHeight || (b1Type.startsWith('asym') ? 4.0 : 5.5));
-    const b1Pitch = Number(b1.roofPitch || config.roofPitch || (b1Type.startsWith('asym') ? 15 : 10));
-    const b1Bays = Number(b1.bayCount || config.bayCount || 5);
-    const b1Spacing = Number(b1.baySpacing || config.baySpacing || 7.5);
-    const b1Auvent = Boolean(b1.rightSide === 'auvent' || b1.leftSide === 'auvent' || config.rightSide === 'auvent' || config.leftSide === 'auvent');
+    const b1Eave = Number(b1.eaveHeight || (b1Type.startsWith('asym') ? 4.0 : (b1Type === 'ombriere_pl' ? 5.08 : (isB1Ombriere ? 3.0 : 5.5))));
+    const b1Pitch = Number(b1.roofPitch || (b1Type.startsWith('asym') ? 15 : 10));
+    const b1Bays = Number(b1.bayCount || 5);
+    const b1Spacing = Number(b1.baySpacing || 7.5);
+    const b1Auvent = Boolean(b1.rightSide === 'auvent' || b1.leftSide === 'auvent');
     
     const rawKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || project?.kwc || project?.puissance || project?.projectSize;
     const isValidKwc = rawKwc !== undefined && rawKwc !== null && rawKwc !== '' && rawKwc !== '0' && !isNaN(Number(rawKwc)) && Number(rawKwc) > 0;
@@ -321,27 +322,27 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const hasMultiBuildings = secondaryBuildings.length > 0;
 
     let batimentDesc = isDP
-      ? `Le projet a pour objet l'implantation d'une ombrière photovoltaïque${hasMultiBuildings ? ' (Ombrière 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${b1Pitch}°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`
+      ? `Le projet a pour objet l'implantation d'une ombrière photovoltaïque${hasMultiBuildings ? ' (Ombrière 1)' : ''} de dimensions ${longueur1.toFixed(2)}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${b1Pitch}°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`
       : (isB1Ombriere
-        ? `Le projet a pour objet l'implantation d'une ombrière photovoltaïque${hasMultiBuildings ? ' (Bâtiment 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à 10°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire.`
-        : `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur1}m, largeur : ${largeur1.toFixed(2)}m${b1Auvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${b1Eave.toFixed(2)}m) en structure métallique (RAL 7016 / 7005), composé de ${b1Bays} travées de ${b1Spacing}m d'entraxe. La toiture sera constituée d'une couverture ${b1RoofLabel} avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`);
+        ? `Le projet a pour objet l'implantation d'une ombrière photovoltaïque${hasMultiBuildings ? ' (Bâtiment 1)' : ''} de dimensions ${longueur1.toFixed(2)}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à 10°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire.`
+        : `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur1.toFixed(2)}m, largeur : ${largeur1.toFixed(2)}m${b1Auvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${b1Eave.toFixed(2)}m) en structure métallique (RAL 7016 / 7005), composé de ${b1Bays} travées de ${b1Spacing}m d'entraxe. La toiture sera constituée d'une couverture ${b1RoofLabel} avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`);
 
     if (hasMultiBuildings) {
       secondaryBuildings.forEach((b, idx) => {
         const bW = Number(b.width || 16.4);
-        const bL = Number(b.length || 37.5);
+        const bL = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : 37.5));
         const bSurface = (bW * bL).toFixed(2);
-        const bType = (b.buildingType || 'asymetrique_1').toLowerCase();
+        const bType = (b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1')).toLowerCase();
         const isOmb = isDP || bType.includes('ombriere');
         const bAuvent = b.rightSide === 'auvent' || b.leftSide === 'auvent';
-        const bEave = Number(b.eaveHeight || (isDP ? 3.0 : 4.0));
-        const bPitch = Number(b.roofPitch || 10);
+        const bEave = Number(b.eaveHeight || (bType.startsWith('asym') ? 4.0 : (bType === 'ombriere_pl' ? 5.08 : (isOmb ? 3.0 : 5.5))));
+        const bPitch = Number(b.roofPitch || (bType.startsWith('asym') ? 15 : 10));
         const displayName = getBuildingDisplayName(b, idx + 1);
 
         if (isOmb) {
-          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque (${displayName}) de dimensions ${bL}m × ${bW.toFixed(2)}m (surface couverte : ${bSurface} m²) à structure métallique en Y/V avec toiture monopente inclinée à ${bPitch}°.`;
+          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque (${displayName}) de dimensions ${bL.toFixed(2)}m × ${bW.toFixed(2)}m (surface couverte : ${bSurface} m²) à structure métallique en Y/V avec toiture monopente inclinée à ${bPitch}°.`;
         } else {
-          batimentDesc += `\nIl comprend également la construction d'un second bâtiment (${displayName}) de dimensions ${bL}m × ${bW.toFixed(2)}m${bAuvent ? ' (+ Auvent)' : ''} d'une emprise au sol de ${bSurface} m² (hauteur sablière : ${bEave.toFixed(2)}m, pente : ${bPitch}°) en structure métallique similaire.`;
+          batimentDesc += `\nIl comprend également la construction d'un second bâtiment (${displayName}) de dimensions ${bL.toFixed(2)}m × ${bW.toFixed(2)}m${bAuvent ? ' (+ Auvent)' : ''} d'une emprise au sol de ${bSurface} m² (hauteur sablière : ${bEave.toFixed(2)}m, pente : ${bPitch}°) en structure métallique similaire.`;
         }
       });
     }
@@ -356,7 +357,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
     let totalGlobalSurface = parseFloat(totalSurface1);
     secondaryBuildings.forEach(b => {
-      totalGlobalSurface += (Number(b.width || 20) * Number(b.length || 25));
+      const bW = Number(b.width || 16.4);
+      const bL = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : 37.5));
+      totalGlobalSurface += (bW * bL);
     });
 
     const totalBuildingCount = buildings.length;
@@ -717,8 +720,16 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
 
   // Synchronisation continue des valeurs du configurateur vers le projet (sans écraser le kWc du client)
   useEffect(() => {
+    // Ne synchroniser QUE lors de l'étape 2 (Cotations & Côtes)
+    if (step !== 2) return;
     if (isSwitchingBuildingRef.current) return;
     if (!config || !buildings[activeBuildingIndex]) return;
+
+    // Si l'index actif vient de changer, ne pas écraser avec l'ancien config du store
+    if (lastActiveBuildingIdxRef.current !== activeBuildingIndex) {
+      lastActiveBuildingIdxRef.current = activeBuildingIndex;
+      return;
+    }
 
     const isOmbriere = (config.buildingType || '').startsWith('ombriere');
     const category = isOmbriere ? 'ombriere' : 'batiment_solaire';
@@ -785,7 +796,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
         puissance: clientKwc,
       };
     });
-  }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, config.bayCount, config.baySpacing, activeBuildingIndex]);
+  }, [step, config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, config.bayCount, config.baySpacing, activeBuildingIndex]);
 
   // Mise à jour automatique de la notice selon les paramètres actuels et le nombre réel de bâtiments
   useEffect(() => {
@@ -1062,28 +1073,23 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
 
     const effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
 
-    // Mettre à jour la liste des bâtiments SANS écraser leurs photos et captures individuelles
-    const updatedBuildings = buildings.map((b, idx) => {
-      if (idx === activeBuildingIndex) {
-        return {
-          ...b,
-          length: config.length,
-          width: config.width,
-          eaveHeight: config.eaveHeight,
-          roofPitch: config.roofPitch,
-          buildingType: config.buildingType,
-          leftSide: config.leftSide,
-          rightSide: config.rightSide,
-          leftWidth: config.leftWidth,
-          rightWidth: config.rightWidth,
-          bayCount: config.bayCount,
-          baySpacing: config.baySpacing,
-          captures: { ...(b.captures || {}) },
-          photos: { ...(b.photos || {}) },
-        };
-      }
-      return b;
-    });
+    // Conserver fidèlement chaque bâtiment avec ses propres dimensions et paramètres
+    const updatedBuildings = buildings.map((b, idx) => ({
+      ...b,
+      length: Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : 37.5)),
+      width: Number(b.width || 16.4),
+      eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : (isDP ? 3.0 : 4.0)),
+      roofPitch: Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : 10),
+      buildingType: b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1'),
+      leftSide: b.leftSide || 'none',
+      rightSide: b.rightSide || 'none',
+      leftWidth: b.leftWidth !== undefined ? Number(b.leftWidth) : 0,
+      rightWidth: b.rightWidth !== undefined ? Number(b.rightWidth) : 0,
+      bayCount: Number(b.bayCount || 5),
+      baySpacing: Number(b.baySpacing || 7.5),
+      captures: { ...(b.captures || {}) },
+      photos: { ...(b.photos || {}) },
+    }));
 
     const isMultiOrOmbriere = updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere'));
     const finalTypeLabel = isDP
@@ -1721,7 +1727,15 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                     <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col justify-between min-h-[340px]">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-indigo-600" /> {isDP ? "DP6 — Insertion Paysagère 3D" : "PC6 — Insertion Paysagère 3D"} ({config.width}m × {config.length}m)
+                          {(() => {
+                            const curW = Number(b.width || config.width || 16.4);
+                            const curL = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config.length || 37.5)));
+                            return (
+                              <>
+                                <Sparkles className="w-4 h-4 text-indigo-600" /> {isDP ? "DP6 — Insertion Paysagère 3D" : "PC6 — Insertion Paysagère 3D"} ({curW.toFixed(1)}m × {curL.toFixed(1)}m)
+                              </>
+                            );
+                          })()}
                         </span>
                         {currentPhotos?.apres ? (
                           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Simulation Prête</span>
@@ -1957,7 +1971,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                           <button
                             key={b.id || idx}
                             type="button"
-                            onClick={() => setActiveBuildingIndex(idx)}
+                            onClick={() => handleSelectBuilding(idx)}
                             className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                               activeBuildingIndex === idx ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'
                             }`}
@@ -1974,7 +1988,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                     const b = buildings[bIdx] || buildings[0] || {};
                     const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || editedProject?.lat || 43.5612);
                     const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || editedProject?.lng || 0.9168);
-                    const bLength = Number(b.length || config.length || 30);
+                    const bLength = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config.length || 30)));
                     const bWidth = Number(b.width || config.width || 20);
                     const currentRotation = Number(b.rotation || 0);
 
