@@ -283,5 +283,5 @@ export const DEFAULT_FINANCIAL_PARAMS = {
   dureeVieProjet: 20,        // ans (pour VAN & TRI)
   dureeSimulation: 25,       // ans (pour le graphique trésorerie)
   tauxActualisation: 0.034,  // pour la VAN (aligné sur taux moyen pondéré des emprunts)
-  venteElectricitePV: 4000,  // €/an revente surplus EDF OA (estimée)
+  venteElectricitePV: 0,     // Retiré selon demande utilisateur
 };

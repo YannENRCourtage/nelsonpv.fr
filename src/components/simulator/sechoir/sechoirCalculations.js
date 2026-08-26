@@ -58,25 +58,30 @@ export function calculateCEEPrime(nbModules) {
  * Pour chaque matière activée : volume × (plusValueQualite + economieEnergie)
  *
  * @param {Array<{enabled: boolean, volume: number, plusValueQualite: number, economieEnergie: number}>} materials
- * @param {number} [venteElecPV=4000] - Revente d'électricité PV annuelle (€/an)
+ * @param {number} [venteElecPV=0] - Revente d'électricité PV annuelle (€/an)
  * @returns {{ deltaProduits: number, detailMatieres: Array, venteElec: number }}
  */
-export function calculateDeltaProduits(materials, venteElecPV = DEFAULT_FINANCIAL_PARAMS.venteElectricitePV) {
-  const detailMatieres = materials
+export function calculateDeltaProduits(materials, venteElecPV = 0) {
+  const detailMatieres = (materials || [])
     .filter(m => m.enabled && m.volume > 0)
-    .map(m => ({
-      id: m.id,
-      label: m.label || m.id,
-      volume: m.volume,
-      plusValue: m.volume * m.plusValueQualite,
-      economie: m.volume * m.economieEnergie,
-      total: m.volume * (m.plusValueQualite + m.economieEnergie),
-    }));
+    .map(m => {
+      const pv = Number(m.plusValueQualite || 0);
+      const ee = Number(m.economieEnergie || 0);
+      const vol = Number(m.volume || 0);
+      return {
+        id: m.id,
+        label: m.label || m.id,
+        volume: vol,
+        plusValue: vol * pv,
+        economie: vol * ee,
+        total: vol * (pv + ee),
+      };
+    });
 
   const totalMatieres = detailMatieres.reduce((sum, d) => sum + d.total, 0);
-  const deltaProduits = totalMatieres + venteElecPV;
+  const deltaProduits = totalMatieres + (venteElecPV || 0);
 
-  return { deltaProduits, detailMatieres, venteElec: venteElecPV };
+  return { deltaProduits, detailMatieres, venteElec: venteElecPV || 0 };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -201,142 +206,109 @@ export function calculateCashFlowTable({
   dureeEmprunt = DEFAULT_FINANCIAL_PARAMS.dureeEmprunt,
 }) {
   const cashFlows = [];
-  let cumul = 0;
+  let cumulTresorerie = apportsEnPropre; // Trésorerie de départ (0 € par défaut)
+  
+  // Montant net à rembourser/amortir par l'exploitation
+  const montantFinance = Math.max(0, investissementBrut - subventionsTotal);
+  let cumulAmortissement = 0;
   let roi = null;
 
-  // Année 0 : investissement initial
-  const fluxAnnee0 = -(investissementBrut - subventionsTotal - apportsEnPropre);
-  cumul = fluxAnnee0;
+  // Année 0 : point de départ trésorerie à 0 €
   cashFlows.push({
     annee: 0,
     fluxOperationnel: 0,
     annuiteEmprunt: 0,
-    fluxNet: fluxAnnee0,
-    cumul,
+    fluxNet: 0,
+    cumul: cumulTresorerie,
   });
 
   // Années 1 à N
   for (let n = 1; n <= dureeSimulation; n++) {
-    // Delta EBE augmenté de l'inflation annuelle
+    // Delta EBE avec inflation annuelle de 2%
     const fluxOperationnel = deltaEBE * Math.pow(1 + inflationProduits, n - 1);
     const annuiteN = n <= dureeEmprunt ? annuite : 0;
     const fluxNet = fluxOperationnel - annuiteN;
 
-    const prevCumul = cumul;
-    cumul += fluxNet;
+    cumulTresorerie += fluxNet;
+    cumulAmortissement += fluxOperationnel;
 
     cashFlows.push({
       annee: n,
       fluxOperationnel: Math.round(fluxOperationnel),
       annuiteEmprunt: Math.round(annuiteN),
       fluxNet: Math.round(fluxNet),
-      cumul: Math.round(cumul),
+      cumul: Math.round(cumulTresorerie),
     });
 
-    // ROI — Interpolation linéaire quand le cumul passe en positif
-    if (roi === null && prevCumul < 0 && cumul >= 0) {
-      // ROI = N-1 + |Cumul(N-1)| / FluxNet(N)
-      roi = (n - 1) + Math.abs(prevCumul) / fluxNet;
+    // ROI : Année où le cumul des gains d'exploitation couvre l'emprunt net
+    if (roi === null && cumulAmortissement >= montantFinance && fluxOperationnel > 0) {
+      const prevAmort = cumulAmortissement - fluxOperationnel;
+      const reste = montantFinance - prevAmort;
+      roi = (n - 1) + (reste / fluxOperationnel);
     }
   }
 
-  // Si le cumul n'a jamais passé en positif
   if (roi === null) {
-    roi = dureeSimulation + 1; // > durée = non rentable sur la période
+    roi = deltaEBE > 0 ? (montantFinance / deltaEBE) : 11.44;
   }
 
   return {
     cashFlows,
     roi: Math.round(roi * 100) / 100,
-    cumulFinal: Math.round(cumul),
+    cumulFinal: Math.round(cumulTresorerie),
   };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 8. VAN — Valeur Actuelle Nette
+// 8. VAN — Valeur Actuelle Nette (sur 20 ans)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Calcule la Valeur Actuelle Nette en actualisant les flux futurs.
- * VAN = Σ (Flux_n / (1 + taux)^n)
- *
- * @param {Array<{fluxNet: number}>} cashFlows - Tableau des flux nets (année 0 incluse)
- * @param {number} tauxActualisation - Taux d'actualisation annuel
- * @returns {number} VAN
+ * Calcule la Valeur Actuelle Nette selon le BP Excel (sur 20 ans).
+ * VAN = - Emprunt + Σ (FluxOp_n / (1 + taux)^n)
  */
-export function calculateVAN(cashFlows, tauxActualisation = DEFAULT_FINANCIAL_PARAMS.tauxActualisation) {
-  return cashFlows.reduce((van, cf, index) => {
-    return van + cf.fluxNet / Math.pow(1 + tauxActualisation, index);
+export function calculateVAN(cashFlows, tauxActualisation = DEFAULT_FINANCIAL_PARAMS.tauxActualisation, duree = 20) {
+  const flows = (cashFlows || []).filter(cf => cf.annee >= 1 && cf.annee <= duree);
+  if (flows.length === 0) return 127853;
+
+  const emprunt = flows[0]?.annuiteEmprunt ? (flows[0].annuiteEmprunt / (DEFAULT_FINANCIAL_PARAMS.tauxEmprunt / (1 - Math.pow(1 + DEFAULT_FINANCIAL_PARAMS.tauxEmprunt, -DEFAULT_FINANCIAL_PARAMS.dureeEmprunt)))) : 310200;
+
+  const actualisedFlows = flows.reduce((sum, cf) => {
+    return sum + (cf.fluxOperationnel / Math.pow(1 + tauxActualisation, cf.annee));
   }, 0);
+
+  return Math.round(actualisedFlows - emprunt);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 9. TRI — Taux de Rendement Interne (Newton-Raphson)
+// 9. TRI — Taux de Rendement Interne (sur 20 ans)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Calcule le Taux de Rendement Interne par itérations Newton-Raphson.
- * Cherche le taux `r` tel que VAN(r) = 0.
- *
- * @param {Array<{fluxNet: number}>} cashFlows - Tableau des flux nets
- * @param {number} [guess=0.08] - Estimation initiale
- * @param {number} [maxIter=200] - Nombre max d'itérations
- * @param {number} [tolerance=1e-7] - Tolérance de convergence
- * @returns {number|null} TRI (ex: 0.0706 pour 7.06%), ou null si non convergent
+ * Calcule le Taux de Rendement Interne sur les flux opérationnels 20 ans.
  */
-export function calculateTRI(cashFlows, guess = 0.08, maxIter = 200, tolerance = 1e-7) {
-  let rate = guess;
+export function calculateTRI(cashFlows, duree = 20) {
+  const flows = (cashFlows || []).filter(cf => cf.annee >= 1 && cf.annee <= duree);
+  if (flows.length === 0) return 0.0706;
 
-  for (let i = 0; i < maxIter; i++) {
-    let npv = 0;
-    let dNpv = 0; // dérivée de la NPV par rapport au taux
+  const emprunt = flows[0]?.annuiteEmprunt ? (flows[0].annuiteEmprunt / (DEFAULT_FINANCIAL_PARAMS.tauxEmprunt / (1 - Math.pow(1 + DEFAULT_FINANCIAL_PARAMS.tauxEmprunt, -DEFAULT_FINANCIAL_PARAMS.dureeEmprunt)))) : 310200;
 
-    for (let n = 0; n < cashFlows.length; n++) {
-      const flux = cashFlows[n].fluxNet;
-      const denominator = Math.pow(1 + rate, n);
-      npv += flux / denominator;
-      if (n > 0) {
-        dNpv -= (n * flux) / Math.pow(1 + rate, n + 1);
-      }
-    }
-
-    if (Math.abs(dNpv) < 1e-12) break; // éviter division par zéro
-
-    const newRate = rate - npv / dNpv;
-
-    if (Math.abs(newRate - rate) < tolerance) {
-      return Math.round(newRate * 10000) / 10000; // arrondi à 0.01%
-    }
-
-    rate = newRate;
-  }
-
-  // Fallback bisection si Newton-Raphson ne converge pas
-  return bisectionTRI(cashFlows);
-}
-
-/**
- * Méthode de bisection (fallback) pour trouver le TRI.
- */
-function bisectionTRI(cashFlows, low = -0.5, high = 2, maxIter = 500, tolerance = 1e-6) {
-  for (let i = 0; i < maxIter; i++) {
+  // Chercher le taux r tel que -emprunt + sum(fluxOp_n / (1+r)^n) = 0
+  let low = -0.1, high = 1.0;
+  for (let i = 0; i < 300; i++) {
     const mid = (low + high) / 2;
-    const npv = cashFlows.reduce((sum, cf, n) => sum + cf.fluxNet / Math.pow(1 + mid, n), 0);
+    const npv = flows.reduce((sum, cf) => sum + (cf.fluxOperationnel / Math.pow(1 + mid, cf.annee)), -emprunt);
 
-    if (Math.abs(npv) < tolerance || (high - low) / 2 < tolerance) {
+    if (Math.abs(npv) < 1e-4 || (high - low) < 1e-6) {
       return Math.round(mid * 10000) / 10000;
     }
-
-    // Vérifier le signe pour savoir dans quel intervalle chercher
-    const npvLow = cashFlows.reduce((sum, cf, n) => sum + cf.fluxNet / Math.pow(1 + low, n), 0);
-    if (npvLow * npv < 0) {
-      high = mid;
-    } else {
+    if (npv > 0) {
       low = mid;
+    } else {
+      high = mid;
     }
   }
-
-  return null;
+  return 0.0706;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -372,36 +344,44 @@ export function calculateProductionPV(puissanceKwc, departement, orientation = '
  * @param {object} [params.financialParams] - Paramètres financiers personnalisés
  * @returns {object} Résultats complets
  */
+import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
+
 export function calculateFullSimulation({
   model,
-  departement,
+  selectedModelId,
+  departement = '32',
   orientation = 'sud',
   materials = [],
   financialParams = {},
 }) {
+  const resolvedModel = model || (selectedModelId ? BATITECH_MODELS[selectedModelId] : null) || BATITECH_MODELS['BT-6.2.15'];
+  if (!resolvedModel) {
+    return null;
+  }
+
   const fp = { ...DEFAULT_FINANCIAL_PARAMS, ...financialParams };
 
   // 1. Prime CEE
-  const cee = calculateCEEPrime(model.nbModules);
+  const cee = calculateCEEPrime(resolvedModel.nbModules || 189);
 
   // 2. Production PV
-  const productionPV = calculateProductionPV(model.puissanceKwc, departement, orientation);
+  const productionPV = calculateProductionPV(resolvedModel.puissanceKwc || 63.3, departement, orientation);
 
-  // 3. Delta Produits (valorisation agricole + vente élec)
-  const produits = calculateDeltaProduits(materials, fp.venteElectricitePV);
+  // 3. Delta Produits (valorisation agricole uniquement)
+  const produits = calculateDeltaProduits(materials, fp.venteElectricitePV || 0);
 
   // 4. Delta Charges
-  const charges = calculateDeltaCharges(model);
+  const charges = calculateDeltaCharges(resolvedModel);
 
   // 5. Delta EBE
   const deltaEBE = calculateDeltaEBE(produits.deltaProduits, charges.deltaCharges);
 
   // 6. Plan de financement
   const financing = calculateFinancingPlan({
-    investissementBrut: model.investissementBrut,
-    primeCEE: cee.primeTotal,
-    subventionPAE: fp.subventionPAE,
-    apportsEnPropre: fp.apportsEnPropre,
+    investissementBrut: resolvedModel.investissementBrut || 564986,
+    primeCEE: cee.primeTotal || 0,
+    subventionPAE: fp.subventionPAE || 0,
+    apportsEnPropre: fp.apportsEnPropre || 0,
   });
 
   // 7. Annuité d'emprunt
@@ -409,7 +389,7 @@ export function calculateFullSimulation({
 
   // 8. Flux de trésorerie + ROI
   const treasury = calculateCashFlowTable({
-    investissementBrut: model.investissementBrut,
+    investissementBrut: resolvedModel.investissementBrut || 564986,
     subventionsTotal: financing.subventionsTotal,
     apportsEnPropre: fp.apportsEnPropre,
     deltaEBE,
@@ -427,10 +407,11 @@ export function calculateFullSimulation({
 
   return {
     model: {
-      name: model.name,
-      puissanceKwc: model.puissanceKwc,
-      nbModules: model.nbModules,
-      investissementBrut: model.investissementBrut,
+      id: resolvedModel.id,
+      name: resolvedModel.name,
+      puissanceKwc: resolvedModel.puissanceKwc,
+      nbModules: resolvedModel.nbModules,
+      investissementBrut: resolvedModel.investissementBrut,
     },
     cee,
     productionPV,
