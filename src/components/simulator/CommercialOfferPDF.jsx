@@ -2,6 +2,7 @@ import React from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { generateSatelliteSnapshot, generateBeforeAfterDualSnapshot } from '@/utils/satelliteSnapshot';
+import { drawSechoirChargesChart } from '@/components/simulator/sechoir/SechoirPDFGenerator.jsx';
 
 const BORNE_7_4KW_IMG = '/images/borne_irve_7_4kw.jpg';
 const BORNE_DOUBLE_IMG = '/images/borne_irve_double.jpg';
@@ -789,6 +790,106 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         
         const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
         pdf.addImage(sliceData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      }
+    }
+
+    // Si c'est un séchoir BatiTech, ajouter la page 2 : Synthèse Globale des Bénéfices d'Exploitation
+    if (isSechoir) {
+      const chargesCanvas = document.createElement('canvas');
+      drawSechoirChargesChart(chargesCanvas);
+      const chargesChartImg = chargesCanvas.toDataURL('image/png');
+
+      const page2Container = document.createElement('div');
+      page2Container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#ffffff;color:#333333;font-family:Montserrat,Arial,sans-serif;';
+      page2Container.innerHTML = `
+        <div style="width:210mm;min-height:297mm;padding:10mm 15mm;box-sizing:border-box;background-color:#ffffff;color:#333333;font-family:Montserrat,Arial,sans-serif;position:relative;">
+          
+          <!-- Header Générique Nelson -->
+          <div style="display:table;width:100%;border-bottom:3px solid #0D3660;padding-bottom:8px;margin-bottom:15px;">
+            <div style="display:table-cell;vertical-align:bottom;width:35%;">
+              <h1 style="font-size:28pt;font-weight:800;color:#0D3660;margin:0;letter-spacing:1px;line-height:1;font-family:Montserrat,Arial,sans-serif;">NELSON</h1>
+            </div>
+            <div style="display:table-cell;vertical-align:bottom;text-align:right;width:65%;">
+              <p style="font-size:14pt;font-weight:700;color:#0D3660;margin:0 0 4px 0;text-transform:uppercase;font-family:Montserrat,Arial,sans-serif;">
+                Séchoir Multi-Matières <span style="color:#F29400;">BatiTech®</span>
+              </p>
+              <p style="font-size:10pt;color:#0D3660;font-weight:600;margin:0;font-family:Montserrat,Arial,sans-serif;">
+                Synthèse Globale des Bénéfices d'Exploitation
+              </p>
+            </div>
+          </div>
+
+          <!-- Intro / Synthesis Box -->
+          <div style="background-color:#F8FAFC;border-left:5px solid #00B050;padding:12px 20px;margin-bottom:20px;text-align:justify;font-size:11pt;font-weight:600;color:#0D3660;border-radius:0 6px 6px 0;line-height:1.45;">
+            Le séchoir BatiTech® est un outil stratégique permettant à l’exploitant de gagner en <strong style="color:#0D3660;">rentabilité</strong>, en <strong style="color:#0D3660;">autonomie</strong> et en <strong style="color:#0D3660;">sécurité</strong>, tout en améliorant considérablement la qualité de ses productions et ses conditions de travail au quotidien.
+          </div>
+
+          <!-- Columns - Alignement strict 2 colonnes -->
+          <div style="display:table;width:100%;table-layout:fixed;margin-bottom:15px;">
+            <div style="display:table-cell;vertical-align:top;width:50%;padding-right:7.5px;">
+              <div style="border:1px solid #D0D6E0;border-radius:8px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.03);background:#ffffff;">
+                <div style="background-color:#0D3660;color:#ffffff;padding:10px 15px;font-size:11.5pt;font-weight:700;text-transform:uppercase;text-align:center;letter-spacing:0.5px;">
+                  Avantages Financiers
+                </div>
+                <div style="padding:15px;background:#ffffff;">
+                  <ul style="padding-left:18px;margin:0;font-size:10pt;line-height:1.45;color:#333333;">
+                    <li style="margin-bottom:10px;text-align:justify;"><strong style="color:#0D3660;">Baisse radicale des charges :</strong> Économies majeures sur les compléments alimentaires, le carburant, la main-d’œuvre, l'achat de plastiques et l'arrêt total des prestations externes.</li>
+                    <li style="margin-bottom:10px;text-align:justify;"><strong style="color:#0D3660;">Valorisation de la production :</strong> Un fourrage plus nutritif qui augmente la quantité, la qualité et le prix de vente du lait ou de la viande.</li>
+                    <li style="margin-bottom:10px;text-align:justify;"><strong style="color:#0D3660;">Nouveaux revenus <span style="color:#F29400;font-weight:bold;">(PV &amp; Presta)</span> :</strong> Génération de revenus complémentaires via l'énergie photovoltaïque (autoconsommation/revente) et des prestations de séchage pour tiers.</li>
+                    <li style="margin-bottom:10px;text-align:justify;"><strong style="color:#0D3660;">Sécurisation économique :</strong> Maîtrise du calendrier annulant les pertes de récoltes liées aux aléas météorologiques.</li>
+                    <li style="margin-bottom:0;text-align:justify;"><strong style="color:#0D3660;">Valorisation du patrimoine :</strong> Création d’un bâtiment de stockage durable et valorisant pour l'exploitation.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:table-cell;vertical-align:top;width:50%;padding-left:7.5px;">
+              <div style="border:1px solid #D0D6E0;border-radius:8px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.03);background:#ffffff;">
+                <div style="background-color:#00B050;color:#ffffff;padding:10px 15px;font-size:11.5pt;font-weight:700;text-transform:uppercase;text-align:center;letter-spacing:0.5px;">
+                  Avantages Opérationnels
+                </div>
+                <div style="padding:15px;background:#ffffff;">
+                  <ul style="padding-left:18px;margin:0;font-size:10pt;line-height:1.45;color:#333333;">
+                    <li style="margin-bottom:10px;text-align:justify;"><strong style="color:#0D3660;">Qualité Premium du fourrage :</strong> Produit plus homogène, très nutritif et hautement appétant, limitant le gaspillage.</li>
+                    <li style="margin-bottom:10px;text-align:justify;"><strong style="color:#0D3660;">Santé animale renforcée :</strong> L'alimentation sèche de haute qualité diminue drastiquement les risques sanitaires liés aux fourrages fermentés.</li>
+                    <li style="margin-bottom:10px;text-align:justify;"><strong style="color:#0D3660;">Indépendance totale :</strong> Liberté de récolter et de sécher au moment optimal, sans dépendre de coopératives ou prestataires.</li>
+                    <li style="margin-bottom:10px;text-align:justify;"><strong style="color:#0D3660;">Conditions de travail :</strong> Moins de manipulations fastidieuses au champ et un environnement globalement plus sain.</li>
+                    <li style="margin-bottom:10px;text-align:justify;"><strong style="color:#0D3660;">Polyvalence :</strong> Une seule installation capable de sécher fourrage, céréales, maïs, bois et diverses biomasses.</li>
+                    <li style="margin-bottom:0;text-align:justify;"><strong style="color:#0D3660;">Impact Écologique :</strong> Zéro plastique agricole et fonctionnement à l'énergie solaire propre.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Le cadre du graphique aligné avec la largeur totale -->
+          <div style="display:block;width:100%;text-align:center;border:1px solid #D0D6E0;border-radius:8px;padding:10px 0;background-color:#ffffff;box-shadow:0 2px 4px rgba(0,0,0,0.03);margin-bottom:18px;">
+            <img src="${chargesChartImg}" alt="Impact Réduction des Charges" style="max-width:96%;height:auto;display:block;margin:0 auto;" />
+          </div>
+
+          <!-- Ligne unique de pied de page -->
+          <div style="position:absolute;bottom:10mm;left:15mm;right:15mm;text-align:center;border-top:1px solid #D0D6E0;padding-top:10px;font-size:9pt;color:#0D3660;font-weight:600;white-space:nowrap;font-family:Montserrat,Arial,sans-serif;">
+            NELSON — nelsonpv.fr <span style="color:#D0D6E0;margin:0 15px;font-weight:normal;">|</span> <span style="color:#888888;font-weight:400;">Simulation BatiTech®</span> <span style="color:#D0D6E0;margin:0 15px;font-weight:normal;">|</span> contact@enr-courtage.fr
+          </div>
+
+        </div>
+      `;
+
+      document.body.appendChild(page2Container);
+      try {
+        const page2Canvas = await html2canvas(page2Container, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          width: 794,
+          windowWidth: 794,
+        });
+        pdf.addPage();
+        const page2ImgData = page2Canvas.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(page2ImgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      } finally {
+        document.body.removeChild(page2Container);
       }
     }
 

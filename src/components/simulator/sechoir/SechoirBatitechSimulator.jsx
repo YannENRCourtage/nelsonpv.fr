@@ -217,7 +217,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
 
   // ─── Export PDF ──────────────────────────────────────────────────────────
 
-  const handleExportPDF = useCallback(async () => {
+  const handleExportPDF = useCallback(async (options = {}) => {
     if (!results) return;
     try {
       await generateSechoirPDF({
@@ -229,6 +229,8 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         materials: store.materials,
         financialParams: store.financialParams,
         projectName: selectedProject?.name,
+        includeBenefitsPage: options.includeBenefitsPage !== undefined ? options.includeBenefitsPage : true,
+        includeCashFlowPage: options.includeCashFlowPage !== undefined ? options.includeCashFlowPage : true,
       });
     } catch (err) {
       console.error('Erreur génération PDF:', err);

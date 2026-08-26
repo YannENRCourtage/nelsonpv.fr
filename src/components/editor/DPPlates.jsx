@@ -329,9 +329,10 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
         leftEaveHeight = (Math.abs(largeur - 25.5) < 0.8) ? 6.90 : (Math.abs(largeur - 29.1) < 0.8 ? 7.90 : (ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180))));
         realRoofWidth = largeur; realGroundWidth = largeur;
     } else {
+        // asymetrique_1 (Standard Hangar Asymétrique 1 zone)
         effectivePitch = pente || 15; rightEaveHeight = (hauteurEgout && hauteurEgout <= 4.5) ? hauteurEgout : 4.00;
-        ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan(effectivePitch * Math.PI / 180));
-        leftEaveHeight = ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180));
+        ridgeHeight = (Math.abs(largeur - 20.0) < 0.5) ? 8.40 : ((Math.abs(largeur - 16.4) < 0.5 || Math.abs(largeur - 16.0) < 0.5) ? 7.40 : (rightEaveHeight + (largeur * 0.75 * Math.tan(effectivePitch * Math.PI / 180))));
+        leftEaveHeight = (Math.abs(largeur - 20.0) < 0.5) ? 7.40 : ((Math.abs(largeur - 16.4) < 0.5 || Math.abs(largeur - 16.0) < 0.5) ? 6.40 : (ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180))));
         realRoofWidth = largeur; realGroundWidth = largeur;
     }
 
@@ -351,7 +352,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     const extLeftSvgX = startSvgX;
     const extRightSvgX = mainRightSvgX + extRightSvgWidth;
     const centerX = (mainLeftSvgX + mainRightSvgX) / 2;
-    const apexSvgX = isOmbriere ? mainLeftSvgX : (isAsym2 ? (mainLeftSvgX + largeur * 0.25 * pxPerM) : (mainLeftSvgX + mainWidthSvg * 0.5));
+    const apexSvgX = isOmbriere ? mainLeftSvgX : (isAsym ? (mainLeftSvgX + largeur * 0.25 * pxPerM) : (mainLeftSvgX + mainWidthSvg * 0.5));
     const groundY = isMulti ? 138 : 142;
     const groundYLeft = groundY + Math.sin((terrainSlopeDeg * Math.PI) / 180) * (totalSvgWidth * 0.2);
     const groundYRight = groundY - Math.sin((terrainSlopeDeg * Math.PI) / 180) * (totalSvgWidth * 0.2);
@@ -630,37 +631,51 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
             ) : (
                 /* ── BÂTIMENT AGRICOLE CLASSIQUE ── */
                 <g>
-                    <rect x={mainLeftSvgX} y={leftEaveSvgY} width="8" height={groundYLeft - leftEaveSvgY} fill="#334155" />
-                    <rect x={mainRightSvgX - 8} y={rightEaveSvgY} width="8" height={groundYRight - rightEaveSvgY} fill="#334155" />
+                    <rect x={mainLeftSvgX} y={leftEaveSvgY} width="8" height={groundYLeft - leftEaveSvgY} fill="#1e293b" />
+                    <rect x={mainRightSvgX - 8} y={rightEaveSvgY} width="8" height={groundYRight - rightEaveSvgY} fill="#1e293b" />
+
+                    {/* Poteau intermédiaire sous faîtage pour asymétrique 1 zone */}
+                    {isAsym1 && (
+                        <>
+                            <rect x={apexSvgX - 4} y={apexSvgY} width="8" height={groundY - apexSvgY} fill="#1e293b" />
+                            {/* Bracons / Renforts de faîtage */}
+                            <line x1={apexSvgX} y1={apexSvgY + 22} x2={apexSvgX - 18} y2={apexSvgY + 5} stroke="#475569" strokeWidth="2.5" />
+                            <line x1={apexSvgX} y1={apexSvgY + 22} x2={apexSvgX + 32} y2={apexSvgY + 8} stroke="#475569" strokeWidth="2.5" />
+                        </>
+                    )}
 
                     {/* Poteau intermédiaire pour asymétrique 2 zones */}
                     {isAsym2 && (
                         <>
-                            <rect x={middleColSvgX - 4} y={middleColTopY} width="8" height={groundY - middleColTopY} fill="#334155" />
-                            <text x={middleColSvgX} y={groundY + 8} textAnchor="middle" fill="#64748b" fontSize="6" fontStyle="italic">Poteau intermédiaire</text>
+                            <rect x={middleColSvgX - 4} y={middleColTopY} width="8" height={groundY - middleColTopY} fill="#1e293b" />
+                            <text x={middleColSvgX} y={groundY + 8} textAnchor="middle" fill="#64748b" fontSize="6.5" fontStyle="italic">Poteau intermédiaire</text>
                         </>
                     )}
 
-                    {hasAppentisRight && <rect x={extRightSvgX - 7} y={extRightSvgY} width="7" height={groundYRight - extRightSvgY} fill="#334155" />}
-                    {hasAppentisLeft && <rect x={extLeftSvgX} y={extLeftSvgY} width="7" height={groundYLeft - extLeftSvgY} fill="#334155" />}
+                    {hasAppentisRight && <rect x={extRightSvgX - 7} y={extRightSvgY} width="7" height={groundYRight - extRightSvgY} fill="#1e293b" />}
+                    {hasAppentisLeft && <rect x={extLeftSvgX} y={extLeftSvgY} width="7" height={groundYLeft - extLeftSvgY} fill="#1e293b" />}
 
                     {/* Versant Nord */}
-                    <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="4.5" />
-                    <polygon points={`${mainLeftSvgX - 4},${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 7} ${mainLeftSvgX - 4},${leftEaveSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                    <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
+                    <polygon points={`${mainLeftSvgX - 4},${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 7} ${mainLeftSvgX - 4},${leftEaveSvgY - 7}`} fill="#475569" stroke="#64748b" strokeWidth="1" />
                     {[0.25, 0.5, 0.75].map((ratio, idx) => {
                         const px = mainLeftSvgX + (apexSvgX - mainLeftSvgX) * ratio;
                         const py = leftEaveSvgY + (apexSvgY - leftEaveSvgY) * ratio;
-                        return <line key={idx} x1={px} y1={py - 7} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
+                        return <line key={idx} x1={px} y1={py - 7} x2={px} y2={py - 2} stroke="#94a3b8" strokeWidth="1" />;
                     })}
 
-                    {/* Versant Sud */}
-                    <line x1={apexSvgX} y1={apexSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="4.5" />
+                    {/* Versant Sud (Photovoltaïque) */}
+                    <line x1={apexSvgX} y1={apexSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
                     <polygon points={`${apexSvgX},${apexSvgY - 2} ${mainRightSvgX + 4},${rightEaveSvgY - 2} ${mainRightSvgX + 4},${rightEaveSvgY - 7} ${apexSvgX},${apexSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                    {[0.2, 0.4, 0.6, 0.8].map((ratio, idx) => {
+                    {[0.12, 0.25, 0.38, 0.5, 0.63, 0.76, 0.88].map((ratio, idx) => {
                         const px = apexSvgX + (mainRightSvgX - apexSvgX) * ratio;
                         const py = apexSvgY + (rightEaveSvgY - apexSvgY) * ratio;
                         return <line key={idx} x1={px} y1={py - 7} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
                     })}
+
+                    {/* Bracons de jarret / renforts angles */}
+                    <line x1={mainLeftSvgX + 4} y1={leftEaveSvgY + 16} x2={mainLeftSvgX + 22} y2={leftEaveSvgY + 4} stroke="#475569" strokeWidth="2.5" />
+                    <line x1={mainRightSvgX - 4} y1={rightEaveSvgY + 16} x2={mainRightSvgX - 22} y2={rightEaveSvgY + 4} stroke="#475569" strokeWidth="2.5" />
 
                     {hasExtRight && (
                         <>
@@ -694,7 +709,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
                     <line x1={extLeftSvgX - 12} y1={extLeftSvgY} x2={extLeftSvgX - 12} y2={groundYLeft} stroke="#ef4444" strokeWidth="1" />
                     <line x1={extLeftSvgX - 15} y1={extLeftSvgY} x2={extLeftSvgX - 9} y2={extLeftSvgY} stroke="#ef4444" strokeWidth="1" />
                     <line x1={extLeftSvgX - 15} y1={groundYLeft} x2={extLeftSvgX - 9} y2={groundYLeft} stroke="#ef4444" strokeWidth="1" />
-                    <text x={extLeftSvgX - 18} y={extLeftSvgY + (groundYLeft - extLeftSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="7.5" fontWeight="bold">
+                    <text x={extLeftSvgX - 18} y={extLeftSvgY + (groundYLeft - extLeftSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="8" fontWeight="bold">
                         Égout Nord : {extLeftHeight.toFixed(2)}m
                     </text>
                 </g>
@@ -703,7 +718,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
                     <line x1={mainLeftSvgX - 16} y1={leftEaveSvgY} x2={mainLeftSvgX - 16} y2={groundYLeft} stroke="#ef4444" strokeWidth="1" />
                     <line x1={mainLeftSvgX - 19} y1={leftEaveSvgY} x2={mainLeftSvgX - 13} y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1" />
                     <line x1={mainLeftSvgX - 19} y1={groundYLeft} x2={mainLeftSvgX - 13} y2={groundYLeft} stroke="#ef4444" strokeWidth="1" />
-                    <text x={mainLeftSvgX - 22} y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="7.5" fontWeight="bold">
+                    <text x={mainLeftSvgX - 22} y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="8" fontWeight="bold">
                         {isOmbriere ? `Sablière Haute : ${leftEaveHeight.toFixed(2)}m` : `Sablière Nord : ${leftEaveHeight.toFixed(2)}m`}
                     </text>
                 </g>
@@ -715,7 +730,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
                     <line x1={extRightSvgX + 12} y1={extRightSvgY} x2={extRightSvgX + 12} y2={groundYRight} stroke="#ef4444" strokeWidth="1" />
                     <line x1={extRightSvgX + 9} y1={extRightSvgY} x2={extRightSvgX + 15} y2={extRightSvgY} stroke="#ef4444" strokeWidth="1" />
                     <line x1={extRightSvgX + 9} y1={groundYRight} x2={extRightSvgX + 15} y2={groundYRight} stroke="#ef4444" strokeWidth="1" />
-                    <text x={extRightSvgX + 18} y={extRightSvgY + (groundYRight - extRightSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="7.5" fontWeight="bold">
+                    <text x={extRightSvgX + 18} y={extRightSvgY + (groundYRight - extRightSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="8" fontWeight="bold">
                         Égout Sud : {extRightHeight.toFixed(2)}m
                     </text>
                 </g>
@@ -724,46 +739,48 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
                     <line x1={mainRightSvgX + 16} y1={rightEaveSvgY} x2={mainRightSvgX + 16} y2={groundYRight} stroke="#ef4444" strokeWidth="1" />
                     <line x1={mainRightSvgX + 13} y1={rightEaveSvgY} x2={mainRightSvgX + 19} y2={rightEaveSvgY} stroke="#ef4444" strokeWidth="1" />
                     <line x1={mainRightSvgX + 13} y1={groundYRight} x2={mainRightSvgX + 19} y2={groundYRight} stroke="#ef4444" strokeWidth="1" />
-                    <text x={mainRightSvgX + 22} y={rightEaveSvgY + (groundYRight - rightEaveSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="7.5" fontWeight="bold">
+                    <text x={mainRightSvgX + 22} y={rightEaveSvgY + (groundYRight - rightEaveSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="8" fontWeight="bold">
                         {isOmbriere ? `Sablière Basse : ${rightEaveHeight.toFixed(2)}m` : `Égout Sud : ${rightEaveHeight.toFixed(2)}m`}
                     </text>
                 </g>
             )}
 
-            {/* Faîtage / Sommet (uniquement pour bâtiment à double pente) */}
+            {/* Faîtage / Sablière Haute (uniquement pour bâtiment à double pente) */}
             {!isOmbriere && !isMonopente && (
                 <g>
-                    <line x1={apexSvgX} y1={apexSvgY} x2={apexSvgX} y2={groundYLeft} stroke="#ef4444" strokeWidth="0.8" strokeDasharray="3 2" />
-                    <text x={apexSvgX + 5} y={apexSvgY + 16} fill="#ef4444" fontSize="7.5" fontWeight="bold">
-                        Faîtage : {ridgeHeight.toFixed(2)}m
+                    <line x1={apexSvgX} y1={apexSvgY} x2={apexSvgX} y2={groundYLeft} stroke="#ef4444" strokeWidth="1" strokeDasharray="3 2" />
+                    <line x1={apexSvgX - 4} y1={apexSvgY} x2={apexSvgX + 4} y2={apexSvgY} stroke="#ef4444" strokeWidth="1" />
+                    <text x={apexSvgX + 6} y={apexSvgY + 16} fill="#ef4444" fontSize="8" fontWeight="bold">
+                        {isAsym ? `Sablière Haute : ${ridgeHeight.toFixed(2)}m` : `Faîtage : ${ridgeHeight.toFixed(2)}m`}
                     </text>
                 </g>
             )}
 
             {/* 5. Cotes d'emprise au sol */}
-            {isAsym2 ? (
+            {isAsym ? (
                 <g>
-                    <line x1={middleColSvgX} y1={groundY} x2={middleColSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
                     <line x1={mainLeftSvgX} y1={groundY} x2={mainLeftSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+                    <line x1={isAsym2 ? middleColSvgX : apexSvgX} y1={groundY} x2={isAsym2 ? middleColSvgX : apexSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
                     <line x1={mainRightSvgX} y1={groundY} x2={mainRightSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
 
-                    <line x1={mainLeftSvgX} y1="150" x2={middleColSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
+                    <line x1={mainLeftSvgX} y1="150" x2={isAsym2 ? middleColSvgX : apexSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
                     <line x1={mainLeftSvgX} y1={146} x2={mainLeftSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
-                    <line x1={middleColSvgX} y1={146} x2={middleColSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
-                    <text x={(mainLeftSvgX + middleColSvgX) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">
-                        {asym2LeftDist.toFixed(2)} m
+                    <line x1={isAsym2 ? middleColSvgX : apexSvgX} y1={146} x2={isAsym2 ? middleColSvgX : apexSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
+                    <text x={(mainLeftSvgX + (isAsym2 ? middleColSvgX : apexSvgX)) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">
+                        {isAsym2 ? `${asym2LeftDist.toFixed(2)} m` : `${(largeur * 0.25).toFixed(2)} m`}
                     </text>
 
-                    <line x1={middleColSvgX} y1="150" x2={mainRightSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
+                    <line x1={isAsym2 ? middleColSvgX : apexSvgX} y1="150" x2={mainRightSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
+                    <line x1={isAsym2 ? middleColSvgX : apexSvgX} y1={146} x2={isAsym2 ? middleColSvgX : apexSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
                     <line x1={mainRightSvgX} y1={146} x2={mainRightSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
-                    <text x={(middleColSvgX + mainRightSvgX) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">
-                        {asym2RightDist.toFixed(2)} m
+                    <text x={((isAsym2 ? middleColSvgX : apexSvgX) + mainRightSvgX) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">
+                        {isAsym2 ? `${asym2RightDist.toFixed(2)} m` : `${(largeur * 0.75).toFixed(2)} m`}
                     </text>
 
                     <line x1={mainLeftSvgX} y1="162" x2={mainRightSvgX} y2="162" stroke="#0284c7" strokeWidth="1.2" />
                     <line x1={mainLeftSvgX} y1={158} x2={mainLeftSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
                     <line x1={mainRightSvgX} y1={158} x2={mainRightSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
-                    <text x={centerX} y="171" textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">
+                    <text x={centerX} y="171" textAnchor="middle" fill="#0284c7" fontSize="8" fontWeight="bold">
                         ▲ Largeur : {realGroundWidth.toFixed(2)} m (Emprise au sol)
                     </text>
                 </g>

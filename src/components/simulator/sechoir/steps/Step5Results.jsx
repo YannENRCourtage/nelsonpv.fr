@@ -1,8 +1,8 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, TrendingUp, Zap, Clock, ShieldCheck, 
-  Landmark, Info, Sparkles, Wind, Coins, CheckCircle2, AlertCircle 
+  Landmark, Info, Sparkles, Wind, Coins, CheckCircle2, AlertCircle, FileDown, CheckSquare, Square, Loader2
 } from 'lucide-react';
 import {
   BarChart,
@@ -19,13 +19,17 @@ import useSechoirStore from '@/stores/useSechoirStore.js';
 import { BATITECH_MODELS, getRegionForDepartment } from '@/data/sechoirBatitechModels.js';
 import { calculateFullSimulation } from '@/components/simulator/sechoir/sechoirCalculations.js';
 
-export default function Step5Results() {
+export default function Step5Results({ onExportPDF }) {
   const selectedModelId = useSechoirStore((state) => state.selectedModelId) || 'BT-3.1.15';
   const orientation = useSechoirStore((state) => state.orientation) || 'sud';
   const departement = useSechoirStore((state) => state.departement) || '33';
   const materials = useSechoirStore((state) => state.materials);
   const financialParams = useSechoirStore((state) => state.financialParams);
   const setLastResults = useSechoirStore((state) => state.setLastResults);
+
+  const [includeBenefitsPage, setIncludeBenefitsPage] = useState(true);
+  const [includeCashFlowPage, setIncludeCashFlowPage] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Recalculer les résultats complets
   const results = useMemo(() => {
@@ -391,6 +395,109 @@ export default function Step5Results() {
             <p className="text-2xl font-black text-cyan-400 mt-1">{roi !== null && roi !== undefined ? Number(roi).toFixed(2) : '—'} ans</p>
             <p className="text-xs text-slate-400 mt-0.5">Amortissement sur flux d'EBE</p>
           </div>
+        </div>
+      </div>
+
+      {/* ═══ SECTION EXPORT PDF AVEC OPTIONS ════════════════════════════════ */}
+      <div className="bg-gradient-to-r from-slate-900/90 via-slate-800/80 to-slate-900/90 border border-amber-500/30 rounded-3xl p-6 shadow-xl backdrop-blur-sm">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+          
+          {/* Options de pages */}
+          <div className="space-y-3 flex-1">
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              <h3 className="text-lg font-bold text-white">
+                Export du Dossier d'Étude PDF
+              </h3>
+            </div>
+            <p className="text-sm text-slate-300">
+              Personnalisez les pages incluses dans votre document PDF de simulation :
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* Option Page 2 : Synthèse Bénéfices */}
+              <button
+                type="button"
+                onClick={() => setIncludeBenefitsPage(!includeBenefitsPage)}
+                className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all ${
+                  includeBenefitsPage
+                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-200 shadow-sm'
+                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:border-slate-600'
+                }`}
+              >
+                <div className="mt-0.5 shrink-0">
+                  {includeBenefitsPage ? (
+                    <CheckSquare className="w-5 h-5 text-amber-400" />
+                  ) : (
+                    <Square className="w-5 h-5 text-slate-500" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-amber-400">Page 2 (Recommandée)</div>
+                  <div className="text-sm font-semibold text-white mt-0.5">Synthèse des Bénéfices d'Exploitation</div>
+                  <div className="text-xs text-slate-400 mt-1">Avantages financiers &amp; opérationnels, graphique d'impact sur la baisse des charges.</div>
+                </div>
+              </button>
+
+              {/* Option Page 3 : Flux de trésorerie */}
+              <button
+                type="button"
+                onClick={() => setIncludeCashFlowPage(!includeCashFlowPage)}
+                className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all ${
+                  includeCashFlowPage
+                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200 shadow-sm'
+                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:border-slate-600'
+                }`}
+              >
+                <div className="mt-0.5 shrink-0">
+                  {includeCashFlowPage ? (
+                    <CheckSquare className="w-5 h-5 text-emerald-400" />
+                  ) : (
+                    <Square className="w-5 h-5 text-slate-500" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-emerald-400">Page 3</div>
+                  <div className="text-sm font-semibold text-white mt-0.5">Tableau d'Amortissement sur 25 ans</div>
+                  <div className="text-xs text-slate-400 mt-1">Détail annuel des flux d'exploitation, annuités et trésorerie cumulée.</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Bouton de téléchargement */}
+          <div className="self-stretch sm:self-auto flex flex-col items-center justify-center shrink-0">
+            <button
+              onClick={async () => {
+                if (onExportPDF) {
+                  setIsExporting(true);
+                  try {
+                    await onExportPDF({ includeBenefitsPage, includeCashFlowPage });
+                  } finally {
+                    setIsExporting(false);
+                  }
+                }
+              }}
+              disabled={isExporting}
+              className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black rounded-2xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 text-base"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Génération du PDF...</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-5 h-5 text-slate-950" />
+                  <span>Télécharger l'Étude PDF</span>
+                </>
+              )}
+            </button>
+            <span className="text-[11px] text-slate-400 mt-2 font-medium">
+              Document A4 prêt pour signature &amp; banque
+            </span>
+          </div>
+
         </div>
       </div>
     </motion.div>

@@ -16,9 +16,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const isFacadeNordView = viewMode === 'FACADE_NORD';
     const isFacadeView = isFacadeSudView || isFacadeNordView;
 
+    const markerFontSize = (isFacadeView || isPignonView) ? 2.2 : 1.8;
+    const markerOutlineWidth = (isFacadeView || isPignonView) ? 0.35 : 0.25;
     const textColor = "#000000";
     const lineColor = "#000000";
-    const lineWidth = 2;
+    const lineWidth = (isFacadeView || isPignonView) ? 3.5 : 2.5;
     const gapSize = 3.0;
     const isOmbriere = buildingType.startsWith('ombriere');
 
@@ -655,11 +657,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         <Text
                             position={[0, 0.1, 3.0]}
                             rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
-                            fontSize={0.8}
+                            fontSize={markerFontSize}
                             color={textColor}
                             anchorX="center"
                             anchorY="middle"
-                            outlineWidth={0.1}
+                            outlineWidth={markerOutlineWidth}
                             outlineColor="#ffffff"
                         >
                             {`${width} m`}
@@ -678,11 +680,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[xSide, yLength !== undefined ? yLength : (isFacadeView ? -0.7 : 0.1), -length / 2]}
                         rotation={isFacadeNordView ? [0, -Math.PI / 2, 0] : (isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2])}
-                        fontSize={0.8}
+                        fontSize={markerFontSize}
                         color={textColor}
                         anchorX="center"
                         anchorY="middle"
-                        outlineWidth={0.1}
+                        outlineWidth={markerOutlineWidth}
                         outlineColor="#ffffff"
                     >
                         {`${length} m`}
@@ -700,11 +702,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[baySpacingData.xBay, 0.1, -baySpacingData.effectiveBaySpacing / 2]}
                         rotation={isFacadeNordView ? [0, -Math.PI / 2, 0] : (isFacadeSudView ? [0, Math.PI / 2, 0] : [-Math.PI / 2, 0, Math.PI / 2])}
-                        fontSize={0.8}
+                        fontSize={markerFontSize}
                         color={textColor}
                         anchorX="center"
                         anchorY="middle"
-                        outlineWidth={0.1}
+                        outlineWidth={markerOutlineWidth}
                         outlineColor="#ffffff"
                     >
                         {`${baySpacingData.effectiveBaySpacing} m`}
@@ -725,11 +727,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <Text
                                 position={[xEave, heightEnd.y / 2, 0]}
                                 rotation={[0, 0, Math.PI / 2]} 
-                                fontSize={0.8}
+                                fontSize={markerFontSize}
                                 color={textColor}
                                 anchorX="center"
                                 anchorY="middle"
-                                outlineWidth={0.1}
+                                outlineWidth={markerOutlineWidth}
                                 outlineColor="#ffffff"
                             >
                                 {getEaveText()}
@@ -749,11 +751,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[xRidge, (isEpona ? (ridgeLabelValue || ridgeHeight) - 0.5 : (ridgeLabelValue || ridgeHeight)) / 2, zRidge]}
                         rotation={[0, 0, Math.PI / 2]}
-                        fontSize={0.8}
+                        fontSize={markerFontSize}
                         color={textColor}
                         anchorX="center"
                         anchorY="middle"
-                        outlineWidth={0.1}
+                        outlineWidth={markerOutlineWidth}
                         outlineColor="#ffffff"
                     >
                         {`${Number(ridgeLabelValue || ridgeHeight).toFixed(2)} m`}
@@ -771,11 +773,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[asymLeftEaveData.xLeft, asymLeftEaveData.hVal / 2, 0]}
                         rotation={[0, 0, Math.PI / 2]}
-                        fontSize={0.8}
+                        fontSize={markerFontSize}
                         color={textColor}
                         anchorX="center"
                         anchorY="middle"
-                        outlineWidth={0.1}
+                        outlineWidth={markerOutlineWidth}
                         outlineColor="#ffffff"
                     >
                         {`${parseFloat(Number(asymLeftEaveData.hVal).toFixed(2))} m`}
@@ -793,11 +795,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[asym2RightEaveData.xRight, asym2RightEaveData.hVal / 2, 0]}
                         rotation={[0, 0, Math.PI / 2]}
-                        fontSize={0.8}
+                        fontSize={markerFontSize}
                         color={textColor}
                         anchorX="center"
                         anchorY="middle"
-                        outlineWidth={0.1}
+                        outlineWidth={markerOutlineWidth}
                         outlineColor="#ffffff"
                     >
                         {buildingType === 'epona_talian5' ? '4.3 m' : (isCustom ? `${asym2RightEaveData.hVal.toFixed(1)} m` : '4 m')}
@@ -822,11 +824,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <Text
                                 position={[width / 2 + rightExtData.extWidth / 2, 0.1, isTalian4 ? 5.0 : 3.0]}
                                 rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
-                                fontSize={0.8}
+                                fontSize={markerFontSize}
                                 color={textColor}
                                 anchorX="center"
                                 anchorY="middle"
-                                outlineWidth={0.1}
+                                outlineWidth={markerOutlineWidth}
                                 outlineColor="#ffffff"
                             >
                                 {isEpona ? '7.8 m' : `${rightExtData.extWidth} m`}
@@ -845,11 +847,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <Text
                                 position={[rightExtData.xH, (isEpona || isTalian4 || isTalian1 ? (rightExtData.extHeight - (isEpona ? 0 : (isTalian4 ? 1.2 : 0))) : rightExtData.extHeight) / 2, 0]}
                                 rotation={[0, 0, Math.PI / 2]}
-                                fontSize={0.8}
+                                fontSize={markerFontSize}
                                 color={textColor}
                                 anchorX="center"
                                 anchorY="middle"
-                                outlineWidth={0.1}
+                                outlineWidth={markerOutlineWidth}
                                 outlineColor="#ffffff"
                             >
                                 {`${parseFloat(Number(isTalian4 ? 4.5 : (isTalian1 ? 3.8 : rightExtData.extHeight)).toFixed(2))} m`}
@@ -876,11 +878,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <Text
                                 position={[-width / 2 - leftExtData.extWidth / 2, 0.1, isTalian4 ? 5.0 : 3.0]}
                                 rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
-                                fontSize={0.8}
+                                fontSize={markerFontSize}
                                 color={textColor}
                                 anchorX="center"
                                 anchorY="middle"
-                                outlineWidth={0.1}
+                                outlineWidth={markerOutlineWidth}
                                 outlineColor="#ffffff"
                             >
                                 {isEpona ? '2.5 m' : `${leftExtData.extWidth} m`}
@@ -899,11 +901,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <Text
                                 position={[leftExtData.xH, (isEpona ? leftExtData.extHeight : (isTalian4 ? leftExtData.extHeight - 1.2 : (isTalian1 ? leftExtData.extHeight : leftExtData.extHeight))) / 2, 0]}
                                 rotation={[0, 0, Math.PI / 2]}
-                                fontSize={0.8}
+                                fontSize={markerFontSize}
                                 color={textColor}
                                 anchorX="center"
                                 anchorY="middle"
-                                outlineWidth={0.1}
+                                outlineWidth={markerOutlineWidth}
                                 outlineColor="#ffffff"
                             >
                                 {`${parseFloat(Number(isTalian4 ? 4.5 : (isTalian1 ? 3.8 : leftExtData.extHeight)).toFixed(2))} m`}
@@ -923,11 +925,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[asym2MiddleColData.wMid.x, 0.1, 1.5]}
                         rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
-                        fontSize={0.8}
+                        fontSize={markerFontSize}
                         color={textColor}
                         anchorX="center"
                         anchorY="middle"
-                        outlineWidth={0.1}
+                        outlineWidth={markerOutlineWidth}
                         outlineColor="#ffffff"
                     >
                         {`13.1 m`}
@@ -945,11 +947,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[asym2RightDistData.rMid.x, 0.1, 1.5]}
                         rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
-                        fontSize={0.8}
+                        fontSize={markerFontSize}
                         color={textColor}
                         anchorX="center"
                         anchorY="middle"
-                        outlineWidth={0.1}
+                        outlineWidth={markerOutlineWidth}
                         outlineColor="#ffffff"
                     >
                         {`${asym2RightDistData.distance} m`}
@@ -967,11 +969,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[acamaTotalWidthData.xMid.x, 0.1, acamaTotalWidthData.zPos]}
                         rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
-                        fontSize={0.8}
+                        fontSize={markerFontSize}
                         color={textColor}
                         anchorX="center"
                         anchorY="middle"
-                        outlineWidth={0.1}
+                        outlineWidth={markerOutlineWidth}
                         outlineColor="#ffffff"
                     >
                         {`${acamaTotalWidthData.totalW} m`}
@@ -989,11 +991,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[0, crossHeightData.hVal / 2, 0.3]} 
                         rotation={[0, 0, 0]}
-                        fontSize={0.8}
+                        fontSize={markerFontSize}
                         color={textColor}
                         anchorX="center"
                         anchorY="middle"
-                        outlineWidth={0.1}
+                        outlineWidth={markerOutlineWidth}
                         outlineColor="#ffffff"
                     >
                         {`${crossHeightData.hVal} m`}
@@ -1014,11 +1016,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <Text
                                 position={[eponaMarkers.rSpanMid.x, 0.1, 3.0]}
                                 rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
-                                fontSize={0.8}
+                                fontSize={markerFontSize}
                                 color={textColor}
                                 anchorX="center"
                                 anchorY="middle"
-                                outlineWidth={0.1}
+                                outlineWidth={markerOutlineWidth}
                                 outlineColor="#ffffff"
                             >
                                 {eponaMarkers.rightSpanLabel}
@@ -1034,11 +1036,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                     <Text
                                         position={[eponaMarkers.lCenterMid.x, 0.1, 3.0]}
                                         rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
-                                        fontSize={0.8}
+                                        fontSize={markerFontSize}
                                         color={textColor}
                                         anchorX="center"
                                         anchorY="middle"
-                                        outlineWidth={0.1}
+                                        outlineWidth={markerOutlineWidth}
                                         outlineColor="#ffffff"
                                     >
                                         {eponaMarkers.lCenterLabel}
@@ -1056,11 +1058,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                     <Text
                                         position={[eponaMarkers.lAwningMid.x, 0.1, 3.0]}
                                         rotation={isPignonView ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}
-                                        fontSize={0.8}
+                                        fontSize={markerFontSize}
                                         color={textColor}
                                         anchorX="center"
                                         anchorY="middle"
-                                        outlineWidth={0.1}
+                                        outlineWidth={markerOutlineWidth}
                                         outlineColor="#ffffff"
                                     >
                                         2.5 m
@@ -1080,11 +1082,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <Text
                                 position={[eponaMarkers.rHeightX, eponaMarkers.rHeightVal / 2, eponaMarkers.markerZ || 0]}
                                 rotation={[0, 0, Math.PI / 2]}
-                                fontSize={0.8}
+                                fontSize={markerFontSize}
                                 color={textColor}
                                 anchorX="center"
                                 anchorY="middle"
-                                outlineWidth={0.1}
+                                outlineWidth={markerOutlineWidth}
                                 outlineColor="#ffffff"
                             >
                                 {`${eponaMarkers.rHeightVal} m`}
@@ -1093,11 +1095,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                 <Text
                                     position={[eponaMarkers.mHeightX, eponaMarkers.mHeightVal / 2, eponaMarkers.midHeightZ || 0]}
                                     rotation={[0, 0, Math.PI / 2]}
-                                    fontSize={0.8}
+                                    fontSize={markerFontSize}
                                     color={textColor}
                                     anchorX="center"
                                     anchorY="middle"
-                                    outlineWidth={0.1}
+                                    outlineWidth={markerOutlineWidth}
                                     outlineColor="#ffffff"
                                 >
                                     6 m
@@ -1106,11 +1108,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <Text
                                 position={[eponaMarkers.lHeightX, eponaMarkers.lHeightVal / 2, eponaMarkers.markerZ || 0]}
                                 rotation={[0, 0, Math.PI / 2]}
-                                fontSize={0.8}
+                                fontSize={markerFontSize}
                                 color={textColor}
                                 anchorX="center"
                                 anchorY="middle"
-                                outlineWidth={0.1}
+                                outlineWidth={markerOutlineWidth}
                                 outlineColor="#ffffff"
                             >
                                 {`${eponaMarkers.lHeightVal} m`}
