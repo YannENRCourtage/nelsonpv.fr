@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatGps } from '@/utils/formatGps.js';
 
 // Ce composant est maintenant prêt à être importé
 // dans votre fichier d'assemblage PDF principal pour les pages de carte.
@@ -161,11 +162,7 @@ const PDFGenerator = ({ project }) => {
             <div style={fieldStyle}>
               <span style={labelStyle}>GPS :</span>
               <span style={valueStyle}>
-                {(p.gps || '')
-                  .split(',')
-                  .map(part => part.trim())
-                  .filter(part => part !== 'undefined' && part !== '')
-                  .join(', ') || 'N/A'}
+                {formatGps(p.gps) || 'N/A'}
               </span>
             </div>
             <div style={fieldStyle}>

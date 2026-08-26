@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MapPin, Zap, Map, Ruler, X, Navigation, Building, Battery, Sun, MessageSquare, Save, Check } from 'lucide-react';
+import { formatGps } from '@/utils/formatGps.js';
 
 export default function ProjectSearchHeader({ projects = [], selectedProject, onSelectProject, loading }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -327,8 +328,8 @@ export default function ProjectSearchHeader({ projects = [], selectedProject, on
                         </div>
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400">Coordonnées GPS</p>
-                          <p className="font-bold text-xs text-gray-900 truncate" title={selectedProject.gps || 'Non défini'}>
-                            {selectedProject.gps || '44.407552, -0.830472'}
+                          <p className="font-bold text-xs text-gray-900 truncate font-mono" title={formatGps(selectedProject.gps) || 'Non défini'}>
+                            {formatGps(selectedProject.gps) || '44.407552, -0.830472'}
                           </p>
                         </div>
                       </div>

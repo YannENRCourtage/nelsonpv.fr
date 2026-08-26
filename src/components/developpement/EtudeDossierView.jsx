@@ -9,6 +9,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { getUserColor } from '@/lib/utils';
 import { apiService } from '@/services/api';
+import { formatGps } from '@/utils/formatGps.js';
 
 /**
  * EtudeDossierView — Vue détaillée du workflow de développement d'un projet solaire
@@ -555,10 +556,11 @@ export default function EtudeDossierView({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigator.clipboard.writeText(project.gps);
+                        const formatted = formatGps(project.gps);
+                        navigator.clipboard.writeText(formatted);
                         toast({
                           title: "Coordonnées GPS copiées !",
-                          description: project.gps,
+                          description: formatted,
                         });
                       }}
                       className="text-[10px] text-blue-600 hover:text-blue-800 font-extrabold flex items-center gap-0.5 px-1 py-0.5 rounded hover:bg-blue-50 transition-colors"
@@ -571,17 +573,18 @@ export default function EtudeDossierView({
                 <span 
                   onClick={() => {
                     if (project?.gps) {
-                      navigator.clipboard.writeText(project.gps);
+                      const formatted = formatGps(project.gps);
+                      navigator.clipboard.writeText(formatted);
                       toast({
                         title: "Coordonnées GPS copiées !",
-                        description: project.gps,
+                        description: formatted,
                       });
                     }
                   }}
                   className={`font-extrabold text-slate-900 block text-[11px] font-mono leading-tight ${project?.gps ? 'cursor-pointer hover:text-blue-600 transition-colors' : ''}`}
                   title={project?.gps ? "Cliquez pour copier" : "-"}
                 >
-                  {project?.gps || '-'}
+                  {formatGps(project?.gps) || '-'}
                 </span>
               </div>
 

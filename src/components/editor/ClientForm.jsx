@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import { useProject } from '../../contexts/ProjectContext.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import { formatGps } from '@/utils/formatGps.js';
 
 export default function ClientForm() {
   const { project, setProject, updateProject, saveProject } = useProject();
@@ -224,8 +225,8 @@ export default function ClientForm() {
           <div className="pe_field">
             <label>GPS</label>
             <input
-              placeholder="Ex: 44.83188, -0.571036"
-              value={p.gps || ''}
+              placeholder="Ex: 44.831880, -0.571036"
+              value={formatGps(p.gps) || ''}
               onChange={(e) => handleChange('gps', e.target.value)}
 
             />

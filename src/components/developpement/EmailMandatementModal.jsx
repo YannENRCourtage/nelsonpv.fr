@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Send, Copy, Check, User, Building, Phone, MapPin, FileText, Sparkles } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { formatGps } from '@/utils/formatGps.js';
 
 /**
  * EmailMandatementModal — Générateur d'e-mail pour les mandatements (Huissier, Géomètre, Notaire)
@@ -64,7 +65,7 @@ Dans le cadre du développement d'une centrale photovoltaïque au sol / bâtimen
 • Adresse du site : ${proj?.address || ''}, ${proj?.zip || ''} ${proj?.city || ''}
 • Parcelle(s) d'origine : Section ${proj?.cadastre_section || 'N/A'} - N° ${proj?.cadastre_numero || 'N/A'}
 • Emprise du projet : environ ${(proj?.longueur && proj?.largeur) ? `${proj.longueur * proj.largeur} m²` : 'selon plan de masse joint'}
-• Coordonnées GPS : ${proj?.gps || 'Voir fiche projet'}
+• Coordonnées GPS : ${formatGps(proj?.gps) || 'Voir fiche projet'}
 
 Pourriez-vous nous établir votre devis d'intervention ainsi que votre calendrier prévisionnel de relevé terrain ?
 

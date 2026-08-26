@@ -4,6 +4,7 @@ import {
   Folder, Search, MapPin, Zap, Navigation, Building, Sun, Battery,
   CheckCircle2, Clock, AlertCircle, Calendar, ArrowRight, GripVertical, Filter
 } from 'lucide-react';
+import { formatGps } from '@/utils/formatGps.js';
 
 /**
  * DossiersGridView — Vue "Dossiers" en vignettes horizontales déplaçables
@@ -159,7 +160,7 @@ export default function DossiersGridView({ projects = [], onSelectProject, activ
               </div>
               <div className="flex items-center gap-1 text-gray-400 font-mono text-[10px]">
                 <Navigation className="w-3 h-3 text-blue-400" />
-                <span>{project.gps || '44.407, -0.830'}</span>
+                <span>{formatGps(project.gps) || '44.407000, -0.830000'}</span>
               </div>
             </div>
 

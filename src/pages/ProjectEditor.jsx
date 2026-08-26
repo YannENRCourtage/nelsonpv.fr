@@ -32,6 +32,7 @@ import znzvData from "@/data/znzv.json";
 import { apiService } from "@/services/api";
 import { ACAMA_PREDEFINED_BUILDINGS } from "@/data/simulatorPredefinedBuildings";
 import { calculateRequiredResteACharge } from "@/lib/profitabilityCalculations";
+import { formatGps, formatCoordinate } from "@/utils/formatGps";
 
 import { BATTERY_MODELS } from "@/data/batteryModels.js";
 
@@ -106,11 +107,13 @@ export default function ProjectEditor() {
   const handleAddressSelect = (feature) => {
     const { name, postcode, city, label } = feature.properties;
     const [lng, lat] = feature.geometry.coordinates;
+    const latFmt = typeof lat === 'number' ? Number(lat.toFixed(6)) : parseFloat(lat)?.toFixed(6);
+    const lngFmt = typeof lng === 'number' ? Number(lng.toFixed(6)) : parseFloat(lng)?.toFixed(6);
     updateProject({
       address: name || label.split(',')[0],
       zip: postcode || '',
       city: city || '',
-      gps: `${lat}, ${lng}`
+      gps: `${latFmt}, ${lngFmt}`
     });
     window.dispatchEvent(new CustomEvent('map:goto-location', {
       detail: { lat, lng, zoom: 18 }
@@ -936,7 +939,7 @@ export default function ProjectEditor() {
 
               {/* GPS + Projet on same line */}
               <div className="flex gap-2">
-                <div className="flex-1 min-w-[120px]"><label className="text-xs font-medium">GPS</label><div className="flex gap-1 mt-0.5"><Input placeholder="Lat" value={p.gps ? p.gps.split(',')[0] : ''} onChange={e => { const lat = e.target.value; const lon = p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : ''; updateProject({ gps: `${lat}, ${lon}` }); }} className="h-8 min-w-0" /><Input placeholder="Lon" value={p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : ''} onChange={e => { const lat = p.gps ? p.gps.split(',')[0].trim() : ''; updateProject({ gps: `${lat}, ${e.target.value}` }); }} className="h-8 min-w-0" /></div></div>
+                <div className="flex-1 min-w-[120px]"><label className="text-xs font-medium">GPS</label><div className="flex gap-1 mt-0.5"><Input placeholder="Lat" value={p.gps ? formatCoordinate(p.gps.split(',')[0]) : ''} onChange={e => { const lat = e.target.value; const lon = p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : ''; updateProject({ gps: `${lat}, ${lon}` }); }} className="h-8 min-w-0 font-mono text-xs" /><Input placeholder="Lon" value={p.gps && p.gps.includes(',') ? formatCoordinate(p.gps.split(',')[1]) : ''} onChange={e => { const lat = p.gps ? p.gps.split(',')[0].trim() : ''; updateProject({ gps: `${lat}, ${e.target.value}` }); }} className="h-8 min-w-0 font-mono text-xs" /></div></div>
                 <div className="w-[90px] shrink-0"><label className="text-xs font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-0.5 h-8" placeholder="Ex: 9kWc" /></div>
               </div>
 
@@ -1136,23 +1139,25 @@ export default function ProjectEditor() {
                 <div className="flex gap-2 mt-1">
                   <Input
                     placeholder="Lat"
-                    value={p.gps ? p.gps.split(',')[0] : ''}
+                    value={p.gps ? formatCoordinate(p.gps.split(',')[0]) : ''}
                     onChange={e => {
                       const lat = e.target.value;
                       const lon = p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : '';
                       updateProject({ gps: `${lat}, ${lon}` });
                     }}
                     title="Latitude"
+                    className="font-mono text-xs"
                   />
                   <Input
                     placeholder="Lon"
-                    value={p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : ''}
+                    value={p.gps && p.gps.includes(',') ? formatCoordinate(p.gps.split(',')[1]) : ''}
                     onChange={e => {
                       const lat = p.gps ? p.gps.split(',')[0].trim() : '';
                       const lon = e.target.value;
                       updateProject({ gps: `${lat}, ${lon}` });
                     }}
                     title="Longitude"
+                    className="font-mono text-xs"
                   />
                 </div>
               </div>

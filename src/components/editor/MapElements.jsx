@@ -4101,7 +4101,9 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
         if (targetPos.isManual && setProject) {
           setProject(prev => {
             if (!prev) return prev;
-            const currentGps = `${targetPos.lat}, ${targetPos.lng}`;
+            const latFmt = typeof targetPos.lat === 'number' ? Number(targetPos.lat.toFixed(6)) : parseFloat(targetPos.lat)?.toFixed(6);
+            const lngFmt = typeof targetPos.lng === 'number' ? Number(targetPos.lng.toFixed(6)) : parseFloat(targetPos.lng)?.toFixed(6);
+            const currentGps = `${latFmt}, ${lngFmt}`;
             if (prev.gps === currentGps) return prev;
             return {
               ...prev,

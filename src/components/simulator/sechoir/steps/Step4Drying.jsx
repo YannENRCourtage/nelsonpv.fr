@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Leaf, ChevronDown, ChevronUp, Plus, Minus, TrendingUp, Sparkles } from 'lucide-react';
+import { Leaf, ChevronDown, ChevronUp, Plus, Minus, TrendingUp, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import useSechoirStore from '@/stores/useSechoirStore.js';
+import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 
 const fmt = (n) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n || 0);
 
-function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangeParams }) {
+function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, onChangeVolume, onChangeParams }) {
   const [expandedSettings, setExpandedSettings] = useState(false);
 
   const vol = Number(material.volume || 0);
@@ -15,6 +16,8 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
   const gainQualite = vol * pvVal;
   const gainEnergie = vol * eeVal;
   const totalMatiere = gainQualite + gainEnergie;
+
+  const isOverCapacity = maxCapacity && vol > maxCapacity;
 
   return (
     <div className={`rounded-3xl border transition-all duration-200 shadow-md flex flex-col justify-between p-4 ${
@@ -58,6 +61,12 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
         <p className="text-sm text-slate-300 line-clamp-2 min-h-[38px] leading-relaxed">
           {material.description || material.label}
         </p>
+
+        {/* Capacité maximale du modèle choisi */}
+        <div className="flex items-center justify-between text-xs font-semibold text-slate-400 mt-2 pt-2 border-t border-slate-700/60">
+          <span>Capacité modèle :</span>
+          <span className="text-amber-400 font-bold">{maxCapacity ? `${maxCapacity} ${material.unit}` : '—'}</span>
+        </div>
       </div>
 
       {/* Zone de saisie Volume quand activé */}
@@ -89,6 +98,27 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
               <Plus className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Indicateur de respect / dépassement de la capacité */}
+          {vol > 0 && maxCapacity && (
+            isOverCapacity ? (
+              <div className="bg-amber-950/80 border border-amber-500/50 rounded-xl px-2.5 py-1 text-[11px] text-amber-300 font-bold flex items-center justify-between shadow-sm">
+                <span className="flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                  Capacité conseillée ({maxCapacity} {material.unit})
+                </span>
+                <span className="text-amber-400 font-black">+{vol - maxCapacity}</span>
+              </div>
+            ) : (
+              <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl px-2.5 py-1 text-[11px] text-slate-300 font-medium flex items-center justify-between shadow-sm">
+                <span className="flex items-center gap-1 text-slate-400">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                  Remplissage
+                </span>
+                <span className="text-emerald-400 font-bold">{Math.round((vol / maxCapacity) * 100)}% ({vol}/{maxCapacity})</span>
+              </div>
+            )
+          )}
 
           {/* Badge gain temps réel */}
           <div className="bg-emerald-950/80 border border-emerald-500/40 rounded-2xl p-2.5 text-center shadow-sm">
@@ -153,10 +183,12 @@ function HorizontalMaterialCard({ material, onToggle, onChangeVolume, onChangePa
 
 export default function Step4Drying() {
   const materials = useSechoirStore((state) => state.materials);
+  const selectedModelId = useSechoirStore((state) => state.selectedModelId);
   const toggleMaterial = useSechoirStore((state) => state.toggleMaterial);
   const updateMaterialVolume = useSechoirStore((state) => state.updateMaterialVolume);
   const updateMaterialParams = useSechoirStore((state) => state.updateMaterialParams);
 
+  const activeModel = BATITECH_MODELS[selectedModelId] || BATITECH_MODELS['BT-3.1.15'];
   const activeMaterials = materials.filter(m => m.enabled && m.volume > 0);
   
   let totalDeltaProduits = 0;
@@ -176,7 +208,7 @@ export default function Step4Drying() {
         <div>
           <h2 className="text-3xl font-black text-white">Besoins en Séchage &amp; Valorisation</h2>
           <p className="text-lg text-slate-300">
-            Activez et configurez vos besoins de séchage parmi les 5 filières pour estimer vos gains d'exploitation.
+            Activez et configurez vos besoins de séchage pour le modèle <strong className="text-amber-400">{activeModel.name}</strong> ({activeModel.dimensions} — {activeModel.zones} cellule{activeModel.zones > 1 ? 's' : ''}) pour estimer vos gains d'exploitation.
           </p>
         </div>
       </div>
@@ -187,6 +219,8 @@ export default function Step4Drying() {
           <HorizontalMaterialCard
             key={mat.id}
             material={mat}
+            maxCapacity={activeModel?.capacitesMax?.[mat.id]}
+            modelName={activeModel.name}
             onToggle={() => toggleMaterial(mat.id)}
             onChangeVolume={(val) => updateMaterialVolume(mat.id, val)}
             onChangeParams={(params) => updateMaterialParams(mat.id, params)}

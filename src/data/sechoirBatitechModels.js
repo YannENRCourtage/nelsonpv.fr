@@ -20,6 +20,13 @@ export const BATITECH_MODELS = {
     surfaceToiture: 360,
     length: 18,
     width: 20,
+    capacitesMax: {
+      fourrage_vrac: 300,
+      bottes_carrees: 140,
+      cereales_ble: 100,
+      cereales_mais: 60,
+      plaquettes_bois: 300,
+    },
     // Décomposition investissement (proportionnelle au modèle BP Excel K23 = 426 700€ pour ~100 kWc)
     postesInvestissement: {
       lotCentraleThermovoltaique: 26850,   // proportionné
@@ -57,6 +64,13 @@ export const BATITECH_MODELS = {
     surfaceToiture: 720,
     length: 36,
     width: 20,
+    capacitesMax: {
+      fourrage_vrac: 600,
+      bottes_carrees: 280,
+      cereales_ble: 200,
+      cereales_mais: 120,
+      plaquettes_bois: 600,
+    },
     postesInvestissement: {
       lotCentraleThermovoltaique: 34716,
       processAeraulique: 33145,
@@ -92,6 +106,13 @@ export const BATITECH_MODELS = {
     surfaceToiture: 960,
     length: 48,
     width: 20,
+    capacitesMax: {
+      fourrage_vrac: 900,
+      bottes_carrees: 420,
+      cereales_ble: 300,
+      cereales_mais: 180,
+      plaquettes_bois: 900,
+    },
     postesInvestissement: {
       lotCentraleThermovoltaique: 51500,
       processAeraulique: 49100,

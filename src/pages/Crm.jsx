@@ -22,6 +22,7 @@ import ContactModal from '@/components/crm/ContactModal.jsx';
 import UserAvatar from '@/components/UserAvatar.jsx';
 import ProjectsMap from '@/components/crm/ProjectsMap.jsx';
 import AgendaView from '@/components/crm/AgendaView.jsx';
+import { formatGps } from '@/utils/formatGps.js';
 
 // UserAvatar replaced by import
 
@@ -712,7 +713,7 @@ export default function Crm() {
         'Adresse': p.address || '-',
         'Code Postal': p.zip || '-',
         'Ville': p.city || '-',
-        'GPS': p.gps || '-',
+        'GPS': formatGps(p.gps) || '-',
         'Puissance (kWc)': p.kwc ? (p.kwc.toLowerCase().includes('kwc') ? p.kwc : `${p.kwc} kWc`) : (p.projectSize || '-'),
         'Type': p.type || 'Construction',
         'Statut': p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau')
@@ -1756,7 +1757,7 @@ export default function Crm() {
                     <td className="px-3 py-3 text-slate-600 max-w-[140px] truncate" title={project.address || '-'}>{project.address || '-'}</td>
                     <td className="px-2 py-3 text-slate-600 whitespace-nowrap">{project.zip || '-'}</td>
                     <td className="px-3 py-3 text-slate-600 max-w-[100px] truncate" title={project.city || '-'}>{project.city || '-'}</td>
-                    <td className="px-3 py-3 text-slate-600 max-w-[120px] truncate" title={project.gps || '-'}>{project.gps || '-'}</td>
+                    <td className="px-3 py-3 text-slate-600 max-w-[120px] truncate font-mono text-xs" title={formatGps(project.gps) || '-'}>{formatGps(project.gps) || '-'}</td>
                     <td className="px-2 py-3 text-slate-900 font-bold whitespace-nowrap w-[75px]">
                       {project.kwc ? (project.kwc.toString().toLowerCase().includes('kwc') ? project.kwc : `${project.kwc} kWc`) : '-'}
                     </td>
