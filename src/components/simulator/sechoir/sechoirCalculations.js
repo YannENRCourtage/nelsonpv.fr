@@ -152,28 +152,34 @@ export function calculateAnnuity(capital, tauxAnnuel, dureeAns) {
 
 /**
  * Calcule le plan de financement complet.
+ * Investissement Net Réel = Investissement Brut - Prime CEE - Subventions PAE
+ * Emprunt = Investissement Net Réel - Apports en propre
  *
  * @param {object} params
  * @param {number} params.investissementBrut - Investissement total (€)
  * @param {number} params.primeCEE - Prime CEE totale (€)
  * @param {number} params.subventionPAE - Subventions Plan Ambitions Éleveurs (€)
  * @param {number} params.apportsEnPropre - Apports en propre (€)
- * @returns {{ investissementNet: number, emprunt: number, subventionsTotal: number }}
+ * @returns {{ investissementNet: number, emprunt: number, subventionsTotal: number, subventionPAE: number, primeCEE: number }}
  */
 export function calculateFinancingPlan({
   investissementBrut,
-  primeCEE,
+  primeCEE = 0,
   subventionPAE = DEFAULT_FINANCIAL_PARAMS.subventionPAE,
   apportsEnPropre = DEFAULT_FINANCIAL_PARAMS.apportsEnPropre,
 }) {
-  const subventionsTotal = primeCEE + subventionPAE;
-  const investissementNet = investissementBrut - apportsEnPropre;
-  const emprunt = investissementNet - subventionsTotal;
+  const pCee = Number(primeCEE) || 0;
+  const sPae = Number(subventionPAE) || 0;
+  const subventionsTotal = pCee + sPae;
+  const investissementNet = Math.max(0, investissementBrut - subventionsTotal);
+  const emprunt = Math.max(0, investissementNet - (Number(apportsEnPropre) || 0));
 
   return {
     investissementNet,
-    emprunt: Math.max(0, emprunt),
+    emprunt,
     subventionsTotal,
+    subventionPAE: sPae,
+    primeCEE: pCee,
   };
 }
 
@@ -209,7 +215,7 @@ export function calculateCashFlowTable({
   let cumulTresorerie = apportsEnPropre; // Trésorerie de départ (0 € par défaut)
   
   // Montant net à rembourser/amortir par l'exploitation
-  const montantFinance = Math.max(0, investissementBrut - subventionsTotal);
+  const montantFinance = Math.max(0, investissementBrut - subventionsTotal - apportsEnPropre);
   let cumulAmortissement = 0;
   let roi = null;
 
@@ -240,7 +246,7 @@ export function calculateCashFlowTable({
       cumul: Math.round(cumulTresorerie),
     });
 
-    // ROI : Année où le cumul des gains d'exploitation couvre l'emprunt net
+    // ROI : Année où le cumul des gains d'exploitation couvre l'investissement net
     if (roi === null && cumulAmortissement >= montantFinance && fluxOperationnel > 0) {
       const prevAmort = cumulAmortissement - fluxOperationnel;
       const reste = montantFinance - prevAmort;
@@ -249,7 +255,7 @@ export function calculateCashFlowTable({
   }
 
   if (roi === null) {
-    roi = deltaEBE > 0 ? (montantFinance / deltaEBE) : 11.44;
+    roi = deltaEBE > 0 ? (montantFinance / deltaEBE) : 10.09;
   }
 
   return {
@@ -333,18 +339,8 @@ export function calculateProductionPV(puissanceKwc, departement, orientation = '
 // 11. CALCUL COMPLET — Orchestrateur
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Exécute l'ensemble des calculs financiers du simulateur.
- *
- * @param {object} params
- * @param {object} params.model - Modèle BatiTech sélectionné
- * @param {string} params.departement - Code département
- * @param {string} params.orientation - Orientation du bâtiment
- * @param {Array} params.materials - Matières de séchage configurées
- * @param {object} [params.financialParams] - Paramètres financiers personnalisés
- * @returns {object} Résultats complets
- */
 import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
+import { useSimulatorSettingsStore } from '@/stores/useSimulatorSettingsStore.js';
 
 export function calculateFullSimulation({
   model,
@@ -354,22 +350,42 @@ export function calculateFullSimulation({
   materials = [],
   financialParams = {},
 }) {
+  let dbModels = BATITECH_MODELS;
+  let dbFinParams = DEFAULT_FINANCIAL_PARAMS;
+  try {
+    const dbSettings = useSimulatorSettingsStore.getState()?.settings?.sechoir;
+    if (dbSettings?.models) {
+      dbModels = { ...BATITECH_MODELS, ...dbSettings.models };
+    }
+    if (dbSettings?.financialParams) {
+      dbFinParams = {
+        ...DEFAULT_FINANCIAL_PARAMS,
+        tauxEmprunt: (dbSettings.financialParams.tauxEmprunt || 3.4) / 100,
+        dureeEmprunt: dbSettings.financialParams.dureeEmprunt || 25,
+        subventionPAE: dbSettings.financialParams.subventionPAE ?? 100000,
+        tauxActualisation: (dbSettings.financialParams.tauxActualisation || 3.4) / 100,
+        inflationProduits: (dbSettings.financialParams.inflationProduits || 2.0) / 100,
+        dureeVieProjet: dbSettings.financialParams.dureeVieProjet || 20,
+      };
+    }
+  } catch (e) {}
+
   let resolvedModel = null;
   if (model && typeof model === 'object' && model.puissanceKwc) {
     resolvedModel = model;
-  } else if (typeof model === 'string' && BATITECH_MODELS[model]) {
-    resolvedModel = BATITECH_MODELS[model];
-  } else if (selectedModelId && BATITECH_MODELS[selectedModelId]) {
-    resolvedModel = BATITECH_MODELS[selectedModelId];
+  } else if (typeof model === 'string' && dbModels[model]) {
+    resolvedModel = dbModels[model];
+  } else if (selectedModelId && dbModels[selectedModelId]) {
+    resolvedModel = dbModels[selectedModelId];
   } else {
-    resolvedModel = BATITECH_MODELS['BT-3.1.15'] || BATITECH_MODELS['BT-6.2.15'];
+    resolvedModel = dbModels['BT-3.1.15'] || dbModels['BT-6.2.15'];
   }
 
   if (!resolvedModel) {
     return null;
   }
 
-  const fp = { ...DEFAULT_FINANCIAL_PARAMS, ...financialParams };
+  const fp = { ...dbFinParams, ...financialParams };
 
   // 1. Prime CEE
   const cee = calculateCEEPrime(resolvedModel.nbModules || 90);
@@ -390,7 +406,7 @@ export function calculateFullSimulation({
   const financing = calculateFinancingPlan({
     investissementBrut: resolvedModel.investissementBrut || 327053,
     primeCEE: cee.primeTotal || 0,
-    subventionPAE: fp.subventionPAE || 0,
+    subventionPAE: fp.subventionPAE !== undefined ? fp.subventionPAE : 100000,
     apportsEnPropre: fp.apportsEnPropre || 0,
   });
 
@@ -423,9 +439,10 @@ export function calculateFullSimulation({
       nbModules: resolvedModel.nbModules || 90,
       investissementBrut: resolvedModel.investissementBrut || 327053,
       dimensions: resolvedModel.dimensions || '18m × 20m',
+      surfaceToiture: resolvedModel.surfaceToiture || 360,
       length: resolvedModel.length || 18,
       width: resolvedModel.width || 20,
-      surfaceToiture: resolvedModel.surfaceToiture || 360,
+      zones: resolvedModel.zones || 1,
     },
     cee,
     productionPV,

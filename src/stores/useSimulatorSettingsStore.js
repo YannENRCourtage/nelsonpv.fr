@@ -150,6 +150,67 @@ export const DEFAULT_DATABASE_SETTINGS = {
     defaultEaveHeight: 4.5,
     defaultRoofPitch: 10,
     ecoEvoCatalog: DEFAULT_ECO_EVO_CATALOG
+  },
+
+  // 5. Séchoir Multi-Matières BatiTech® Cogen'Air®
+  sechoir: {
+    models: {
+      'BT-3.1.15': {
+        id: 'BT-3.1.15',
+        name: 'BatiTech 3.1.15',
+        puissanceKwc: 30.15,
+        nbModules: 90,
+        investissementBrut: 327053,
+        zones: 1,
+        dimensions: '18m × 20m',
+        surfaceToiture: 360,
+        chargesAnnuellesVentilation: 500,
+        chargesAnnuellesFoin: 700,
+        chargesAnnuellesMaintenance: 300,
+      },
+      'BT-6.2.15': {
+        id: 'BT-6.2.15',
+        name: 'BatiTech 6.2.15',
+        puissanceKwc: 63.30,
+        nbModules: 189,
+        investissementBrut: 564986,
+        zones: 2,
+        dimensions: '36m × 20m',
+        surfaceToiture: 720,
+        chargesAnnuellesVentilation: 1500,
+        chargesAnnuellesFoin: 2000,
+        chargesAnnuellesMaintenance: 500,
+      },
+      'BT-8.3.15': {
+        id: 'BT-8.3.15',
+        name: 'BatiTech 8.3.15',
+        puissanceKwc: 93.80,
+        nbModules: 280,
+        investissementBrut: 764501,
+        zones: 3,
+        dimensions: '48m × 20m',
+        surfaceToiture: 960,
+        chargesAnnuellesVentilation: 2200,
+        chargesAnnuellesFoin: 3000,
+        chargesAnnuellesMaintenance: 800,
+      },
+    },
+    financialParams: {
+      tauxEmprunt: 3.40,           // en % (3.40%)
+      dureeEmprunt: 25,            // en années (25 ans)
+      subventionPAE: 100000,       // en €
+      tauxActualisation: 3.40,     // en % (3.40%)
+      inflationProduits: 2.00,     // en % (2.00%)
+      dureeVieProjet: 20,          // en années (20 ans)
+      fixationCostPerPanel: 101,   // en €/panneau
+    },
+    materials: [
+      { id: 'fourrage_vrac', label: 'Fourrage vrac (Séchage en grange)', plusValueQualite: 25, economieEnergie: 15, unit: 't MS/an' },
+      { id: 'bottes_carrees', label: 'Bottes carrées (Foin conditionné)', plusValueQualite: 30, economieEnergie: 20, unit: 't MS/an' },
+      { id: 'cereales_ble', label: 'Céréales - Blé tendre', plusValueQualite: 10, economieEnergie: 12, unit: 't MS/an' },
+      { id: 'cereales_mais', label: 'Céréales - Maïs grain', plusValueQualite: 12, economieEnergie: 16, unit: 't MS/an' },
+      { id: 'plaquettes_bois', label: 'Plaquettes forestières (Bois énergie)', plusValueQualite: 8, economieEnergie: 18, unit: 't MS/an' },
+    ],
   }
 };
 
@@ -174,6 +235,62 @@ export const useSimulatorSettingsStore = create(
       updateStructureSettings: (newStruct) => set((state) => ({
         settings: { ...state.settings, structure: { ...state.settings.structure, ...newStruct } }
       })),
+
+      updateSechoirSettings: (newSechoir) => set((state) => ({
+        settings: { ...state.settings, sechoir: { ...(state.settings.sechoir || DEFAULT_DATABASE_SETTINGS.sechoir), ...newSechoir } }
+      })),
+
+      updateSechoirModel: (modelId, updatedFields) => set((state) => {
+        const prevSechoir = state.settings.sechoir || DEFAULT_DATABASE_SETTINGS.sechoir;
+        const prevModels = prevSechoir.models || DEFAULT_DATABASE_SETTINGS.sechoir.models;
+        return {
+          settings: {
+            ...state.settings,
+            sechoir: {
+              ...prevSechoir,
+              models: {
+                ...prevModels,
+                [modelId]: {
+                  ...(prevModels[modelId] || {}),
+                  ...updatedFields,
+                }
+              }
+            }
+          }
+        };
+      }),
+
+      updateSechoirFinancial: (updatedFields) => set((state) => {
+        const prevSechoir = state.settings.sechoir || DEFAULT_DATABASE_SETTINGS.sechoir;
+        const prevFin = prevSechoir.financialParams || DEFAULT_DATABASE_SETTINGS.sechoir.financialParams;
+        return {
+          settings: {
+            ...state.settings,
+            sechoir: {
+              ...prevSechoir,
+              financialParams: {
+                ...prevFin,
+                ...updatedFields,
+              }
+            }
+          }
+        };
+      }),
+
+      updateSechoirMaterial: (matId, updatedFields) => set((state) => {
+        const prevSechoir = state.settings.sechoir || DEFAULT_DATABASE_SETTINGS.sechoir;
+        const prevMats = prevSechoir.materials || DEFAULT_DATABASE_SETTINGS.sechoir.materials;
+        const newMats = prevMats.map(m => m.id === matId ? { ...m, ...updatedFields } : m);
+        return {
+          settings: {
+            ...state.settings,
+            sechoir: {
+              ...prevSechoir,
+              materials: newMats,
+            }
+          }
+        };
+      }),
 
       // ─── Actions CRUD Autoconsommation Tiers ───
       addAutoconsoTier: (tier) => set((state) => {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Database, Zap, Sun, Building2, Sliders, CheckCircle2,
-  Euro, Info, Table, Plus, Trash2
+  Euro, Info, Table, Plus, Trash2, Leaf
 } from 'lucide-react';
 import { useSimulatorSettingsStore, DEFAULT_ECO_EVO_CATALOG } from '@/stores/useSimulatorSettingsStore';
 import { toast } from '@/components/ui/use-toast';
@@ -14,6 +14,10 @@ export default function SimulatorDatabaseTab() {
     updateAutoconsoSettings,
     updateToiturePvSettings,
     updateStructureSettings,
+    updateSechoirSettings,
+    updateSechoirModel,
+    updateSechoirFinancial,
+    updateSechoirMaterial,
     addAutoconsoTier,
     updateAutoconsoTier,
     deleteAutoconsoTier,
@@ -28,12 +32,17 @@ export default function SimulatorDatabaseTab() {
     deleteEcoEvoItem
   } = useSimulatorSettingsStore();
 
-  const [activeSubTab, setActiveSubTab] = useState('autoconso'); // 'autoconso' | 'toiture' | 'structure' | 'irve'
+  const [activeSubTab, setActiveSubTab] = useState('autoconso'); // 'autoconso' | 'toiture' | 'structure' | 'irve' | 'sechoir'
 
   const irve = settings.irve;
   const auto = settings.autoconsommation;
   const toiture = settings.toiturePv;
   const struct = settings.structure;
+  const sechoir = settings.sechoir || {};
+  const sechoirModels = sechoir.models || {};
+  const sechoirFinancial = sechoir.financialParams || {};
+  const sechoirMaterials = sechoir.materials || [];
+
   const ecoEvoCatalog = struct.ecoEvoCatalog || DEFAULT_ECO_EVO_CATALOG;
   const autoconsoTiers = auto.priceTiers || [];
   const toitureTarifsOa = toiture.tarifsAchatEdfOa || [];
@@ -65,13 +74,14 @@ export default function SimulatorDatabaseTab() {
           </div>
         </div>
 
-        {/* 4 Onglets de Solutions */}
+        {/* 5 Onglets de Solutions */}
         <div className="flex items-center gap-2 overflow-x-auto py-1">
           {[
             { id: 'autoconso', label: '1. Autoconsommation', icon: Sun },
             { id: 'toiture', label: '2. Toiture Photovoltaïque', icon: Building2 },
             { id: 'structure', label: '3. Structure Métallique & ECO-EVO', icon: Sliders },
             { id: 'irve', label: '4. Borne IRVE', icon: Zap },
+            { id: 'sechoir', label: '5. Séchoir BatiTech', icon: Leaf },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeSubTab === tab.id;
@@ -746,6 +756,226 @@ export default function SimulatorDatabaseTab() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ═══ 5. SÉCHOIR MULTI-MATIÈRES BATITECH® COGEN'AIR® ═══ */}
+      {activeSubTab === 'sechoir' && (
+        <div className="space-y-6">
+
+          {/* 5a. Hypothèses Économiques & Paramètres Financiers */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Leaf className="w-4 h-4 text-amber-500" />
+              Hypothèses Économiques &amp; Paramètres Financiers par Défaut
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Taux d'emprunt bancaire (%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={sechoirFinancial.tauxEmprunt ?? 3.40}
+                  onChange={(e) => updateSechoirFinancial({ tauxEmprunt: Number(e.target.value) })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Durée de l'emprunt (années)</label>
+                <input
+                  type="number"
+                  value={sechoirFinancial.dureeEmprunt ?? 25}
+                  onChange={(e) => updateSechoirFinancial({ dureeEmprunt: Number(e.target.value) })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Subvention PAE (Plan Ambitions Éleveurs) (€)</label>
+                <input
+                  type="number"
+                  value={sechoirFinancial.subventionPAE ?? 100000}
+                  onChange={(e) => updateSechoirFinancial({ subventionPAE: Number(e.target.value) })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Taux d'actualisation VAN (%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={sechoirFinancial.tauxActualisation ?? 3.40}
+                  onChange={(e) => updateSechoirFinancial({ tauxActualisation: Number(e.target.value) })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Inflation annuelle prévisionnelle (%)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={sechoirFinancial.inflationProduits ?? 2.0}
+                  onChange={(e) => updateSechoirFinancial({ inflationProduits: Number(e.target.value) })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Coût fixation par panneau (€/panneau)</label>
+                <input
+                  type="number"
+                  value={sechoirFinancial.fixationCostPerPanel ?? 101}
+                  onChange={(e) => updateSechoirFinancial({ fixationCostPerPanel: Number(e.target.value) })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 5b. Modèles BatiTech® Standards & Investissement Brut */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-blue-600" />
+              Catalogue des Modèles BatiTech® &amp; Tarifs d'Investissement Brut (€ HT)
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-700 uppercase font-black tracking-wider text-[10px]">
+                    <th className="p-3">Modèle</th>
+                    <th className="p-3 text-center">Zones Séchage</th>
+                    <th className="p-3 text-center">Puissance (kWc)</th>
+                    <th className="p-3 text-center">Modules Cogen'Air®</th>
+                    <th className="p-3 text-center">Dimensions</th>
+                    <th className="p-3 text-center">Surface Toiture (m²)</th>
+                    <th className="p-3 text-right">Investissement Brut (€ HT)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
+                  {Object.entries(sechoirModels).map(([id, mod]) => (
+                    <tr key={id} className="hover:bg-slate-50">
+                      <td className="p-3 font-bold text-slate-900">
+                        {mod.name || id}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 font-black">
+                          {mod.zones} zone{mod.zones > 1 ? 's' : ''}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <input
+                          type="number"
+                          step="0.05"
+                          value={mod.puissanceKwc}
+                          onChange={(e) => updateSechoirModel(id, { puissanceKwc: Number(e.target.value) })}
+                          className="w-20 p-1 text-center bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"
+                        />
+                      </td>
+                      <td className="p-3 text-center">
+                        <input
+                          type="number"
+                          value={mod.nbModules}
+                          onChange={(e) => updateSechoirModel(id, { nbModules: Number(e.target.value) })}
+                          className="w-16 p-1 text-center bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"
+                        />
+                      </td>
+                      <td className="p-3 text-center">
+                        <input
+                          type="text"
+                          value={mod.dimensions || ''}
+                          onChange={(e) => updateSechoirModel(id, { dimensions: e.target.value })}
+                          className="w-24 p-1 text-center bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"
+                        />
+                      </td>
+                      <td className="p-3 text-center">
+                        <input
+                          type="number"
+                          value={mod.surfaceToiture || 360}
+                          onChange={(e) => updateSechoirModel(id, { surfaceToiture: Number(e.target.value) })}
+                          className="w-20 p-1 text-center bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"
+                        />
+                      </td>
+                      <td className="p-3 text-right">
+                        <input
+                          type="number"
+                          value={mod.investissementBrut}
+                          onChange={(e) => updateSechoirModel(id, { investissementBrut: Number(e.target.value) })}
+                          className="w-32 p-1 text-right font-black text-amber-600 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 5c. Barème de Valorisation des Matières & Économies d'Énergie */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Table className="w-4 h-4 text-emerald-600" />
+              Barème de Valorisation Agricole &amp; Économies d'Énergie (€/t MS)
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-700 uppercase font-black tracking-wider text-[10px]">
+                    <th className="p-3">Filière / Matière Agricole</th>
+                    <th className="p-3 text-center">Unité</th>
+                    <th className="p-3 text-right">Plus-value Qualité (€/t)</th>
+                    <th className="p-3 text-right">Économie Énergie Fossile (€/t)</th>
+                    <th className="p-3 text-right text-emerald-700">Gain Total par Tonne (€/t)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
+                  {sechoirMaterials.map((mat) => {
+                    const pv = Number(mat.plusValueQualite || 0);
+                    const ee = Number(mat.economieEnergie || 0);
+                    const totalUnit = pv + ee;
+
+                    return (
+                      <tr key={mat.id} className="hover:bg-slate-50">
+                        <td className="p-3 font-bold text-slate-900">
+                          {mat.label}
+                        </td>
+                        <td className="p-3 text-center text-slate-500 font-mono">
+                          {mat.unit || 't MS/an'}
+                        </td>
+                        <td className="p-3 text-right">
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={mat.plusValueQualite}
+                            onChange={(e) => updateSechoirMaterial(mat.id, { plusValueQualite: Number(e.target.value) })}
+                            className="w-24 p-1 text-right bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-blue-700"
+                          />
+                        </td>
+                        <td className="p-3 text-right">
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={mat.economieEnergie}
+                            onChange={(e) => updateSechoirMaterial(mat.id, { economieEnergie: Number(e.target.value) })}
+                            className="w-24 p-1 text-right bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-amber-700"
+                          />
+                        </td>
+                        <td className="p-3 text-right font-black text-emerald-600 text-sm">
+                          +{totalUnit.toFixed(1)} €/t
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       )}
 

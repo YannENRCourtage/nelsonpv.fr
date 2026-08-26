@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Search, Loader2, MapPinned, X, Building2, CheckCircle2 } from 'lucide-react';
 import useSechoirStore from '@/stores/useSechoirStore.js';
-import { BATITECH_MODELS, ZONES_CLIMATIQUES, ZONES_SECHAGE } from '@/data/sechoirBatitechModels.js';
+import { BATITECH_MODELS, ZONES_CLIMATIQUES, ZONES_SECHAGE, getRegionForDepartment } from '@/data/sechoirBatitechModels.js';
 
 export default function Step1Location() {
   // Store — Localisation
   const address = useSechoirStore((state) => state.address);
   const addressLabel = useSechoirStore((state) => state.addressLabel);
+  const departement = useSechoirStore((state) => state.departement);
   const zoneClimatique = useSechoirStore((state) => state.zoneClimatique);
   const zoneSechage = useSechoirStore((state) => state.zoneSechage);
   const setAddress = useSechoirStore((state) => state.setAddress);
@@ -21,6 +22,7 @@ export default function Step1Location() {
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
+  const isUserTypingRef = useRef(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -29,9 +31,10 @@ export default function Step1Location() {
     }
   }, [setModel]);
 
-  // Synchroniser la valeur de l'input si le store change
+  // Synchroniser la valeur de l'input si le store change de l'extérieur sans déclencher la recherche
   useEffect(() => {
     if (addressLabel || address) {
+      isUserTypingRef.current = false;
       setQuery(addressLabel || address);
     }
   }, [addressLabel, address]);
@@ -47,11 +50,16 @@ export default function Step1Location() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Recherche BAN avec debounce
+  // Recherche BAN uniquement lorsque l'utilisateur tape du texte
   useEffect(() => {
+    if (!isUserTypingRef.current) {
+      return;
+    }
+
     if (!query || query.trim().length < 2) {
       setResults([]);
       setIsSearching(false);
+      setShowDropdown(false);
       return;
     }
 
@@ -77,6 +85,7 @@ export default function Step1Location() {
   }, [query]);
 
   const handleInputChange = (e) => {
+    isUserTypingRef.current = true;
     const val = e.target.value;
     setQuery(val);
     if (!val) {
@@ -97,6 +106,7 @@ export default function Step1Location() {
   };
 
   const handleClear = () => {
+    isUserTypingRef.current = false;
     setQuery('');
     setResults([]);
     setShowDropdown(false);
@@ -114,6 +124,7 @@ export default function Step1Location() {
   };
 
   const handleSelectAddress = (feature) => {
+    isUserTypingRef.current = false;
     const props = feature.properties;
     const coords = feature.geometry.coordinates; // [lng, lat]
     const postcode = props.postcode || '';
@@ -143,6 +154,7 @@ export default function Step1Location() {
     });
 
     setQuery(label);
+    setResults([]);
     setShowDropdown(false);
   };
 
@@ -153,6 +165,8 @@ export default function Step1Location() {
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  const regionName = getRegionForDepartment(departement);
 
   return (
     <motion.div
@@ -169,7 +183,7 @@ export default function Step1Location() {
             <div className="space-y-1">
               <h2 className="text-xl font-black text-white flex items-center gap-2.5">
                 <MapPin className="text-amber-400 w-6 h-6 shrink-0" />
-                Localisation & Implantation
+                Localisation &amp; Implantation
               </h2>
               <p className="text-xs text-slate-300">
                 Renseignez l'adresse du projet pour déterminer les zones climatiques et le productible.
@@ -183,7 +197,7 @@ export default function Step1Location() {
                   type="text"
                   value={query}
                   onChange={handleInputChange}
-                  onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
+                  onFocus={() => { if (isUserTypingRef.current && results.length > 0) setShowDropdown(true); }}
                   placeholder="Saisissez une adresse ou commune..."
                   className="w-full bg-slate-900/90 border border-slate-700 rounded-2xl py-3 pl-11 pr-10 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm font-medium shadow-inner"
                 />
@@ -232,24 +246,32 @@ export default function Step1Location() {
               </AnimatePresence>
             </div>
 
-            {/* Badges géographiques */}
-            <div className="grid grid-cols-3 gap-2.5 pt-1">
-              <div className="bg-slate-900/80 border border-blue-500/30 rounded-2xl p-3 flex flex-col items-center justify-center text-center shadow-inner">
-                <span className="text-xl" role="img" aria-label="Montagne">🏔️</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Zone CEE</span>
-                <span className="text-base font-black text-blue-400">{zoneClimatique || 'H1'}</span>
+            {/* 4 Badges géographiques : Région, Zone CEE, Séchage, Fiche CEE */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              <div className="bg-slate-900/80 border border-purple-500/30 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center shadow-inner">
+                <span className="text-lg" role="img" aria-label="Région">🏛️</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Région</span>
+                <span className="text-[11px] font-black text-purple-300 leading-tight mt-0.5" title={regionName}>
+                  {regionName}
+                </span>
               </div>
 
-              <div className="bg-slate-900/80 border border-amber-500/30 rounded-2xl p-3 flex flex-col items-center justify-center text-center shadow-inner">
-                <span className="text-xl" role="img" aria-label="Blé">🌾</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Séchage</span>
-                <span className="text-base font-black text-amber-400">Zone {zoneSechage || 1}</span>
+              <div className="bg-slate-900/80 border border-blue-500/30 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center shadow-inner">
+                <span className="text-lg" role="img" aria-label="Montagne">🏔️</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Zone CEE</span>
+                <span className="text-sm font-black text-blue-400 mt-0.5">{zoneClimatique || 'H1'}</span>
               </div>
 
-              <div className="bg-slate-900/80 border border-emerald-500/30 rounded-2xl p-3 flex flex-col items-center justify-center text-center shadow-inner">
-                <span className="text-xl" role="img" aria-label="Fiche CEE">📋</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Fiche CEE</span>
-                <span className="text-xs font-black text-emerald-400">AGRI-EQ-110</span>
+              <div className="bg-slate-900/80 border border-amber-500/30 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center shadow-inner">
+                <span className="text-lg" role="img" aria-label="Blé">🌾</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Séchage</span>
+                <span className="text-sm font-black text-amber-400 mt-0.5">Zone {zoneSechage || 1}</span>
+              </div>
+
+              <div className="bg-slate-900/80 border border-emerald-500/30 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center shadow-inner">
+                <span className="text-lg" role="img" aria-label="Fiche CEE">📋</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Fiche CEE</span>
+                <span className="text-[10px] font-black text-emerald-400 mt-0.5">AGRI-EQ-110</span>
               </div>
             </div>
           </div>

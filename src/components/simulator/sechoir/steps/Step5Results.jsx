@@ -150,7 +150,7 @@ export default function Step5Results() {
             </div>
             <div className="flex justify-between text-emerald-400">
               <span>Subventions (Plan Ambitions Éleveurs) :</span>
-              <span className="font-bold">-{fmt(financing?.subventionsTotal)} €</span>
+              <span className="font-bold">-{fmt(financing?.subventionPAE ?? (financialParams?.subventionPAE || 100000))} €</span>
             </div>
             
             <div className="pt-2.5 border-t border-slate-700 flex justify-between font-bold text-base">
@@ -187,7 +187,7 @@ export default function Step5Results() {
         
         <div className="h-72 sm:h-80 w-full mb-4">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+            <BarChart data={chartData} margin={{ top: 25, right: 15, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
               <XAxis dataKey="annee" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} />
               <YAxis 
@@ -210,9 +210,10 @@ export default function Step5Results() {
                   label={{ 
                     value: `ROI : ${Number(roi).toFixed(2)} ans`, 
                     fill: '#22d3ee', 
-                    position: 'top', 
+                    position: 'insideTop', 
                     fontSize: 12, 
-                    fontWeight: 'bold' 
+                    fontWeight: 'bold',
+                    dy: 10,
                   }} 
                 />
               )}

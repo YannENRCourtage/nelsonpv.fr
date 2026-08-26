@@ -122,13 +122,13 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         deltaEBE: results.deltaEBE || 0,
         totalInvestmentHT: results.model?.investissementBrut || 0,
         primeCEE: results.cee?.primeTotal || 0,
-        subventionsPAE: results.financing?.subventionsTotal || 0,
+        subventionsPAE: results.financing?.subventionPAE || results.financing?.subventionsTotal || 0,
         investissementNet: results.financing?.investissementNet || 0,
         emprunt: results.financing?.emprunt || 0,
         annuite: results.annuite || 0,
         gainNetAnnuel: results.gainNetAnnuel || 0,
-        paybackYear: results.roi || 7.29,
-        roi: results.roi || 7.29,
+        paybackYear: results.roi || 10.09,
+        roi: results.roi || 10.09,
         van: results.van || 0,
         tri: results.triPercent || 'N/A',
         triPercent: results.triPercent || 'N/A',
@@ -220,10 +220,10 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
   return (
     <div className="min-h-[calc(100vh-180px)] bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 rounded-3xl overflow-hidden border border-slate-800/60 shadow-2xl">
 
-      {/* ═══ HEADER — Barre de progression ═══════════════════════════════════ */}
+      {/* ═══ HEADER — Titre, Navigation Haut-Droite & Progression ════════════ */}
       <div className="px-5 sm:px-8 pt-6 pb-4">
-        {/* Titre */}
-        <div className="flex items-center justify-between mb-6">
+        {/* Titre & Boutons de navigation en haut à droite */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center">
               <Leaf className="w-6 h-6 text-amber-400" />
@@ -238,13 +238,47 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
             </div>
           </div>
 
-          <button
-            onClick={reset}
-            className="p-2.5 rounded-2xl bg-slate-800/60 hover:bg-slate-700/80 text-slate-400 hover:text-white transition-all"
-            title="Réinitialiser la simulation"
-          >
-            <RotateCcw className="w-5 h-5" />
-          </button>
+          {/* Boutons Précédent, Suivant et Reset placés en haut à droite */}
+          <div className="flex items-center gap-2.5 self-end sm:self-center">
+            {/* Bouton Précédent */}
+            <button
+              onClick={handlePrev}
+              disabled={currentStep === 1}
+              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+                currentStep === 1
+                  ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed border border-slate-800/40'
+                  : 'bg-slate-800/80 text-slate-200 hover:bg-slate-700 hover:text-white border border-slate-700 shadow-sm'
+              }`}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Précédent
+            </button>
+
+            {/* Bouton Suivant */}
+            {currentStep < 4 && (
+              <button
+                onClick={handleNext}
+                disabled={!canProceed}
+                className={`flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all ${
+                  canProceed
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 shadow-md shadow-amber-500/20 hover:scale-105'
+                    : 'bg-slate-800/30 text-slate-600 cursor-not-allowed border border-slate-800/40'
+                }`}
+              >
+                Suivant
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Bouton Réinitialiser */}
+            <button
+              onClick={reset}
+              className="p-2.5 rounded-2xl bg-slate-800/60 hover:bg-slate-700/80 text-slate-400 hover:text-white border border-slate-700 transition-all"
+              title="Réinitialiser la simulation"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Barre de progression — 4 étapes */}
@@ -295,7 +329,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
       </div>
 
       {/* ═══ CONTENU — Étape active ═══════════════════════════════════════════ */}
-      <div className="px-5 sm:px-8 pb-6 relative z-20 overflow-visible">
+      <div className="px-5 sm:px-8 pb-8 relative z-20 overflow-visible">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentStep}
@@ -313,48 +347,6 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
             {currentStep === 4 && <Step5Results onExportPDF={handleExportPDF} />}
           </motion.div>
         </AnimatePresence>
-      </div>
-
-      {/* ═══ FOOTER — Navigation ═════════════════════════════════════════════ */}
-      <div className="px-5 sm:px-8 pb-6 relative z-10">
-        <div className="flex items-center justify-between pt-4 border-t border-slate-800/60">
-          {/* Bouton Précédent */}
-          <button
-            onClick={handlePrev}
-            disabled={currentStep === 1}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-base font-bold transition-all ${
-              currentStep === 1
-                ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
-                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700/80 hover:text-white'
-            }`}
-          >
-            <ChevronLeft className="w-5 h-5" />
-            Précédent
-          </button>
-
-          {/* Indicateur central */}
-          <span className="text-sm text-slate-400 font-semibold">
-            Étape {currentStep} / 4
-          </span>
-
-          {/* Bouton Suivant */}
-          {currentStep < 4 ? (
-            <button
-              onClick={handleNext}
-              disabled={!canProceed}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-base font-black transition-all ${
-                canProceed
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 shadow-lg shadow-amber-500/30 hover:shadow-amber-400/40 hover:scale-105'
-                  : 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
-              }`}
-            >
-              Suivant
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          ) : (
-            <div />
-          )}
-        </div>
       </div>
 
     </div>

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   FolderOpen, Search, Trash2, FileDown, ExternalLink,
   Sun, Zap, Building2, Sliders, Calendar, MapPin, CheckCircle2,
-  AlertCircle, ArrowUpRight, LayoutGrid, Table as TableIcon
+  AlertCircle, ArrowUpRight, LayoutGrid, Table as TableIcon, Leaf
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
@@ -13,19 +13,35 @@ export default function SimulatorArchivesTab({
   onDeleteSimulation,
   onExportPDF
 }) {
-  const [filterType, setFilterType] = useState('all'); // 'all' | 'autoconsommation' | 'toiture_pv' | 'structure_metallique' | 'irve'
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'autoconsommation' | 'toiture_pv' | 'structure_metallique' | 'irve' | 'sechoir_batitech'
   const [searchQuery, setSearchQuery] = useState('');
   const [displayMode, setDisplayMode] = useState('grid'); // 'grid' | 'table'
 
   const filteredSimulations = simulations.filter(sim => {
-    const matchType = filterType === 'all' || sim.type === filterType || (filterType === 'irve' && sim.projectType === 'irve') || (filterType === 'autoconsommation' && sim.projectType === 'solar');
+    const isSechoirSim = sim.type === 'sechoir_batitech' || sim.type === 'sechoir' || sim.projectType === 'sechoir_batitech' || (sim.title && sim.title.toLowerCase().includes('séchoir'));
+    const isAutoconsoSim = sim.type === 'autoconsommation' || sim.projectType === 'solar';
+    const isToitureSim = sim.type === 'toiture_pv';
+    const isStructSim = sim.type === 'structure_metallique';
+    const isIrveSim = (sim.type === 'irve' || sim.projectType === 'irve') && !isSechoirSim;
+
+    let matchType = false;
+    if (filterType === 'all') matchType = true;
+    else if (filterType === 'autoconsommation') matchType = isAutoconsoSim;
+    else if (filterType === 'toiture_pv') matchType = isToitureSim;
+    else if (filterType === 'structure_metallique') matchType = isStructSim;
+    else if (filterType === 'irve') matchType = isIrveSim;
+    else if (filterType === 'sechoir_batitech') matchType = isSechoirSim;
+
     const matchSearch = !searchQuery || 
       (sim.title || sim.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (sim.address || sim.cityName || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchType && matchSearch;
   });
 
-  const getTypeBadge = (type) => {
+  const getTypeBadge = (type, title = '') => {
+    if (type === 'sechoir_batitech' || type === 'sechoir' || (title && title.toLowerCase().includes('séchoir'))) {
+      return { label: 'Séchoir BatiTech®', color: 'bg-amber-100 text-amber-900 border-amber-300', icon: Leaf };
+    }
     switch (type) {
       case 'autoconsommation':
       case 'solar':
@@ -102,6 +118,7 @@ export default function SimulatorArchivesTab({
               { id: 'toiture_pv', label: 'Toiture PV' },
               { id: 'structure_metallique', label: 'Bâtiment 3D' },
               { id: 'irve', label: 'IRVE' },
+              { id: 'sechoir_batitech', label: 'Séchoir BatiTech' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -145,7 +162,7 @@ export default function SimulatorArchivesTab({
         /* ═══ VUE VIGNETTES (GRID) ═══ */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredSimulations.map((sim) => {
-            const badge = getTypeBadge(sim.type || sim.projectType);
+            const badge = getTypeBadge(sim.type || sim.projectType, sim.title || sim.name);
             const Icon = badge.icon;
             const formattedDate = sim.createdAt ? new Date(sim.createdAt).toLocaleDateString('fr-FR') : '-';
 
@@ -256,7 +273,7 @@ export default function SimulatorArchivesTab({
               </thead>
               <tbody className="divide-y divide-slate-200 font-semibold text-slate-800">
                 {filteredSimulations.map((sim) => {
-                  const badge = getTypeBadge(sim.type || sim.projectType);
+                  const badge = getTypeBadge(sim.type || sim.projectType, sim.title || sim.name);
                   const Icon = badge.icon;
                   const formattedDate = sim.createdAt ? new Date(sim.createdAt).toLocaleDateString('fr-FR') : '-';
 
