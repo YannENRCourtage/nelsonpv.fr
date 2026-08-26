@@ -115,7 +115,19 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         kwc: results.model?.puissanceKwc || 30.15,
         nbModules: results.model?.nbModules || 90,
         orientation: store.orientation,
-        orientationLabel: rot === 0 ? 'Plein Sud (0°)' : rot > 0 ? `Sud-Ouest (+${rot}°)` : `Sud-Est (${rot}°)`,
+        orientationLabel: (() => {
+          let cardinal = 'Sud';
+          if (rot >= -22 && rot <= 22) cardinal = 'Sud';
+          else if (rot > 22 && rot <= 67) cardinal = 'Sud-Ouest';
+          else if (rot > 67 && rot <= 112) cardinal = 'Ouest';
+          else if (rot > 112 && rot <= 157) cardinal = 'Nord-Ouest';
+          else if (rot < -22 && rot >= -67) cardinal = 'Sud-Est';
+          else if (rot < -67 && rot >= -112) cardinal = 'Est';
+          else if (rot < -112 && rot >= -157) cardinal = 'Nord-Est';
+          else cardinal = 'Nord';
+          const degStr = rot > 0 ? `+${rot}°` : `${rot}°`;
+          return `${cardinal} (${degStr})`;
+        })(),
         annualProductionKwh: results.productionPV || 0,
         deltaProduits: results.produits?.deltaProduits || 0,
         annualBenefitYear1: results.deltaEBE || 0,

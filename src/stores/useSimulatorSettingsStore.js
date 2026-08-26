@@ -205,10 +205,10 @@ export const DEFAULT_DATABASE_SETTINGS = {
       fixationCostPerPanel: 101,   // en €/panneau
     },
     materials: [
-      { id: 'fourrage_vrac', label: 'Fourrage vrac (Séchage en grange)', plusValueQualite: 25, economieEnergie: 15, unit: 't MS/an' },
-      { id: 'bottes_carrees', label: 'Bottes carrées (Foin conditionné)', plusValueQualite: 30, economieEnergie: 20, unit: 't MS/an' },
+      { id: 'fourrage_vrac', label: 'Fourrage vrac (Séchage en grange)', plusValueQualite: 55, economieEnergie: 10, unit: 't MS/an' },
+      { id: 'bottes_carrees', label: 'Bottes carrées (Foin conditionné)', plusValueQualite: 50, economieEnergie: 10, unit: 't MS/an' },
       { id: 'cereales_ble', label: 'Céréales - Blé tendre', plusValueQualite: 10, economieEnergie: 12, unit: 't MS/an' },
-      { id: 'cereales_mais', label: 'Céréales - Maïs grain', plusValueQualite: 12, economieEnergie: 16, unit: 't MS/an' },
+      { id: 'cereales_mais', label: 'Céréales - Maïs grain', plusValueQualite: 35, economieEnergie: 25, unit: 't MS/an' },
       { id: 'plaquettes_bois', label: 'Plaquettes forestières (Bois énergie)', plusValueQualite: 8, economieEnergie: 18, unit: 't MS/an' },
     ],
   }
@@ -540,7 +540,7 @@ export const useSimulatorSettingsStore = create(
       }
     }),
     {
-      name: 'nelson_simulator_database_v4',
+      name: 'nelson_simulator_database_v5',
     }
   )
 );

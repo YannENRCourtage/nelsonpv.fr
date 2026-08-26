@@ -144,9 +144,26 @@ export default function Step3Orientation() {
     if (ang >= -22 && ang <= 22) return 'sud';
     if (ang > 22 && ang <= 67) return 'sud-ouest';
     if (ang > 67 && ang <= 112) return 'ouest';
+    if (ang > 112 && ang <= 157) return 'nord-ouest';
     if (ang < -22 && ang >= -67) return 'sud-est';
     if (ang < -67 && ang >= -112) return 'est';
-    return ang > 0 ? 'ouest' : 'est';
+    if (ang < -112 && ang >= -157) return 'nord-est';
+    return 'nord';
+  };
+
+  const getOrientationDisplayLabel = (ang) => {
+    let cardinal = 'Sud';
+    if (ang >= -22 && ang <= 22) cardinal = 'Sud';
+    else if (ang > 22 && ang <= 67) cardinal = 'Sud-Ouest';
+    else if (ang > 67 && ang <= 112) cardinal = 'Ouest';
+    else if (ang > 112 && ang <= 157) cardinal = 'Nord-Ouest';
+    else if (ang < -22 && ang >= -67) cardinal = 'Sud-Est';
+    else if (ang < -67 && ang >= -112) cardinal = 'Est';
+    else if (ang < -112 && ang >= -157) cardinal = 'Nord-Est';
+    else cardinal = 'Nord';
+
+    const degStr = ang > 0 ? `+${ang}°` : `${ang}°`;
+    return `${cardinal} (${degStr})`;
   };
 
   const storeRotation = useSechoirStore((state) => state.rotation);
@@ -218,7 +235,7 @@ export default function Step3Orientation() {
                 Orientation (Bâtiment 1)
               </span>
               <span className="text-lg font-black text-blue-400 bg-blue-500/10 px-3.5 py-1 rounded-xl border border-blue-500/30">
-                {rotation > 0 ? `+${rotation}°` : `${rotation}°`}
+                {getOrientationDisplayLabel(rotation)}
               </span>
             </div>
 
