@@ -447,7 +447,22 @@ export const useConfiguratorStore = create(
             leftWidth: Number(data.leftWidth) || 9.3,
             rightWidth: Number(data.rightWidth) || 9.3,
             hasSolar: data.hasSolar !== undefined ? data.hasSolar : true,
-            fixedLength: data.fixedLength || null
+            fixedLength: data.fixedLength || null,
+            configMode: data.configMode || 'predefined',
+            customParams: data.customParams ? { ...data.customParams } : {
+                leftSpan: 10,
+                rightSpan: 10,
+                leftPitch: 15,
+                rightPitch: 15,
+                leftEaveHeight: 4,
+                rightEaveHeight: 4,
+                ridgeHeight: 6.5,
+                buildingType: 'symetrique',
+                leftExtWidth: 0,
+                leftExtHeight: 3.5,
+                rightExtWidth: 0,
+                rightExtHeight: 3.5,
+            }
         });
     },
 

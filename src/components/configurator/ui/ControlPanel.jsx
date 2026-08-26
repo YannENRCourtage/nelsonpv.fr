@@ -164,13 +164,19 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
             <div className="mb-4 border-b border-slate-100 pb-3">
                 <div className="flex gap-2">
                     <button
-                        onClick={() => setConfigMode('predefined')}
+                        onClick={() => {
+                            setConfigMode('predefined');
+                            if (onUpdateBuilding) onUpdateBuilding({ configMode: 'predefined' });
+                        }}
                         className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'predefined' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                     >
                         {isAcama ? "Bâtiments prédéfinis" : "Gamme ECO-EVO"}
                     </button>
                     <button
-                        onClick={() => setConfigMode('custom')}
+                        onClick={() => {
+                            setConfigMode('custom');
+                            if (onUpdateBuilding) onUpdateBuilding({ configMode: 'custom' });
+                        }}
                         className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'custom' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                     >
                         Bâtiments sur-mesure
@@ -392,7 +398,10 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
-                        onClick={toggleSolar}
+                        onClick={() => {
+                            toggleSolar();
+                            if (onUpdateBuilding) onUpdateBuilding({ hasSolar: !hasSolar });
+                        }}
                         className={`
                             w-1/2 py-2 px-2 rounded-lg font-bold text-xs leading-snug transition-all duration-200 shadow-xs border text-center
                             ${hasSolar

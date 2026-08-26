@@ -111,12 +111,8 @@ export function Structure({ hideBracing = false, forceHideDimensions = false, vi
                         const rAngle = 15 * (Math.PI / 180);
                         const rSpan = width * 0.75;
                         const frameRidgeH = eaveHeight + (rSpan * Math.tan(rAngle));
-                        if (buildingType === 'asymetrique_2') {
-                            // Abaisse la bande lisse de 0.3m supplémentaire sur l'asymétrique 2 zones (-0.80m)
-                            return frameRidgeH - 0.80;
-                        }
-                        // Pour asymétrique 1 zone (abaissé de 0.4m supplémentaire : -0.90m)
-                        return frameRidgeH - 0.90;
+                        // La bande lisse est posée juste au-dessus du bac acier et des panneaux solaires (+0.55m)
+                        return frameRidgeH + 0.55;
                     })()}
                     angle={15 * Math.PI / 180} 
                     x={-width * 0.25} 
