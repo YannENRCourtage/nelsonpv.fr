@@ -244,7 +244,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
       </div>
 
       {/* ═══ CONTENU — Étape active ═══════════════════════════════════════════ */}
-      <div className="px-4 sm:px-8 pb-6 overflow-hidden">
+      <div className="px-4 sm:px-8 pb-6 relative z-20 overflow-visible">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentStep}
@@ -254,6 +254,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
             animate="center"
             exit="exit"
             transition={{ type: 'spring', stiffness: 300, damping: 30, duration: 0.3 }}
+            className="overflow-visible"
           >
             {currentStep === 1 && <Step1Location />}
             {currentStep === 2 && <Step2Model />}
@@ -265,7 +266,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
       </div>
 
       {/* ═══ FOOTER — Navigation ═════════════════════════════════════════════ */}
-      <div className="px-4 sm:px-8 pb-6">
+      <div className="px-4 sm:px-8 pb-6 relative z-10">
         <div className="flex items-center justify-between pt-4 border-t border-slate-800/60">
           {/* Bouton Précédent */}
           <button

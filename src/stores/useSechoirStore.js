@@ -134,6 +134,7 @@ const useSechoirStore = create(
         materials: DRYING_MATERIALS.map(m => ({
           id: m.id,
           label: m.label,
+          shortLabel: m.shortLabel,
           icon: m.icon,
           unit: m.unit,
           enabled: false,
@@ -147,7 +148,29 @@ const useSechoirStore = create(
     }),
     {
       name: 'nelson-sechoir-batitech',
-      version: 1,
+      version: 2,
+      migrate: (persistedState, version) => {
+        if (!persistedState || version < 2) {
+          return {
+            ...persistedState,
+            materials: DRYING_MATERIALS.map(m => {
+              const existing = (persistedState?.materials || []).find(em => em.id === m.id);
+              return {
+                id: m.id,
+                label: m.label,
+                shortLabel: m.shortLabel,
+                icon: m.icon,
+                unit: m.unit,
+                enabled: existing ? existing.enabled : false,
+                volume: existing ? existing.volume : m.defaultVolume,
+                plusValueQualite: existing ? existing.plusValueQualite : m.defaultPlusValueQualite,
+                economieEnergie: existing ? existing.economieEnergie : m.defaultEconomieEnergie,
+              };
+            }),
+          };
+        }
+        return persistedState;
+      },
     }
   )
 );

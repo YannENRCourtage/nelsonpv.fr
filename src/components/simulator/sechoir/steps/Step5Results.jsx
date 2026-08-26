@@ -201,6 +201,21 @@ export default function Step5Results({ onExportPDF }) {
                 labelFormatter={(label) => `Année ${label}`}
               />
               <ReferenceLine y={0} stroke="#64748b" strokeWidth={1.5} />
+              {roi && Number(roi) > 0 && Number(roi) <= 25 && (
+                <ReferenceLine 
+                  x={Math.round(Number(roi))} 
+                  stroke="#06b6d4" 
+                  strokeWidth={2} 
+                  strokeDasharray="4 4" 
+                  label={{ 
+                    value: `ROI : ${Number(roi).toFixed(2)} ans`, 
+                    fill: '#22d3ee', 
+                    position: 'top', 
+                    fontSize: 11, 
+                    fontWeight: 'bold' 
+                  }} 
+                />
+              )}
               <Bar dataKey="cumul" radius={[4, 4, 0, 0]}>
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.cumul >= 0 ? '#10b981' : '#ef4444'} />
