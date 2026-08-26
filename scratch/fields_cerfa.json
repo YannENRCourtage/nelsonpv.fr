@@ -1,0 +1,1502 @@
+[
+  {
+    "name": "R2A_numero",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "R2M_date",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "R3A_cachet",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "R2N_deposant",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "N1NCA_numero",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "N1FCA_formulaire",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "M2C_dept",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "M2K_commune",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "M2S_annee",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "M2D_dossier",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "M2E_date",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "M2M_cachet",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "M2B_ABF",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "M2J_PN",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "D1N_nom",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D1P_prenom",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D1A_naissance",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D1C_commune",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D1D_dept",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D1E_pays",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D2D_denomination",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D2R_raison",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D2S_siret",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D2J_type",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D2N_nom",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D2P_prenom",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3N_numero",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3V_voie",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3W_lieudit",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3L_localite",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3C_code",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3B_boite",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3X_cedex",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3T_telephone",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3K_indicatif",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3P_pays",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D3D_division",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D5GE1_email",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D5GE2_email",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D5A_acceptation",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T2Q_numero",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2V_voie",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2W_lieudit",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2L_localite",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2C_code",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2F_prefixe",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2S_section",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2N_numero",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2T_superficie",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2FP2_prefixe",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2SP2_section",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2NP2_numero",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2TP2_superficie",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2FP3_prefixe",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2SP3_section",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2NP3_numero",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T2TP3_superficie",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "D5T_total",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "T3A_CUoui",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3H_CUnon",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3B_CUnc",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3I_lotoui",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3L_lotnon",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3S_lotnc",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3J_ZACoui",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3Q_ZACnon",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3T_ZACnc",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3G_AFUoui",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3R_AFUnon",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3E_AFUnc",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3P_PUPoui",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3C_PUPnon",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3F_PUPnc",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "T3N_dates",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C2ZA1_nouvelle",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C2ZB1_existante",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C2ZC3_cloture",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C2ZD1_description",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZE1_piscine",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZE2_garage",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZE3_veranda",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZE4_abri",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZE5_annexes",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZK1_extension",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZK2_surelevation",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZK3_supplementaires",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZE6_piece",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C2ZA7_autres",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZA1_logements",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZA2_individuels",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZA3_collectifs",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZC1_nombreLLS",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZC2_nombreAS",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZC3_nombrePTZ",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZC5_nombreautres",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZD1_personnel",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C2ZF1_principale",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C2ZF2_secondaire",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZD2_vente",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZD3_location",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C5ZH1_agees",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZH2_etudiants",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZH3_tourisme",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZH4_residence",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZH5_sociale",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZH6_handicapes",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZH8_autresprecision",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZI1_chambres",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZI2_1piece",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZI3_2pieces",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZI4_3pieces",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZI5_4pieces",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZI6_5pieces",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZI7_6pieces",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZJ1_niveaux",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C5ZJ2_dessous",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "B1G_transport",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "B1L_enseignement",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "B1K_social",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "B1S_sante",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "B1F_culture",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C2ZP1_crete",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C2ZR1_destination",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "C2ZE1_puissance",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "B1B_special",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "W3ES1_avanttravaux",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W3ES2_creee",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W3ES3_supprimee",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2AB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2AF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2AA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2AC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2AD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2AE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2FA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2FB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2FC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2FD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2FE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2FF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2LA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2MA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2CA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2RA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2GA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2DA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2KA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2WA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2XA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2PA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2LB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2MB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2CB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2RB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2GB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2DB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2KB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2WB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2XB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2PB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2LC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2MC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2CC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2RC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2GC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2DC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2KC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2WC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2XC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2PC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2LD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2MD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2CD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2RD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2GD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2DD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2KD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2WD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2XD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2PD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2LE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2ME1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2CE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2RE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2GE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2DE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2KE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2WE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2XE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2PE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2LF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2MF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2CF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2RF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2GF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2DF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2KF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2WF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2XF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2PF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2TA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2TB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2TC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2TD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2TE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2TF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2UA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2UB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2UC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2UD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2UE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2UF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2JA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2JB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2JC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2JD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2JE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2JF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2VA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2VB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2VC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2VD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2VE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2VF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2HA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2HB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2HC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2HD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2HE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2HF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2NA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2NB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2NC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2ND1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2NE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2NF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2IA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2EA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2BA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2QA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2IB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2EB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2BB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2QB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2IC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2EC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2BC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2QC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2ID1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2ED1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2BD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2QD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2IE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2EE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2BE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2QE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2IF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2EF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2BF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2QF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2YA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2YB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2YC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2YD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2YE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2YF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2SE1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2SF1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2SA1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2SB1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2SC1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "W2SD1",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1A_stationnementavant",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1M_stationnementapres",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1NA1_numero",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1VA1_voie",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1WA1_lieudit",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1LA1_localite",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1PA1_codepostal",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1NA2_numero",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1VA2_voie",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1WA2_lieudit",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1LA2_localite",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1PA2_codepostal",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1B_nombre",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1H_surface",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1G_bati",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "S1I_emprise",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "X1T_eau",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1T0_eau",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1E_environnement",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1E0_environnement",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1D_derogation",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1D0_derogation",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1C_classe",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1C0_classe",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1A_ABF",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1A0_ABF",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1L_legislation",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1L0_legislation",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1P_precisions",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "X1U_raccordement",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1U0_raccordement",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1V_toiture",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X1V0_toiture",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X2R_remarquable",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X2H_historique",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "X2C_classe",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "V1N_nom",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1P_prenom",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1MD1_denomination",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1R_raison",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1MS1_siret",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1MT1_typesociete",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1MN1_nom",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1MP1_prenom",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1Z_numero",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1V_voie",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1W_lieudit",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1L_localite",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1C_code",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1B_boite",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1X_cedex",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1E_pays",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1D_division",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1EM1_email",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "V1EM2_email",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "E1L_lieu",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "E1D_date",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "E1S_signature",
+    "type": "PDFTextField"
+  },
+  {
+    "name": "P5PB1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P3GE1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P3GD1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P5PC1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P3GF1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P3GG1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P3GH1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4LC1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4CD1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4CF1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4EA1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4EB1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4EC1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4EH1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4GE1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4GF1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4LA1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4LG1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4LD1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4LE1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P5PD1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P5PE1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P6PF1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P1FP1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4HG1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4EG1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P8EA1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P9ZA1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4FJ1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4FK1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4FK2",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4KB2",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4KB3",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P4KB4",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P3FA1",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C2ZI0_agrivoltaique",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C6ZL2_metal",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C6ZL3_bois",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C6ZL1_modulaire",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C6ZL5_beton",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C6ZL4_ciment",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C6ZM1_classique",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C6ZM2_profond",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "C6ZM3_terre",
+    "type": "PDFCheckBox"
+  },
+  {
+    "name": "P5PA2",
+    "type": "PDFCheckBox"
+  }
+]

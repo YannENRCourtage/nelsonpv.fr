@@ -6,7 +6,7 @@ import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy } from 'fir
 import {
   Calculator, FolderOpen, Database, Zap, Sun, Building2,
   Sliders, Search, X, ChevronLeft, ChevronRight, FileDown, Save,
-  Briefcase
+  Briefcase, Wheat
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast.js';
 
@@ -15,6 +15,7 @@ import IrveFrontSimulator from '@/components/simulator/IrveFrontSimulator';
 import SolarAutoconsoSimulator from '@/components/simulator/SolarAutoconsoSimulator';
 import SolarRoofSimulator from '@/components/simulator/SolarRoofSimulator';
 import BuildingStructureSimulator from '@/components/simulator/BuildingStructureSimulator';
+import SechoirBatitechSimulator from '@/components/simulator/sechoir/SechoirBatitechSimulator';
 import SimulatorDatabaseTab from '@/components/simulator/SimulatorDatabaseTab';
 import SimulatorArchivesTab from '@/components/simulator/SimulatorArchivesTab';
 import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
@@ -122,7 +123,7 @@ export default function IrveSimulator() {
   const [activeMainTab, setActiveMainTab] = useState('simulateurs');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // ─── Sous-solution active : 'autoconso' | 'toiture' | 'structure' | 'irve' ──
+  // ─── Sous-solution active : 'autoconso' | 'toiture' | 'structure' | 'irve' | 'sechoir' ──
   const [activeSolution, setActiveSolution] = useState('autoconso');
 
   // ─── Projet CRM lié & Simulations ──────────────────────────────────────────
@@ -231,6 +232,8 @@ export default function IrveSimulator() {
       setActiveSolution('toiture');
     } else if (sim.type === 'structure_metallique') {
       setActiveSolution('structure');
+    } else if (sim.type === 'sechoir_batitech') {
+      setActiveSolution('sechoir');
     } else {
       setActiveSolution('irve');
     }
@@ -248,6 +251,7 @@ export default function IrveSimulator() {
       type: activeSolution === 'autoconso' ? 'autoconsommation'
         : activeSolution === 'toiture' ? 'toiture_pv'
         : activeSolution === 'structure' ? 'structure_metallique'
+        : activeSolution === 'sechoir' ? 'sechoir_batitech'
         : 'irve',
       title: `Simulation ${activeSolution.toUpperCase()} — ${selectedProject?.name || 'Étude'}`,
       cityName: selectedProject?.city || 'Condom',
@@ -410,6 +414,7 @@ export default function IrveSimulator() {
                   { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
                   { id: 'structure', label: 'Structure Métallique', icon: Sliders, color: 'text-indigo-500' },
                   { id: 'irve', label: 'Borne IRVE', icon: Zap, color: 'text-emerald-500' },
+                  { id: 'sechoir', label: 'Séchoir BatiTech', icon: Wheat, color: 'text-orange-500' },
                 ].map(sol => {
                   const Icon = sol.icon;
                   const isSelected = activeSolution === sol.id;
@@ -494,6 +499,15 @@ export default function IrveSimulator() {
 
               {activeSolution === 'irve' && (
                 <IrveFrontSimulator
+                  selectedProject={selectedProject}
+                  onSaveSimulation={handleSaveCurrentSimulation}
+                  onExportPDF={() => handleExportPDF()}
+                  onStateUpdate={setActiveSimulationState}
+                />
+              )}
+
+              {activeSolution === 'sechoir' && (
+                <SechoirBatitechSimulator
                   selectedProject={selectedProject}
                   onSaveSimulation={handleSaveCurrentSimulation}
                   onExportPDF={() => handleExportPDF()}
