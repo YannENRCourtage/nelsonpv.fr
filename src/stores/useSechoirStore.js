@@ -6,7 +6,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DRYING_MATERIALS, DEFAULT_FINANCIAL_PARAMS } from '@/data/sechoirBatitechModels.js';
+import { DRYING_MATERIALS, DEFAULT_FINANCIAL_PARAMS, BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 
 const useSechoirStore = create(
   persist(

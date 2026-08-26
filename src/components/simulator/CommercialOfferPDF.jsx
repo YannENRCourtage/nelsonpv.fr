@@ -512,34 +512,34 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <!-- 4. VISUELS SÉCHOIR BATITECH : PLAN FINANCEMENT (GAUCHE) + CARTE SATELLITE (DROITE) -->
           <div style="display: grid; grid-template-columns: 1fr 1.25fr; gap: 8px; margin-bottom: 10px; height: 310px;">
             <!-- 4a. TABLEAU PLAN DE FINANCEMENT & COMPTE DE RÉSULTAT -->
-            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; padding: 5px 7px; display: flex; flex-direction: column; justify-content: space-between; font-size: 6.5pt; height: 100%; box-sizing: border-box;">
-              <div style="font-size: 7pt; font-weight: 800; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 1.5px; text-transform: uppercase;">
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; padding: 4px 6px; display: flex; flex-direction: column; justify-content: space-between; font-size: 6.5pt; height: 100%; box-sizing: border-box;">
+              <div style="font-size: 7.2pt; font-weight: 800; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 1px; margin-bottom: 0px; text-transform: uppercase;">
                 Plan de Financement &amp; Rentabilité
               </div>
-              <table style="width: 100%; border-collapse: collapse; font-size: 6pt; margin-top: 1px;">
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.5px 0; color: #64748b;">Investissement Brut Séchoir :</td><td style="text-align: right; font-weight: bold;">${(sim.totalInvestmentHT || 327053).toLocaleString('fr-FR')} € HT</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.5px 0; color: #16a34a;">Prime CEE Cogen'Air (AGRI-EQ-110) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">-${(sim.primeCEE || 38790).toLocaleString('fr-FR')} €</td></tr>
-                <tr style="border-bottom: 1px solid #cbd5e1; background: #fffbeb;"><td style="padding: 0.75px 0; font-weight: bold; color: #b45309;">Investissement Net à Financer :</td><td style="text-align: right; font-weight: 900; color: #b45309;">${(sim.investissementNet !== undefined ? sim.investissementNet : (sim.totalInvestmentHT ? Math.max(0, sim.totalInvestmentHT - (sim.primeCEE || 0)) : 288263)).toLocaleString('fr-FR')} € HT</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.5px 0; color: #64748b;">Montant de l'emprunt (25 ans) :</td><td style="text-align: right; font-weight: bold;">${(sim.emprunt !== undefined ? sim.emprunt : (sim.investissementNet || 288263)).toLocaleString('fr-FR')} €</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.5px 0; color: #dc2626;">Montant moyen de l'annuité :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${(sim.annuite || 17386).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.5px 0; color: #16a34a;">Impact annuel sur l'EBE :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${(sim.deltaEBE || 24220).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="background: #f0fdf4; border-bottom: 1px solid #cbd5e1;"><td style="padding: 0.75px 0; font-weight: 900; color: #166534;">Gain Net Annuel d'Exploitation :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 6.6pt;">+${(sim.gainNetAnnuel || 12921).toLocaleString('fr-FR')} €/an</td></tr>
+              <table style="width: 100%; border-collapse: collapse; font-size: 6pt; margin: 0;">
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.25px 0; color: #64748b;">Investissement Brut Séchoir :</td><td style="text-align: right; font-weight: bold;">${(sim.totalInvestmentHT || 327053).toLocaleString('fr-FR')} € HT</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.25px 0; color: #16a34a;">Prime CEE Cogen'Air (AGRI-EQ-110) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">-${(sim.primeCEE || 38790).toLocaleString('fr-FR')} €</td></tr>
+                <tr style="border-bottom: 1px solid #cbd5e1; background: #fffbeb;"><td style="padding: 0.5px 0; font-weight: bold; color: #b45309;">Investissement Net à Financer :</td><td style="text-align: right; font-weight: 900; color: #b45309;">${(sim.investissementNet !== undefined ? sim.investissementNet : (sim.totalInvestmentHT ? Math.max(0, sim.totalInvestmentHT - (sim.primeCEE || 0)) : 288263)).toLocaleString('fr-FR')} € HT</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.25px 0; color: #64748b;">Montant de l'emprunt (25 ans) :</td><td style="text-align: right; font-weight: bold;">${(sim.emprunt !== undefined ? sim.emprunt : (sim.investissementNet || 288263)).toLocaleString('fr-FR')} €</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.25px 0; color: #dc2626;">Montant moyen de l'annuité :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${(sim.annuite || 17386).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.25px 0; color: #16a34a;">Impact annuel sur l'EBE :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${(sim.deltaEBE || 24220).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="background: #f0fdf4; border-bottom: 1px solid #cbd5e1;"><td style="padding: 0.5px 0; font-weight: 900; color: #166534;">Gain Net Annuel d'Exploitation :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 6.6pt;">+${(sim.gainNetAnnuel || 12921).toLocaleString('fr-FR')} €/an</td></tr>
               </table>
 
-              <!-- Encart Subventions Régionales & Aides Éligibles (comme dans l'étape Résultat) -->
-              <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 5px; padding: 3px 5px; margin: 2px 0; font-size: 5.4pt; line-height: 1.2;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #fef08a; padding-bottom: 1px; margin-bottom: 1.5px;">
-                  <span style="font-weight: 800; color: #92400e; text-transform: uppercase; font-size: 5.6pt;">🏛️ Subventions Régionales &amp; Aides Éligibles</span>
-                  <span style="font-size: 4.8pt; color: #b45309; font-weight: bold; background: #fef3c7; padding: 0.5px 3px; border-radius: 2px;">À TITRE INDICATIF</span>
+              <!-- Encart Subventions Régionales & Aides Éligibles (hauteur agrandie et lisibilité renforcée) -->
+              <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 6px; padding: 4.5px 6px; margin: 3px 0; font-size: 5.8pt; line-height: 1.35; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #fef08a; padding-bottom: 1.5px; margin-bottom: 2.5px;">
+                  <span style="font-weight: 800; color: #92400e; text-transform: uppercase; font-size: 6pt; letter-spacing: 0.1px;">🏛️ Subventions Régionales &amp; Aides Éligibles</span>
+                  <span style="font-size: 5pt; color: #b45309; font-weight: 900; background: #fef3c7; border: 1px solid #fde68a; padding: 0.5px 4px; border-radius: 3px;">À TITRE INDICATIF</span>
                 </div>
-                <div style="color: #78350f; font-size: 5.3pt;">
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.5px;">
+                <div style="color: #78350f;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 1.5px; font-size: 5.6pt;">
                     <span><strong>${sim.subventionRegionaleNom || 'Dispositif Régional (PCAE / FEADER)'}</strong> :</span>
                     <span style="color: #92400e; font-weight: bold;">Assiette ${(sim.investissementNet || 288263).toLocaleString('fr-FR')} € &bull; ${sim.subventionRegionaleMontant ? `jusqu'à ${sim.subventionRegionaleMontant.toLocaleString('fr-FR')} €` : 'Taux sur étude'}</span>
                   </div>
-                  <div style="color: #854d0e; font-size: 5pt; line-height: 1.15;">
-                    &bull; <strong>Fonds Chaleur ADEME</strong> : Éligible valorisation chaleur Cogen'Air® (étude post-thermique).<br/>
-                    <span style="color: #a16207; font-style: italic;">*Non déduites de l'emprunt (principe de calcul prudent et contractuel).</span>
+                  <div style="color: #854d0e; font-size: 5.3pt; line-height: 1.25;">
+                    &bull; <strong>Fonds Chaleur ADEME</strong> : Éligible valorisation chaleur solaire Cogen'Air® (étude post-thermique).<br/>
+                    <span style="color: #a16207; font-style: italic; font-size: 5pt;">*Non déduites de l'emprunt (principe de calcul prudent et contractuel).</span>
                   </div>
                 </div>
               </div>

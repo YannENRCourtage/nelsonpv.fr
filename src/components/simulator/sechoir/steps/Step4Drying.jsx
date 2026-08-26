@@ -20,11 +20,13 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
   const isOverCapacity = maxCapacity && vol > maxCapacity;
 
   return (
-    <div className={`rounded-3xl border transition-all duration-200 shadow-md flex flex-col justify-between p-4 ${
-      material.enabled 
-        ? 'bg-slate-800/95 border-emerald-500/60 shadow-emerald-500/10 ring-1 ring-emerald-500/40' 
-        : 'bg-slate-800/40 border-slate-700/60 opacity-85 hover:opacity-100 hover:border-slate-600'
-    }`}>
+    <div 
+      onClick={!material.enabled ? onToggle : undefined}
+      className={`rounded-3xl border transition-all duration-200 shadow-md flex flex-col justify-between p-4 ${
+        material.enabled 
+          ? 'bg-slate-800/95 border-emerald-500/60 shadow-emerald-500/10 ring-1 ring-emerald-500/40' 
+          : 'bg-slate-800/40 border-slate-700/60 opacity-85 hover:opacity-100 hover:border-emerald-500/50 cursor-pointer'
+      }`}>
       {/* Haut de carte : Icône + Titre + Toggle */}
       <div>
         <div 
