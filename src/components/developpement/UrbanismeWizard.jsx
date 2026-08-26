@@ -558,8 +558,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
           rightWidth: b.rightWidth !== undefined ? Number(b.rightWidth) : (b.rightSide === 'appentis' ? 9.3 : (b.rightSide === 'auvent' ? 4.0 : 0)),
           bayCount: Number(b.bayCount || 5),
           baySpacing: Number(b.baySpacing || 7.5),
-          captures: b.captures || b.urbanisme_captures || project.urbanisme_captures || project.captures || {},
-          photos: b.photos || b.pc_photos || project.pc_photos || project.photos || {}
+          captures: b.captures || b.urbanisme_captures || (idx === 0 ? (project.urbanisme_captures || project.captures || {}) : {}),
+          photos: b.photos || b.pc_photos || (idx === 0 ? (project.pc_photos || project.photos || {}) : {})
         };
       });
     } else {
@@ -862,16 +862,22 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
   // Sauvegarde simulation 3D aprÃ¨s projet (DP6 / PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
     const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
-    setPhotos(prev => ({ ...prev, apres: simulatedDataUrl }));
-    setEditedProject(prev => ({
-      ...prev,
-      pc_photos: { ...(prev.pc_photos || {}), apres: simulatedDataUrl }
-    }));
+    if (activeBuildingIndex === 0) {
+      setPhotos(prev => ({ ...prev, apres: simulatedDataUrl }));
+      setEditedProject(prev => ({
+        ...prev,
+        pc_photos: { ...(prev.pc_photos || {}), apres: simulatedDataUrl }
+      }));
+    }
     setBuildings(prev => {
       const updated = [...prev];
       if (updated[activeBuildingIndex]) {
         updated[activeBuildingIndex].photos = { 
           ...(updated[activeBuildingIndex].photos || {}), 
+          apres: simulatedDataUrl 
+        };
+        updated[activeBuildingIndex].pc_photos = { 
+          ...(updated[activeBuildingIndex].pc_photos || {}), 
           apres: simulatedDataUrl 
         };
       }
@@ -883,11 +889,13 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
   // Sauvegarde des captures de faÃ§ades pour DP4 / PC5
   const handleCaptureSnapshotPC5 = (dataUrl, slotKey = 'facade_sud') => {
     const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
-    setCaptures(prev => ({ ...prev, [slotKey]: dataUrl, facades_projet: dataUrl }));
-    setEditedProject(prev => ({
-      ...prev,
-      urbanisme_captures: { ...(prev.urbanisme_captures || {}), [slotKey]: dataUrl, facades_projet: dataUrl }
-    }));
+    if (activeBuildingIndex === 0) {
+      setCaptures(prev => ({ ...prev, [slotKey]: dataUrl, facades_projet: dataUrl }));
+      setEditedProject(prev => ({
+        ...prev,
+        urbanisme_captures: { ...(prev.urbanisme_captures || {}), [slotKey]: dataUrl, facades_projet: dataUrl }
+      }));
+    }
     setBuildings(prev => {
       const updated = [...prev];
       if (updated[activeBuildingIndex]) {
@@ -905,15 +913,17 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
   const handleCaptureAll5ViewsPC5 = (fiveViewsObj) => {
     if (!fiveViewsObj) return;
     const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
-    setCaptures(prev => ({ ...prev, ...fiveViewsObj, facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture }));
-    setEditedProject(prev => ({
-      ...prev,
-      urbanisme_captures: { 
-        ...(prev.urbanisme_captures || {}), 
-        ...fiveViewsObj, 
-        facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture 
-      }
-    }));
+    if (activeBuildingIndex === 0) {
+      setCaptures(prev => ({ ...prev, ...fiveViewsObj, facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture }));
+      setEditedProject(prev => ({
+        ...prev,
+        urbanisme_captures: { 
+          ...(prev.urbanisme_captures || {}), 
+          ...fiveViewsObj, 
+          facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture 
+        }
+      }));
+    }
     setBuildings(prev => {
       const updated = [...prev];
       if (updated[activeBuildingIndex]) {
@@ -940,16 +950,22 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
       const dataUrl = e.target.result;
       const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
       if (category === 'photos') {
-        setPhotos(prev => ({ ...prev, [key]: dataUrl }));
-        setEditedProject(prev => ({
-          ...prev,
-          pc_photos: { ...(prev.pc_photos || {}), [key]: dataUrl }
-        }));
+        if (activeBuildingIndex === 0) {
+          setPhotos(prev => ({ ...prev, [key]: dataUrl }));
+          setEditedProject(prev => ({
+            ...prev,
+            pc_photos: { ...(prev.pc_photos || {}), [key]: dataUrl }
+          }));
+        }
         setBuildings(prev => {
           const updated = [...prev];
           if (updated[activeBuildingIndex]) {
             updated[activeBuildingIndex].photos = {
               ...(updated[activeBuildingIndex].photos || {}),
+              [key]: dataUrl
+            };
+            updated[activeBuildingIndex].pc_photos = {
+              ...(updated[activeBuildingIndex].pc_photos || {}),
               [key]: dataUrl
             };
           }
@@ -965,6 +981,13 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
           }));
           persistMediaItem('general', key, dataUrl, 'captures');
         } else {
+          if (activeBuildingIndex === 0) {
+            setCaptures(prev => ({ ...prev, [key]: dataUrl }));
+            setEditedProject(prev => ({
+              ...prev,
+              urbanisme_captures: { ...(prev.urbanisme_captures || {}), [key]: dataUrl }
+            }));
+          }
           setBuildings(prev => {
             const updated = [...prev];
             if (updated[activeBuildingIndex]) {
@@ -991,13 +1014,15 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
     const { category, key } = cropModal;
     const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
     if (category === 'photos') {
-      const updated = { ...photos, [key]: croppedDataUrl };
-      setPhotos(updated);
-      setEditedProject(prev => ({ ...prev, pc_photos: updated }));
+      if (activeBuildingIndex === 0) {
+        setPhotos(prev => ({ ...prev, [key]: croppedDataUrl }));
+        setEditedProject(prev => ({ ...prev, pc_photos: { ...(prev.pc_photos || {}), [key]: croppedDataUrl } }));
+      }
       setBuildings(prev => {
         const updated = [...prev];
         if (updated[activeBuildingIndex]) {
           updated[activeBuildingIndex].photos = { ...updated[activeBuildingIndex].photos, [key]: croppedDataUrl };
+          updated[activeBuildingIndex].pc_photos = { ...(updated[activeBuildingIndex].pc_photos || {}), [key]: croppedDataUrl };
         }
         return updated;
       });
@@ -1010,6 +1035,10 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
         setEditedProject(prev => ({ ...prev, urbanisme_captures: updated }));
         persistMediaItem('general', key, croppedDataUrl, 'captures');
       } else {
+        if (activeBuildingIndex === 0) {
+          setCaptures(prev => ({ ...prev, [key]: croppedDataUrl }));
+          setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), [key]: croppedDataUrl } }));
+        }
         setBuildings(prev => {
           const updated = [...prev];
           if (updated[activeBuildingIndex]) {
@@ -1143,13 +1172,13 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
       ...allBuildingsPhotos,
     };
 
-    // Propager toutes les captures et photos Ã  chaque bÃ¢timent pour garantir leur prÃ©sence en DP4 et DP6
-    const enrichedBuildings = buildingsWithMasse.map(b => ({
+    // Garder les photos et captures de chaque bÃ¢timent strictement indÃ©pendantes
+    const enrichedBuildings = buildingsWithMasse.map((b, idx) => ({
       ...b,
-      captures: { ...finalCaptures, ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
-      urbanisme_captures: { ...finalCaptures, ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
-      photos: { ...finalPhotos, ...(b.photos || {}), ...(b.pc_photos || {}) },
-      pc_photos: { ...finalPhotos, ...(b.photos || {}), ...(b.pc_photos || {}) },
+      captures: { ...(idx === 0 ? finalCaptures : {}), ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
+      urbanisme_captures: { ...(idx === 0 ? finalCaptures : {}), ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
+      photos: { ...(idx === 0 ? finalPhotos : {}), ...(b.photos || {}), ...(b.pc_photos || {}) },
+      pc_photos: { ...(idx === 0 ? finalPhotos : {}), ...(b.photos || {}), ...(b.pc_photos || {}) },
     }));
 
     const preservedKwc = project?.kwc || editedProject?.kwc || project?.projectSize || editedProject?.projectSize || project?.puissance || editedProject?.puissance || '';
@@ -1643,14 +1672,14 @@ ${p5Details}${batteryStorage.enabled ? `\nLe systÃ¨me de stockage batterie est Ã
               {step === 3 && (() => {
                 const b = buildings[activeBuildingIndex] || {};
                 const currentPhotos = {
-                  ...(photos || {}),
-                  ...(editedProject?.pc_photos || {}),
+                  ...(activeBuildingIndex === 0 ? (photos || {}) : {}),
+                  ...(activeBuildingIndex === 0 ? (editedProject?.pc_photos || {}) : {}),
                   ...(b.photos || {}),
                   ...(b.pc_photos || {})
                 };
                 const currentCaptures = {
-                  ...(captures || {}),
-                  ...(editedProject?.urbanisme_captures || {}),
+                  ...(activeBuildingIndex === 0 ? (captures || {}) : {}),
+                  ...(activeBuildingIndex === 0 ? (editedProject?.urbanisme_captures || {}) : {}),
                   ...(b.captures || {}),
                   ...(b.urbanisme_captures || {})
                 };

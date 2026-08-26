@@ -53,7 +53,13 @@ export const SafePlateImage = ({ src, alt = '', style = {}, className = '' }) =>
 
 export const PlateHeader = ({ title, project, showBranding }) => {
     const clientFullName = `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Client';
-    const buildingNameSuffix = project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : '';
+    const bName = project?.buildingName ? project.buildingName.toUpperCase() : '';
+    const cleanTitle = (title || '').trim();
+    // Ne jamais doubler le nom du bâtiment
+    const finalTitle = bName && !cleanTitle.toUpperCase().includes(bName) 
+        ? `${cleanTitle} — ${bName}` 
+        : cleanTitle;
+
     return (
         <div style={HEADER_STYLE}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -68,7 +74,7 @@ export const PlateHeader = ({ title, project, showBranding }) => {
                 </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '12.5pt', fontWeight: 'bold', color: '#00429d' }}>{title}{buildingNameSuffix}</div>
+                <div style={{ fontSize: '12.5pt', fontWeight: 'bold', color: '#00429d' }}>{finalTitle}</div>
                 <div style={{ fontSize: '8.5pt', color: '#333' }}>
                     Projet : {clientFullName} — {project?.city || project?.cadastre_commune || ''} ({project?.zip || project?.zipCode || ''})
                 </div>
@@ -194,7 +200,7 @@ export const PlateMasse = ({ project, captures }) => {
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-masse">
-            <PlateHeader title={`DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS${project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}`} project={project} />
+            <PlateHeader title="DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS" project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '135mm', marginBottom: '5mm' }}>
                 {isMulti ? (
                     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(rawBuildings.length, 2)}, 1fr)`, gap: '4mm', flex: 1, height: '100%' }}>
@@ -268,7 +274,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     
     // Détection stricte du type d'ouvrage
     const rawType = (project?.buildingType || '').toLowerCase();
-    const isOmbriere = rawType.startsWith('ombriere') || Boolean(project?.buildingName && project.buildingName.toLowerCase().includes('ombrière'));
+    const isOmbriere = rawType.startsWith('ombriere') || rawType.includes('ombriere') || rawType.includes('ombrière');
     const isPL = isOmbriere && (rawType.includes('ombriere_pl') || (rawType.includes('pl') && !rawType.includes('simple')) || largeur >= 13.0);
     const isSimple = isOmbriere && !isPL && (rawType.includes('simple') || largeur <= 7.5);
     const isDouble = isOmbriere && !isPL && !isSimple;
@@ -837,7 +843,7 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
     return (
         <div style={PAGE_STYLE} id="dp-plate-coupe">
             <PlateHeader 
-                title={`${hasNotice ? "DP3 : PLAN EN COUPE & NOTICE DESCRIPTIVE" : "DP3 — PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION"}${project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}`} 
+                title={hasNotice ? "DP3 : PLAN EN COUPE & NOTICE DESCRIPTIVE" : "DP3 — PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION"} 
                 project={project} 
             />
             {hasNotice ? (
@@ -965,7 +971,7 @@ export const PlateFacades = ({ project, captures }) => {
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-facades">
-            <PlateHeader title={`DP4 — PLAN DES FAÇADES ET TOITURES / VUES 3D${project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}`} project={project} />
+            <PlateHeader title="DP4 — PLAN DES FAÇADES ET TOITURES / VUES 3D" project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '148mm', marginBottom: '4mm' }}>
                 <div style={{ flex: 1, display: 'flex', gap: '3.5mm', minHeight: '62mm' }}>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
@@ -1028,7 +1034,7 @@ export const PlateInsertion = ({ project, captures, photos }) => {
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-insertion">
-            <PlateHeader title={`DP6 — DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE${project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}`} project={project} />
+            <PlateHeader title="DP6 — DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE" project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '124mm', marginBottom: '6mm' }}>
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
                     <div style={{ padding: '2mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#1e293b', lineHeight: '1.25' }}>
@@ -1065,7 +1071,7 @@ export const PlateEnv = ({ project, captures, photos, includeLointain = true }) 
     return (
         <div style={PAGE_STYLE} id="dp-plate-env">
             <PlateHeader 
-                title={`${showBoth ? "DP7 & DP8 : ENVIRONNEMENT PROCHE ET LOINTAIN" : "DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE"}${project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}`} 
+                title={showBoth ? "DP7 & DP8 : ENVIRONNEMENT PROCHE ET LOINTAIN" : "DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE"} 
                 project={project} 
             />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>

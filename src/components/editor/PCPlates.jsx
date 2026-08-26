@@ -16,24 +16,31 @@ const PAGE_STYLE = {
     overflow: 'hidden'
 };
 
-const PlateHeader = ({ title, project }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #00429d', paddingBottom: '2mm', marginBottom: '3mm' }}>
-        <div>
-            <div style={{ fontSize: '12pt', fontWeight: 'bold', color: '#00429d', letterSpacing: '0.5px' }}>
-                NELSON
+const PlateHeader = ({ title, project }) => {
+    const bName = project?.buildingName ? project.buildingName.toUpperCase() : '';
+    const cleanTitle = (title || '').trim();
+    const showSuffix = bName && bName !== 'BÂTIMENT 1 (PRINCIPAL)' && !cleanTitle.toUpperCase().includes(bName);
+    const finalTitle = showSuffix ? `${cleanTitle} — ${bName}` : cleanTitle;
+
+    return (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #00429d', paddingBottom: '2mm', marginBottom: '3mm' }}>
+            <div>
+                <div style={{ fontSize: '12pt', fontWeight: 'bold', color: '#00429d', letterSpacing: '0.5px' }}>
+                    NELSON
+                </div>
+                <div style={{ fontSize: '7pt', color: '#666' }}>L'énergie solaire simplifiée</div>
             </div>
-            <div style={{ fontSize: '7pt', color: '#666' }}>L'énergie solaire simplifiée</div>
+            <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '10.5pt', fontWeight: 'bold', color: '#00429d' }}>
+                    {finalTitle}
+                </div>
+                <div style={{ fontSize: '7.5pt', color: '#333' }}>
+                    Projet : {project?.lastName || project?.name || 'Solaire'} {project?.firstName || ''} — {project?.city || project?.commune || 'Cadastre'} ({project?.zip || project?.zipCode || '32'})
+                </div>
+            </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '10.5pt', fontWeight: 'bold', color: '#00429d' }}>
-                {title}{project?.buildingName && project.buildingName !== 'Bâtiment 1 (Principal)' ? ` — ${project.buildingName.toUpperCase()}` : ''}
-            </div>
-            <div style={{ fontSize: '7.5pt', color: '#333' }}>
-                Projet : {project?.lastName || project?.name || 'Solaire'} {project?.firstName || ''} — {project?.city || project?.commune || 'Cadastre'} ({project?.zip || project?.zipCode || '32'})
-            </div>
-        </div>
-    </div>
-);
+    );
+};
 
 const Footer = ({ project }) => {
     const today = new Date().toLocaleDateString('fr-FR');

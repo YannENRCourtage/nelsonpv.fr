@@ -307,28 +307,15 @@ export default function Developpement() {
         if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
         if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
       } else {
-        const isMultiBuilding = bList.length > 1;
         if (!selectedPages || selectedPages.situation !== false) plateIds.push(`dev-plate-situation`);
+        if (!selectedPages || selectedPages.masse !== false) plateIds.push(`dev-plate-masse`);
 
-        if (isMultiBuilding) {
-          // Chaque bâtiment a son propre jeu complet de planches DP
-          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
-            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
-            if (!selectedPages || selectedPages.masse !== false) plateIds.push(`dev-plate-masse${suffix}`);
-            if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
-            if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
-            if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
-            if (!selectedPages || selectedPages.env !== false) plateIds.push(`dev-plate-env${suffix}`);
-          }
-        } else {
-          if (!selectedPages || selectedPages.masse !== false) plateIds.push(`dev-plate-masse`);
-          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
-            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
-            if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
-            if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
-            if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
-            if (!selectedPages || selectedPages.env !== false) plateIds.push(`dev-plate-env${suffix}`);
-          }
+        for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+          const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+          if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
+          if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
+          if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
+          if (!selectedPages || selectedPages.env !== false) plateIds.push(`dev-plate-env${suffix}`);
         }
       }
 
@@ -631,12 +618,6 @@ export default function Developpement() {
                 leftWidth: b.leftWidth || 4.0,
                 rightWidth: b.rightWidth || 4.0,
                 buildingName: b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Ombrière ${bIdx + 1}`,
-                // Override buildings pour que PlateMasse ne montre que CE bâtiment
-                buildings: [{
-                  ...b,
-                  name: b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Ombrière ${bIdx + 1}`,
-                  masse_capture: mergedCaptures.masse_projet || mergedCaptures.satellite,
-                }],
                 urbanisme_captures: mergedCaptures,
                 captures: mergedCaptures,
                 pc_photos: mergedPhotos,
@@ -645,8 +626,6 @@ export default function Developpement() {
               const suffix = bIdx === 0 ? '' : `-${bIdx}`;
               return (
                 <React.Fragment key={`dp-b-${b.id || bIdx}`}>
-                  {/* DP2 — Plan de masse par bâtiment */}
-                  <div id={`dev-plate-masse${suffix}`}><PlateMasse project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
                   {/* DP3 — Plan en coupe par bâtiment */}
                   <div id={`dev-plate-section${suffix}`}>
                     <PlateSection 
