@@ -660,13 +660,16 @@ export default function Crm() {
   const handleTransferProject = async (projectId, targetTenantId, options) => {
     try {
       await apiService.transferProject(projectId, targetTenantId, options);
-      toast({ title: "Transfert réussi", description: "Le projet a été déplacé avec succès." });
+      if (activeTenantId !== targetTenantId) {
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+        setSelectedProjects(prev => prev.filter(id => id !== projectId));
+      }
     } catch (error) {
       console.error("Transfer error:", error);
       throw error;
     }
   };
-  
+
   const handleOpenDuplicateModal = (project) => {
     setDuplicateProjectData(project);
     setShowDuplicateModal(true);
@@ -690,6 +693,7 @@ export default function Crm() {
 
   const isTransferAuthorized = () => {
     if (!user) return false;
+    if (user.role === 'admin' || user.isAdmin === true) return true;
     const email = user.email?.toLowerCase();
     const firstName = (user.firstName || user.displayName || '').toLowerCase();
 
@@ -1629,6 +1633,20 @@ export default function Crm() {
             </button>
           </div>
 
+          {selectedProjects.length > 0 && isTransferAuthorized() && (
+            <Button
+              onClick={() => {
+                const toTransfer = projects.filter(p => selectedProjects.includes(p.id));
+                setTransferProjectData(toTransfer);
+                setShowTransferModal(true);
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex items-center gap-2"
+            >
+              <Shuffle className="w-4 h-4" />
+              Transférer la sélection ({selectedProjects.length})
+            </Button>
+          )}
+
           {selectedProjects.length > 0 ? (
             <Button
               onClick={() => {
@@ -2250,8 +2268,10 @@ export default function Crm() {
         onClose={() => {
           setShowTransferModal(false);
           setTransferProjectData(null);
+          setSelectedProjects([]);
         }}
-        project={transferProjectData}
+        project={Array.isArray(transferProjectData) ? null : transferProjectData}
+        projects={Array.isArray(transferProjectData) ? transferProjectData : []}
         onTransfer={handleTransferProject}
       />
 

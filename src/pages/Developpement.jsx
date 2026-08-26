@@ -28,6 +28,8 @@ import {
   PlateSituation,
   PlateMasse,
   PlateSection,
+  PlateCoupeMulti,
+  PlateNoticeDedicated,
   PlateFacades,
   PlateInsertion as DPPlateInsertion,
   PlateInsertionNotice,
@@ -305,14 +307,30 @@ export default function Developpement() {
         if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
         if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
       } else {
+        const isMultiBuilding = bList.length > 1;
         if (!selectedPages || selectedPages.situation !== false) plateIds.push(`dev-plate-situation`);
         if (!selectedPages || selectedPages.masse !== false) plateIds.push(`dev-plate-masse`);
-        for (let bIdx = 0; bIdx < bList.length; bIdx++) {
-          const suffix = bIdx === 0 ? '' : `-${bIdx}`;
-          if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
-          if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
-          if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
-          if (!selectedPages || selectedPages.env !== false) plateIds.push(`dev-plate-env${suffix}`);
+
+        if (isMultiBuilding) {
+          // DP3 avec les 2 coupes superposées sur la même page
+          if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-coupe-multi`);
+          // Notice descriptive sur page dédiée
+          if (!selectedPages || selectedPages.dp_notice !== false) plateIds.push(`dev-plate-notice-dedicated`);
+
+          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+            const suffix = `-${bIdx}`;
+            if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
+            if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
+            if (!selectedPages || selectedPages.env !== false) plateIds.push(`dev-plate-env${suffix}`);
+          }
+        } else {
+          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
+            if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
+            if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
+            if (!selectedPages || selectedPages.env !== false) plateIds.push(`dev-plate-env${suffix}`);
+          }
         }
       }
 
@@ -577,6 +595,17 @@ export default function Developpement() {
             <div id="dev-plate-cover"><PlateCover project={activeProj} installationType={activeProj.type || 'batiment_solaire'} /></div>
             <div id="dev-plate-situation"><PlateSituation project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
             <div id="dev-plate-masse"><PlateMasse project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
+
+            {/* Planches DP Spécifiques Multi-Bâtiments */}
+            <div id="dev-plate-coupe-multi">
+              <PlateCoupeMulti project={activeProj} buildings={activeProj.buildings || [activeProj]} />
+            </div>
+            <div id="dev-plate-notice-dedicated">
+              <PlateNoticeDedicated 
+                project={activeProj} 
+                noticeText={activeProj.noticeText || activeProj.noticeAgricole || activeProj.pc_notice || activeProj.description} 
+              />
+            </div>
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
               const mergedCaptures = {

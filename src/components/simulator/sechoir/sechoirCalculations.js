@@ -436,8 +436,10 @@ export function calculateFullSimulation({
     dureeEmprunt: fp.dureeEmprunt,
   });
 
-  // ROI Bonifié si obtention de la subvention régionale estimée
+  // ROI & TRI Bonifiés si obtention de la subvention régionale estimée
   let roiBonifie = null;
+  let triBonifie = null;
+  let triPercentBonifie = null;
   if (subventionsEligibles.montantEstime > 0) {
     const montantFinanceBonifie = Math.max(0, financing.investissementNet - subventionsEligibles.montantEstime - (Number(fp.apportsEnPropre) || 0));
     let cumulAmort = 0;
@@ -451,6 +453,23 @@ export function calculateFullSimulation({
     }
     if (roiBonifie !== null) {
       roiBonifie = Math.round(roiBonifie * 100) / 100;
+    }
+
+    const annuiteBonifie = calculateAnnuity(montantFinanceBonifie, fp.tauxEmprunt, fp.dureeEmprunt);
+    const treasuryBonifie = calculateCashFlowTable({
+      investissementBrut: resolvedModel.investissementBrut || 327053,
+      subventionsTotal: financing.subventionsTotal + subventionsEligibles.montantEstime,
+      apportsEnPropre: fp.apportsEnPropre,
+      deltaEBE,
+      annuite: annuiteBonifie,
+      inflationProduits: fp.inflationProduits,
+      dureeSimulation: fp.dureeSimulation,
+      dureeEmprunt: fp.dureeEmprunt,
+    });
+    const rawTriBonifie = calculateTRI(treasuryBonifie.cashFlows);
+    if (rawTriBonifie !== null && !isNaN(rawTriBonifie)) {
+      triBonifie = rawTriBonifie;
+      triPercentBonifie = (rawTriBonifie * 100).toFixed(2);
     }
   }
 
@@ -481,6 +500,8 @@ export function calculateFullSimulation({
     financing,
     subventionsEligibles,
     roiBonifie,
+    triBonifie,
+    triPercentBonifie,
     annuite: Math.round(annuite),
     gainNetAnnuel: Math.round(deltaEBE - annuite),
     treasury,

@@ -140,6 +140,8 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         subventionRegionaleNom: results.subventionsEligibles?.subventionRegionale?.nom || 'Dispositif Régional (PCAE / FEADER)',
         subventionRegionaleMontant: results.subventionsEligibles?.montantEstime || 0,
         roiBonifie: results.roiBonifie,
+        triBonifie: results.triBonifie,
+        triPercentBonifie: results.triPercentBonifie,
         regionName: results.subventionsEligibles?.region || 'France',
         investissementNet: results.financing?.investissementNet || 0,
         emprunt: results.financing?.emprunt || 0,

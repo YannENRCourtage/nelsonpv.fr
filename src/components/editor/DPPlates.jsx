@@ -257,9 +257,9 @@ export const PlateMasse = ({ project, captures }) => {
 };
 
 /**
- * PLANCHE DP3 : PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION (& NOTICE DESCRIPTIVE OPTIONNELLE)
+ * COMPOSANT ATOMIQUE : BOÎTE PLAN EN COUPE TRANSVERSALE SVG
  */
-export const PlateCoupe = ({ project, captures, noticeText, includeNotice = false }) => {
+export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHeight = '62mm' }) => {
     const longueur = project?.longueur || project?.length || '30.0';
     const largeur = parseFloat(project?.largeur || project?.width || 20.0);
     const hauteurEgout = parseFloat(project?.hauteur_egout || project?.eaveHeight || 4.0);
@@ -268,17 +268,13 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
     
     // Détection stricte du type d'ouvrage
     const rawType = (project?.buildingType || '').toLowerCase();
-    const isOmbriere = rawType.startsWith('ombriere');
+    const isOmbriere = rawType.startsWith('ombriere') || Boolean(project?.buildingName && project.buildingName.toLowerCase().includes('ombrière'));
     const isPL = isOmbriere && (rawType.includes('ombriere_pl') || (rawType.includes('pl') && !rawType.includes('simple')) || largeur >= 13.0);
     const isSimple = isOmbriere && !isPL && (rawType.includes('simple') || largeur <= 7.5);
-    const isDouble = isOmbriere && !isPL && !isSimple;
     const isMonopente = !isOmbriere && rawType.includes('monopente');
     const isSym = !isOmbriere && rawType.includes('symetrique') && !rawType.includes('asym');
     const isAsym2 = !isOmbriere && (rawType.includes('asymetrique_2') || (!isSym && (Math.abs(largeur - 25.5) < 0.8 || Math.abs(largeur - 29.1) < 0.8)));
-    const isAsym1 = !isOmbriere && !isMonopente && !isSym && !isAsym2;
-    const isAsym = isAsym1 || isAsym2;
 
-    // Détection des extensions (Auvent / Appentis)
     const hasAppentisLeft = project?.leftSide === 'appentis';
     const hasAuventLeft = !hasAppentisLeft && (project?.leftSide === 'auvent' || Boolean(project?.auvent && project?.auvent !== 'none' && project?.auvent !== false));
     const hasExtLeft = hasAuventLeft || hasAppentisLeft;
@@ -287,37 +283,9 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
     const hasAuventRight = !hasAppentisRight && (project?.rightSide === 'auvent' || (!project?.rightSide && Boolean(project?.auvent && project?.auvent !== 'none' && project?.auvent !== false)));
     const hasExtRight = hasAuventRight || hasAppentisRight;
 
-    // Dimensions extensions : Appentis par défaut à 9.30m, Auvent à 4.00m
     const extRightWidth = hasAppentisRight ? ((Number(project?.rightWidth) && Number(project?.rightWidth) > 5) ? Number(project.rightWidth) : 9.3) : (hasAuventRight ? (Number(project?.rightWidth) || 4.0) : 0);
     const extLeftWidth = hasAppentisLeft ? ((Number(project?.leftWidth) && Number(project?.leftWidth) > 5) ? Number(project.leftWidth) : 9.3) : (hasAuventLeft ? (Number(project?.leftWidth) || 4.0) : 0);
 
-    // Données pour la notice descriptive
-    const hasNotice = Boolean(includeNotice || project?.includeNotice || project?.hasNotice);
-    const projectAddress = project?.address || project?.clientAddress || project?.location || 'Lieu-dit Le Projet';
-    const projectCity = project?.city || project?.clientCity || 'Commune du projet';
-    const projectZip = project?.zip || project?.postalCode || '00000';
-    const projectCadastre = project?.cadastre || project?.parcelle || 'Section A n° 001';
-    const projectSurface = project?.parcelleSurface ? `${project.parcelleSurface} m²` : '3 500 m²';
-    const totalSurface = Math.round((largeur + (hasExtLeft ? extLeftWidth : 0) + (hasExtRight ? extRightWidth : 0)) * (Number(longueur) || 30));
-    const displayKwc = project?.kwc || Math.round(totalSurface * 0.20);
-    const cleanNoticeText = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description;
-
-    const default5PointsNoticeDP = `1- OBJET DE LA DEMANDE
-La présente déclaration préalable porte sur l'implantation d'une structure photovoltaïque (${totalSurface}m²).
-
-2- LE SITE
-Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}).
-
-3- LE PROJET
-Le projet a pour objet l'implantation d'une structure en ossature métallique (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m) avec une centrale solaire photovoltaïque de ${displayKwc} kWc.
-
-4- RACCORDEMENT AUX RESEAUX
-L'électricité produite par la centrale photovoltaïque sera injectée sur le réseau public de distribution.
-
-5- INTEGRATION PAYSAGERE
-Le projet s'intègre harmonieusement dans son environnement immédiat et préserve la topographie naturelle du terrain.`;
-
-    // Calculs dimensionnels RÉELS & PROPORTIONNELS selon les fiches constructeur
     let rightEaveHeight = 4.00;
     let ridgeHeight = 7.40;
     let leftEaveHeight = 6.40;
@@ -331,129 +299,61 @@ Le projet s'intègre harmonieusement dans son environnement immédiat et préser
     if (isOmbriere) {
         effectivePitch = pente || 10;
         if (isPL) {
-            if (largeur > 22.0) {
-                realRoofWidth = 25.03; realGroundWidth = 24.65;
-                leftEaveHeight = 9.35; ridgeHeight = 9.35; rightEaveHeight = 5.00;
-                clearanceHeight = 3.38;
-            } else if (largeur > 18.0) {
-                realRoofWidth = 20.53; realGroundWidth = 20.22;
-                leftEaveHeight = 9.29; ridgeHeight = 9.29; rightEaveHeight = 5.73;
-                clearanceHeight = 3.38;
-            } else {
-                realRoofWidth = 16.03; realGroundWidth = 15.79;
-                leftEaveHeight = 7.86; ridgeHeight = 7.86; rightEaveHeight = 5.08;
-                clearanceHeight = 3.38;
-            }
+            if (largeur > 22.0) { realRoofWidth = 25.03; realGroundWidth = 24.65; leftEaveHeight = 9.35; ridgeHeight = 9.35; rightEaveHeight = 5.00; clearanceHeight = 3.38; }
+            else if (largeur > 18.0) { realRoofWidth = 20.53; realGroundWidth = 20.22; leftEaveHeight = 9.29; ridgeHeight = 9.29; rightEaveHeight = 5.73; clearanceHeight = 3.38; }
+            else { realRoofWidth = 16.03; realGroundWidth = 15.79; leftEaveHeight = 7.86; ridgeHeight = 7.86; rightEaveHeight = 5.08; clearanceHeight = 3.38; }
         } else if (isSimple) {
             realRoofWidth = (largeur >= 6.0 || Math.abs(largeur - 6.9) < 0.5) ? 6.90 : (largeur > 0 ? largeur : 5.20);
             realGroundWidth = realRoofWidth;
-            leftEaveHeight = Number(project?.ridgeHeight || 4.10);
-            ridgeHeight = leftEaveHeight;
-            rightEaveHeight = Number(project?.eaveHeight || 2.90);
-            clearanceHeight = 2.40;
-            massifWidth = 1.30;
-            massifHeight = 0.35;
+            leftEaveHeight = Number(project?.ridgeHeight || 4.10); ridgeHeight = leftEaveHeight; rightEaveHeight = Number(project?.eaveHeight || 2.90); clearanceHeight = 2.40; massifWidth = 1.30;
         } else {
-            if (largeur > 10.0 || Math.abs(largeur - 11.3) < 1.0) {
-                realRoofWidth = 11.53; realGroundWidth = 11.35;
-                leftEaveHeight = 4.74; ridgeHeight = 5.11; rightEaveHeight = 2.80;
-                clearanceHeight = 2.20; massifWidth = 1.70;
-            } else {
-                realRoofWidth = 9.28; realGroundWidth = 9.14;
-                leftEaveHeight = 4.61; ridgeHeight = 4.89; rightEaveHeight = 3.00;
-                clearanceHeight = 3.00; massifWidth = 1.70;
-            }
+            if (largeur > 10.0 || Math.abs(largeur - 11.3) < 1.0) { realRoofWidth = 11.53; realGroundWidth = 11.35; leftEaveHeight = 4.74; ridgeHeight = 5.11; rightEaveHeight = 2.80; clearanceHeight = 2.20; }
+            else { realRoofWidth = 9.28; realGroundWidth = 9.14; leftEaveHeight = 4.61; ridgeHeight = 4.89; rightEaveHeight = 3.00; clearanceHeight = 3.00; }
         }
     } else if (isMonopente) {
-        effectivePitch = pente || 15;
-        rightEaveHeight = hauteurEgout || 4.00;
-        ridgeHeight = rightEaveHeight + largeur * Math.tan(effectivePitch * Math.PI / 180);
-        leftEaveHeight = ridgeHeight;
-        realRoofWidth = largeur;
-        realGroundWidth = largeur;
+        effectivePitch = pente || 15; rightEaveHeight = hauteurEgout || 4.00; ridgeHeight = rightEaveHeight + largeur * Math.tan(effectivePitch * Math.PI / 180); leftEaveHeight = ridgeHeight; realRoofWidth = largeur; realGroundWidth = largeur;
     } else if (isSym) {
-        effectivePitch = pente || 10;
-        leftEaveHeight = hauteurEgout || 5.50;
-        rightEaveHeight = leftEaveHeight;
-        ridgeHeight = leftEaveHeight + ((largeur / 2) * Math.tan(effectivePitch * Math.PI / 180));
-        realRoofWidth = largeur;
-        realGroundWidth = largeur;
+        effectivePitch = pente || 10; leftEaveHeight = hauteurEgout || 5.50; rightEaveHeight = leftEaveHeight; ridgeHeight = leftEaveHeight + ((largeur / 2) * Math.tan(effectivePitch * Math.PI / 180)); realRoofWidth = largeur; realGroundWidth = largeur;
     } else if (isAsym2) {
-        effectivePitch = pente || 10;
-        rightEaveHeight = (hauteurEgout && hauteurEgout <= 4.5) ? hauteurEgout : 4.00;
+        effectivePitch = pente || 10; rightEaveHeight = (hauteurEgout && hauteurEgout <= 4.5) ? hauteurEgout : 4.00;
         ridgeHeight = (Math.abs(largeur - 25.5) < 0.8) ? 8.90 : (Math.abs(largeur - 29.1) < 0.8 ? 9.80 : (rightEaveHeight + (largeur * 0.75 * Math.tan(effectivePitch * Math.PI / 180))));
         leftEaveHeight = (Math.abs(largeur - 25.5) < 0.8) ? 6.90 : (Math.abs(largeur - 29.1) < 0.8 ? 7.90 : (ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180))));
-        realRoofWidth = largeur;
-        realGroundWidth = largeur;
+        realRoofWidth = largeur; realGroundWidth = largeur;
     } else {
-        // Asymétrique 1 zone (16.4m, 20m, etc.)
-        effectivePitch = pente || 15;
-        rightEaveHeight = (hauteurEgout && hauteurEgout <= 4.5) ? hauteurEgout : 4.00;
+        effectivePitch = pente || 15; rightEaveHeight = (hauteurEgout && hauteurEgout <= 4.5) ? hauteurEgout : 4.00;
         ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan(effectivePitch * Math.PI / 180));
         leftEaveHeight = ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180));
-        realRoofWidth = largeur;
-        realGroundWidth = largeur;
+        realRoofWidth = largeur; realGroundWidth = largeur;
     }
 
-    const displayPitch = effectivePitch;
-    const displayDimensionsWidth = isOmbriere ? realGroundWidth.toFixed(2) : largeur.toFixed(2);
-
-    const totalRealWidth = isOmbriere
-        ? realRoofWidth
-        : ((hasExtLeft ? extLeftWidth : 0) + largeur + (hasExtRight ? extRightWidth : 0));
-    
+    const totalRealWidth = isOmbriere ? realRoofWidth : ((hasExtLeft ? extLeftWidth : 0) + largeur + (hasExtRight ? extRightWidth : 0));
     const maxRealHeight = Math.max(ridgeHeight, leftEaveHeight, rightEaveHeight) + 1.2;
-
-    // Échelle UNIFORME X & Y (1:1 Isométrique)
     const availableDrawingWidth = 500;
-    const availableDrawingHeight = 110;
-    const pxPerMeterX = availableDrawingWidth / Math.max(8, totalRealWidth);
-    const pxPerMeterY = availableDrawingHeight / Math.max(4.0, maxRealHeight);
-    const pxPerM = Math.min(pxPerMeterX, pxPerMeterY, 22);
+    const availableDrawingHeight = isMulti ? 95 : 110;
+    const pxPerM = Math.min(availableDrawingWidth / Math.max(8, totalRealWidth), availableDrawingHeight / Math.max(4.0, maxRealHeight), 22);
 
     const mainWidthSvg = (isOmbriere ? realRoofWidth : largeur) * pxPerM;
     const extLeftSvgWidth = (hasExtLeft ? extLeftWidth : 0) * pxPerM;
     const extRightSvgWidth = (hasExtRight ? extRightWidth : 0) * pxPerM;
     const totalSvgWidth = extLeftSvgWidth + mainWidthSvg + extRightSvgWidth;
-    
     const startSvgX = Math.round((680 - totalSvgWidth) / 2);
     const mainLeftSvgX = startSvgX + extLeftSvgWidth;
     const mainRightSvgX = mainLeftSvgX + mainWidthSvg;
     const extLeftSvgX = startSvgX;
     const extRightSvgX = mainRightSvgX + extRightSvgWidth;
     const centerX = (mainLeftSvgX + mainRightSvgX) / 2;
-
-    const apexSvgX = isOmbriere
-      ? mainLeftSvgX
-      : (isAsym ? (mainLeftSvgX + mainWidthSvg * 0.25) : (mainLeftSvgX + mainWidthSvg * 0.5));
-
-    const groundY = 142;
+    const apexSvgX = isOmbriere ? mainLeftSvgX : (isAsym2 ? (mainLeftSvgX + largeur * 0.25 * pxPerM) : (mainLeftSvgX + mainWidthSvg * 0.5));
+    const groundY = isMulti ? 138 : 142;
     const groundYLeft = groundY + Math.sin((terrainSlopeDeg * Math.PI) / 180) * (totalSvgWidth * 0.2);
     const groundYRight = groundY - Math.sin((terrainSlopeDeg * Math.PI) / 180) * (totalSvgWidth * 0.2);
-
     const apexSvgY = groundY - ridgeHeight * pxPerM;
     const leftEaveSvgY = groundY - leftEaveHeight * pxPerM;
     const rightEaveSvgY = groundY - rightEaveHeight * pxPerM;
     const clearanceSvgY = groundY - clearanceHeight * pxPerM;
-
     const rightSlopeSvg = (mainRightSvgX > apexSvgX) ? (rightEaveSvgY - apexSvgY) / (mainRightSvgX - apexSvgX) : Math.tan((effectivePitch * Math.PI) / 180) * 0.6;
     const leftSlopeSvg = (apexSvgX > mainLeftSvgX) ? (leftEaveSvgY - apexSvgY) / (apexSvgX - mainLeftSvgX) : Math.tan((effectivePitch * Math.PI) / 180) * 0.6;
-
     const extRightSvgY = rightEaveSvgY + (extRightSvgX - mainRightSvgX) * rightSlopeSvg;
     const extLeftSvgY = leftEaveSvgY + (mainLeftSvgX - extLeftSvgX) * leftSlopeSvg;
-
-    // Hauteur d'égout de l'extension : 3.90m pour Appentis, ou calculée pour Auvent
-    let extRightHeight = hasAppentisRight ? 3.90 : Math.max(2.4, rightEaveHeight - extRightWidth * Math.tan((effectivePitch * Math.PI) / 180));
-    let extLeftHeight = hasAppentisLeft ? 3.90 : Math.max(2.4, leftEaveHeight - extLeftWidth * Math.tan((effectivePitch * Math.PI) / 180));
-    if (hasAuventLeft) {
-        if (isAsym2 && Math.abs(largeur - 25.5) < 0.8) extLeftHeight = 5.90;
-        else if (isAsym2 && Math.abs(largeur - 29.1) < 0.8) extLeftHeight = 6.90;
-        else if (isAsym1 && Math.abs(largeur - 20.0) < 0.5) extLeftHeight = 6.40;
-        else if (isAsym1 && Math.abs(largeur - 16.4) < 0.5) extLeftHeight = 5.40;
-    }
-    if (hasAuventRight) {
-        if (isAsym2 && Math.abs(largeur - 25.5) < 0.8) extRightHeight = 3.30;
-    }
 
     const scaleTotalWidth = 10 * pxPerM;
     const scaleSegWidth = 2 * pxPerM;
@@ -890,6 +790,33 @@ Le projet s'intègre harmonieusement dans son environnement immédiat et préser
         </svg>
     );
 
+    const buildingTitle = project?.buildingName ? project.buildingName.toUpperCase() : (isMulti ? `OMBRIÈRE` : 'CONSTRUCTION');
+
+    return (
+        <div style={{ height: boxHeight, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: isMulti ? '1mm 3.5mm' : '1.5mm 4mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5mm' }}>
+                <span style={{ fontSize: isMulti ? '8pt' : '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
+                    DP3 — COUPE DE TERRAIN &amp; DU BÂTIMENT (COUPE TRANSVERSALE {coupeLetter}) — {buildingTitle}
+                </span>
+                <span style={{ fontSize: isMulti ? '6.5pt' : '7pt', color: '#64748b' }}>
+                    Dimensions : {realGroundWidth.toFixed(2)}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
+                </span>
+            </div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {coupeSvgContent}
+            </div>
+        </div>
+    );
+};
+
+/**
+ * PLANCHE DP3 : PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION (& NOTICE DESCRIPTIVE OPTIONNELLE)
+ */
+export const PlateCoupe = ({ project, captures, noticeText, includeNotice = false }) => {
+    const hasNotice = Boolean(includeNotice || project?.includeNotice || project?.hasNotice);
+    const rawNoticeText = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description;
+    const cleanNoticeText = (rawNoticeText || '').replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
+
     return (
         <div style={PAGE_STYLE} id="dp-plate-coupe">
             <PlateHeader 
@@ -899,48 +826,107 @@ Le projet s'intègre harmonieusement dans son environnement immédiat et préser
             {hasNotice ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2.5mm', marginBottom: '8mm' }}>
                     {/* HAUT : DP3 PLAN EN COUPE TRANSVERSALE */}
-                    <div style={{ height: '62mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '1.5mm 4mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5mm' }}>
-                            <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                DP3 — COUPE DE TERRAIN & DU BÂTIMENT (COUPE TRANSVERSALE AA'){project?.buildingName ? ` — ${project.buildingName.toUpperCase()}` : ''}
-                            </span>
-                            <span style={{ fontSize: '7pt', color: '#64748b' }}>
-                                Dimensions : {displayDimensionsWidth}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
-                            </span>
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {coupeSvgContent}
-                        </div>
-                    </div>
+                    <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="62mm" />
 
                     {/* BAS : NOTICE DESCRIPTIVE DU PROJET */}
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2.5mm 4.5mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                         <div style={{ fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
+                            NOTICE D'INSERTION &amp; DESCRIPTIVE DU PROJET
                         </div>
                         <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.5pt', lineHeight: '1.3', color: '#334155' }}>
                             <div style={{ whiteSpace: 'pre-line', fontSize: '6.5pt', lineHeight: '1.3', color: '#334155' }}>
-                                {cleanNoticeText || default5PointsNoticeDP}
+                                {cleanNoticeText}
                             </div>
                         </div>
                     </div>
                 </div>
             ) : (
-                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4mm 6mm', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '135mm', marginBottom: '5mm' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm' }}>
-                        <span style={{ fontSize: '9.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                            Coupe transversale AA' — Ombrière photovoltaïque & Terrain naturel
-                        </span>
-                        <span style={{ fontSize: '8pt', color: '#64748b' }}>
-                            Dimensions : {displayDimensionsWidth}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
-                        </span>
-                    </div>
-
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {coupeSvgContent}
-                    </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginBottom: '5mm' }}>
+                    <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="135mm" />
                 </div>
             )}
+            <Footer project={project} />
+        </div>
+    );
+};
+
+/**
+ * PLANCHE DP3 MULTI-BÂTIMENTS : 2 COUPES SUPERPOSÉES SUR UNE SEULE PAGE
+ */
+export const PlateCoupeMulti = ({ project, buildings = [] }) => {
+    const bList = (buildings && buildings.length > 0) ? buildings : (project?.buildings || [project]);
+    const b1 = bList[0] || project;
+    const b2 = bList[1] || project;
+
+    const b1Proj = {
+        ...project,
+        ...b1,
+        largeur: String(b1.width || b1.largeur || 20.0),
+        longueur: String(b1.length || b1.longueur || 67.5),
+        hauteur_egout: String(b1.eaveHeight || b1.hauteur_egout || 4.0),
+        pente: String(b1.roofPitch || b1.pente || 15),
+        buildingType: b1.buildingType || 'asymetrique_1',
+        leftSide: b1.leftSide || 'none',
+        rightSide: b1.rightSide || 'none',
+        leftWidth: b1.leftWidth || 4.0,
+        rightWidth: b1.rightWidth || 4.0,
+        buildingName: b1.name ? b1.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : 'Ombrière 1',
+    };
+
+    const b2Proj = {
+        ...project,
+        ...b2,
+        largeur: String(b2.width || b2.largeur || 9.1),
+        longueur: String(b2.length || b2.longueur || 30.0),
+        hauteur_egout: String(b2.eaveHeight || b2.hauteur_egout || 4.0),
+        pente: String(b2.roofPitch || b2.pente || 15),
+        buildingType: b2.buildingType || 'asymetrique_1',
+        leftSide: b2.leftSide || 'none',
+        rightSide: b2.rightSide || 'none',
+        leftWidth: b2.leftWidth || 4.0,
+        rightWidth: b2.rightWidth || 4.0,
+        buildingName: b2.name ? b2.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : 'Ombrière 2',
+    };
+
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-coupe-multi">
+            <PlateHeader 
+                title="DP3 — PLANS EN COUPE DU TERRAIN ET DES CONSTRUCTIONS" 
+                project={project} 
+            />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', marginBottom: '6mm', justifyContent: 'space-between' }}>
+                {/* 1ère Coupe : Ombrière 1 */}
+                <CoupeBox project={b1Proj} coupeLetter="AA'" isMulti={true} boxHeight="62mm" />
+
+                {/* 2ème Coupe : Ombrière 2 */}
+                <CoupeBox project={b2Proj} coupeLetter="BB'" isMulti={true} boxHeight="62mm" />
+            </div>
+            <Footer project={project} />
+        </div>
+    );
+};
+
+/**
+ * PLANCHE NOTICE DÉDIÉE PLEINE PAGE (POUR PROJET MULTI-BÂTIMENTS)
+ */
+export const PlateNoticeDedicated = ({ project, noticeText }) => {
+    const rawNotice = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description || '';
+    const cleanNotice = rawNotice.replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
+
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-notice-dedicated">
+            <PlateHeader 
+                title="NOTICE D'INSERTION & DESCRIPTIVE DU PROJET" 
+                project={project} 
+            />
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '5mm 7mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', marginBottom: '6mm' }}>
+                <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '2.5mm', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1.5mm' }}>
+                    Notice descriptive &amp; Justification du projet
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden', fontSize: '7.2pt', lineHeight: '1.42', color: '#334155', whiteSpace: 'pre-line' }}>
+                    {cleanNotice}
+                </div>
+            </div>
             <Footer project={project} />
         </div>
     );

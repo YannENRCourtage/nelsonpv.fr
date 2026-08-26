@@ -379,9 +379,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       ? `Une bâche à eau de 120m³ sera installée à proximité immédiate de la future ombrière. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf DP 02 - Plan de masse).`
       : `Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).`;
 
-    return `NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
-
-1- OBJET DE LA DEMANDE
+    return `1- OBJET DE LA DEMANDE
 ${objetDemande}
 
 2- LE SITE
@@ -2325,14 +2323,14 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                         { id: 'masse', code: 'DP2', title: 'Plan de masse', desc: 'Plan de masse des constructions', badge: 'Obligatoire', color: 'indigo' },
                         { 
                           id: 'section', 
-                          code: selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3', 
-                          title: 'Plan en coupe', 
-                          desc: selectedPages.dp_notice !== false ? "Coupe transversale & notice descriptive" : "Coupe transversale de l'ombrière", 
+                          code: buildings.length > 1 ? (selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3') : (selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3'), 
+                          title: buildings.length > 1 ? 'Plans en coupe (Multi-ombrières)' : 'Plan en coupe', 
+                          desc: buildings.length > 1 ? (selectedPages.dp_notice !== false ? "2 coupes superposées & notice descriptive dédiée" : "2 coupes transversales des ombrières superposées") : (selectedPages.dp_notice !== false ? "Coupe transversale & notice descriptive" : "Coupe transversale de l'ombrière"), 
                           badge: 'Obligatoire', 
                           color: 'indigo',
                           subOption: {
                             key: 'dp_notice',
-                            label: '+ Notice descriptive sous la coupe',
+                            label: buildings.length > 1 ? '+ Notice descriptive (page dédiée)' : '+ Notice descriptive sous la coupe',
                             checked: selectedPages.dp_notice !== false
                           }
                         },
