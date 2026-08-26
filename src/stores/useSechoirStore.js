@@ -81,11 +81,21 @@ const useSechoirStore = create(
         economieEnergie: m.defaultEconomieEnergie,
       })),
 
-      toggleMaterial: (materialId) => set((state) => ({
-        materials: state.materials.map(m =>
-          m.id === materialId ? { ...m, enabled: !m.enabled } : m
-        ),
-      })),
+      toggleMaterial: (materialId) => set((state) => {
+        const activeModel = BATITECH_MODELS[state.selectedModelId] || BATITECH_MODELS['BT-3.1.15'];
+        return {
+          materials: state.materials.map(m => {
+            if (m.id !== materialId) return m;
+            const newEnabled = !m.enabled;
+            const modelCap = activeModel?.capacitesMax?.[m.id] || m.defaultVolume || 100;
+            return {
+              ...m,
+              enabled: newEnabled,
+              volume: newEnabled && (!m.volume || m.volume === 0) ? modelCap : (m.volume || modelCap),
+            };
+          }),
+        };
+      }),
 
       updateMaterialVolume: (materialId, volume) => set((state) => ({
         materials: state.materials.map(m =>
@@ -99,44 +109,48 @@ const useSechoirStore = create(
         ),
       })),
 
-      // ═══ PARAMÈTRES FINANCIERS ═════════════════════════════════════════════
+      resetMaterials: () => set((state) => {
+        const activeModel = BATITECH_MODELS[state.selectedModelId] || BATITECH_MODELS['BT-3.1.15'];
+        return {
+          materials: DRYING_MATERIALS.map(m => ({
+            id: m.id,
+            label: m.label,
+            shortLabel: m.shortLabel,
+            icon: m.icon,
+            unit: m.unit,
+            enabled: false,
+            volume: activeModel?.capacitesMax?.[m.id] || m.defaultVolume,
+            plusValueQualite: m.defaultPlusValueQualite,
+            economieEnergie: m.defaultEconomieEnergie,
+          })),
+        };
+      }),
+
+      // ═══ ÉTAPE 5 — RÉSULTATS & BILAN FINANCIER ═════════════════════════════
       financialParams: { ...DEFAULT_FINANCIAL_PARAMS },
-
-      setFinancialParam: (key, value) => set((state) => ({
-        financialParams: {
-          ...state.financialParams,
-          [key]: value,
-        },
-      })),
-
-      setAllFinancialParams: (params) => set((state) => ({
-        financialParams: {
-          ...state.financialParams,
-          ...params,
-        },
-      })),
-
-      // ═══ RÉSULTATS CALCULÉS (cache) ════════════════════════════════════════
       lastResults: null,
+      setFinancialParams: (params) => set((state) => ({
+        financialParams: { ...state.financialParams, ...params },
+      })),
       setLastResults: (results) => set({ lastResults: results }),
 
       // ═══ RESET ═════════════════════════════════════════════════════════════
-      reset: () => set({
+      resetAll: () => set({
         currentStep: 1,
         maxStepReached: 1,
         address: '',
         addressLabel: '',
         latitude: null,
         longitude: null,
-        mapCenter: null,
         departement: '',
         commune: '',
         codePostal: '',
         zoneClimatique: '',
         zoneSechage: '',
-        selectedModelId: null,
+        selectedModelId: 'BT-3.1.15',
         orientation: 'sud',
         rotation: 0,
+        mapCenter: null,
         materials: DRYING_MATERIALS.map(m => ({
           id: m.id,
           label: m.label,
@@ -154,9 +168,9 @@ const useSechoirStore = create(
     }),
     {
       name: 'nelson-sechoir-batitech',
-      version: 4,
+      version: 5,
       migrate: (persistedState, version) => {
-        if (!persistedState || version < 4) {
+        if (!persistedState || version < 5) {
           return {
             ...persistedState,
             financialParams: { ...DEFAULT_FINANCIAL_PARAMS },

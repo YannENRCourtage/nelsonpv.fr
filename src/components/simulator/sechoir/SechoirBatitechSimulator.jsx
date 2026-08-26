@@ -130,6 +130,8 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         })(),
         annualProductionKwh: results.productionPV || 0,
         deltaProduits: results.produits?.deltaProduits || 0,
+        deltaCharges: results.charges?.deltaCharges || 0,
+        ventilationCosts: results.charges?.detail?.ventilation || 0,
         annualBenefitYear1: results.deltaEBE || 0,
         deltaEBE: results.deltaEBE || 0,
         totalInvestmentHT: results.model?.investissementBrut || 0,

@@ -19,6 +19,7 @@ import {
   DEFAULT_FINANCIAL_PARAMS,
   calculateEligibleSubventions,
   getRegionForDepartment,
+  VENTILATOR_COSTS_PER_MATERIAL,
 } from '@/data/sechoirBatitechModels.js';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -87,29 +88,36 @@ export function calculateDeltaProduits(materials, venteElecPV = 0) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 3. DELTA CHARGES — Frais de fonctionnement
+// 3. DELTA CHARGES — Frais de fonctionnement & Coûts de ventilation (Référence ENR Courtage)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
  * Calcule les charges de fonctionnement annuelles (Delta Charges).
+ * Basé sur le barème unitaire de ventilation de chaque filière active et le nombre de ventilateurs.
  * 
  * @param {object} model - Le modèle BatiTech sélectionné
+ * @param {Array} materials - Liste des matières configurées
  * @returns {{ deltaCharges: number, detail: object }}
  */
-export function calculateDeltaCharges(model) {
-  if (!model || !model.chargesAnnuelles) {
-    return { deltaCharges: 0, detail: {} };
-  }
+export function calculateDeltaCharges(model, materials = []) {
+  const nbVentilateurs = model?.ventilators || model?.zones || 1;
+  let ventilation = 0;
 
-  const c = model.chargesAnnuelles;
-  const deltaCharges = (c.ventilation || 0) + (c.fraisFoinBottes || 0) + (c.maintenance || 0);
+  (materials || []).forEach(m => {
+    if (m.enabled && Number(m.volume) > 0 && VENTILATOR_COSTS_PER_MATERIAL[m.id]) {
+      ventilation += VENTILATOR_COSTS_PER_MATERIAL[m.id] * nbVentilateurs;
+    }
+  });
+
+  const maintenance = model?.chargesAnnuelles?.maintenance || (300 * nbVentilateurs);
+  const deltaCharges = ventilation + maintenance;
 
   return {
     deltaCharges,
     detail: {
-      ventilation: c.ventilation || 0,
-      fraisFoinBottes: c.fraisFoinBottes || 0,
-      maintenance: c.maintenance || 0,
+      ventilation,
+      maintenance,
+      nbVentilateurs,
     },
   };
 }
@@ -393,8 +401,8 @@ export function calculateFullSimulation({
   // 3. Delta Produits (valorisation agricole uniquement)
   const produits = calculateDeltaProduits(materials, fp.venteElectricitePV || 0);
 
-  // 4. Delta Charges
-  const charges = calculateDeltaCharges(resolvedModel);
+  // 4. Delta Charges (dont ventilation par filière active)
+  const charges = calculateDeltaCharges(resolvedModel, materials);
 
   // 5. Delta EBE
   const deltaEBE = calculateDeltaEBE(produits.deltaProduits, charges.deltaCharges);

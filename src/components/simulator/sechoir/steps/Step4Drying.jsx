@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Leaf, ChevronDown, ChevronUp, Plus, Minus, TrendingUp, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import useSechoirStore from '@/stores/useSechoirStore.js';
-import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
+import { BATITECH_MODELS, getDryingCapacity } from '@/data/sechoirBatitechModels.js';
 
 const fmt = (n) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n || 0);
 
@@ -184,6 +184,7 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
 export default function Step4Drying() {
   const materials = useSechoirStore((state) => state.materials);
   const selectedModelId = useSechoirStore((state) => state.selectedModelId);
+  const departement = useSechoirStore((state) => state.departement) || '32';
   const toggleMaterial = useSechoirStore((state) => state.toggleMaterial);
   const updateMaterialVolume = useSechoirStore((state) => state.updateMaterialVolume);
   const updateMaterialParams = useSechoirStore((state) => state.updateMaterialParams);
@@ -215,17 +216,20 @@ export default function Step4Drying() {
 
       {/* 5 CHOIX ALIGNÉS SUR LA MÊME LIGNE EN DESKTOP */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pb-24 sm:pb-28">
-        {materials.map((mat) => (
-          <HorizontalMaterialCard
-            key={mat.id}
-            material={mat}
-            maxCapacity={activeModel?.capacitesMax?.[mat.id]}
-            modelName={activeModel.name}
-            onToggle={() => toggleMaterial(mat.id)}
-            onChangeVolume={(val) => updateMaterialVolume(mat.id, val)}
-            onChangeParams={(params) => updateMaterialParams(mat.id, params)}
-          />
-        ))}
+        {materials.map((mat) => {
+          const cap = getDryingCapacity(selectedModelId, mat.id, departement) || activeModel?.capacitesMax?.[mat.id];
+          return (
+            <HorizontalMaterialCard
+              key={mat.id}
+              material={mat}
+              maxCapacity={cap}
+              modelName={activeModel.name}
+              onToggle={() => toggleMaterial(mat.id)}
+              onChangeVolume={(val) => updateMaterialVolume(mat.id, val)}
+              onChangeParams={(params) => updateMaterialParams(mat.id, params)}
+            />
+          );
+        })}
       </div>
 
       {/* SYNTHÈSE STICKY EN BAS */}

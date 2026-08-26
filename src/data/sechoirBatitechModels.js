@@ -15,6 +15,7 @@ export const BATITECH_MODELS = {
     nbModules: 90,
     investissementBrut: 327053,
     zones: 1,
+    ventilators: 1,
     description: 'Séchoir compact — 1 zone de séchage',
     dimensions: '18m × 20m',
     surfaceToiture: 360,
@@ -23,9 +24,9 @@ export const BATITECH_MODELS = {
     capacitesMax: {
       fourrage_vrac: 300,
       bottes_carrees: 140,
-      cereales_ble: 100,
+      cereales_ble: 270,
       cereales_mais: 60,
-      plaquettes_bois: 300,
+      plaquettes_bois: 450,
     },
     // Décomposition investissement (proportionnelle au modèle BP Excel K23 = 426 700€ pour ~100 kWc)
     postesInvestissement: {
@@ -45,10 +46,10 @@ export const BATITECH_MODELS = {
       porte: 7730,
       electricite: 7730,
     },
-    // Frais de fonctionnement annuels (ventilation, maintenance)
+    // Frais de fonctionnement annuels (maintenance)
     chargesAnnuelles: {
-      ventilation: 500,
-      fraisFoinBottes: 700,
+      ventilation: 1421,
+      fraisFoinBottes: 0,
       maintenance: 300,
     },
   },
@@ -59,17 +60,18 @@ export const BATITECH_MODELS = {
     nbModules: 189,
     investissementBrut: 564986,
     zones: 2,
+    ventilators: 2,
     description: 'Séchoir intermédiaire — 2 zones de séchage',
     dimensions: '36m × 20m',
     surfaceToiture: 720,
     length: 36,
     width: 20,
     capacitesMax: {
-      fourrage_vrac: 600,
-      bottes_carrees: 280,
-      cereales_ble: 200,
-      cereales_mais: 120,
-      plaquettes_bois: 600,
+      fourrage_vrac: 640,
+      bottes_carrees: 270,
+      cereales_ble: 540,
+      cereales_mais: 110,
+      plaquettes_bois: 900,
     },
     postesInvestissement: {
       lotCentraleThermovoltaique: 34716,
@@ -89,8 +91,8 @@ export const BATITECH_MODELS = {
       electricite: 10000,
     },
     chargesAnnuelles: {
-      ventilation: 1500,
-      fraisFoinBottes: 2000,
+      ventilation: 2842,
+      fraisFoinBottes: 0,
       maintenance: 500,
     },
   },
@@ -101,17 +103,18 @@ export const BATITECH_MODELS = {
     nbModules: 280,
     investissementBrut: 764501,
     zones: 3,
+    ventilators: 3,
     description: 'Séchoir grande capacité — 3 zones de séchage',
     dimensions: '48m × 20m',
     surfaceToiture: 960,
     length: 48,
     width: 20,
     capacitesMax: {
-      fourrage_vrac: 900,
-      bottes_carrees: 420,
-      cereales_ble: 300,
-      cereales_mais: 180,
-      plaquettes_bois: 900,
+      fourrage_vrac: 980,
+      bottes_carrees: 410,
+      cereales_ble: 810,
+      cereales_mais: 160,
+      plaquettes_bois: 1340,
     },
     postesInvestissement: {
       lotCentraleThermovoltaique: 51500,
@@ -131,8 +134,8 @@ export const BATITECH_MODELS = {
       electricite: 14830,
     },
     chargesAnnuelles: {
-      ventilation: 2200,
-      fraisFoinBottes: 3000,
+      ventilation: 4263,
+      fraisFoinBottes: 0,
       maintenance: 800,
     },
   },
@@ -181,76 +184,128 @@ export const ZONES_CLIMATIQUES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 4. ZONES DE SÉCHAGE (1 à 4, potentiel évapotranspiration)
+// 2. MATRICE DE CAPACITÉS DE SÉCHAGE MULTI-ZONES (Référence ENR Courtage)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const ZONES_SECHAGE = {
-  // Zone 1 — Très favorable (Sud)
-  '06': 1, '11': 1, '13': 1, '30': 1, '34': 1, '66': 1, '83': 1, '84': 1,
-  '2A': 1, '2B': 1, '20': 1,
-
-  // Zone 2 — Favorable (Sud-Ouest / Rhône-Alpes)
-  '04': 2, '05': 2, '07': 2, '09': 2, '12': 2, '26': 2, '31': 2, '32': 2,
-  '33': 2, '40': 2, '46': 2, '47': 2, '48': 2, '64': 2, '65': 2, '81': 2,
-  '82': 2,
-
-  // Zone 3 — Moyenne (Centre / Ouest)
-  '01': 3, '03': 3, '15': 3, '16': 3, '17': 3, '18': 3, '19': 3, '21': 3,
-  '23': 3, '24': 3, '36': 3, '37': 3, '38': 3, '41': 3, '42': 3, '43': 3,
-  '44': 3, '45': 3, '49': 3, '58': 3, '63': 3, '69': 3, '71': 3, '72': 3,
-  '73': 3, '74': 3, '79': 3, '85': 3, '86': 3, '87': 3,
-
-  // Zone 4 — Moins favorable (Nord)
-  '02': 4, '08': 4, '10': 4, '14': 4, '22': 4, '25': 4, '27': 4, '28': 4,
-  '29': 4, '35': 4, '39': 4, '50': 4, '51': 4, '52': 4, '53': 4, '54': 4,
-  '55': 4, '56': 4, '57': 4, '59': 4, '60': 4, '61': 4, '62': 4, '67': 4,
-  '68': 4, '70': 4, '75': 4, '76': 4, '77': 4, '78': 4, '80': 4, '88': 4,
-  '89': 4, '90': 4, '91': 4, '92': 4, '93': 4, '94': 4, '95': 4,
+export const DRYING_CAPACITIES = {
+  'BT-3.1.15': {
+    fourrage_vrac: { A: 180, B: 300, C: 360, D: 520 },
+    bottes_carrees: { A: 120, B: 140, C: 160, D: 190 },
+    cereales_ble: { A: 260, B: 270, C: 280, D: 290 },
+    cereales_mais: { A: 50, B: 60, C: 60, D: 70 },
+    plaquettes_bois: { A: 420, B: 450, C: 470, D: 500 },
+  },
+  'BT-6.2.15': {
+    fourrage_vrac: { A: 370, B: 640, C: 760, D: 1100 },
+    bottes_carrees: { A: 250, B: 270, C: 340, D: 380 },
+    cereales_ble: { A: 550, B: 540, C: 560, D: 580 },
+    cereales_mais: { A: 100, B: 110, C: 110, D: 140 },
+    plaquettes_bois: { A: 820, B: 900, C: 950, D: 1010 },
+  },
+  'BT-8.3.15': {
+    fourrage_vrac: { A: 550, B: 980, C: 1140, D: 1630 },
+    bottes_carrees: { A: 350, B: 410, C: 480, D: 580 },
+    cereales_ble: { A: 790, B: 810, C: 840, D: 860 },
+    cereales_mais: { A: 140, B: 160, C: 200, D: 210 },
+    plaquettes_bois: { A: 1260, B: 1340, C: 1400, D: 1510 },
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 5. PRODUCTION SOLAIRE RÉGIONALE (kWh/kWc/an) par département
+// 3. BARÈMES DE VENTILATION PAR MATIÈRE (€/an par cellule/ventilateur)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const PRODUCTION_SOLAIRE_DEPT = {
-  // Zone 1 Sud (1350-1500 kWh/kWc/an)
-  '06': 1450, '11': 1400, '13': 1450, '20': 1500, '2A': 1500, '2B': 1500,
-  '30': 1400, '34': 1420, '66': 1380, '83': 1450, '84': 1400,
-  // Zone 2 Sud-Ouest / Rhône-Alpes (1200-1350)
-  '04': 1350, '05': 1300, '07': 1300, '09': 1250, '12': 1250, '26': 1300,
-  '31': 1250, '32': 1250, '33': 1250, '38': 1250, '40': 1250, '46': 1220,
-  '47': 1230, '48': 1280, '64': 1200, '65': 1200, '69': 1250, '73': 1250,
-  '74': 1250, '81': 1250, '82': 1250,
-  // Zone 3 Centre / Ouest (1100-1200)
-  '01': 1200, '03': 1180, '15': 1200, '16': 1180, '17': 1200, '18': 1150,
-  '19': 1180, '21': 1150, '23': 1150, '24': 1200, '36': 1150, '37': 1150,
-  '41': 1150, '42': 1200, '43': 1200, '44': 1180, '45': 1150, '49': 1170,
-  '58': 1150, '63': 1180, '71': 1160, '72': 1140, '79': 1170, '85': 1180,
-  '86': 1160, '87': 1160,
-  // Zone 4 Nord (1000-1100)
-  '02': 1080, '08': 1060, '10': 1080, '14': 1070, '22': 1080, '25': 1100,
-  '27': 1070, '28': 1100, '29': 1080, '35': 1080, '39': 1100, '50': 1060,
-  '51': 1080, '52': 1080, '53': 1080, '54': 1060, '55': 1070, '56': 1080,
-  '57': 1050, '59': 1030, '60': 1070, '61': 1080, '62': 1030, '67': 1080,
-  '68': 1100, '70': 1080, '75': 1080, '76': 1050, '77': 1090, '78': 1080,
-  '80': 1050, '88': 1060, '89': 1100, '90': 1080, '91': 1090, '92': 1080,
-  '93': 1080, '94': 1080, '95': 1070,
+export const VENTILATOR_COSTS_PER_MATERIAL = {
+  fourrage_vrac: 1421,
+  bottes_carrees: 1421,
+  cereales_ble: 426,
+  cereales_mais: 1051,
+  plaquettes_bois: 9207,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 6. COEFFICIENTS D'ORIENTATION (facteur multiplicatif sur la production)
+// 4. ZONES DE SÉCHAGE / ENSOLEILLEMENT (A, B, C, D)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const DRYING_ZONE_BY_DEPARTMENT = {
+  // Zone A - Méditerranée (1200-1400 kWh/kWc)
+  '04': 'A', '06': 'A', '13': 'A', '20': 'A', '2A': 'A', '2B': 'A',
+  '30': 'A', '34': 'A', '66': 'A', '83': 'A', '84': 'A',
+  // Zone B - Sud / Sud-Ouest / Rhône-Alpes (1100-1200 kWh/kWc)
+  '01': 'B', '03': 'B', '05': 'B', '07': 'B', '09': 'B', '11': 'B', '12': 'B',
+  '15': 'B', '16': 'B', '17': 'B', '19': 'B', '23': 'B', '24': 'B', '26': 'B',
+  '31': 'B', '32': 'B', '33': 'B', '38': 'B', '40': 'B', '42': 'B', '43': 'B',
+  '46': 'B', '47': 'B', '48': 'B', '63': 'B', '64': 'B', '65': 'B', '69': 'B',
+  '73': 'B', '74': 'B', '79': 'B', '81': 'B', '82': 'B', '86': 'B', '87': 'B',
+  // Zone C - Centre / Ouest (1000-1100 kWh/kWc)
+  '18': 'C', '21': 'C', '22': 'C', '25': 'C', '28': 'C', '29': 'C', '35': 'C',
+  '36': 'C', '37': 'C', '39': 'C', '41': 'C', '44': 'C', '45': 'C', '49': 'C',
+  '53': 'C', '56': 'C', '58': 'C', '70': 'C', '71': 'C', '72': 'C', '85': 'C',
+  '89': 'C', '90': 'C',
+  // Zone D - Nord / Est (800-1000 kWh/kWc)
+  '02': 'D', '08': 'D', '10': 'D', '14': 'D', '27': 'D', '50': 'D', '51': 'D',
+  '52': 'D', '54': 'D', '55': 'D', '57': 'D', '59': 'D', '60': 'D', '61': 'D',
+  '62': 'D', '67': 'D', '68': 'D', '75': 'D', '76': 'D', '77': 'D', '78': 'D',
+  '80': 'D', '88': 'D', '91': 'D', '92': 'D', '93': 'D', '94': 'D', '95': 'D',
+};
+
+export const ZONES_SECHAGE = DRYING_ZONE_BY_DEPARTMENT;
+
+export function getDryingZone(deptCode) {
+  if (!deptCode) return 'B';
+  const clean = String(deptCode).trim().toUpperCase();
+  return DRYING_ZONE_BY_DEPARTMENT[clean] || 'B';
+}
+
+export function getDryingCapacity(modelId = 'BT-3.1.15', materialId = 'fourrage_vrac', deptCode = '32') {
+  const mId = modelId.startsWith('BT-') ? modelId : `BT-${modelId}`;
+  const zone = getDryingZone(deptCode);
+  const modelMatrix = DRYING_CAPACITIES[mId] || DRYING_CAPACITIES['BT-3.1.15'];
+  if (modelMatrix && modelMatrix[materialId]) {
+    return modelMatrix[materialId][zone] || modelMatrix[materialId]['B'] || 0;
+  }
+  const fallbackModel = BATITECH_MODELS[mId] || BATITECH_MODELS['BT-3.1.15'];
+  return fallbackModel?.capacitesMax?.[materialId] || 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 5. PRODUCTION SOLAIRE RÉGIONALE (kWh/kWc/an) — Référence ENR Courtage
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const PRODUCTIBLE_BY_REGION = {
+  '1200': ['04', '05', '06', '13', '83', '84', '20', '2A', '2B'],
+  '1150': ['09', '11', '12', '30', '31', '32', '34', '46', '48', '65', '66', '81', '82', '07', '26', '01', '38', '42', '43', '63', '69', '73', '74', '03', '15', '16', '17', '19', '23', '24', '33', '40', '47', '64', '79', '86', '87'],
+  '1100': ['22', '29', '35', '56', '44', '49', '53', '72', '85', '18', '28', '36', '37', '41', '45', '21', '25', '39', '58', '70', '71', '89', '90'],
+  '1050': ['14', '27', '50', '61', '76', '75', '77', '78', '91', '92', '93', '94', '95', '08', '10', '51', '52', '54', '55', '57', '67', '68', '88', '02', '59', '60', '62', '80']
+};
+
+export function getProductibleForDept(deptCode) {
+  if (!deptCode) return 1150;
+  const clean = String(deptCode).trim().toUpperCase();
+  for (const [ratio, depts] of Object.entries(PRODUCTIBLE_BY_REGION)) {
+    if (depts.includes(clean)) return parseInt(ratio, 10);
+  }
+  return 1150;
+}
+
+export const PRODUCTION_SOLAIRE_DEPT = new Proxy({}, {
+  get: (target, prop) => getProductibleForDept(prop)
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 6. COEFFICIENTS D'ORIENTATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const ORIENTATION_COEFFICIENTS = {
-  'est':        0.82,
-  'sud-est':    0.93,
+  'est':        0.85,
+  'sud-est':    0.95,
   'sud':        1.00,
-  'sud-ouest':  0.93,
-  'ouest':      0.82,
+  'sud-ouest':  0.95,
+  'ouest':      0.85,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 7. MATIÈRES DE SÉCHAGE (référentiel par défaut)
+// 7. MATIÈRES DE SÉCHAGE (Référentiel ENR Courtage)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DRYING_MATERIALS = [
@@ -262,7 +317,7 @@ export const DRYING_MATERIALS = [
     unit: 't MS/an',
     defaultPlusValueQualite: 55,
     defaultEconomieEnergie: 10,
-    defaultVolume: 0,
+    defaultVolume: 300,
     description: 'Foin en vrac séché sous panneaux thermovoltaïques Cogen\'Air®',
   },
   {
@@ -273,7 +328,7 @@ export const DRYING_MATERIALS = [
     unit: 't MS/an',
     defaultPlusValueQualite: 50,
     defaultEconomieEnergie: 10,
-    defaultVolume: 0,
+    defaultVolume: 140,
     description: 'Bottes de foin rectangulaires haute densité séchées sous grange',
   },
   {
@@ -282,9 +337,9 @@ export const DRYING_MATERIALS = [
     shortLabel: 'Blé tendre',
     icon: '🌾',
     unit: 't MS/an',
-    defaultPlusValueQualite: 10,
-    defaultEconomieEnergie: 12,
-    defaultVolume: 0,
+    defaultPlusValueQualite: 25,
+    defaultEconomieEnergie: 15,
+    defaultVolume: 270,
     description: 'Séchage de blé tendre et céréales à paille',
   },
   {
@@ -295,7 +350,7 @@ export const DRYING_MATERIALS = [
     unit: 't MS/an',
     defaultPlusValueQualite: 35,
     defaultEconomieEnergie: 25,
-    defaultVolume: 0,
+    defaultVolume: 60,
     description: 'Séchage de maïs grain haute humidité',
   },
   {
@@ -304,9 +359,9 @@ export const DRYING_MATERIALS = [
     shortLabel: 'Plaquettes bois',
     icon: '🪵',
     unit: 't MS/an',
-    defaultPlusValueQualite: 8,
-    defaultEconomieEnergie: 18,
-    defaultVolume: 0,
+    defaultPlusValueQualite: 30,
+    defaultEconomieEnergie: 20,
+    defaultVolume: 450,
     description: 'Plaquettes forestières et copeaux pour chaufferie bois',
   },
 ];
