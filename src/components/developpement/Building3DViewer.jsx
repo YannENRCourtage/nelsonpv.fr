@@ -94,7 +94,8 @@ export default function Building3DViewer({
   height = 280,
   className = '',
   isDP = false,
-  docType = 'pc'
+  docType = 'pc',
+  dimensionFontSize,
 }) {
   const [activeSlot, setActiveSlot] = useState('facade_sud');
   const [capturedSlots, setCapturedSlots] = useState({});
@@ -200,7 +201,12 @@ export default function Building3DViewer({
             minDistance={2}
           />
 
-          <Structure hideBracing={true} forceHideDimensions={false} viewMode={getViewModeForSlot(activeSlot)} />
+          <Structure
+            hideBracing={true}
+            forceHideDimensions={false}
+            viewMode={getViewModeForSlot(activeSlot)}
+            dimensionFontSize={dimensionFontSize || buildingConfig?.dimensionFontSize}
+          />
 
           <ContactShadows
             position={[0, 0, targetZ]}

@@ -1724,6 +1724,72 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                         )}
                       </div>
 
+                      {/* Contrôle interactif de la taille de police des mesures pour l'ombrière/bâtiment actif */}
+                      {(() => {
+                        const activeB = buildings[activeBuildingIndex] || {};
+                        const currentFontSize = activeB.dimensionFontSize || 2.5;
+                        const buildingName = getBuildingDisplayName(activeB, activeBuildingIndex);
+                        return (
+                          <div className="bg-blue-50/80 border border-blue-200/90 rounded-xl px-2.5 py-1.5 mb-2 flex items-center justify-between text-left shadow-2xs">
+                            <span className="text-[11px] font-bold text-blue-950 flex items-center gap-1">
+                              📏 Taille police des mesures <strong className="text-blue-700">({buildingName})</strong> :
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = Math.max(1.0, Math.round((Number(currentFontSize) - 0.5) * 10) / 10);
+                                  updateActiveBuilding({ dimensionFontSize: next });
+                                }}
+                                className="w-5 h-5 flex items-center justify-center bg-white hover:bg-blue-100 text-blue-800 border border-blue-300 rounded-md text-xs font-black shadow-2xs active:scale-95"
+                                title="Diminuer la taille"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="number"
+                                min="1.0"
+                                max="10.0"
+                                step="0.5"
+                                value={currentFontSize}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 2.5;
+                                  updateActiveBuilding({ dimensionFontSize: val });
+                                }}
+                                className="w-12 px-1 py-0.5 text-xs font-black text-center text-blue-900 border border-blue-300 rounded-md bg-white shadow-inner focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = Math.min(10.0, Math.round((Number(currentFontSize) + 0.5) * 10) / 10);
+                                  updateActiveBuilding({ dimensionFontSize: next });
+                                }}
+                                className="w-5 h-5 flex items-center justify-center bg-white hover:bg-blue-100 text-blue-800 border border-blue-300 rounded-md text-xs font-black shadow-2xs active:scale-95"
+                                title="Agrandir la taille"
+                              >
+                                +
+                              </button>
+                              <div className="flex items-center gap-0.5 ml-1">
+                                {[2.2, 3.0, 4.0, 5.0].map((preset) => (
+                                  <button
+                                    key={preset}
+                                    type="button"
+                                    onClick={() => updateActiveBuilding({ dimensionFontSize: preset })}
+                                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                                      Number(currentFontSize) === preset
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-white text-blue-700 hover:bg-blue-100 border border-blue-200'
+                                    }`}
+                                  >
+                                    {preset}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       <div className="flex-1 flex flex-col justify-center">
                         {(() => {
                           const activeB = buildings[activeBuildingIndex] || {};
@@ -1737,8 +1803,10 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                                 buildingType: activeB.buildingType || config.buildingType || 'asymetrique_1',
                                 leftSide: activeB.leftSide || config.leftSide || 'none',
                                 rightSide: activeB.rightSide || config.rightSide || 'none',
+                                dimensionFontSize: Number(activeB.dimensionFontSize || 2.5),
                                 type: isDP ? 'dp' : editedProject.type
                               }}
+                              dimensionFontSize={Number(activeB.dimensionFontSize || 2.5)}
                               onCaptureSnapshot={handleCaptureSnapshotPC5}
                               onCaptureAll5Views={handleCaptureAll5ViewsPC5}
                               height={270}

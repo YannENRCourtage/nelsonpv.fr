@@ -7,7 +7,7 @@ import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
  * Renders dimension lines and surface area text.
  * Optimized with useMemo to prevent re-render loops from new object creation.
  */
-export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roofPitch, leftSide, rightSide, showDimensions, buildingType = 'symetrique', viewMode = '3D', baySpacing = 7.5 }) {
+export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roofPitch, leftSide, rightSide, showDimensions, buildingType = 'symetrique', viewMode = '3D', baySpacing = 7.5, dimensionFontSize }) {
 
     const isPignonEstView = viewMode === 'PIGNON' || viewMode === 'PIGNON_EST';
     const isPignonOuestView = viewMode === 'PIGNON_OUEST';
@@ -16,15 +16,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const isFacadeNordView = viewMode === 'FACADE_NORD';
     const isFacadeView = isFacadeSudView || isFacadeNordView;
 
-    const markerFontSize = (isFacadeView || isPignonView) ? 2.2 : 1.8;
-    const markerOutlineWidth = (isFacadeView || isPignonView) ? 0.35 : 0.25;
+    const { isAcama, configMode, customParams, customSpans, dimensionFontSize: storeFontSize } = useConfiguratorValues();
+    const activeSize = dimensionFontSize || storeFontSize;
+    const markerFontSize = activeSize ? Number(activeSize) : ((isFacadeView || isPignonView) ? 2.2 : 1.8);
+    const markerOutlineWidth = markerFontSize * 0.15;
     const textColor = "#000000";
     const lineColor = "#000000";
     const lineWidth = (isFacadeView || isPignonView) ? 3.5 : 2.5;
     const gapSize = 3.0;
     const isOmbriere = buildingType.startsWith('ombriere');
 
-    const { isAcama, configMode, customParams, customSpans } = useConfiguratorValues();
     const isAcamaInStore = isAcama;
     const isAcamaReal = isAcamaInStore || false; // Safe check
 

@@ -663,10 +663,6 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
                         return <line key={idx} x1={px} y1={py - 7} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
                     })}
 
-                    {/* Bracons de jarret / renforts angles */}
-                    <line x1={mainLeftSvgX + 4} y1={leftEaveSvgY + 16} x2={mainLeftSvgX + 22} y2={leftEaveSvgY + 4} stroke="#475569" strokeWidth="2.5" />
-                    <line x1={mainRightSvgX - 4} y1={rightEaveSvgY + 16} x2={mainRightSvgX - 22} y2={rightEaveSvgY + 4} stroke="#475569" strokeWidth="2.5" />
-
                     {hasExtRight && (
                         <>
                             <line x1={mainRightSvgX} y1={rightEaveSvgY} x2={extRightSvgX} y2={extRightSvgY} stroke="#1e293b" strokeWidth="3.5" />

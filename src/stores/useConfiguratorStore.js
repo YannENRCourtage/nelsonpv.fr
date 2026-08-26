@@ -358,9 +358,11 @@ export const useConfiguratorStore = create(
         bayCount: 4,
         baySpacing: 7.5,
         buildingType: 'symetrique',
+        dimensionFontSize: 2.5,
     },
 
     // Actions
+    setDimensionFontSize: (size) => set({ dimensionFontSize: Number(size) || 2.5 }),
     setBuildingType: (type) => {
         if (TYPE_WIDTHS_MAP[type]) {
             const defaultWidth = TYPE_WIDTHS_MAP[type][0];
@@ -448,6 +450,7 @@ export const useConfiguratorStore = create(
             rightWidth: Number(data.rightWidth) || 9.3,
             hasSolar: data.hasSolar !== undefined ? data.hasSolar : true,
             fixedLength: data.fixedLength || null,
+            dimensionFontSize: data.dimensionFontSize !== undefined ? Number(data.dimensionFontSize) : (data.cotationFontSize !== undefined ? Number(data.cotationFontSize) : 2.5),
             configMode: data.configMode || 'predefined',
             customParams: data.customParams ? { ...data.customParams } : {
                 leftSpan: 10,
@@ -956,5 +959,6 @@ export const useConfiguratorActions = () => {
         setRoofPitch: (p) => useConfiguratorStore.getState().setRoofPitch(p),
         setEaveHeight: (h) => useConfiguratorStore.getState().setEaveHeight(h),
         setDimensions: (d) => useConfiguratorStore.getState().setDimensions(d),
+        setDimensionFontSize: (s) => useConfiguratorStore.getState().setDimensionFontSize(s),
     }), []);
 };
