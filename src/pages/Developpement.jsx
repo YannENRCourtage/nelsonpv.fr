@@ -65,7 +65,12 @@ const SIDEBAR_SECTIONS = [
 export default function Developpement() {
   const { user, activeTenantId } = useAuth();
   const [activeSection, setActiveSection] = useState('dossiers');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1024;
+    }
+    return false;
+  });
 
   // Current user info
   const currentUser = {
@@ -423,7 +428,7 @@ export default function Developpement() {
       </aside>
 
       {/* ═══ MAIN VIEWPORT (Full-Width Monday.com Design) ════════════ */}
-      <main className="flex-1 overflow-y-auto w-full p-4 lg:p-6 space-y-6">
+      <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden w-full p-4 lg:p-6 space-y-6">
         {/* Overlay de chargement génération PDF */}
         <AnimatePresence>
           {isGenerating && (

@@ -122,7 +122,12 @@ export default function IrveSimulator() {
 
   // ─── Navigation Principale Gauche : 'simulateurs' | 'archives' | 'database' ─
   const [activeMainTab, setActiveMainTab] = useState('simulateurs');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return false;
+  });
 
   // ─── Sous-solution active : 'autoconso' | 'toiture' | 'structure' | 'irve' | 'sechoir' ──
   const [activeSolution, setActiveSolution] = useState('autoconso');
@@ -406,28 +411,28 @@ export default function IrveSimulator() {
       {/* ═══════════════════════════════════════════════════════════════════════
           ZONE DE CONTENU PRINCIPALE (SANS SCROLL INUTILE)
          ═══════════════════════════════════════════════════════════════════════ */}
-      <main className="flex-1 overflow-y-auto flex flex-col">
+      <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden flex flex-col">
         
         {/* BARRE SUPÉRIEURE AVEC LES 4 SOLUTIONS ET LES BOUTONS SAUVEGARDER / PDF */}
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-3 shadow-2xs flex flex-col gap-2">
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-3 shadow-2xs flex flex-col gap-2 min-w-0 max-w-full">
           
           {/* Ligne 1 : Titre et Sélecteur des 4 solutions */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-black text-slate-900">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0 shrink-0">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 truncate">
                 {activeMainTab === 'simulateurs' && 'Interface de Simulation'}
                 {activeMainTab === 'archives' && 'Archives des Études Commerciales'}
                 {activeMainTab === 'database' && 'Base de Données & Paramétrage'}
               </h1>
               {selectedProject && (
-                <span className="text-xs font-bold bg-blue-50 text-blue-800 px-3 py-1 rounded-xl border border-blue-200">
+                <span className="text-xs font-bold bg-blue-50 text-blue-800 px-3 py-1 rounded-xl border border-blue-200 truncate">
                   Dossier : {selectedProject.name}
                 </span>
               )}
             </div>
 
             {activeMainTab === 'simulateurs' && (
-              <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 overflow-x-auto no-scrollbar scrollbar-none max-w-full flex-nowrap shrink-0">
                 {[
                   { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
                   { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
@@ -447,13 +452,13 @@ export default function IrveSimulator() {
                         }
                         setActiveSolution(sol.id);
                       }}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all ${
+                      className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all whitespace-nowrap shrink-0 ${
                         isSelected
                           ? 'bg-[#0e2b4d] text-white shadow-md'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 ${isSelected ? 'text-amber-400' : sol.color}`} />
+                      <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-amber-400' : sol.color}`} />
                       <span>{sol.label}</span>
                     </button>
                   );
@@ -464,11 +469,11 @@ export default function IrveSimulator() {
 
           {/* Ligne 2 : BOUTONS SAUVEGARDER ET PDF ALIGNÉS EN HAUT À DROITE SOUS LES BOUTONS SOLUTIONS */}
           {activeMainTab === 'simulateurs' && (
-            <div className="flex items-center justify-end gap-2.5 pt-0.5">
+            <div className="flex items-center justify-end gap-2.5 pt-0.5 min-w-0">
               <button
                 type="button"
                 onClick={() => handleSaveCurrentSimulation()}
-                className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:scale-105"
+                className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:scale-105 shrink-0"
                 title="Sauvegarder l'étude en cours dans les archives"
               >
                 <Save className="w-3.5 h-3.5 text-emerald-400" />
@@ -478,7 +483,7 @@ export default function IrveSimulator() {
               <button
                 type="button"
                 onClick={() => handleExportPDF()}
-                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all hover:scale-105"
+                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all hover:scale-105 shrink-0"
                 title="Générer l'Offre Commerciale au format PDF A4 Portrait"
               >
                 <FileDown className="w-3.5 h-3.5" />

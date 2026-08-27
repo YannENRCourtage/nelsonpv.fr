@@ -17,9 +17,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const isFacadeView = isFacadeSudView || isFacadeNordView;
 
     const { isAcama, configMode, customParams, customSpans, dimensionFontSize: storeFontSize } = useConfiguratorValues();
-    const activeSize = dimensionFontSize || storeFontSize;
-    const markerFontSize = activeSize ? Number(activeSize) : ((isFacadeView || isPignonView) ? 2.2 : 1.8);
-    const markerOutlineWidth = markerFontSize * 0.15;
+    const is2DView = isFacadeView || isPignonView;
+    const activeSize = dimensionFontSize || (is2DView ? storeFontSize : null);
+    const markerFontSize = activeSize ? Number(activeSize) : (is2DView ? 2.2 : 0.8);
+    const markerOutlineWidth = is2DView ? markerFontSize * 0.15 : 0.1;
     const textColor = "#000000";
     const lineColor = "#000000";
     const lineWidth = (isFacadeView || isPignonView) ? 3.5 : 2.5;
