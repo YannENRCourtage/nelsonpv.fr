@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfiguratorValues, useConfiguratorActions, EPONA_MODELS, TALIAN_MODELS, TALIAN_1_MODELS, TALIAN_3_MODELS, TALIAN_5_MODELS } from '@/stores/useConfiguratorStore.js';
+import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 
 const TYPE_WIDTHS_MAP = {
     'symetrique': [15.0, 18.6, 22.3, 26.0, 29.8, 33.5],
@@ -30,6 +31,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
         selectedTalian1Model,
         selectedTalian3Model,
         selectedTalian5Model,
+        selectedBatitechModel,
         configMode,
         customParams,
     } = storeValues;
@@ -60,6 +62,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
         setTalian1Model,
         setTalian3Model,
         setTalian5Model,
+        setBatitechModel,
         setConfigMode,
         updateCustomParams,
     } = useConfiguratorActions();
@@ -170,8 +173,19 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                         }}
                         className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'predefined' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                     >
-                        {isAcama ? "Bâtiments prédéfinis" : "Gamme ECO-EVO"}
+                        {isAcama ? "Bâtiments prédéfinis" : "ECO-EVO"}
                     </button>
+                    {!isAcama && (
+                        <button
+                            onClick={() => {
+                                setConfigMode('batitech');
+                                if (onUpdateBuilding) onUpdateBuilding({ configMode: 'batitech' });
+                            }}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'batitech' ? 'bg-amber-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                        >
+                            BatiTech®
+                        </button>
+                    )}
                     <button
                         onClick={() => {
                             setConfigMode('custom');
@@ -179,7 +193,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                         }}
                         className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'custom' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                     >
-                        Bâtiments sur-mesure
+                        Sur-mesure
                     </button>
                 </div>
             </div>
@@ -431,6 +445,134 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
             </div>
 
                 </>
+            ) : configMode === 'batitech' ? (
+                <div className="batitech-config-form space-y-4">
+                    {/* CHOIX DU MODÈLE BATITECH */}
+                    <div className="param-group">
+                        <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                            Modèle BatiTech®
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {['BT-3.1.15', 'BT-6.2.15', 'BT-8.3.15'].map((mId) => {
+                                const m = BATITECH_MODELS[mId] || {};
+                                const isSelected = selectedBatitechModel === mId;
+                                return (
+                                    <button
+                                        key={mId}
+                                        type="button"
+                                        onClick={() => {
+                                            setBatitechModel(mId);
+                                            if (onUpdateBuilding) {
+                                                const bayCount = m.zones === 1 ? 3 : (m.zones === 2 ? 6 : 8);
+                                                onUpdateBuilding({
+                                                    configMode: 'batitech',
+                                                    selectedBatitechModel: mId,
+                                                    buildingType: 'asymetrique_1',
+                                                    width: 20.0,
+                                                    baySpacing: 6.0,
+                                                    bayCount: bayCount,
+                                                    length: m.length || (bayCount * 6.0),
+                                                    eaveHeight: 4.0,
+                                                    roofPitch: 15,
+                                                    hasSolar: true
+                                                });
+                                            }
+                                        }}
+                                        className={`p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-between ${
+                                            isSelected
+                                                ? 'bg-amber-600 text-white border-amber-700 shadow-md ring-2 ring-amber-400'
+                                                : 'bg-white text-slate-700 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'
+                                        }`}
+                                    >
+                                        <div className="font-black text-[11px] leading-tight">{m.name}</div>
+                                        <div className={`text-[10px] mt-1 font-semibold ${isSelected ? 'text-amber-100' : 'text-slate-500'}`}>
+                                            {m.dimensions}
+                                        </div>
+                                        <div className={`text-[10px] font-bold mt-0.5 ${isSelected ? 'text-white' : 'text-amber-600'}`}>
+                                            {m.puissanceKwc} kWc
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* DÉTAILS TECHNIQUES FIXES AS9.2 DU SÉCHOIR */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 text-xs">
+                        <div className="font-bold text-slate-800 flex items-center justify-between">
+                            <span>Base Structure : <strong className="text-amber-700">AS9.2 (20m Asymétrique)</strong></span>
+                            <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">Séchoir Solaire</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1 border-t border-slate-200">
+                            <div>• Sablière Sud : <strong>4.00 m</strong></div>
+                            <div>• Faîtage : <strong>8.40 m</strong></div>
+                            <div>• Sablière Nord : <strong>7.40 m</strong></div>
+                            <div>• Pente de toiture : <strong>15°</strong></div>
+                            <div>• Travées : <strong>6.00 m</strong></div>
+                            <div>• Largeur : <strong>20.00 m</strong></div>
+                        </div>
+                    </div>
+
+                    {/* ÉQUIPEMENTS & BARDAGE INCLUS */}
+                    <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 space-y-1.5 text-xs">
+                        <div className="font-bold text-amber-950 flex items-center gap-1.5">
+                            <span>🌾 Équipements Séchage Inclus :</span>
+                        </div>
+                        <ul className="text-[11px] text-amber-900 space-y-1 pl-1">
+                            <li className="flex items-center gap-1.5">
+                                <span className="text-amber-600 font-black">✓</span>
+                                <strong>Bardage 3 faces :</strong> Sud, Est et Ouest
+                            </li>
+                            <li className="flex items-center gap-1.5">
+                                <span className="text-amber-600 font-black">✓</span>
+                                <strong>Face Nord ouverte :</strong> Accès direct exploitation et manutention
+                            </li>
+                            <li className="flex items-center gap-1.5">
+                                <span className="text-amber-600 font-black">✓</span>
+                                <strong>Local ventilateur :</strong> 2m × 4m avec ventilateur Cogen'Air®
+                            </li>
+                            <li className="flex items-center gap-1.5">
+                                <span className="text-amber-600 font-black">✓</span>
+                                <strong>Toiture Cogen'Air® :</strong> Panneaux thermovoltaïques
+                            </li>
+                        </ul>
+                    </div>
+
+                    {/* OPTION COUVERTURE SOLAIRE */}
+                    <div className="param-group pt-1">
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                            Option Solaire
+                        </label>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={toggleSolar}
+                                className={`w-1/2 py-2.5 px-2 rounded-lg font-bold text-xs transition-all border ${
+                                    hasSolar
+                                        ? 'bg-amber-500 text-white border-amber-600 shadow-md'
+                                        : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                                }`}
+                            >
+                                <div className="leading-tight">Couverture</div>
+                                <div className="leading-tight">Solaire PV</div>
+                            </button>
+
+                            {hasSolar ? (
+                                <div className="w-1/2 py-1.5 px-2 bg-amber-50 border border-amber-200 rounded-lg flex flex-col justify-center text-center">
+                                    <div className="text-sm font-black text-amber-950 leading-tight">
+                                        {solarStats?.power?.toFixed(2)} <span className="text-[10px] font-bold text-amber-800">kWc</span>
+                                    </div>
+                                    <div className="text-[10px] font-semibold text-amber-700 leading-none mt-0.5">
+                                        {solarStats?.count} panneaux Cogen'Air®
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="w-1/2 py-2.5 px-2 bg-slate-50 border border-slate-200 rounded-lg text-center text-slate-400 text-[11px] font-semibold">
+                                    Sans PV
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             ) : (
                 <div className="custom-config-form space-y-5">
                     {/* FORMULAIRE SUR-MESURE */}

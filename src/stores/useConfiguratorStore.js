@@ -1,6 +1,7 @@
 import React from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 
 /**
  * Mapping of Building Types to Allowed Widths
@@ -335,8 +336,11 @@ export const useConfiguratorStore = create(
     leftWidth: 9.3,     // Standard
     rightWidth: 9.3,    // Standard
 
+    // BATITECH state
+    selectedBatitechModel: 'BT-3.1.15',
+
     // --- CUSTOM MODE (SUR-MESURE) ---
-    configMode: 'predefined', // 'predefined' | 'custom'
+    configMode: 'predefined', // 'predefined' | 'batitech' | 'custom'
     customParams: {
         buildingType: 'symetrique',
         proportion: '1/2-1/2',
@@ -363,13 +367,33 @@ export const useConfiguratorStore = create(
 
     // Actions
     setDimensionFontSize: (size) => set({ dimensionFontSize: Number(size) || 2.5 }),
+    setBatitechModel: (modelId) => {
+        const model = BATITECH_MODELS[modelId] || BATITECH_MODELS['BT-3.1.15'];
+        const bayCount = model.zones === 1 ? 3 : (model.zones === 2 ? 6 : 8);
+        const bLength = model.length || (bayCount * 6.0);
+        set({
+            configMode: 'batitech',
+            selectedBatitechModel: modelId,
+            buildingType: 'asymetrique_1',
+            width: 20.0,
+            baySpacing: 6.0,
+            bayCount: bayCount,
+            length: bLength,
+            fixedLength: bLength,
+            eaveHeight: 4.0,
+            roofPitch: 15,
+            hasSolar: true,
+            leftSide: 'none',
+            rightSide: 'none',
+        });
+    },
     setBuildingType: (type) => {
         if (TYPE_WIDTHS_MAP[type]) {
             const defaultWidth = TYPE_WIDTHS_MAP[type][0];
             const updates = { buildingType: type, width: defaultWidth, fixedLength: null };
 
-            // Forcer la hauteur de sablière pour Monopente + Pente 15°
-            if (type === 'monopente') {
+            // Forcer la hauteur de sablière pour Monopente & Asymétriques + Pente 15°
+            if (type === 'monopente' || type.startsWith('asymetrique')) {
                 updates.eaveHeight = 4.0;
                 updates.roofPitch = 15; // FORCE 15°
 
@@ -392,7 +416,7 @@ export const useConfiguratorStore = create(
                 updates.rightSide = 'none';
             } else {
                 updates.eaveHeight = 5.5;
-                updates.roofPitch = 10; // Reset to 10° for Symmetrical/Asymmetrical
+                updates.roofPitch = 10; // Reset to 10° for Symmetrical
             }
 
             set(updates);
@@ -583,7 +607,40 @@ export const useConfiguratorStore = create(
     toggleSolar: () => set((state) => ({ hasSolar: !state.hasSolar })),
     toggleDimensions: () => set((state) => ({ showDimensions: !state.showDimensions })),
 
-    setConfigMode: (mode) => set({ configMode: mode }),
+    setConfigMode: (mode) => {
+        if (mode === 'batitech') {
+            const state = get();
+            const modelId = state.selectedBatitechModel || 'BT-3.1.15';
+            const model = BATITECH_MODELS[modelId] || BATITECH_MODELS['BT-3.1.15'];
+            const bayCount = model.zones === 1 ? 3 : (model.zones === 2 ? 6 : 8);
+            const bLength = model.length || (bayCount * 6.0);
+            set({
+                configMode: 'batitech',
+                selectedBatitechModel: modelId,
+                buildingType: 'asymetrique_1',
+                width: 20.0,
+                baySpacing: 6.0,
+                bayCount: bayCount,
+                length: bLength,
+                fixedLength: bLength,
+                eaveHeight: 4.0,
+                roofPitch: 15,
+                hasSolar: true,
+                leftSide: 'none',
+                rightSide: 'none',
+            });
+        } else if (mode === 'predefined') {
+            const state = get();
+            set({
+                configMode: 'predefined',
+                fixedLength: null,
+                width: state.width || 18.6,
+                buildingType: state.buildingType === 'asymetrique_1' && state.width === 20.0 ? 'asymetrique_1' : (state.buildingType || 'symetrique'),
+            });
+        } else {
+            set({ configMode: 'custom', fixedLength: null });
+        }
+    },
 
     updateCustomParams: (updates) => {
         set((state) => {
@@ -846,6 +903,12 @@ export const useConfiguratorValues = () => {
             }
         }
 
+        if (state.configMode === 'batitech') {
+            const bModel = BATITECH_MODELS[state.selectedBatitechModel] || BATITECH_MODELS['BT-3.1.15'];
+            finalSolarCount = bModel.nbModules || 90;
+            finalSolarPower = bModel.puissanceKwc || 30.15;
+        }
+
         const availableWidths = TYPE_WIDTHS_MAP[state.buildingType] || TYPE_WIDTHS_MAP['symetrique'];
 
         // --- CUSTOM MODE OVERRIDE ---
@@ -953,6 +1016,7 @@ export const useConfiguratorActions = () => {
         setTalian1Model: (m) => useConfiguratorStore.getState().setTalian1Model(m),
         setTalian3Model: (m) => useConfiguratorStore.getState().setTalian3Model(m),
         setTalian5Model: (m) => useConfiguratorStore.getState().setTalian5Model(m),
+        setBatitechModel: (m) => useConfiguratorStore.getState().setBatitechModel(m),
         setIsAcama: (v) => useConfiguratorStore.getState().setIsAcama(v),
         setConfigMode: (m) => useConfiguratorStore.getState().setConfigMode(m),
         updateCustomParams: (u) => useConfiguratorStore.getState().updateCustomParams(u),

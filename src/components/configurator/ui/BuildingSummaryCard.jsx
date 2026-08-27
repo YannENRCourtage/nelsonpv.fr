@@ -1,7 +1,8 @@
 import React from 'react';
 import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
-import { Building2, Sun, Coins, Ruler, Layers, CheckCircle2, Sparkles } from 'lucide-react';
+import { Building2, Sun, Coins, Ruler, Layers, CheckCircle2, Sparkles, Wind } from 'lucide-react';
 import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
+import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 
 export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
     const config = useConfiguratorValues();
@@ -14,11 +15,14 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
 
     const floorArea = Math.round(length * totalWidth);
 
-    // Détection mode sur-mesure
+    // Détection mode sur-mesure & batitech
+    const isBatitech = config.configMode === 'batitech';
     const isCustom = config.configMode === 'custom' || (!isAcama && config.buildingType === 'custom');
 
+    const batitechModel = isBatitech ? (BATITECH_MODELS[config.selectedBatitechModel] || BATITECH_MODELS['BT-3.1.15']) : null;
+
     // Recherche automatique dans le catalogue officiel Barconnière / Acama
-    const barcMatch = findBarconniereBuilding({
+    const barcMatch = isBatitech ? {} : findBarconniereBuilding({
         length,
         width: mainWidth,
         buildingType: config.buildingType || 'symetrique',
@@ -29,23 +33,31 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
         isAcama,
     });
 
-    const gammeName = barcMatch.gamme;
-    const buildingCode = String(barcMatch.id || '').replace(/^#/, '').trim();
-    const equivalenceCode = String(barcMatch.code || '').trim();
+    const gammeName = isBatitech ? 'Séchoir BatiTech®' : barcMatch.gamme;
+    const buildingCode = isBatitech ? batitechModel.name : String(barcMatch.id || '').replace(/^#/, '').trim();
+    const equivalenceCode = isBatitech ? 'AS9.2 (20m Asymétrique)' : String(barcMatch.code || '').trim();
 
     // Puissance solaire
-    const installedKwc = Number(config.solarStats?.power) || barcMatch.kwc || Math.round(floorArea * 0.20);
-    const panelCount = Number(config.solarStats?.count) || Math.round((installedKwc * 1000) / (isAcama ? 460 : 465));
+    const installedKwc = isBatitech
+        ? batitechModel.puissanceKwc
+        : (Number(config.solarStats?.power) || barcMatch.kwc || Math.round(floorArea * 0.20));
+    const panelCount = isBatitech
+        ? batitechModel.nbModules
+        : (Number(config.solarStats?.count) || Math.round((installedKwc * 1000) / (isAcama ? 460 : 465)));
     const estimatedProductionKwh = Math.round(installedKwc * 1150);
 
-    // Chiffrage officiel Barconnière
-    const totalBuildingCost = isCustom
-        ? Math.round(floorArea * 128)
-        : barcMatch.tarif;
+    // Chiffrage officiel
+    const totalBuildingCost = isBatitech
+        ? (batitechModel.postesInvestissement?.totalBatiment || Math.round(floorArea * 135))
+        : isCustom
+            ? Math.round(floorArea * 128)
+            : barcMatch.tarif;
 
     // Chiffrage PV
     const pvCostPerWc = 0.55;
-    const pvInstallationCost = Math.round(installedKwc * 1000 * pvCostPerWc + 15000);
+    const pvInstallationCost = isBatitech
+        ? (batitechModel.postesInvestissement?.totalInstallateurPV || Math.round(installedKwc * 1000 * pvCostPerWc + 15000))
+        : Math.round(installedKwc * 1000 * pvCostPerWc + 15000);
 
     // Ratios officiels
     // 1. Ratio Global (Structure + Centrale PV)
@@ -54,11 +66,11 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
     const ratioTotalCostPerKwc = Math.round(ratioTotalCostPerWc * 1000);
 
     // 2. Ratio Hors PV (Structure uniquement)
-    const ratioStructureCostPerWc = installedKwc > 0 ? Number((totalBuildingCost / (installedKwc * 1000)).toFixed(2)) : barcMatch.ratioKwc;
+    const ratioStructureCostPerWc = installedKwc > 0 ? Number((totalBuildingCost / (installedKwc * 1000)).toFixed(2)) : (barcMatch.ratioKwc || 0.54);
     const ratioStructureCostPerKwc = Math.round(ratioStructureCostPerWc * 1000);
 
     // 3. Ratio Tarif / Surface
-    const ratioCostPerM2 = floorArea > 0 ? Math.round(totalBuildingCost / floorArea) : barcMatch.ratioM2;
+    const ratioCostPerM2 = floorArea > 0 ? Math.round(totalBuildingCost / floorArea) : (barcMatch.ratioM2 || 116);
 
     return (
         <div className={`bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-slate-200 text-slate-800 space-y-3.5 ${className}`}>

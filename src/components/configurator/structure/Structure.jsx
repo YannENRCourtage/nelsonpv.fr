@@ -9,6 +9,7 @@ import { LongitudinalBeams } from './LongitudinalBeams.jsx';
 import { DimensionsMarkers } from './DimensionsMarkers.jsx';
 import { Awning } from './Awning.jsx';
 import { Auvent } from './Auvent.jsx';
+import { BatitechEnclosure } from './BatitechEnclosure.jsx';
 
 // Ridge Flashing (Bande Lisse Faîtière)
 const RidgeFlashing = ({ len, h, angle, x = 0 }) => {
@@ -104,13 +105,13 @@ export function Structure({ hideBracing = false, forceHideDimensions = false, vi
                     x={0}
                 />
             )}
-            {configMode === 'predefined' && ((buildingType === 'asymetrique_1' || buildingType === 'asymetrique_2')) && (
+            {(configMode === 'predefined' || configMode === 'batitech') && ((buildingType === 'asymetrique_1' || buildingType === 'asymetrique_2')) && (
                 <RidgeFlashing
                     len={length + 1.0}
                     h={(() => {
                         const rAngle = 15 * (Math.PI / 180);
                         const rSpan = width * 0.75;
-                        const frameRidgeH = eaveHeight + (rSpan * Math.tan(rAngle));
+                        const frameRidgeH = 4.0 + (rSpan * Math.tan(rAngle));
                         // La bande lisse est posée juste au-dessus du bac acier et des panneaux solaires (+0.55m)
                         return frameRidgeH + 0.55;
                     })()}
@@ -217,6 +218,14 @@ export function Structure({ hideBracing = false, forceHideDimensions = false, vi
                     bayCount={bayCount}
                     baySpacing={baySpacing}
                     buildingType={config.buildingType}
+                />
+            )}
+
+            {configMode === 'batitech' && (
+                <BatitechEnclosure
+                    width={width}
+                    length={length}
+                    eaveHeight={eaveHeight}
                 />
             )}
 
