@@ -540,20 +540,35 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 <tr style="background: #f0fdf4; border-top: 1px solid #bbf7d0; border-bottom: 1px solid #86efac;"><td style="padding: 1.5px 2px; font-weight: 900; color: #166534;">Gain Net Annuel d'Exploitation :</td><td style="padding: 1.5px 2px; text-align: right; font-weight: 900; color: #166534; font-size: 6.8pt;">+${(sim.gainNetAnnuel || 12921).toLocaleString('fr-FR')} €/an</td></tr>
               </table>
 
-              <!-- Encart Subventions Régionales & Aides Éligibles (titre sur une seule ligne, sans badge) -->
-              <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 6px; padding: 4.5px 6px; margin: 2.5px 0; font-size: 5.8pt; line-height: 1.35; box-sizing: border-box;">
-                <div style="font-weight: 800; color: #92400e; text-transform: uppercase; font-size: 6.2pt; border-bottom: 1px solid #fef08a; padding-bottom: 1.5px; margin-bottom: 2.5px; white-space: nowrap;">
-                  🏛️ Subventions régionales &amp; aides éligibles
+              <!-- Encart Subventions Régionales & Aides Éligibles -->
+              <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 6px; padding: 4px 6px; margin: 2.5px 0; font-size: 5.8pt; line-height: 1.3; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #fef08a; padding-bottom: 1.5px; margin-bottom: 2px;">
+                  <span style="font-weight: 800; color: #92400e; text-transform: uppercase; font-size: 6.2pt; white-space: nowrap;">
+                    🏛️ Subventions régionales &amp; aides éligibles
+                  </span>
+                  ${sim.subventionRegionaleMontant ? `
+                    <span style="background: #dcfce7; color: #166534; font-weight: bold; font-size: 5.5pt; padding: 1px 4px; border-radius: 4px;">
+                      Jusqu'à ${sim.subventionRegionaleMontant.toLocaleString('fr-FR')} €
+                    </span>
+                  ` : ''}
                 </div>
                 <div style="color: #78350f;">
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 1.5px; font-size: 5.6pt;">
-                    <span><strong>${sim.subventionRegionaleNom || 'Dispositif Régional (PCAE / FEADER)'}</strong> :</span>
-                    <span style="color: #92400e; font-weight: bold;">Assiette ${(sim.investissementNet || 288263).toLocaleString('fr-FR')} € &bull; ${sim.subventionRegionaleMontant ? `jusqu'à ${sim.subventionRegionaleMontant.toLocaleString('fr-FR')} €` : 'Taux sur étude'}</span>
+                  <div style="display: flex; justify-content: space-between; font-size: 5.6pt;">
+                    <span><strong>${sim.subventionRegionaleNom || 'PCAE / PME - ' + (sim.regionName || 'Nouvelle-Aquitaine')}</strong> :</span>
+                    <span style="color: #92400e; font-weight: bold;">Taux ${sim.subventionTauxTexte || '30% (+10% JA)'}</span>
                   </div>
-                  <div style="color: #854d0e; font-size: 5.3pt; line-height: 1.25;">
-                    &bull; <strong>Fonds Chaleur ADEME</strong> : Éligible valorisation chaleur solaire Cogen'Air®<br/>(étude post-thermique).<br/>
-                    <span style="color: #a16207; font-style: italic; font-size: 5pt;">*Non déduites de l'emprunt (principe de calcul prudent et contractuel).</span>
+                  <div style="color: #475569; font-size: 5.2pt; font-style: italic;">
+                    ${sim.subventionDescription || 'Plan de Modernisation des Exploitations.'} &bull; Assiette ${(sim.investissementNet || 288263).toLocaleString('fr-FR')} € HT
                   </div>
+                  <div style="color: #854d0e; font-size: 5.2pt; margin-top: 1px;">
+                    &bull; <strong>Fonds Chaleur ADEME</strong> : Éligible valorisation chaleur solaire Cogen'Air®
+                  </div>
+                  ${sim.roiBonifie !== undefined && sim.roiBonifie !== null ? `
+                    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 1.5px 4px; margin-top: 2px; display: flex; justify-content: space-between; align-items: center; color: #065f46; font-size: 5.5pt; font-weight: bold;">
+                      <span>✅ ROI bonifié avec aide :</span>
+                      <span>~${Number(sim.roiBonifie).toFixed(2)} ans <span style="font-size: 5pt; color: #64748b; font-weight: normal;">(vs ${Number(sim.roi || 8.12).toFixed(2)} ans)</span></span>
+                    </div>
+                  ` : ''}
                 </div>
               </div>
 

@@ -306,6 +306,18 @@ export async function generateSechoirPDF({
   const bWidth = Number(modelObj.width || 20);
   const bDims = modelObj.dimensions || `${bLength}m × ${bWidth}m`;
 
+  const sub = r.subventionsEligibles || {};
+  const subReg = sub.subventionRegionale || {};
+  const subNom = subReg.nom || `PCAE / PME - ${regionName}`;
+  const subDesc = sub.description || 'Plan de Modernisation des Exploitations.';
+  const subMontant = sub.montantEstime || 0;
+  const subTaux = sub.tauxTexte || '30% (+10% JA)';
+  const subPlafond = subReg.montantMax || 100000;
+  const subAssiette = sub.assietteEligible || r.financing?.investissementNet || (modelObj.investissementBrut - (r.cee?.primeTotal || 0));
+  const roiBonifie = r.roiBonifie !== undefined && r.roiBonifie !== null ? r.roiBonifie : null;
+  const baseRoi = r.roi || 8.12;
+  const puissanceKwc = r.puissancePV || modelObj.puissanceCogenAir || (modelId === 'BT-3.1.15' ? 30.15 : modelId === 'BT-6.2.15' ? 70.35 : 100.5);
+
   const rotVal = typeof sechoirState.rotation === 'number' ? sechoirState.rotation : (
     orientation === 'ouest' ? 90 :
     orientation === 'sud-ouest' ? 45 :
@@ -427,36 +439,63 @@ export async function generateSechoirPDF({
           <!-- COLONNE DROITE : SUBVENTIONS RÉGIONALES & AIDES ÉLIGIBLES -->
           <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc; padding: 12px 16px; display: flex; flex-direction: column; justify-content: space-between;">
             <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px;">
                 <span style="font-size: 9pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">🏛️ Subventions Régionales &amp; Aides Éligibles</span>
                 <span style="font-size: 6.5pt; font-weight: bold; background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px;">À TITRE INDICATIF</span>
               </div>
-              <div style="font-size: 7.5pt; color: #64748b; margin-bottom: 8px;">
+              <div style="font-size: 7.5pt; color: #64748b; margin-bottom: 6px;">
                 Région identifiée : <strong style="color: #0D3660;">${regionName}</strong> (Département ${departement})
               </div>
 
-              <!-- Dispositif PCAE / FEADER -->
-              <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px;">
-                <div style="font-size: 6.8pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Dispositif Territorial</div>
-                <div style="font-size: 8.5pt; font-weight: 900; color: #0D3660; margin: 1px 0;">Dispositif Régional (PCAE / FEADER)</div>
-                <div style="font-size: 7pt; color: #475569; margin-bottom: 6px;">Dispositifs régionaux ${regionName} (PCAE / FEADER) ou Fonds Chaleur ADEME selon éligibilité.</div>
-                <div style="display: flex; justify-content: space-between; background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-size: 7pt;">
-                  <span>Assiette éligible (Brut - CEE) : <strong style="color: #0f172a;">${fmt(r.financing?.investissementNet)} € HT</strong></span>
-                  <span>Taux indicatif : <strong style="color: #0D3660;">Sur étude</strong></span>
+              <!-- Dispositif Territorial Principal -->
+              <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px;">
+                  <div>
+                    <div style="font-size: 6.8pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Dispositif Territorial</div>
+                    <div style="font-size: 8.5pt; font-weight: 900; color: #0D3660; margin: 1px 0;">${subNom}</div>
+                  </div>
+                  ${subMontant > 0 ? `
+                    <div style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; font-size: 7.2pt; font-weight: 900; padding: 2px 7px; border-radius: 6px; white-space: nowrap;">
+                      Jusqu'à ${fmt(subMontant)} €
+                    </div>
+                  ` : ''}
                 </div>
+                <div style="font-size: 7pt; color: #475569; margin-bottom: 6px; font-style: italic;">${subDesc}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-size: 7pt;">
+                  <div>Assiette éligible (Brut - CEE) : <strong style="color: #0f172a;">${fmt(subAssiette)} € HT</strong></div>
+                  <div>Taux d'aide indicatif : <strong style="color: #0D3660;">${subTaux}</strong></div>
+                </div>
+                ${subPlafond ? `
+                  <div style="display: flex; justify-content: space-between; font-size: 6.5pt; color: #64748b; margin-top: 4px; padding: 0 2px;">
+                    <span>Plafond maximum de subvention :</span>
+                    <strong style="color: #334155;">${fmt(subPlafond)} €</strong>
+                  </div>
+                ` : ''}
               </div>
 
               <!-- Fonds Chaleur ADEME -->
-              <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px;">
-                <div style="font-size: 8pt; font-weight: 900; color: #0D3660;">☀️ Fonds Chaleur ADEME (National)</div>
-                <div style="font-size: 7pt; color: #475569; margin-top: 3px; line-height: 1.35;">
+              <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; margin-bottom: 8px;">
+                <div style="font-size: 7.8pt; font-weight: 900; color: #0D3660;">☀️ Fonds Chaleur ADEME (National)</div>
+                <div style="font-size: 6.8pt; color: #475569; margin-top: 2px; line-height: 1.3;">
                   Éligible pour la valorisation de la chaleur solaire thermovoltaïque Cogen'Air®. Montant variable calculé post-étude thermique.
                 </div>
               </div>
+
+              <!-- Impact sur le ROI si subvention obtenue -->
+              ${roiBonifie !== null ? `
+                <div style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 8px; padding: 6px 12px; display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 7.2pt; font-weight: 800; color: #065f46;">
+                    ✅ ROI bonifié en cas d'obtention de l'aide :
+                  </span>
+                  <span style="font-size: 8.5pt; font-weight: 900; color: #047857;">
+                    ~${Number(roiBonifie).toFixed(2)} ans <span style="font-size: 6.8pt; color: #64748b; font-weight: normal;">(vs ${Number(baseRoi).toFixed(2)} ans)</span>
+                  </span>
+                </div>
+              ` : ''}
             </div>
 
             <!-- Note d'avertissement réglementaire -->
-            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 6px 10px; font-size: 6.5pt; color: #92400e; line-height: 1.35;">
+            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 5px 8px; font-size: 6.2pt; color: #92400e; line-height: 1.35; margin-top: 6px;">
               ⚠️ Les subventions régionales (PCAE, FEADER, Plan Ambition Éleveurs) et nationales (ADEME) sont soumises à instruction de dossier et aux appels à projets en cours. Pour préserver un calcul de rentabilité prudent et réaliste, <strong>elles ne sont pas déduites de l'emprunt de base</strong>.
             </div>
           </div>
@@ -601,18 +640,18 @@ export async function generateSechoirPDF({
           
           <!-- CADRE DU HAUT : VUE 3D CONFIGURATEUR SELON MODÈLE (IMAGE 2, 3, 4) -->
           <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; height: 72mm; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 4px 12px; border-bottom-right-radius: 6px; font-size: 7.5pt; font-weight: bold; z-index: 2; line-height: 1.2;">
-              Vue 3D Configurateur BatiTech® (${bDims})
+            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
+              Vue 3D BatiTech® (${bDims} — ${puissanceKwc} kWc)
             </div>
             <img src="${batitech3dImg}" style="max-width: 98%; max-height: 96%; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
-            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 10px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold;">
+            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 10px; height: 24px; display: flex; align-items: center; justify-content: center; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; line-height: 1; box-sizing: border-box;">
               Cogen'Air® Intégré
             </div>
           </div>
 
           <!-- CADRE DU BAS : IMPLANTATION SATELLITE SUR LE TERRAIN -->
           <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; flex: 1; min-height: 86mm; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 4px 12px; border-bottom-right-radius: 6px; font-size: 7.5pt; font-weight: bold; z-index: 2; line-height: 1.2;">
+            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
               Implantation Satellite sur la Parcelle
             </div>
             ${snapshotSat ? `
@@ -656,43 +695,43 @@ export async function generateSechoirPDF({
       <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
         ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName })}
 
-        <!-- Synthèse d'introduction -->
-        <div style="background-color: #f8fafc; border-left: 5px solid #00B050; padding: 9px 18px; margin-bottom: 10px; text-align: justify; font-size: 8.5pt; font-weight: 600; color: #0D3660; border-radius: 0 6px 6px 0; line-height: 1.38;">
+        <!-- Synthèse d'introduction (Agrandie) -->
+        <div style="background-color: #f8fafc; border-left: 5px solid #00B050; padding: 11px 20px; margin-bottom: 12px; text-align: justify; font-size: 9.8pt; font-weight: 600; color: #0D3660; border-radius: 0 6px 6px 0; line-height: 1.45;">
           Le séchoir BatiTech® est un outil stratégique permettant à l’exploitant de gagner en <strong style="color: #0D3660;">rentabilité</strong>, en <strong style="color: #0D3660;">autonomie</strong> et en <strong style="color: #0D3660;">sécurité</strong>, tout en améliorant considérablement la qualité des productions et les conditions de travail au quotidien.
         </div>
 
-        <!-- 2 Colonnes Avantages Financiers & Opérationnels -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+        <!-- 2 Colonnes Avantages Financiers & Opérationnels (Hauteur et Police +2pt) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 10px;">
           <!-- Avantages Financiers -->
-          <div style="border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-            <div style="background-color: #0D3660; color: #ffffff; padding: 6px 14px; font-size: 9pt; font-weight: 700; text-transform: uppercase; text-align: center; letter-spacing: 0.5px;">
+          <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); display: flex; flex-direction: column;">
+            <div style="background-color: #0D3660; color: #ffffff; padding: 7px 16px; font-size: 10.5pt; font-weight: 800; text-transform: uppercase; text-align: center; letter-spacing: 0.5px;">
               Avantages Financiers
             </div>
-            <div style="padding: 10px 14px; font-size: 7.5pt; line-height: 1.4; color: #334155;">
-              <div style="margin-bottom: 5px;">&bull; <strong style="color: #0D3660;">Baisse radicale des charges :</strong> Économies majeures sur les compléments alimentaires, le carburant, la main-d’œuvre et arrêt total des prestations externes.</div>
-              <div style="margin-bottom: 5px;">&bull; <strong style="color: #0D3660;">Valorisation de la production :</strong> Un fourrage plus nutritif qui augmente la quantité, la qualité et le prix de vente du lait ou de la viande.</div>
-              <div style="margin-bottom: 5px;">&bull; <strong style="color: #0D3660;">Nouveaux revenus :</strong> Valorisation de la production solaire thermique &amp; électrique Cogen'Air® et prestations de séchage pour tiers.</div>
-              <div>&bull; <strong style="color: #0D3660;">Valorisation patrimoniale :</strong> Création d'un actif immobilier durable et pérenne sur l'exploitation.</div>
+            <div style="padding: 12px 16px; font-size: 8.8pt; line-height: 1.48; color: #334155; flex: 1; display: flex; flex-direction: column; justify-content: space-around;">
+              <div>&bull; <strong style="color: #0D3660;">Baisse radicale des charges :</strong> Économies majeures sur les compléments alimentaires, le carburant, la main-d’œuvre et arrêt total des prestations externes.</div>
+              <div style="margin-top: 4px;">&bull; <strong style="color: #0D3660;">Valorisation de la production :</strong> Un fourrage plus nutritif qui augmente la quantité, la qualité et le prix de vente du lait ou de la viande.</div>
+              <div style="margin-top: 4px;">&bull; <strong style="color: #0D3660;">Nouveaux revenus :</strong> Valorisation de la production solaire thermique &amp; électrique Cogen'Air® et prestations de séchage pour tiers.</div>
+              <div style="margin-top: 4px;">&bull; <strong style="color: #0D3660;">Valorisation patrimoniale :</strong> Création d'un actif immobilier durable et pérenne sur l'exploitation.</div>
             </div>
           </div>
 
           <!-- Avantages Opérationnels -->
-          <div style="border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-            <div style="background-color: #00B050; color: #ffffff; padding: 6px 14px; font-size: 9pt; font-weight: 700; text-transform: uppercase; text-align: center; letter-spacing: 0.5px;">
+          <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); display: flex; flex-direction: column;">
+            <div style="background-color: #00B050; color: #ffffff; padding: 7px 16px; font-size: 10.5pt; font-weight: 800; text-transform: uppercase; text-align: center; letter-spacing: 0.5px;">
               Avantages Opérationnels
             </div>
-            <div style="padding: 10px 14px; font-size: 7.5pt; line-height: 1.4; color: #334155;">
-              <div style="margin-bottom: 5px;">&bull; <strong style="color: #0D3660;">Qualité Premium :</strong> Fourrage homogène, très riche en protéines et hautement appétant, limitant les refus.</div>
-              <div style="margin-bottom: 5px;">&bull; <strong style="color: #0D3660;">Santé animale renforcée :</strong> L'alimentation sèche de qualité diminue drastiquement les risques sanitaires et vétérinaires.</div>
-              <div style="margin-bottom: 5px;">&bull; <strong style="color: #0D3660;">Indépendance météo :</strong> Liberté de récolter et sécher au stade optimal sans craindre les intempéries.</div>
-              <div>&bull; <strong style="color: #0D3660;">Impact Écologique :</strong> Zéro plastique agricole d'enrubannage et énergie solaire 100% renouvelable.</div>
+            <div style="padding: 12px 16px; font-size: 8.8pt; line-height: 1.48; color: #334155; flex: 1; display: flex; flex-direction: column; justify-content: space-around;">
+              <div>&bull; <strong style="color: #0D3660;">Qualité Premium :</strong> Fourrage homogène, très riche en protéines et hautement appétant, limitant les refus.</div>
+              <div style="margin-top: 4px;">&bull; <strong style="color: #0D3660;">Santé animale renforcée :</strong> L'alimentation sèche de qualité diminue drastiquement les risques sanitaires et vétérinaires.</div>
+              <div style="margin-top: 4px;">&bull; <strong style="color: #0D3660;">Indépendance météo :</strong> Liberté de récolter et sécher au stade optimal sans craindre les intempéries.</div>
+              <div style="margin-top: 4px;">&bull; <strong style="color: #0D3660;">Impact Écologique :</strong> Zéro plastique agricole d'enrubannage et énergie solaire 100% renouvelable.</div>
             </div>
           </div>
         </div>
 
-        <!-- Grand Graphique de Baisse des Charges Agrandit -->
+        <!-- Grand Graphique de Baisse des Charges -->
         <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 6px 12px; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); text-align: center;">
-          <img src="${chargesChartImg}" alt="Baisse des charges" style="max-width: 98%; height: 75mm; display: block; margin: 0 auto;" />
+          <img src="${chargesChartImg}" alt="Baisse des charges" style="max-width: 98%; height: 70mm; display: block; margin: 0 auto;" />
         </div>
 
         ${renderLandscapeFooter({ pageNum: 4, totalPages, dateStr })}
