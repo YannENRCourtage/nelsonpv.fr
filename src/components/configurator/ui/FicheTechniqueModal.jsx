@@ -26,7 +26,7 @@ const DEFAULT_SETTINGS = {
         zoom: 1.0,
         offsetX: 0,
         offsetY: 0,
-        dimensionFontSize: 0.8,
+        dimensionFontSize: 1.2,
     },
     pignon: {
         cropTop: 0,
@@ -36,7 +36,7 @@ const DEFAULT_SETTINGS = {
         zoom: 1.0,
         offsetX: 0,
         offsetY: 0,
-        dimensionFontSize: 2.2,
+        dimensionFontSize: 1.2,
     },
     facadeSud: {
         cropTop: 0,
@@ -46,7 +46,7 @@ const DEFAULT_SETTINGS = {
         zoom: 1.0,
         offsetX: 0,
         offsetY: 0,
-        dimensionFontSize: 2.2,
+        dimensionFontSize: 1.2,
     },
 };
 
@@ -470,13 +470,13 @@ export function FicheTechniqueModal({
                                             Taille des cotes &amp; mesures
                                         </span>
                                         <span className="font-mono text-amber-300 font-black text-xs bg-amber-950/60 border border-amber-500/30 px-2 py-0.5 rounded">
-                                            {(currentSettings.dimensionFontSize !== undefined ? currentSettings.dimensionFontSize : (currentKey === 'main3D' ? 0.8 : 2.2)).toFixed(1)}
+                                            {(currentSettings.dimensionFontSize !== undefined ? currentSettings.dimensionFontSize : 1.2).toFixed(1)}
                                         </span>
                                     </div>
                                     <Slider
-                                        value={[currentSettings.dimensionFontSize !== undefined ? currentSettings.dimensionFontSize : (currentKey === 'main3D' ? 0.8 : 2.2)]}
+                                        value={[currentSettings.dimensionFontSize !== undefined ? currentSettings.dimensionFontSize : 1.2]}
                                         min={0.3}
-                                        max={currentKey === 'main3D' ? 2.5 : 4.5}
+                                        max={2.5}
                                         step={0.1}
                                         onValueChange={([val]) => {
                                             updateSetting(currentKey, 'dimensionFontSize', val);
@@ -500,10 +500,12 @@ export function FicheTechniqueModal({
                                     />
                                     {/* Presets rapides */}
                                     <div className="grid grid-cols-4 gap-1.5 pt-0.5">
-                                        {(currentKey === 'main3D' 
-                                            ? [ { label: 'Fin (0.5)', val: 0.5 }, { label: 'Standard (0.8)', val: 0.8 }, { label: 'Grand (1.2)', val: 1.2 }, { label: 'Max (1.8)', val: 1.8 } ]
-                                            : [ { label: 'Fin (1.5)', val: 1.5 }, { label: 'Standard (2.2)', val: 2.2 }, { label: 'Grand (3.0)', val: 3.0 }, { label: 'Max (4.0)', val: 4.0 } ]
-                                        ).map(preset => (
+                                        {[
+                                            { label: 'Fin (0.5)', val: 0.5 },
+                                            { label: 'Standard (0.8)', val: 0.8 },
+                                            { label: 'Grand (1.2)', val: 1.2 },
+                                            { label: 'Max (1.8)', val: 1.8 }
+                                        ].map(preset => (
                                             <button
                                                 key={preset.label}
                                                 type="button"
@@ -524,7 +526,7 @@ export function FicheTechniqueModal({
                                                     }
                                                 }}
                                                 className={`py-1 px-1 rounded text-[10px] font-bold border transition-all text-center ${
-                                                    Math.abs((currentSettings.dimensionFontSize !== undefined ? currentSettings.dimensionFontSize : (currentKey === 'main3D' ? 0.8 : 2.2)) - preset.val) < 0.05
+                                                    Math.abs((currentSettings.dimensionFontSize !== undefined ? currentSettings.dimensionFontSize : 1.2) - preset.val) < 0.05
                                                         ? 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-xs'
                                                         : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
                                                 }`}
@@ -640,11 +642,11 @@ export function FicheTechniqueModal({
                             if (isBatitech) {
                                 const modelId = config?.selectedBatitechModel || 'BT-3.1.15';
                                 if (modelId === 'BT-6.2.15' || modelId.includes('6.2')) {
-                                    batitechInterieurUrl = '/batitech_6_2_15.jpg';
+                                    batitechInterieurUrl = '/BatiTech 6.2.15.jpg';
                                 } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
-                                    batitechInterieurUrl = '/batitech_8_3_15.jpg';
+                                    batitechInterieurUrl = '/BatiTech 8.3.15.jpg';
                                 } else {
-                                    batitechInterieurUrl = '/batitech_interieur_3_1_15.jpg';
+                                    batitechInterieurUrl = '/BatiTech 3.1.15.jpg';
                                 }
                             }
 

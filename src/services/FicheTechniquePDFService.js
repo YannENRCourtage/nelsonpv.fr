@@ -568,11 +568,11 @@ export async function generateFicheTechniquePDF({
     if (isBatitech) {
         const modelId = config?.selectedBatitechModel || 'BT-3.1.15';
         if (modelId === 'BT-6.2.15' || modelId.includes('6.2')) {
-            batitechInterieurUrl = '/batitech_6_2_15.jpg';
+            batitechInterieurUrl = '/BatiTech 6.2.15.jpg';
         } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
-            batitechInterieurUrl = '/batitech_8_3_15.jpg';
+            batitechInterieurUrl = '/BatiTech 8.3.15.jpg';
         } else {
-            batitechInterieurUrl = '/batitech_interieur_3_1_15.jpg';
+            batitechInterieurUrl = '/BatiTech 3.1.15.jpg';
         }
     }
 

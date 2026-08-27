@@ -113,6 +113,7 @@ export default function Configurateur() {
         const originalView = viewMode;
 
         try {
+            setCustomDimensionFontSize(1.2);
             // 1. Capture du visuel 3D actuel affiché à l'écran
             await wait(200);
             const imgMain3D = canvasRef.current.toDataURL('image/png', 1.0);
@@ -138,6 +139,7 @@ export default function Configurateur() {
             alert("Une erreur est survenue lors de la capture des visuels : " + err.message);
         } finally {
             setViewMode(originalView);
+            setCustomDimensionFontSize(null);
             setIsCapturing(false);
             setIsPreparingFiche(false);
         }
