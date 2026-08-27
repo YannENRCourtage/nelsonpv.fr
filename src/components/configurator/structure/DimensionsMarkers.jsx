@@ -238,7 +238,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const visualTop = isEpona ? h - 0.5 : h;
         const visualMid = isEpona ? (h - 0.5) / 2 : h / 2;
 
-        const z = 0;
+        const z = is2DView ? 0 : 0.8;
         const start = new THREE.Vector3(x, 0, z);
         const end = new THREE.Vector3(x, visualTop, z);
         const mid = new THREE.Vector3(x, visualMid, z);

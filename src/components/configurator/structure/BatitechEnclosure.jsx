@@ -4,10 +4,10 @@ import * as THREE from 'three';
 /**
  * BatitechEnclosure — Composant 3D pour le Séchoir BatiTech®
  * - Bardage 3 faces métallique nervuré : Sud (long pan 4m), Est (pignon avant), Ouest (pignon arrière)
- * - Face Nord ouverte pour circulation et logistique de foin
- * - Cellules de séchage intérieures (15m de profondeur de X = -5m à X = +10m) avec murs béton et lit de foin/fourrage
- * - Locaux ventilateurs extérieurs devant la façade Sud
- * - Ligne d'embases aérauliques en toiture sur toute la longueur du bâtiment sous les panneaux Cogen'Air®
+ * - Face Nord ouverte pour circulation et logistique
+ * - Cellules de séchage intérieures (15m de profondeur de X = -5m à X = +10m) avec murs béton et caillebotis métalliques perforés (tôles à pontets) au sol
+ * - Locaux ventilateurs extérieurs devant la façade Sud avec porte ouverte à gauche révélant les équipements Cogen'Air®
+ * - Ligne d'embases aérauliques en toiture sur toute la longueur du bâtiment (visibles UNIQUEMENT quand la couverture PV est désactivée)
  */
 export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.0, hasSolar = true }) {
     const mainSlope = 15 * (Math.PI / 180);
@@ -33,7 +33,7 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
             ];
             // 1 local ventilateur extérieur centré devant la cellule à Z = -15m
             fans = [
-                { id: 'fan-1', zCenter: -15, length: 4.0 }
+                { id: 'fan-1', zCenter: -15, length: 4.0, isDouble: false }
             ];
             embases = 10;
         } else if (length <= 38) {
@@ -45,7 +45,7 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
             ];
             // 1 double local ventilateur extérieur centré au milieu du bâtiment (Z = -18m)
             fans = [
-                { id: 'fan-double', zCenter: -18, length: 8.0 }
+                { id: 'fan-double', zCenter: -18, length: 8.0, isDouble: true }
             ];
             embases = 21;
         } else {
@@ -58,8 +58,8 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
             ];
             // 1 double local ventilateur au milieu (Z = -18m) + 1 local ventilateur à Z = -45m
             fans = [
-                { id: 'fan-double', zCenter: -18, length: 8.0 },
-                { id: 'fan-single', zCenter: -45, length: 4.0 }
+                { id: 'fan-double', zCenter: -18, length: 8.0, isDouble: true },
+                { id: 'fan-single', zCenter: -45, length: 4.0, isDouble: false }
             ];
             embases = 28;
         }
@@ -90,18 +90,17 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
         metalness: 0.1
     }), []);
 
-    // Lit de fourrage / foin vert doré
-    const hayMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#849a46', // Foin vert doré séché
-        roughness: 0.95,
-        metalness: 0.05
+    // Caillebotis métallique / Tôle à pontets perforée au sol
+    const gratingBaseMaterial = useMemo(() => new THREE.MeshStandardMaterial({
+        color: '#475569', // Acier galvanisé perforé
+        roughness: 0.35,
+        metalness: 0.85
     }), []);
 
-    // Plafond OSB de séchage sous toiture
-    const osbWoodMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#b08958', // Bois OSB chaleureux
-        roughness: 0.85,
-        metalness: 0.1
+    const gratingSlatsMaterial = useMemo(() => new THREE.MeshStandardMaterial({
+        color: '#1e293b', // Fentes et pontets en relief
+        roughness: 0.4,
+        metalness: 0.7
     }), []);
 
     // Local ventilateur extérieur
@@ -120,7 +119,24 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
     const doorMaterial = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#0f172a',
         roughness: 0.5,
-        metalness: 0.4
+        metalness: 0.4,
+        side: THREE.DoubleSide
+    }), []);
+
+    const doorHandleMaterial = useMemo(() => new THREE.MeshStandardMaterial({
+        color: '#f8fafc',
+        metalness: 0.9,
+        roughness: 0.1
+    }), []);
+
+    const interiorDarkMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+        color: '#020617'
+    }), []);
+
+    const fanBlueMaterial = useMemo(() => new THREE.MeshStandardMaterial({
+        color: '#2563eb', // Bleu Cogen'Air
+        roughness: 0.3,
+        metalness: 0.6
     }), []);
 
     // Embases en toiture (caissons métalliques de reprise d'air)
@@ -162,7 +178,7 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
         return new THREE.BoxGeometry(0.06, rightEaveH, length);
     }, [rightEaveH, length]);
 
-    // Génération des nervures métalliques 3D pour la façade Sud
+    // Nervures métalliques 3D pour la façade Sud
     const southRibs = useMemo(() => {
         const ribs = [];
         const ribSpacing = 0.50; // Une nervure tous les 50cm
@@ -174,19 +190,16 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
         return ribs;
     }, [length]);
 
-    // Génération des nervures métalliques 3D pour les pignons
+    // Nervures métalliques 3D pour les pignons
     const pignonRibs = useMemo(() => {
         const ribs = [];
         const ribSpacing = 0.50;
         for (let x = -width / 2 + 0.25; x <= width / 2 - 0.25; x += ribSpacing) {
-            // Calcul de la hauteur maximale à cette coordonnée X
             let h = rightEaveH;
             if (x < apexX) {
-                // Pente gauche de leftX (-10) à apexX (-5)
                 const ratio = (x - (-width / 2)) / (apexX - (-width / 2));
                 h = leftEaveH + ratio * (ridgeH - leftEaveH);
             } else {
-                // Pente droite de apexX (-5) à rightX (+10)
                 const ratio = (width / 2 - x) / (width / 2 - apexX);
                 h = rightEaveH + ratio * (ridgeH - rightEaveH);
             }
@@ -199,9 +212,7 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
     const embaseCoords = useMemo(() => {
         const coords = [];
         const step = (length - 1.0) / Math.max(1, embaseCount - 1);
-        // Position en X sur la pente Sud (à environ 5.5m, soit à mi-hauteur du grand pan Sud)
-        const embaseX = 5.0;
-        // Hauteur de la toiture à X = 5.0m
+        const embaseX = 5.0; // Mi-hauteur du grand pan Sud
         const slopeY = rightEaveH + ((width / 2 - embaseX) * Math.tan(mainSlope)) + 0.52;
 
         for (let i = 0; i < embaseCount; i++) {
@@ -210,6 +221,16 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
         }
         return coords;
     }, [length, embaseCount, width, rightEaveH, mainSlope]);
+
+    // Pontets transversaux réguliers pour le plancher à caillebotis (15m de profondeur)
+    const pontetOffsets = useMemo(() => {
+        const list = [];
+        const count = 26;
+        for (let i = 0; i < count; i++) {
+            list.push(-7.0 + (i * 0.56));
+        }
+        return list;
+    }, []);
 
     return (
         <group name="batitech-enclosure">
@@ -276,12 +297,13 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
             {/* ═════════════════════════════════════════════════════════════════ */}
             {/* 2. CELLULES DE SÉCHAGE INTÉRIEURES (15m de profondeur)          */}
             {/*    Profondeur de X = -5m (Apex) à X = +10m (Mur Sud) = 15m       */}
+            {/*    Planchers à caillebotis métalliques à pontets au sol          */}
             {/* ═════════════════════════════════════════════════════════════════ */}
             {dryingCells.map((cell) => {
                 const cellDepth = 15.0; // 15m de profondeur
                 const cellWidth = 5.8;  // Largeur dans la travée de 6m
                 const cellCenterX = 2.5; // Milieu entre -5m et +10m : (-5 + 10)/2 = 2.5m
-                const wallH = 1.80;     // Hauteur mur béton
+                const wallH = 1.60;     // Hauteur mur béton
 
                 return (
                     <group key={cell.id} name={cell.id}>
@@ -305,37 +327,25 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
                             <boxGeometry args={[cellDepth, wallH, 0.20]} />
                         </mesh>
 
-                        {/* Lit de séchage / Fourrage foin vert doré */}
+                        {/* Plancher carrossable à pontets perforé en acier galvanisé au sol */}
                         <mesh
-                            position={[cellCenterX, 0.65, cell.zCenter]}
-                            material={hayMaterial}
-                            castShadow
+                            position={[cellCenterX, 0.06, cell.zCenter]}
+                            material={gratingBaseMaterial}
                             receiveShadow
                         >
-                            <boxGeometry args={[cellDepth - 0.2, 1.3, cellWidth - 0.3]} />
+                            <boxGeometry args={[cellDepth - 0.1, 0.10, cellWidth - 0.2]} />
                         </mesh>
 
-                        {/* Bottes de foin carrées en rangées visibles sur le dessus */}
-                        {[-1.5, 0, 1.5].map((zOffset, bIdx) => (
+                        {/* Pontets transversaux réguliers en relief (tôles à pontets d'aération) */}
+                        {pontetOffsets.map((xOff, pIdx) => (
                             <mesh
-                                key={`bale-${bIdx}`}
-                                position={[cellCenterX, 1.45, cell.zCenter + zOffset]}
-                                material={hayMaterial}
-                                castShadow
+                                key={`pontet-${pIdx}`}
+                                position={[cellCenterX + xOff, 0.12, cell.zCenter]}
+                                material={gratingSlatsMaterial}
                             >
-                                <boxGeometry args={[cellDepth - 0.6, 0.35, 1.2]} />
+                                <boxGeometry args={[0.22, 0.03, cellWidth - 0.35]} />
                             </mesh>
                         ))}
-
-                        {/* Plafond de séchage en bois OSB sous le toit au-dessus de la cellule */}
-                        <mesh
-                            position={[cellCenterX, 4.8, cell.zCenter]}
-                            rotation={[0, 0, -mainSlope]}
-                            material={osbWoodMaterial}
-                            castShadow
-                        >
-                            <boxGeometry args={[cellDepth, 0.05, cellWidth]} />
-                        </mesh>
                     </group>
                 );
             })}
@@ -343,15 +353,17 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
             {/* ═════════════════════════════════════════════════════════════════ */}
             {/* 3. LOCAUX VENTILATEURS EXTÉRIEURS DEVANT LA FAÇADE SUD          */}
             {/*    En saillie à l'extérieur : de X = +10m à X = +12.4m           */}
+            {/*    Porte ouverte sur le côté gauche avec équipement intérieur    */}
             {/* ═════════════════════════════════════════════════════════════════ */}
             {fanRooms.map((room) => {
                 const roomDepth = 2.4;  // 2.4m de saillie extérieure
                 const roomHeight = 3.2; // 3.2m de hauteur sous sablière
                 const roomX = (width / 2) + (roomDepth / 2); // X = +10m + 1.2m = +11.2m
+                const openDoorZ = room.isDouble ? 1.8 : 0; // Porte gauche
 
                 return (
                     <group key={room.id} position={[roomX, 0, room.zCenter]}>
-                        {/* Murs du local technique */}
+                        {/* Structure principale du local technique */}
                         <mesh
                             position={[0, roomHeight / 2, 0]}
                             material={fanRoomWallMaterial}
@@ -371,20 +383,36 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
                             <boxGeometry args={[roomDepth + 0.3, 0.10, room.length + 0.3]} />
                         </mesh>
 
-                        {/* Portes d'accès extérieures avec encadrement */}
-                        {room.length > 5 ? (
-                            // Double porte pour local double
-                            <>
-                                <mesh position={[roomDepth / 2 + 0.01, 1.05, -1.8]} material={doorMaterial}>
-                                    <planeGeometry args={[1.0, 2.1]} />
-                                </mesh>
-                                <mesh position={[roomDepth / 2 + 0.01, 1.05, 1.8]} material={doorMaterial}>
-                                    <planeGeometry args={[1.0, 2.1]} />
-                                </mesh>
-                            </>
-                        ) : (
-                            // Simple porte pour local simple
-                            <mesh position={[roomDepth / 2 + 0.01, 1.05, 0]} material={doorMaterial}>
+                        {/* ─── PORTE GAUCHE OUVERTE ─── */}
+                        {/* Baie / Embrasure ouverte sombre */}
+                        <mesh position={[roomDepth / 2 + 0.01, 1.05, openDoorZ]} material={interiorDarkMaterial}>
+                            <planeGeometry args={[1.0, 2.1]} />
+                        </mesh>
+
+                        {/* Battant de porte pivoté vers l'extérieur (ouvert à 80°) */}
+                        <group position={[roomDepth / 2 + 0.02, 1.05, openDoorZ + 0.5]} rotation={[0, 1.4, 0]}>
+                            <mesh position={[0.5, 0, 0]} material={doorMaterial} castShadow>
+                                <boxGeometry args={[1.0, 2.1, 0.04]} />
+                            </mesh>
+                            {/* Poignée de porte */}
+                            <mesh position={[0.9, 0, 0.03]} material={doorHandleMaterial}>
+                                <boxGeometry args={[0.12, 0.03, 0.04]} />
+                            </mesh>
+                        </group>
+
+                        {/* Ventilateur centrifuge Cogen'Air® visible à l'intérieur de la baie ouverte */}
+                        <group position={[0, 0.9, openDoorZ]} rotation={[0, -Math.PI / 2, 0]}>
+                            <mesh material={fanBlueMaterial}>
+                                <cylinderGeometry args={[0.45, 0.45, 0.25, 24]} />
+                            </mesh>
+                            <mesh position={[0, 0.13, 0]} material={doorMaterial}>
+                                <cylinderGeometry args={[0.40, 0.40, 0.02, 16]} />
+                            </mesh>
+                        </group>
+
+                        {/* ─── PORTE DROITE FERMÉE (pour local double) ─── */}
+                        {room.isDouble && (
+                            <mesh position={[roomDepth / 2 + 0.01, 1.05, -1.8]} material={doorMaterial}>
                                 <planeGeometry args={[1.0, 2.1]} />
                             </mesh>
                         )}
@@ -398,9 +426,10 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
             })}
 
             {/* ═════════════════════════════════════════════════════════════════ */}
-            {/* 4. EMBASES AÉRAULIQUES EN TOITURE (LIGNE CONTINUE SOUS PV)      */}
+            {/* 4. EMBASES AÉRAULIQUES EN TOITURE (LIGNE CONTINUE SUR BAC ACIER) */}
+            {/*    Visibles UNIQUEMENT quand la couverture PV est désactivée     */}
             {/* ═════════════════════════════════════════════════════════════════ */}
-            {hasSolar && embaseCoords.map((embase, idx) => (
+            {!hasSolar && embaseCoords.map((embase, idx) => (
                 <group
                     key={`embase-${idx}`}
                     position={[embase.x, embase.y, embase.z]}
