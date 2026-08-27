@@ -357,13 +357,13 @@ export async function generateSechoirPDF({
     };
 
     // Image Vue 3D Extérieure (gauche) pour Page 3 (selon modèle)
-    let left3dImgUrl = '/Vue 3D BatiTech 6.2.15.jpg';
+    let left3dImgUrl = '/vue_3d_batitech_6_2_15.jpg';
     if (modelId === 'BT-3.1.15') {
-      left3dImgUrl = '/Vue 3D BatiTech 3.1.15.png';
+      left3dImgUrl = '/vue_3d_batitech_3_1_15.jpg';
     } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
-      left3dImgUrl = '/Vue 3D BatiTech 8.3.15 2.jpg';
+      left3dImgUrl = '/vue_3d_batitech_8_3_15.jpg';
     } else {
-      left3dImgUrl = '/Vue 3D BatiTech 6.2.15.jpg';
+      left3dImgUrl = '/vue_3d_batitech_6_2_15.jpg';
     }
 
     // Image Vue Intérieure / Caissons (droite) pour Page 3 (selon modèle)
@@ -381,7 +381,7 @@ export async function generateSechoirPDF({
       loadImgAsBase64(right3dImgUrl),
       loadImgAsBase64('/Schema séchoir 1.png'),
       loadImgAsBase64('/Schema séchoir 2.png'),
-      loadImgAsBase64('/Schema séchoir 3.png'),
+      loadImgAsBase64('/schema_sechoir_3.jpg'),
     ]);
 
     const snapshotSat = await generateSatelliteSnapshot({
@@ -683,19 +683,19 @@ export async function generateSechoirPDF({
         <div style="display: flex; flex-direction: column; gap: 8px; height: 164mm; box-sizing: border-box;">
           
           <!-- CADRE DU HAUT : VUE 3D CONFIGURATEUR (GAUCHE) + VUE INTERIEURE/CAISSONS (DROITE) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; height: 72mm; position: relative; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; padding: 2px 10px;">
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; height: 72mm; position: relative; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; padding: 2px 8px;">
             <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
               Vue 3D BatiTech® (${bDims} — ${puissanceKwc} kWc)
             </div>
             
             <!-- Vue 3D BatiTech (décalée à gauche) -->
-            <div style="flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding-right: 10px;">
-              <img src="${left3dImgBase64}" style="max-width: 98%; max-height: 94%; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
+            <div style="flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px 8px; box-sizing: border-box;">
+              <img src="${left3dImgBase64}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
             </div>
 
             <!-- Image Vue Intérieure / Caissons (à droite) -->
-            <div style="width: 44%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-              <img src="${right3dImgBase64}" style="max-width: 98%; max-height: 94%; object-fit: contain; display: block; margin: auto;" alt="Vue Intérieure ${modelName}" />
+            <div style="width: 44%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px 8px; box-sizing: border-box;">
+              <img src="${right3dImgBase64}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Vue Intérieure ${modelName}" />
             </div>
 
             <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 10px; height: 24px; display: flex; align-items: center; justify-content: center; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; line-height: 1; box-sizing: border-box; z-index: 2;">
@@ -749,21 +749,21 @@ export async function generateSechoirPDF({
         <div style="display: flex; flex-direction: column; gap: 8px; height: 164mm; box-sizing: border-box;">
           
           <!-- LIGNE 1 : SCHÉMA 1 (GAUCHE) & SCHÉMA 2 (DROITE) -->
-          <div style="display: flex; gap: 10px; height: 80mm; align-items: stretch;">
+          <div style="display: flex; gap: 10px; height: 78mm; align-items: stretch;">
             <!-- Schéma 1 -->
-            <div style="flex: 1; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px; box-sizing: border-box;">
-              <img src="${schema1Img}" style="max-width: 98%; max-height: 96%; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 1" />
+            <div style="flex: 1; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px 8px; box-sizing: border-box;">
+              <img src="${schema1Img}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 1" />
             </div>
 
             <!-- Schéma 2 -->
-            <div style="flex: 1; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px; box-sizing: border-box;">
-              <img src="${schema2Img}" style="max-width: 98%; max-height: 96%; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 2" />
+            <div style="flex: 1; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px 8px; box-sizing: border-box;">
+              <img src="${schema2Img}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 2" />
             </div>
           </div>
 
           <!-- LIGNE 2 : SCHÉMA 3 (PLEINE LARGEUR) -->
-          <div style="flex: 1; min-height: 74mm; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px; box-sizing: border-box;">
-            <img src="${schema3Img}" style="max-width: 98%; max-height: 96%; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 3" />
+          <div style="flex: 1; min-height: 76mm; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px 10px; box-sizing: border-box;">
+            <img src="${schema3Img}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 3" />
           </div>
 
         </div>
