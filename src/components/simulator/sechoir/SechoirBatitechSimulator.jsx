@@ -229,6 +229,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         materials: store.materials,
         financialParams: store.financialParams,
         projectName: selectedProject?.name,
+        customClientName: options.customClientName || store.clientName || selectedProject?.name,
         includeBenefitsPage: options.includeBenefitsPage !== undefined ? options.includeBenefitsPage : true,
         includeCashFlowPage: options.includeCashFlowPage !== undefined ? options.includeCashFlowPage : true,
       });

@@ -373,7 +373,8 @@ export default function IrveSimulator() {
 
     await generateCommercialOfferPDF({
       simulation: targetSim,
-      selectedProject
+      selectedProject,
+      customClientName: targetSim.clientName || (isSechoirSolution ? useSechoirStore.getState().clientName : null) || selectedProject?.name || null
     });
   };
 

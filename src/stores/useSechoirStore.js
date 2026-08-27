@@ -33,6 +33,8 @@ const useSechoirStore = create(
       })),
 
       // ═══ ÉTAPE 1 — LOCALISATION & MODÈLE ══════════════════════════════════
+      clientName: '',
+      setClientName: (clientName) => set({ clientName }),
       address: '',
       addressLabel: '',
       latitude: null,

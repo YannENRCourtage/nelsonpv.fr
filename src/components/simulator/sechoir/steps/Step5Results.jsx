@@ -26,7 +26,10 @@ export default function Step5Results({ onExportPDF }) {
   const materials = useSechoirStore((state) => state.materials);
   const financialParams = useSechoirStore((state) => state.financialParams);
   const setLastResults = useSechoirStore((state) => state.setLastResults);
+  const storeClientName = useSechoirStore((state) => state.clientName);
+  const setClientNameInStore = useSechoirStore((state) => state.setClientName);
 
+  const [clientName, setClientName] = useState(storeClientName || '');
   const [includeBenefitsPage, setIncludeBenefitsPage] = useState(true);
   const [includeCashFlowPage, setIncludeCashFlowPage] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -400,6 +403,25 @@ export default function Step5Results({ onExportPDF }) {
 
       {/* ═══ SECTION EXPORT PDF AVEC OPTIONS ════════════════════════════════ */}
       <div className="bg-gradient-to-r from-slate-900/90 via-slate-800/80 to-slate-900/90 border border-amber-500/30 rounded-3xl p-6 shadow-xl backdrop-blur-sm">
+        
+        {/* Saisie Nom du Client / Exploitation */}
+        <div className="mb-5 bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner">
+          <div className="flex items-center gap-2.5 text-white font-bold text-sm sm:text-base shrink-0">
+            <Landmark className="w-5 h-5 text-amber-400" />
+            <span>Nom du Client / Exploitation :</span>
+          </div>
+          <input
+            type="text"
+            value={clientName}
+            onChange={(e) => {
+              setClientName(e.target.value);
+              setClientNameInStore(e.target.value);
+            }}
+            placeholder="ex: EARL des Terres Noires, M. Jean Dupont..."
+            className="w-full sm:w-80 bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2 text-white font-semibold text-sm focus:outline-none placeholder:text-slate-500 shadow-sm"
+          />
+        </div>
+
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           
           {/* Options de pages */}
@@ -407,11 +429,11 @@ export default function Step5Results({ onExportPDF }) {
             <div className="flex items-center gap-2.5">
               <Sparkles className="w-5 h-5 text-amber-400" />
               <h3 className="text-lg font-bold text-white">
-                Export du Dossier d'Étude PDF
+                Export du Dossier d'Étude PDF (Format Paysage)
               </h3>
             </div>
             <p className="text-sm text-slate-300">
-              Personnalisez les pages incluses dans votre document PDF de simulation :
+              Personnalisez les pages incluses dans votre dossier d'étude multi-pages :
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -472,14 +494,18 @@ export default function Step5Results({ onExportPDF }) {
                 if (onExportPDF) {
                   setIsExporting(true);
                   try {
-                    await onExportPDF({ includeBenefitsPage, includeCashFlowPage });
+                    await onExportPDF({ 
+                      includeBenefitsPage, 
+                      includeCashFlowPage,
+                      customClientName: clientName
+                    });
                   } finally {
                     setIsExporting(false);
                   }
                 }
               }}
               disabled={isExporting}
-              className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black rounded-2xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 text-base"
+              className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black rounded-2xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 text-base cursor-pointer"
             >
               {isExporting ? (
                 <>
@@ -494,7 +520,7 @@ export default function Step5Results({ onExportPDF }) {
               )}
             </button>
             <span className="text-[11px] text-slate-400 mt-2 font-medium">
-              Document A4 prêt pour signature &amp; banque
+              Dossier A4 Paysage complet &bull; multi-pages
             </span>
           </div>
 
