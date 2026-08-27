@@ -337,8 +337,24 @@ export async function generateSechoirPDF({
   const pdfH = pdf.internal.pageSize.getHeight();
 
   try {
-    // ─── 1. CAPTURES HAUTE RÉSOLUTION (IMAGE 3D DU CONFIGURATEUR + SATELLITE ORIENTATION) ──
+    // ─── 1. CAPTURES HAUTE RÉSOLUTION (IMAGE 3D DU CONFIGURATEUR + SATELLITE ORIENTATION + COGEN'AIR) ──
     const batitech3dImg = BATITECH_3D_IMAGES[modelId] || BATITECH_3D_IMAGES['BT-6.2.15'];
+
+    // Pré-chargement image Cogen'Air
+    let cogenAirBase64 = '/cogen_air.jpg';
+    try {
+      const res = await fetch('/cogen_air.jpg');
+      if (res.ok) {
+        const blob = await res.blob();
+        cogenAirBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch (e) {
+      console.warn('Fallback url cogenAir:', e);
+    }
 
     const snapshotSat = await generateSatelliteSnapshot({
       center: exactMapCenter,
@@ -638,13 +654,23 @@ export async function generateSechoirPDF({
         <!-- 2 CADRES PLEINE LARGEUR SUPERPOSÉS (3D EN HAUT, SATELLITE EN BAS) -->
         <div style="display: flex; flex-direction: column; gap: 8px; height: 164mm; box-sizing: border-box;">
           
-          <!-- CADRE DU HAUT : VUE 3D CONFIGURATEUR SELON MODÈLE (IMAGE 2, 3, 4) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; height: 72mm; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+          <!-- CADRE DU HAUT : VUE 3D CONFIGURATEUR (GAUCHE) + COGEN'AIR (DROITE) -->
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; height: 72mm; position: relative; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; padding: 2px 10px;">
             <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
               Vue 3D BatiTech® (${bDims} — ${puissanceKwc} kWc)
             </div>
-            <img src="${batitech3dImg}" style="max-width: 98%; max-height: 96%; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
-            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 10px; height: 24px; display: flex; align-items: center; justify-content: center; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; line-height: 1; box-sizing: border-box;">
+            
+            <!-- Vue 3D BatiTech (décalée à gauche) -->
+            <div style="flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding-right: 12px;">
+              <img src="${batitech3dImg}" style="max-width: 98%; max-height: 94%; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
+            </div>
+
+            <!-- Image Cogen'Air (à droite) -->
+            <div style="width: 36%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+              <img src="${cogenAirBase64}" style="max-width: 98%; max-height: 94%; object-fit: contain; display: block; margin: auto;" alt="Système Cogen'Air" />
+            </div>
+
+            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 10px; height: 24px; display: flex; align-items: center; justify-content: center; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; line-height: 1; box-sizing: border-box; z-index: 2;">
               Cogen'Air® Intégré
             </div>
           </div>
