@@ -568,11 +568,11 @@ export async function generateFicheTechniquePDF({
     if (isBatitech) {
         const modelId = config?.selectedBatitechModel || 'BT-3.1.15';
         if (modelId === 'BT-6.2.15' || modelId.includes('6.2')) {
-            batitechInterieurUrl = '/BatiTech 6.2.15.jpg';
+            batitechInterieurUrl = '/batitech_6_2_15.jpg';
         } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
-            batitechInterieurUrl = '/BatiTech 8.3.15.jpg';
+            batitechInterieurUrl = '/batitech_8_3_15.jpg';
         } else {
-            batitechInterieurUrl = '/BatiTech 3.1.15.jpg';
+            batitechInterieurUrl = '/batitech_interieur_3_1_15.jpg';
         }
     }
 
@@ -637,31 +637,52 @@ export async function generateFicheTechniquePDF({
 
                     const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
                     const data = imgData.data;
-                    let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
-                    let found = false;
+                    const w = tempCanvas.width;
+                    const h = tempCanvas.height;
 
-                    for (let py = 0; py < tempCanvas.height; py++) {
-                        for (let px = 0; px < tempCanvas.width; px++) {
-                            const idx = (py * tempCanvas.width + px) * 4;
+                    // Compter les pixels de contenu par colonne et par ligne (en ignorant les pixels blancs / quasi-blancs)
+                    const colCount = new Array(w).fill(0);
+                    const rowCount = new Array(h).fill(0);
+
+                    for (let py = 0; py < h; py++) {
+                        for (let px = 0; px < w; px++) {
+                            const idx = (py * w + px) * 4;
                             const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
-                            // Détection des pixels du bâtiment (non transparents et non blancs purs)
-                            const isNotWhite = a > 20 && !(r > 248 && g > 248 && b > 248);
+                            const isNotWhite = a > 30 && !(r > 242 && g > 242 && b > 242);
                             if (isNotWhite) {
-                                if (px < minX) minX = px;
-                                if (px > maxX) maxX = px;
-                                if (py < minY) minY = py;
-                                if (py > maxY) maxY = py;
-                                found = true;
+                                colCount[px]++;
+                                rowCount[py]++;
                             }
                         }
                     }
 
-                    if (found && maxX > minX && maxY > minY) {
-                        const pad = 4;
+                    // Ignorer les éventuelles lignes verticales parasites isolées sur les bords extrêmes gauche/droite
+                    let minX = 0;
+                    while (minX < w && (colCount[minX] < 3 || (minX < 12 && (colCount[minX] < h * 0.20 || colCount[minX + 1] === 0)))) {
+                        minX++;
+                    }
+
+                    let maxX = w - 1;
+                    while (maxX >= 0 && (colCount[maxX] < 3 || (maxX > w - 12 && (colCount[maxX] < h * 0.20 || colCount[maxX - 1] === 0)))) {
+                        maxX--;
+                    }
+
+                    let minY = 0;
+                    while (minY < h && (rowCount[minY] < 3 || (minY < 10 && (rowCount[minY] < w * 0.20 || rowCount[minY + 1] === 0)))) {
+                        minY++;
+                    }
+
+                    let maxY = h - 1;
+                    while (maxY >= 0 && (rowCount[maxY] < 3 || (maxY > h - 10 && (rowCount[maxY] < w * 0.20 || rowCount[maxY - 1] === 0)))) {
+                        maxY--;
+                    }
+
+                    if (maxX > minX && maxY > minY) {
+                        const pad = 3;
                         const cropX = Math.max(0, minX - pad);
                         const cropY = Math.max(0, minY - pad);
-                        const cropW = Math.min(tempCanvas.width - cropX, (maxX - minX) + pad * 2);
-                        const cropH = Math.min(tempCanvas.height - cropY, (maxY - minY) + pad * 2);
+                        const cropW = Math.min(w - cropX, (maxX - minX) + pad * 2);
+                        const cropH = Math.min(h - cropY, (maxY - minY) + pad * 2);
 
                         const cropCanvas = document.createElement('canvas');
                         cropCanvas.width = cropW;
