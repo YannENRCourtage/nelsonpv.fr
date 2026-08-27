@@ -3,18 +3,18 @@
  * ──────────────────────────────────────────────────────────────────────────────
  * Génère un document PDF A4 Paysage (Landscape) 4 pages haute résolution :
  *  - Page 1 : Page Résultats intégrale (4 KPIs, Investissement Initial & Financement, Flux de Trésorerie, Subventions Régionales)
- *  - Page 2 : Doubles Vues Pleine Page (Vue 3D fidèle du Configurateur avec Cotations + Implantation Satellite sur la Parcelle)
- *  - Page 3 : Business Plan Détaillé sur 25 ans (Grand Graphique de Trésorerie Cumulée + Tableau Complet des 25 Années)
+ *  - Page 2 : Vue 3D réelle Configurateur selon modèle (3.1.15 / 6.2.15 / 8.3.15) et Implantation Satellite superposées
+ *  - Page 3 : Business Plan Détaillé sur 25 ans (Grand Graphique ROI surélevé + Tableau Complet des 25 Années avec colonne Charges)
  *  - Page 4 : Synthèse des Bénéfices d'Exploitation (Avantages Financiers/Opérationnels + Grand Graphique de Baisse des Charges)
  *
- * Fond blanc pur, en-têtes et pieds de page officiels NELSON.
+ * Fond blanc pur, pagination au-dessus du trait, en-têtes et pieds de page officiels NELSON.
  */
 
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot.js';
-import { generateBatitech3DSnapshot } from '@/utils/batitech3dSnapshot.js';
 import { BATITECH_MODELS, getRegionForDepartment } from '@/data/sechoirBatitechModels.js';
+import { BATITECH_3D_IMAGES } from '@/data/batitechImagesBase64.js';
 import useSechoirStore from '@/stores/useSechoirStore.js';
 
 // ─── Formatage ─────────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ export function drawSechoirChargesChart(canvas) {
 
   ctx.beginPath();
   ctx.moveTo(leftMargin, topMargin);
-  ctx.lineTo(leftMargin, topMargin + chartHeight);
+  ctx.lineTo(leftMargin + chartHeight, topMargin + chartHeight);
   ctx.stroke();
 
   // Graduations X : 0, 25, 50, 75, 100%
@@ -126,7 +126,7 @@ export function drawSechoirChargesChart(canvas) {
 // ─── Graphique de Trésorerie Cumulée (Page 3) ──────────────────────────────────
 export function drawLandscapeTreasuryChart(canvas, cashFlows, roi = 8.79) {
   canvas.width = 1800;
-  canvas.height = 420;
+  canvas.height = 480;
   const ctx = canvas.getContext('2d');
 
   ctx.fillStyle = '#ffffff';
@@ -134,17 +134,18 @@ export function drawLandscapeTreasuryChart(canvas, cashFlows, roi = 8.79) {
 
   const W = canvas.width;
   const H = canvas.height;
-  const padding = { top: 40, right: 35, bottom: 50, left: 95 };
+  const padding = { top: 48, right: 40, bottom: 55, left: 100 };
   const chartW = W - padding.left - padding.right;
   const chartH = H - padding.top - padding.bottom;
 
-  const values = (cashFlows || []).map(cf => cf.cumul);
+  const validFlows = (cashFlows || []).filter(cf => cf.annee > 0);
+  const values = validFlows.map(cf => cf.cumul);
   const maxVal = Math.max(...values, 0) || 400000;
   const minVal = Math.min(...values, 0);
   const range = maxVal - minVal || 1;
-  const count = cashFlows?.length || 25;
-  const barWidth = (chartW / count) * 0.78;
-  const gap = (chartW / count) * 0.22;
+  const count = validFlows.length || 25;
+  const barWidth = (chartW / count) * 0.76;
+  const gap = (chartW / count) * 0.24;
 
   const zeroY = padding.top + (maxVal / range) * chartH;
 
@@ -167,20 +168,29 @@ export function drawLandscapeTreasuryChart(canvas, cashFlows, roi = 8.79) {
   }
 
   // Barres
-  (cashFlows || []).forEach((cf, i) => {
+  let roiBarX = null;
+  let roiBarY = null;
+  const roiYear = Math.ceil(Number(roi || 8.79));
+
+  validFlows.forEach((cf, i) => {
     const x = padding.left + i * (chartW / count) + gap / 2;
     const barH = Math.max(4, Math.abs(cf.cumul / range) * chartH);
     const isPositive = cf.cumul >= 0;
     const y = isPositive ? zeroY - barH : zeroY;
 
+    if (cf.annee === roiYear) {
+      roiBarX = x + barWidth / 2;
+      roiBarY = y;
+    }
+
     ctx.fillStyle = isPositive ? '#10b981' : '#ef4444';
     ctx.fillRect(x, y, barWidth, barH);
 
-    // Labels X
+    // Labels X (1, 2, 3... sans le "A")
     ctx.fillStyle = '#475569';
     ctx.font = '14px Montserrat, Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`A${cf.annee}`, x + barWidth / 2, H - padding.bottom + 22);
+    ctx.fillText(`${cf.annee}`, x + barWidth / 2, H - padding.bottom + 24);
   });
 
   // Ligne Y=0
@@ -191,11 +201,34 @@ export function drawLandscapeTreasuryChart(canvas, cashFlows, roi = 8.79) {
   ctx.lineTo(W - padding.right, zeroY);
   ctx.stroke();
 
-  // Titre
+  // Indicateur visuel du ROI sur le graphique
+  if (roiBarX !== null) {
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(roiBarX, padding.top + 10);
+    ctx.lineTo(roiBarX, H - padding.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Badge ROI
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.roundRect(roiBarX - 110, padding.top + 8, 220, 32, 8);
+    ctx.fill();
+
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 15px Montserrat, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`★ ROI : ${Number(roi || 8.79).toFixed(2)} ans (Année ${roiYear})`, roiBarX, padding.top + 29);
+  }
+
+  // Titre du graphique
   ctx.fillStyle = '#0D3660';
   ctx.font = 'bold 18px Montserrat, Arial, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`Évolution de la Trésorerie Cumulée (25 ans) — Amortissement (ROI) estimé à ${Number(roi || 8.79).toFixed(2)} ans`, padding.left, 24);
+  ctx.fillText(`Évolution de la Trésorerie Cumulée (25 ans) — Amortissement (ROI) estimé à ${Number(roi || 8.79).toFixed(2)} ans`, padding.left, 28);
 }
 
 // ─── Header & Footer Helpers ───────────────────────────────────────────────────
@@ -220,16 +253,21 @@ function renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName }
 
 function renderLandscapeFooter({ pageNum, totalPages = 4, dateStr }) {
   return `
-    <div style="position: absolute; bottom: 8mm; left: 14mm; right: 14mm; display: flex; justify-content: space-between; align-items: center; border-top: 1.5px solid #cbd5e1; padding-top: 4px; font-size: 6.8pt; color: #64748b; font-family: Montserrat, Arial, sans-serif;">
-      <div style="display: flex; gap: 15px; align-items: center;">
-        <span style="font-weight: 800; color: #0D3660;">NELSON — nelsonpv.fr</span>
-        <span>Courtage en Énergies Renouvelables &amp; Ingénierie Solaire</span>
-      </div>
-      <div>
-        <span>contact@enr-courtage.fr &bull; ${dateStr}</span>
-      </div>
-      <div style="font-weight: bold; color: #0D3660;">
+    <div style="position: absolute; bottom: 5mm; left: 14mm; right: 14mm; font-family: Montserrat, Arial, sans-serif;">
+      <!-- Numéro de page au-dessus de la ligne -->
+      <div style="display: flex; justify-content: flex-end; font-size: 7.5pt; font-weight: 800; color: #0D3660; margin-bottom: 3px;">
         Page ${pageNum} / ${totalPages}
+      </div>
+
+      <!-- Ligne séparatrice et mentions -->
+      <div style="border-top: 1.5px solid #cbd5e1; padding-top: 3px; display: flex; justify-content: space-between; align-items: center; font-size: 6.8pt; color: #64748b;">
+        <div style="display: flex; gap: 15px; align-items: center;">
+          <span style="font-weight: 800; color: #0D3660;">NELSON — nelsonpv.fr</span>
+          <span>Courtage en Énergies Renouvelables &amp; Ingénierie Solaire</span>
+        </div>
+        <div>
+          <span>contact@enr-courtage.fr &bull; ${dateStr}</span>
+        </div>
       </div>
     </div>
   `;
@@ -287,32 +325,22 @@ export async function generateSechoirPDF({
   const pdfH = pdf.internal.pageSize.getHeight();
 
   try {
-    // ─── 1. CAPTURES HAUTE RÉSOLUTION (3D FIDÈLE CONFIGURATEUR + SATELLITE ORIENTATION) ──
-    const [snapshot3d, snapshotSat] = await Promise.all([
-      // 1a. Rendu 3D fidèle non simplifié avec cotations
-      generateBatitech3DSnapshot({
-        modelId,
+    // ─── 1. CAPTURES HAUTE RÉSOLUTION (IMAGE 3D DU CONFIGURATEUR + SATELLITE ORIENTATION) ──
+    const batitech3dImg = BATITECH_3D_IMAGES[modelId] || BATITECH_3D_IMAGES['BT-6.2.15'];
+
+    const snapshotSat = await generateSatelliteSnapshot({
+      center: exactMapCenter,
+      buildings: [{
+        name: `Séchoir ${modelName}`,
         length: bLength,
         width: bWidth,
-        imgWidth: 1200,
-        imgHeight: 750,
-        showDimensions: true,
-      }),
-      // 1b. Vue Satellite haute précision à l'emplacement exact de l'étape Orientation
-      generateSatelliteSnapshot({
-        center: exactMapCenter,
-        buildings: [{
-          name: `Séchoir ${modelName}`,
-          length: bLength,
-          width: bWidth,
-          rotation: rotVal,
-        }],
-        building: { length: bLength, width: bWidth, rotation: rotVal },
-        width: 1200,
-        height: 750,
-        zoom: 19,
-      }),
-    ]);
+        rotation: rotVal,
+      }],
+      building: { length: bLength, width: bWidth, rotation: rotVal },
+      width: 1400,
+      height: 700,
+      zoom: 19,
+    });
 
     // ═══════════════════════════════════════════════════════════════════════════
     // ─── PAGE 1 : PAGE RÉSULTATS INTÉGRALE PLEINE PAGE ────────────────────────
@@ -450,36 +478,29 @@ export async function generateSechoirPDF({
     pdf.addImage(canvas1.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // ─── PAGE 2 : VUE 3D CONFIGURATEUR AVEC CÔTES & CARTE SATELLITE ───────────
+    // ─── PAGE 2 : VUE 3D CONFIGURATEUR & CARTE SATELLITE (SUPERPOSÉES) ────────
     // ═══════════════════════════════════════════════════════════════════════════
     container.innerHTML = `
       <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
         ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName })}
 
-        <!-- 2 GRANDS CADRES PLEINE HAUTEUR (3D & SATELLITE) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; height: 160mm; box-sizing: border-box;">
+        <!-- 2 CADRES PLEINE LARGEUR SUPERPOSÉS (3D EN HAUT, SATELLITE EN BAS) -->
+        <div style="display: flex; flex-direction: column; gap: 8px; height: 160mm; box-sizing: border-box;">
           
-          <!-- CADRE GAUCHE : RENDU 3D RÉEL CONFIGURATEUR AVEC CÔTES (IMAGE 5) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%; box-sizing: border-box;">
-            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 4px 12px; border-bottom-right-radius: 8px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1;">
+          <!-- CADRE DU HAUT : VUE 3D CONFIGURATEUR SELON MODÈLE (IMAGE 2, 3, 4) -->
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; flex: 1; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 10px; border-bottom-right-radius: 6px; font-size: 7.2pt; font-weight: bold; z-index: 2; line-height: 1;">
               Vue 3D Configurateur BatiTech® (${bDims})
             </div>
-            ${snapshot3d ? `
-              <img src="${snapshot3d}" style="width: 100%; height: 100%; object-fit: contain; object-position: center; display: block;" alt="Rendu 3D Séchoir BatiTech" />
-            ` : `
-              <div style="color: #64748b; font-size: 9pt; text-align: center; margin: auto; padding: 10px;">
-                <strong style="color: #0f172a; display: block;">Modèle 3D BatiTech®</strong>
-                ${bDims} — Bardage RAL 7016
-              </div>
-            `}
-            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 10px; border-top-left-radius: 8px; font-size: 7pt; font-weight: bold;">
+            <img src="${batitech3dImg}" style="max-width: 98%; max-height: 96%; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
+            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2.5px 8px; border-top-left-radius: 6px; font-size: 6.8pt; font-weight: bold;">
               Cogen'Air® Intégré
             </div>
           </div>
 
-          <!-- CADRE DROIT : IMPLANTATION SATELLITE SUR LE TERRAIN (IMAGE 2) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #0f172a; display: flex; flex-direction: column; position: relative; height: 100%; box-sizing: border-box;">
-            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 4px 12px; border-bottom-right-radius: 8px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1;">
+          <!-- CADRE DU BAS : IMPLANTATION SATELLITE SUR LE TERRAIN -->
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; flex: 1; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 10px; border-bottom-right-radius: 6px; font-size: 7.2pt; font-weight: bold; z-index: 2; line-height: 1;">
               Implantation Satellite sur la Parcelle
             </div>
             ${snapshotSat ? `
@@ -490,7 +511,7 @@ export async function generateSechoirPDF({
                 <div style="font-size: 7.5pt; margin-top: 2px; color: #94a3b8;">${clientAddress}</div>
               </div>
             `}
-            <div style="position: absolute; bottom: 8px; right: 10px; background: transparent; color: #ffffff; text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95); padding: 2px 6px; font-size: 7.8pt; font-weight: bold;">
+            <div style="position: absolute; bottom: 6px; right: 10px; background: transparent; color: #ffffff; text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95); padding: 2px 6px; font-size: 7.5pt; font-weight: bold;">
               Orientation : ${r.orientationLabel || 'Sud'}
             </div>
           </div>
@@ -513,47 +534,58 @@ export async function generateSechoirPDF({
     pdf.addImage(canvas2.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // ─── PAGE 3 : BUSINESS PLAN & TABLEAU DES FLUX SUR 25 ANS AGRANDIS ────────
+    // ─── PAGE 3 : BUSINESS PLAN & TABLEAU DES FLUX SUR 25 ANS AVEC CHARGES ────
     // ═══════════════════════════════════════════════════════════════════════════
     const chartCanvas = document.createElement('canvas');
     drawLandscapeTreasuryChart(chartCanvas, r.treasury?.cashFlows || [], r.roi || 8.79);
     const treasuryChartImg = chartCanvas.toDataURL('image/png');
 
-    const cFlows = r.treasury?.cashFlows || [];
-    const col1 = cFlows.slice(0, 13);
-    const col2 = cFlows.slice(13, 25);
+    const validFlows = (r.treasury?.cashFlows || []).filter(cf => cf.annee > 0);
+    const col1 = validFlows.slice(0, 13);
+    const col2 = validFlows.slice(13, 25);
 
-    const renderTableColumn = (rows) => rows.map(cf => `
-      <tr style="border-bottom: 1px solid #e2e8f0; font-size: 6.4pt;">
-        <td style="padding: 2.2px 4px; font-weight: bold; color: #0D3660; text-align: center;">A${cf.annee}</td>
-        <td style="padding: 2.2px 4px; text-align: right; color: #16a34a; font-weight: 600;">+${fmt(cf.fluxOperationnel)} €</td>
-        <td style="padding: 2.2px 4px; text-align: right; color: ${cf.annuiteEmprunt > 0 ? '#dc2626' : '#94a3b8'};">-${fmt(cf.annuiteEmprunt)} €</td>
-        <td style="padding: 2.2px 4px; text-align: right; color: ${cf.fluxNet >= 0 ? '#166534' : '#dc2626'}; font-weight: bold;">${cf.fluxNet >= 0 ? '+' : ''}${fmt(cf.fluxNet)} €</td>
-        <td style="padding: 2.2px 4px; text-align: right; color: ${cf.cumul >= 0 ? '#d97706' : '#64748b'}; font-weight: 900;">${fmt(cf.cumul)} €</td>
-      </tr>
-    `).join('');
+    const baseCharges = r.charges?.deltaCharges || 0;
+    const baseProduits = r.produits?.deltaProduits || 0;
+    const inflation = financialParams?.inflationProduits || 0.02;
+
+    const renderTableColumn = (rows) => rows.map(cf => {
+      const yearIdx = cf.annee;
+      const chargesY = Math.round(baseCharges * Math.pow(1 + inflation, yearIdx - 1));
+      const produitsY = Math.round(baseProduits * Math.pow(1 + inflation, yearIdx - 1));
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 6.2pt;">
+          <td style="padding: 2px 3px; font-weight: bold; color: #0D3660; text-align: center;">${cf.annee}</td>
+          <td style="padding: 2px 3px; text-align: right; color: #16a34a; font-weight: 600;">+${fmt(produitsY)} €</td>
+          <td style="padding: 2px 3px; text-align: right; color: #dc2626;">-${fmt(chargesY)} €</td>
+          <td style="padding: 2px 3px; text-align: right; color: ${cf.annuiteEmprunt > 0 ? '#dc2626' : '#94a3b8'};">-${fmt(cf.annuiteEmprunt)} €</td>
+          <td style="padding: 2px 3px; text-align: right; color: ${cf.fluxNet >= 0 ? '#166534' : '#dc2626'}; font-weight: bold;">${cf.fluxNet >= 0 ? '+' : ''}${fmt(cf.fluxNet)} €</td>
+          <td style="padding: 2px 3px; text-align: right; color: ${cf.cumul >= 0 ? '#d97706' : '#64748b'}; font-weight: 900;">${fmt(cf.cumul)} €</td>
+        </tr>
+      `;
+    }).join('');
 
     container.innerHTML = `
       <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
         ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName })}
 
-        <!-- Grand Graphique de Trésorerie Cumulée Pleine Largeur -->
+        <!-- Grand Graphique de Trésorerie Cumulée Pleine Largeur Agrandit -->
         <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 4px 10px; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); text-align: center; margin-bottom: 8px;">
-          <img src="${treasuryChartImg}" alt="Trésorerie Cumulée" style="max-width: 99%; height: 56mm; display: block; margin: 0 auto;" />
+          <img src="${treasuryChartImg}" alt="Trésorerie Cumulée" style="max-width: 99%; height: 60mm; display: block; margin: 0 auto;" />
         </div>
 
-        <!-- Tableau des flux sur 2 colonnes A1-A13 et A14-A25 -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+        <!-- Tableau des flux sur 2 colonnes (Années 1-13 et 14-25) avec colonne Charges -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
           <!-- Colonne 1 : Années 1 à 13 -->
           <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc;">
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
-                <tr style="background: #0D3660; color: #ffffff; font-size: 6.8pt;">
-                  <th style="padding: 3px 4px; text-align: center;">Année</th>
-                  <th style="padding: 3px 4px; text-align: right;">Flux Exploitation</th>
-                  <th style="padding: 3px 4px; text-align: right;">Annuité</th>
-                  <th style="padding: 3px 4px; text-align: right;">Flux Net</th>
-                  <th style="padding: 3px 4px; text-align: right;">Cumul</th>
+                <tr style="background: #0D3660; color: #ffffff; font-size: 6.4pt;">
+                  <th style="padding: 3px 2px; text-align: center;">Année</th>
+                  <th style="padding: 3px 2px; text-align: right;">Produits (+2%/an)</th>
+                  <th style="padding: 3px 2px; text-align: right;">Charges &amp; Vent.</th>
+                  <th style="padding: 3px 2px; text-align: right;">Annuité</th>
+                  <th style="padding: 3px 2px; text-align: right;">Flux Net</th>
+                  <th style="padding: 3px 2px; text-align: right;">Cumul</th>
                 </tr>
               </thead>
               <tbody>
@@ -566,12 +598,13 @@ export async function generateSechoirPDF({
           <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc;">
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
-                <tr style="background: #0D3660; color: #ffffff; font-size: 6.8pt;">
-                  <th style="padding: 3px 4px; text-align: center;">Année</th>
-                  <th style="padding: 3px 4px; text-align: right;">Flux Exploitation</th>
-                  <th style="padding: 3px 4px; text-align: right;">Annuité</th>
-                  <th style="padding: 3px 4px; text-align: right;">Flux Net</th>
-                  <th style="padding: 3px 4px; text-align: right;">Cumul</th>
+                <tr style="background: #0D3660; color: #ffffff; font-size: 6.4pt;">
+                  <th style="padding: 3px 2px; text-align: center;">Année</th>
+                  <th style="padding: 3px 2px; text-align: right;">Produits (+2%/an)</th>
+                  <th style="padding: 3px 2px; text-align: right;">Charges &amp; Vent.</th>
+                  <th style="padding: 3px 2px; text-align: right;">Annuité</th>
+                  <th style="padding: 3px 2px; text-align: right;">Flux Net</th>
+                  <th style="padding: 3px 2px; text-align: right;">Cumul</th>
                 </tr>
               </thead>
               <tbody>
@@ -583,17 +616,17 @@ export async function generateSechoirPDF({
 
         <!-- Synthèse des Indicateurs Financiers Avancés -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 6px;">
-          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 6px 12px; text-align: center;">
-            <span style="font-size: 6.5pt; color: #166534; font-weight: bold; text-transform: uppercase;">Valeur Actuelle Nette (VAN 20 ans)</span>
-            <div style="font-size: 11pt; font-weight: 900; color: #16a34a;">+${fmt(r.van)} €</div>
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 5px 10px; text-align: center;">
+            <span style="font-size: 6.2pt; color: #166534; font-weight: bold; text-transform: uppercase;">Valeur Actuelle Nette (VAN 20 ans)</span>
+            <div style="font-size: 10.5pt; font-weight: 900; color: #16a34a;">+${fmt(r.van)} €</div>
           </div>
-          <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 6px 12px; text-align: center;">
-            <span style="font-size: 6.5pt; color: #92400e; font-weight: bold; text-transform: uppercase;">Taux de Rendement Interne (TRI)</span>
-            <div style="font-size: 11pt; font-weight: 900; color: #d97706;">${r.triPercent || '10.33'} %</div>
+          <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 5px 10px; text-align: center;">
+            <span style="font-size: 6.2pt; color: #92400e; font-weight: bold; text-transform: uppercase;">Taux de Rendement Interne (TRI)</span>
+            <div style="font-size: 10.5pt; font-weight: 900; color: #d97706;">${r.triPercent || '10.33'} %</div>
           </div>
-          <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; text-align: center;">
-            <span style="font-size: 6.5pt; color: #475569; font-weight: bold; text-transform: uppercase;">Temps de Retour sur Investissement (ROI)</span>
-            <div style="font-size: 11pt; font-weight: 900; color: #0284c7;">${Number(r.roi || 8.79).toFixed(2)} ans</div>
+          <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 5px 10px; text-align: center;">
+            <span style="font-size: 6.2pt; color: #475569; font-weight: bold; text-transform: uppercase;">Temps de Retour sur Investissement (ROI)</span>
+            <div style="font-size: 10.5pt; font-weight: 900; color: #0284c7;">${Number(r.roi || 8.79).toFixed(2)} ans</div>
           </div>
         </div>
 
