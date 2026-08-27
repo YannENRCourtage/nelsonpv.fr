@@ -958,11 +958,11 @@ export default function Crm() {
             />
           </div>
 
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center w-full min-w-0">
             <select
               value={filterUser}
               onChange={(e) => setFilterUser(e.target.value)}
-              className="flex-1 md:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[140px]"
+              className="w-full sm:w-auto flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-0 sm:min-w-[140px]"
             >
               <option value="all">Tous les utilisateurs</option>
               {tenantUsers.map(u => (
@@ -970,11 +970,11 @@ export default function Crm() {
               ))}
             </select>
 
-            <div className="flex flex-1 md:flex-none gap-2 items-center">
+            <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto mt-1 sm:mt-0 min-w-0">
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[120px]"
+                className="w-full sm:w-auto flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-0 sm:min-w-[120px]"
               >
                 <option value="all">Tous les statuts</option>
                 <option value="Nouveau">Nouveau</option>
@@ -984,10 +984,10 @@ export default function Crm() {
 
               <Button
                 onClick={handleAddContact}
-                className="lg:hidden bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md px-3 h-9"
+                className="lg:hidden bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md px-3 h-8 shrink-0 ml-auto"
               >
                 <Plus className="w-4 h-4 mr-1" />
-                <span className="text-xs">Nouveau</span>
+                <span className="text-xs font-bold">Nouveau</span>
               </Button>
             </div>
           </div>
@@ -1534,12 +1534,12 @@ export default function Crm() {
             />
           </div>
 
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center w-full min-w-0">
             {/* Filtre Utilisateur */}
             <select
               value={filterUser}
               onChange={(e) => setFilterUser(e.target.value)}
-              className="flex-1 md:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[140px]"
+              className="w-full sm:w-auto flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-0 sm:min-w-[140px]"
             >
               <option value="all">Tous les utilisateurs</option>
               {tenantUsers.map(u => (
@@ -1551,7 +1551,7 @@ export default function Crm() {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="flex-1 md:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[120px]"
+              className="w-full sm:w-auto flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-0 sm:min-w-[120px]"
             >
               <option value="all">Tous les types</option>
               <option value="Construction">Construction</option>
@@ -1560,12 +1560,12 @@ export default function Crm() {
               <option value="Location">Location</option>
             </select>
 
-            <div className="flex flex-wrap gap-2 items-center w-full md:w-auto mt-2 md:mt-0">
+            <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto mt-1 sm:mt-0 min-w-0">
               {/* Filtre Mes Projets */}
               <button
                 type="button"
                 onClick={() => setFilterMyProjects(!filterMyProjects)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shrink-0 ${
                   filterMyProjects
                     ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                     : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -1575,8 +1575,8 @@ export default function Crm() {
                 <span>Mes projets</span>
               </button>
 
-              {/* Filtres Statuts (Boutons identiques à l'onglet Dossiers) */}
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+              {/* Filtres Statuts (Boutons avec scroll propre si besoin) */}
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto no-scrollbar scrollbar-none max-w-full flex-nowrap shrink-0">
                 {[
                   { id: 'all', label: 'Tous' },
                   { id: 'Nouveau', label: 'Nouveau' },
@@ -1590,7 +1590,7 @@ export default function Crm() {
                       key={st.id}
                       type="button"
                       onClick={() => setFilterStatus(st.id)}
-                      className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all ${
+                      className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-extrabold transition-all whitespace-nowrap shrink-0 ${
                         isActive
                           ? 'bg-slate-900 text-white shadow-xs'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -1604,10 +1604,10 @@ export default function Crm() {
 
               <Button
                 onClick={() => navigate('/project/new/edit')}
-                className="lg:hidden flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md h-9 px-2"
+                className="lg:hidden bg-blue-600 hover:bg-blue-700 text-white shadow-md h-8 px-3 shrink-0 ml-auto"
               >
                 <Plus className="w-4 h-4 mr-1" />
-                <span className="text-xs">Nouveau</span>
+                <span className="text-xs font-bold">Nouveau</span>
               </Button>
             </div>
           </div>

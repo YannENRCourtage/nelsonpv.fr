@@ -488,19 +488,19 @@ export async function generateSechoirPDF({
         <div style="display: flex; flex-direction: column; gap: 8px; height: 160mm; box-sizing: border-box;">
           
           <!-- CADRE DU HAUT : VUE 3D CONFIGURATEUR SELON MODÈLE (IMAGE 2, 3, 4) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; flex: 1; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 10px; border-bottom-right-radius: 6px; font-size: 7.2pt; font-weight: bold; z-index: 2; line-height: 1;">
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; height: 72mm; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 8px; border-bottom-right-radius: 6px; font-size: 6.8pt; font-weight: bold; z-index: 2; line-height: 1;">
               Vue 3D Configurateur BatiTech® (${bDims})
             </div>
             <img src="${batitech3dImg}" style="max-width: 98%; max-height: 96%; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
-            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2.5px 8px; border-top-left-radius: 6px; font-size: 6.8pt; font-weight: bold;">
+            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 8px; border-top-left-radius: 6px; font-size: 6.5pt; font-weight: bold;">
               Cogen'Air® Intégré
             </div>
           </div>
 
           <!-- CADRE DU BAS : IMPLANTATION SATELLITE SUR LE TERRAIN -->
           <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; flex: 1; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 10px; border-bottom-right-radius: 6px; font-size: 7.2pt; font-weight: bold; z-index: 2; line-height: 1;">
+            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 8px; border-bottom-right-radius: 6px; font-size: 6.8pt; font-weight: bold; z-index: 2; line-height: 1;">
               Implantation Satellite sur la Parcelle
             </div>
             ${snapshotSat ? `
@@ -579,13 +579,13 @@ export async function generateSechoirPDF({
           <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc;">
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
-                <tr style="background: #0D3660; color: #ffffff; font-size: 6.4pt;">
-                  <th style="padding: 3px 2px; text-align: center;">Année</th>
-                  <th style="padding: 3px 2px; text-align: right;">Produits (+2%/an)</th>
-                  <th style="padding: 3px 2px; text-align: right;">Charges &amp; Vent.</th>
-                  <th style="padding: 3px 2px; text-align: right;">Annuité</th>
-                  <th style="padding: 3px 2px; text-align: right;">Flux Net</th>
-                  <th style="padding: 3px 2px; text-align: right;">Cumul</th>
+                <tr style="background: #0D3660; color: #ffffff; font-size: 6.8pt; height: 26px;">
+                  <th style="padding: 6px 3px; text-align: center; vertical-align: middle; line-height: 1.2;">Année</th>
+                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Produits (+2%/an)</th>
+                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Charges &amp; Vent.</th>
+                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Annuité</th>
+                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Flux Net</th>
+                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Cumul</th>
                 </tr>
               </thead>
               <tbody>
@@ -598,13 +598,13 @@ export async function generateSechoirPDF({
           <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc;">
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
-                <tr style="background: #0D3660; color: #ffffff; font-size: 6.4pt;">
-                  <th style="padding: 3px 2px; text-align: center;">Année</th>
-                  <th style="padding: 3px 2px; text-align: right;">Produits (+2%/an)</th>
-                  <th style="padding: 3px 2px; text-align: right;">Charges &amp; Vent.</th>
-                  <th style="padding: 3px 2px; text-align: right;">Annuité</th>
-                  <th style="padding: 3px 2px; text-align: right;">Flux Net</th>
-                  <th style="padding: 3px 2px; text-align: right;">Cumul</th>
+                <tr style="background: #0D3660; color: #ffffff; font-size: 6.8pt; height: 26px;">
+                  <th style="padding: 6px 3px; text-align: center; vertical-align: middle; line-height: 1.2;">Année</th>
+                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Produits (+2%/an)</th>
+                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Charges &amp; Vent.</th>
+                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Annuité</th>
+                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Flux Net</th>
+                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Cumul</th>
                 </tr>
               </thead>
               <tbody>

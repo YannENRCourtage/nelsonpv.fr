@@ -517,7 +517,7 @@ export default function IrveSimulator() {
             </div>
 
             {activeMainTab === 'simulateurs' && (
-              <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 overflow-x-auto no-scrollbar scrollbar-none max-w-full flex-nowrap shrink-0">
+              <div className="w-full lg:w-auto overflow-x-auto scrollbar-thin flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 flex-nowrap overscroll-x-contain touch-pan-x min-w-0 pr-6 lg:pr-1.5">
                 {[
                   { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
                   { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },

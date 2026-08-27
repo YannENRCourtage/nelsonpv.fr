@@ -2036,12 +2036,12 @@ function TabBpProjets({
               }
             >
               <div className="overflow-x-auto pb-1">
-                <table className="w-full text-left border-separate border-spacing-x-4">
+                <table className="w-full text-left border-separate border-spacing-x-1 sm:border-spacing-x-2 md:border-spacing-x-3">
                   <thead>
                     <tr>
-                      <th className="w-32"></th>
+                      <th className="w-24 sm:w-28"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="group relative text-center text-[12px] uppercase text-slate-400 font-bold pb-2">
+                        <th key={b.id} className="group relative text-center text-[11px] sm:text-[12px] uppercase text-slate-400 font-bold pb-1 sm:pb-2">
                           <div className="flex flex-col items-center gap-1">
                             {i > 0 && (
                               <button 
@@ -2060,13 +2060,13 @@ function TabBpProjets({
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="h-2"></tr>
+                    <tr className="h-1"></tr>
                     <tr>
-                      <td className="text-[12px] text-blue-700 font-bold pt-2">Type de projet</td>
+                      <td className="text-[11px] sm:text-[12px] text-blue-700 font-bold pt-1.5 whitespace-nowrap">Type de projet</td>
                       {(params.buildings || []).map(b => (
-                        <td key={b.id} className="pt-2">
+                        <td key={b.id} className="pt-1.5">
                           <select 
-                            className="bg-white border border-blue-300 rounded px-1 py-1 text-[13px] w-full font-bold text-blue-900"
+                            className="bg-white border border-blue-300 rounded px-1 py-0.5 text-xs sm:text-[13px] w-full font-bold text-blue-900"
                             value={b.projectType || 'BAC'} 
                             onChange={e => updateBuildingParam(b.id, 'projectType', e.target.value)}
                           >
@@ -2077,14 +2077,14 @@ function TabBpProjets({
                       ))}
                     </tr>
                     <tr>
-                      <td className="text-[12px] text-slate-500 font-medium pt-2">Type de bâtiment</td>
+                      <td className="text-[11px] sm:text-[12px] text-slate-500 font-medium pt-1.5 whitespace-nowrap">Type de bâtiment</td>
                       {(params.buildings || []).map(b => (
-                        <td key={b.id} className="pt-2">
+                        <td key={b.id} className="pt-1.5">
                           {b.projectType === 'BE' ? (
                             <div className="flex items-center gap-1">
                               <input 
                                 type="number"
-                                className="bg-white border border-slate-200 rounded px-1 py-1 text-[13px] w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                                className="bg-white border border-slate-200 rounded px-1 py-0.5 text-xs sm:text-[13px] w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                                 value={b.surfaceToiture || ''} 
                                 onChange={e => updateBuildingParam(b.id, 'surfaceToiture', parseFloat(e.target.value) || 0)}
                                 placeholder="m²"
@@ -2092,7 +2092,7 @@ function TabBpProjets({
                             </div>
                           ) : (
                             <select 
-                              className="bg-white border border-slate-200 rounded px-1 py-1 text-[13px] w-full outline-none focus:ring-1 focus:ring-blue-400 font-bold"
+                              className="bg-white border border-slate-200 rounded px-1 py-0.5 text-xs sm:text-[13px] w-full outline-none focus:ring-1 focus:ring-blue-400 font-bold"
                               value={b.typeBat || ''} 
                               onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
                             >
@@ -2106,59 +2106,59 @@ function TabBpProjets({
                       ))}
                     </tr>
                     <tr>
-                      <td className="text-[12px] text-slate-500 font-medium">Nombre de panneaux</td>
+                      <td className="text-[11px] sm:text-[12px] text-slate-500 font-medium whitespace-nowrap">Nb panneaux</td>
                       {(params.buildings || []).map(b => {
                         const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
-                        return <td key={b.id} className="text-center text-[13px] font-bold text-slate-700">{nb} un.</td>;
+                        return <td key={b.id} className="text-center text-xs sm:text-[13px] font-bold text-slate-700">{nb} un.</td>;
                       })}
                     </tr>
                     <tr>
-                      <td className="text-[12px] text-slate-500 font-medium">Puissance installée</td>
+                      <td className="text-[11px] sm:text-[12px] text-slate-500 font-medium whitespace-nowrap">Puissance inst.</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id}>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5 sm:gap-1">
                             <input 
                               type="number"
-                              className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                              className="bg-white border border-slate-200 rounded px-1 py-0.5 text-xs sm:text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                               value={b.kwc || ''} 
                               onChange={e => updateBuildingParam(b.id, 'kwc', parseFloat(e.target.value) || 0)}
                             />
-                            <span className="text-[12px] text-slate-400 w-6">kWc</span>
+                            <span className="text-[10px] sm:text-[12px] text-slate-400 shrink-0">kWc</span>
                           </div>
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td className="text-[12px] text-slate-500 font-medium">Productible</td>
+                      <td className="text-[11px] sm:text-[12px] text-slate-500 font-medium whitespace-nowrap">Productible</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id}>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5 sm:gap-1">
                             <input 
                               type="number"
-                              className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                              className="bg-white border border-slate-200 rounded px-1 py-0.5 text-xs sm:text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                               value={b.productible || ''} 
                               onChange={e => updateBuildingParam(b.id, 'productible', parseFloat(e.target.value) || 0)}
                             />
-                            <span className="text-[12px] text-slate-400 w-[45px] whitespace-nowrap">kWh/kWc</span>
+                            <span className="text-[9px] sm:text-[11px] text-slate-400 shrink-0 whitespace-nowrap">kWh</span>
                           </div>
                         </td>
                       ))}
                     </tr>
-                    <tr className="h-4"></tr>
+                    <tr className="h-2 sm:h-4"></tr>
                     <tr>
-                      <td className="text-[12px] text-slate-500 font-medium">Surface installée</td>
+                      <td className="text-[11px] sm:text-[12px] text-slate-500 font-medium whitespace-nowrap">Surface inst.</td>
                       {(params.buildings || []).map(b => {
                         const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
                         const dims = getModuleDims(params.puissanceUnitaire || 460);
                         const surf = nb * (dims.length * dims.width);
-                        return <td key={b.id} className="text-center text-sm font-bold text-slate-700">{fmt(surf, 0)} m²</td>;
+                        return <td key={b.id} className="text-center text-xs sm:text-sm font-bold text-slate-700">{fmt(surf, 0)} m²</td>;
                       })}
                     </tr>
                     <tr>
-                      <td className="text-[12px] text-blue-700 font-bold uppercase pt-2 border-t border-slate-50 mt-2">Sous-total Prod.</td>
+                      <td className="text-[11px] sm:text-[12px] text-blue-700 font-bold uppercase pt-1.5 border-t border-slate-50 mt-1 whitespace-nowrap">Sous-total Prod.</td>
                       {(params.buildings || []).map(b => {
                         const yearlyProd = (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0);
-                        return <td key={b.id} className="text-center text-[12px] font-black text-blue-900 border-t border-blue-50 pt-2">{fmt(yearlyProd, 0)} kWh/an</td>;
+                        return <td key={b.id} className="text-center text-[11px] sm:text-[12px] font-black text-blue-900 border-t border-blue-50 pt-1.5">{fmt(yearlyProd, 0)} kWh/an</td>;
                       })}
                     </tr>
                   </tbody>
@@ -2225,12 +2225,12 @@ function TabBpProjets({
 
             <SectionCard title="INVESTISSEMENT" id="pdf-section-invest" className="grow pb-2 border-t-4 border-t-amber-400">
               <div className="overflow-x-auto pb-1">
-                <table className="w-full text-left border-separate border-spacing-x-4">
+                <table className="w-full text-left border-separate border-spacing-x-1 sm:border-spacing-x-2 md:border-spacing-x-3">
                   <thead>
                     <tr>
-                      <th className="w-1/3"></th>
+                      <th className="w-24 sm:w-28"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="group relative text-center text-[12px] uppercase text-slate-400 font-bold pb-2">
+                        <th key={b.id} className="group relative text-center text-[11px] sm:text-[12px] uppercase text-slate-400 font-bold pb-1 sm:pb-2">
                            <div className="flex flex-col items-center gap-1">
                             {i > 0 && (
                               <button 
@@ -2251,13 +2251,13 @@ function TabBpProjets({
                   <tbody>
                     {(params.buildings || []).some(b => b.projectType === 'BAC' || b.projectType === 'BAC + BE') && (
                       <tr className="bg-blue-50/50">
-                        <td className="text-[12px] text-blue-700 font-bold pr-2 py-2">Modèle bâtiment</td>
+                        <td className="text-[11px] sm:text-[12px] text-blue-700 font-bold pr-1 py-1.5 whitespace-nowrap">Modèle bâtiment</td>
                         {(params.buildings || []).map(b => (
-                          <td key={b.id} className="py-2">
+                          <td key={b.id} className="py-1.5">
                             {b.projectType !== 'BE' && (
-                              <div className="bg-slate-100 border border-slate-300 rounded px-2 py-1 text-[13px] w-full font-bold text-slate-500 text-center flex items-center justify-center gap-1 shadow-inner">
-                                <Building className="w-3 h-3 opacity-40" />
-                                {((!b.typeBat || b.typeBat === '' || b.typeBat === 'Batterie CESC') && b.projectType === 'BAC') ? 'Sur-mesure' : (b.typeBat || '—')}
+                              <div className="bg-slate-100 border border-slate-300 rounded px-1 py-0.5 text-xs sm:text-[13px] w-full font-bold text-slate-500 text-center flex items-center justify-center gap-1 shadow-inner">
+                                <Building className="w-3 h-3 opacity-40 shrink-0" />
+                                <span className="truncate">{((!b.typeBat || b.typeBat === '' || b.typeBat === 'Batterie CESC') && b.projectType === 'BAC') ? 'Sur-mesure' : (b.typeBat || '—')}</span>
                               </div>
                             )}
                           </td>
@@ -2265,53 +2265,53 @@ function TabBpProjets({
                       </tr>
                     )}
                     <tr>
-                      <td className="text-[12px] text-slate-500 font-medium pt-2">Dist. Raccordement HT</td>
+                      <td className="text-[11px] sm:text-[12px] text-slate-500 font-medium pt-1.5 whitespace-nowrap">Dist. Raccordement</td>
                       {(params.buildings || []).map(b => (
-                        <td key={b.id} className="pt-2">
-                          <div className="flex items-center gap-1">
+                        <td key={b.id} className="pt-1.5">
+                          <div className="flex items-center gap-0.5 sm:gap-1">
                             <input 
                               type="number"
-                              className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                              className="bg-white border border-slate-200 rounded px-1 py-0.5 text-xs sm:text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                               value={b.distHta || ''} 
                               onChange={e => updateBuildingParam(b.id, 'distHta', parseFloat(e.target.value) || 0)}
                             />
-                            <span className="text-[12px] text-slate-400 w-4">m</span>
+                            <span className="text-[10px] sm:text-[12px] text-slate-400 shrink-0">m</span>
                           </div>
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td className="text-[12px] text-slate-500 font-medium">Dist. partie privée</td>
+                      <td className="text-[11px] sm:text-[12px] text-slate-500 font-medium whitespace-nowrap">Dist. partie privée</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id}>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5 sm:gap-1">
                             <input 
                               type="number"
-                              className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                              className="bg-white border border-slate-200 rounded px-1 py-0.5 text-xs sm:text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                               value={b.distPriv || ''} 
                               onChange={e => updateBuildingParam(b.id, 'distPriv', parseFloat(e.target.value) || 0)}
                             />
-                            <span className="text-[12px] text-slate-400 w-4">m</span>
+                            <span className="text-[10px] sm:text-[12px] text-slate-400 shrink-0">m</span>
                           </div>
                         </td>
                       ))}
                     </tr>
-                    <tr className="h-2"></tr>
+                    <tr className="h-1 sm:h-2"></tr>
                     <tr>
-                      <td className="text-[12px] text-slate-500 font-medium pt-1">Centrale solaire</td>
+                      <td className="text-[11px] sm:text-[12px] text-slate-500 font-medium pt-1 whitespace-nowrap">Centrale solaire</td>
                       {(params.buildings || []).map(b => (
-                        <td key={b.id} className="pt-1 text-right text-sm font-bold text-slate-700 pr-2">
+                        <td key={b.id} className="pt-1 text-right text-xs sm:text-sm font-bold text-slate-700 pr-1">
                            {fmtEur(b.coutCentrale)}
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td className="text-[12px] text-slate-500 font-medium">Charpente / Bâtiment</td>
+                      <td className="text-[11px] sm:text-[12px] text-slate-500 font-medium whitespace-nowrap">Charpente / Bât.</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id}>
                           <input 
                             type="number"
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
+                            className="bg-white border border-slate-200 rounded px-1 py-0.5 text-xs sm:text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
                             value={b.coutCharpente || ''} 
                             onChange={e => updateBuildingParam(b.id, 'coutCharpente', parseFloat(e.target.value) || 0)}
                           />
