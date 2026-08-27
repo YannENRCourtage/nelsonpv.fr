@@ -338,16 +338,62 @@ export async function generateSechoirPDF({
 
   try {
     // ─── 1. CAPTURES HAUTE RÉSOLUTION (IMAGE 3D DU CONFIGURATEUR + SATELLITE + SCHÉMAS) ──
-    // Helper pour charger les images en Base64
+    // Helper pour charger les images en Base64 et nettoyer d'éventuelles bordures parasites
     const loadImgAsBase64 = async (url) => {
       try {
         const res = await fetch(url);
         if (res.ok) {
           const blob = await res.blob();
-          return await new Promise((resolve) => {
+          const base64 = await new Promise((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result);
             reader.readAsDataURL(blob);
+          });
+
+          // Nettoyage automatique des éventuels artéfacts de capture (lignes noires sur les bords extrêmes)
+          return await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const d = imgData.data;
+                const w = canvas.width;
+                const h = canvas.height;
+
+                let rightEdgeDark = 0;
+                for (let y = 0; y < h; y++) {
+                  const idx = (y * w + (w - 1)) * 4;
+                  if (d[idx] < 120 && d[idx + 1] < 120 && d[idx + 2] < 120) {
+                    rightEdgeDark++;
+                  }
+                }
+                if (rightEdgeDark > h * 0.15) {
+                  for (let y = 0; y < h; y++) {
+                    for (let x = Math.max(0, w - 5); x < w; x++) {
+                      const idx = (y * w + x) * 4;
+                      d[idx] = 255;
+                      d[idx + 1] = 255;
+                      d[idx + 2] = 255;
+                      d[idx + 3] = 255;
+                    }
+                  }
+                  ctx.putImageData(imgData, 0, 0);
+                  resolve(canvas.toDataURL('image/jpeg', 0.95));
+                  return;
+                }
+                resolve(base64);
+              } catch (err) {
+                resolve(base64);
+              }
+            };
+            img.onerror = () => resolve(base64);
+            img.src = base64;
           });
         }
       } catch (e) {
@@ -357,13 +403,13 @@ export async function generateSechoirPDF({
     };
 
     // Image Vue 3D Extérieure (gauche) pour Page 3 (selon modèle)
-    let left3dImgUrl = '/vue_3d_batitech_6_2_15.jpg';
+    let left3dImgUrl = '/vue_3d_batitech_6_2_15 v2.jpg';
     if (modelId === 'BT-3.1.15') {
       left3dImgUrl = '/vue_3d_batitech_3_1_15.jpg';
     } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
       left3dImgUrl = '/vue_3d_batitech_8_3_15.jpg';
     } else {
-      left3dImgUrl = '/vue_3d_batitech_6_2_15.jpg';
+      left3dImgUrl = '/vue_3d_batitech_6_2_15 v2.jpg';
     }
 
     // Image Vue Intérieure / Caissons (droite) pour Page 3 (selon modèle)
@@ -379,9 +425,9 @@ export async function generateSechoirPDF({
     const [left3dImgBase64, right3dImgBase64, schema1Img, schema2Img, schema3Img] = await Promise.all([
       loadImgAsBase64(left3dImgUrl),
       loadImgAsBase64(right3dImgUrl),
-      loadImgAsBase64('/Schema séchoir 1.png'),
+      loadImgAsBase64('/schema_sechoir_1 v2.jpg'),
       loadImgAsBase64('/Schema séchoir 2.png'),
-      loadImgAsBase64('/schema_sechoir_3.jpg'),
+      loadImgAsBase64('/schema_sechoir_3 v2.jpg'),
     ]);
 
     const snapshotSat = await generateSatelliteSnapshot({
