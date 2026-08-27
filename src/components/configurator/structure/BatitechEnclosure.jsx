@@ -3,10 +3,10 @@ import * as THREE from 'three';
 
 /**
  * BatitechEnclosure — Composant 3D pour le Séchoir BatiTech®
- * - Bardage 3 faces métallique nervuré : Sud (long pan 4m), Est (pignon avant), Ouest (pignon arrière)
+ * - Bardage 3 faces métallique nervuré décalé de 10cm à l'extérieur des pignons
  * - Face Nord ouverte pour circulation et logistique
  * - Cellules de séchage intérieures (15m de profondeur de X = -5m à X = +10m) avec murs béton et caillebotis métalliques perforés (tôles à pontets) au sol
- * - Locaux ventilateurs extérieurs devant la façade Sud avec porte ouverte à gauche révélant les équipements Cogen'Air®
+ * - Locaux ventilateurs extérieurs devant la façade Sud avec toit penché vers l'avant à 2° et portes techniques fermées avec poignées
  * - Ligne d'embases aérauliques en toiture sur toute la longueur du bâtiment (visibles UNIQUEMENT quand la couverture PV est désactivée)
  */
 export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.0, hasSolar = true }) {
@@ -17,6 +17,9 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
     const rightEaveH = 4.0; // Sablière Sud (X = +10m)
     const ridgeH = rightEaveH + (rSpan * Math.tan(mainSlope)); // ~8.02m
     const leftEaveH = ridgeH - (lSpan * Math.tan(mainSlope)); // ~6.68m
+
+    // Pente du toit du local technique : 2° vers l'avant
+    const fanRoofSlope2Deg = 2 * (Math.PI / 180);
 
     // Détermination des cellules de séchage et des locaux ventilateurs selon la longueur du modèle
     // BatiTech 3.1.15 (18m -> 1 cellule), BatiTech 6.2.15 (36m -> 2 cellules), BatiTech 8.3.15 (48m -> 3 cellules)
@@ -129,16 +132,6 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
         roughness: 0.1
     }), []);
 
-    const interiorDarkMaterial = useMemo(() => new THREE.MeshBasicMaterial({
-        color: '#020617'
-    }), []);
-
-    const fanBlueMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#2563eb', // Bleu Cogen'Air
-        roughness: 0.3,
-        metalness: 0.6
-    }), []);
-
     // Embases en toiture (caissons métalliques de reprise d'air)
     const embaseMaterial = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#e2e8f0', // Gris clair / tôle galvanisée
@@ -232,10 +225,16 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
         return list;
     }, []);
 
+    // Décalage du bardage pignon de 10cm vers l'extérieur
+    const pignonEstZ = 0.10;
+    const pignonOuestZ = -length - 0.10;
+
     return (
         <group name="batitech-enclosure">
             {/* ═════════════════════════════════════════════════════════════════ */}
             {/* 1. BARDAGE EXTÉRIEUR MÉTALLIQUE NERVURÉ 3 FACES                  */}
+            {/*    Pignons décalés de 10cm à l'extérieur pour ne pas être        */}
+            {/*    masqués par les murets béton intérieurs                       */}
             {/* ═════════════════════════════════════════════════════════════════ */}
 
             {/* Long Pan Sud (X = +10m) */}
@@ -258,36 +257,36 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
                 </mesh>
             ))}
 
-            {/* Pignon Est (Z = 0) */}
+            {/* Pignon Est (décalé à Z = +0.10m) */}
             <mesh
                 geometry={pignonGeo}
                 material={metalCladdingMaterial}
-                position={[0, 0, -0.05]}
+                position={[0, 0, pignonEstZ]}
                 castShadow
                 receiveShadow
             />
             {pignonRibs.map((rib, idx) => (
                 <mesh
                     key={`pignon-est-rib-${idx}`}
-                    position={[rib.x, rib.h / 2, 0.01]}
+                    position={[rib.x, rib.h / 2, pignonEstZ + 0.06]}
                     material={ribMaterial}
                 >
                     <boxGeometry args={[0.04, rib.h, 0.03]} />
                 </mesh>
             ))}
 
-            {/* Pignon Ouest (Z = -length) */}
+            {/* Pignon Ouest (décalé à Z = -length - 0.10m) */}
             <mesh
                 geometry={pignonGeo}
                 material={metalCladdingMaterial}
-                position={[0, 0, -length]}
+                position={[0, 0, pignonOuestZ]}
                 castShadow
                 receiveShadow
             />
             {pignonRibs.map((rib, idx) => (
                 <mesh
                     key={`pignon-ouest-rib-${idx}`}
-                    position={[rib.x, rib.h / 2, -length - 0.01]}
+                    position={[rib.x, rib.h / 2, pignonOuestZ - 0.06]}
                     material={ribMaterial}
                 >
                     <boxGeometry args={[0.04, rib.h, 0.03]} />
@@ -353,13 +352,13 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
             {/* ═════════════════════════════════════════════════════════════════ */}
             {/* 3. LOCAUX VENTILATEURS EXTÉRIEURS DEVANT LA FAÇADE SUD          */}
             {/*    En saillie à l'extérieur : de X = +10m à X = +12.4m           */}
-            {/*    Porte ouverte sur le côté gauche avec équipement intérieur    */}
+            {/*    Toiture penchée vers l'avant à 2° (slope2Deg)                 */}
+            {/*    Portes techniques fermées avec poignées                       */}
             {/* ═════════════════════════════════════════════════════════════════ */}
             {fanRooms.map((room) => {
                 const roomDepth = 2.4;  // 2.4m de saillie extérieure
                 const roomHeight = 3.2; // 3.2m de hauteur sous sablière
                 const roomX = (width / 2) + (roomDepth / 2); // X = +10m + 1.2m = +11.2m
-                const openDoorZ = room.isDouble ? 1.8 : 0; // Porte gauche
 
                 return (
                     <group key={room.id} position={[roomX, 0, room.zCenter]}>
@@ -373,48 +372,47 @@ export function BatitechEnclosure({ width = 20.0, length = 18.0, eaveHeight = 4.
                             <boxGeometry args={[roomDepth, roomHeight, room.length]} />
                         </mesh>
 
-                        {/* Toiture inclinée du local ventilateur */}
+                        {/* Toiture inclinée à 2° vers l'avant (pente vers l'extérieur) */}
                         <mesh
-                            position={[0, roomHeight + 0.08, 0]}
-                            rotation={[0, 0, 0.12]}
+                            position={[0, roomHeight + 0.06, 0]}
+                            rotation={[0, 0, -fanRoofSlope2Deg]}
                             material={fanRoomRoofMaterial}
                             castShadow
                         >
-                            <boxGeometry args={[roomDepth + 0.3, 0.10, room.length + 0.3]} />
+                            <boxGeometry args={[roomDepth + 0.3, 0.08, room.length + 0.3]} />
                         </mesh>
 
-                        {/* ─── PORTE GAUCHE OUVERTE ─── */}
-                        {/* Baie / Embrasure ouverte sombre */}
-                        <mesh position={[roomDepth / 2 + 0.01, 1.05, openDoorZ]} material={interiorDarkMaterial}>
-                            <planeGeometry args={[1.0, 2.1]} />
-                        </mesh>
-
-                        {/* Battant de porte pivoté vers l'extérieur (ouvert à 80°) */}
-                        <group position={[roomDepth / 2 + 0.02, 1.05, openDoorZ + 0.5]} rotation={[0, 1.4, 0]}>
-                            <mesh position={[0.5, 0, 0]} material={doorMaterial} castShadow>
-                                <boxGeometry args={[1.0, 2.1, 0.04]} />
-                            </mesh>
-                            {/* Poignée de porte */}
-                            <mesh position={[0.9, 0, 0.03]} material={doorHandleMaterial}>
-                                <boxGeometry args={[0.12, 0.03, 0.04]} />
-                            </mesh>
-                        </group>
-
-                        {/* Ventilateur centrifuge Cogen'Air® visible à l'intérieur de la baie ouverte */}
-                        <group position={[0, 0.9, openDoorZ]} rotation={[0, -Math.PI / 2, 0]}>
-                            <mesh material={fanBlueMaterial}>
-                                <cylinderGeometry args={[0.45, 0.45, 0.25, 24]} />
-                            </mesh>
-                            <mesh position={[0, 0.13, 0]} material={doorMaterial}>
-                                <cylinderGeometry args={[0.40, 0.40, 0.02, 16]} />
-                            </mesh>
-                        </group>
-
-                        {/* ─── PORTE DROITE FERMÉE (pour local double) ─── */}
-                        {room.isDouble && (
-                            <mesh position={[roomDepth / 2 + 0.01, 1.05, -1.8]} material={doorMaterial}>
-                                <planeGeometry args={[1.0, 2.1]} />
-                            </mesh>
+                        {/* Portes techniques fermées avec encadrement et poignée argentée */}
+                        {room.isDouble ? (
+                            <>
+                                {/* Porte Gauche */}
+                                <group position={[roomDepth / 2 + 0.01, 1.05, 1.8]}>
+                                    <mesh material={doorMaterial}>
+                                        <planeGeometry args={[1.0, 2.1]} />
+                                    </mesh>
+                                    <mesh position={[0.35, 0, 0.02]} material={doorHandleMaterial}>
+                                        <boxGeometry args={[0.04, 0.12, 0.03]} />
+                                    </mesh>
+                                </group>
+                                {/* Porte Droite */}
+                                <group position={[roomDepth / 2 + 0.01, 1.05, -1.8]}>
+                                    <mesh material={doorMaterial}>
+                                        <planeGeometry args={[1.0, 2.1]} />
+                                    </mesh>
+                                    <mesh position={[0.35, 0, 0.02]} material={doorHandleMaterial}>
+                                        <boxGeometry args={[0.04, 0.12, 0.03]} />
+                                    </mesh>
+                                </group>
+                            </>
+                        ) : (
+                            <group position={[roomDepth / 2 + 0.01, 1.05, 0]}>
+                                <mesh material={doorMaterial}>
+                                    <planeGeometry args={[1.0, 2.1]} />
+                                </mesh>
+                                <mesh position={[0.35, 0, 0.02]} material={doorHandleMaterial}>
+                                    <boxGeometry args={[0.04, 0.12, 0.03]} />
+                                </mesh>
+                            </group>
                         )}
 
                         {/* Bandeau d'identification BatiTech / Cogen'Air */}
