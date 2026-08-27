@@ -422,12 +422,13 @@ export async function generateSechoirPDF({
       right3dImgUrl = '/batitech_6_2_15.jpg';
     }
 
-    const [left3dImgBase64, right3dImgBase64, schema1Img, schema2Img, schema3Img] = await Promise.all([
+    const [left3dImgBase64, right3dImgBase64, schema1Img, schema2Img, schema4Img, schemaGrillesImg] = await Promise.all([
       loadImgAsBase64(left3dImgUrl),
       loadImgAsBase64(right3dImgUrl),
       loadImgAsBase64('/schema_sechoir_1 v2.jpg'),
       loadImgAsBase64('/Schema séchoir 2.png'),
-      loadImgAsBase64('/schema_sechoir_3 v2.jpg'),
+      loadImgAsBase64('/schema_sechoir_4.jpg'),
+      loadImgAsBase64('/schema_sechoir_grilles.png'),
     ]);
 
     const snapshotSat = await generateSatelliteSnapshot({
@@ -791,25 +792,30 @@ export async function generateSechoirPDF({
       <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
         ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName })}
 
-        <!-- CONTENEUR SCHÉMAS EN 2 LIGNES (LIGNE 1 : SCHÉMA 1 & 2 CÔTE À CÔTE, LIGNE 2 : SCHÉMA 3 PLEINE LARGEUR) -->
+        <!-- CONTENEUR SCHÉMAS EN 2 LIGNES (LIGNE 1 : 3 SCHÉMAS CÔTE À CÔTE, LIGNE 2 : GRILLES PLEINE LARGEUR) -->
         <div style="display: flex; flex-direction: column; gap: 8px; height: 164mm; box-sizing: border-box;">
           
-          <!-- LIGNE 1 : SCHÉMA 1 (GAUCHE) & SCHÉMA 2 (DROITE) -->
-          <div style="display: flex; gap: 10px; height: 78mm; align-items: stretch;">
-            <!-- Schéma 1 -->
-            <div style="flex: 1; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px 8px; box-sizing: border-box;">
+          <!-- LIGNE 1 : SCHÉMA 1 (GAUCHE), SCHÉMA 2 (CENTRE), SCHÉMA 4 (DROITE) -->
+          <div style="display: flex; gap: 8px; height: 78mm; align-items: stretch;">
+            <!-- Schéma 1 (3D Bâtiment Séchoir) -->
+            <div style="flex: 1.1; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px 6px; box-sizing: border-box;">
               <img src="${schema1Img}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 1" />
             </div>
 
-            <!-- Schéma 2 -->
-            <div style="flex: 1; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px 8px; box-sizing: border-box;">
+            <!-- Schéma 2 (Coupe Transversale) -->
+            <div style="flex: 1.25; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px 6px; box-sizing: border-box;">
               <img src="${schema2Img}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 2" />
+            </div>
+
+            <!-- Schéma 4 (Caisson & Bottes) -->
+            <div style="flex: 0.95; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px 6px; box-sizing: border-box;">
+              <img src="${schema4Img}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 4" />
             </div>
           </div>
 
-          <!-- LIGNE 2 : SCHÉMA 3 (PLEINE LARGEUR) -->
+          <!-- LIGNE 2 : GRILLES DE SÉCHAGE (PLEINE LARGEUR) -->
           <div style="flex: 1; min-height: 76mm; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px 10px; box-sizing: border-box;">
-            <img src="${schema3Img}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 3" />
+            <img src="${schemaGrillesImg}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Grilles de séchage au sol" />
           </div>
 
         </div>
