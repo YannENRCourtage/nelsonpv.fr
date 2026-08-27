@@ -2166,7 +2166,7 @@ export default function Crm() {
                     setSearchParams({ tab: item.id });
                   }}
                   className={cn(
-                    "w-full flex items-center rounded-xl font-extrabold text-xs transition-all duration-200",
+                    "w-full flex items-center rounded-xl font-extrabold text-sm transition-all duration-200",
                     sidebarOpen ? "gap-3 px-3.5 py-3 text-left" : "justify-center p-3",
                     isActive
                       ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-500/30"
@@ -2175,7 +2175,7 @@ export default function Crm() {
                   title={!sidebarOpen ? item.label : undefined}
                 >
                   <Icon className="w-5 h-5 shrink-0" />
-                  {sidebarOpen && <span className="truncate">{item.label}</span>}
+                  {sidebarOpen && <span className="truncate text-sm">{item.label}</span>}
                 </button>
               );
             })}

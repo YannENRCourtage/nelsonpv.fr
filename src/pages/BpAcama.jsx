@@ -1969,12 +1969,12 @@ function TabBpProjets({
   const prodTotale = params.kwc * params.productible;
 
   return (
-    <div id="bp-acama-content" className="flex flex-col gap-4 p-4 text-slate-900">
+    <div id="bp-acama-content" className="flex flex-col gap-4 p-2 sm:p-4 text-slate-900 max-w-full overflow-x-hidden">
       {/* Project selector & Actions */}
-      <div data-html2canvas-ignore="true" className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-blue-700">Projet CRM :</span>
-          <div className="w-64">
+      <div data-html2canvas-ignore="true" className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center gap-4 max-w-full">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="text-sm font-semibold text-blue-700 whitespace-nowrap">Projet CRM :</span>
+          <div className="w-full max-w-[260px] min-w-0">
             <ProjectSelect 
               projects={projects || []} 
               activeProjectId={selectedProject?.id} 
@@ -1983,7 +1983,7 @@ function TabBpProjets({
           </div>
         </div>
 
-        <div className="flex-1 min-w-[20px]" />
+        <div className="flex-1 min-w-[10px]" />
 
         {selectedProject && (
           <div className="flex items-center gap-2 shrink-0">
@@ -2010,7 +2010,7 @@ function TabBpProjets({
         )}
       </div>
 
-      <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-4 pt-6 relative overflow-hidden">
+      <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-2.5 sm:p-4 pt-4 sm:pt-6 relative max-w-full overflow-hidden">
           {isBatteryStandAlone && (
             <div className="mb-4 bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-center gap-2 text-amber-800" data-html2canvas-ignore="true">
               <AlertTriangle className="w-4 h-4" />
@@ -2018,13 +2018,13 @@ function TabBpProjets({
             </div>
           )}
           <PDFHeader selectedProject={selectedProject} />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2 items-stretch max-w-full">
           {/* Column 1: Projects and Investment (Widened) */}
-          <div className="lg:col-span-12 xl:col-span-5 space-y-8 flex flex-col h-full">
+          <div className="lg:col-span-12 xl:col-span-5 space-y-8 flex flex-col h-full max-w-full">
             <SectionCard 
               title="DONNÉES DU PROJET" 
               id="pdf-section-data"
-              className="bg-white border-t-4 border-t-blue-500 shadow-sm grow pb-2"
+              className="bg-white border-t-4 border-t-blue-500 shadow-sm grow pb-2 max-w-full overflow-hidden"
               actions={
                 <button 
                   onClick={addBuilding} 
@@ -2035,13 +2035,13 @@ function TabBpProjets({
                 </button>
               }
             >
-              <div className="w-full overflow-x-auto pb-1">
-                <table className="w-full text-left border-separate border-spacing-x-1 sm:border-spacing-x-2">
+              <div className="w-full overflow-x-auto pb-1 max-w-full">
+                <table className="w-full text-left border-separate border-spacing-x-1 sm:border-spacing-x-2 table-fixed">
                   <thead>
                     <tr>
-                      <th className="w-28 sm:w-36"></th>
+                      <th className="w-[110px] sm:w-[130px]"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="group relative text-center text-[11px] sm:text-xs uppercase text-slate-400 font-bold pb-1">
+                        <th key={b.id} className="group relative text-center text-[11px] sm:text-xs uppercase text-slate-400 font-bold pb-1 w-auto min-w-0">
                           <div className="flex flex-col items-center gap-1">
                             {i > 0 && (
                               <button 
@@ -2223,14 +2223,14 @@ function TabBpProjets({
               </div>
             </SectionCard>
 
-            <SectionCard title="INVESTISSEMENT" id="pdf-section-invest" className="grow pb-2 border-t-4 border-t-amber-400">
-              <div className="w-full overflow-x-auto pb-1">
-                <table className="w-full text-left border-separate border-spacing-x-1 sm:border-spacing-x-2">
+            <SectionCard title="INVESTISSEMENT" id="pdf-section-invest" className="grow pb-2 border-t-4 border-t-amber-400 max-w-full overflow-hidden">
+              <div className="w-full overflow-x-auto pb-1 max-w-full">
+                <table className="w-full text-left border-separate border-spacing-x-1 sm:border-spacing-x-2 table-fixed">
                   <thead>
                     <tr>
-                      <th className="w-28 sm:w-36"></th>
+                      <th className="w-[110px] sm:w-[130px]"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="group relative text-center text-[11px] sm:text-xs uppercase text-slate-400 font-bold pb-1">
+                        <th key={b.id} className="group relative text-center text-[11px] sm:text-xs uppercase text-slate-400 font-bold pb-1 w-auto min-w-0">
                            <div className="flex flex-col items-center gap-1">
                             {i > 0 && (
                               <button 

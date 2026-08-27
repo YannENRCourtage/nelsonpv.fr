@@ -478,63 +478,7 @@ export async function generateSechoirPDF({
     pdf.addImage(canvas1.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // ─── PAGE 2 : VUE 3D CONFIGURATEUR & CARTE SATELLITE (SUPERPOSÉES) ────────
-    // ═══════════════════════════════════════════════════════════════════════════
-    container.innerHTML = `
-      <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
-        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName })}
-
-        <!-- 2 CADRES PLEINE LARGEUR SUPERPOSÉS (3D EN HAUT, SATELLITE EN BAS) -->
-        <div style="display: flex; flex-direction: column; gap: 8px; height: 160mm; box-sizing: border-box;">
-          
-          <!-- CADRE DU HAUT : VUE 3D CONFIGURATEUR SELON MODÈLE (IMAGE 2, 3, 4) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; height: 72mm; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 8px; border-bottom-right-radius: 6px; font-size: 6.8pt; font-weight: bold; z-index: 2; line-height: 1;">
-              Vue 3D Configurateur BatiTech® (${bDims})
-            </div>
-            <img src="${batitech3dImg}" style="max-width: 98%; max-height: 96%; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
-            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 8px; border-top-left-radius: 6px; font-size: 6.5pt; font-weight: bold;">
-              Cogen'Air® Intégré
-            </div>
-          </div>
-
-          <!-- CADRE DU BAS : IMPLANTATION SATELLITE SUR LE TERRAIN -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; flex: 1; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 8px; border-bottom-right-radius: 6px; font-size: 6.8pt; font-weight: bold; z-index: 2; line-height: 1;">
-              Implantation Satellite sur la Parcelle
-            </div>
-            ${snapshotSat ? `
-              <img src="${snapshotSat}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite" />
-            ` : `
-              <div style="color: #94a3b8; font-size: 9pt; text-align: center; margin: auto; padding: 10px;">
-                <strong style="color: #ffffff;">Repérage Satellite</strong>
-                <div style="font-size: 7.5pt; margin-top: 2px; color: #94a3b8;">${clientAddress}</div>
-              </div>
-            `}
-            <div style="position: absolute; bottom: 6px; right: 10px; background: transparent; color: #ffffff; text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95); padding: 2px 6px; font-size: 7.5pt; font-weight: bold;">
-              Orientation : ${r.orientationLabel || 'Sud'}
-            </div>
-          </div>
-
-        </div>
-
-        ${renderLandscapeFooter({ pageNum: 2, totalPages, dateStr })}
-      </div>
-    `;
-
-    const canvas2 = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      width: 1122,
-      windowWidth: 1122,
-    });
-    pdf.addPage();
-    pdf.addImage(canvas2.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ─── PAGE 3 : BUSINESS PLAN & TABLEAU DES FLUX SUR 25 ANS AVEC CHARGES ────
+    // ─── PAGE 2 : BUSINESS PLAN & TABLEAU DES FLUX SUR 25 ANS AVEC CHARGES ────
     // ═══════════════════════════════════════════════════════════════════════════
     const chartCanvas = document.createElement('canvas');
     drawLandscapeTreasuryChart(chartCanvas, r.treasury?.cashFlows || [], r.roi || 8.79);
@@ -570,7 +514,7 @@ export async function generateSechoirPDF({
 
         <!-- Grand Graphique de Trésorerie Cumulée Pleine Largeur Agrandit -->
         <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 4px 10px; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); text-align: center; margin-bottom: 8px;">
-          <img src="${treasuryChartImg}" alt="Trésorerie Cumulée" style="max-width: 99%; height: 60mm; display: block; margin: 0 auto;" />
+          <img src="${treasuryChartImg}" alt="Trésorerie Cumulée" style="max-width: 99%; height: 68mm; display: block; margin: 0 auto;" />
         </div>
 
         <!-- Tableau des flux sur 2 colonnes (Années 1-13 et 14-25) avec colonne Charges -->
@@ -615,7 +559,7 @@ export async function generateSechoirPDF({
         </div>
 
         <!-- Synthèse des Indicateurs Financiers Avancés -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 6px;">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px;">
           <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 5px 10px; text-align: center;">
             <span style="font-size: 6.2pt; color: #166534; font-weight: bold; text-transform: uppercase;">Valeur Actuelle Nette (VAN 20 ans)</span>
             <div style="font-size: 10.5pt; font-weight: 900; color: #16a34a;">+${fmt(r.van)} €</div>
@@ -628,6 +572,62 @@ export async function generateSechoirPDF({
             <span style="font-size: 6.2pt; color: #475569; font-weight: bold; text-transform: uppercase;">Temps de Retour sur Investissement (ROI)</span>
             <div style="font-size: 10.5pt; font-weight: 900; color: #0284c7;">${Number(r.roi || 8.79).toFixed(2)} ans</div>
           </div>
+        </div>
+
+        ${renderLandscapeFooter({ pageNum: 2, totalPages, dateStr })}
+      </div>
+    `;
+
+    const canvas2 = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width: 1122,
+      windowWidth: 1122,
+    });
+    pdf.addPage();
+    pdf.addImage(canvas2.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ─── PAGE 3 : VUE 3D CONFIGURATEUR & CARTE SATELLITE (SUPERPOSÉES) ────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    container.innerHTML = `
+      <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
+        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName })}
+
+        <!-- 2 CADRES PLEINE LARGEUR SUPERPOSÉS (3D EN HAUT, SATELLITE EN BAS) -->
+        <div style="display: flex; flex-direction: column; gap: 8px; height: 164mm; box-sizing: border-box;">
+          
+          <!-- CADRE DU HAUT : VUE 3D CONFIGURATEUR SELON MODÈLE (IMAGE 2, 3, 4) -->
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; height: 72mm; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 4px 12px; border-bottom-right-radius: 6px; font-size: 7.5pt; font-weight: bold; z-index: 2; line-height: 1.2;">
+              Vue 3D Configurateur BatiTech® (${bDims})
+            </div>
+            <img src="${batitech3dImg}" style="max-width: 98%; max-height: 96%; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
+            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 10px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold;">
+              Cogen'Air® Intégré
+            </div>
+          </div>
+
+          <!-- CADRE DU BAS : IMPLANTATION SATELLITE SUR LE TERRAIN -->
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; flex: 1; min-height: 86mm; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 4px 12px; border-bottom-right-radius: 6px; font-size: 7.5pt; font-weight: bold; z-index: 2; line-height: 1.2;">
+              Implantation Satellite sur la Parcelle
+            </div>
+            ${snapshotSat ? `
+              <img src="${snapshotSat}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite" />
+            ` : `
+              <div style="color: #94a3b8; font-size: 9pt; text-align: center; margin: auto; padding: 10px;">
+                <strong style="color: #ffffff;">Repérage Satellite</strong>
+                <div style="font-size: 7.5pt; margin-top: 2px; color: #94a3b8;">${clientAddress}</div>
+              </div>
+            `}
+            <div style="position: absolute; bottom: 6px; right: 10px; background: transparent; color: #ffffff; text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95); padding: 2px 6px; font-size: 7.5pt; font-weight: bold;">
+              Orientation : ${r.orientationLabel || 'Sud'}
+            </div>
+          </div>
+
         </div>
 
         ${renderLandscapeFooter({ pageNum: 3, totalPages, dateStr })}
