@@ -137,7 +137,7 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
                 onChange={handleSurfaceChange}
                 placeholder="0"
                 onClick={(e) => e.stopPropagation()}
-                className="w-24 sm:w-28 text-right font-black bg-slate-900/90 text-emerald-400 border border-slate-700/80 focus:border-emerald-500 rounded-xl px-2.5 py-1.5 text-base sm:text-lg focus:outline-none"
+                className="w-24 sm:w-28 text-center font-black bg-slate-900/90 text-emerald-400 border border-slate-700/80 focus:border-emerald-500 rounded-xl px-2.5 py-1.5 text-base sm:text-lg focus:outline-none"
               />
               <span className="text-xs sm:text-sm font-bold text-slate-300">Ha</span>
             </div>

@@ -183,11 +183,24 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
   if (!finalMapScreenshot) {
     try {
+      const bLen = isSechoir
+        ? Number(sim.length || (sim.modelId === 'BT-8.3.15' ? 48 : sim.modelId === 'BT-6.2.15' ? 36 : 18))
+        : Number(sim.length || 30);
+      const bWid = Number(sim.width || 20);
+      const bRot = Number(sim.rotation !== undefined ? sim.rotation : 0);
+
       finalMapScreenshot = sim.mapScreenshot || await generateSatelliteSnapshot({
         center: sim.mapCenter || [43.6047, 1.4442],
         polygonPoints: sim.polygonPoints || [],
-        buildings: sim.buildings || (isSechoir ? [{ length: Number(sim.length || 18), width: Number(sim.width || 20), rotation: Number(sim.rotation || 0) }] : []),
-        building: isSechoir ? { length: Number(sim.length || 18), width: Number(sim.width || 20), rotation: Number(sim.rotation || 0) } : null,
+        buildings: (sim.buildings && sim.buildings.length > 0)
+          ? sim.buildings.map(b => ({
+              ...b,
+              length: Number(b.length || bLen),
+              width: Number(b.width || bWid),
+              rotation: Number(b.rotation !== undefined ? b.rotation : bRot)
+            }))
+          : [{ length: bLen, width: bWid, rotation: bRot, name: `Séchoir ${sim.modelName || 'BatiTech'}` }],
+        building: { length: bLen, width: bWid, rotation: bRot },
         width: 800,
         height: 650,
         zoom: 19
@@ -523,7 +536,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.8px 0; color: #64748b;">Montant de l'emprunt (25 ans) :</td><td style="text-align: right; font-weight: bold;">${(sim.emprunt !== undefined ? sim.emprunt : (sim.investissementNet || 288263)).toLocaleString('fr-FR')} €</td></tr>
                 <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.8px 0; color: #dc2626;">Montant moyen de l'annuité :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${(sim.annuite || 17386).toLocaleString('fr-FR')} €/an</td></tr>
                 <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.8px 0; color: #16a34a;">Impact annuel sur l'EBE :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${(sim.deltaEBE || 24220).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="background: #f0fdf4; border-bottom: 1px solid #cbd5e1;"><td style="padding: 1px 0; font-weight: 900; color: #166534;">Gain Net Annuel d'Exploitation :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 6.6pt;">+${(sim.gainNetAnnuel || 12921).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr><td colspan="2" style="height: 3px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+                <tr style="background: #f0fdf4; border-top: 1px solid #bbf7d0; border-bottom: 1px solid #86efac;"><td style="padding: 1.5px 2px; font-weight: 900; color: #166534;">Gain Net Annuel d'Exploitation :</td><td style="padding: 1.5px 2px; text-align: right; font-weight: 900; color: #166534; font-size: 6.8pt;">+${(sim.gainNetAnnuel || 12921).toLocaleString('fr-FR')} €/an</td></tr>
               </table>
 
               <!-- Encart Subventions Régionales & Aides Éligibles (titre sur une seule ligne, sans badge) -->
@@ -570,7 +584,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                   <div style="font-size: 7.5pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
                 </div>
               `}
-              <div style="position: absolute; bottom: 6px; right: 6px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 6.8pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">Orientation : ${sim.orientationLabel || 'Sud'}</div>
+              <div style="position: absolute; bottom: 6px; right: 6px; background: transparent; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.9); padding: 2px 4px; font-size: 6.8pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">Orientation : ${sim.orientationLabel || 'Sud'}</div>
             </div>
           </div>
         ` : isStruct ? `

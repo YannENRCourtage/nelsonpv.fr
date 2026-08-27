@@ -20,6 +20,8 @@ import SimulatorDatabaseTab from '@/components/simulator/SimulatorDatabaseTab';
 import SimulatorArchivesTab from '@/components/simulator/SimulatorArchivesTab';
 import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
 import useSechoirStore from '@/stores/useSechoirStore.js';
+import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
+import { calculateFullSimulation } from '@/components/simulator/sechoir/sechoirCalculations.js';
 
 // ─── Sélecteur de projet CRM dans la barre latérale ─────────────────────────
 const ProjectSelect = ({ projects, activeProjectId, onSelect }) => {
@@ -254,39 +256,120 @@ export default function IrveSimulator() {
   // Export PDF A4 Portrait
   const handleExportPDF = async (simToExport = null) => {
     const isSechoirSolution = activeSolution === 'sechoir';
-    const targetSim = simToExport || activeSimulationState || {
-      type: activeSolution === 'autoconso' ? 'autoconsommation'
-        : activeSolution === 'toiture' ? 'toiture_pv'
-        : activeSolution === 'structure' ? 'structure_metallique'
-        : activeSolution === 'sechoir' ? 'sechoir_batitech'
-        : 'irve',
-      title: isSechoirSolution ? `Séchoir Multi-Matières BatiTech® — ${selectedProject?.name || 'Étude'}` : `Simulation ${activeSolution.toUpperCase()} — ${selectedProject?.name || 'Étude'}`,
-      cityName: selectedProject?.city || 'Saint-Jean-d\'Illac',
-      address: selectedProject?.address || 'Site du Projet',
-      modelName: 'BatiTech 3.1.15',
-      dimensions: '18m × 20m',
-      length: 18,
-      width: 20,
-      roofSurface: isSechoirSolution ? 360 : 83,
-      floorArea: isSechoirSolution ? 360 : 83,
-      kwc: isSechoirSolution ? 30.15 : (selectedProject?.kwc || 9),
-      nbModules: isSechoirSolution ? 90 : 24,
-      annualProductionKwh: isSechoirSolution ? 35049 : 11250,
-      deltaProduits: isSechoirSolution ? 25720 : 0,
-      annualBenefitYear1: isSechoirSolution ? 24220 : 2450,
-      deltaEBE: isSechoirSolution ? 24220 : 2450,
-      totalInvestmentHT: isSechoirSolution ? 127053 : 13500,
-      primeCEE: isSechoirSolution ? 38790 : 0,
-      subventionsPAE: isSechoirSolution ? 138790 : 0,
-      investissementNet: isSechoirSolution ? 327053 : 13500,
-      emprunt: isSechoirSolution ? 188261 : 0,
-      annuite: isSechoirSolution ? 11299 : 0,
-      gainNetAnnuel: isSechoirSolution ? 12921 : 2450,
-      paybackYear: isSechoirSolution ? 7.29 : 7,
-      roi: isSechoirSolution ? 7.29 : 7,
-      van: isSechoirSolution ? 127853 : 0,
-      triPercent: isSechoirSolution ? '7.06' : '0.00',
-    };
+    let targetSim = simToExport || activeSimulationState;
+
+    if (isSechoirSolution) {
+      const sechoirState = useSechoirStore.getState();
+      const currentModelId = sechoirState.selectedModelId || 'BT-3.1.15';
+      const modelObj = BATITECH_MODELS[currentModelId] || BATITECH_MODELS['BT-3.1.15'];
+      const simResults = calculateFullSimulation({
+        model: currentModelId,
+        departement: sechoirState.departement || '33',
+        orientation: sechoirState.orientation || 'sud',
+        materials: sechoirState.materials || [],
+        financialParams: sechoirState.financialParams || {},
+      });
+
+      const rot = typeof sechoirState.rotation === 'number' ? sechoirState.rotation : (
+        sechoirState.orientation === 'ouest' ? 90 :
+        sechoirState.orientation === 'sud-ouest' ? 45 :
+        sechoirState.orientation === 'sud-est' ? -45 :
+        sechoirState.orientation === 'est' ? -90 : 0
+      );
+      const center = sechoirState.mapCenter || (sechoirState.latitude && sechoirState.longitude ? [Number(sechoirState.latitude), Number(sechoirState.longitude)] : [43.6047, 1.4442]);
+
+      targetSim = {
+        ...(activeSimulationState || {}),
+        type: 'sechoir_batitech',
+        title: `Séchoir Multi-Matières BatiTech® — ${modelObj.name}`,
+        cityName: sechoirState.commune || selectedProject?.city || 'Saint-Jean-d\'Illac',
+        address: sechoirState.addressLabel || sechoirState.address || selectedProject?.address || 'Site du Projet',
+        departement: sechoirState.departement || '33',
+        departmentCode: sechoirState.departement || '33',
+        modelId: currentModelId,
+        modelName: modelObj.name,
+        dimensions: modelObj.dimensions,
+        length: modelObj.length,
+        width: modelObj.width,
+        roofSurface: modelObj.surfaceToiture,
+        floorArea: modelObj.surfaceToiture,
+        kwc: modelObj.puissanceKwc,
+        nbModules: modelObj.nbModules,
+        rotation: rot,
+        mapCenter: center,
+        orientation: sechoirState.orientation,
+        orientationLabel: (() => {
+          let cardinal = 'Sud';
+          if (rot >= -22 && rot <= 22) cardinal = 'Sud';
+          else if (rot > 22 && rot <= 67) cardinal = 'Sud-Ouest';
+          else if (rot > 67 && rot <= 112) cardinal = 'Ouest';
+          else if (rot > 112 && rot <= 157) cardinal = 'Nord-Ouest';
+          else if (rot < -22 && rot >= -67) cardinal = 'Sud-Est';
+          else if (rot < -67 && rot >= -112) cardinal = 'Est';
+          else if (rot < -112 && rot >= -157) cardinal = 'Nord-Est';
+          else cardinal = 'Nord';
+          const degStr = rot > 0 ? `+${rot}°` : `${rot}°`;
+          return `${cardinal} (${degStr})`;
+        })(),
+        buildings: [{
+          name: `Séchoir ${modelObj.name}`,
+          length: modelObj.length,
+          width: modelObj.width,
+          rotation: rot,
+        }],
+        annualProductionKwh: simResults?.productionPV || 35049,
+        deltaProduits: simResults?.produits?.deltaProduits || 0,
+        deltaCharges: simResults?.charges?.deltaCharges || 0,
+        annualBenefitYear1: simResults?.deltaEBE || 0,
+        deltaEBE: simResults?.deltaEBE || 0,
+        totalInvestmentHT: modelObj.investissementBrut || 327053,
+        primeCEE: simResults?.cee?.primeTotal || 0,
+        subventionsPAE: 0,
+        subventionRegionaleNom: simResults?.subventionsEligibles?.subventionRegionale?.nom || 'Dispositif Régional (PCAE / FEADER)',
+        subventionRegionaleMontant: simResults?.subventionsEligibles?.montantEstime || 0,
+        investissementNet: simResults?.financing?.investissementNet || 0,
+        emprunt: simResults?.financing?.emprunt || 0,
+        annuite: simResults?.annuite || 0,
+        gainNetAnnuel: simResults?.gainNetAnnuel || 0,
+        paybackYear: simResults?.roi || 10.09,
+        roi: simResults?.roi || 10.09,
+        van: simResults?.van || 0,
+        tri: simResults?.triPercent || 'N/A',
+        triPercent: simResults?.triPercent || 'N/A',
+      };
+    } else if (!targetSim) {
+      targetSim = {
+        type: activeSolution === 'autoconso' ? 'autoconsommation'
+          : activeSolution === 'toiture' ? 'toiture_pv'
+          : activeSolution === 'structure' ? 'structure_metallique'
+          : 'irve',
+        title: `Simulation ${activeSolution.toUpperCase()} — ${selectedProject?.name || 'Étude'}`,
+        cityName: selectedProject?.city || 'Saint-Jean-d\'Illac',
+        address: selectedProject?.address || 'Site du Projet',
+        dimensions: '30m × 20m',
+        length: 30,
+        width: 20,
+        roofSurface: 83,
+        floorArea: 83,
+        kwc: selectedProject?.kwc || 9,
+        nbModules: 24,
+        annualProductionKwh: 11250,
+        deltaProduits: 0,
+        annualBenefitYear1: 2450,
+        deltaEBE: 2450,
+        totalInvestmentHT: 13500,
+        primeCEE: 0,
+        subventionsPAE: 0,
+        investissementNet: 13500,
+        emprunt: 0,
+        annuite: 0,
+        gainNetAnnuel: 2450,
+        paybackYear: 7,
+        roi: 7,
+        van: 0,
+        triPercent: '0.00',
+      };
+    }
 
     await generateCommercialOfferPDF({
       simulation: targetSim,
