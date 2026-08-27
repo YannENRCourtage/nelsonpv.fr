@@ -35,7 +35,7 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
 
     const gammeName = isBatitech ? 'Séchoir BatiTech®' : barcMatch.gamme;
     const buildingCode = isBatitech ? batitechModel.name : String(barcMatch.id || '').replace(/^#/, '').trim();
-    const equivalenceCode = isBatitech ? 'AS9.2 (20m Asymétrique)' : String(barcMatch.code || '').trim();
+    const equivalenceCode = isBatitech ? 'AS9.2' : String(barcMatch.code || '').trim();
 
     // Puissance solaire
     const installedKwc = isBatitech

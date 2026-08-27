@@ -181,14 +181,24 @@ export default function Step3Orientation() {
     setOrientation(angleToOrientationName(ang));
   };
 
-  const mapCenter = (latitude && longitude && !isNaN(Number(latitude)) && !isNaN(Number(longitude)))
+  const storeMapCenter = useSechoirStore((state) => state.mapCenter);
+  const initialCoords = (latitude && longitude && !isNaN(Number(latitude)) && !isNaN(Number(longitude)))
     ? [Number(latitude), Number(longitude)]
     : [43.6047, 1.4442];
 
+  const mapCenter = storeMapCenter && Array.isArray(storeMapCenter) && storeMapCenter.length === 2
+    ? storeMapCenter
+    : initialCoords;
+
   useEffect(() => {
-    setMapCenterInStore(mapCenter);
+    if (!storeMapCenter) {
+      setMapCenterInStore(initialCoords);
+    }
+  }, [latitude, longitude]);
+
+  useEffect(() => {
     setRotationInStore(rotation);
-  }, [latitude, longitude, rotation]);
+  }, [rotation]);
 
   return (
     <motion.div

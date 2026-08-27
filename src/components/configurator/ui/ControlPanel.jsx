@@ -499,9 +499,9 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
 
                     {/* DÉTAILS TECHNIQUES FIXES AS9.2 DU SÉCHOIR */}
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 text-xs">
-                        <div className="font-bold text-slate-800 flex items-center justify-between">
-                            <span>Base Structure : <strong className="text-amber-700">AS9.2 (20m Asymétrique)</strong></span>
-                            <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">Séchoir Solaire</span>
+                        <div className="font-bold text-slate-800 flex items-center justify-between gap-2">
+                            <span>Base Structure : <strong className="text-amber-700">AS9.2</strong></span>
+                            <span className="bg-amber-100 text-amber-800 text-[10px] px-2.5 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">Séchoir Solaire</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1 border-t border-slate-200">
                             <div>• Sablière Sud : <strong>4.00 m</strong></div>
@@ -519,13 +519,13 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                             <span>🌾 Équipements Séchage Inclus :</span>
                         </div>
                         <ul className="text-[11px] text-amber-900 space-y-1 pl-1">
-                            <li className="flex items-center gap-1.5">
-                                <span className="text-amber-600 font-black">✓</span>
-                                <strong>Bardage 3 faces :</strong> Sud, Est et Ouest
+                            <li className="flex items-start gap-1.5">
+                                <span className="text-amber-600 font-black shrink-0">✓</span>
+                                <div><strong>Bardage 3 faces :</strong> Sud, Est et Ouest</div>
                             </li>
-                            <li className="flex items-center gap-1.5">
-                                <span className="text-amber-600 font-black">✓</span>
-                                <strong>Face Nord ouverte :</strong> Accès direct exploitation et manutention
+                            <li className="flex items-start gap-1.5">
+                                <span className="text-amber-600 font-black shrink-0">✓</span>
+                                <div><strong className="whitespace-nowrap">Face Nord ouverte :</strong> Accès direct exploitation et manutention</div>
                             </li>
                             <li className="flex items-center gap-1.5">
                                 <span className="text-amber-600 font-black">✓</span>

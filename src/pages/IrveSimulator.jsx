@@ -141,6 +141,7 @@ export default function IrveSimulator() {
 
   // ─── État dynamique de la simulation en cours pour actions globales ────────
   const [activeSimulationState, setActiveSimulationState] = useState(null);
+  const [clientNameGlobal, setClientNameGlobal] = useState('');
 
   const selectedProject = (projects || []).find(p => p.id === selectedProjectId);
 
@@ -551,28 +552,47 @@ export default function IrveSimulator() {
             )}
           </div>
 
-          {/* Ligne 2 : BOUTONS SAUVEGARDER ET PDF ALIGNÉS EN HAUT À DROITE SOUS LES BOUTONS SOLUTIONS */}
+          {/* Ligne 2 : CHAMP NOM DU CLIENT + BOUTONS SAUVEGARDER ET PDF ALIGNÉS À DROITE */}
           {activeMainTab === 'simulateurs' && (
-            <div className="flex items-center justify-end gap-2.5 pt-0.5 min-w-0">
-              <button
-                type="button"
-                onClick={() => handleSaveCurrentSimulation()}
-                className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:scale-105 shrink-0"
-                title="Sauvegarder l'étude en cours dans les archives"
-              >
-                <Save className="w-3.5 h-3.5 text-emerald-400" />
-                Sauvegarder
-              </button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1 max-w-full sm:max-w-md">
+                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Nom du client :</span>
+                <input
+                  type="text"
+                  value={activeSolution === 'sechoir' ? (useSechoirStore.getState().clientName || clientNameGlobal) : clientNameGlobal}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setClientNameGlobal(val);
+                    if (activeSolution === 'sechoir') {
+                      useSechoirStore.getState().setClientName(val);
+                    }
+                  }}
+                  placeholder="ex: EARL des Terres Noires, M. Jean Dupont..."
+                  className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-300 focus:border-blue-500 rounded-xl px-3 py-1.5 text-slate-900 font-semibold text-xs focus:outline-none placeholder:text-slate-400 transition-all shadow-2xs"
+                />
+              </div>
 
-              <button
-                type="button"
-                onClick={() => handleExportPDF()}
-                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all hover:scale-105 shrink-0"
-                title="Générer l'Offre Commerciale au format PDF A4 Portrait"
-              >
-                <FileDown className="w-3.5 h-3.5" />
-                PDF
-              </button>
+              <div className="flex items-center justify-end gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleSaveCurrentSimulation()}
+                  className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:scale-105 shrink-0 cursor-pointer"
+                  title="Sauvegarder l'étude en cours dans les archives"
+                >
+                  <Save className="w-3.5 h-3.5 text-emerald-400" />
+                  Sauvegarder
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExportPDF()}
+                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all hover:scale-105 shrink-0 cursor-pointer"
+                  title="Générer l'Offre Commerciale au format PDF A4 Portrait"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  PDF
+                </button>
+              </div>
             </div>
           )}
         </div>
