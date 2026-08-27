@@ -226,6 +226,7 @@ export function Structure({ hideBracing = false, forceHideDimensions = false, vi
                     width={width}
                     length={length}
                     eaveHeight={eaveHeight}
+                    hasSolar={config.hasSolar}
                 />
             )}
 

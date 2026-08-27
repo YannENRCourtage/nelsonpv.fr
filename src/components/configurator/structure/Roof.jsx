@@ -564,9 +564,11 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                     <SolarPanels surfaceWidth={asymRightRoofLength} surfaceLength={length + 1.0} />
                 </group>
 
-                <group position={[-width / 2 + lProps.x, asymLeftEaveH + lProps.y + 0.10 + (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5 ? -0.12 : 0) + (Math.abs(width - 20) < 0.5 ? -0.05 : 0), -length / 2]} rotation={[0, 0, lProps.rot]}>
-                    <SolarPanels surfaceWidth={asymLeftRoofLength} surfaceLength={length + 1.0} />
-                </group>
+                {configMode !== 'batitech' && (
+                    <group position={[-width / 2 + lProps.x, asymLeftEaveH + lProps.y + 0.10 + (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5 ? -0.12 : 0) + (Math.abs(width - 20) < 0.5 ? -0.05 : 0), -length / 2]} rotation={[0, 0, lProps.rot]}>
+                        <SolarPanels surfaceWidth={asymLeftRoofLength} surfaceLength={length + 1.0} />
+                    </group>
+                )}
             </group>
         );
     }
