@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Leaf, ChevronDown, ChevronUp, Plus, Minus, TrendingUp, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Leaf, ChevronDown, ChevronUp, Plus, Minus, TrendingUp, Sparkles, AlertTriangle, CheckCircle2, Layers } from 'lucide-react';
 import useSechoirStore from '@/stores/useSechoirStore.js';
-import { BATITECH_MODELS, getDryingCapacity } from '@/data/sechoirBatitechModels.js';
+import { BATITECH_MODELS, getDryingCapacity, DRYING_YIELDS } from '@/data/sechoirBatitechModels.js';
 
 const fmt = (n) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n || 0);
 
@@ -12,6 +12,50 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
   const vol = Number(material.volume || 0);
   const pvVal = Number(material.plusValueQualite || 0);
   const eeVal = Number(material.economieEnergie || 0);
+  const yieldVal = Number(material.yieldPerHa || DRYING_YIELDS[material.id] || 6.0);
+
+  // État local pour la saisie fluide de la surface (Ha)
+  const [surfaceInput, setSurfaceInput] = useState(() => {
+    return vol > 0 ? String(Math.round((vol / yieldVal) * 10) / 10) : '';
+  });
+
+  // Synchronisation de la surface lorsque le tonnage (volume) change depuis l'extérieur (boutons +/- ou reset)
+  useEffect(() => {
+    if (vol > 0) {
+      const derived = Math.round((vol / yieldVal) * 10) / 10;
+      if (parseFloat(surfaceInput) !== derived) {
+        setSurfaceInput(String(derived));
+      }
+    } else if (vol === 0 && surfaceInput !== '') {
+      setSurfaceInput('');
+    }
+  }, [vol, yieldVal]);
+
+  // Handler saisie Surface (Ha) -> Met à jour Tonnage (t MS/an)
+  const handleSurfaceChange = (e) => {
+    const raw = e.target.value;
+    setSurfaceInput(raw);
+    if (raw === '' || raw === null) {
+      onChangeVolume(0);
+      return;
+    }
+    const num = parseFloat(raw.replace(',', '.'));
+    if (!isNaN(num) && num >= 0) {
+      const calculatedTonnage = Math.round(num * yieldVal);
+      onChangeVolume(calculatedTonnage);
+    }
+  };
+
+  // Handler saisie Tonnage (t MS/an) -> Met à jour Surface (Ha)
+  const handleVolumeChange = (newVol) => {
+    const safeVol = Math.max(0, Math.round(newVol) || 0);
+    onChangeVolume(safeVol);
+    if (safeVol > 0) {
+      setSurfaceInput(String(Math.round((safeVol / yieldVal) * 10) / 10));
+    } else {
+      setSurfaceInput('');
+    }
+  };
 
   const gainQualite = vol * pvVal;
   const gainEnergie = vol * eeVal;
@@ -71,33 +115,64 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
         </div>
       </div>
 
-      {/* Zone de saisie Volume quand activé */}
+      {/* Zone de saisie Volume & Surface quand activé */}
       {material.enabled ? (
-        <div className="mt-3 pt-3 border-t border-slate-700/70 space-y-2.5">
-          <div className="flex items-center justify-between gap-1.5 bg-slate-950/80 p-2 rounded-2xl border border-slate-700">
+        <div className="mt-3 pt-3 border-t border-slate-700/70 space-y-2">
+          {/* LIGNE 1 : Saisie de la Surface (Ha) */}
+          <div className="bg-slate-950/80 p-2 px-3 rounded-2xl border border-slate-700 flex items-center justify-between gap-2 shadow-inner">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] font-bold text-slate-300 truncate">
+                Surface exploitée
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">
+                Rendement : {yieldVal} t/ha
+              </span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <input 
+                type="number"
+                min="0"
+                step="0.5"
+                value={surfaceInput}
+                onChange={handleSurfaceChange}
+                placeholder="0"
+                onClick={(e) => e.stopPropagation()}
+                className="w-16 text-right font-black bg-slate-900/90 text-emerald-400 border border-slate-700/80 focus:border-emerald-500 rounded-xl px-2 py-1 text-sm focus:outline-none"
+              />
+              <span className="text-xs font-bold text-slate-400">Ha</span>
+            </div>
+          </div>
+
+          {/* LIGNE 2 : Contrôleur Tonnage (t MS/an) avec boutons [-] et [+] */}
+          <div className="bg-slate-950/80 p-2 rounded-2xl border border-slate-700 flex items-center justify-between gap-1 shadow-inner">
             <button 
               type="button"
-              onClick={(e) => { e.stopPropagation(); onChangeVolume(Math.max(0, vol - 10)); }}
-              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0"
+              onClick={(e) => { e.stopPropagation(); handleVolumeChange(Math.max(0, vol - (vol >= 100 ? 20 : 10))); }}
+              className="w-7 h-7 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0 active:scale-95"
+              title="Diminuer le tonnage"
             >
-              <Minus className="w-4 h-4" />
+              <Minus className="w-3.5 h-3.5" />
             </button>
-            <input 
-              type="number"
-              min="0"
-              step="5"
-              value={material.volume === 0 ? '' : material.volume}
-              onChange={(e) => onChangeVolume(Math.max(0, Number(e.target.value) || 0))}
-              placeholder="0"
-              onClick={(e) => e.stopPropagation()}
-              className="w-20 text-center font-black bg-transparent text-white focus:outline-none text-base"
-            />
+            <div className="flex items-center gap-1 px-1">
+              <input 
+                type="number"
+                min="0"
+                step="5"
+                value={vol === 0 ? '' : vol}
+                onChange={(e) => handleVolumeChange(Math.max(0, Number(e.target.value) || 0))}
+                placeholder="0"
+                onClick={(e) => e.stopPropagation()}
+                className="w-16 text-center font-black bg-transparent text-white focus:outline-none text-base"
+              />
+              <span className="text-xs text-slate-400 font-bold whitespace-nowrap">t MS/an</span>
+            </div>
             <button 
               type="button"
-              onClick={(e) => { e.stopPropagation(); onChangeVolume(vol + 10); }}
-              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0"
+              onClick={(e) => { e.stopPropagation(); handleVolumeChange(vol + (vol >= 100 ? 20 : 10)); }}
+              className="w-7 h-7 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0 active:scale-95"
+              title="Augmenter le tonnage"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -149,23 +224,35 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
                 >
                   <div className="space-y-2 pt-2.5 text-sm bg-slate-900/90 p-3 rounded-2xl border border-slate-800 mt-1.5">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-300">Qualité (€/t)</span>
+                      <span className="text-slate-300 text-xs">Rendement (t/ha)</span>
+                      <input 
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        value={material.yieldPerHa || yieldVal}
+                        onChange={(e) => onChangeParams({ yieldPerHa: Number(e.target.value) || yieldVal })}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-16 text-right bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-xs"
+                      />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-300 text-xs">Qualité (€/t)</span>
                       <input 
                         type="number"
                         value={material.plusValueQualite}
                         onChange={(e) => onChangeParams({ plusValueQualite: Number(e.target.value) || 0 })}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-16 text-right bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-sm"
+                        className="w-16 text-right bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-xs"
                       />
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-300">Énergie (€/t)</span>
+                      <span className="text-slate-300 text-xs">Énergie (€/t)</span>
                       <input 
                         type="number"
                         value={material.economieEnergie}
                         onChange={(e) => onChangeParams({ economieEnergie: Number(e.target.value) || 0 })}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-16 text-right bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-sm"
+                        className="w-16 text-right bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-xs"
                       />
                     </div>
                   </div>
@@ -250,9 +337,11 @@ export default function Step4Drying() {
           <div className="flex flex-wrap gap-x-4 gap-y-2 mb-3.5 text-base text-slate-200">
             {activeMaterials.map(m => {
               const subtotal = Number(m.volume || 0) * ((Number(m.plusValueQualite) || 0) + (Number(m.economieEnergie) || 0));
+              const yieldVal = Number(m.yieldPerHa || DRYING_YIELDS[m.id] || 6.0);
+              const surfaceVal = Math.round((Number(m.volume || 0) / yieldVal) * 10) / 10;
               return (
                 <span key={m.id} className="bg-slate-900/80 px-3.5 py-1.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
-                  <span>{m.shortLabel || m.label} ({m.volume} {m.unit}):</span>
+                  <span>{m.shortLabel || m.label} ({m.volume} {m.unit} • {surfaceVal} Ha):</span>
                   <strong className="text-emerald-400 font-bold">+{fmt(subtotal)} €/an</strong>
                 </span>
               );
@@ -260,7 +349,7 @@ export default function Step4Drying() {
           </div>
         ) : (
           <p className="text-base text-slate-400 mb-3.5 italic">
-            Activez au moins une filière ci-dessus et indiquez votre tonnage pour calculer les économies.
+            Activez au moins une filière ci-dessus et indiquez votre surface ou tonnage pour calculer les économies.
           </p>
         )}
 

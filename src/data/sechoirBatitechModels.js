@@ -308,6 +308,18 @@ export const ORIENTATION_COEFFICIENTS = {
 // 7. MATIÈRES DE SÉCHAGE (Référentiel ENR Courtage)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 7. FILIÈRES DE SÉCHAGE & VALORISATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const DRYING_YIELDS = {
+  fourrage_vrac: 6.0,
+  bottes_carrees: 6.0,
+  cereales_ble: 7.5,
+  cereales_mais: 7.0,
+  plaquettes_bois: 10.0,
+};
+
 export const DRYING_MATERIALS = [
   {
     id: 'fourrage_vrac',
@@ -315,6 +327,7 @@ export const DRYING_MATERIALS = [
     shortLabel: 'Fourrage vrac',
     icon: '🌿',
     unit: 't MS/an',
+    yieldPerHa: 6.0,
     defaultPlusValueQualite: 55,
     defaultEconomieEnergie: 10,
     defaultVolume: 300,
@@ -326,6 +339,7 @@ export const DRYING_MATERIALS = [
     shortLabel: 'Bottes carrées',
     icon: '📦',
     unit: 't MS/an',
+    yieldPerHa: 6.0,
     defaultPlusValueQualite: 50,
     defaultEconomieEnergie: 10,
     defaultVolume: 140,
@@ -337,6 +351,7 @@ export const DRYING_MATERIALS = [
     shortLabel: 'Blé tendre',
     icon: '🌾',
     unit: 't MS/an',
+    yieldPerHa: 7.5,
     defaultPlusValueQualite: 25,
     defaultEconomieEnergie: 15,
     defaultVolume: 270,
@@ -348,6 +363,7 @@ export const DRYING_MATERIALS = [
     shortLabel: 'Maïs grain',
     icon: '🌽',
     unit: 't MS/an',
+    yieldPerHa: 7.0,
     defaultPlusValueQualite: 35,
     defaultEconomieEnergie: 25,
     defaultVolume: 60,
@@ -359,6 +375,7 @@ export const DRYING_MATERIALS = [
     shortLabel: 'Plaquettes bois',
     icon: '🪵',
     unit: 't MS/an',
+    yieldPerHa: 10.0,
     defaultPlusValueQualite: 30,
     defaultEconomieEnergie: 20,
     defaultVolume: 450,
