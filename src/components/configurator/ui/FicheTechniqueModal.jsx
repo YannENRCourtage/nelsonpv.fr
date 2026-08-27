@@ -198,7 +198,7 @@ export function FicheTechniqueModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !isGenerating && !open && onClose()}>
-            <DialogContent className="max-w-5xl w-[95vw] max-h-[95vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-900 text-white border-slate-700 shadow-2xl rounded-2xl">
+            <DialogContent className="max-w-7xl w-[96vw] max-h-[96vh] h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-900 text-white border-slate-700 shadow-2xl rounded-2xl">
                 
                 {/* HEADER */}
                 <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between">
@@ -273,10 +273,10 @@ export function FicheTechniqueModal({
                                     <span>Aperçu de la vue (Rendu fond blanc pur)</span>
                                 </div>
 
-                                {/* White Canvas Container (+20% hauteur) */}
+                                {/* White Canvas Container (+20% hauteur et largeur) */}
                                 <div 
                                     className="relative w-full rounded-xl bg-white flex items-center justify-center overflow-hidden border border-slate-300 shadow-inner"
-                                    style={{ height: '410px' }}
+                                    style={{ height: '510px' }}
                                 >
                                     {currentImg ? (
                                         <div className="relative w-full h-full flex items-center justify-center p-3">
@@ -537,7 +537,7 @@ export function FicheTechniqueModal({
                     ) : (
                         /* APERÇU GLOBAL DU PDF (FIDÈLE À LA MISE EN PAGE RÉELLE) */
                         <div className="flex flex-col items-center">
-                            <div className="w-full max-w-xl bg-white text-slate-900 rounded-xl p-6 shadow-2xl border border-slate-200">
+                            <div className="w-full max-w-3xl bg-white text-slate-900 rounded-xl p-6 shadow-2xl border border-slate-200">
                                 
                                 {/* Header simulé avec espacement supplémentaire */}
                                 <div className="text-center pt-5 pb-3">
@@ -551,7 +551,7 @@ export function FicheTechniqueModal({
                                 {/* Disposition exacte des 3 visuels sur fond blanc */}
                                 <div className="space-y-4 pt-1">
                                     {/* 1. Vue 3D Principale (Haut, Agrandie x2 et centrée horizontalement) */}
-                                    <div className="flex justify-center items-center w-full h-[210px]">
+                                    <div className="flex justify-center items-center w-full h-[250px]">
                                         {images.main3D ? (
                                             <div 
                                                 className="w-full h-full flex items-center justify-center overflow-hidden"

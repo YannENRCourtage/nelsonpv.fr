@@ -28,23 +28,27 @@ export const BATITECH_MODELS = {
       cereales_mais: 60,
       plaquettes_bois: 450,
     },
-    // Décomposition investissement (proportionnelle au modèle BP Excel K23 = 426 700€ pour ~100 kWc)
+    // Décomposition investissement officielle (Image 3)
     postesInvestissement: {
-      lotCentraleThermovoltaique: 26850,   // proportionné
-      processAeraulique: 25600,
+      structureMetallique: 217822,
+      systemeCogenAir: 77386,
+      centraleSolaire: 31845,
+      // Alias pour rétro-compatibilité
+      totalBatiment: 217822,
+      totalBase: 77386,
+      totalInstallateurPV: 31845,
+      lotCentraleThermovoltaique: 38693,
+      processAeraulique: 38693,
       ingenieurie: 3000,
       portManutention: 735,
-      totalBase: 52585,
-      totalBatiment: 125000,
-      totalInstallateurPV: 30900,
-      griffe: 32068,
-      terrassement: 11580,
-      beton: 25480,
-      dompaireOSB: 23170,
-      scierie: 13290,
-      autochargeuse: 0,
-      porte: 7730,
-      electricite: 7730,
+    },
+    // Options détaillées spécifiques (Images 4 et 5)
+    options: {
+      auventNord: 4500,
+      auventSud: 4500,
+      auventNordSud: 9000,
+      traveeSupplementaire: 20250,
+      auventDescription: 'Structure + couverture bac acier (sur 3 travées de 6m)',
     },
     // Frais de fonctionnement annuels (maintenance)
     chargesAnnuelles: {
@@ -73,22 +77,27 @@ export const BATITECH_MODELS = {
       cereales_mais: 110,
       plaquettes_bois: 900,
     },
+    // Décomposition investissement officielle (Image 3)
     postesInvestissement: {
-      lotCentraleThermovoltaique: 34716,
-      processAeraulique: 33145,
+      structureMetallique: 380751,
+      systemeCogenAir: 137296,
+      centraleSolaire: 46939,
+      // Alias pour rétro-compatibilité
+      totalBatiment: 380751,
+      totalBase: 137296,
+      totalInstallateurPV: 46939,
+      lotCentraleThermovoltaique: 68648,
+      processAeraulique: 68648,
       ingenieurie: 3000,
       portManutention: 735,
-      totalBase: 68000,
-      totalBatiment: 162000,
-      totalInstallateurPV: 40000,
-      griffe: 41500,
-      terrassement: 15000,
-      beton: 33000,
-      dompaireOSB: 30000,
-      scierie: 17200,
-      autochargeuse: 20000,
-      porte: 10000,
-      electricite: 10000,
+    },
+    // Options détaillées spécifiques (Images 4 et 5)
+    options: {
+      auventNord: 9000,
+      auventSud: 9000,
+      auventNordSud: 18000,
+      traveeSupplementaire: 20250,
+      auventDescription: 'Structure + couverture bac acier (sur 6 travées de 6m)',
     },
     chargesAnnuelles: {
       ventilation: 2842,
@@ -116,22 +125,27 @@ export const BATITECH_MODELS = {
       cereales_mais: 160,
       plaquettes_bois: 1340,
     },
+    // Décomposition investissement officielle (Image 3)
     postesInvestissement: {
-      lotCentraleThermovoltaique: 51500,
-      processAeraulique: 49100,
+      structureMetallique: 514302,
+      systemeCogenAir: 194220,
+      centraleSolaire: 55979,
+      // Alias pour rétro-compatibilité
+      totalBatiment: 514302,
+      totalBase: 194220,
+      totalInstallateurPV: 55979,
+      lotCentraleThermovoltaique: 97110,
+      processAeraulique: 97110,
       ingenieurie: 3000,
       portManutention: 735,
-      totalBase: 100735,
-      totalBatiment: 240000,
-      totalInstallateurPV: 59300,
-      griffe: 61500,
-      terrassement: 22200,
-      beton: 48900,
-      dompaireOSB: 44500,
-      scierie: 25500,
-      autochargeuse: 20000,
-      porte: 14830,
-      electricite: 14830,
+    },
+    // Options détaillées spécifiques (Images 4 et 5)
+    options: {
+      auventNord: 12000,
+      auventSud: 12000,
+      auventNordSud: 24000,
+      traveeSupplementaire: 20250,
+      auventDescription: 'Structure + couverture bac acier (sur 8 travées de 6m)',
     },
     chargesAnnuelles: {
       ventilation: 4263,

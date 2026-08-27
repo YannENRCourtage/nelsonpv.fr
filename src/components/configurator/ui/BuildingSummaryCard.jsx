@@ -48,20 +48,26 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
 
     // Chiffrage officiel
     const totalBuildingCost = isBatitech
-        ? (batitechModel.postesInvestissement?.totalBatiment || Math.round(floorArea * 135))
+        ? (batitechModel.postesInvestissement?.structureMetallique || batitechModel.postesInvestissement?.totalBatiment || 217822)
         : isCustom
             ? Math.round(floorArea * 128)
             : barcMatch.tarif;
 
-    // Chiffrage PV
+    const cogenAirCost = isBatitech
+        ? (batitechModel.postesInvestissement?.systemeCogenAir || batitechModel.postesInvestissement?.totalBase || 77386)
+        : 0;
+
+    // Chiffrage PV / Centrale Solaire
     const pvCostPerWc = 0.55;
     const pvInstallationCost = isBatitech
-        ? (batitechModel.postesInvestissement?.totalInstallateurPV || Math.round(installedKwc * 1000 * pvCostPerWc + 15000))
+        ? (batitechModel.postesInvestissement?.centraleSolaire || batitechModel.postesInvestissement?.totalInstallateurPV || 31845)
         : Math.round(installedKwc * 1000 * pvCostPerWc + 15000);
 
     // Ratios officiels
-    // 1. Ratio Global (Structure + Centrale PV)
-    const totalProjectCost = totalBuildingCost + (config.hasSolar ? pvInstallationCost : 0);
+    // 1. Ratio Global (Structure + Cogen'Air + Centrale Solaire)
+    const totalProjectCost = isBatitech
+        ? (totalBuildingCost + cogenAirCost + (config.hasSolar ? pvInstallationCost : 0))
+        : (totalBuildingCost + (config.hasSolar ? pvInstallationCost : 0));
     const ratioTotalCostPerWc = installedKwc > 0 ? Number((totalProjectCost / (installedKwc * 1000)).toFixed(2)) : 0;
     const ratioTotalCostPerKwc = Math.round(ratioTotalCostPerWc * 1000);
 
@@ -132,7 +138,7 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                         {length.toFixed(1)}m × {totalWidth.toFixed(1)}m
                     </p>
                     <p className="text-[11px] text-slate-500">
-                        {barcMatch.travees || `${config.bayCount || 4} travées de ${config.baySpacing || 7.5}m`}
+                        {isBatitech ? `${config.bayCount || (batitechModel?.zones === 1 ? 3 : (batitechModel?.zones === 2 ? 6 : 8))} travées de 6m` : (barcMatch.travees || `${config.bayCount || 4} travées de ${config.baySpacing || 7.5}m`)}
                     </p>
                 </div>
 
@@ -141,10 +147,10 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                         <Layers className="w-3.5 h-3.5 text-indigo-600" /> Hauteurs & Pente
                     </span>
                     <p className="font-extrabold text-slate-900 text-xs sm:text-sm">
-                        Sablière : {barcMatch.sabliere || `${Number(config.eaveHeight || 4).toFixed(1)}m`}
+                        Sablière : {isBatitech ? '4.0m' : (barcMatch.sabliere || `${Number(config.eaveHeight || 4).toFixed(1)}m`)}
                     </p>
                     <p className="text-[11px] text-slate-500">
-                        Faîtage : {barcMatch.faitage || `${Number(config.ridgeHeight || 7.4).toFixed(1)}m`}
+                        Faîtage : {isBatitech ? '8.4m' : (barcMatch.faitage || `${Number(config.ridgeHeight || 7.4).toFixed(1)}m`)}
                     </p>
                 </div>
             </div>
@@ -154,10 +160,10 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                 <div className="bg-amber-50/90 p-3 rounded-xl border border-amber-200 flex items-center justify-between">
                     <div className="space-y-0.5">
                         <span className="text-[11px] text-amber-800 font-bold uppercase flex items-center gap-1.5">
-                            <Sun className="w-4 h-4 text-amber-600" /> Centrale Photovoltaïque
+                            <Sun className="w-4 h-4 text-amber-600" /> {isBatitech ? 'Centrale Solaire' : 'Centrale Photovoltaïque'}
                         </span>
                         <p className="font-black text-amber-950 text-sm sm:text-base">
-                            ⚡ {installedKwc.toFixed(1)} kWc
+                            ⚡ {installedKwc.toFixed(2)} kWc
                         </p>
                         <p className="text-[11px] text-amber-800 font-medium">
                             {panelCount} modules • ~{estimatedProductionKwh.toLocaleString('fr-FR')} kWh/an
@@ -167,7 +173,7 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                         </p>
                     </div>
                     <div className="text-right shrink-0">
-                        <span className="text-[11px] text-slate-500 block">Tarif Centrale PV</span>
+                        <span className="text-[11px] text-slate-500 block">{isBatitech ? 'Tarif Centrale Solaire' : 'Tarif Centrale PV'}</span>
                         <strong className="text-xs sm:text-sm font-black text-slate-900">
                             {pvInstallationCost.toLocaleString('fr-FR')} € HT
                         </strong>
@@ -175,16 +181,40 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                 </div>
             )}
 
+            {/* BatiTech : Ligne Système Cogen'Air */}
+            {isBatitech && (
+                <div className="flex items-center justify-between bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30">
+                    <span className="text-xs sm:text-sm font-extrabold text-amber-900 flex items-center gap-1.5">
+                        <Wind className="w-4 h-4 text-amber-600" /> Système Cogen'Air :
+                    </span>
+                    <span className="font-black text-amber-950 text-sm sm:text-base">
+                        {cogenAirCost.toLocaleString('fr-FR')} € HT
+                    </span>
+                </div>
+            )}
+
             {/* Grid 3 : Chiffrage Structure & Ratios */}
             <div className="space-y-2 border-t border-slate-100 pt-2">
                 <div className="flex items-center justify-between bg-slate-100/80 p-2.5 rounded-xl border border-slate-200">
                     <span className="text-xs sm:text-sm font-extrabold text-slate-700 flex items-center gap-1.5">
-                        <Coins className="w-4 h-4 text-slate-600" /> Tarif Structure Métallique :
+                        <Coins className="w-4 h-4 text-slate-600" /> Structure métallique :
                     </span>
                     <span className="font-black text-blue-900 text-sm sm:text-base">
                         {totalBuildingCost.toLocaleString('fr-FR')} € HT
                     </span>
                 </div>
+
+                {/* BatiTech : Ligne Total Investissement */}
+                {isBatitech && (
+                    <div className="flex items-center justify-between bg-blue-900 text-white p-2.5 rounded-xl shadow-sm">
+                        <span className="text-xs sm:text-sm font-extrabold flex items-center gap-1.5">
+                            <Sparkles className="w-4 h-4 text-amber-400" /> TOTAL BatiTech® :
+                        </span>
+                        <span className="font-black text-amber-400 text-sm sm:text-base">
+                            {totalProjectCost.toLocaleString('fr-FR')} € HT
+                        </span>
+                    </div>
+                )}
 
                 {/* Ratios : Ligne 1 avec PV et Hors PV, Ligne 2 Ratio Surface */}
                 {config.hasSolar ? (
@@ -198,7 +228,7 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                                 </strong>
                             </div>
                             <div>
-                                <span className="text-[9.5px] uppercase font-bold text-slate-400 block whitespace-nowrap">Ratio Tarif / Puissance (Hors PV)</span>
+                                <span className="text-[9.5px] uppercase font-bold text-slate-400 block whitespace-nowrap">Ratio Structure (Hors PV)</span>
                                 <strong className="text-slate-700 font-extrabold text-xs sm:text-sm flex items-baseline gap-1 mt-0.5">
                                     {ratioStructureCostPerWc.toFixed(2)} € <span className="text-[10px] font-normal text-slate-500">/ Wc</span>
                                     <span className="text-[9.5px] font-normal text-slate-400">({ratioStructureCostPerKwc} €/kWc)</span>
@@ -206,7 +236,7 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                             </div>
                         </div>
                         <div className="border-t border-slate-100 pt-1.5 flex items-center justify-between text-slate-500">
-                            <span className="text-[10px] uppercase font-bold text-slate-400">Ratio Tarif / Surface</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400">Ratio Structure / Surface</span>
                             <strong className="text-slate-800 font-extrabold text-xs sm:text-sm">
                                 {ratioCostPerM2} € <span className="text-[10px] font-normal text-slate-500">/ m²</span>
                             </strong>
@@ -214,7 +244,7 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                     </div>
                 ) : (
                     <div className="bg-white p-2.5 rounded-xl border border-slate-100 text-xs flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Tarif / Surface</span>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Structure / Surface</span>
                         <strong className="text-slate-800 font-extrabold text-xs sm:text-sm">
                             {ratioCostPerM2} € <span className="text-[10px] font-normal text-slate-500">/ m²</span>
                         </strong>

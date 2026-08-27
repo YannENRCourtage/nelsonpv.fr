@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
+import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 
 /**
  * Charge une image et retourne une promesse avec son instance HTMLImageElement
@@ -83,9 +84,11 @@ export async function generateFicheTechniquePDF({
     const totalWidth = mainWidth + leftExt + rightExt;
     const floorArea = Math.round(length * totalWidth);
 
-    const isCustom = config.configMode === 'custom' || (!isAcama && config.buildingType === 'custom');
+    const isBatitech = config.configMode === 'batitech';
+    const batitechModel = isBatitech ? (BATITECH_MODELS[config.selectedBatitechModel] || BATITECH_MODELS['BT-3.1.15']) : null;
+    const isCustom = !isBatitech && (config.configMode === 'custom' || (!isAcama && config.buildingType === 'custom'));
 
-    const barcMatch = findBarconniereBuilding({
+    const barcMatch = isBatitech ? {} : findBarconniereBuilding({
         length,
         width: mainWidth,
         buildingType: config.buildingType || 'symetrique',
@@ -96,9 +99,9 @@ export async function generateFicheTechniquePDF({
         isAcama,
     });
 
-    const gammeName = isCustom ? 'Bâtiment Sur-Mesure' : barcMatch.gamme;
-    const buildingCode = String(barcMatch.id || '').replace(/^#/, '').trim();
-    const equivalenceCode = String(barcMatch.code || '').trim();
+    const gammeName = isBatitech ? 'Séchoir BatiTech®' : (isCustom ? 'Bâtiment Sur-Mesure' : barcMatch.gamme);
+    const buildingCode = isBatitech ? batitechModel.name : String(barcMatch.id || '').replace(/^#/, '').trim();
+    const equivalenceCode = isBatitech ? 'AS9.2' : String(barcMatch.code || '').trim();
 
     // Typologie libellé lisible
     const TYPE_LABELS = {
@@ -112,26 +115,42 @@ export async function generateFicheTechniquePDF({
         ombriere_vl_simple_gauche: 'Ombrière VL Simple (Gauche)',
         custom: 'Bâtiment Sur-Mesure',
     };
-    const typologyLabel = TYPE_LABELS[config.buildingType] || config.buildingType || 'Structure Métallique';
+    const typologyLabel = isBatitech ? 'Asymétrique 1 zone' : (TYPE_LABELS[config.buildingType] || config.buildingType || 'Structure Métallique');
 
     // Données Solaires
-    const installedKwc = Number(config.solarStats?.power) || barcMatch.kwc || Math.round(floorArea * 0.20);
-    const panelCount = Number(config.solarStats?.count) || Math.round((installedKwc * 1000) / (isAcama ? 460 : 465));
+    const installedKwc = isBatitech
+        ? batitechModel.puissanceKwc
+        : (Number(config.solarStats?.power) || barcMatch.kwc || Math.round(floorArea * 0.20));
+    const panelCount = isBatitech
+        ? batitechModel.nbModules
+        : (Number(config.solarStats?.count) || Math.round((installedKwc * 1000) / (isAcama ? 460 : 465)));
     const estimatedProductionKwh = Math.round(installedKwc * 1150);
 
     // Chiffrage
-    const totalBuildingCost = isCustom ? Math.round(floorArea * 128) : barcMatch.tarif;
+    const totalBuildingCost = isBatitech
+        ? (batitechModel.postesInvestissement?.structureMetallique || 217822)
+        : (isCustom ? Math.round(floorArea * 128) : barcMatch.tarif);
+
+    const cogenAirCost = isBatitech
+        ? (batitechModel.postesInvestissement?.systemeCogenAir || 77386)
+        : 0;
+
     const pvCostPerWc = 0.55;
-    const pvInstallationCost = Math.round(installedKwc * 1000 * pvCostPerWc + 15000);
-    const totalProjectCost = totalBuildingCost + (config.hasSolar ? pvInstallationCost : 0);
+    const pvInstallationCost = isBatitech
+        ? (batitechModel.postesInvestissement?.centraleSolaire || 31845)
+        : Math.round(installedKwc * 1000 * pvCostPerWc + 15000);
+
+    const totalProjectCost = isBatitech
+        ? (totalBuildingCost + cogenAirCost + (config.hasSolar ? pvInstallationCost : 0))
+        : (totalBuildingCost + (config.hasSolar ? pvInstallationCost : 0));
 
     // Ratios
-    const ratioCostPerM2 = floorArea > 0 ? Math.round(totalBuildingCost / floorArea) : barcMatch.ratioM2;
+    const ratioCostPerM2 = floorArea > 0 ? Math.round(totalBuildingCost / floorArea) : (barcMatch.ratioM2 || 116);
     const ratioTotalCostPerWc = installedKwc > 0 ? (totalProjectCost / (installedKwc * 1000)).toFixed(2) : '0.00';
     const ratioStructureCostPerWc = installedKwc > 0 ? (totalBuildingCost / (installedKwc * 1000)).toFixed(2) : (barcMatch.ratioKwc?.toFixed(2) || '0.00');
 
     // Calcul Pente en Degrés et Pourcentage
-    const pitchDeg = Number(config.roofPitch || 10);
+    const pitchDeg = isBatitech ? 15 : Number(config.roofPitch || 10);
     const pitchPct = Math.round(Math.tan(pitchDeg * (Math.PI / 180)) * 100);
     const pitchLabel = `${pitchDeg}° (${pitchPct}%)`;
 
@@ -235,12 +254,12 @@ export async function generateFicheTechniquePDF({
     if (!isCustom) {
         drawRow('Gamme :', gammeName, true, [255, 255, 255]);
         if (buildingCode) drawRow('Modèle :', buildingCode, true, [251, 191, 36]);
-        if (equivalenceCode) drawRow('', equivalenceCode, false, [203, 213, 225]); // Mot "Équivalence :" supprimé, code conservé à droite
+        if (equivalenceCode) drawRow('', equivalenceCode, false, [203, 213, 225]);
     } else {
         drawRow('Modèle :', 'Sur-Mesure', true, [251, 191, 36]);
         drawRow('Grille :', 'Sur-mesure', false, [167, 139, 250]);
     }
-    curY += 2.0;
+    curY += 1.5;
 
     // --- BLOC 2 : STRUCTURE & DIMENSIONS ---
     drawSectionTitle('2. Structure & Dimensions');
@@ -248,22 +267,24 @@ export async function generateFicheTechniquePDF({
     drawRow('Longueur :', `${length.toFixed(2)} m`);
     drawRow('Largeur totale :', `${totalWidth.toFixed(2)} m`);
     drawRow('Surface au sol :', `${floorArea} m²`, true, [56, 189, 248]);
-    drawRow('Travées :', barcMatch.travees || `${config.bayCount} × ${config.baySpacing} m`);
+    drawRow('Travées :', isBatitech ? `${batitechModel?.zones === 1 ? 3 : (batitechModel?.zones === 2 ? 6 : 8)} × 6.00 m` : (barcMatch.travees || `${config.bayCount} × ${config.baySpacing} m`));
     
-    // Indication altitude sous travées avec police augmentée (+1pt -> 7.5) et bel écart aéré
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(7.5); // Augmenté d'un point
-    pdf.setTextColor(148, 163, 184);
-    pdf.text('(travées 7,5m jusqu’à 200m d’altitude,', padL, curY);
-    curY += 3.0;
-    pdf.text('et 6,00m de 200m à 500m d’altitude)', padL, curY);
-    curY += 4.5; // Écart ajouté après la phrase d'altitude
+    if (!isBatitech) {
+        // Indication altitude sous travées avec police augmentée (+1pt -> 7.5) et bel écart aéré
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(148, 163, 184);
+        pdf.text('(travées 7,5m jusqu’à 200m d’altitude,', padL, curY);
+        curY += 2.8;
+        pdf.text('et 6,00m de 200m à 500m d’altitude)', padL, curY);
+        curY += 3.8;
+    }
 
     drawRow('Avants-toit :', 'environ 50 cm');
     drawRow('Niveau fondations :', '+/- 0.0 m');
     if (config.leftSide !== 'none') drawRow('Ext. Gauche :', `${config.leftSide === 'appentis' ? 'Appentis' : 'Auvent'} (${leftExt}m)`);
     if (config.rightSide !== 'none') drawRow('Ext. Droite :', `${config.rightSide === 'appentis' ? 'Appentis' : 'Auvent'} (${rightExt}m)`);
-    curY += 2.0;
+    curY += 1.5;
 
     // --- BLOC 3 : HAUTEURS & TOITURE ---
     const formatDimUnit = (val, defaultVal) => {
@@ -274,24 +295,24 @@ export async function generateFicheTechniquePDF({
     };
 
     drawSectionTitle('3. Hauteurs & Toiture');
-    drawRow('Hauteur Sablière :', formatDimUnit(barcMatch.sabliere, config.eaveHeight || 4));
-    drawRow('Hauteur Faîtage :', formatDimUnit(barcMatch.faitage, config.ridgeHeight || 7.4));
+    drawRow('Hauteur Sablière :', isBatitech ? '4.00 m' : formatDimUnit(barcMatch.sabliere, config.eaveHeight || 4));
+    drawRow('Hauteur Faîtage :', isBatitech ? '8.40 m' : formatDimUnit(barcMatch.faitage, config.ridgeHeight || 7.4));
     drawRow('Pente de toit :', pitchLabel);
     drawRow('Couverture :', 'Bac acier (RAL 7016)');
     drawRow('Anti-condensation :', 'Feutre régulateur');
     drawRow('Peinture :', 'Anti-rouille');
-    curY += 2.0;
+    curY += 1.5;
 
-    // --- BLOC 4 : CENTRALE PHOTOVOLTAÏQUE ---
+    // --- BLOC 4 : CENTRALE SOLAIRE ---
     let paybackYears = '—';
     let performanceFinanciere = '—';
 
     drawSectionTitle('4. Énergie Solaire', [251, 191, 36]);
-    if (config.hasSolar) {
+    if (config.hasSolar || isBatitech) {
         drawRow('Statut PV :', 'Activée', true, [251, 191, 36]);
-        drawRow('Puissance :', `${installedKwc.toFixed(1)} kWc`, true, [251, 191, 36]);
+        drawRow('Puissance :', `${installedKwc.toFixed(2)} kWc`, true, [251, 191, 36]);
         drawRow('Nombre modules :', `${panelCount} panneaux`);
-        drawRow('Technologie :', `${isAcama ? 460 : 465} Wc`);
+        drawRow('Technologie :', isBatitech ? "Cogen'Air® Thermovolt." : `${isAcama ? 460 : 465} Wc`);
         drawRow('Prod. estimée :', `~${formatNumber(estimatedProductionKwh)} kWh/an`);
         
         // Sous-ligne hypothèse avec écart aéré après
@@ -299,7 +320,7 @@ export async function generateFicheTechniquePDF({
         pdf.setFontSize(6.5);
         pdf.setTextColor(203, 213, 225);
         pdf.text('(hypothèse 1150 kWh/kWc)', padR, curY, { align: 'right' });
-        curY += 4.5; // Écart ajouté après l'hypothèse
+        curY += 3.8;
 
         // Tarif achat estimé selon puissance
         let tarifAchat = '0.011 € / kWh';
@@ -322,14 +343,11 @@ export async function generateFicheTechniquePDF({
 
         // Calcul Amortissement & Performance Financière (identique au Simulateur Structure Métallique)
         if (totalProjectCost > 0 && estimatedProductionKwh > 0) {
-            const tarifAchatNum = tarifNum; // 0.011 €/kWh si < 100 kWc, 0.082 si 100-500, 0.0829 si > 500
-            const annualGrossRevenue = estimatedProductionKwh * tarifAchatNum;
-            const annualOperatingCost = installedKwc * (installedKwc < 100 ? 10 : 22); // TURPE + maintenance
+            const annualGrossRevenue = estimatedProductionKwh * tarifNum;
+            const annualOperatingCost = installedKwc * (installedKwc < 100 ? 10 : 22);
             const annualNetRevenue = annualGrossRevenue - annualOperatingCost;
 
             if (installedKwc < 100) {
-                // Pour < 100 kWc avec un tarif d'achat de 0.011 €/kWh :
-                // Le revenu annuel (ex: 588 €) ne permet pas de couvrir l'investissement de plus de 70k€ sur 30 ans
                 paybackYears = '> 30 ans';
                 performanceFinanciere = '0.0 % / an';
             } else {
@@ -359,7 +377,7 @@ export async function generateFicheTechniquePDF({
                     paybackYears = '> 30 ans';
                 }
 
-                // Calcul TRI (Taux de Rendement Interne 30 ans)
+                // Calcul TRI
                 let rate = 0.059;
                 for (let iter = 0; iter < 50; iter++) {
                     let npv = 0;
@@ -389,28 +407,47 @@ export async function generateFicheTechniquePDF({
     } else {
         drawRow('Option solaire :', 'Non incluse (Sans PV)', false, [148, 163, 184]);
     }
-    curY += 2.0;
+    curY += 1.5;
 
     // --- BLOC 5 : TARIFICATION & RATIOS ---
     drawSectionTitle('5. Chiffrage & Ratios', [52, 211, 153]);
     drawRow('Structure métal. :', `${formatNumber(totalBuildingCost)} € HT`, true, [255, 255, 255]);
-    if (config.hasSolar) {
+    if (isBatitech) {
+        drawRow("Système Cogen'Air :", `${formatNumber(cogenAirCost)} € HT`, true, [251, 191, 36]);
+        drawRow('Centrale Solaire :', `${formatNumber(pvInstallationCost)} € HT`, true, [251, 191, 36]);
+        drawRow('Total Projet :', `${formatNumber(totalProjectCost)} € HT`, true, [52, 211, 153]);
+    } else if (config.hasSolar) {
         drawRow('Centrale PV :', `${formatNumber(pvInstallationCost)} € HT`);
         drawRow('Total Projet :', `${formatNumber(totalProjectCost)} € HT`, true, [52, 211, 153]);
 
         // Couleurs conditionnelles : ROUGE si puissance < 100 kWc
         const isLowPower = installedKwc < 100;
-        const amortissementColor = isLowPower ? [239, 68, 68] : [52, 211, 153]; // Rouge #ef4444 si < 100 kWc
-        const performanceColor = isLowPower ? [239, 68, 68] : [251, 191, 36]; // Rouge #ef4444 si < 100 kWc
+        const amortissementColor = isLowPower ? [239, 68, 68] : [52, 211, 153];
+        const performanceColor = isLowPower ? [239, 68, 68] : [251, 191, 36];
 
         drawRow('Amortissement :', paybackYears, true, amortissementColor);
         drawRow('Performance Financière :', performanceFinanciere, true, performanceColor);
     }
-    curY += 2.2; // Petit espace au-dessus des 3 lignes de ratio
+    curY += 1.5;
     drawRow('Ratio / Surface :', `${formatNumber(ratioCostPerM2)} € / m²`, true, [56, 189, 248]);
-    if (config.hasSolar && installedKwc > 0) {
+    if ((config.hasSolar || isBatitech) && installedKwc > 0) {
         drawRow('Ratio Total / Wc :', `${ratioTotalCostPerWc} € / Wc`);
         drawRow('Ratio Struct. / Wc :', `${ratioStructureCostPerWc} € / Wc`);
+    }
+    curY += 1.5;
+
+    // --- BLOC 6 : OPTIONS ---
+    drawSectionTitle('6. Options', [244, 114, 182]);
+    if (isBatitech && batitechModel?.options) {
+        const opts = batitechModel.options;
+        drawRow('Auvent Sud (4m) :', `${formatNumber(opts.auventSud)} € HT`, true, [255, 255, 255]);
+        drawRow('Auvent Nord (4m) :', `${formatNumber(opts.auventNord)} € HT`, true, [255, 255, 255]);
+        drawRow('Auvents N + S :', `${formatNumber(opts.auventNordSud)} € HT`, true, [251, 191, 36]);
+        drawRow('Travée suppl. 6m :', `${formatNumber(opts.traveeSupplementaire)} € HT`, true, [56, 189, 248]);
+    } else {
+        drawRow('Auvent Sud :', 'Sur étude');
+        drawRow('Auvent Nord :', 'Sur étude');
+        drawRow('Travée suppl. :', 'Sur étude');
     }
 
     // --- PRÉ-CHARGEMENT DES IMAGES ---
