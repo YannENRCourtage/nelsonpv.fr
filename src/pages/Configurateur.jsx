@@ -45,6 +45,7 @@ export default function Configurateur() {
     const [selectedProject, setSelectedProject] = useState(null);
     const [viewMode, setViewMode] = useState('3D'); // '3D', '2D_FRONT'
     const [isCapturing, setIsCapturing] = useState(false);
+    const [customDimensionFontSize, setCustomDimensionFontSize] = useState(null);
     const [generatedImages, setGeneratedImages] = useState({ img3D: null, mapImg: null });
 
     // Canvas Ref for screenshots
@@ -143,13 +144,35 @@ export default function Configurateur() {
     };
 
     // Callback pour recapturer la vue 3D actuelle en haute définition
-    const handleRecaptureCurrent3D = async () => {
+    const handleRecaptureCurrent3D = async (fontSize = null) => {
         if (!canvasRef.current) return null;
         setIsCapturing(true);
-        await wait(150);
+        if (fontSize !== null) setCustomDimensionFontSize(fontSize);
+        await wait(200);
         const img = canvasRef.current.toDataURL('image/png', 1.0);
+        if (fontSize !== null) setCustomDimensionFontSize(null);
         setIsCapturing(false);
         return img;
+    };
+
+    // Callback pour recapturer n'importe quelle vue avec une taille de police personnalisée
+    const handleRecaptureViewWithFontSize = async (viewKey, fontSize) => {
+        if (!canvasRef.current) return null;
+        setIsCapturing(true);
+        const originalView = viewMode;
+        const targetView = viewKey === 'main3D' ? '3D' : (viewKey === 'pignon' ? 'PIGNON' : 'FACADE_SUD');
+        
+        try {
+            setCustomDimensionFontSize(fontSize);
+            setViewMode(targetView);
+            await wait(350);
+            const img = canvasRef.current.toDataURL('image/png', 1.0);
+            return img;
+        } finally {
+            setViewMode(originalView);
+            setCustomDimensionFontSize(null);
+            setIsCapturing(false);
+        }
     };
 
     // Génération PDF Complète (OFFRE)
@@ -398,6 +421,7 @@ export default function Configurateur() {
                         viewMode={viewMode}
                         isCapturing={isCapturing}
                         transparent={isCapturing && !showPDFModal && !isPreparingFiche}
+                        dimensionFontSize={customDimensionFontSize}
                     />
                 </div>
 
@@ -564,6 +588,7 @@ export default function Configurateur() {
                 isAcama={isAcama}
                 initialImages={ficheImages}
                 onRecaptureCurrent3D={handleRecaptureCurrent3D}
+                onRecaptureViewWithFontSize={handleRecaptureViewWithFontSize}
             />
         </div>
     );

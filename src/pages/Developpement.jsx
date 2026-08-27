@@ -392,14 +392,14 @@ export default function Developpement() {
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
-                  className={`flex items-center gap-3 px-3.5 py-3 rounded-xl font-extrabold text-xs transition-all w-full text-left ${
+                  className={`flex items-center gap-3 px-3.5 py-3 rounded-xl font-extrabold text-sm transition-all w-full text-left ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                       : 'text-white/70 hover:bg-white/5 hover:text-white'
                   }`}
                   title={sidebarCollapsed ? section.label : undefined}
                 >
-                  <Icon size={18} className="flex-shrink-0" />
+                  <Icon size={20} className="flex-shrink-0" />
                   {!sidebarCollapsed && <span>{section.label}</span>}
                 </button>
               );

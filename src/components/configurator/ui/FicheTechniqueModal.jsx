@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS = {
         zoom: 1.0,
         offsetX: 0,
         offsetY: 0,
+        dimensionFontSize: 0.8,
     },
     pignon: {
         cropTop: 10,
@@ -33,6 +34,7 @@ const DEFAULT_SETTINGS = {
         zoom: 1.0,
         offsetX: 0,
         offsetY: 0,
+        dimensionFontSize: 2.2,
     },
     facadeSud: {
         cropTop: 0,
@@ -42,6 +44,7 @@ const DEFAULT_SETTINGS = {
         zoom: 1.0,
         offsetX: 0,
         offsetY: 0,
+        dimensionFontSize: 2.2,
     },
 };
 
@@ -101,6 +104,7 @@ export function FicheTechniqueModal({
     isAcama = false,
     initialImages = {},
     onRecaptureCurrent3D = null,
+    onRecaptureViewWithFontSize = null,
 }) {
     const [activeTab, setActiveTab] = useState('main3D');
     const [images, setImages] = useState({
@@ -453,6 +457,79 @@ export function FicheTechniqueModal({
                                                 onValueChange={([val]) => updateSetting(currentKey, 'cropRight', val)}
                                             />
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Taille de la police des cotes (Mesures) pour cette vue */}
+                                <div className="pt-3 border-t border-slate-800/80 space-y-2.5">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                                            Taille des cotes &amp; mesures
+                                        </span>
+                                        <span className="font-mono text-amber-300 font-black text-xs bg-amber-950/60 border border-amber-500/30 px-2 py-0.5 rounded">
+                                            {(currentSettings.dimensionFontSize !== undefined ? currentSettings.dimensionFontSize : (currentKey === 'main3D' ? 0.8 : 2.2)).toFixed(1)}
+                                        </span>
+                                    </div>
+                                    <Slider
+                                        value={[currentSettings.dimensionFontSize !== undefined ? currentSettings.dimensionFontSize : (currentKey === 'main3D' ? 0.8 : 2.2)]}
+                                        min={0.3}
+                                        max={currentKey === 'main3D' ? 2.5 : 4.5}
+                                        step={0.1}
+                                        onValueChange={([val]) => {
+                                            updateSetting(currentKey, 'dimensionFontSize', val);
+                                        }}
+                                        onValueCommit={async ([val]) => {
+                                            if (onRecaptureViewWithFontSize) {
+                                                setIsRecapturing(true);
+                                                try {
+                                                    const newImg = await onRecaptureViewWithFontSize(currentKey, val);
+                                                    if (newImg) {
+                                                        setImages(prev => ({ ...prev, [currentKey]: newImg }));
+                                                    }
+                                                } catch (e) {
+                                                    console.error('Erreur recapture dimension font size:', e);
+                                                } finally {
+                                                    setIsRecapturing(false);
+                                                }
+                                            }
+                                        }}
+                                        className="py-1"
+                                    />
+                                    {/* Presets rapides */}
+                                    <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+                                        {(currentKey === 'main3D' 
+                                            ? [ { label: 'Fin (0.5)', val: 0.5 }, { label: 'Standard (0.8)', val: 0.8 }, { label: 'Grand (1.2)', val: 1.2 }, { label: 'Max (1.8)', val: 1.8 } ]
+                                            : [ { label: 'Fin (1.5)', val: 1.5 }, { label: 'Standard (2.2)', val: 2.2 }, { label: 'Grand (3.0)', val: 3.0 }, { label: 'Max (4.0)', val: 4.0 } ]
+                                        ).map(preset => (
+                                            <button
+                                                key={preset.label}
+                                                type="button"
+                                                onClick={async () => {
+                                                    updateSetting(currentKey, 'dimensionFontSize', preset.val);
+                                                    if (onRecaptureViewWithFontSize) {
+                                                        setIsRecapturing(true);
+                                                        try {
+                                                            const newImg = await onRecaptureViewWithFontSize(currentKey, preset.val);
+                                                            if (newImg) {
+                                                                setImages(prev => ({ ...prev, [currentKey]: newImg }));
+                                                            }
+                                                        } catch (e) {
+                                                            console.error('Erreur recapture preset font size:', e);
+                                                        } finally {
+                                                            setIsRecapturing(false);
+                                                        }
+                                                    }
+                                                }}
+                                                className={`py-1 px-1 rounded text-[10px] font-bold border transition-all text-center ${
+                                                    Math.abs((currentSettings.dimensionFontSize !== undefined ? currentSettings.dimensionFontSize : (currentKey === 'main3D' ? 0.8 : 2.2)) - preset.val) < 0.05
+                                                        ? 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-xs'
+                                                        : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+                                                }`}
+                                            >
+                                                {preset.label}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             </div>

@@ -2036,12 +2036,12 @@ function TabBpProjets({
               }
             >
               <div className="w-full overflow-x-auto pb-1 max-w-full">
-                <table className="w-full text-left border-separate border-spacing-x-1 sm:border-spacing-x-2 table-fixed">
+                <table className="w-full text-left border-separate border-spacing-x-1 sm:border-spacing-x-2 table-fixed lg:table-auto">
                   <thead>
                     <tr>
-                      <th className="w-[110px] sm:w-[130px]"></th>
+                      <th className="w-[110px] sm:w-[130px] lg:w-36"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="group relative text-center text-[11px] sm:text-xs uppercase text-slate-400 font-bold pb-1 w-auto min-w-0">
+                        <th key={b.id} className="group relative text-center text-[11px] sm:text-xs uppercase text-slate-400 font-bold pb-1 w-auto min-w-0 lg:min-w-[140px]">
                           <div className="flex flex-col items-center gap-1">
                             {i > 0 && (
                               <button 
@@ -2225,12 +2225,12 @@ function TabBpProjets({
 
             <SectionCard title="INVESTISSEMENT" id="pdf-section-invest" className="grow pb-2 border-t-4 border-t-amber-400 max-w-full overflow-hidden">
               <div className="w-full overflow-x-auto pb-1 max-w-full">
-                <table className="w-full text-left border-separate border-spacing-x-1 sm:border-spacing-x-2 table-fixed">
+                <table className="w-full text-left border-separate border-spacing-x-1 sm:border-spacing-x-2 table-fixed lg:table-auto">
                   <thead>
                     <tr>
-                      <th className="w-[110px] sm:w-[130px]"></th>
+                      <th className="w-[110px] sm:w-[130px] lg:w-36"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="group relative text-center text-[11px] sm:text-xs uppercase text-slate-400 font-bold pb-1 w-auto min-w-0">
+                        <th key={b.id} className="group relative text-center text-[11px] sm:text-xs uppercase text-slate-400 font-bold pb-1 w-auto min-w-0 lg:min-w-[140px]">
                            <div className="flex flex-col items-center gap-1">
                             {i > 0 && (
                               <button 

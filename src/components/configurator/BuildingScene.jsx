@@ -9,7 +9,7 @@ import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
  * @param {string} viewMode - '3D', '2D_FRONT', '2D_GABLE'
  * @param {boolean} isCapturing - Optimizations for PDF capture (e.g. white background, no helper grids)
  */
-const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transparent = false }, ref) => {
+const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transparent = false, dimensionFontSize }, ref) => {
     const config = useConfiguratorValues();
 
     // Camera settings based on mode
@@ -106,7 +106,7 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             {/* Auto-Centering logic: Re-fits whenever config changes */}
             {/* Capture: margin=1.15 pour Façade Sud (cadrage élargi sans coupure), 0.70 pour 3D, 0.75 pour Pignon */}
             <Bounds fit clip observe margin={isCapturing ? (viewMode === 'FACADE_SUD' ? 1.15 : (viewMode === '3D' ? 0.70 : 0.75)) : 1.1}>
-                <Structure viewMode={viewMode} isCapturing={isCapturing} />
+                <Structure viewMode={viewMode} isCapturing={isCapturing} dimensionFontSize={dimensionFontSize} />
             </Bounds>
 
             {/* Ground / Shadows */}
