@@ -338,8 +338,6 @@ export async function generateSechoirPDF({
 
   try {
     // ─── 1. CAPTURES HAUTE RÉSOLUTION (IMAGE 3D DU CONFIGURATEUR + SATELLITE + SCHÉMAS) ──
-    const batitech3dImg = BATITECH_3D_IMAGES[modelId] || BATITECH_3D_IMAGES['BT-6.2.15'];
-
     // Helper pour charger les images en Base64
     const loadImgAsBase64 = async (url) => {
       try {
@@ -358,7 +356,17 @@ export async function generateSechoirPDF({
       return url;
     };
 
-    // Image Vue Intérieure / Caissons pour Page 3 (selon modèle)
+    // Image Vue 3D Extérieure (gauche) pour Page 3 (selon modèle)
+    let left3dImgUrl = '/Vue 3D BatiTech 6.2.15.jpg';
+    if (modelId === 'BT-3.1.15') {
+      left3dImgUrl = '/Vue 3D BatiTech 3.1.15.png';
+    } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
+      left3dImgUrl = '/Vue 3D BatiTech 8.3.15 2.jpg';
+    } else {
+      left3dImgUrl = '/Vue 3D BatiTech 6.2.15.jpg';
+    }
+
+    // Image Vue Intérieure / Caissons (droite) pour Page 3 (selon modèle)
     let right3dImgUrl = '/batitech_6_2_15.jpg';
     if (modelId === 'BT-3.1.15') {
       right3dImgUrl = '/batitech_interieur_3_1_15.jpg';
@@ -368,7 +376,8 @@ export async function generateSechoirPDF({
       right3dImgUrl = '/batitech_6_2_15.jpg';
     }
 
-    const [right3dImgBase64, schema1Img, schema2Img, schema3Img] = await Promise.all([
+    const [left3dImgBase64, right3dImgBase64, schema1Img, schema2Img, schema3Img] = await Promise.all([
+      loadImgAsBase64(left3dImgUrl),
       loadImgAsBase64(right3dImgUrl),
       loadImgAsBase64('/Schema séchoir 1.png'),
       loadImgAsBase64('/Schema séchoir 2.png'),
@@ -681,7 +690,7 @@ export async function generateSechoirPDF({
             
             <!-- Vue 3D BatiTech (décalée à gauche) -->
             <div style="flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding-right: 10px;">
-              <img src="${batitech3dImg}" style="max-width: 98%; max-height: 94%; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
+              <img src="${left3dImgBase64}" style="max-width: 98%; max-height: 94%; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
             </div>
 
             <!-- Image Vue Intérieure / Caissons (à droite) -->
