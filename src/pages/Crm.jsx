@@ -1575,8 +1575,11 @@ export default function Crm() {
                 <span>Mes projets</span>
               </button>
 
-              {/* Filtres Statuts (Boutons avec scroll propre si besoin) */}
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto no-scrollbar scrollbar-none max-w-full flex-nowrap shrink-0">
+              {/* Filtres Statuts (Boutons avec scroll fluide complet) */}
+              <div 
+                className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto scrollbar-thin max-w-full flex-nowrap shrink-0 touch-pan-x pr-8"
+                style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', scrollbarWidth: 'thin' }}
+              >
                 {[
                   { id: 'all', label: 'Tous' },
                   { id: 'Nouveau', label: 'Nouveau' },
@@ -1600,88 +1603,85 @@ export default function Crm() {
                     </button>
                   );
                 })}
+                <div className="w-4 shrink-0" aria-hidden="true" />
               </div>
-
-              <Button
-                onClick={() => navigate('/project/new/edit')}
-                className="lg:hidden bg-blue-600 hover:bg-blue-700 text-white shadow-md h-8 px-3 shrink-0 ml-auto"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                <span className="text-xs font-bold">Nouveau</span>
-              </Button>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-4 items-center justify-between lg:justify-end">
-          <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-4 items-center justify-between lg:justify-end w-full min-w-0">
+          <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
             <button
               onClick={() => setViewMode('card')}
-              className={`p-2 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`p-1.5 sm:p-2 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               title="Vue Grille"
             >
-              <LayoutGrid size={20} />
+              <LayoutGrid size={18} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`p-1.5 sm:p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               title="Vue Liste"
             >
-              <List size={20} />
+              <List size={18} />
             </button>
             <button
               onClick={() => setViewMode('map')}
-              className={`p-2 rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`p-1.5 sm:p-2 rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               title="Vue Carte"
             >
-              <MapIcon size={20} />
+              <MapIcon size={18} />
             </button>
           </div>
 
-          {selectedProjects.length > 0 && isTransferAuthorized() && (
-            <Button
-              onClick={() => {
-                const toTransfer = projects.filter(p => selectedProjects.includes(p.id));
-                setTransferProjectData(toTransfer);
-                setShowTransferModal(true);
-              }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex items-center gap-2"
-            >
-              <Shuffle className="w-4 h-4" />
-              Transférer la sélection ({selectedProjects.length})
-            </Button>
-          )}
+          <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
+            {selectedProjects.length > 0 && isTransferAuthorized() && (
+              <Button
+                onClick={() => {
+                  const toTransfer = projects.filter(p => selectedProjects.includes(p.id));
+                  setTransferProjectData(toTransfer);
+                  setShowTransferModal(true);
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex items-center gap-1.5 text-xs h-8 sm:h-9 px-2.5 sm:px-3"
+              >
+                <Shuffle className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Transférer</span> ({selectedProjects.length})
+              </Button>
+            )}
 
-          {selectedProjects.length > 0 ? (
-            <Button
-              onClick={() => {
-                const toExport = projects.filter(p => selectedProjects.includes(p.id));
-                exportProjectsToExcel(toExport);
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center gap-2"
-            >
-              <FileDown className="w-4 h-4" />
-              Exporter la sélection ({selectedProjects.length})
-            </Button>
-          ) : (
-            <Button
-              onClick={() => exportProjectsToExcel(filteredProjects)}
-              variant="outline"
-              className="border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-2 shadow-sm"
-              disabled={filteredProjects.length === 0}
-            >
-              <FileDown className="w-4 h-4 text-emerald-600" />
-              Exporter Excel ({filteredProjects.length})
-            </Button>
-          )}
+            {selectedProjects.length > 0 ? (
+              <Button
+                onClick={() => {
+                  const toExport = projects.filter(p => selectedProjects.includes(p.id));
+                  exportProjectsToExcel(toExport);
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center gap-1.5 text-xs h-8 sm:h-9 px-2.5 sm:px-3"
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Exporter</span> ({selectedProjects.length})
+              </Button>
+            ) : (
+              <Button
+                onClick={() => exportProjectsToExcel(filteredProjects)}
+                variant="outline"
+                className="border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-sm text-xs h-8 sm:h-9 px-2.5 sm:px-3"
+                disabled={filteredProjects.length === 0}
+              >
+                <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">Exporter Excel</span>
+                <span className="sm:hidden">Excel</span> ({filteredProjects.length})
+              </Button>
+            )}
 
-          <Button
-            onClick={() => navigate('/project/new/edit')}
-            className="hidden lg:flex bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nouveau Projet
-          </Button>
+            <Button
+              onClick={() => navigate('/project/new/edit')}
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md text-xs h-8 sm:h-9 px-2.5 sm:px-3.5 flex items-center gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Nouveau Projet</span>
+              <span className="sm:hidden">Nouveau</span>
+            </Button>
+          </div>
         </div>
       </div>
 

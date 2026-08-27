@@ -517,13 +517,16 @@ export default function IrveSimulator() {
             </div>
 
             {activeMainTab === 'simulateurs' && (
-              <div className="w-full lg:w-auto overflow-x-auto scrollbar-thin flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 flex-nowrap overscroll-x-contain touch-pan-x min-w-0 pr-6 lg:pr-1.5">
+              <div 
+                className="w-full lg:w-auto overflow-x-auto scrollbar-thin flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 flex-nowrap overscroll-x-contain touch-pan-x min-w-0 pr-12 lg:pr-1.5"
+                style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', scrollbarWidth: 'thin' }}
+              >
                 {[
                   { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
                   { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
                   { id: 'structure', label: 'Structure Métallique', icon: Sliders, color: 'text-indigo-500' },
                   { id: 'irve', label: 'Borne IRVE', icon: Zap, color: 'text-emerald-500' },
-                  { id: 'sechoir', label: 'Séchoir BatiTech', icon: Wheat, color: 'text-orange-500' },
+                  { id: 'sechoir', label: 'Séchoir BatiTech®', icon: Wheat, color: 'text-orange-500' },
                 ].map(sol => {
                   const Icon = sol.icon;
                   const isSelected = activeSolution === sol.id;
@@ -537,7 +540,7 @@ export default function IrveSimulator() {
                         }
                         setActiveSolution(sol.id);
                       }}
-                      className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all whitespace-nowrap shrink-0 ${
+                      className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all whitespace-nowrap shrink-0 ${
                         isSelected
                           ? 'bg-[#0e2b4d] text-white shadow-md'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
@@ -548,6 +551,7 @@ export default function IrveSimulator() {
                     </button>
                   );
                 })}
+                <div className="w-6 shrink-0 lg:hidden" aria-hidden="true" />
               </div>
             )}
           </div>
