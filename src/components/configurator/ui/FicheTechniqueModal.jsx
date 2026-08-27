@@ -13,6 +13,8 @@ import {
     Sparkles
 } from 'lucide-react';
 import { generateFicheTechniquePDF } from '@/services/FicheTechniquePDFService.js';
+import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
+import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 
 // Réglages par défaut optimisés et personnalisés
 const DEFAULT_SETTINGS = {
@@ -27,10 +29,10 @@ const DEFAULT_SETTINGS = {
         dimensionFontSize: 0.8,
     },
     pignon: {
-        cropTop: 10,
-        cropBottom: 10,
-        cropLeft: 5,
-        cropRight: 5,
+        cropTop: 0,
+        cropBottom: 0,
+        cropLeft: 0,
+        cropRight: 0,
         zoom: 1.0,
         offsetX: 0,
         offsetY: 0,
@@ -535,92 +537,300 @@ export function FicheTechniqueModal({
                             </div>
                         </div>
                     ) : (
-                        /* APERÇU GLOBAL DU PDF (FIDÈLE À LA MISE EN PAGE RÉELLE) */
-                        <div className="flex flex-col items-center">
-                            <div className="w-full max-w-3xl bg-white text-slate-900 rounded-xl p-6 shadow-2xl border border-slate-200">
-                                
-                                {/* Header simulé avec espacement supplémentaire */}
-                                <div className="text-center pt-5 pb-3">
-                                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">Plan de structure</h2>
-                                    <p className="text-xs font-bold text-blue-700 mt-0.5">
-                                        {Number(config.length || 30).toFixed(2)}m × {Number(config.width || 25.5).toFixed(2)}m - {Math.round((config.length || 30) * (config.width || 25.5))} m²
-                                        {config.hasSolar && ` - ${Number(config.solarStats?.power || 148.8).toFixed(1)} kWc`}
-                                    </p>
-                                </div>
+                        /* APERÇU GLOBAL DU PDF (FIDÈLE À LA MISE EN PAGE DU PDF RÉEL) */
+                        (() => {
+                            const length = Number(config?.length || 30.0);
+                            const mainWidth = Number(config?.width || 15.0);
+                            const leftExt = config?.leftSide !== 'none' ? Number(config?.leftWidth || 0) : 0;
+                            const rightExt = config?.rightSide !== 'none' ? Number(config?.rightWidth || 0) : 0;
+                            const totalWidth = mainWidth + leftExt + rightExt;
+                            const floorArea = Math.round(length * totalWidth);
 
-                                {/* Disposition exacte des 3 visuels sur fond blanc */}
-                                <div className="space-y-4 pt-1">
-                                    {/* 1. Vue 3D Principale (Haut, Agrandie x2 et centrée horizontalement) */}
-                                    <div className="flex justify-center items-center w-full h-[250px]">
-                                        {images.main3D ? (
-                                            <div 
-                                                className="w-full h-full flex items-center justify-center overflow-hidden"
-                                                style={{
-                                                    clipPath: `inset(${settings.main3D.cropTop}% ${settings.main3D.cropRight}% ${settings.main3D.cropBottom}% ${settings.main3D.cropLeft}%)`,
-                                                }}
-                                            >
-                                                <img 
-                                                    src={images.main3D} 
-                                                    alt="Vue 3D Principale" 
-                                                    className="max-h-full max-w-full object-contain"
-                                                    style={{ transform: `scale(${settings.main3D.zoom}) translate(${settings.main3D.offsetX}px, ${settings.main3D.offsetY}px)` }}
-                                                />
-                                            </div>
-                                        ) : null}
-                                    </div>
+                            const isBatitech = config?.configMode === 'batitech';
+                            const batitechModel = isBatitech ? (BATITECH_MODELS[config?.selectedBatitechModel] || BATITECH_MODELS['BT-3.1.15']) : null;
+                            const isCustom = !isBatitech && (config?.configMode === 'custom' || (!isAcama && config?.buildingType === 'custom'));
 
-                                    {/* 2. Ligne Milieu : Vue Pignon (Gauche) + Cadre À votre charge (Droite) */}
-                                    <div className="flex items-stretch justify-between gap-3 w-full min-h-[125px]">
-                                        {/* Vue Pignon (Gauche, 58%) */}
-                                        <div className="w-[58%] flex items-center justify-start overflow-hidden">
-                                            {images.pignon ? (
-                                                <div 
-                                                    className="w-full h-full flex items-center justify-start overflow-hidden"
-                                                    style={{
-                                                        clipPath: `inset(${settings.pignon.cropTop}% ${settings.pignon.cropRight}% ${settings.pignon.cropBottom}% ${settings.pignon.cropLeft}%)`,
-                                                    }}
-                                                >
-                                                    <img 
-                                                        src={images.pignon} 
-                                                        alt="Vue Pignon" 
-                                                        className="max-h-full max-w-full object-contain object-left"
-                                                        style={{ transform: `scale(${settings.pignon.zoom}) translate(${settings.pignon.offsetX}px, ${settings.pignon.offsetY}px)` }}
-                                                    />
+                            const barcMatch = isBatitech ? {} : findBarconniereBuilding({
+                                length,
+                                width: mainWidth,
+                                buildingType: config?.buildingType || 'symetrique',
+                                leftSide: config?.leftSide || 'none',
+                                rightSide: config?.rightSide || 'none',
+                                leftWidth: config?.leftWidth || 0,
+                                rightWidth: config?.rightWidth || 0,
+                                isAcama,
+                            });
+
+                            const gammeName = isBatitech ? 'Séchoir BatiTech®' : (isCustom ? 'Bâtiment Sur-Mesure' : (barcMatch.gamme || 'Gamme'));
+                            const buildingCode = isBatitech ? batitechModel?.name : String(barcMatch.id || '').replace(/^#/, '').trim();
+                            const equivalenceCode = isBatitech ? 'AS9.2' : String(barcMatch.code || '').trim();
+
+                            const TYPE_LABELS = {
+                                symetrique: 'Bipente Symétrique',
+                                asymetrique_1: 'Asymétrique 1 zone',
+                                asymetrique_2: 'Asymétrique 2 zones',
+                                monopente: 'Monopente',
+                                ombriere_pl: 'Ombrière Poids Lourds (PL)',
+                                ombriere_vl_double: 'Ombrière VL Double',
+                                ombriere_vl_simple_droite: 'Ombrière VL Simple (Droite)',
+                                ombriere_vl_simple_gauche: 'Ombrière VL Simple (Gauche)',
+                                custom: 'Bâtiment Sur-Mesure',
+                            };
+                            const typologyLabel = isBatitech ? 'Asymétrique 1 zone' : (TYPE_LABELS[config?.buildingType] || config?.buildingType || 'Structure Métallique');
+
+                            const installedKwc = isBatitech
+                                ? (batitechModel?.puissanceKwc || 30.15)
+                                : (Number(config?.solarStats?.power) || barcMatch.kwc || Math.round(floorArea * 0.20));
+                            const panelCount = isBatitech
+                                ? (batitechModel?.nbModules || 90)
+                                : (Number(config?.solarStats?.count) || Math.round((installedKwc * 1000) / (isAcama ? 460 : 465)));
+                            const estimatedProductionKwh = Math.round(installedKwc * 1150);
+
+                            const totalBuildingCost = isBatitech
+                                ? (batitechModel?.postesInvestissement?.structureMetallique || 217822)
+                                : (isCustom ? Math.round(floorArea * 128) : (barcMatch.tarif || 0));
+
+                            const cogenAirCost = isBatitech
+                                ? (batitechModel?.postesInvestissement?.systemeCogenAir || 77386)
+                                : 0;
+
+                            const pvCostPerWc = 0.55;
+                            const pvInstallationCost = isBatitech
+                                ? (batitechModel?.postesInvestissement?.centraleSolaire || 31845)
+                                : Math.round(installedKwc * 1000 * pvCostPerWc + 15000);
+
+                            const totalProjectCost = isBatitech
+                                ? (totalBuildingCost + cogenAirCost + (config?.hasSolar ? pvInstallationCost : 0))
+                                : (totalBuildingCost + (config?.hasSolar ? pvInstallationCost : 0));
+
+                            const ratioCostPerM2 = floorArea > 0 ? Math.round(totalBuildingCost / floorArea) : (barcMatch.ratioM2 || 116);
+                            const ratioTotalCostPerWc = installedKwc > 0 ? (totalProjectCost / (installedKwc * 1000)).toFixed(2) : '0.00';
+                            const ratioStructureCostPerWc = installedKwc > 0 ? (totalBuildingCost / (installedKwc * 1000)).toFixed(2) : (barcMatch.ratioKwc?.toFixed(2) || '0.00');
+
+                            const pitchDeg = isBatitech ? 15 : Number(config?.roofPitch || 10);
+                            const pitchPct = Math.round(Math.tan(pitchDeg * (Math.PI / 180)) * 100);
+                            const pitchLabel = `${pitchDeg}° (${pitchPct}%)`;
+
+                            const bType = (config?.buildingType || '').toLowerCase();
+                            const gName = (config?.gamme || '').toLowerCase();
+                            const isOmbriere = bType.includes('ombriere') || gName.includes('ombriere') || bType.startsWith('o_') || bType.startsWith('omb_');
+                            const isAsym1 = !isOmbriere && (bType.includes('asymetrique_1') || (bType.includes('asym') && !bType.includes('2')));
+                            const isAsym2 = !isOmbriere && (bType.includes('asymetrique_2') || (bType.includes('asym') && bType.includes('2')));
+                            const isMonopente = !isOmbriere && (bType.includes('monopente') || bType.includes('mono') || gName.includes('atlas'));
+
+                            let photoUrl = '/hangar_symetrique.jpg';
+                            if (isBatitech) {
+                                photoUrl = '/Séchoir 6 travées bardage bois.png';
+                            } else if (isAsym1) {
+                                photoUrl = '/hangar_asymetrique_1_zone.jpg';
+                            } else if (isAsym2) {
+                                photoUrl = '/hangar_asymetrique_2_zones.jpg';
+                            } else if (isMonopente) {
+                                photoUrl = '/hangar_monopente.jpg';
+                            } else if (isOmbriere) {
+                                if (totalWidth >= 18 || bType.includes('20') || bType.includes('25')) photoUrl = '/ombriere_pl_large.jpg';
+                                else if (bType.includes('ombriere_pl') || totalWidth >= 14) photoUrl = '/ombriere_pl.jpg';
+                                else if (bType.includes('plus') || totalWidth >= 10.5) photoUrl = '/ombriere_vl_double_plus.jpg';
+                                else if (bType.includes('double')) photoUrl = '/ombriere_vl_double.jpg';
+                                else if (bType.includes('droite')) photoUrl = '/ombriere_vl_simple_droite.jpg';
+                                else photoUrl = '/ombriere_vl_simple_gauche.jpg';
+                            }
+
+                            return (
+                                <div className="flex flex-col items-center py-2">
+                                    <div className="w-full max-w-4xl bg-white text-slate-900 rounded-xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col p-5 sm:p-7 relative select-none">
+                                        
+                                        {/* 1. HEADER BANNER */}
+                                        <div className="flex items-center justify-between pb-3 border-b-2 border-blue-600">
+                                            <div className="flex items-center gap-3">
+                                                <img src="/logo-header.png" alt="ENR Courtage" className="h-9 object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                <div className="flex flex-col">
+                                                    <span className="font-extrabold text-blue-950 text-sm tracking-tight">ENR COURTAGE</span>
+                                                    <span className="text-[9px] text-slate-500 font-medium">Bureaux d'études &amp; Développement photovoltaïque</span>
                                                 </div>
-                                            ) : null}
+                                            </div>
+                                            <div className="text-right">
+                                                <h2 className="text-lg sm:text-xl font-black text-blue-900 tracking-tight uppercase leading-tight">FICHE TECHNIQUE</h2>
+                                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">NELSON • CONFIGURATEUR DE STRUCTURES PHOTOVOLTAÏQUES</p>
+                                            </div>
                                         </div>
 
-                                        {/* Cadre À votre charge (Droite, 40%) */}
-                                        <div className="w-[40%] self-start bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[8.5px] text-slate-700 flex flex-col justify-start space-y-1">
-                                            <p className="font-bold text-slate-900 text-[9.5px]">À votre charge :</p>
-                                            <p className="leading-tight">• Terrassement / empièrement (si nécessaire)</p>
-                                            <p className="leading-tight">• Tranchée du bâtiment jusqu'au point de livraison (compteur)</p>
-                                            <p className="leading-tight">• Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..</p>
-                                            <p className="leading-tight">• Aménagement SDIS si inexistant</p>
-                                            <p className="leading-tight">• Équipement ERP : extincteurs / accès handicapés / autres..</p>
-                                        </div>
-                                    </div>
+                                        {/* 2. BODY : SIDEBAR GAUCHE + ZONE IMAGES DROITE */}
+                                        <div className="flex gap-4 sm:gap-6 mt-4 items-stretch">
+                                            
+                                            {/* SIDEBAR GAUCHE (Fond sombre #0f172a) */}
+                                            <div className="w-[33%] bg-[#0f172a] text-slate-200 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between text-[8px] sm:text-[9.5px] space-y-2.5 shadow-md">
+                                                
+                                                {/* 1. Identification */}
+                                                <div className="space-y-0.5">
+                                                    <h4 className="font-bold text-sky-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">1. Identification</h4>
+                                                    <div className="flex justify-between text-slate-400"><span>Gamme :</span><strong className="text-white font-bold">{gammeName}</strong></div>
+                                                    {buildingCode && <div className="flex justify-between text-slate-400"><span>Modèle :</span><strong className="text-amber-400 font-bold">{buildingCode}</strong></div>}
+                                                    {equivalenceCode && <div className="flex justify-end"><span className="text-slate-300 font-mono text-[8px]">{equivalenceCode}</span></div>}
+                                                </div>
 
-                                    {/* 3. Vue Façade Sud (Descendue vers le bas) */}
-                                    {(() => {
-                                        const bType = (config?.buildingType || '').toLowerCase();
-                                        const gName = (config?.gamme || '').toLowerCase();
-                                        const isOmbriere = bType.includes('ombriere') || gName.includes('ombriere') || bType.startsWith('o_') || bType.startsWith('omb_');
-                                        const isAsym1 = !isOmbriere && (bType.includes('asymetrique_1') || (bType.includes('asym') && !bType.includes('2')));
-                                        const isAsym2 = !isOmbriere && (bType.includes('asymetrique_2') || (bType.includes('asym') && bType.includes('2')));
-                                        const isMonopente = !isOmbriere && (bType.includes('monopente') || bType.includes('mono') || gName.includes('atlas'));
-                                        const isSym = !isOmbriere && !isAsym1 && !isAsym2 && !isMonopente;
-                                        const hasPhoto = true;
+                                                {/* 2. Structure & Dimensions */}
+                                                <div className="space-y-0.5">
+                                                    <h4 className="font-bold text-sky-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">2. Structure &amp; Dimensions</h4>
+                                                    <div className="flex justify-between text-slate-400"><span>Typologie :</span><span className="text-slate-200 truncate max-w-[110px]">{typologyLabel}</span></div>
+                                                    <div className="flex justify-between text-slate-400"><span>Longueur :</span><span className="text-slate-200">{length.toFixed(2)} m</span></div>
+                                                    <div className="flex justify-between text-slate-400"><span>Largeur totale :</span><span className="text-slate-200">{totalWidth.toFixed(2)} m</span></div>
+                                                    <div className="flex justify-between text-slate-400"><span>Surface au sol :</span><strong className="text-sky-400 font-bold">{floorArea} m²</strong></div>
+                                                    <div className="flex justify-between text-slate-400"><span>Travées :</span><span className="text-slate-200">{isBatitech ? `${batitechModel?.zones === 1 ? 3 : (batitechModel?.zones === 2 ? 6 : 8)} × 6.00 m` : (barcMatch.travees || `${config.bayCount || 4} × ${config.baySpacing || 7.5} m`)}</span></div>
+                                                    <div className="flex justify-between text-slate-400"><span>Avants-toit :</span><span className="text-slate-200">environ 50 cm</span></div>
+                                                    <div className="flex justify-between text-slate-400"><span>Niveau fondations :</span><span className="text-slate-200">+/- 0.0 m</span></div>
+                                                </div>
 
-                                        return (
-                                            <>
-                                                <div className={`flex justify-center items-center w-full ${hasPhoto ? 'h-[130px]' : 'h-[170px]'} pt-2`}>
+                                                {/* 3. Hauteurs & Toiture */}
+                                                <div className="space-y-0.5">
+                                                    <h4 className="font-bold text-sky-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">3. Hauteurs &amp; Toiture</h4>
+                                                    <div className="flex justify-between text-slate-400"><span>Hauteur Sablière :</span><span className="text-slate-200">{isBatitech ? '4.00 m' : `${Number(config.eaveHeight || 4).toFixed(2)}m`}</span></div>
+                                                    <div className="flex justify-between text-slate-400"><span>Hauteur Faîtage :</span><span className="text-slate-200">{isBatitech ? '8.40 m' : `${Number(config.ridgeHeight || 7.4).toFixed(2)}m`}</span></div>
+                                                    <div className="flex justify-between text-slate-400"><span>Pente de toit :</span><span className="text-slate-200">{pitchLabel}</span></div>
+                                                    <div className="flex justify-between text-slate-400"><span>Couverture :</span><span className="text-slate-200">Bac acier (RAL 7016)</span></div>
+                                                    <div className="flex justify-between text-slate-400"><span>Anti-condensation :</span><span className="text-slate-200">Feutre régulateur</span></div>
+                                                </div>
+
+                                                {/* 4. Énergie Solaire */}
+                                                <div className="space-y-0.5">
+                                                    <h4 className="font-bold text-amber-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">4. Énergie Solaire</h4>
+                                                    {(config.hasSolar || isBatitech) ? (
+                                                        <>
+                                                            <div className="flex justify-between text-slate-400"><span>Statut PV :</span><strong className="text-amber-400 font-bold">Activée</strong></div>
+                                                            <div className="flex justify-between text-slate-400"><span>Puissance :</span><strong className="text-amber-400 font-bold">{installedKwc.toFixed(2)} kWc</strong></div>
+                                                            <div className="flex justify-between text-slate-400"><span>Nombre modules :</span><span className="text-slate-200">{panelCount} panneaux</span></div>
+                                                            <div className="flex justify-between text-slate-400"><span>Technologie :</span><span className="text-slate-200">{isBatitech ? "Cogen'Air® Thermovolt." : `${isAcama ? 460 : 465} Wc`}</span></div>
+                                                            <div className="flex justify-between text-slate-400"><span>Prod. estimée :</span><span className="text-slate-200">~{estimatedProductionKwh.toLocaleString('fr-FR')} kWh/an</span></div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-slate-400 italic">Option solaire non incluse</div>
+                                                    )}
+                                                </div>
+
+                                                {/* 5. Chiffrage & Ratios */}
+                                                <div className="space-y-0.5">
+                                                    <h4 className="font-bold text-emerald-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">5. Chiffrage &amp; Ratios</h4>
+                                                    <div className="flex justify-between text-slate-400"><span>Structure métal. :</span><strong className="text-white font-bold">{totalBuildingCost.toLocaleString('fr-FR')} € HT</strong></div>
+                                                    {isBatitech && <div className="flex justify-between text-slate-400"><span>Système Cogen'Air :</span><strong className="text-amber-400 font-bold">{cogenAirCost.toLocaleString('fr-FR')} € HT</strong></div>}
+                                                    {(config.hasSolar || isBatitech) && <div className="flex justify-between text-slate-400"><span>Centrale {isBatitech ? 'Solaire' : 'PV'} :</span><span className="text-slate-200">{pvInstallationCost.toLocaleString('fr-FR')} € HT</span></div>}
+                                                    <div className="flex justify-between text-slate-400"><span>Total Projet :</span><strong className="text-emerald-400 font-bold">{totalProjectCost.toLocaleString('fr-FR')} € HT</strong></div>
+                                                    <div className="flex justify-between text-slate-400 pt-0.5 border-t border-slate-800"><span>Ratio / Surface :</span><strong className="text-sky-400 font-bold">{ratioCostPerM2} € / m²</strong></div>
+                                                    {(config.hasSolar || isBatitech) && installedKwc > 0 && (
+                                                        <>
+                                                            <div className="flex justify-between text-slate-400"><span>Ratio Total / Wc :</span><span className="text-slate-200">{ratioTotalCostPerWc} € / Wc</span></div>
+                                                            <div className="flex justify-between text-slate-400"><span>Ratio Struct. / Wc :</span><span className="text-slate-200">{ratioStructureCostPerWc} € / Wc</span></div>
+                                                        </>
+                                                    )}
+                                                </div>
+
+                                                {/* 6. Options */}
+                                                <div className="space-y-0.5">
+                                                    <h4 className="font-bold text-pink-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">6. Options</h4>
+                                                    {isBatitech && batitechModel?.options ? (
+                                                        <>
+                                                            <div className="flex justify-between text-slate-400"><span>Auvent Sud (4m) :</span><strong className="text-white font-bold">{batitechModel.options.auventSud.toLocaleString('fr-FR')} € HT</strong></div>
+                                                            <div className="flex justify-between text-slate-400"><span>Auvent Nord (4m) :</span><strong className="text-white font-bold">{batitechModel.options.auventNord.toLocaleString('fr-FR')} € HT</strong></div>
+                                                            <div className="flex justify-between text-slate-400"><span>Auvents N + S :</span><strong className="text-amber-400 font-bold">{batitechModel.options.auventNordSud.toLocaleString('fr-FR')} € HT</strong></div>
+                                                            <div className="flex justify-between text-slate-400"><span>Travée suppl. 6m :</span><strong className="text-sky-400 font-bold">{batitechModel.options.traveeSupplementaire.toLocaleString('fr-FR')} € HT</strong></div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex justify-between text-slate-400"><span>Auvent Sud :</span><span className="text-slate-300">Sur étude</span></div>
+                                                            <div className="flex justify-between text-slate-400"><span>Auvent Nord :</span><span className="text-slate-300">Sur étude</span></div>
+                                                            <div className="flex justify-between text-slate-400"><span>Travée suppl. :</span><span className="text-slate-300">Sur étude</span></div>
+                                                        </>
+                                                    )}
+                                                </div>
+
+                                                {/* Logo Nelson centré en bas */}
+                                                <div className="pt-2 flex justify-center">
+                                                    <img src="/logo-nelson.png" alt="Nelson" className="h-6 object-contain opacity-90" />
+                                                </div>
+                                            </div>
+
+                                            {/* ZONE DROITE : VISUELS + CADRE À VOTRE CHARGE + PHOTO */}
+                                            <div className="w-[67%] flex flex-col justify-between space-y-3">
+                                                
+                                                {/* Titre "Plan de structure" */}
+                                                <div className="text-center pt-1 pb-1">
+                                                    <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Plan de structure</h3>
+                                                    <p className="text-[10px] sm:text-xs font-bold text-blue-900 mt-0.5">
+                                                        {length.toFixed(2)}m × {totalWidth.toFixed(2)}m - {floorArea} m²{(config.hasSolar || isBatitech) ? ` - ${installedKwc.toFixed(1)} kWc` : ''}
+                                                    </p>
+                                                </div>
+
+                                                {/* 1. Vue 3D Principale */}
+                                                <div className="flex justify-center items-center w-full h-[150px] sm:h-[190px] overflow-hidden">
+                                                    {images.main3D ? (
+                                                        <div 
+                                                            className="w-full h-full flex items-center justify-center overflow-hidden"
+                                                            style={{ clipPath: `inset(${settings.main3D.cropTop}% ${settings.main3D.cropRight}% ${settings.main3D.cropBottom}% ${settings.main3D.cropLeft}%)` }}
+                                                        >
+                                                            <img 
+                                                                src={images.main3D} 
+                                                                alt="Vue 3D Principale" 
+                                                                className="max-h-full max-w-full object-contain"
+                                                                style={{ transform: `scale(${settings.main3D.zoom}) translate(${settings.main3D.offsetX}px, ${settings.main3D.offsetY}px)` }}
+                                                            />
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+
+                                                {/* 2. Vue Pignon + Cadre À votre charge (si non-BatiTech) */}
+                                                {isBatitech ? (
+                                                    /* BatiTech : Vue Pignon centrée pleine largeur */
+                                                    <div className="flex justify-center items-center w-full h-[110px] sm:h-[130px] overflow-hidden">
+                                                        {images.pignon ? (
+                                                            <div 
+                                                                className="w-full h-full flex items-center justify-center overflow-hidden"
+                                                                style={{ clipPath: `inset(${settings.pignon.cropTop}% ${settings.pignon.cropRight}% ${settings.pignon.cropBottom}% ${settings.pignon.cropLeft}%)` }}
+                                                            >
+                                                                <img 
+                                                                    src={images.pignon} 
+                                                                    alt="Vue Pignon" 
+                                                                    className="max-h-full max-w-full object-contain"
+                                                                    style={{ transform: `scale(${settings.pignon.zoom}) translate(${settings.pignon.offsetX}px, ${settings.pignon.offsetY}px)` }}
+                                                                />
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+                                                ) : (
+                                                    /* Standard : Vue Pignon à gauche (58%) + Cadre À votre charge à droite (40%) */
+                                                    <div className="flex items-stretch justify-between gap-2.5 w-full min-h-[110px]">
+                                                        <div className="w-[58%] flex items-center justify-start overflow-hidden">
+                                                            {images.pignon ? (
+                                                                <div 
+                                                                    className="w-full h-full flex items-center justify-start overflow-hidden"
+                                                                    style={{ clipPath: `inset(${settings.pignon.cropTop}% ${settings.pignon.cropRight}% ${settings.pignon.cropBottom}% ${settings.pignon.cropLeft}%)` }}
+                                                                >
+                                                                    <img 
+                                                                        src={images.pignon} 
+                                                                        alt="Vue Pignon" 
+                                                                        className="max-h-full max-w-full object-contain object-left"
+                                                                        style={{ transform: `scale(${settings.pignon.zoom}) translate(${settings.pignon.offsetX}px, ${settings.pignon.offsetY}px)` }}
+                                                                    />
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+
+                                                        {/* Cadre À votre charge */}
+                                                        <div className="w-[40%] self-start bg-blue-50/80 border border-blue-200 rounded-lg p-2 text-[7.5px] sm:text-[9px] text-slate-700 flex flex-col justify-start space-y-0.5 shadow-xs">
+                                                            <p className="font-bold text-blue-950 text-[8.5px] sm:text-[10px] pb-0.5">À votre charge :</p>
+                                                            <p className="leading-tight">•  Terrassement / empièrement (si nécessaire)</p>
+                                                            <p className="leading-tight">•  Tranchée du bâtiment jusqu'au point de livraison (compteur)</p>
+                                                            <p className="leading-tight">•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..</p>
+                                                            <p className="leading-tight">•  Aménagement SDIS si inexistant</p>
+                                                            <p className="leading-tight">•  Équipement ERP : extincteurs / accès handicapés / autres..</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* 3. Vue Façade Sud */}
+                                                <div className="flex justify-center items-center w-full h-[100px] sm:h-[120px] overflow-hidden">
                                                     {images.facadeSud ? (
                                                         <div 
                                                             className="w-full h-full flex items-center justify-center overflow-hidden"
-                                                            style={{
-                                                                clipPath: `inset(${settings.facadeSud.cropTop}% ${settings.facadeSud.cropRight}% ${settings.facadeSud.cropBottom}% ${settings.facadeSud.cropLeft}%)`,
-                                                            }}
+                                                            style={{ clipPath: `inset(${settings.facadeSud.cropTop}% ${settings.facadeSud.cropRight}% ${settings.facadeSud.cropBottom}% ${settings.facadeSud.cropLeft}%)` }}
                                                         >
                                                             <img 
                                                                 src={images.facadeSud} 
@@ -632,78 +842,32 @@ export function FicheTechniqueModal({
                                                     ) : null}
                                                 </div>
 
-                                                {/* 4. Visuel Réaliste 3D */}
-                                                {isSym && (
-                                                    <div className="flex justify-center items-center w-full pt-1 pb-1">
-                                                        <img 
-                                                            src="/hangar_symetrique.jpg" 
-                                                            alt="Rendu 3D Réaliste Symétrique" 
-                                                            className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
-                                                        />
-                                                    </div>
-                                                )}
-                                                {isAsym1 && (
-                                                    <div className="flex justify-center items-center w-full pt-1 pb-1">
-                                                        <img 
-                                                            src="/hangar_asymetrique_1_zone.jpg" 
-                                                            alt="Rendu 3D Réaliste Asymétrique 1 zone" 
-                                                            className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
-                                                        />
-                                                    </div>
-                                                )}
-                                                {isAsym2 && (
-                                                    <div className="flex justify-center items-center w-full pt-1 pb-1">
-                                                        <img 
-                                                            src="/hangar_asymetrique_2_zones.jpg" 
-                                                            alt="Rendu 3D Réaliste Asymétrique 2 zones" 
-                                                            className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
-                                                        />
-                                                    </div>
-                                                )}
-                                                {isMonopente && (
-                                                    <div className="flex justify-center items-center w-full pt-1 pb-1">
-                                                        <img 
-                                                            src="/hangar_monopente.jpg" 
-                                                            alt="Rendu 3D Réaliste Monopente Atlas" 
-                                                            className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
-                                                        />
-                                                    </div>
-                                                )}
-                                                {isOmbriere && (
-                                                    <div className="flex justify-center items-center w-full pt-1 pb-1">
-                                                        <img 
-                                                            src={(() => {
-                                                                const w = Number(config?.width || 0);
-                                                                const g = (config?.gamme || '').toLowerCase();
-                                                                const isSimple = bType.includes('simple') || bType.includes('gauche') || bType.includes('droite');
-                                                                if (!isSimple && (w >= 18 || bType.includes('20') || bType.includes('25') || g.includes('20') || g.includes('25'))) {
-                                                                    return "/ombriere_pl_large.jpg";
-                                                                }
-                                                                if (!isSimple && (bType.includes('ombriere_pl') || (w >= 14 && w < 18) || g.includes('16'))) {
-                                                                    return "/ombriere_pl.jpg";
-                                                                }
-                                                                if (!isSimple && (bType.includes('plus') || g.includes('+') || (w >= 10.5 && w <= 13.5))) {
-                                                                    return "/ombriere_vl_double_plus.jpg";
-                                                                }
-                                                                if (!isSimple && bType.includes('double')) {
-                                                                    return "/ombriere_vl_double.jpg";
-                                                                }
-                                                                if (bType.includes('droite') || g.includes('droite')) {
-                                                                    return "/ombriere_vl_simple_droite.jpg";
-                                                                }
-                                                                return "/ombriere_vl_simple_gauche.jpg";
-                                                            })()} 
-                                                            alt="Rendu 3D Réaliste Ombrière" 
-                                                            className="max-w-full max-h-[140px] rounded-xl shadow-sm object-contain"
-                                                        />
-                                                    </div>
-                                                )}
-                                            </>
-                                        );
-                                    })()}
+                                                {/* 4. Photo 3D Réaliste avec coins arrondis */}
+                                                <div className="flex justify-center items-center w-full pt-1">
+                                                    <img 
+                                                        src={photoUrl} 
+                                                        alt="Rendu 3D Réaliste" 
+                                                        className="w-full max-h-[140px] sm:max-h-[170px] rounded-xl shadow-sm object-cover"
+                                                    />
+                                                </div>
+
+                                                {/* Disclaimer */}
+                                                <p className="text-[7.5px] sm:text-[8.5px] text-slate-500 text-center italic">
+                                                    Des modifications mineures pourront être apportées en fonction de l'évolution des panneaux photovoltaïques
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* 3. FOOTER */}
+                                        <div className="mt-4 pt-2 border-t border-slate-300 flex justify-between items-center text-[7.5px] sm:text-[9px] text-slate-500">
+                                            <span>Les droits d'exploitation et de propriété intellectuelle appartiennent à ENR COURTAGE. Document confidentiel et non contractuel.</span>
+                                            <span className="font-semibold text-slate-600">contact@enr-courtage.fr • enr-courtage.fr</span>
+                                        </div>
+
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            );
+                        })()
                     )}
                 </div>
 

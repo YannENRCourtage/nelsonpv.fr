@@ -544,7 +544,9 @@ export async function generateFicheTechniquePDF({
     const hasExtraPhoto = true; // Tous les types ont une photo dédiée
 
     let photoUrlToLoad = null;
-    if (isSymetrique) {
+    if (isBatitech) {
+        photoUrlToLoad = '/Séchoir 6 travées bardage bois.png';
+    } else if (isSymetrique) {
         photoUrlToLoad = '/hangar_symetrique.jpg';
     } else if (isAsym1) {
         photoUrlToLoad = '/hangar_asymetrique_1_zone.jpg';
@@ -702,66 +704,72 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D Principale épurée sur fond blanc (Cadre agrandi pour visuel plus gros)
+    // VISUEL 1 (Haut) : Vue 3D Principale épurée sur fond blanc
     const topY = 46.0;
-    const topH = hasExtraPhoto ? 68.0 : 84.0; // Cadre agrandi
-    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, false); // Centrée et contenue dans mainW
+    const topH = hasExtraPhoto ? 68.0 : 84.0;
+    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, false);
 
-    // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (Cadre élargi à 84mm et midH à 44mm)
+    // VISUEL 2 (Milieu) : Vue Pignon épurée sur fond blanc
     const midY = hasExtraPhoto ? 116.0 : 132.0;
-    const midH = 44.0; // Cadre agrandi
-    const pignonW = 84.0; // Cadre élargi
-    drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true);
+    const midH = 44.0;
 
-    // --- CADRE : À VOTRE CHARGE (Avec les 5 points d'équipements & aménagements) ---
-    const chargeX = 152.0;
-    const chargeY = midY;
-    const chargeW = 52.0;
+    if (isBatitech) {
+        // BatiTech : Vue Pignon centrée horizontalement sur toute la largeur de la zone images, pas de cadre 'À votre charge'
+        drawSeamlessImage(loadedPignon, mainX, midY, mainW, midH, false);
+    } else {
+        // Bâtiments standards : Vue Pignon à gauche + cadre 'À votre charge' à droite
+        const pignonW = 84.0;
+        drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true);
 
-    const chargeItems = [
-        "•  Terrassement / empièrement (si nécessaire)",
-        "•  Tranchée du bâtiment jusqu'au point de livraison (compteur)",
-        "•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..",
-        "•  Aménagement SDIS si inexistant",
-        "•  Équipement ERP : extincteurs / accès handicapés / autres.."
-    ];
+        // --- CADRE : À VOTRE CHARGE ---
+        const chargeX = 152.0;
+        const chargeY = midY;
+        const chargeW = 52.0;
 
-    const maxTextW = chargeW - 7.0;
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(6.8);
-    const itemLines = chargeItems.map(item => pdf.splitTextToSize(item, maxTextW));
+        const chargeItems = [
+            "•  Terrassement / empièrement (si nécessaire)",
+            "•  Tranchée du bâtiment jusqu'au point de livraison (compteur)",
+            "•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..",
+            "•  Aménagement SDIS si inexistant",
+            "•  Équipement ERP : extincteurs / accès handicapés / autres.."
+        ];
 
-    let totalTextH = 5.2 + 3.2; // Espace titre 'À votre charge :'
-    itemLines.forEach((lines, idx) => {
-        totalTextH += (lines.length * 2.7) + (idx < itemLines.length - 1 ? 1.0 : 0);
-    });
-    const chargeH = totalTextH + 2.0; // Réduit l'espace après la dernière phrase (ERP)
+        const maxTextW = chargeW - 7.0;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(6.8);
+        const itemLines = chargeItems.map(item => pdf.splitTextToSize(item, maxTextW));
 
-    // Fond élégant bleu très doux avec bordure moderne
-    pdf.setFillColor(239, 246, 255); // Bleu très doux (Blue 50)
-    pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2.5, 2.5, 'FD');
-    pdf.setDrawColor(191, 219, 254); // Bleu 200
-    pdf.setLineWidth(0.4);
-    pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2.5, 2.5, 'S');
+        let totalTextH = 5.2 + 3.2;
+        itemLines.forEach((lines, idx) => {
+            totalTextH += (lines.length * 2.7) + (idx < itemLines.length - 1 ? 1.0 : 0);
+        });
+        const chargeH = totalTextH + 2.0;
 
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(8.6);
-    pdf.setTextColor(30, 58, 138); // Bleu Marine Élégant
-    pdf.text('À votre charge :', chargeX + 3.5, chargeY + 5.2);
+        pdf.setFillColor(239, 246, 255);
+        pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2.5, 2.5, 'FD');
+        pdf.setDrawColor(191, 219, 254);
+        pdf.setLineWidth(0.4);
+        pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2.5, 2.5, 'S');
 
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(6.8);
-    pdf.setTextColor(51, 65, 85); // Slate 700
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8.6);
+        pdf.setTextColor(30, 58, 138);
+        pdf.text('À votre charge :', chargeX + 3.5, chargeY + 5.2);
 
-    let textCursorY = chargeY + 8.8;
-    itemLines.forEach((lines, idx) => {
-        pdf.text(lines, chargeX + 3.5, textCursorY);
-        textCursorY += (lines.length * 2.7) + (idx < itemLines.length - 1 ? 1.0 : 0);
-    });
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(6.8);
+        pdf.setTextColor(51, 65, 85);
 
-    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Cadre agrandi pour visuel plus gros, parfaitement centré au-dessus de la photo)
+        let textCursorY = chargeY + 8.8;
+        itemLines.forEach((lines, idx) => {
+            pdf.text(lines, chargeX + 3.5, textCursorY);
+            textCursorY += (lines.length * 2.7) + (idx < itemLines.length - 1 ? 1.0 : 0);
+        });
+    }
+
+    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc
     const sudY = hasExtraPhoto ? 160.0 : 176.0;
-    const sudH = hasExtraPhoto ? 52.0 : 64.0; // Cadre agrandi
+    const sudH = hasExtraPhoto ? 52.0 : 64.0;
     drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH, false);
 
     // ==========================================
