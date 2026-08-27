@@ -66,7 +66,7 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
   return (
     <div 
       onClick={!material.enabled ? onToggle : undefined}
-      className={`rounded-3xl border transition-all duration-200 shadow-md flex flex-col justify-between p-4 ${
+      className={`rounded-3xl border transition-all duration-200 shadow-md flex flex-col justify-between p-4 sm:p-5 ${
         material.enabled 
           ? 'bg-slate-800/95 border-emerald-500/60 shadow-emerald-500/10 ring-1 ring-emerald-500/40' 
           : 'bg-slate-800/40 border-slate-700/60 opacity-85 hover:opacity-100 hover:border-emerald-500/50 cursor-pointer'
@@ -78,21 +78,21 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
           onClick={onToggle}
         >
           <div className="flex items-center space-x-2.5 min-w-0">
-            <div className={`p-2.5 rounded-2xl text-2xl flex items-center justify-center shrink-0 transition-colors ${
+            <div className={`p-2.5 rounded-2xl text-2xl sm:text-3xl flex items-center justify-center shrink-0 transition-colors ${
               material.enabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700/60 text-slate-400'
             }`}>
               <span>{material.icon || '🌿'}</span>
             </div>
             <div className="min-w-0">
-              <span className={`font-black text-base sm:text-lg block truncate ${material.enabled ? 'text-white' : 'text-slate-300'}`} title={material.label}>
+              <span className={`font-black text-lg sm:text-xl block truncate ${material.enabled ? 'text-white' : 'text-slate-200'}`} title={material.label}>
                 {material.shortLabel || material.label}
               </span>
-              <span className="text-sm text-slate-300 block truncate font-medium">{material.unit}</span>
+              <span className="text-sm sm:text-base text-slate-300 block truncate font-semibold">{material.unit}</span>
             </div>
           </div>
           
           {/* Toggle Switch */}
-          <div className={`w-11 h-6 rounded-full relative shrink-0 transition-colors mt-0.5 ${material.enabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+          <div className={`w-11 h-6 rounded-full relative shrink-0 transition-colors mt-1 ${material.enabled ? 'bg-emerald-500' : 'bg-slate-700'}`}>
             <motion.div 
               layout
               className="w-4 h-4 rounded-full bg-white absolute top-1 shadow-md"
@@ -104,31 +104,31 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
         </div>
 
         {/* Description */}
-        <p className="text-sm text-slate-300 line-clamp-2 min-h-[38px] leading-relaxed">
+        <p className="text-sm sm:text-base text-slate-300 line-clamp-2 min-h-[42px] leading-relaxed">
           {material.description || material.label}
         </p>
 
         {/* Capacité maximale du modèle choisi */}
-        <div className="flex items-center justify-between text-xs font-semibold text-slate-400 mt-2 pt-2 border-t border-slate-700/60">
+        <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-300 mt-2.5 pt-2.5 border-t border-slate-700/60">
           <span>Capacité modèle :</span>
-          <span className="text-amber-400 font-bold">{maxCapacity ? `${maxCapacity} ${material.unit}` : '—'}</span>
+          <span className="text-amber-400 font-extrabold text-sm sm:text-base">{maxCapacity ? `${maxCapacity} ${material.unit}` : '—'}</span>
         </div>
       </div>
 
       {/* Zone de saisie Volume & Surface quand activé */}
       {material.enabled ? (
-        <div className="mt-3 pt-3 border-t border-slate-700/70 space-y-2">
-          {/* LIGNE 1 : Saisie de la Surface (Ha) */}
-          <div className="bg-slate-950/80 p-2 px-3 rounded-2xl border border-slate-700 flex items-center justify-between gap-2 shadow-inner">
+        <div className="mt-3.5 pt-3.5 border-t border-slate-700/70 space-y-2.5">
+          {/* LIGNE 1 : Saisie de la Surface (Ha) élargie */}
+          <div className="bg-slate-950/80 p-2.5 px-3 rounded-2xl border border-slate-700 flex items-center justify-between gap-2 shadow-inner">
             <div className="flex flex-col min-w-0">
-              <span className="text-[11px] font-bold text-slate-300 truncate">
+              <span className="text-xs sm:text-sm font-black text-slate-200 truncate">
                 Surface exploitée
               </span>
-              <span className="text-[10px] text-slate-400 font-medium">
+              <span className="text-[11px] sm:text-xs text-slate-400 font-medium">
                 Rendement : {yieldVal} t/ha
               </span>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <input 
                 type="number"
                 min="0"
@@ -137,21 +137,21 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
                 onChange={handleSurfaceChange}
                 placeholder="0"
                 onClick={(e) => e.stopPropagation()}
-                className="w-16 text-right font-black bg-slate-900/90 text-emerald-400 border border-slate-700/80 focus:border-emerald-500 rounded-xl px-2 py-1 text-sm focus:outline-none"
+                className="w-24 sm:w-28 text-right font-black bg-slate-900/90 text-emerald-400 border border-slate-700/80 focus:border-emerald-500 rounded-xl px-2.5 py-1.5 text-base sm:text-lg focus:outline-none"
               />
-              <span className="text-xs font-bold text-slate-400">Ha</span>
+              <span className="text-xs sm:text-sm font-bold text-slate-300">Ha</span>
             </div>
           </div>
 
           {/* LIGNE 2 : Contrôleur Tonnage (t MS/an) avec boutons [-] et [+] */}
-          <div className="bg-slate-950/80 p-2 rounded-2xl border border-slate-700 flex items-center justify-between gap-1 shadow-inner">
+          <div className="bg-slate-950/80 p-2.5 rounded-2xl border border-slate-700 flex items-center justify-between gap-1 shadow-inner">
             <button 
               type="button"
               onClick={(e) => { e.stopPropagation(); handleVolumeChange(Math.max(0, vol - (vol >= 100 ? 20 : 10))); }}
-              className="w-7 h-7 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0 active:scale-95"
+              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0 active:scale-95"
               title="Diminuer le tonnage"
             >
-              <Minus className="w-3.5 h-3.5" />
+              <Minus className="w-4 h-4" />
             </button>
             <div className="flex items-center gap-1 px-1">
               <input 
@@ -162,34 +162,34 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
                 onChange={(e) => handleVolumeChange(Math.max(0, Number(e.target.value) || 0))}
                 placeholder="0"
                 onClick={(e) => e.stopPropagation()}
-                className="w-16 text-center font-black bg-transparent text-white focus:outline-none text-base"
+                className="w-20 text-center font-black bg-transparent text-white focus:outline-none text-base sm:text-lg"
               />
-              <span className="text-xs text-slate-400 font-bold whitespace-nowrap">t MS/an</span>
+              <span className="text-xs sm:text-sm text-slate-300 font-bold whitespace-nowrap">t MS/an</span>
             </div>
             <button 
               type="button"
               onClick={(e) => { e.stopPropagation(); handleVolumeChange(vol + (vol >= 100 ? 20 : 10)); }}
-              className="w-7 h-7 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0 active:scale-95"
+              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0 active:scale-95"
               title="Augmenter le tonnage"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
             </button>
           </div>
 
           {/* Indicateur de respect / dépassement de la capacité */}
           {vol > 0 && maxCapacity && (
             isOverCapacity ? (
-              <div className="bg-amber-950/80 border border-amber-500/50 rounded-xl px-2.5 py-1 text-[11px] text-amber-300 font-bold flex items-center justify-between shadow-sm">
-                <span className="flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
-                  Capacité conseillée ({maxCapacity} {material.unit})
+              <div className="bg-amber-950/80 border border-amber-500/50 rounded-xl px-2.5 py-1.5 text-xs sm:text-sm text-amber-300 font-bold flex items-center justify-between shadow-sm">
+                <span className="flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  Capacité ({maxCapacity} {material.unit})
                 </span>
                 <span className="text-amber-400 font-black">+{vol - maxCapacity}</span>
               </div>
             ) : (
-              <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl px-2.5 py-1 text-[11px] text-slate-300 font-medium flex items-center justify-between shadow-sm">
-                <span className="flex items-center gap-1 text-slate-400">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+              <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl px-2.5 py-1.5 text-xs sm:text-sm text-slate-300 font-medium flex items-center justify-between shadow-sm">
+                <span className="flex items-center gap-1.5 text-slate-400">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   Remplissage
                 </span>
                 <span className="text-emerald-400 font-bold">{Math.round((vol / maxCapacity) * 100)}% ({vol}/{maxCapacity})</span>
@@ -200,7 +200,7 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
           {/* Badge gain temps réel */}
           <div className="bg-emerald-950/80 border border-emerald-500/40 rounded-2xl p-2.5 text-center shadow-sm">
             <span className="text-xs uppercase font-bold text-emerald-400 block tracking-wider">Gain estimé</span>
-            <strong className="text-base font-black text-emerald-300">+{fmt(totalMatiere)} €/an</strong>
+            <strong className="text-lg sm:text-xl font-black text-emerald-300">+{fmt(totalMatiere)} €/an</strong>
           </div>
 
           {/* Paramètres avancés ajustables */}
@@ -208,7 +208,7 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
             <button 
               type="button"
               onClick={(e) => { e.stopPropagation(); setExpandedSettings(!expandedSettings); }}
-              className="flex items-center justify-between w-full text-sm font-bold text-slate-400 hover:text-white transition-colors"
+              className="flex items-center justify-between w-full text-sm sm:text-base font-bold text-slate-300 hover:text-white transition-colors"
             >
               <span>Ajuster barèmes</span>
               {expandedSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -222,9 +222,9 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="space-y-2 pt-2.5 text-sm bg-slate-900/90 p-3 rounded-2xl border border-slate-800 mt-1.5">
+                  <div className="space-y-2.5 pt-2.5 text-sm sm:text-base bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 mt-1.5">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-300 text-xs">Rendement (t/ha)</span>
+                      <span className="text-slate-300 text-xs sm:text-sm font-semibold">Rendement (t/ha)</span>
                       <input 
                         type="number"
                         step="0.5"
@@ -232,27 +232,27 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
                         value={material.yieldPerHa || yieldVal}
                         onChange={(e) => onChangeParams({ yieldPerHa: Number(e.target.value) || yieldVal })}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-16 text-right bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-xs"
+                        className="w-20 text-right bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-bold text-xs sm:text-sm"
                       />
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-300 text-xs">Qualité (€/t)</span>
+                      <span className="text-slate-300 text-xs sm:text-sm font-semibold">Qualité (€/t)</span>
                       <input 
                         type="number"
                         value={material.plusValueQualite}
                         onChange={(e) => onChangeParams({ plusValueQualite: Number(e.target.value) || 0 })}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-16 text-right bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-xs"
+                        className="w-20 text-right bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-bold text-xs sm:text-sm"
                       />
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-300 text-xs">Énergie (€/t)</span>
+                      <span className="text-slate-300 text-xs sm:text-sm font-semibold">Énergie (€/t)</span>
                       <input 
                         type="number"
                         value={material.economieEnergie}
                         onChange={(e) => onChangeParams({ economieEnergie: Number(e.target.value) || 0 })}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-16 text-right bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-xs"
+                        className="w-20 text-right bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-bold text-xs sm:text-sm"
                       />
                     </div>
                   </div>
@@ -262,8 +262,8 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
           </div>
         </div>
       ) : (
-        <div className="mt-3 pt-2.5 border-t border-slate-700/40 text-center">
-          <span className="text-sm text-slate-400 italic">Cliquer pour activer</span>
+        <div className="mt-3.5 pt-3 border-t border-slate-700/40 text-center">
+          <span className="text-sm sm:text-base text-slate-300 italic font-medium">Cliquer pour activer</span>
         </div>
       )}
     </div>
