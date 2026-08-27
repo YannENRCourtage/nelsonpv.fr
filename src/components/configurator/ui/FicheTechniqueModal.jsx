@@ -620,7 +620,7 @@ export function FicheTechniqueModal({
 
                             let photoUrl = '/hangar_symetrique.jpg';
                             if (isBatitech) {
-                                photoUrl = '/Séchoir 6 travées bardage bois.png';
+                                photoUrl = '/Séchoir 6 travées bardage métal.jpg';
                             } else if (isAsym1) {
                                 photoUrl = '/hangar_asymetrique_1_zone.jpg';
                             } else if (isAsym2) {
@@ -634,6 +634,18 @@ export function FicheTechniqueModal({
                                 else if (bType.includes('double')) photoUrl = '/ombriere_vl_double.jpg';
                                 else if (bType.includes('droite')) photoUrl = '/ombriere_vl_simple_droite.jpg';
                                 else photoUrl = '/ombriere_vl_simple_gauche.jpg';
+                            }
+
+                            let batitechInterieurUrl = null;
+                            if (isBatitech) {
+                                const modelId = config?.selectedBatitechModel || 'BT-3.1.15';
+                                if (modelId === 'BT-6.2.15' || modelId.includes('6.2')) {
+                                    batitechInterieurUrl = '/batitech_interieur_6_2_15.png';
+                                } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
+                                    batitechInterieurUrl = '/batitech_interieur_8_3_15.png';
+                                } else {
+                                    batitechInterieurUrl = '/batitech_interieur_3_1_15.png';
+                                }
                             }
 
                             return (
@@ -723,24 +735,16 @@ export function FicheTechniqueModal({
                                                     )}
                                                 </div>
 
-                                                {/* 6. Options */}
-                                                <div className="space-y-0.5">
-                                                    <h4 className="font-bold text-pink-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">6. Options</h4>
-                                                    {isBatitech && batitechModel?.options ? (
-                                                        <>
-                                                            <div className="flex justify-between text-slate-400"><span>Auvent Sud (4m) :</span><strong className="text-white font-bold">{batitechModel.options.auventSud.toLocaleString('fr-FR')} € HT</strong></div>
-                                                            <div className="flex justify-between text-slate-400"><span>Auvent Nord (4m) :</span><strong className="text-white font-bold">{batitechModel.options.auventNord.toLocaleString('fr-FR')} € HT</strong></div>
-                                                            <div className="flex justify-between text-slate-400"><span>Auvents N + S :</span><strong className="text-amber-400 font-bold">{batitechModel.options.auventNordSud.toLocaleString('fr-FR')} € HT</strong></div>
-                                                            <div className="flex justify-between text-slate-400"><span>Travée suppl. 6m :</span><strong className="text-sky-400 font-bold">{batitechModel.options.traveeSupplementaire.toLocaleString('fr-FR')} € HT</strong></div>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <div className="flex justify-between text-slate-400"><span>Auvent Sud :</span><span className="text-slate-300">Sur étude</span></div>
-                                                            <div className="flex justify-between text-slate-400"><span>Auvent Nord :</span><span className="text-slate-300">Sur étude</span></div>
-                                                            <div className="flex justify-between text-slate-400"><span>Travée suppl. :</span><span className="text-slate-300">Sur étude</span></div>
-                                                        </>
-                                                    )}
-                                                </div>
+                                                {/* 6. Options (UNIQUEMENT POUR BATITECH) */}
+                                                {isBatitech && batitechModel?.options && (
+                                                    <div className="space-y-0.5">
+                                                        <h4 className="font-bold text-pink-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">6. Options</h4>
+                                                        <div className="flex justify-between text-slate-400"><span>Auvent Sud (4m) :</span><strong className="text-white font-bold">{batitechModel.options.auventSud.toLocaleString('fr-FR')} € HT</strong></div>
+                                                        <div className="flex justify-between text-slate-400"><span>Auvent Nord (4m) :</span><strong className="text-white font-bold">{batitechModel.options.auventNord.toLocaleString('fr-FR')} € HT</strong></div>
+                                                        <div className="flex justify-between text-slate-400"><span>Auvents N + S :</span><strong className="text-amber-400 font-bold">{batitechModel.options.auventNordSud.toLocaleString('fr-FR')} € HT</strong></div>
+                                                        <div className="flex justify-between text-slate-400"><span>Travée suppl. 6m :</span><strong className="text-sky-400 font-bold">{batitechModel.options.traveeSupplementaire.toLocaleString('fr-FR')} € HT</strong></div>
+                                                    </div>
+                                                )}
 
                                                 {/* Logo Nelson centré en bas */}
                                                 <div className="pt-2 flex justify-center">
@@ -776,23 +780,36 @@ export function FicheTechniqueModal({
                                                     ) : null}
                                                 </div>
 
-                                                {/* 2. Vue Pignon + Cadre À votre charge (si non-BatiTech) */}
+                                                {/* 2. Vue Pignon + Vue Intérieure (si BatiTech) ou Cadre À votre charge (si standard) */}
                                                 {isBatitech ? (
-                                                    /* BatiTech : Vue Pignon centrée pleine largeur */
-                                                    <div className="flex justify-center items-center w-full h-[110px] sm:h-[130px] overflow-hidden">
-                                                        {images.pignon ? (
-                                                            <div 
-                                                                className="w-full h-full flex items-center justify-center overflow-hidden"
-                                                                style={{ clipPath: `inset(${settings.pignon.cropTop}% ${settings.pignon.cropRight}% ${settings.pignon.cropBottom}% ${settings.pignon.cropLeft}%)` }}
-                                                            >
+                                                    /* BatiTech : Vue Pignon à gauche (50%) + Vue Intérieure à droite (50%) */
+                                                    <div className="flex items-stretch justify-between gap-2.5 w-full min-h-[110px]">
+                                                        <div className="w-[50%] flex items-center justify-start overflow-hidden">
+                                                            {images.pignon ? (
+                                                                <div 
+                                                                    className="w-full h-full flex items-center justify-start overflow-hidden"
+                                                                    style={{ clipPath: `inset(${settings.pignon.cropTop}% ${settings.pignon.cropRight}% ${settings.pignon.cropBottom}% ${settings.pignon.cropLeft}%)` }}
+                                                                >
+                                                                    <img 
+                                                                        src={images.pignon} 
+                                                                        alt="Vue Pignon" 
+                                                                        className="max-h-full max-w-full object-contain object-left"
+                                                                        style={{ transform: `scale(${settings.pignon.zoom}) translate(${settings.pignon.offsetX}px, ${settings.pignon.offsetY}px)` }}
+                                                                    />
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+
+                                                        {/* Vue Intérieure BatiTech */}
+                                                        <div className="w-[50%] flex items-center justify-center overflow-hidden">
+                                                            {batitechInterieurUrl && (
                                                                 <img 
-                                                                    src={images.pignon} 
-                                                                    alt="Vue Pignon" 
+                                                                    src={batitechInterieurUrl} 
+                                                                    alt="Vue Intérieure Séchoir BatiTech" 
                                                                     className="max-h-full max-w-full object-contain"
-                                                                    style={{ transform: `scale(${settings.pignon.zoom}) translate(${settings.pignon.offsetX}px, ${settings.pignon.offsetY}px)` }}
                                                                 />
-                                                            </div>
-                                                        ) : null}
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ) : (
                                                     /* Standard : Vue Pignon à gauche (58%) + Cadre À votre charge à droite (40%) */

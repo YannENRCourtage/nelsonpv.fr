@@ -436,18 +436,14 @@ export async function generateFicheTechniquePDF({
     }
     curY += 1.5;
 
-    // --- BLOC 6 : OPTIONS ---
-    drawSectionTitle('6. Options', [244, 114, 182]);
+    // --- BLOC 6 : OPTIONS (UNIQUEMENT POUR BATITECH) ---
     if (isBatitech && batitechModel?.options) {
+        drawSectionTitle('6. Options', [244, 114, 182]);
         const opts = batitechModel.options;
         drawRow('Auvent Sud (4m) :', `${formatNumber(opts.auventSud)} € HT`, true, [255, 255, 255]);
         drawRow('Auvent Nord (4m) :', `${formatNumber(opts.auventNord)} € HT`, true, [255, 255, 255]);
         drawRow('Auvents N + S :', `${formatNumber(opts.auventNordSud)} € HT`, true, [251, 191, 36]);
         drawRow('Travée suppl. 6m :', `${formatNumber(opts.traveeSupplementaire)} € HT`, true, [56, 189, 248]);
-    } else {
-        drawRow('Auvent Sud :', 'Sur étude');
-        drawRow('Auvent Nord :', 'Sur étude');
-        drawRow('Travée suppl. :', 'Sur étude');
     }
 
     // --- PRÉ-CHARGEMENT DES IMAGES ---
@@ -545,7 +541,7 @@ export async function generateFicheTechniquePDF({
 
     let photoUrlToLoad = null;
     if (isBatitech) {
-        photoUrlToLoad = '/Séchoir 6 travées bardage bois.png';
+        photoUrlToLoad = '/Séchoir 6 travées bardage métal.jpg';
     } else if (isSymetrique) {
         photoUrlToLoad = '/hangar_symetrique.jpg';
     } else if (isAsym1) {
@@ -568,11 +564,24 @@ export async function generateFicheTechniquePDF({
         photoUrlToLoad = '/ombriere_vl_simple_gauche.jpg';
     }
 
-    const [loadedMain3D, loadedPignon, loadedFacadeSud, loadedHangarPhoto] = await Promise.all([
+    let batitechInterieurUrl = null;
+    if (isBatitech) {
+        const modelId = config?.selectedBatitechModel || 'BT-3.1.15';
+        if (modelId === 'BT-6.2.15' || modelId.includes('6.2')) {
+            batitechInterieurUrl = '/batitech_interieur_6_2_15.png';
+        } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
+            batitechInterieurUrl = '/batitech_interieur_8_3_15.png';
+        } else {
+            batitechInterieurUrl = '/batitech_interieur_3_1_15.png';
+        }
+    }
+
+    const [loadedMain3D, loadedPignon, loadedFacadeSud, loadedHangarPhoto, loadedBatitechInterieur] = await Promise.all([
         loadImage(imgMain3D),
         loadImage(imgPignon),
         loadImage(imgFacadeSud),
         photoUrlToLoad ? loadImage(photoUrlToLoad) : Promise.resolve(null),
+        batitechInterieurUrl ? loadImage(batitechInterieurUrl) : Promise.resolve(null),
     ]);
 
     // --- LOGO NELSON EN BAS DU CADRE BLEU (LÉGÈREMENT AGRANDI ET CENTRÉ) ---
@@ -709,13 +718,18 @@ export async function generateFicheTechniquePDF({
     const topH = hasExtraPhoto ? 68.0 : 84.0;
     drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, false);
 
-    // VISUEL 2 (Milieu) : Vue Pignon épurée sur fond blanc
+    // VISUEL 2 (Milieu) : Vue Pignon (+ Vue Intérieure si BatiTech, sinon Cadre À votre charge)
     const midY = hasExtraPhoto ? 116.0 : 132.0;
     const midH = 44.0;
 
     if (isBatitech) {
-        // BatiTech : Vue Pignon centrée horizontalement sur toute la largeur de la zone images, pas de cadre 'À votre charge'
-        drawSeamlessImage(loadedPignon, mainX, midY, mainW, midH, false);
+        // BatiTech : Vue Pignon décalée à gauche (50% de la largeur) + Vue Intérieure à droite (50% de la largeur)
+        const gap = 3.0;
+        const colW = (mainW - gap) / 2; // ~67.5mm
+        drawSeamlessImage(loadedPignon, mainX, midY, colW, midH, false);
+        if (loadedBatitechInterieur) {
+            drawSeamlessImage(loadedBatitechInterieur, mainX + colW + gap, midY, colW, midH, false);
+        }
     } else {
         // Bâtiments standards : Vue Pignon à gauche + cadre 'À votre charge' à droite
         const pignonW = 84.0;
@@ -777,20 +791,13 @@ export async function generateFicheTechniquePDF({
     // ==========================================
     const footerY = 278.0; // Remonté pour laisser un bel espace d'aération sous la ligne
 
-    // Rendu de l'image 3D réaliste avec coins arrondis (Image en bas de page)
+    // Rendu de l'image 3D réaliste avec coins arrondis (Image en bas de page prenant toute la largeur de la zone comme Image 5)
     if (hasExtraPhoto && loadedHangarPhoto && loadedHangarPhoto.width && loadedHangarPhoto.height) {
-        const maxPhotoW = mainW; // 138mm
-        const maxPhotoH = 56; // max 56mm height
+        const photoW = mainW; // 138mm (prend toute la largeur de la zone)
         const photoAspect = loadedHangarPhoto.width / loadedHangarPhoto.height;
+        const photoH = Math.min(56, photoW / photoAspect);
 
-        let photoW = maxPhotoW;
-        let photoH = photoW / photoAspect;
-        if (photoH > maxPhotoH) {
-            photoH = maxPhotoH;
-            photoW = photoH * photoAspect;
-        }
-
-        const photoX = mainCenterX - (photoW / 2);
+        const photoX = mainX;
         const photoY = (footerY - 9.5) - photoH; // Remontée au-dessus de la phrase disclaimer pour un bel écart
 
         // Génération d'un canvas avec coins arrondis
