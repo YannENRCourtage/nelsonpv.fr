@@ -975,13 +975,13 @@ function InstallationsProdLayerManager({ layersRef, activeLayers }) {
       const odreMap = deptData?.map || new Map();
       const odreList = deptData?.list || [];
 
-      // 3. Récupérer les centrales et installations de production avec leurs coordonnées GPS exactes
-      const q = `[out:json][timeout:25];(way["power"="plant"](${south},${west},${north},${east});relation["power"="plant"](${south},${west},${north},${east});node["power"="plant"](${south},${west},${north},${east});way["power"="generator"]["generator:source"~"solar|wind|hydro|biomass|battery"](${south},${west},${north},${east});node["power"="generator"]["generator:source"~"solar|wind|hydro|biomass|battery"](${south},${west},${north},${east});way["landuse"="industrial"]["industrial"="generator"](${south},${west},${north},${east}););out center tags;`;
+      // 3. Récupérer les centrales et installations de production avec leurs coordonnées GPS exactes et géométries
+      const q = `[out:json][timeout:25];(way["power"="plant"](${south},${west},${north},${east});relation["power"="plant"](${south},${west},${north},${east});node["power"="plant"](${south},${west},${north},${east});way["power"="generator"]["generator:source"~"solar|wind|hydro|biomass|battery"](${south},${west},${north},${east});node["power"="generator"]["generator:source"~"solar|wind|hydro|biomass|battery"](${south},${west},${north},${east});way["landuse"="industrial"]["industrial"="generator"](${south},${west},${north},${east}););out center tags geom;`;
 
       let osmElements = [];
       const overpassMirrors = [
-        'https://overpass-api.de/api/interpreter',
         'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+        'https://overpass-api.de/api/interpreter',
         'https://lz4.overpass-api.de/api/interpreter'
       ];
 
@@ -1005,56 +1005,102 @@ function InstallationsProdLayerManager({ layersRef, activeLayers }) {
         }
       }
 
-      // 4. Rendu des marqueurs aux coordonnées réelles
+      // 4. Rendu des marqueurs aux coordonnées réelles avec calcul de puissance précis
       osmElements.forEach(el => {
         const pLat = el.lat || el.center?.lat;
         const pLon = el.lon || el.center?.lon;
         if (!pLat || !pLon || isNaN(pLat) || isNaN(pLon)) return;
 
-        const isPlant = el.tags?.power === 'plant';
-        const isGenerator = el.tags?.power === 'generator';
+        // Calcul de la surface si polygone disponible
+        let areaM2 = 0;
+        if (el.geometry && el.geometry.length > 2) {
+          const coords = el.geometry;
+          const latMid = (coords[0].lat * Math.PI) / 180;
+          const mPerDegLat = 111132.954;
+          const mPerDegLon = 111132.954 * Math.cos(latMid);
+          let sum = 0;
+          for (let i = 0; i < coords.length; i++) {
+            const j = (i + 1) % coords.length;
+            const xi = coords[i].lon * mPerDegLon;
+            const yi = coords[i].lat * mPerDegLat;
+            const xj = coords[j].lon * mPerDegLon;
+            const yj = coords[j].lat * mPerDegLat;
+            sum += (xi * yj - xj * yi);
+          }
+          areaM2 = Math.abs(sum) / 2;
+        }
+
+        const isRoof = el.tags?.location === 'roof' || !!el.tags?.building || !!el.tags?.['roof:shape'] || (el.type === 'way' && areaM2 < 2000);
+        const isGroundPlant = el.tags?.power === 'plant' && el.tags?.location !== 'roof' && !el.tags?.building && areaM2 >= 2000;
         const source = el.tags?.['generator:source'] || el.tags?.['plant:source'] || 'solar';
         const eic = el.tags?.['ref:EU:ENTSOE_EIC'];
         let odreItem = eic ? odreMap.get(eic) : null;
 
-        // Si non matché par code EIC, essayer de matcher par puissance/commune
-        const output = el.tags?.['plant:output:electricity'] || el.tags?.['generator:output:electricity'] || '';
+        const rawOutput = el.tags?.['plant:output:electricity'] || el.tags?.['generator:output:electricity'] || '';
         const modules = parseInt(el.tags?.['generator:solar:modules']) || 0;
         
-        if (!odreItem && output) {
-          const outMwMatch = output.match(/([\d.]+)\s*MW/i);
-          const outKwMatch = output.match(/([\d.]+)\s*kW/i);
+        // Si non matché par code EIC, essayer de matcher par puissance/commune
+        if (!odreItem && rawOutput && !['yes', 'no', 'small_installation', 'medium_installation'].includes(rawOutput.toLowerCase())) {
+          const outMwMatch = rawOutput.match(/([\d.]+)\s*MW/i);
+          const outKwMatch = rawOutput.match(/([\d.]+)\s*kW/i);
           const pValKw = outMwMatch ? parseFloat(outMwMatch[1]) * 1000 : (outKwMatch ? parseFloat(outKwMatch[1]) : 0);
           if (pValKw > 0) {
             odreItem = odreList.find(o => Math.abs((parseFloat(o.puismaxinstallee) || 0) - pValKw) < 50);
           }
         }
 
-        const isMajor = isPlant || odreItem || modules >= 15 || output.includes('MW') || output.includes('kW') || el.tags?.name;
-        if (!isMajor) return;
-
         const id = `osm-${el.type}-${el.id}-${eic || ''}`;
         if (loadedIds.current.has(id)) return;
         loadedIds.current.add(id);
 
         const filiere = odreItem?.filiere || (source === 'solar' ? 'Solaire' : (source === 'wind' ? 'Éolien' : (source === 'hydro' ? 'Hydraulique' : (source === 'biomass' ? 'Bioénergies' : 'Stockage'))));
-        const rawPuis = odreItem?.puismaxinstallee || odreItem?.puismaxrac;
+        
+        // CALCUL PRÉCIS DE LA PUISSANCE INSTALLÉE
         let puisFormatted = '';
-        if (rawPuis) {
-          const puisNum = parseFloat(rawPuis) || 0;
-          puisFormatted = puisNum >= 1000 ? `${(puisNum / 1000).toFixed(2)} MW` : `${puisNum.toFixed(1)} kW`;
-        } else if (output) {
-          puisFormatted = output;
+        const rawPuis = odreItem?.puismaxinstallee || odreItem?.puismaxrac;
+        if (rawPuis && parseFloat(rawPuis) > 0) {
+          const puisNum = parseFloat(rawPuis);
+          puisFormatted = puisNum >= 1000 ? `${(puisNum / 1000).toFixed(2)} MW` : `${puisNum.toFixed(0)} kWc`;
+        } else if (rawOutput && !['yes', 'no', 'small_installation', 'medium_installation', 'unknown'].includes(rawOutput.toLowerCase())) {
+          puisFormatted = rawOutput;
         } else if (modules > 0) {
-          puisFormatted = `${(modules * 0.43).toFixed(1)} kWc (${modules} modules)`;
+          const kwc = modules * 0.43; // ~430 Wc par panneau
+          puisFormatted = `${kwc.toFixed(1)} kWc (${modules} modules)`;
+        } else if (areaM2 > 0) {
+          // Rendement photovoltaïque toiture standard ~200 Wc / m²
+          const estKwc = areaM2 * 0.20;
+          if (estKwc >= 80) puisFormatted = `~${estKwc.toFixed(0)} kWc (toiture de ~${areaM2.toFixed(0)} m²)`;
+          else if (estKwc >= 10) puisFormatted = `~${estKwc.toFixed(1)} kWc (toiture de ~${areaM2.toFixed(0)} m²)`;
+          else puisFormatted = `~${estKwc.toFixed(1)} kWc (~${areaM2.toFixed(0)} m²)`;
+        } else if (rawOutput.toLowerCase() === 'small_installation') {
+          puisFormatted = `Installation résidentielle (~3 à 6 kWc)`;
+        } else if (rawOutput.toLowerCase() === 'yes') {
+          puisFormatted = `Installation en exploitation (~9 à 36 kWc)`;
         } else {
-          puisFormatted = 'En exploitation';
+          puisFormatted = `Installation en exploitation`;
         }
 
         const nomCommune = odreItem?.commune || currentCommuneNom || 'Commune';
-        const nomInst = odreItem?.nominstallation && odreItem?.nominstallation !== 'Confidentiel' 
-          ? odreItem.nominstallation 
-          : (el.tags?.name || (filiere === 'Solaire' ? 'Centrale Photovoltaïque au sol' : `Parc ${filiere}`));
+        
+        // DÉTERMINATION PRÉCISE DU NOM / TYPE D'INSTALLATION
+        let nomInst = '';
+        if (odreItem?.nominstallation && odreItem.nominstallation !== 'Confidentiel') {
+          nomInst = odreItem.nominstallation;
+        } else if (el.tags?.name) {
+          nomInst = el.tags.name;
+        } else if (filiere === 'Solaire' || source === 'solar') {
+          nomInst = isGroundPlant ? 'Centrale Photovoltaïque au sol' : 'Centrale Photovoltaïque en toiture';
+        } else if (source === 'wind') {
+          nomInst = 'Éolienne / Parc Éolien';
+        } else if (source === 'hydro') {
+          nomInst = 'Centrale Hydroélectrique';
+        } else if (source === 'biomass') {
+          nomInst = 'Centrale Biomasse / Méthanisation';
+        } else if (source === 'battery') {
+          nomInst = 'Centrale de Stockage Batterie';
+        } else {
+          nomInst = isRoof ? 'Centrale Photovoltaïque en toiture' : 'Installation de Production';
+        }
 
         let badgeColor = '#eab308'; // Solaire (jaune)
         if (filiere.toLowerCase().includes('éol') || filiere.toLowerCase().includes('eol') || source === 'wind') badgeColor = '#0284c7';
@@ -1076,10 +1122,10 @@ function InstallationsProdLayerManager({ layersRef, activeLayers }) {
         const popupContent = `
           <div style="font-family: sans-serif; min-width: 250px; padding: 4px;">
             <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 6px;">
-              <span style="font-size: 13px; font-weight: 800; color: #0D3660; text-transform: uppercase;">⚡ Installation de Production</span>
+              <span style="font-size: 13px; font-weight: 800; color: #0D3660; text-transform: uppercase;">⚡ ${isRoof ? 'Toiture Solaire' : 'Installation Prod.'}</span>
               <span style="font-size: 10px; font-weight: bold; background: #fef08a; color: #854d0e; padding: 2px 6px; border-radius: 4px;">${filiere}</span>
             </div>
-            ${nomInst ? `<div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">${nomInst}</div>` : ''}
+            <div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">${nomInst}</div>
             <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">
               📍 Commune : <strong style="color: #0f172a;">${nomCommune}</strong> ${odreItem?.codedepartement ? `(${odreItem.codedepartement})` : ''}
             </div>
@@ -1087,6 +1133,7 @@ function InstallationsProdLayerManager({ layersRef, activeLayers }) {
               <div style="font-size: 11px; color: #64748b;">Puissance installée :</div>
               <div style="font-size: 15px; font-weight: 900; color: #16a34a;">${puisFormatted}</div>
             </div>
+            ${areaM2 > 0 ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Surface estimée : <strong style="color: #334155;">~${areaM2.toFixed(0)} m²</strong></div>` : ''}
             ${odreItem?.technologie ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Technologie : <strong style="color: #334155;">${odreItem.technologie}</strong></div>` : ''}
             ${odreItem?.tensionraccordement ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Tension raccordement : <strong style="color: #334155;">${odreItem.tensionraccordement}</strong></div>` : ''}
             ${odreItem?.postesource ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Poste source : <strong style="color: #334155;">${odreItem.postesource}</strong></div>` : ''}
