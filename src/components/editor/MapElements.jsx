@@ -912,6 +912,314 @@ function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
+// ─── NOUVEAU CALQUE 1 : REGISTRE DES INSTALLATIONS DE PRODUCTION (ODRÉ) ──────────
+function InstallationsProdLayerManager({ layersRef, activeLayers }) {
+  const map = useMap();
+  const active = activeLayers?.has('installationsProd');
+  const loadedIds = useRef(new Set());
+  const layerGroupRef = useRef(L.featureGroup());
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['installationsProd'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    const bounds = map.getBounds();
+    const north = bounds.getNorth();
+    const west = bounds.getWest();
+    const south = bounds.getSouth();
+    const east = bounds.getEast();
+
+    try {
+      let records = [];
+      const whereClause = `within_box(geo_point_2d, ${north}, ${west}, ${south}, ${east})`;
+      const odreUrl = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/registre-national-installation-production-stockage-electricite-agrege/records?where=${encodeURIComponent(whereClause)}&limit=100`;
+
+      try {
+        const response = await fetch(odreUrl);
+        if (response.ok) {
+          const data = await response.json();
+          records = data.results || [];
+        }
+      } catch (e) {
+        console.warn('ODRE v2.1 within_box query fallback', e);
+      }
+
+      // Si le dataset nécessite la géolocalisation par commune visible
+      if (records.length === 0) {
+        try {
+          const rCommunes = await fetch(`https://geo.api.gouv.fr/communes?bbox=${west},${south},${east},${north}&fields=code,nom,centre`);
+          if (rCommunes.ok) {
+            const communes = await rCommunes.json();
+            if (communes.length > 0) {
+              const communeMap = new Map();
+              communes.forEach(c => {
+                if (c.centre?.coordinates) {
+                  communeMap.set(c.code, { lat: c.centre.coordinates[1], lon: c.centre.coordinates[0], nom: c.nom });
+                }
+              });
+              const inseeCodes = communes.map(c => `"${c.code}"`).slice(0, 25).join(',');
+              const fallbackUrl = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/registre-national-installation-production-stockage-electricite-agrege/records?where=${encodeURIComponent(`codeinseecommune in (${inseeCodes})`)}&limit=100`;
+              const rFallback = await fetch(fallbackUrl);
+              if (rFallback.ok) {
+                const dFallback = await rFallback.json();
+                records = (dFallback.results || []).map(item => {
+                  const coords = communeMap.get(item.codeinseecommune);
+                  return {
+                    ...item,
+                    geo_point_2d: item.geo_point_2d || (coords ? { lat: coords.lat, lon: coords.lon } : null)
+                  };
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Erreur récupération communes / ODRE", err);
+        }
+      }
+
+      // Rendu des marqueurs sur la carte
+      records.forEach((item, idx) => {
+        let latlng = null;
+        if (item.geo_point_2d && item.geo_point_2d.lat !== undefined && item.geo_point_2d.lon !== undefined) {
+          latlng = [parseFloat(item.geo_point_2d.lat), parseFloat(item.geo_point_2d.lon)];
+        } else if (item.latitude && item.longitude) {
+          latlng = [parseFloat(item.latitude), parseFloat(item.longitude)];
+        }
+        if (!latlng || isNaN(latlng[0]) || isNaN(latlng[1])) return;
+
+        const id = item.codeeicresourceobject || item.nominstallation || `${item.codeinseecommune || ''}-${item.filiere || ''}-${idx}`;
+        if (loadedIds.current.has(id)) return;
+        loadedIds.current.add(id);
+
+        const filiere = item.filiere || 'Solaire';
+        const rawPuis = item.puissance_installee_kw || item.puismaxinstallee || item.puismaxrac || 0;
+        const puisNum = parseFloat(rawPuis) || 0;
+        const puisFormatted = puisNum >= 1000 ? `${(puisNum / 1000).toFixed(2)} MW` : `${puisNum.toFixed(1)} kW`;
+        const nomCommune = item.nom_commune || item.commune || 'Inconnue';
+        const nomInst = item.nominstallation && item.nominstallation !== 'Confidentiel' ? item.nominstallation : null;
+
+        let badgeColor = '#eab308'; // Solaire
+        if (filiere.toLowerCase().includes('éol') || filiere.toLowerCase().includes('eol')) badgeColor = '#0284c7';
+        else if (filiere.toLowerCase().includes('hydr')) badgeColor = '#0ea5e9';
+        else if (filiere.toLowerCase().includes('bio')) badgeColor = '#16a34a';
+        else if (filiere.toLowerCase().includes('stock')) badgeColor = '#9333ea';
+
+        const marker = L.marker(latlng, {
+          icon: L.divIcon({
+            className: 'installations-prod-icon',
+            html: `<div style="background: ${badgeColor}; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                     <svg viewBox="0 0 24 24" width="12" height="12" stroke="white" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                   </div>`,
+            iconSize: [22, 22],
+            iconAnchor: [11, 11]
+          })
+        });
+
+        const popupContent = `
+          <div style="font-family: sans-serif; min-width: 240px; padding: 4px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 6px;">
+              <span style="font-size: 13px; font-weight: 800; color: #0D3660; text-transform: uppercase;">⚡ Installation de Production</span>
+              <span style="font-size: 10px; font-weight: bold; background: #fef08a; color: #854d0e; padding: 2px 6px; border-radius: 4px;">${filiere}</span>
+            </div>
+            ${nomInst ? `<div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">${nomInst}</div>` : ''}
+            <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">
+              📍 Commune : <strong style="color: #0f172a;">${nomCommune}</strong> ${item.codedepartement ? `(${item.codedepartement})` : ''}
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px;">
+              <div style="font-size: 11px; color: #64748b;">Puissance installée :</div>
+              <div style="font-size: 15px; font-weight: 900; color: #16a34a;">${puisFormatted}</div>
+            </div>
+            ${item.technologie ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Technologie : <strong style="color: #334155;">${item.technologie}</strong></div>` : ''}
+            ${item.tensionraccordement ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Tension raccordement : <strong style="color: #334155;">${item.tensionraccordement}</strong></div>` : ''}
+            ${item.datemiseenservice ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Mise en service : <strong style="color: #334155;">${item.datemiseenservice}</strong></div>` : ''}
+            ${item.gestionnaire ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Gestionnaire : <strong style="color: #334155;">${item.gestionnaire}</strong></div>` : ''}
+            <div style="font-size: 9px; color: #94a3b8; margin-top: 6px; text-align: right;">Source : Registre National ODRÉ</div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent, { maxWidth: 300 });
+        marker.addTo(layerGroupRef.current);
+      });
+    } catch (err) {
+      console.error("Erreur chargement Installations Prod", err);
+    }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
+// ─── NOUVEAU CALQUE 2 : CAPACITÉS D'ACCUEIL & QUOTE-PART S3REnR (ENEDIS) ────────
+function S3REnRLayerManager({ layersRef, activeLayers }) {
+  const map = useMap();
+  const active = activeLayers?.has('s3renr');
+  const loadedIds = useRef(new Set());
+  const layerGroupRef = useRef(L.featureGroup());
+  const allSubstationsRef = useRef(null);
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['s3renr'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    const bounds = map.getBounds();
+    const north = bounds.getNorth();
+    const west = bounds.getWest();
+    const south = bounds.getSouth();
+    const east = bounds.getEast();
+
+    let itemsToRender = [];
+
+    // 1. Essai appel API Enedis Open Data v2.1
+    try {
+      const whereClause = `within_box(geo_point_2d, ${north}, ${west}, ${south}, ${east})`;
+      const enedisUrl = `https://data.enedis.fr/api/explore/v2.1/catalog/datasets/capacites-accueil-au-poste-source/records?where=${encodeURIComponent(whereClause)}&limit=50`;
+      const response = await fetch(enedisUrl);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+          itemsToRender = data.results.map(r => ({
+            name: r.nom_poste || r.nom_du_poste || r.name,
+            code: r.code_poste || r.code,
+            X: r.geo_point_2d?.lon || r.lon || r.X,
+            Y: r.geo_point_2d?.lat || r.lat || r.Y,
+            capacite_disponible_mw: r.capacite_disponible_mw !== undefined ? r.capacite_disponible_mw : (r.values?.GRD1_CDR || '0'),
+            cout_raccordement_ke_mw: r.cout_raccordement_ke_mw || r.quote_part || r.values?.INFO_QP || 'N/A',
+            territory_name: r.region || r.territory_name || r.s3renr || 'S3REnR Régional',
+            updated: r.date_maj || r.updated || null
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("API Enedis directe non joignable, utilisation de la base nationale Caparéseau", e);
+    }
+
+    // 2. Si l'API externe ne répond pas, utilisation de la base locale haute précision
+    if (itemsToRender.length === 0) {
+      if (!allSubstationsRef.current) {
+        try {
+          const res = await fetch('/datas/capareseau_map.json');
+          if (res.ok) {
+            allSubstationsRef.current = await res.json();
+          }
+        } catch (err) {
+          console.error("Erreur chargement base Caparéseau locale", err);
+        }
+      }
+
+      if (allSubstationsRef.current) {
+        allSubstationsRef.current.forEach(item => {
+          if (item.Y === undefined || item.X === undefined) return;
+          const latlng = [parseFloat(item.Y), parseFloat(item.X)];
+          if (bounds.contains(latlng)) {
+            const vals = item.values || {};
+            itemsToRender.push({
+              name: item.name,
+              code: item.code,
+              X: item.X,
+              Y: item.Y,
+              capacite_disponible_mw: vals.GRD1_CDR !== undefined ? vals.GRD1_CDR : '0',
+              cout_raccordement_ke_mw: vals.INFO_QP || 'N/A',
+              territory_name: item.territory_name || 'S3REnR Régional',
+              updated: item.updated || null,
+              rawValues: vals
+            });
+          }
+        });
+      }
+    }
+
+    // 3. Rendu des marqueurs colorés
+    itemsToRender.forEach(item => {
+      if (!item.Y || !item.X) return;
+      const latlng = [parseFloat(item.Y), parseFloat(item.X)];
+      if (isNaN(latlng[0]) || isNaN(latlng[1])) return;
+
+      const id = item.code || `${item.name}-${latlng[0]}-${latlng[1]}`;
+      if (loadedIds.current.has(id)) return;
+      loadedIds.current.add(id);
+
+      const capDispo = parseFloat(item.capacite_disponible_mw) || 0;
+      const qp = item.cout_raccordement_ke_mw || 'N/A';
+      const qpFormatted = qp.includes('k€') ? qp : `${qp} k€/MW`;
+
+      const circleColor = capDispo > 0 ? '#16a34a' : '#ea580c';
+
+      const marker = L.marker(latlng, {
+        icon: L.divIcon({
+          className: 's3renr-substation-icon',
+          html: `<div style="background: ${circleColor}; width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                   <svg viewBox="0 0 24 24" width="13" height="13" stroke="white" stroke-width="2.8" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                 </div>`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13]
+        })
+      });
+
+      const popupContent = `
+        <div style="font-family: sans-serif; min-width: 250px; padding: 4px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 6px;">
+            <span style="font-size: 13px; font-weight: 800; color: #0D3660; text-transform: uppercase;">🔌 Poste Source (S3REnR)</span>
+            <span style="font-size: 10px; font-weight: bold; background: ${capDispo > 0 ? '#dcfce7' : '#ffedd5'}; color: ${capDispo > 0 ? '#166534' : '#9a3412'}; padding: 2px 6px; border-radius: 4px;">
+              ${capDispo > 0 ? 'Capacité dispo' : 'Saturé'}
+            </span>
+          </div>
+          <div style="font-size: 15px; font-weight: 900; color: #0f172a; margin-bottom: 2px;">${item.name || 'Poste Source'}</div>
+          <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Code : <strong style="color: #334155;">${item.code || 'N/A'}</strong> — S3REnR ${item.territory_name || ''}</div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 5px 7px;">
+              <div style="font-size: 10px; color: #166534; font-weight: bold;">CAPACITÉ DISPO</div>
+              <div style="font-size: 13px; font-weight: 900; color: ${capDispo > 0 ? '#15803d' : '#dc2626'};">${capDispo.toFixed(2)} MW</div>
+            </div>
+            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 5px 7px;">
+              <div style="font-size: 10px; color: #92400e; font-weight: bold;">QUOTE-PART S3REnR</div>
+              <div style="font-size: 13px; font-weight: 900; color: #b45309;">${qpFormatted}</div>
+            </div>
+          </div>
+          
+          ${item.rawValues?.INFO_CR ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Capacité réservée : <strong style="color: #334155;">${item.rawValues.INFO_CR} MW</strong></div>` : ''}
+          ${item.rawValues?.INFO_FAS3R ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">File d'attente : <strong style="color: #334155;">${item.rawValues.INFO_FAS3R} MW</strong></div>` : ''}
+          ${item.updated ? `<div style="font-size: 9px; color: #94a3b8; margin-top: 6px; text-align: right;">Mis à jour : ${item.updated}</div>` : ''}
+        </div>
+      `;
+
+      marker.bindPopup(popupContent, { maxWidth: 300 });
+      marker.addTo(layerGroupRef.current);
+    });
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
 function DemographicLayerManager({ layersRef, activeLayers }) {
   const map = useMap();
   const active = activeLayers?.has('demographic');
@@ -2513,6 +2821,24 @@ const LAYERS = {
     attribution: 'ODRÉ / RTE',
     isOverlay: true,
     zIndex: 55,
+    minZoom: 8
+  },
+  installationsProd: {
+    name: "Installations Prod.",
+    type: 'custom',
+    url: 'https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/registre-national-installation-production-stockage-electricite-agrege/records',
+    attribution: 'ODRÉ / Registre National',
+    isOverlay: true,
+    zIndex: 56,
+    minZoom: 10
+  },
+  s3renr: {
+    name: "S3REnR",
+    type: 'custom',
+    url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/capacites-accueil-au-poste-source/records',
+    attribution: 'Enedis / S3REnR',
+    isOverlay: true,
+    zIndex: 57,
     minZoom: 8
   },
   // Urbanisme
@@ -5487,6 +5813,8 @@ export default function MapElements({
           <BTLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesSourcesRTELayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <InstallationsProdLayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <S3REnRLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <DemographicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <OwnersMoralLayerManager layersRef={layersRef} activeLayers={activeLayers} activeTab={activeTab} onSelectOwners={(item) => setSelectedParcelOwners(item)} />
           

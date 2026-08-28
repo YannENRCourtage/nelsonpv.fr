@@ -274,6 +274,16 @@ const overlayCategories = {
                 attribution: 'ODRÉ / RTE',
                 minZoom: 8,
             },
+            'Installations de production': {
+                type: 'installations-prod-custom',
+                attribution: 'ODRÉ / Registre National',
+                minZoom: 10,
+            },
+            'Capacités d\'accueil S3REnR': {
+                type: 's3renr-custom',
+                attribution: 'Enedis / S3REnR',
+                minZoom: 8,
+            },
         },
     },
     'Environnement et zones protégées': {
@@ -648,6 +658,14 @@ const MapLayersPanel = ({ map }) => {
                     }
                     if (layerConfig.type === 'postes-sources-rte-custom') {
                         window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'postesSourcesRTE' } }));
+                        return newActive;
+                    }
+                    if (layerConfig.type === 'installations-prod-custom' || layerName === 'Installations de production') {
+                        window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'installationsProd' } }));
+                        return newActive;
+                    }
+                    if (layerConfig.type === 's3renr-custom' || layerName === 'Capacités d\'accueil S3REnR') {
+                        window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 's3renr' } }));
                         return newActive;
                     }
                     // Check zoom level for layers with minZoom
