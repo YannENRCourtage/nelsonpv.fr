@@ -1145,7 +1145,7 @@ export default function ProjectEditor() {
               <div className="col-span-2"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} className="mt-1 h-10" placeholder="Code postal" /></div>
               <div className="col-span-4"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-1 h-10" placeholder="Ville" /></div>
 
-              {/* Desktop: GPS + Type + Projet */}
+              {/* Desktop: GPS + Type + Batterie SA + Projet + kWc (1 seule ligne) */}
               <div className="col-span-3">
                 <label className="text-sm font-medium">Coordonnées GPS</label>
                 <div className="flex gap-2 mt-1">
@@ -1172,6 +1172,8 @@ export default function ProjectEditor() {
                     className="font-mono text-xs"
                   />
                 </div>
+              </div>
+
               <div className="col-span-2">
                 <label className="text-sm font-medium">Type de projet</label>
                 <select
@@ -1186,7 +1188,9 @@ export default function ProjectEditor() {
                   <option value="Batterie SA">Batterie SA</option>
                 </select>
               </div>
-                <label className="text-sm font-medium text-blue-600">Batterie SA</label>
+
+              <div className="col-span-2">
+                <label className="text-sm font-medium text-blue-600 font-bold">Batterie SA</label>
                 <div className="flex gap-1 mt-1 h-10">
                   <button
                     type="button"
@@ -1212,17 +1216,25 @@ export default function ProjectEditor() {
                   </button>
                 </div>
               </div>
-              <div className="col-span-6">
-                <div className="flex gap-2">
-                  <div className="w-[88%]">
-                    <label className="text-sm font-medium">Projet</label>
-                    <Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1 h-10" placeholder="Ex: T9 MAXI 75x32m + 4 batteries" />
-                  </div>
-                  <div className="w-[12%] min-w-[70px]">
-                    <label className="text-sm font-medium text-blue-600 font-bold">kWc</label>
-                    <Input value={p.kwc || ''} onChange={e => updateProject({ kwc: e.target.value })} className="mt-1 h-10 font-bold text-blue-900 border-blue-200 focus:border-blue-500" placeholder="kWc" />
-                  </div>
-                </div>
+
+              <div className="col-span-4">
+                <label className="text-sm font-medium">Projet</label>
+                <Input
+                  value={p.projectSize || ''}
+                  onChange={e => updateProject({ projectSize: e.target.value })}
+                  className="mt-1 h-10"
+                  placeholder="Ex: T9 MAXI 75x32m + 4 batteries"
+                />
+              </div>
+
+              <div className="col-span-1">
+                <label className="text-sm font-medium text-blue-600 font-bold">kWc</label>
+                <Input
+                  value={p.kwc || ''}
+                  onChange={e => updateProject({ kwc: e.target.value })}
+                  className="mt-1 h-10 font-bold text-blue-900 border-blue-200 focus:border-blue-500"
+                  placeholder="kWc"
+                />
               </div>
 
               {/* Desktop: Technical Fields */}
