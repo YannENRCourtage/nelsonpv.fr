@@ -221,14 +221,14 @@ export function drawLandscapeTreasuryChart(canvas, cashFlows, roi = 8.79) {
     ctx.fillStyle = '#0f172a';
     ctx.font = 'bold 15px Montserrat, Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`★ ROI : ${Number(roi || 8.79).toFixed(2)} ans (Année ${roiYear})`, roiBarX, padding.top + 29);
+    ctx.fillText(`★ ROI : ${Number(roi || 8.79).toFixed(1)} ans (Année ${roiYear})`, roiBarX, padding.top + 29);
   }
 
   // Titre du graphique
   ctx.fillStyle = '#0D3660';
   ctx.font = 'bold 18px Montserrat, Arial, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`Évolution de la Trésorerie Cumulée (25 ans) — Amortissement (ROI) estimé à ${Number(roi || 8.79).toFixed(2)} ans`, padding.left, 28);
+  ctx.fillText(`Évolution de la Trésorerie Cumulée (25 ans) — Amortissement (ROI) estimé à ${Number(roi || 8.79).toFixed(1)} ans`, padding.left, 28);
 }
 
 // ─── Header & Footer Helpers ───────────────────────────────────────────────────
@@ -403,23 +403,23 @@ export async function generateSechoirPDF({
     };
 
     // Image Vue 3D Extérieure (gauche) pour Page 3 (selon modèle)
-    let left3dImgUrl = '/vue_3d_batitech_6_2_15 v2.jpg';
-    if (modelId === 'BT-3.1.15') {
+    let left3dImgUrl = '/vue_3d_batitech_6_2_15_v3.jpg';
+    if (modelId === 'BT-3.1.15' || modelId.includes('3.1')) {
       left3dImgUrl = '/vue_3d_batitech_3_1_15.jpg';
     } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
       left3dImgUrl = '/vue_3d_batitech_8_3_15.jpg';
     } else {
-      left3dImgUrl = '/vue_3d_batitech_6_2_15 v2.jpg';
+      left3dImgUrl = '/vue_3d_batitech_6_2_15_v3.jpg';
     }
 
     // Image Vue Intérieure / Caissons (droite) pour Page 3 (selon modèle)
-    let right3dImgUrl = '/batitech_6_2_15.jpg';
-    if (modelId === 'BT-3.1.15') {
+    let right3dImgUrl = '/batitech_interieur_6_2_15_v2.png';
+    if (modelId === 'BT-3.1.15' || modelId.includes('3.1')) {
       right3dImgUrl = '/batitech_interieur_3_1_15.jpg';
     } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
       right3dImgUrl = '/batitech_8_3_15.jpg';
     } else {
-      right3dImgUrl = '/batitech_6_2_15.jpg';
+      right3dImgUrl = '/batitech_interieur_6_2_15_v2.png';
     }
 
     const [left3dImgBase64, right3dImgBase64, schema1Img, schema2Img, schema4Img, schemaGrillesImg, realisationImgBase64] = await Promise.all([
@@ -441,8 +441,8 @@ export async function generateSechoirPDF({
         rotation: rotVal,
       }],
       building: { length: bLength, width: bWidth, rotation: rotVal },
-      width: 1400,
-      height: 700,
+      width: 1300,
+      height: 810,
       zoom: 19,
     });
 
@@ -513,7 +513,8 @@ export async function generateSechoirPDF({
               <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt;">
                 <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #475569;">Valorisation Matière (Delta Produits) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${fmt(r.produits?.deltaProduits)} €/an</td></tr>
                 <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #475569;">Charges d'exploitation &amp; ventilation :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.charges?.deltaCharges)} €/an</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 2.5px 0; color: #475569;">Annuité d'emprunt :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.annuite)} €/an</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 2.5px 0 6px 0; color: #475569;">Annuité d'emprunt :</td><td style="padding: 2.5px 0 6px 0; text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.annuite)} €/an</td></tr>
+                <tr style="height: 6px;"><td colspan="2" style="padding: 0; border: none;"></td></tr>
                 <tr style="background: #f0fdf4; border-top: 1.5px solid #bbf7d0;">
                   <td style="padding: 4px 6px;">
                     <div style="font-weight: 900; color: #166534; font-size: 10.5pt;">GAIN NET ANNUEL D'EXPLOITATION</div>
@@ -553,7 +554,7 @@ export async function generateSechoirPDF({
                   ` : ''}
                 </div>
                 <div style="font-size: 9pt; color: #475569; margin-bottom: 4px; font-style: italic;">${subDesc}</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #f1f5f9; padding: 3px 6px; border-radius: 6px; font-size: 9pt;">
+                <div style="display: flex; flex-direction: column; gap: 3px; background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-size: 9pt;">
                   <div>Assiette éligible (Brut - CEE) : <strong style="color: #0f172a;">${fmt(subAssiette)} € HT</strong></div>
                   <div>Taux d'aide indicatif : <strong style="color: #0D3660;">${subTaux}</strong></div>
                 </div>
@@ -575,12 +576,12 @@ export async function generateSechoirPDF({
 
               <!-- Impact sur le ROI si subvention obtenue -->
               ${roiBonifie !== null ? `
-                <div style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 8px; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 8px; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; white-space: nowrap;">
                   <span style="font-size: 9.2pt; font-weight: 800; color: #065f46;">
-                    ✅ ROI bonifié en cas d'obtention de l'aide :
+                    ✅ ROI en cas d'obtention de l'aide :
                   </span>
                   <span style="font-size: 10.5pt; font-weight: 900; color: #047857;">
-                    ~${Number(roiBonifie).toFixed(2)} ans <span style="font-size: 8.8pt; color: #64748b; font-weight: normal;">(vs ${Number(baseRoi).toFixed(2)} ans)</span>
+                    ~${Number(roiBonifie).toFixed(1)} ans <span style="font-size: 8.8pt; color: #64748b; font-weight: normal;">(vs ${Number(baseRoi).toFixed(1)} ans)</span>
                   </span>
                 </div>
               ` : ''}
@@ -701,7 +702,7 @@ export async function generateSechoirPDF({
           </div>
           <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px 10px; text-align: center;">
             <span style="font-size: 8.2pt; color: #475569; font-weight: bold; text-transform: uppercase;">Temps de Retour sur Investissement (ROI)</span>
-            <div style="font-size: 12.5pt; font-weight: 900; color: #0284c7;">${Number(r.roi || 8.79).toFixed(2)} ans</div>
+            <div style="font-size: 12.5pt; font-weight: 900; color: #0284c7;">${Number(r.roi || 8.79).toFixed(1)} ans</div>
           </div>
         </div>
 
