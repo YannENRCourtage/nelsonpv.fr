@@ -579,7 +579,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                     <div className="param-group">
                         <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Type de bâtiment</label>
                         <select
-                            value={customParams.buildingType}
+                            value={customParams.buildingType || 'symetrique'}
                             onChange={(e) => updateCustomParams({ buildingType: e.target.value })}
                             className="w-full px-3 py-2 border rounded-lg text-sm font-semibold"
                         >
@@ -593,7 +593,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                         <div className="param-group">
                             <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Proportion</label>
                             <select
-                                value={customParams.proportion}
+                                value={customParams.proportion || '1/2-1/2'}
                                 onChange={(e) => updateCustomParams({ proportion: e.target.value })}
                                 className="w-full px-3 py-2 border rounded-lg text-sm font-semibold"
                             >
@@ -611,7 +611,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                             <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Largeur (m)</label>
                             <input
                                 type="number"
-                                value={customParams.width}
+                                value={customParams.width !== undefined && !isNaN(customParams.width) ? customParams.width : 15}
                                 onChange={(e) => updateCustomParams({ width: Number(e.target.value) })}
                                 className="w-full px-3 py-2 border rounded-lg text-sm"
                             />
@@ -619,7 +619,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                         <div className="param-group">
                             <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Longueur (m)</label>
                             <div className="w-full px-3 py-2 border rounded-lg bg-slate-50 text-sm font-bold text-slate-600">
-                                {(customParams.bayCount * customParams.baySpacing).toFixed(2)}m
+                                {(((Number(customParams.bayCount) || 4) * (Number(customParams.baySpacing) || 7.5))).toFixed(2)}m
                             </div>
                         </div>
                     </div>
@@ -630,7 +630,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                             <input
                                 type="number"
                                 step="0.1"
-                                value={customParams.baySpacing}
+                                value={customParams.baySpacing !== undefined && !isNaN(customParams.baySpacing) ? customParams.baySpacing : 7.5}
                                 onChange={(e) => updateCustomParams({ baySpacing: Number(e.target.value) })}
                                 className="w-full px-3 py-2 border rounded-lg text-sm"
                             />
@@ -639,7 +639,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                             <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Nb travées</label>
                             <input
                                 type="number"
-                                value={customParams.bayCount}
+                                value={customParams.bayCount !== undefined && !isNaN(customParams.bayCount) ? customParams.bayCount : 4}
                                 onChange={(e) => updateCustomParams({ bayCount: Number(e.target.value) })}
                                 className="w-full px-3 py-2 border rounded-lg text-sm"
                             />
@@ -651,7 +651,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                         <input
                             type="number"
                             step="0.05"
-                            value={parseFloat(customParams.ridgeHeight.toFixed(2))}
+                            value={parseFloat((Number(customParams.ridgeHeight) || 5.0).toFixed(2))}
                             onChange={(e) => updateCustomParams({ ridgeHeight: Number(e.target.value) })}
                             className="w-full px-3 py-2 border-2 border-orange-200 rounded-lg text-sm font-bold text-orange-700 focus:border-orange-500 outline-none"
                         />
@@ -664,7 +664,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                                 <input
                                     type="number"
                                     step="0.05"
-                                    value={customParams.leftEaveHeight}
+                                    value={customParams.leftEaveHeight !== undefined && !isNaN(customParams.leftEaveHeight) ? customParams.leftEaveHeight : 3.5}
                                     onChange={(e) => updateCustomParams({ leftEaveHeight: Number(e.target.value) })}
                                     className="w-full px-3 py-2 border rounded-lg text-sm"
                                 />
@@ -675,7 +675,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                             <input
                                 type="number"
                                 step="0.05"
-                                value={customParams.rightEaveHeight}
+                                value={customParams.rightEaveHeight !== undefined && !isNaN(customParams.rightEaveHeight) ? customParams.rightEaveHeight : 3.5}
                                 onChange={(e) => updateCustomParams({ rightEaveHeight: Number(e.target.value) })}
                                 className="w-full px-3 py-2 border rounded-lg text-sm"
                             />
@@ -693,12 +693,12 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={parseFloat(customParams.leftPitch.toFixed(2))}
+                                        value={parseFloat((Number(customParams.leftPitch) || 11.31).toFixed(2))}
                                         onChange={(e) => updateCustomParams({ leftPitch: Number(e.target.value) })}
                                         className="w-16 px-2 py-1.5 border rounded-md text-sm font-medium"
                                     />
                                     <span className="text-xs font-bold text-slate-500">°</span>
-                                    <span className="text-[10px] text-slate-400">≈ {(Math.tan(customParams.leftPitch * Math.PI / 180) * 100).toFixed(2)}%</span>
+                                    <span className="text-[10px] text-slate-400">≈ {(Math.tan((Number(customParams.leftPitch) || 11.31) * Math.PI / 180) * 100).toFixed(2)}%</span>
                                 </div>
                             </div>
 
@@ -709,12 +709,12 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={parseFloat(customParams.rightPitch.toFixed(2))}
+                                            value={parseFloat((Number(customParams.rightPitch) || 11.31).toFixed(2))}
                                             onChange={(e) => updateCustomParams({ rightPitch: Number(e.target.value) })}
                                             className="w-16 px-2 py-1.5 border rounded-md text-sm font-medium"
                                         />
                                         <span className="text-xs font-bold text-slate-500">°</span>
-                                        <span className="text-[10px] text-slate-400">≈ {(Math.tan(customParams.rightPitch * Math.PI / 180) * 100).toFixed(2)}%</span>
+                                        <span className="text-[10px] text-slate-400">≈ {(Math.tan((Number(customParams.rightPitch) || 11.31) * Math.PI / 180) * 100).toFixed(2)}%</span>
                                     </div>
                                 </div>
                             )}
@@ -754,18 +754,18 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={customParams.leftExtWidth}
+                                            value={customParams.leftExtWidth !== undefined && !isNaN(customParams.leftExtWidth) ? customParams.leftExtWidth : 4.0}
                                             onChange={(e) => updateCustomParams({ leftExtWidth: Number(e.target.value) })}
                                             className="w-full px-2 py-1 border rounded-md text-sm"
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-bold text-slate-400 uppercase">H. Sablère (m)</label>
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase">H. Sablière (m)</label>
                                         <input
                                             type="number"
                                             step="0.1"
-                                            max={customParams.leftEaveHeight}
-                                            value={customParams.leftExtHeight}
+                                            max={customParams.leftEaveHeight || 3.5}
+                                            value={customParams.leftExtHeight !== undefined && !isNaN(customParams.leftExtHeight) ? customParams.leftExtHeight : 3.0}
                                             onChange={(e) => updateCustomParams({ leftExtHeight: Number(e.target.value) })}
                                             className="w-full px-2 py-1 border rounded-md text-sm"
                                         />
@@ -803,18 +803,18 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={customParams.rightExtWidth}
+                                            value={customParams.rightExtWidth !== undefined && !isNaN(customParams.rightExtWidth) ? customParams.rightExtWidth : 4.0}
                                             onChange={(e) => updateCustomParams({ rightExtWidth: Number(e.target.value) })}
                                             className="w-full px-2 py-1 border rounded-md text-sm"
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-bold text-slate-400 uppercase">H. Sablère (m)</label>
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase">H. Sablière (m)</label>
                                         <input
                                             type="number"
                                             step="0.1"
-                                            max={customParams.rightEaveHeight}
-                                            value={customParams.rightExtHeight}
+                                            max={customParams.rightEaveHeight || 3.5}
+                                            value={customParams.rightExtHeight !== undefined && !isNaN(customParams.rightExtHeight) ? customParams.rightExtHeight : 3.0}
                                             onChange={(e) => updateCustomParams({ rightExtHeight: Number(e.target.value) })}
                                             className="w-full px-2 py-1 border rounded-md text-sm"
                                         />

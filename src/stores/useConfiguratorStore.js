@@ -309,6 +309,27 @@ export const TALIAN_5_MODELS = {
     }
 };
 
+export const DEFAULT_CUSTOM_PARAMS = {
+    buildingType: 'symetrique',
+    proportion: '1/2-1/2',
+    width: 15.0,
+    baySpacing: 7.5,
+    bayCount: 4,
+    ridgeHeight: 5.0,
+    leftEaveHeight: 3.5,
+    rightEaveHeight: 3.5,
+    leftPitch: 11.31,
+    rightPitch: 11.31,
+    pitchUnit: 'degree', // 'degree' | 'percent'
+    leftExtension: 'none', // 'none' | 'auvent' | 'appentis'
+    rightExtension: 'none',
+    leftExtWidth: 4.0,
+    leftExtHeight: 3.0,
+    rightExtWidth: 4.0,
+    rightExtHeight: 3.0,
+    dimensionFontSize: 2.5,
+};
+
 export const useConfiguratorStore = create(
     persist(
         (set, get) => ({
@@ -341,29 +362,9 @@ export const useConfiguratorStore = create(
 
     // --- CUSTOM MODE (SUR-MESURE) ---
     configMode: 'predefined', // 'predefined' | 'batitech' | 'custom'
-    customParams: {
-        buildingType: 'symetrique',
-        proportion: '1/2-1/2',
-        width: 15,
-        baySpacing: 7.5,
-        bayCount: 4,
-        ridgeHeight: 5,
-        leftEaveHeight: 3.5,
-        rightEaveHeight: 3.5,
-        leftPitch: 11.31,
-        rightPitch: 11.31,
-        pitchUnit: 'degree', // 'degree' | 'percent'
-        leftExtension: 'none', // 'none' | 'auvent' | 'appentis'
-        rightExtension: 'none',
-        leftExtWidth: 4.0,
-        leftExtHeight: 3.0,
-        rightExtWidth: 4.0,
-        rightExtensionWidth: 4.0,
-        bayCount: 4,
-        baySpacing: 7.5,
-        buildingType: 'symetrique',
-        dimensionFontSize: 2.5,
-    },
+    customParams: { ...DEFAULT_CUSTOM_PARAMS },
+
+    // Actions
 
     // Actions
     setDimensionFontSize: (size) => set({ dimensionFontSize: Number(size) || 2.5 }),
@@ -476,19 +477,19 @@ export const useConfiguratorStore = create(
             fixedLength: data.fixedLength || null,
             dimensionFontSize: data.dimensionFontSize !== undefined ? Number(data.dimensionFontSize) : (data.cotationFontSize !== undefined ? Number(data.cotationFontSize) : 2.5),
             configMode: data.configMode || 'predefined',
-            customParams: data.customParams ? { ...data.customParams } : {
-                leftSpan: 10,
-                rightSpan: 10,
-                leftPitch: 15,
-                rightPitch: 15,
-                leftEaveHeight: 4,
-                rightEaveHeight: 4,
-                ridgeHeight: 6.5,
-                buildingType: 'symetrique',
-                leftExtWidth: 0,
-                leftExtHeight: 3.5,
-                rightExtWidth: 0,
-                rightExtHeight: 3.5,
+            customParams: {
+                ...DEFAULT_CUSTOM_PARAMS,
+                ...(data.customParams || {}),
+                width: Number(data.customParams?.width) > 0 ? Number(data.customParams.width) : 15.0,
+                baySpacing: Number(data.customParams?.baySpacing) > 0 ? Number(data.customParams.baySpacing) : 7.5,
+                bayCount: Number(data.customParams?.bayCount) > 0 ? Number(data.customParams.bayCount) : 4,
+                ridgeHeight: Number(data.customParams?.ridgeHeight) > 0 ? Number(data.customParams.ridgeHeight) : 5.0,
+                leftEaveHeight: Number(data.customParams?.leftEaveHeight) > 0 ? Number(data.customParams.leftEaveHeight) : 3.5,
+                rightEaveHeight: Number(data.customParams?.rightEaveHeight) > 0 ? Number(data.customParams.rightEaveHeight) : 3.5,
+                leftPitch: !isNaN(Number(data.customParams?.leftPitch)) ? Number(data.customParams.leftPitch) : 11.31,
+                rightPitch: !isNaN(Number(data.customParams?.rightPitch)) ? Number(data.customParams.rightPitch) : 11.31,
+                buildingType: data.customParams?.buildingType || 'symetrique',
+                proportion: data.customParams?.proportion || '1/2-1/2',
             }
         });
     },
@@ -638,26 +639,54 @@ export const useConfiguratorStore = create(
                 buildingType: state.buildingType === 'asymetrique_1' && state.width === 20.0 ? 'asymetrique_1' : (state.buildingType || 'symetrique'),
             });
         } else {
-            set({ configMode: 'custom', fixedLength: null });
+            const state = get();
+            const curr = state.customParams || {};
+            const safeParams = {
+                ...DEFAULT_CUSTOM_PARAMS,
+                ...curr,
+                width: Number(curr.width) > 0 ? Number(curr.width) : DEFAULT_CUSTOM_PARAMS.width,
+                baySpacing: Number(curr.baySpacing) > 0 ? Number(curr.baySpacing) : DEFAULT_CUSTOM_PARAMS.baySpacing,
+                bayCount: Number(curr.bayCount) > 0 ? Number(curr.bayCount) : DEFAULT_CUSTOM_PARAMS.bayCount,
+                ridgeHeight: Number(curr.ridgeHeight) > 0 ? Number(curr.ridgeHeight) : DEFAULT_CUSTOM_PARAMS.ridgeHeight,
+                leftEaveHeight: Number(curr.leftEaveHeight) > 0 ? Number(curr.leftEaveHeight) : DEFAULT_CUSTOM_PARAMS.leftEaveHeight,
+                rightEaveHeight: Number(curr.rightEaveHeight) > 0 ? Number(curr.rightEaveHeight) : DEFAULT_CUSTOM_PARAMS.rightEaveHeight,
+                leftPitch: !isNaN(Number(curr.leftPitch)) ? Number(curr.leftPitch) : DEFAULT_CUSTOM_PARAMS.leftPitch,
+                rightPitch: !isNaN(Number(curr.rightPitch)) ? Number(curr.rightPitch) : DEFAULT_CUSTOM_PARAMS.rightPitch,
+                buildingType: curr.buildingType || DEFAULT_CUSTOM_PARAMS.buildingType,
+                proportion: curr.proportion || DEFAULT_CUSTOM_PARAMS.proportion,
+            };
+            set({ configMode: 'custom', fixedLength: null, customParams: safeParams });
         }
     },
 
     updateCustomParams: (updates) => {
         set((state) => {
-            const newParams = { ...state.customParams, ...updates };
+            const curr = { ...DEFAULT_CUSTOM_PARAMS, ...(state.customParams || {}) };
+            const newParams = { ...curr, ...updates };
+
+            // Sanitize numeric values
+            if (updates.width !== undefined) newParams.width = Number(updates.width) > 0 ? Number(updates.width) : curr.width;
+            if (updates.baySpacing !== undefined) newParams.baySpacing = Number(updates.baySpacing) > 0 ? Number(updates.baySpacing) : curr.baySpacing;
+            if (updates.bayCount !== undefined) newParams.bayCount = Number(updates.bayCount) > 0 ? Number(updates.bayCount) : curr.bayCount;
+            if (updates.ridgeHeight !== undefined) newParams.ridgeHeight = Number(updates.ridgeHeight) > 0 ? Number(updates.ridgeHeight) : curr.ridgeHeight;
+            if (updates.leftEaveHeight !== undefined) newParams.leftEaveHeight = Number(updates.leftEaveHeight) > 0 ? Number(updates.leftEaveHeight) : curr.leftEaveHeight;
+            if (updates.rightEaveHeight !== undefined) newParams.rightEaveHeight = Number(updates.rightEaveHeight) > 0 ? Number(updates.rightEaveHeight) : curr.rightEaveHeight;
+            if (updates.leftPitch !== undefined) newParams.leftPitch = !isNaN(Number(updates.leftPitch)) ? Number(updates.leftPitch) : curr.leftPitch;
+            if (updates.rightPitch !== undefined) newParams.rightPitch = !isNaN(Number(updates.rightPitch)) ? Number(updates.rightPitch) : curr.rightPitch;
 
             const getSpans = (width, type, proportion) => {
-                if (type === 'symetrique') return { left: width / 2, right: width / 2 };
-                if (type === 'monopente') return { left: 0, right: width };
+                const w = Number(width) > 0 ? Number(width) : 15.0;
+                if (type === 'symetrique') return { left: w / 2, right: w / 2 };
+                if (type === 'monopente') return { left: 0, right: w };
                 // Asymetrique
-                const matches = proportion.match(/(\d+)\/(\d+)-(\d+)\/(\d+)/);
+                const matches = (proportion || '1/2-1/2').match(/(\d+)\/(\d+)-(\d+)\/(\d+)/);
                 if (matches) {
                     const lNum = parseInt(matches[1]);
                     const lDen = parseInt(matches[2]);
-                    const left = (lNum / lDen) * width;
-                    return { left, right: width - left };
+                    const left = (lNum / lDen) * w;
+                    return { left, right: w - left };
                 }
-                return { left: width / 2, right: width / 2 };
+                return { left: w / 2, right: w / 2 };
             };
 
             const spans = getSpans(newParams.width, newParams.buildingType, newParams.proportion);
@@ -694,9 +723,6 @@ export const useConfiguratorStore = create(
             }
             // 4. If Eave Heights changed
             else if (updates.leftEaveHeight !== undefined || updates.rightEaveHeight !== undefined) {
-                // Priority: Keep pitches fixed, update Ridge Height? 
-                // Actually user usually wants Ridge fixed if they move Eave.
-                // Re-sync pitches based on fixed ridge.
                 if (spans.left > 0) {
                     newParams.leftPitch = Math.atan((newParams.ridgeHeight - newParams.leftEaveHeight) / spans.left) * 180 / Math.PI;
                 }
@@ -706,7 +732,6 @@ export const useConfiguratorStore = create(
             }
             // 5. If Width or Proportion changed
             else if (updates.width !== undefined || updates.proportion !== undefined || updates.buildingType !== undefined) {
-                // Keep Pitches fixed, update Ridge Height
                 if (spans.left > 0) {
                     newParams.ridgeHeight = newParams.leftEaveHeight + spans.left * Math.tan(newParams.leftPitch * Math.PI / 180);
                     if (spans.right > 0) {
@@ -913,21 +938,42 @@ export const useConfiguratorValues = () => {
 
         // --- CUSTOM MODE OVERRIDE ---
         if (state.configMode === 'custom') {
-            const cp = state.customParams;
+            const rawCp = state.customParams || {};
+            const cp = {
+                ...DEFAULT_CUSTOM_PARAMS,
+                ...rawCp,
+                width: Number(rawCp.width) > 0 ? Number(rawCp.width) : DEFAULT_CUSTOM_PARAMS.width,
+                baySpacing: Number(rawCp.baySpacing) > 0 ? Number(rawCp.baySpacing) : DEFAULT_CUSTOM_PARAMS.baySpacing,
+                bayCount: Number(rawCp.bayCount) > 0 ? Number(rawCp.bayCount) : DEFAULT_CUSTOM_PARAMS.bayCount,
+                ridgeHeight: Number(rawCp.ridgeHeight) > 0 ? Number(rawCp.ridgeHeight) : DEFAULT_CUSTOM_PARAMS.ridgeHeight,
+                leftEaveHeight: Number(rawCp.leftEaveHeight) > 0 ? Number(rawCp.leftEaveHeight) : DEFAULT_CUSTOM_PARAMS.leftEaveHeight,
+                rightEaveHeight: Number(rawCp.rightEaveHeight) > 0 ? Number(rawCp.rightEaveHeight) : DEFAULT_CUSTOM_PARAMS.rightEaveHeight,
+                leftPitch: !isNaN(Number(rawCp.leftPitch)) ? Number(rawCp.leftPitch) : DEFAULT_CUSTOM_PARAMS.leftPitch,
+                rightPitch: !isNaN(Number(rawCp.rightPitch)) ? Number(rawCp.rightPitch) : DEFAULT_CUSTOM_PARAMS.rightPitch,
+                leftExtWidth: Number(rawCp.leftExtWidth) || DEFAULT_CUSTOM_PARAMS.leftExtWidth,
+                leftExtHeight: Number(rawCp.leftExtHeight) || DEFAULT_CUSTOM_PARAMS.leftExtHeight,
+                rightExtWidth: Number(rawCp.rightExtWidth) || DEFAULT_CUSTOM_PARAMS.rightExtWidth,
+                rightExtHeight: Number(rawCp.rightExtHeight) || DEFAULT_CUSTOM_PARAMS.rightExtHeight,
+                buildingType: rawCp.buildingType || DEFAULT_CUSTOM_PARAMS.buildingType,
+                proportion: rawCp.proportion || DEFAULT_CUSTOM_PARAMS.proportion,
+                leftExtension: rawCp.leftExtension || DEFAULT_CUSTOM_PARAMS.leftExtension,
+                rightExtension: rawCp.rightExtension || DEFAULT_CUSTOM_PARAMS.rightExtension,
+            };
             const customLength = cp.bayCount * cp.baySpacing;
             
             // Re-calculate spans correctly
             const getSpans = (w, t, p) => {
-                if (t === 'symetrique') return { left: w / 2, right: w / 2 };
-                if (t === 'monopente') return { left: 0, right: w };
-                const matches = p.match(/(\d+)\/(\d+)-(\d+)\/(\d+)/);
+                const safeW = Number(w) > 0 ? Number(w) : 15.0;
+                if (t === 'symetrique') return { left: safeW / 2, right: safeW / 2 };
+                if (t === 'monopente') return { left: 0, right: safeW };
+                const matches = (p || '1/2-1/2').match(/(\d+)\/(\d+)-(\d+)\/(\d+)/);
                 if (matches) {
                     const lNum = parseInt(matches[1]);
                     const lDen = parseInt(matches[2]);
-                    const left = (lNum / lDen) * w;
-                    return { left, right: w - left };
+                    const left = (lNum / lDen) * safeW;
+                    return { left, right: safeW - left };
                 }
-                return { left: w / 2, right: w / 2 };
+                return { left: safeW / 2, right: safeW / 2 };
             };
             const spans = getSpans(cp.width, cp.buildingType, cp.proportion);
 
