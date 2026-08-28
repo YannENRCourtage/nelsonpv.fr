@@ -912,13 +912,13 @@ function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
-// ─── NOUVEAU CALQUE 1 : REGISTRE DES INSTALLATIONS DE PRODUCTION (ODRÉ) ──────────
+// ─── NOUVEAU CALQUE 1 : REGISTRE DES INSTALLATIONS DE PRODUCTION (ODRÉ / GÉOLOCALISATION SUR SITE) ──────────
 function InstallationsProdLayerManager({ layersRef, activeLayers }) {
   const map = useMap();
   const active = activeLayers?.has('installationsProd');
   const loadedIds = useRef(new Set());
   const layerGroupRef = useRef(L.featureGroup());
-  const cachedCommunesRef = useRef(new Map());
+  const cachedOdreRef = useRef(new Map()); // dept -> Map(eic -> record)
 
   useEffect(() => {
     if (!layersRef.current) return;
@@ -927,121 +927,176 @@ function InstallationsProdLayerManager({ layersRef, activeLayers }) {
 
   const fetchData = async () => {
     if (!active || !map) return;
+    const bounds = map.getBounds();
+    const north = bounds.getNorth();
+    const west = bounds.getWest();
+    const south = bounds.getSouth();
+    const east = bounds.getEast();
     const center = map.getCenter();
 
     try {
-      // 1. Récupérer la commune et le département au centre de la carte
-      const rCommune = await fetch(`https://geo.api.gouv.fr/communes?lat=${center.lat}&lon=${center.lng}&fields=code,nom,codeDepartement,centre`);
-      if (!rCommune.ok) return;
-      const communes = await rCommune.json();
-      if (!communes || communes.length === 0) return;
+      // 1. Récupérer le département au centre de la carte pour charger le registre ODRE officiel
+      let currentDept = null;
+      let currentCommuneNom = null;
+      try {
+        const rCommune = await fetch(`https://geo.api.gouv.fr/communes?lat=${center.lat}&lon=${center.lng}&fields=code,nom,codeDepartement`);
+        if (rCommune.ok) {
+          const communes = await rCommune.json();
+          if (communes?.[0]) {
+            currentDept = communes[0].codeDepartement;
+            currentCommuneNom = communes[0].nom;
+          }
+        }
+      } catch (e) {
+        console.warn("Erreur reverse-geocoding commune", e);
+      }
 
-      const currentCommune = communes[0];
-      const dept = currentCommune.codeDepartement;
-      if (!dept) return;
-
-      // 2. Charger les coordonnées des communes du département
-      if (!cachedCommunesRef.current.has(dept)) {
+      // 2. Charger en cache les fiches officielles ODRE pour ce département
+      if (currentDept && !cachedOdreRef.current.has(currentDept)) {
         try {
-          const rDept = await fetch(`https://geo.api.gouv.fr/departements/${dept}/communes?fields=code,nom,centre`);
-          if (rDept.ok) {
-            const deptCommunes = await rDept.json();
-            const communeMap = new Map();
-            deptCommunes.forEach(c => {
-              if (c.centre?.coordinates) {
-                communeMap.set(c.code, { lat: c.centre.coordinates[1], lon: c.centre.coordinates[0], nom: c.nom });
+          const urlOdre = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/registre-national-installation-production-stockage-electricite-agrege/records?where=codedepartement%3D%22${currentDept}%22&limit=100&order_by=puismaxinstallee%20desc`;
+          const rOdre = await fetch(urlOdre);
+          if (rOdre.ok) {
+            const dOdre = await rOdre.json();
+            const odreMap = new Map();
+            (dOdre.results || []).forEach(item => {
+              if (item.codeeicresourceobject) {
+                odreMap.set(item.codeeicresourceobject, item);
               }
             });
-            cachedCommunesRef.current.set(dept, communeMap);
+            cachedOdreRef.current.set(currentDept, { map: odreMap, list: dOdre.results || [] });
           }
-        } catch (err) {
-          console.warn("Erreur chargement communes département", err);
+        } catch (e) {
+          console.warn("Erreur chargement ODRE", e);
         }
       }
 
-      const communeMap = cachedCommunesRef.current.get(dept) || new Map();
+      const deptData = currentDept ? cachedOdreRef.current.get(currentDept) : null;
+      const odreMap = deptData?.map || new Map();
+      const odreList = deptData?.list || [];
 
-      // 3. Récupérer les installations ODRÉ du département
-      const url = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/registre-national-installation-production-stockage-electricite-agrege/records?where=codedepartement%3D%22${dept}%22&limit=100&order_by=puismaxinstallee%20desc`;
-      const rOdre = await fetch(url);
-      if (!rOdre.ok) return;
-      const dOdre = await rOdre.json();
-      const records = dOdre.results || [];
+      // 3. Récupérer les centrales et installations de production avec leurs coordonnées GPS exactes
+      const q = `[out:json][timeout:25];(way["power"="plant"](${south},${west},${north},${east});relation["power"="plant"](${south},${west},${north},${east});node["power"="plant"](${south},${west},${north},${east});way["power"="generator"]["generator:source"~"solar|wind|hydro|biomass|battery"](${south},${west},${north},${east});node["power"="generator"]["generator:source"~"solar|wind|hydro|biomass|battery"](${south},${west},${north},${east});way["landuse"="industrial"]["industrial"="generator"](${south},${west},${north},${east}););out center tags;`;
 
-      // Décompte par commune pour espacer légèrement les marqueurs multiples
-      const communeOffsets = {};
+      let osmElements = [];
+      const overpassMirrors = [
+        'https://overpass-api.de/api/interpreter',
+        'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+        'https://lz4.overpass-api.de/api/interpreter'
+      ];
 
-      records.forEach((item, idx) => {
-        let latlng = null;
-        if (item.geo_point_2d && item.geo_point_2d.lat !== undefined && item.geo_point_2d.lon !== undefined) {
-          latlng = [parseFloat(item.geo_point_2d.lat), parseFloat(item.geo_point_2d.lon)];
-        } else if (item.codeinseecommune && communeMap.has(item.codeinseecommune)) {
-          const cInfo = communeMap.get(item.codeinseecommune);
-          const cCode = item.codeinseecommune;
-          communeOffsets[cCode] = (communeOffsets[cCode] || 0) + 1;
-          const order = communeOffsets[cCode];
-          if (order === 1) {
-            latlng = [cInfo.lat, cInfo.lon];
-          } else {
-            const angle = (order * 137.5 * Math.PI) / 180;
-            const radius = 0.0035 * Math.sqrt(order);
-            latlng = [cInfo.lat + radius * Math.cos(angle), cInfo.lon + radius * Math.sin(angle)];
+      for (const mirror of overpassMirrors) {
+        try {
+          const res = await fetch(mirror, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+              'User-Agent': 'Nelson-App/1.0 (contact@nelsonpv.fr)'
+            },
+            body: 'data=' + encodeURIComponent(q)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            osmElements = data.elements || [];
+            if (osmElements.length > 0) break;
+          }
+        } catch (err) {
+          // Continuer avec le miroir suivant
+        }
+      }
+
+      // 4. Rendu des marqueurs aux coordonnées réelles
+      osmElements.forEach(el => {
+        const pLat = el.lat || el.center?.lat;
+        const pLon = el.lon || el.center?.lon;
+        if (!pLat || !pLon || isNaN(pLat) || isNaN(pLon)) return;
+
+        const isPlant = el.tags?.power === 'plant';
+        const isGenerator = el.tags?.power === 'generator';
+        const source = el.tags?.['generator:source'] || el.tags?.['plant:source'] || 'solar';
+        const eic = el.tags?.['ref:EU:ENTSOE_EIC'];
+        let odreItem = eic ? odreMap.get(eic) : null;
+
+        // Si non matché par code EIC, essayer de matcher par puissance/commune
+        const output = el.tags?.['plant:output:electricity'] || el.tags?.['generator:output:electricity'] || '';
+        const modules = parseInt(el.tags?.['generator:solar:modules']) || 0;
+        
+        if (!odreItem && output) {
+          const outMwMatch = output.match(/([\d.]+)\s*MW/i);
+          const outKwMatch = output.match(/([\d.]+)\s*kW/i);
+          const pValKw = outMwMatch ? parseFloat(outMwMatch[1]) * 1000 : (outKwMatch ? parseFloat(outKwMatch[1]) : 0);
+          if (pValKw > 0) {
+            odreItem = odreList.find(o => Math.abs((parseFloat(o.puismaxinstallee) || 0) - pValKw) < 50);
           }
         }
 
-        if (!latlng || isNaN(latlng[0]) || isNaN(latlng[1])) return;
+        const isMajor = isPlant || odreItem || modules >= 15 || output.includes('MW') || output.includes('kW') || el.tags?.name;
+        if (!isMajor) return;
 
-        const id = item.codeeicresourceobject || `${item.codeinseecommune || ''}-${item.nominstallation || ''}-${item.puismaxinstallee || ''}-${idx}`;
+        const id = `osm-${el.type}-${el.id}-${eic || ''}`;
         if (loadedIds.current.has(id)) return;
         loadedIds.current.add(id);
 
-        const filiere = item.filiere || 'Solaire';
-        const rawPuis = item.puissance_installee_kw || item.puismaxinstallee || item.puismaxrac || 0;
-        const puisNum = parseFloat(rawPuis) || 0;
-        const puisFormatted = puisNum >= 1000 ? `${(puisNum / 1000).toFixed(2)} MW` : `${puisNum.toFixed(1)} kW`;
-        const nomCommune = item.nom_commune || item.commune || currentCommune.nom || 'Commune';
-        const nomInst = item.nominstallation && item.nominstallation !== 'Confidentiel' ? item.nominstallation : null;
+        const filiere = odreItem?.filiere || (source === 'solar' ? 'Solaire' : (source === 'wind' ? 'Éolien' : (source === 'hydro' ? 'Hydraulique' : (source === 'biomass' ? 'Bioénergies' : 'Stockage'))));
+        const rawPuis = odreItem?.puismaxinstallee || odreItem?.puismaxrac;
+        let puisFormatted = '';
+        if (rawPuis) {
+          const puisNum = parseFloat(rawPuis) || 0;
+          puisFormatted = puisNum >= 1000 ? `${(puisNum / 1000).toFixed(2)} MW` : `${puisNum.toFixed(1)} kW`;
+        } else if (output) {
+          puisFormatted = output;
+        } else if (modules > 0) {
+          puisFormatted = `${(modules * 0.43).toFixed(1)} kWc (${modules} modules)`;
+        } else {
+          puisFormatted = 'En exploitation';
+        }
+
+        const nomCommune = odreItem?.commune || currentCommuneNom || 'Commune';
+        const nomInst = odreItem?.nominstallation && odreItem?.nominstallation !== 'Confidentiel' 
+          ? odreItem.nominstallation 
+          : (el.tags?.name || (filiere === 'Solaire' ? 'Centrale Photovoltaïque au sol' : `Parc ${filiere}`));
 
         let badgeColor = '#eab308'; // Solaire (jaune)
-        if (filiere.toLowerCase().includes('éol') || filiere.toLowerCase().includes('eol')) badgeColor = '#0284c7';
-        else if (filiere.toLowerCase().includes('hydr')) badgeColor = '#0ea5e9';
-        else if (filiere.toLowerCase().includes('bio')) badgeColor = '#16a34a';
-        else if (filiere.toLowerCase().includes('stock')) badgeColor = '#9333ea';
+        if (filiere.toLowerCase().includes('éol') || filiere.toLowerCase().includes('eol') || source === 'wind') badgeColor = '#0284c7';
+        else if (filiere.toLowerCase().includes('hydr') || source === 'hydro') badgeColor = '#0ea5e9';
+        else if (filiere.toLowerCase().includes('bio') || source === 'biomass') badgeColor = '#16a34a';
+        else if (filiere.toLowerCase().includes('stock') || source === 'battery') badgeColor = '#9333ea';
 
-        const marker = L.marker(latlng, {
+        const marker = L.marker([pLat, pLon], {
           icon: L.divIcon({
             className: 'installations-prod-icon',
-            html: `<div style="background: ${badgeColor}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                     <svg viewBox="0 0 24 24" width="13" height="13" stroke="white" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            html: `<div style="background: ${badgeColor}; width: 26px; height: 26px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                     <svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
                    </div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
           })
         });
 
         const popupContent = `
-          <div style="font-family: sans-serif; min-width: 240px; padding: 4px;">
+          <div style="font-family: sans-serif; min-width: 250px; padding: 4px;">
             <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 6px;">
               <span style="font-size: 13px; font-weight: 800; color: #0D3660; text-transform: uppercase;">⚡ Installation de Production</span>
               <span style="font-size: 10px; font-weight: bold; background: #fef08a; color: #854d0e; padding: 2px 6px; border-radius: 4px;">${filiere}</span>
             </div>
             ${nomInst ? `<div style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">${nomInst}</div>` : ''}
             <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">
-              📍 Commune : <strong style="color: #0f172a;">${nomCommune}</strong> ${item.codedepartement ? `(${item.codedepartement})` : ''}
+              📍 Commune : <strong style="color: #0f172a;">${nomCommune}</strong> ${odreItem?.codedepartement ? `(${odreItem.codedepartement})` : ''}
             </div>
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px;">
               <div style="font-size: 11px; color: #64748b;">Puissance installée :</div>
               <div style="font-size: 15px; font-weight: 900; color: #16a34a;">${puisFormatted}</div>
             </div>
-            ${item.technologie ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Technologie : <strong style="color: #334155;">${item.technologie}</strong></div>` : ''}
-            ${item.tensionraccordement ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Tension raccordement : <strong style="color: #334155;">${item.tensionraccordement}</strong></div>` : ''}
-            ${item.datemiseenservice ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Mise en service : <strong style="color: #334155;">${item.datemiseenservice}</strong></div>` : ''}
-            ${item.gestionnaire ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Gestionnaire : <strong style="color: #334155;">${item.gestionnaire}</strong></div>` : ''}
-            <div style="font-size: 9px; color: #94a3b8; margin-top: 6px; text-align: right;">Source : Registre National ODRÉ</div>
+            ${odreItem?.technologie ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Technologie : <strong style="color: #334155;">${odreItem.technologie}</strong></div>` : ''}
+            ${odreItem?.tensionraccordement ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Tension raccordement : <strong style="color: #334155;">${odreItem.tensionraccordement}</strong></div>` : ''}
+            ${odreItem?.postesource ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Poste source : <strong style="color: #334155;">${odreItem.postesource}</strong></div>` : ''}
+            ${odreItem?.datemiseenservice ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Mise en service : <strong style="color: #334155;">${odreItem.datemiseenservice}</strong></div>` : ''}
+            ${odreItem?.gestionnaire ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">Gestionnaire : <strong style="color: #334155;">${odreItem.gestionnaire}</strong></div>` : ''}
+            <div style="font-size: 9px; color: #94a3b8; margin-top: 6px; text-align: right;">Source : Registre National ODRÉ / Cadastre EnR</div>
           </div>
         `;
 
-        marker.bindPopup(popupContent, { maxWidth: 300 });
+        marker.bindPopup(popupContent, { maxWidth: 320 });
         marker.addTo(layerGroupRef.current);
       });
     } catch (err) {
