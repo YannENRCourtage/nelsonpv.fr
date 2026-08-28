@@ -133,6 +133,20 @@ export default function IrveSimulator() {
 
   // ─── Sous-solution active : 'autoconso' | 'toiture' | 'structure' | 'irve' | 'sechoir' ──
   const [activeSolution, setActiveSolution] = useState('autoconso');
+  const tabsContainerRef = useRef(null);
+  const tabRefs = useRef({});
+
+  useEffect(() => {
+    if (tabRefs.current[activeSolution]) {
+      try {
+        tabRefs.current[activeSolution].scrollIntoView({
+          behavior: 'smooth',
+          inline: 'center',
+          block: 'nearest'
+        });
+      } catch (e) {}
+    }
+  }, [activeSolution]);
 
   // ─── Projet CRM lié & Simulations ──────────────────────────────────────────
   const [selectedProjectId, setSelectedProjectId] = useState(null);
@@ -522,41 +536,46 @@ export default function IrveSimulator() {
             </div>
 
             {activeMainTab === 'simulateurs' && (
-              <div 
-                className="w-full lg:w-auto overflow-x-auto scrollbar-thin flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 flex-nowrap overscroll-x-contain touch-pan-x min-w-0 pr-12 lg:pr-1.5"
-                style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', scrollbarWidth: 'thin' }}
-              >
-                {[
-                  { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
-                  { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
-                  { id: 'structure', label: 'Structure Métallique', icon: Sliders, color: 'text-indigo-500' },
-                  { id: 'irve', label: 'Borne IRVE', icon: Zap, color: 'text-emerald-500' },
-                  { id: 'sechoir', label: 'Séchoir BatiTech®', icon: Wheat, color: 'text-orange-500' },
-                ].map(sol => {
-                  const Icon = sol.icon;
-                  const isSelected = activeSolution === sol.id;
-                  return (
-                    <button
-                      key={sol.id}
-                      type="button"
-                      onClick={() => {
-                        if (sol.id === 'sechoir') {
-                          useSechoirStore.getState().resetAll();
-                        }
-                        setActiveSolution(sol.id);
-                      }}
-                      className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all whitespace-nowrap shrink-0 ${
-                        isSelected
-                          ? 'bg-[#0e2b4d] text-white shadow-md'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
-                      }`}
-                    >
-                      <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-amber-400' : sol.color}`} />
-                      <span>{sol.label}</span>
-                    </button>
-                  );
-                })}
-                <div className="w-6 shrink-0 lg:hidden" aria-hidden="true" />
+              <div className="w-full lg:w-auto min-w-0 max-w-full overflow-hidden">
+                <div 
+                  ref={tabsContainerRef}
+                  className="w-full overflow-x-auto scrollbar-none flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 overscroll-x-contain touch-pan-x"
+                  style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  <div className="flex items-center gap-1.5 min-w-max pr-10 lg:pr-0">
+                    {[
+                      { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
+                      { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
+                      { id: 'structure', label: 'Structure Métallique', icon: Sliders, color: 'text-indigo-500' },
+                      { id: 'irve', label: 'Borne IRVE', icon: Zap, color: 'text-emerald-500' },
+                      { id: 'sechoir', label: 'Séchoir BatiTech®', icon: Wheat, color: 'text-orange-500' },
+                    ].map(sol => {
+                      const Icon = sol.icon;
+                      const isSelected = activeSolution === sol.id;
+                      return (
+                        <button
+                          key={sol.id}
+                          ref={el => { tabRefs.current[sol.id] = el; }}
+                          type="button"
+                          onClick={() => {
+                            if (sol.id === 'sechoir') {
+                              useSechoirStore.getState().resetAll();
+                            }
+                            setActiveSolution(sol.id);
+                          }}
+                          className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#0e2b4d] text-white shadow-md'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-amber-400' : sol.color}`} />
+                          <span>{sol.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </div>
