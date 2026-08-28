@@ -423,10 +423,50 @@ const crop3DCanvas = (sourceCanvas) => {
             if (upd[activeBuildingIdx]) upd[activeBuildingIdx] = { ...upd[activeBuildingIdx], screenshot3d: dataUrl };
             return upd;
           });
+          return dataUrl;
         }
       } catch (e) {}
     }
+    return null;
   };
+
+  // Auto-capture continue et fluide de la scène 3D pour le bâtiment actif
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (canvasRef.current) {
+        try {
+          const dataUrl = crop3DCanvas(canvasRef.current);
+          if (dataUrl) {
+            setBuilding3dSnapshot(dataUrl);
+            setSimBuildings(prev => {
+              if (!prev[activeBuildingIdx]) return prev;
+              if (prev[activeBuildingIdx].screenshot3d === dataUrl) return prev;
+              const next = [...prev];
+              next[activeBuildingIdx] = { ...next[activeBuildingIdx], screenshot3d: dataUrl };
+              return next;
+            });
+          }
+        } catch (e) {}
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [
+    activeBuildingIdx,
+    config.buildingType,
+    config.length,
+    config.width,
+    config.bayCount,
+    config.baySpacing,
+    config.eaveHeight,
+    config.roofPitch,
+    config.leftSide,
+    config.rightSide,
+    config.leftWidth,
+    config.rightWidth,
+    config.hasSolar,
+    config.showDimensions,
+    viewMode
+  ]);
 
   // Calcul du libellé d'orientation exact en fonction de la rotation en degrés
   const getOrientationLabel = (rotDeg) => {
@@ -461,14 +501,32 @@ const crop3DCanvas = (sourceCanvas) => {
 
   const handleSelectBuilding = (index) => {
     if (index === activeBuildingIdx || !simBuildings[index]) return;
-    captureCurrentBuilding3d();
+    if (canvasRef.current) {
+      try {
+        const snap = crop3DCanvas(canvasRef.current);
+        if (snap) {
+          setSimBuildings(prev => {
+            const next = [...prev];
+            if (next[activeBuildingIdx]) next[activeBuildingIdx] = { ...next[activeBuildingIdx], screenshot3d: snap };
+            return next;
+          });
+        }
+      } catch (e) {}
+    }
     setActiveBuildingIdx(index);
     const target = simBuildings[index];
-    useConfiguratorStore.getState().loadBuildingConfig(target);
+    if (target) {
+      useConfiguratorStore.getState().loadBuildingConfig(target);
+    }
   };
 
   const handleAddBuilding = () => {
-    captureCurrentBuilding3d();
+    let snap = null;
+    if (canvasRef.current) {
+      try {
+        snap = crop3DCanvas(canvasRef.current);
+      } catch (e) {}
+    }
     const nextIdx = simBuildings.length + 1;
     const offset = (simBuildings.length * 60) - (simBuildings.length * 30);
     const newB = {
@@ -490,14 +548,24 @@ const crop3DCanvas = (sourceCanvas) => {
       rightWidth: 0,
       hasSolar: true
     };
-    const updated = [...simBuildings, newB];
-    setSimBuildings(updated);
-    setActiveBuildingIdx(updated.length - 1);
+    setSimBuildings(prev => {
+      const next = [...prev];
+      if (snap && next[activeBuildingIdx]) {
+        next[activeBuildingIdx] = { ...next[activeBuildingIdx], screenshot3d: snap };
+      }
+      return [...next, newB];
+    });
+    setActiveBuildingIdx(simBuildings.length);
     useConfiguratorStore.getState().loadBuildingConfig(newB);
   };
 
   const handleDuplicateBuilding = () => {
-    captureCurrentBuilding3d();
+    let snap = null;
+    if (canvasRef.current) {
+      try {
+        snap = crop3DCanvas(canvasRef.current);
+      } catch (e) {}
+    }
     const current = simBuildings[activeBuildingIdx] || simBuildings[0];
     const nextIdx = simBuildings.length + 1;
     const newB = {
@@ -505,11 +573,17 @@ const crop3DCanvas = (sourceCanvas) => {
       id: `bat-${nextIdx}-${Date.now()}`,
       name: `Bâtiment ${nextIdx}`,
       offsetX: (current.offsetX || 0) + 60,
-      offsetY: (current.offsetY || 0) + 30
+      offsetY: (current.offsetY || 0) + 30,
+      screenshot3d: snap
     };
-    const updated = [...simBuildings, newB];
-    setSimBuildings(updated);
-    setActiveBuildingIdx(updated.length - 1);
+    setSimBuildings(prev => {
+      const next = [...prev];
+      if (snap && next[activeBuildingIdx]) {
+        next[activeBuildingIdx] = { ...next[activeBuildingIdx], screenshot3d: snap };
+      }
+      return [...next, newB];
+    });
+    setActiveBuildingIdx(simBuildings.length);
     useConfiguratorStore.getState().loadBuildingConfig(newB);
   };
 
@@ -1421,9 +1495,7 @@ const crop3DCanvas = (sourceCanvas) => {
                             });
                           }}
                           onSelectBuilding={(idx) => {
-                            setActiveBuildingIdx(idx);
-                            const target = simBuildings[idx];
-                            if (target) useConfiguratorStore.getState().loadBuildingConfig(target);
+                            handleSelectBuilding(idx);
                           }}
                         />
                         <TileLayer

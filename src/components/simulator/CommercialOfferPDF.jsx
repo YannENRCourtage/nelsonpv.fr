@@ -607,11 +607,13 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             <!-- 4a. VISUEL(S) 3D DU/DES BÂTIMENT(S) -->
             ${sim.buildings && sim.buildings.length > 1 ? `
               <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 6px; height: 100%;">
-                ${sim.buildings.slice(0, 2).map((b, bIdx) => `
+                ${sim.buildings.slice(0, 2).map((b, bIdx) => {
+                  const bImg = b.screenshot3d || (bIdx === 0 ? sim.building3dScreenshot : null);
+                  return `
                   <div style="border: 2px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%;">
                     <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 6px; border-bottom-right-radius: 4px; font-size: 6.5pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">Vue 3D — ${b.name || `Bâtiment ${bIdx + 1}`} (${Number(b.length || 30).toFixed(1)}m × ${Number(b.width || 20).toFixed(1)}m)</div>
-                    ${(b.screenshot3d || sim.building3dScreenshot) ? `
-                      <img src="${b.screenshot3d || sim.building3dScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue 3D ${b.name || `Bâtiment ${bIdx + 1}`}" />
+                    ${bImg ? `
+                      <img src="${bImg}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue 3D ${b.name || `Bâtiment ${bIdx + 1}`}" />
                     ` : `
                       <div style="color: #64748b; font-size: 7.5pt; text-align: center; margin: auto; padding: 6px;">
                         <strong style="color: #0f172a; display: block;">${b.name || `Bâtiment ${bIdx + 1}`}</strong>
@@ -619,7 +621,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                       </div>
                     `}
                   </div>
-                `).join('')}
+                  `;
+                }).join('')}
               </div>
             ` : `
               <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%;">
