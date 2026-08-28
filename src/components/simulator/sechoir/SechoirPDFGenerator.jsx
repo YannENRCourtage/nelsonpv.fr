@@ -422,13 +422,14 @@ export async function generateSechoirPDF({
       right3dImgUrl = '/batitech_6_2_15.jpg';
     }
 
-    const [left3dImgBase64, right3dImgBase64, schema1Img, schema2Img, schema4Img, schemaGrillesImg] = await Promise.all([
+    const [left3dImgBase64, right3dImgBase64, schema1Img, schema2Img, schema4Img, schemaGrillesImg, realisationImgBase64] = await Promise.all([
       loadImgAsBase64(left3dImgUrl),
       loadImgAsBase64(right3dImgUrl),
       loadImgAsBase64('/schema_sechoir_1 v2.jpg'),
       loadImgAsBase64('/Schema séchoir 2.png'),
       loadImgAsBase64('/schema_sechoir_4.jpg'),
       loadImgAsBase64('/schema_sechoir_grilles.png'),
+      loadImgAsBase64('/realisation_batitech.png'),
     ]);
 
     const snapshotSat = await generateSatelliteSnapshot({
@@ -726,23 +727,23 @@ export async function generateSechoirPDF({
       <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
         ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName })}
 
-        <!-- 2 CADRES PLEINE LARGEUR SUPERPOSÉS (3D EN HAUT, SATELLITE EN BAS) -->
+        <!-- 2 LIGNES DE CADRES (3D EN HAUT, RÉALISATION (1/3) + SATELLITE (2/3) EN BAS) -->
         <div style="display: flex; flex-direction: column; gap: 8px; height: 164mm; box-sizing: border-box;">
           
           <!-- CADRE DU HAUT : VUE 3D CONFIGURATEUR (GAUCHE) + VUE INTERIEURE/CAISSONS (DROITE) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; height: 72mm; position: relative; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; padding: 2px 8px;">
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; height: 75mm; position: relative; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; padding: 2px 8px;">
             <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
               Vue 3D BatiTech® (${bDims} — ${puissanceKwc} kWc)
             </div>
             
             <!-- Vue 3D BatiTech (décalée à gauche) -->
-            <div style="flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px 8px; box-sizing: border-box;">
-              <img src="${left3dImgBase64}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Vue 3D ${modelName}" />
+            <div style="flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px 4px; box-sizing: border-box;">
+              <img src="${left3dImgBase64}" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; margin: auto; transform: scale(1.08);" alt="Vue 3D ${modelName}" />
             </div>
 
             <!-- Image Vue Intérieure / Caissons (à droite) -->
-            <div style="width: 44%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px 8px; box-sizing: border-box;">
-              <img src="${right3dImgBase64}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Vue Intérieure ${modelName}" />
+            <div style="width: 44%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px 4px; box-sizing: border-box;">
+              <img src="${right3dImgBase64}" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; margin: auto; transform: scale(1.08);" alt="Vue Intérieure ${modelName}" />
             </div>
 
             <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 10px; height: 24px; display: flex; align-items: center; justify-content: center; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; line-height: 1; box-sizing: border-box; z-index: 2;">
@@ -750,22 +751,35 @@ export async function generateSechoirPDF({
             </div>
           </div>
 
-          <!-- CADRE DU BAS : IMPLANTATION SATELLITE SUR LE TERRAIN -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; flex: 1; min-height: 86mm; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-            <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
-              Implantation Satellite sur la Parcelle
-            </div>
-            ${snapshotSat ? `
-              <img src="${snapshotSat}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite" />
-            ` : `
-              <div style="color: #94a3b8; font-size: 9pt; text-align: center; margin: auto; padding: 10px;">
-                <strong style="color: #ffffff;">Repérage Satellite</strong>
-                <div style="font-size: 7.5pt; margin-top: 2px; color: #94a3b8;">${clientAddress}</div>
+          <!-- LIGNE DU BAS : RÉALISATION (1/3 GAUCHE) + IMPLANTATION SATELLITE (2/3 DROITE) -->
+          <div style="display: flex; gap: 8px; flex: 1; min-height: 81mm; box-sizing: border-box;">
+            
+            <!-- CADRE GAUCHE (1/3) : RÉALISATION -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; width: 33.33%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
+                Réalisation
               </div>
-            `}
-            <div style="position: absolute; bottom: 6px; right: 10px; background: transparent; color: #ffffff; text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95); padding: 2px 6px; font-size: 7.5pt; font-weight: bold;">
-              Orientation : ${r.orientationLabel || 'Sud'}
+              <img src="${realisationImgBase64}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Réalisation BatiTech" />
             </div>
+
+            <!-- CADRE DROITE (2/3) : IMPLANTATION SATELLITE SUR LE TERRAIN -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; width: 66.67%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
+                Implantation Satellite sur la Parcelle
+              </div>
+              ${snapshotSat ? `
+                <img src="${snapshotSat}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite" />
+              ` : `
+                <div style="color: #94a3b8; font-size: 9pt; text-align: center; margin: auto; padding: 10px;">
+                  <strong style="color: #ffffff;">Repérage Satellite</strong>
+                  <div style="font-size: 7.5pt; margin-top: 2px; color: #94a3b8;">${clientAddress}</div>
+                </div>
+              `}
+              <div style="position: absolute; bottom: 6px; right: 10px; background: transparent; color: #ffffff; text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95); padding: 2px 6px; font-size: 7.5pt; font-weight: bold;">
+                Orientation : ${r.orientationLabel || 'Sud'}
+              </div>
+            </div>
+
           </div>
 
         </div>
