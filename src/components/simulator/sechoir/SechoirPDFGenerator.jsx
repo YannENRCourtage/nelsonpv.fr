@@ -426,7 +426,7 @@ export async function generateSechoirPDF({
     if (modelId === 'BT-3.1.15' || modelId.includes('3.1')) {
       left3dImgUrl = '/vue_3d_batitech_3_1_15.jpg';
     } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
-      left3dImgUrl = '/vue_3d_batitech_8_3_15.jpg';
+      left3dImgUrl = '/vue_3d_batitech_8_3_15_v2.jpg';
     } else {
       left3dImgUrl = '/vue_3d_batitech_6_2_15_v5.jpg';
     }
@@ -436,7 +436,7 @@ export async function generateSechoirPDF({
     if (modelId === 'BT-3.1.15' || modelId.includes('3.1')) {
       right3dImgUrl = '/batitech_interieur_3_1_15.jpg';
     } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
-      right3dImgUrl = '/batitech_8_3_15.jpg';
+      right3dImgUrl = '/batitech_interieur_8_3_15_v2.png';
     } else {
       right3dImgUrl = '/batitech_interieur_6_2_15_v2.png';
     }
