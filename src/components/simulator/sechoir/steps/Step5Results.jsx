@@ -305,7 +305,7 @@ export default function Step5Results({ onExportPDF }) {
                   </span>
                 </div>
                 <strong className="text-emerald-300 text-sm font-black">
-                  ~{roiBonifie.toFixed(2)} ans <span className="text-slate-400 font-normal text-xs">(vs {Number(roi).toFixed(2)} ans)</span>
+                  ~{Number(roiBonifie).toFixed(1)} ans <span className="text-slate-400 font-normal text-xs">(vs {Number(roi).toFixed(1)} ans)</span>
                 </strong>
               </div>
             )}
@@ -363,7 +363,7 @@ export default function Step5Results({ onExportPDF }) {
                   strokeWidth={2} 
                   strokeDasharray="4 4" 
                   label={{ 
-                    value: `ROI : ${Number(roi).toFixed(2)} ans`, 
+                    value: `ROI : ${Number(roi).toFixed(1)} ans`, 
                     fill: '#22d3ee', 
                     position: 'insideTop', 
                     fontSize: 13, 
@@ -395,7 +395,7 @@ export default function Step5Results({ onExportPDF }) {
           </div>
           <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/60">
             <p className="text-sm text-slate-400 uppercase font-semibold">Temps de Retour sur Investissement</p>
-            <p className="text-2xl font-black text-cyan-400 mt-1">{roi !== null && roi !== undefined ? Number(roi).toFixed(2) : '—'} ans</p>
+            <p className="text-2xl font-black text-cyan-400 mt-1">{roi !== null && roi !== undefined ? Number(roi).toFixed(1) : '—'} ans</p>
             <p className="text-xs text-slate-400 mt-0.5">Amortissement sur flux d'EBE</p>
           </div>
         </div>

@@ -422,13 +422,13 @@ export async function generateSechoirPDF({
     };
 
     // Image Vue 3D Extérieure (gauche) pour Page 3 (selon modèle)
-    let left3dImgUrl = '/vue_3d_batitech_6_2_15_v4.png';
+    let left3dImgUrl = '/vue_3d_batitech_6_2_15_v5.jpg';
     if (modelId === 'BT-3.1.15' || modelId.includes('3.1')) {
       left3dImgUrl = '/vue_3d_batitech_3_1_15.jpg';
     } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
       left3dImgUrl = '/vue_3d_batitech_8_3_15.jpg';
     } else {
-      left3dImgUrl = '/vue_3d_batitech_6_2_15_v4.png';
+      left3dImgUrl = '/vue_3d_batitech_6_2_15_v5.jpg';
     }
 
     // Image Vue Intérieure / Caissons (droite) pour Page 3 (selon modèle)
