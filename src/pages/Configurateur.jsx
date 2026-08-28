@@ -113,6 +113,7 @@ export default function Configurateur() {
         const originalView = viewMode;
 
         try {
+            const isBt3115 = config?.configMode === 'batitech' && (config?.selectedBatitechModel === 'BT-3.1.15' || config?.selectedBatitechModel === '3.1.15');
             setCustomDimensionFontSize(1.2);
             // 1. Capture du visuel 3D actuel affiché à l'écran
             await wait(200);
@@ -125,6 +126,9 @@ export default function Configurateur() {
 
             // 3. Capture de la Façade Sud (Long Pan Solaire)
             setViewMode('FACADE_SUD');
+            if (isBt3115) {
+                setCustomDimensionFontSize(0.8);
+            }
             await wait(500);
             const imgFacadeSud = canvasRef.current.toDataURL('image/png', 1.0);
 

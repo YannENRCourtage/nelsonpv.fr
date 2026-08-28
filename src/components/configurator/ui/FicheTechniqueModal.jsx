@@ -114,7 +114,18 @@ export function FicheTechniqueModal({
         pignon: initialImages.imgPignon || null,
         facadeSud: initialImages.imgFacadeSud || null,
     });
-    const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+    const isBt3115 = config?.configMode === 'batitech' && (config?.selectedBatitechModel === 'BT-3.1.15' || config?.selectedBatitechModel === '3.1.15');
+
+    const defaultSettings = React.useMemo(() => ({
+        main3D: { ...DEFAULT_SETTINGS.main3D },
+        pignon: { ...DEFAULT_SETTINGS.pignon },
+        facadeSud: {
+            ...DEFAULT_SETTINGS.facadeSud,
+            dimensionFontSize: isBt3115 ? 0.8 : 1.2,
+        },
+    }), [isBt3115]);
+
+    const [settings, setSettings] = useState(defaultSettings);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isRecapturing, setIsRecapturing] = useState(false);
 
@@ -126,8 +137,9 @@ export function FicheTechniqueModal({
                 pignon: initialImages.imgPignon || null,
                 facadeSud: initialImages.imgFacadeSud || null,
             });
+            setSettings(defaultSettings);
         }
-    }, [isOpen, initialImages]);
+    }, [isOpen, initialImages, defaultSettings]);
 
     const updateSetting = (key, field, value) => {
         setSettings(prev => ({
@@ -142,7 +154,7 @@ export function FicheTechniqueModal({
     const resetViewSettings = (key) => {
         setSettings(prev => ({
             ...prev,
-            [key]: { ...DEFAULT_SETTINGS[key] }
+            [key]: { ...defaultSettings[key] }
         }));
     };
 

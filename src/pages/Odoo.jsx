@@ -292,7 +292,7 @@ const TEAM_MEMBERS = [
     "Nico",
     "Jack",
     "Véronique",
-    "NicolasNMD",
+    "Nicolas",
     "Laurent",
     "Philippe"
 ];

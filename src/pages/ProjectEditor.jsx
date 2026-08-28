@@ -778,26 +778,30 @@ export default function ProjectEditor() {
               <div className="flex-1 min-w-[80px]">
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Commercial</label>
                 <Select
-                  value={p.commercial || ''}
+                  value={p.commercial || '__none__'}
                   onValueChange={(v) => {
+                    const finalVal = v === '__none__' ? '' : v;
                     const oldVal = p.commercial;
-                    updateProject({ commercial: v });
-                    if (v && v !== oldVal) {
+                    updateProject({ commercial: finalVal });
+                    if (finalVal && finalVal !== oldVal) {
                       const assignedBy = currentUser?.firstName || currentUser?.displayName || 'Utilisateur';
-                      apiService.createAssignmentNotification(p.id, p.name, v, assignedBy);
-                      toast({ title: "Notification envoyée", description: `${v} a été notifié(e).` });
+                      apiService.createAssignmentNotification(p.id, p.name, finalVal, assignedBy);
+                      toast({ title: "Notification envoyée", description: `${finalVal} a été notifié(e).` });
                     }
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue placeholder="Non assigné" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__none__">Non assigné</SelectItem>
                     {filteredUsers.map(u => {
                       const name = u.firstName || u.displayName || u.email;
                       return <SelectItem key={u.id || u.email} value={name}>{name}</SelectItem>;
                     })}
-                    {/* Specialized options preserved if needed manually or if they don't exist as users */}
+                    {p.commercial && p.commercial !== '__none__' && !filteredUsers.some(u => (u.firstName || u.displayName || u.email) === p.commercial) && p.commercial !== 'Contact' && (
+                      <SelectItem value={p.commercial}>{p.commercial}</SelectItem>
+                    )}
                     <SelectItem value="Contact">Contact</SelectItem>
                   </SelectContent>
                 </Select>
@@ -805,23 +809,31 @@ export default function ProjectEditor() {
 
               <div className="flex-1 min-w-[80px]">
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Chef de projet</label>
-                <Select value={p.assignedUser || ''} onValueChange={(v) => {
-                  const oldVal = p.assignedUser;
-                  updateProject({ assignedUser: v });
-                  if (v && v !== oldVal) {
-                    const assignedBy = currentUser?.firstName || currentUser?.displayName || 'Utilisateur';
-                    apiService.createAssignmentNotification(p.id, p.name, v, assignedBy);
-                    toast({ title: "Notification envoyée", description: `${v} a été notifié(e).` });
-                  }
-                }}>
+                <Select
+                  value={p.assignedUser || '__none__'}
+                  onValueChange={(v) => {
+                    const finalVal = v === '__none__' ? '' : v;
+                    const oldVal = p.assignedUser;
+                    updateProject({ assignedUser: finalVal });
+                    if (finalVal && finalVal !== oldVal) {
+                      const assignedBy = currentUser?.firstName || currentUser?.displayName || 'Utilisateur';
+                      apiService.createAssignmentNotification(p.id, p.name, finalVal, assignedBy);
+                      toast({ title: "Notification envoyée", description: `${finalVal} a été notifié(e).` });
+                    }
+                  }}
+                >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue placeholder="Non assigné" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__none__">Non assigné</SelectItem>
                     {filteredUsers.map(u => {
                       const name = u.firstName || u.displayName || u.email;
                       return <SelectItem key={u.id || u.email} value={name}>{name}</SelectItem>;
                     })}
+                    {p.assignedUser && p.assignedUser !== '__none__' && !filteredUsers.some(u => (u.firstName || u.displayName || u.email) === p.assignedUser) && p.assignedUser !== 'Contact' && (
+                      <SelectItem value={p.assignedUser}>{p.assignedUser}</SelectItem>
+                    )}
                     <SelectItem value="Contact">Contact</SelectItem>
                   </SelectContent>
                 </Select>

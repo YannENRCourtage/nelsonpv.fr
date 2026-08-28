@@ -1691,8 +1691,8 @@ export default function Crm() {
           <div className="overflow-x-auto">
             {/* ... Existing Table Code ... */}
 
-            <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200 text-xs">
                 <tr>
                   <th className="px-2 py-3 text-left font-semibold text-slate-700 uppercase w-8">
                     <input
@@ -1702,18 +1702,18 @@ export default function Crm() {
                       onChange={handleSelectAllProjects}
                     />
                   </th>
-                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[140px]">Nom Projet</th>
-                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[120px]">Client</th>
-                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase">Commercial</th>
-                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase">Chef de projet</th>
-                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[140px]">Adresse</th>
-                  <th className="px-2 py-3 text-left font-semibold text-slate-700 uppercase">CP</th>
-                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[100px]">Ville</th>
-                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[120px]">GPS</th>
-                  <th className="px-2 py-3 text-left font-semibold text-blue-600 uppercase w-[75px]">Puissance</th>
-                  <th className="px-1.5 py-3 text-center font-semibold text-slate-700 uppercase w-[85px]">Type</th>
-                  <th className="px-1.5 py-3 text-center font-semibold text-slate-700 uppercase w-[85px]">Statut</th>
-                  <th className="pl-1 pr-2 py-3 text-right font-semibold text-slate-700 uppercase">Actions</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[150px]">Nom Projet</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[130px]">Client</th>
+                  <th className="px-2 py-3 text-left font-semibold text-slate-700 uppercase w-min whitespace-nowrap">Commercial</th>
+                  <th className="px-2 py-3 text-left font-semibold text-slate-700 uppercase w-min whitespace-nowrap">Chef de projet</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[150px]">Adresse</th>
+                  <th className="px-2 py-3 text-left font-semibold text-slate-700 uppercase w-min whitespace-nowrap">CP</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[110px]">Ville</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[130px]">GPS</th>
+                  <th className="px-2 py-3 text-left font-semibold text-blue-600 uppercase whitespace-nowrap">Puissance</th>
+                  <th className="px-2 py-3 text-center font-semibold text-slate-700 uppercase whitespace-nowrap">Type</th>
+                  <th className="px-2 py-3 text-center font-semibold text-slate-700 uppercase whitespace-nowrap">Statut</th>
+                  <th className="pl-1 pr-3 py-3 text-right font-semibold text-slate-700 uppercase whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1729,10 +1729,10 @@ export default function Crm() {
                         onChange={() => handleSelectProject(project.id)}
                       />
                     </td>
-                    <td className="px-3 py-3 font-medium text-slate-900 max-w-[140px] truncate" title={[project.name, project.zip, project.city].filter(Boolean).join(' ').toUpperCase()}>
+                    <td className="px-3 py-3 font-medium text-slate-900 max-w-[150px] truncate" title={[project.name, project.zip, project.city].filter(Boolean).join(' ').toUpperCase()}>
                       {[project.name, project.zip, project.city].filter(Boolean).join(' ').toUpperCase() || 'Sans nom'}
                     </td>
-                    <td className="px-3 py-3 max-w-[120px] truncate">
+                    <td className="px-3 py-3 max-w-[130px] truncate">
                       {(() => {
                         const name = project.name || '';
                         const firstName = project.firstName || '';
@@ -1740,7 +1740,7 @@ export default function Crm() {
                         return <span className="text-slate-900 font-medium" title={clientName}>{clientName}</span>;
                       })()}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-2 py-3 w-min whitespace-nowrap">
                       {(() => {
                         const commercial = project.commercial;
                         let photoURL = null;
@@ -1751,43 +1751,43 @@ export default function Crm() {
                           );
                           if (userByName?.photoURL) photoURL = userByName.photoURL;
                         }
-                        if (!commercial) return <span className="text-slate-400 text-xs italic">-</span>;
+                        if (!commercial) return <span className="text-slate-400 text-sm italic">-</span>;
                         return (
                           <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full ${getUserColor(commercial)} w-fit pr-3 text-left`}>
                             <div className="w-6 h-6 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
                               <UserAvatar name={commercial} photoURL={photoURL} size="w-full h-full" showName={false} />
                             </div>
-                            <span className="text-xs font-bold truncate max-w-[90px]">{commercial}</span>
+                            <span className="text-sm font-bold truncate max-w-[100px]">{commercial}</span>
                           </div>
                         );
                       })()}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-2 py-3 w-min whitespace-nowrap">
                       {(() => {
                         const projectUser = project.assignedUser;
-                        if (!projectUser) return <span className="text-slate-400 text-xs italic">-</span>;
+                        if (!projectUser) return <span className="text-slate-400 text-sm italic">-</span>;
                         return (
-                          <div className="flex items-center gap-2 w-fit pr-3 text-left">
+                          <div className="flex items-center gap-2 w-fit pr-2 text-left">
                             <UserAvatar name={projectUser} size="w-6 h-6" showName={false} />
-                            <span className="text-xs font-bold truncate max-w-[90px]">{projectUser}</span>
+                            <span className="text-sm font-bold truncate max-w-[100px]">{projectUser}</span>
                           </div>
                         );
                       })()}
                     </td>
-                    <td className="px-3 py-3 text-slate-600 max-w-[140px] truncate" title={project.address || '-'}>{project.address || '-'}</td>
-                    <td className="px-2 py-3 text-slate-600 whitespace-nowrap">{project.zip || '-'}</td>
-                    <td className="px-3 py-3 text-slate-600 max-w-[100px] truncate" title={project.city || '-'}>{project.city || '-'}</td>
-                    <td className="px-3 py-3 text-slate-600 max-w-[120px] truncate font-mono text-xs" title={formatGps(project.gps) || '-'}>{formatGps(project.gps) || '-'}</td>
-                    <td className="px-2 py-3 text-slate-900 font-bold whitespace-nowrap w-[75px]">
+                    <td className="px-3 py-3 text-slate-600 max-w-[150px] truncate" title={project.address || '-'}>{project.address || '-'}</td>
+                    <td className="px-2 py-3 text-slate-600 w-min whitespace-nowrap">{project.zip || '-'}</td>
+                    <td className="px-3 py-3 text-slate-600 max-w-[110px] truncate" title={project.city || '-'}>{project.city || '-'}</td>
+                    <td className="px-3 py-3 text-slate-600 max-w-[130px] truncate font-mono text-xs" title={formatGps(project.gps) || '-'}>{formatGps(project.gps) || '-'}</td>
+                    <td className="px-2 py-3 text-slate-900 font-bold whitespace-nowrap">
                       {project.kwc ? (project.kwc.toString().toLowerCase().includes('kwc') ? project.kwc : `${project.kwc} kWc`) : '-'}
                     </td>
-                    <td className="px-1.5 py-3 whitespace-nowrap w-[85px]">
-                      <span className={`px-2 py-1 rounded-full text-[11px] font-bold shadow-sm block text-center w-full ${getTypeColor(project.type)}`}>
+                    <td className="px-2 py-3 whitespace-nowrap">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm block text-center ${getTypeColor(project.type)}`}>
                         {project.type || 'Construction'}
                       </span>
                     </td>
-                    <td className="px-1.5 py-3 whitespace-nowrap w-[85px]">
-                      <span className={`px-2 py-1 rounded-full text-[11px] font-bold shadow-sm block text-center w-full ${getStatusColor(project.status)}`}>
+                    <td className="px-2 py-3 whitespace-nowrap">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm block text-center ${getStatusColor(project.status)}`}>
                         {project.status === 'draft' ? 'Nouveau' : (project.status || 'Nouveau')}
                       </span>
                     </td>
@@ -2133,7 +2133,7 @@ export default function Crm() {
                 <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                   CRM Pro
                 </h1>
-                <p className="text-xs text-slate-400 mt-0.5">Gestion clients</p>
+                <p className="text-sm text-slate-400 mt-0.5">Gestion clients</p>
               </div>
             ) : (
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center font-black text-xs text-white shadow-sm mx-auto">
@@ -2163,7 +2163,7 @@ export default function Crm() {
                     setSearchParams({ tab: item.id });
                   }}
                   className={cn(
-                    "w-full flex items-center rounded-xl font-extrabold text-sm transition-all duration-200",
+                    "w-full flex items-center rounded-xl font-bold text-base transition-all duration-200",
                     sidebarOpen ? "gap-3 px-3.5 py-3 text-left" : "justify-center p-3",
                     isActive
                       ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-500/30"
@@ -2172,7 +2172,7 @@ export default function Crm() {
                   title={!sidebarOpen ? item.label : undefined}
                 >
                   <Icon className="w-5 h-5 shrink-0" />
-                  {sidebarOpen && <span className="truncate text-sm">{item.label}</span>}
+                  {sidebarOpen && <span className="truncate text-base">{item.label}</span>}
                 </button>
               );
             })}
