@@ -454,72 +454,72 @@ export async function generateSechoirPDF({
         ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName })}
 
         <!-- 4 KPIS EN HAUT DE PAGE (STYLE RÉSULTATS) -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px;">
           <!-- 1. Production Solaire -->
-          <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 10px 14px;">
-            <div style="font-size: 7.2pt; font-weight: bold; color: #d97706; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Production Solaire</div>
-            <div style="font-size: 16pt; font-weight: 900; color: #0f172a; margin: 2px 0;">${fmt(r.productionPV)} <span style="font-size: 8pt; font-weight: normal; color: #64748b;">kWh/an</span></div>
-            <div style="font-size: 6.8pt; color: #64748b;">Gisement zone ${departement} &bull; ${r.orientationLabel || 'Sud'}</div>
+          <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 8px 12px;">
+            <div style="font-size: 9.2pt; font-weight: bold; color: #d97706; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Production Solaire</div>
+            <div style="font-size: 18pt; font-weight: 900; color: #0f172a; margin: 1px 0;">${fmt(r.productionPV)} <span style="font-size: 10pt; font-weight: normal; color: #64748b;">kWh/an</span></div>
+            <div style="font-size: 8.8pt; color: #64748b;">Gisement zone ${departement} &bull; ${r.orientationLabel || 'Sud'}</div>
           </div>
 
           <!-- 2. Valorisation Matière -->
-          <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 10px 14px;">
-            <div style="font-size: 7.2pt; font-weight: bold; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">📈 Valorisation Matière</div>
-            <div style="font-size: 16pt; font-weight: 900; color: #16a34a; margin: 2px 0;">+${fmt(r.produits?.deltaProduits)} <span style="font-size: 8pt; font-weight: normal; color: #166534;">€/an</span></div>
-            <div style="font-size: 6.8pt; color: #166534;">Gains séchage + économies énergie</div>
+          <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 8px 12px;">
+            <div style="font-size: 9.2pt; font-weight: bold; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">📈 Valorisation Matière</div>
+            <div style="font-size: 18pt; font-weight: 900; color: #16a34a; margin: 1px 0;">+${fmt(r.produits?.deltaProduits)} <span style="font-size: 10pt; font-weight: normal; color: #166534;">€/an</span></div>
+            <div style="font-size: 8.8pt; color: #166534;">Gains séchage + économies énergie</div>
           </div>
 
           <!-- 3. Charges & Ventilation -->
-          <div style="background: #fff1f2; border: 1.5px solid #fecdd3; border-radius: 10px; padding: 10px 14px;">
-            <div style="font-size: 7.2pt; font-weight: bold; color: #9f1239; text-transform: uppercase; letter-spacing: 0.5px;">💨 Charges &amp; Ventilation</div>
-            <div style="font-size: 16pt; font-weight: 900; color: #e11d48; margin: 2px 0;">-${fmt(r.charges?.deltaCharges)} <span style="font-size: 8pt; font-weight: normal; color: #9f1239;">€/an</span></div>
-            <div style="font-size: 6.8pt; color: #9f1239;">Ventilation (${fmt(r.charges?.detail?.ventilation || 0)} €) + Entretien</div>
+          <div style="background: #fff1f2; border: 1.5px solid #fecdd3; border-radius: 10px; padding: 8px 12px;">
+            <div style="font-size: 9.2pt; font-weight: bold; color: #9f1239; text-transform: uppercase; letter-spacing: 0.5px;">💨 Charges &amp; Ventilation</div>
+            <div style="font-size: 18pt; font-weight: 900; color: #e11d48; margin: 1px 0;">-${fmt(r.charges?.deltaCharges)} <span style="font-size: 10pt; font-weight: normal; color: #9f1239;">€/an</span></div>
+            <div style="font-size: 8.8pt; color: #9f1239;">Ventilation (${fmt(r.charges?.detail?.ventilation || 0)} €) + Entretien</div>
           </div>
 
           <!-- 4. Impact EBE -->
-          <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 10px 14px;">
-            <div style="font-size: 7.2pt; font-weight: bold; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px;">📊 Impact sur l'EBE</div>
-            <div style="font-size: 16pt; font-weight: 900; color: #2563eb; margin: 2px 0;">+${fmt(r.deltaEBE)} <span style="font-size: 8pt; font-weight: normal; color: #1e40af;">€/an</span></div>
-            <div style="font-size: 6.8pt; color: #1e40af;">Surplus brut d'exploitation</div>
+          <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 8px 12px;">
+            <div style="font-size: 9.2pt; font-weight: bold; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px;">📊 Impact sur l'EBE</div>
+            <div style="font-size: 18pt; font-weight: 900; color: #2563eb; margin: 1px 0;">+${fmt(r.deltaEBE)} <span style="font-size: 10pt; font-weight: normal; color: #1e40af;">€/an</span></div>
+            <div style="font-size: 8.8pt; color: #1e40af;">Surplus brut d'exploitation</div>
           </div>
         </div>
 
         <!-- 2 GRANDS BLOCS CENTRAUX PLEINE LARGEUR (STYLE RÉSULTATS) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; height: 120mm; box-sizing: border-box;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: 122mm; box-sizing: border-box;">
           
           <!-- COLONNE GAUCHE : INVESTISSEMENT INITIAL & FLUX DE TRÉSORERIE ANNUELS -->
-          <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
             
             <!-- 1. Investissement Initial & Financement -->
-            <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc; padding: 10px 14px; flex: 1;">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 6px;">
-                <span style="font-size: 8.5pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">1. Investissement Initial &amp; Financement</span>
-                <span style="font-size: 6.5pt; font-weight: bold; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px;">GARANTI &amp; CONTRACTUEL</span>
+            <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc; padding: 8px 12px; flex: 1;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 5px;">
+                <span style="font-size: 10.5pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">1. Investissement Initial &amp; Financement</span>
+                <span style="font-size: 8.5pt; font-weight: bold; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px;">GARANTI &amp; CONTRACTUEL</span>
               </div>
-              <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt;">
-                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 3px 0; color: #475569;">Investissement Brut Séchoir :</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${fmt(modelObj.investissementBrut)} € HT</td></tr>
-                <tr style="border-bottom: 1px solid #f1f5f9; color: #16a34a;"><td style="padding: 3px 0; font-weight: bold;">Prime CEE Cogen'Air® (Fiche AGRI-EQ-110) :</td><td style="text-align: right; font-weight: 900;">-${fmt(r.cee?.primeTotal)} €</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #fffbeb;"><td style="padding: 4px 4px; font-weight: 900; color: #b45309;">Investissement Net à Financer :</td><td style="padding: 4px 4px; text-align: right; font-weight: 900; color: #b45309; font-size: 9pt;">${fmt(r.financing?.investissementNet)} € HT</td></tr>
-                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 3px 0; color: #64748b;">Montant financé par Emprunt :</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${fmt(r.financing?.investissementNet)} €</td></tr>
-                <tr><td style="padding: 3px 0; color: #dc2626;">Annuité constante (25 ans @ 3.40%) :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.annuite)} €/an</td></tr>
+              <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt;">
+                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #475569;">Investissement Brut Séchoir :</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${fmt(modelObj.investissementBrut)} € HT</td></tr>
+                <tr style="border-bottom: 1px solid #f1f5f9; color: #16a34a;"><td style="padding: 2.5px 0; font-weight: bold;">Prime CEE Cogen'Air® (Fiche AGRI-EQ-110) :</td><td style="text-align: right; font-weight: 900;">-${fmt(r.cee?.primeTotal)} €</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #fffbeb;"><td style="padding: 3px 4px; font-weight: 900; color: #b45309;">Investissement Net à Financer :</td><td style="padding: 3px 4px; text-align: right; font-weight: 900; color: #b45309; font-size: 11pt;">${fmt(r.financing?.investissementNet)} € HT</td></tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #64748b;">Montant financé par Emprunt :</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${fmt(r.financing?.investissementNet)} €</td></tr>
+                <tr><td style="padding: 2.5px 0; color: #dc2626;">Annuité constante (25 ans @ 3.40%) :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.annuite)} €/an</td></tr>
               </table>
             </div>
 
             <!-- 2. Flux de Trésorerie Annuels d'Exploitation -->
-            <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc; padding: 10px 14px; flex: 1;">
-              <div style="font-size: 8.5pt; font-weight: 800; color: #0D3660; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 6px; text-transform: uppercase;">
+            <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc; padding: 8px 12px; flex: 1;">
+              <div style="font-size: 10.5pt; font-weight: 800; color: #0D3660; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 5px; text-transform: uppercase;">
                 2. Flux de Trésorerie Annuels d'Exploitation
               </div>
-              <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt;">
-                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 3px 0; color: #475569;">Valorisation Matière (Delta Produits) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${fmt(r.produits?.deltaProduits)} €/an</td></tr>
-                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 3px 0; color: #475569;">Charges d'exploitation &amp; ventilation :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.charges?.deltaCharges)} €/an</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 3px 0; color: #475569;">Annuité d'emprunt :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.annuite)} €/an</td></tr>
+              <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt;">
+                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #475569;">Valorisation Matière (Delta Produits) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${fmt(r.produits?.deltaProduits)} €/an</td></tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #475569;">Charges d'exploitation &amp; ventilation :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.charges?.deltaCharges)} €/an</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 2.5px 0; color: #475569;">Annuité d'emprunt :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.annuite)} €/an</td></tr>
                 <tr style="background: #f0fdf4; border-top: 1.5px solid #bbf7d0;">
-                  <td style="padding: 5px 6px;">
-                    <div style="font-weight: 900; color: #166534; font-size: 8.5pt;">GAIN NET ANNUEL D'EXPLOITATION</div>
-                    <div style="font-size: 6.5pt; color: #15803d;">Après remboursement intégral de l'annuité</div>
+                  <td style="padding: 4px 6px;">
+                    <div style="font-weight: 900; color: #166534; font-size: 10.5pt;">GAIN NET ANNUEL D'EXPLOITATION</div>
+                    <div style="font-size: 8.5pt; color: #15803d;">Après remboursement intégral de l'annuité</div>
                   </td>
-                  <td style="padding: 5px 6px; text-align: right; font-weight: 900; color: #166534; font-size: 13pt;">
+                  <td style="padding: 4px 6px; text-align: right; font-weight: 900; color: #166534; font-size: 15pt;">
                     +${fmt(r.gainNetAnnuel)} €/an
                   </td>
                 </tr>
@@ -529,36 +529,36 @@ export async function generateSechoirPDF({
           </div>
 
           <!-- COLONNE DROITE : SUBVENTIONS RÉGIONALES & AIDES ÉLIGIBLES -->
-          <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc; padding: 12px 16px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc; padding: 10px 14px; display: flex; flex-direction: column; justify-content: space-between;">
             <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px;">
-                <span style="font-size: 9pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">🏛️ Subventions Régionales &amp; Aides Éligibles</span>
-                <span style="font-size: 6.5pt; font-weight: bold; background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px;">À TITRE INDICATIF</span>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 6px;">
+                <span style="font-size: 11pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">🏛️ Subventions Régionales &amp; Aides Éligibles</span>
+                <span style="font-size: 8.5pt; font-weight: bold; background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px;">À TITRE INDICATIF</span>
               </div>
-              <div style="font-size: 7.5pt; color: #64748b; margin-bottom: 6px;">
+              <div style="font-size: 9.5pt; color: #64748b; margin-bottom: 5px;">
                 Région identifiée : <strong style="color: #0D3660;">${regionName}</strong> (Département ${departement})
               </div>
 
               <!-- Dispositif Territorial Principal -->
-              <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; margin-bottom: 8px;">
+              <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 10px; margin-bottom: 6px;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px;">
                   <div>
-                    <div style="font-size: 6.8pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Dispositif Territorial</div>
-                    <div style="font-size: 8.5pt; font-weight: 900; color: #0D3660; margin: 1px 0;">${subNom}</div>
+                    <div style="font-size: 8.8pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Dispositif Territorial</div>
+                    <div style="font-size: 10.5pt; font-weight: 900; color: #0D3660; margin: 1px 0;">${subNom}</div>
                   </div>
                   ${subMontant > 0 ? `
-                    <div style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; font-size: 7.2pt; font-weight: 900; padding: 2px 7px; border-radius: 6px; white-space: nowrap;">
+                    <div style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; font-size: 9.2pt; font-weight: 900; padding: 2px 7px; border-radius: 6px; white-space: nowrap;">
                       Jusqu'à ${fmt(subMontant)} €
                     </div>
                   ` : ''}
                 </div>
-                <div style="font-size: 7pt; color: #475569; margin-bottom: 6px; font-style: italic;">${subDesc}</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-size: 7pt;">
+                <div style="font-size: 9pt; color: #475569; margin-bottom: 4px; font-style: italic;">${subDesc}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #f1f5f9; padding: 3px 6px; border-radius: 6px; font-size: 9pt;">
                   <div>Assiette éligible (Brut - CEE) : <strong style="color: #0f172a;">${fmt(subAssiette)} € HT</strong></div>
                   <div>Taux d'aide indicatif : <strong style="color: #0D3660;">${subTaux}</strong></div>
                 </div>
                 ${subPlafond ? `
-                  <div style="display: flex; justify-content: space-between; font-size: 6.5pt; color: #64748b; margin-top: 4px; padding: 0 2px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 8.5pt; color: #64748b; margin-top: 3px; padding: 0 2px;">
                     <span>Plafond maximum de subvention :</span>
                     <strong style="color: #334155;">${fmt(subPlafond)} €</strong>
                   </div>
@@ -566,28 +566,28 @@ export async function generateSechoirPDF({
               </div>
 
               <!-- Fonds Chaleur ADEME -->
-              <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; margin-bottom: 8px;">
-                <div style="font-size: 7.8pt; font-weight: 900; color: #0D3660;">☀️ Fonds Chaleur ADEME (National)</div>
-                <div style="font-size: 6.8pt; color: #475569; margin-top: 2px; line-height: 1.3;">
+              <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 5px 10px; margin-bottom: 6px;">
+                <div style="font-size: 9.8pt; font-weight: 900; color: #0D3660;">☀️ Fonds Chaleur ADEME (National)</div>
+                <div style="font-size: 8.8pt; color: #475569; margin-top: 2px; line-height: 1.25;">
                   Éligible pour la valorisation de la chaleur solaire thermovoltaïque Cogen'Air®. Montant variable calculé post-étude thermique.
                 </div>
               </div>
 
               <!-- Impact sur le ROI si subvention obtenue -->
               ${roiBonifie !== null ? `
-                <div style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 8px; padding: 6px 12px; display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 7.2pt; font-weight: 800; color: #065f46;">
+                <div style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 8px; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 9.2pt; font-weight: 800; color: #065f46;">
                     ✅ ROI bonifié en cas d'obtention de l'aide :
                   </span>
-                  <span style="font-size: 8.5pt; font-weight: 900; color: #047857;">
-                    ~${Number(roiBonifie).toFixed(2)} ans <span style="font-size: 6.8pt; color: #64748b; font-weight: normal;">(vs ${Number(baseRoi).toFixed(2)} ans)</span>
+                  <span style="font-size: 10.5pt; font-weight: 900; color: #047857;">
+                    ~${Number(roiBonifie).toFixed(2)} ans <span style="font-size: 8.8pt; color: #64748b; font-weight: normal;">(vs ${Number(baseRoi).toFixed(2)} ans)</span>
                   </span>
                 </div>
               ` : ''}
             </div>
 
             <!-- Note d'avertissement réglementaire -->
-            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 5px 8px; font-size: 6.2pt; color: #92400e; line-height: 1.35; margin-top: 6px;">
+            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 4px 8px; font-size: 8.2pt; color: #92400e; line-height: 1.3; margin-top: 4px;">
               ⚠️ Les subventions régionales (PCAE, FEADER, Plan Ambition Éleveurs) et nationales (ADEME) sont soumises à instruction de dossier et aux appels à projets en cours. Pour préserver un calcul de rentabilité prudent et réaliste, <strong>elles ne sont pas déduites de l'emprunt de base</strong>.
             </div>
           </div>
@@ -628,7 +628,7 @@ export async function generateSechoirPDF({
       const chargesY = Math.round(baseCharges * Math.pow(1 + inflation, yearIdx - 1));
       const produitsY = Math.round(baseProduits * Math.pow(1 + inflation, yearIdx - 1));
       return `
-        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 6.2pt;">
+        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 8.2pt;">
           <td style="padding: 2px 3px; font-weight: bold; color: #0D3660; text-align: center;">${cf.annee}</td>
           <td style="padding: 2px 3px; text-align: right; color: #16a34a; font-weight: 600;">+${fmt(produitsY)} €</td>
           <td style="padding: 2px 3px; text-align: right; color: #dc2626;">-${fmt(chargesY)} €</td>
@@ -644,23 +644,23 @@ export async function generateSechoirPDF({
         ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName })}
 
         <!-- Grand Graphique de Trésorerie Cumulée Pleine Largeur Agrandit -->
-        <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 4px 10px; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); text-align: center; margin-bottom: 8px;">
-          <img src="${treasuryChartImg}" alt="Trésorerie Cumulée" style="max-width: 99%; height: 68mm; display: block; margin: 0 auto;" />
+        <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 3px 8px; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); text-align: center; margin-bottom: 6px;">
+          <img src="${treasuryChartImg}" alt="Trésorerie Cumulée" style="max-width: 99%; height: 58mm; display: block; margin: 0 auto;" />
         </div>
 
         <!-- Tableau des flux sur 2 colonnes (Années 1-13 et 14-25) avec colonne Charges -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px;">
           <!-- Colonne 1 : Années 1 à 13 -->
           <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc;">
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
-                <tr style="background: #0D3660; color: #ffffff; font-size: 6.8pt; height: 26px;">
-                  <th style="padding: 6px 3px; text-align: center; vertical-align: middle; line-height: 1.2;">Année</th>
-                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Produits (+2%/an)</th>
-                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Charges &amp; Vent.</th>
-                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Annuité</th>
-                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Flux Net</th>
-                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Cumul</th>
+                <tr style="background: #0D3660; color: #ffffff; font-size: 8.8pt; height: 26px;">
+                  <th style="padding: 4px 3px; text-align: center; vertical-align: middle; line-height: 1.2;">Année</th>
+                  <th style="padding: 4px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Produits (+2%/an)</th>
+                  <th style="padding: 4px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Charges &amp; Vent.</th>
+                  <th style="padding: 4px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Annuité</th>
+                  <th style="padding: 4px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Flux Net</th>
+                  <th style="padding: 4px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Cumul</th>
                 </tr>
               </thead>
               <tbody>
@@ -673,13 +673,13 @@ export async function generateSechoirPDF({
           <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc;">
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
-                <tr style="background: #0D3660; color: #ffffff; font-size: 6.8pt; height: 26px;">
-                  <th style="padding: 6px 3px; text-align: center; vertical-align: middle; line-height: 1.2;">Année</th>
-                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Produits (+2%/an)</th>
-                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Charges &amp; Vent.</th>
-                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Annuité</th>
-                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Flux Net</th>
-                  <th style="padding: 6px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Cumul</th>
+                <tr style="background: #0D3660; color: #ffffff; font-size: 8.8pt; height: 26px;">
+                  <th style="padding: 4px 3px; text-align: center; vertical-align: middle; line-height: 1.2;">Année</th>
+                  <th style="padding: 4px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Produits (+2%/an)</th>
+                  <th style="padding: 4px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Charges &amp; Vent.</th>
+                  <th style="padding: 4px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Annuité</th>
+                  <th style="padding: 4px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Flux Net</th>
+                  <th style="padding: 4px 3px; text-align: right; vertical-align: middle; line-height: 1.2;">Cumul</th>
                 </tr>
               </thead>
               <tbody>
@@ -691,17 +691,17 @@ export async function generateSechoirPDF({
 
         <!-- Synthèse des Indicateurs Financiers Avancés -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px;">
-          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 5px 10px; text-align: center;">
-            <span style="font-size: 6.2pt; color: #166534; font-weight: bold; text-transform: uppercase;">Valeur Actuelle Nette (VAN 20 ans)</span>
-            <div style="font-size: 10.5pt; font-weight: 900; color: #16a34a;">+${fmt(r.van)} €</div>
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 4px 10px; text-align: center;">
+            <span style="font-size: 8.2pt; color: #166534; font-weight: bold; text-transform: uppercase;">Valeur Actuelle Nette (VAN 20 ans)</span>
+            <div style="font-size: 12.5pt; font-weight: 900; color: #16a34a;">+${fmt(r.van)} €</div>
           </div>
-          <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 5px 10px; text-align: center;">
-            <span style="font-size: 6.2pt; color: #92400e; font-weight: bold; text-transform: uppercase;">Taux de Rendement Interne (TRI)</span>
-            <div style="font-size: 10.5pt; font-weight: 900; color: #d97706;">${r.triPercent || '10.33'} %</div>
+          <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 4px 10px; text-align: center;">
+            <span style="font-size: 8.2pt; color: #92400e; font-weight: bold; text-transform: uppercase;">Taux de Rendement Interne (TRI)</span>
+            <div style="font-size: 12.5pt; font-weight: 900; color: #d97706;">${r.triPercent || '10.33'} %</div>
           </div>
-          <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 5px 10px; text-align: center;">
-            <span style="font-size: 6.2pt; color: #475569; font-weight: bold; text-transform: uppercase;">Temps de Retour sur Investissement (ROI)</span>
-            <div style="font-size: 10.5pt; font-weight: 900; color: #0284c7;">${Number(r.roi || 8.79).toFixed(2)} ans</div>
+          <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px 10px; text-align: center;">
+            <span style="font-size: 8.2pt; color: #475569; font-weight: bold; text-transform: uppercase;">Temps de Retour sur Investissement (ROI)</span>
+            <div style="font-size: 12.5pt; font-weight: 900; color: #0284c7;">${Number(r.roi || 8.79).toFixed(2)} ans</div>
           </div>
         </div>
 
@@ -742,8 +742,8 @@ export async function generateSechoirPDF({
             </div>
 
             <!-- Image Vue Intérieure / Caissons (à droite) -->
-            <div style="width: 44%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px 4px; box-sizing: border-box;">
-              <img src="${right3dImgBase64}" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; margin: auto; transform: scale(1.08);" alt="Vue Intérieure ${modelName}" />
+            <div style="width: 46%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px 4px; box-sizing: border-box;">
+              <img src="${right3dImgBase64}" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; margin: auto; transform: scale(1.16);" alt="Vue Intérieure ${modelName}" />
             </div>
 
             <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 10px; height: 24px; display: flex; align-items: center; justify-content: center; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; line-height: 1; box-sizing: border-box; z-index: 2;">
@@ -751,19 +751,19 @@ export async function generateSechoirPDF({
             </div>
           </div>
 
-          <!-- LIGNE DU BAS : RÉALISATION (2/5 GAUCHE) + IMPLANTATION SATELLITE (3/5 DROITE) -->
+          <!-- LIGNE DU BAS : RÉALISATION (1/2 GAUCHE) + IMPLANTATION SATELLITE (1/2 DROITE) -->
           <div style="display: flex; gap: 8px; flex: 1; min-height: 81mm; box-sizing: border-box;">
             
-            <!-- CADRE GAUCHE (2/5) : RÉALISATION -->
-            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; width: 40%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <!-- CADRE GAUCHE (1/2) : RÉALISATION -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; flex: 1; width: calc(50% - 4px); height: 100%; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
               <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
                 Réalisation
               </div>
               <img src="${realisationImgBase64}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Réalisation BatiTech" />
             </div>
 
-            <!-- CADRE DROITE (3/5) : IMPLANTATION SATELLITE SUR LE TERRAIN -->
-            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; width: 60%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <!-- CADRE DROITE (1/2) : IMPLANTATION SATELLITE SUR LE TERRAIN -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; flex: 1; width: calc(50% - 4px); height: 100%; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
               <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
                 Implantation Satellite sur la Parcelle
               </div>
@@ -821,9 +821,9 @@ export async function generateSechoirPDF({
               <img src="${schema2Img}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 2" />
             </div>
 
-            <!-- Schéma 4 (Caisson & Bottes) - Agrandit légèrement pour occuper l'espace sans dépasser -->
+            <!-- Schéma 4 (Caisson & Bottes) - Décalé de 0.5cm à gauche et police agrandie -->
             <div style="flex: 0.95; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 2px 4px; box-sizing: border-box;">
-              <img src="${schema4Img}" style="max-width: 100%; max-height: 98%; width: auto; height: auto; object-fit: contain; display: block; margin: auto; transform: scale(1.10);" alt="Schéma séchoir 4" />
+              <img src="${schema4Img}" style="max-width: 100%; max-height: 98%; width: auto; height: auto; object-fit: contain; display: block; margin: auto; transform: translateX(-5mm) scale(1.18);" alt="Schéma séchoir 4" />
             </div>
           </div>
 
