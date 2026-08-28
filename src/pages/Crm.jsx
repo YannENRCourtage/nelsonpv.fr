@@ -1742,14 +1742,14 @@ export default function Crm() {
                   <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[130px]">Client</th>
                   <th className="px-2 py-3 text-left font-semibold text-slate-700 uppercase w-min whitespace-nowrap">Commercial</th>
                   <th className="px-2 py-3 text-left font-semibold text-slate-700 uppercase w-min whitespace-nowrap">Chef de projet</th>
-                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[150px]">Adresse</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase min-w-[180px] max-w-[280px]">Adresse</th>
                   <th className="px-2 py-3 text-left font-semibold text-slate-700 uppercase w-min whitespace-nowrap">CP</th>
                   <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[110px]">Ville</th>
                   <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[130px]">GPS</th>
                   <th className="px-2 py-3 text-left font-semibold text-blue-600 uppercase whitespace-nowrap">Puissance</th>
                   <th className="px-2 py-3 text-center font-semibold text-slate-700 uppercase whitespace-nowrap">Type</th>
                   <th className="px-2 py-3 text-center font-semibold text-slate-700 uppercase whitespace-nowrap">Statut</th>
-                  <th className="pl-1 pr-3 py-3 text-right font-semibold text-slate-700 uppercase whitespace-nowrap">Actions</th>
+                  <th className="pl-2 pr-3 py-3 text-right font-semibold text-slate-700 uppercase w-min whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1810,7 +1810,7 @@ export default function Crm() {
                         );
                       })()}
                     </td>
-                    <td className="px-3 py-3 text-slate-600 max-w-[150px] truncate" title={project.address || '-'}>{project.address || '-'}</td>
+                    <td className="px-3 py-3 text-slate-600 min-w-[180px] max-w-[280px] truncate" title={project.address || '-'}>{project.address || '-'}</td>
                     <td className="px-2 py-3 text-slate-600 w-min whitespace-nowrap">{project.zip || '-'}</td>
                     <td className="px-3 py-3 text-slate-600 max-w-[110px] truncate" title={project.city || '-'}>{project.city || '-'}</td>
                     <td className="px-3 py-3 text-slate-600 max-w-[130px] truncate font-mono text-xs" title={formatGps(project.gps) || '-'}>{formatGps(project.gps) || '-'}</td>
@@ -1844,7 +1844,7 @@ export default function Crm() {
                         </select>
                       </div>
                     </td>
-                    <td className="pl-1 pr-2 py-3 text-right whitespace-nowrap">
+                    <td className="pl-2 pr-3 py-3 text-right w-min whitespace-nowrap">
                       <div className="flex justify-end items-center gap-0.5">
                         {isTransferAuthorized() && (
                           <>
