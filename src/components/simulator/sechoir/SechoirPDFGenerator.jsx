@@ -318,12 +318,31 @@ export async function generateSechoirPDF({
   const baseRoi = r.roi || 8.12;
   const puissanceKwc = r.puissancePV || modelObj.puissanceCogenAir || (modelId === 'BT-3.1.15' ? 30.15 : modelId === 'BT-6.2.15' ? 70.35 : 100.5);
 
+  const getOrientationDisplayLabel = (ang) => {
+    let cardinal = 'Sud';
+    if (ang >= -22 && ang <= 22) cardinal = 'Sud';
+    else if (ang > 22 && ang <= 67) cardinal = 'Sud-Ouest';
+    else if (ang > 67 && ang <= 112) cardinal = 'Ouest';
+    else if (ang > 112 && ang <= 157) cardinal = 'Nord-Ouest';
+    else if (ang < -22 && ang >= -67) cardinal = 'Sud-Est';
+    else if (ang < -67 && ang >= -112) cardinal = 'Est';
+    else if (ang < -112 && ang >= -157) cardinal = 'Nord-Est';
+    else cardinal = 'Nord';
+
+    const degStr = ang > 0 ? `+${ang}°` : `${ang}°`;
+    return `${cardinal} (${degStr})`;
+  };
+
   const rotVal = typeof sechoirState.rotation === 'number' ? sechoirState.rotation : (
-    orientation === 'ouest' ? 90 :
-    orientation === 'sud-ouest' ? 45 :
-    orientation === 'sud-est' ? -45 :
-    orientation === 'est' ? -90 : -6
+    typeof r.rotation === 'number' ? r.rotation : (
+      orientation === 'ouest' ? 90 :
+      orientation === 'sud-ouest' ? 45 :
+      orientation === 'sud-est' ? -45 :
+      orientation === 'est' ? -90 : -23
+    )
   );
+
+  const orientationDisplay = r.orientationLabel || getOrientationDisplayLabel(rotVal);
 
   // Position satellite exacte
   const exactMapCenter = sechoirState.mapCenter || r.mapCenter || (
@@ -403,13 +422,13 @@ export async function generateSechoirPDF({
     };
 
     // Image Vue 3D Extérieure (gauche) pour Page 3 (selon modèle)
-    let left3dImgUrl = '/vue_3d_batitech_6_2_15_v3.jpg';
+    let left3dImgUrl = '/vue_3d_batitech_6_2_15_v4.png';
     if (modelId === 'BT-3.1.15' || modelId.includes('3.1')) {
       left3dImgUrl = '/vue_3d_batitech_3_1_15.jpg';
     } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
       left3dImgUrl = '/vue_3d_batitech_8_3_15.jpg';
     } else {
-      left3dImgUrl = '/vue_3d_batitech_6_2_15_v3.jpg';
+      left3dImgUrl = '/vue_3d_batitech_6_2_15_v4.png';
     }
 
     // Image Vue Intérieure / Caissons (droite) pour Page 3 (selon modèle)
@@ -459,7 +478,7 @@ export async function generateSechoirPDF({
           <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 8px 12px;">
             <div style="font-size: 9.2pt; font-weight: bold; color: #d97706; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Production Solaire</div>
             <div style="font-size: 18pt; font-weight: 900; color: #0f172a; margin: 1px 0;">${fmt(r.productionPV)} <span style="font-size: 10pt; font-weight: normal; color: #64748b;">kWh/an</span></div>
-            <div style="font-size: 8.8pt; color: #64748b;">Gisement zone ${departement} &bull; ${r.orientationLabel || 'Sud'}</div>
+            <div style="font-size: 8.8pt; color: #64748b;">Gisement zone ${departement} &bull; ${orientationDisplay}</div>
           </div>
 
           <!-- 2. Valorisation Matière -->
@@ -744,7 +763,7 @@ export async function generateSechoirPDF({
 
             <!-- Image Vue Intérieure / Caissons (à droite) -->
             <div style="width: 46%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px 4px; box-sizing: border-box;">
-              <img src="${right3dImgBase64}" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; margin: auto; transform: scale(1.16);" alt="Vue Intérieure ${modelName}" />
+              <img src="${right3dImgBase64}" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; margin: auto; transform: scale(0.92);" alt="Vue Intérieure ${modelName}" />
             </div>
 
             <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 10px; height: 24px; display: flex; align-items: center; justify-content: center; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; line-height: 1; box-sizing: border-box; z-index: 2;">
@@ -777,7 +796,7 @@ export async function generateSechoirPDF({
                 </div>
               `}
               <div style="position: absolute; bottom: 6px; right: 10px; background: transparent; color: #ffffff; text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95); padding: 2px 6px; font-size: 7.5pt; font-weight: bold;">
-                Orientation : ${r.orientationLabel || 'Sud'}
+                Orientation : ${orientationDisplay}
               </div>
             </div>
 

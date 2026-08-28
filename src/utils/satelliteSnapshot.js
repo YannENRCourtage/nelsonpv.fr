@@ -34,12 +34,14 @@ export const generateSatelliteSnapshot = async ({
     const pixelOffsetX = (xExact - centerTileX) * 256;
     const pixelOffsetY = (yExact - centerTileY) * 256;
 
-    // Charger les tuiles autour du centre (grille 5x3)
+    // Charger les tuiles autour du centre pour couvrir 100% de la largeur et hauteur
     const tilePromises = [];
-    const minTileX = centerTileX - 2;
-    const maxTileX = centerTileX + 2;
-    const minTileY = centerTileY - 1;
-    const maxTileY = centerTileY + 1;
+    const radiusX = Math.ceil((width / 2) / 256) + 1;
+    const radiusY = Math.ceil((height / 2) / 256) + 1;
+    const minTileX = centerTileX - radiusX;
+    const maxTileX = centerTileX + radiusX;
+    const minTileY = centerTileY - radiusY;
+    const maxTileY = centerTileY + radiusY;
 
     for (let tx = minTileX; tx <= maxTileX; tx++) {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
