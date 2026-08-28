@@ -426,20 +426,55 @@ export default function Crm() {
   };
 
   const getStatusColor = (status) => {
-    const s = (status || 'Nouveau').toLowerCase();
-    if (s === 'terminé' || s === 'termine') return 'bg-green-400 text-white'; // Monday 'Done' green is solid usually
-    if (s === 'en cours') return 'bg-blue-400 text-white'; // Monday 'Working on it' is orange/blue
+    const s = (status || 'Nouveau').toLowerCase().trim();
+    if (s === 'terminé' || s === 'termine') return 'bg-green-500 text-white';
+    if (s === 'en cours') return 'bg-blue-500 text-white';
     if (s === 'nouveau' || s === 'draft') return 'bg-slate-400 text-white';
-    if (s === 'abandonné') return 'bg-red-400 text-white';
-    return 'bg-slate-200 text-slate-800'; // Default gray
+    if (s === 'abandonné' || s === 'abandonne') return 'bg-red-400 text-white';
+    return 'bg-slate-400 text-white';
+  };
+
+  const getProjectDisplayType = (type) => {
+    const t = (type || '').toLowerCase().trim();
+    if (!t || t === 'construction') return 'Construction';
+    if (t === 'bâtiment' || t === 'batiment' || t === 'batiment_solaire') return 'Bâtiment';
+    if (t === 'ombrières' || t === 'ombrieres' || t === 'ombrière' || t === 'ombriere') return 'Ombrières';
+    if (t === 'batitech') return 'BatiTech';
+    if (t.includes('batterie')) return 'Batterie SA';
+    // Fallback des anciens libellés d'urbanisme vers Construction
+    if (t.includes('ombrière') || t.includes('ombriere') || t.includes('photovoltaïque')) return 'Construction';
+    return 'Construction';
   };
 
   const getTypeColor = (type) => {
-    const t = (type || '').toLowerCase();
-    if (t.includes('construction')) return 'bg-purple-400 text-white';
-    if (t.includes('rénovation') || t.includes('renovation')) return 'bg-orange-400 text-white';
-    if (t.includes('location')) return 'bg-teal-400 text-white';
-    return 'bg-gray-300 text-gray-800';
+    const dt = getProjectDisplayType(type);
+    if (dt === 'Bâtiment') return 'bg-blue-500 text-white';
+    if (dt === 'Ombrières') return 'bg-amber-500 text-white';
+    if (dt === 'BatiTech') return 'bg-emerald-500 text-white';
+    if (dt === 'Batterie SA') return 'bg-purple-600 text-white';
+    // Fond violet pour Construction (par défaut)
+    return 'bg-purple-400 text-white';
+  };
+
+  const handleProjectStatusChange = async (projectId, newStatus, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: newStatus } : p));
+    try {
+      await apiService.updateProject(projectId, { status: newStatus }, false, activeTenantId);
+      toast({
+        title: "Statut mis à jour",
+        description: `Le projet est désormais "${newStatus}".`
+      });
+    } catch (error) {
+      console.error("Erreur mise à jour statut:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut sur le serveur.",
+        variant: "destructive"
+      });
+    }
   };
 
 
@@ -1485,7 +1520,7 @@ export default function Crm() {
     const matchesUser = filterUser === 'all' || projectUser === filterUser;
 
     // Type
-    const matchesType = filterType === 'all' || (p.type || 'Construction') === filterType;
+    const matchesType = filterType === 'all' || getProjectDisplayType(p.type) === filterType;
 
     // Status
     const currentStatus = p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau');
@@ -1551,13 +1586,14 @@ export default function Crm() {
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm shrink-0"
+            className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm shrink-0 font-medium"
           >
             <option value="all">Tous les types</option>
             <option value="Construction">Construction</option>
-            <option value="Rénovation">Rénovation</option>
-            <option value="Construction & Rénovation">Construction & Rénovation</option>
-            <option value="Location">Location</option>
+            <option value="Bâtiment">Bâtiment</option>
+            <option value="Ombrières">Ombrières</option>
+            <option value="BatiTech">BatiTech</option>
+            <option value="Batterie SA">Batterie SA</option>
           </select>
 
           {/* Filtre Mes Projets */}
@@ -1782,14 +1818,31 @@ export default function Crm() {
                       {project.kwc ? (project.kwc.toString().toLowerCase().includes('kwc') ? project.kwc : `${project.kwc} kWc`) : '-'}
                     </td>
                     <td className="px-2 py-3 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm block text-center ${getTypeColor(project.type)}`}>
-                        {project.type || 'Construction'}
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-xs block text-center ${getTypeColor(project.type)}`}>
+                        {getProjectDisplayType(project.type)}
                       </span>
                     </td>
-                    <td className="px-2 py-3 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm block text-center ${getStatusColor(project.status)}`}>
-                        {project.status === 'draft' ? 'Nouveau' : (project.status || 'Nouveau')}
-                      </span>
+                    <td className="px-2 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative inline-block w-full text-center">
+                        <select
+                          value={project.status === 'draft' ? 'Nouveau' : (project.status || 'Nouveau')}
+                          onChange={(e) => handleProjectStatusChange(project.id, e.target.value, e)}
+                          onClick={(e) => e.stopPropagation()}
+                          className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-xs border-0 outline-none cursor-pointer text-center appearance-none pr-5 pl-2.5 transition-all hover:opacity-95 ${getStatusColor(project.status)}`}
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'right 6px center',
+                            backgroundSize: '10px'
+                          }}
+                          title="Modifier le statut du projet"
+                        >
+                          <option value="Nouveau" className="bg-slate-700 text-white font-medium">Nouveau</option>
+                          <option value="En cours" className="bg-slate-700 text-white font-medium">En cours</option>
+                          <option value="Terminé" className="bg-slate-700 text-white font-medium">Terminé</option>
+                          <option value="Abandonné" className="bg-slate-700 text-white font-medium">Abandonné</option>
+                        </select>
+                      </div>
                     </td>
                     <td className="pl-1 pr-2 py-3 text-right whitespace-nowrap">
                       <div className="flex justify-end items-center gap-0.5">
@@ -1870,8 +1923,8 @@ export default function Crm() {
                 </div>
                 <div className="flex justify-between items-start mb-2 pl-6">
                   <div className="font-bold text-lg text-slate-800">{project.projectSize || project.name || 'Projet'}</div>
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                    {project.type || 'Standard'}
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-xs ${getTypeColor(project.type)}`}>
+                    {getProjectDisplayType(project.type)}
                   </span>
                 </div>
                 <div className="text-sm text-slate-600 mb-4">

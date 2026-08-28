@@ -1172,9 +1172,20 @@ export default function ProjectEditor() {
                     className="font-mono text-xs"
                   />
                 </div>
+              <div className="col-span-2">
+                <label className="text-sm font-medium">Type de projet</label>
+                <select
+                  value={p.type || 'Construction'}
+                  onChange={e => updateProject({ type: e.target.value })}
+                  className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background font-medium"
+                >
+                  <option value="Construction">Construction</option>
+                  <option value="Bâtiment">Bâtiment</option>
+                  <option value="Ombrières">Ombrières</option>
+                  <option value="BatiTech">BatiTech</option>
+                  <option value="Batterie SA">Batterie SA</option>
+                </select>
               </div>
-              <div className="col-span-2"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option></select></div>
-              <div className="col-span-1">
                 <label className="text-sm font-medium text-blue-600">Batterie SA</label>
                 <div className="flex gap-1 mt-1 h-10">
                   <button

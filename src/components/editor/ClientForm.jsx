@@ -160,12 +160,20 @@ export default function ClientForm() {
           </div>
           <div className="pe_field">
             <label>Type de projet</label>
-            <input
-              placeholder="Ex: Construction"
-              value={p.projectType || ''}
-              onChange={(e) => handleChange('projectType', e.target.value)}
-
-            />
+            <select
+              value={p.type || p.projectType || 'Construction'}
+              onChange={(e) => {
+                handleChange('type', e.target.value);
+                handleChange('projectType', e.target.value);
+              }}
+              className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background font-medium"
+            >
+              <option value="Construction">Construction</option>
+              <option value="Bâtiment">Bâtiment</option>
+              <option value="Ombrières">Ombrières</option>
+              <option value="BatiTech">BatiTech</option>
+              <option value="Batterie SA">Batterie SA</option>
+            </select>
           </div>
         </div>
 

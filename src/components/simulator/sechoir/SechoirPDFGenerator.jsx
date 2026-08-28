@@ -751,19 +751,19 @@ export async function generateSechoirPDF({
             </div>
           </div>
 
-          <!-- LIGNE DU BAS : RÉALISATION (1/3 GAUCHE) + IMPLANTATION SATELLITE (2/3 DROITE) -->
+          <!-- LIGNE DU BAS : RÉALISATION (2/5 GAUCHE) + IMPLANTATION SATELLITE (3/5 DROITE) -->
           <div style="display: flex; gap: 8px; flex: 1; min-height: 81mm; box-sizing: border-box;">
             
-            <!-- CADRE GAUCHE (1/3) : RÉALISATION -->
-            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; width: 33.33%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <!-- CADRE GAUCHE (2/5) : RÉALISATION -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; width: 40%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
               <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
                 Réalisation
               </div>
               <img src="${realisationImgBase64}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Réalisation BatiTech" />
             </div>
 
-            <!-- CADRE DROITE (2/3) : IMPLANTATION SATELLITE SUR LE TERRAIN -->
-            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; width: 66.67%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <!-- CADRE DROITE (3/5) : IMPLANTATION SATELLITE SUR LE TERRAIN -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; width: 60%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
               <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 0 12px; height: 26px; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 6px; font-size: 7.8pt; font-weight: bold; z-index: 2; line-height: 1; box-sizing: border-box;">
                 Implantation Satellite sur la Parcelle
               </div>
@@ -821,9 +821,9 @@ export async function generateSechoirPDF({
               <img src="${schema2Img}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 2" />
             </div>
 
-            <!-- Schéma 4 (Caisson & Bottes) -->
-            <div style="flex: 0.95; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 4px 6px; box-sizing: border-box;">
-              <img src="${schema4Img}" style="max-width: 98%; max-height: 94%; width: auto; height: auto; object-fit: contain; display: block; margin: auto;" alt="Schéma séchoir 4" />
+            <!-- Schéma 4 (Caisson & Bottes) - Agrandit légèrement pour occuper l'espace sans dépasser -->
+            <div style="flex: 0.95; border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; padding: 2px 4px; box-sizing: border-box;">
+              <img src="${schema4Img}" style="max-width: 100%; max-height: 98%; width: auto; height: auto; object-fit: contain; display: block; margin: auto; transform: scale(1.10);" alt="Schéma séchoir 4" />
             </div>
           </div>
 

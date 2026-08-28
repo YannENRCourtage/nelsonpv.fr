@@ -331,6 +331,89 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     
     // Détection stricte du type d'ouvrage
     const rawType = (project?.buildingType || '').toLowerCase();
+    const isBattery = rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie');
+    
+    if (isBattery) {
+        const bQty = Number(project?.battery_quantity || project?.batteryStorage?.quantity || 1) || 1;
+        const bLen = Number(project?.batteryStorage?.dalleLength || project?.longueur || Math.max(6.0, bQty * 3.2 + 3.0));
+        const bModel = project?.battery_model || project?.batteryStorage?.model || 'BESS Stand-Alone';
+        const bPower = Number(project?.kwc || project?.puissance || project?.batteryStorage?.powerKw || (bQty * 125));
+        const bCap = Number(project?.batteryStorage?.capacityKwh || (bQty * 261));
+
+        return (
+            <div style={PAGE_STYLE} id="pc-plate-section-notice">
+                <PlateHeader title="PC3 : PLAN EN COUPE & PC4 : NOTICE DESCRIPTIVE" project={project} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2.5mm', marginBottom: '8mm' }}>
+                    <div style={{ height: '62mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '1.5mm 4mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5mm' }}>
+                            <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
+                                PC3 — COUPE DE TERRAIN &amp; DES INSTALLATIONS (COUPE TRANSVERSALE AA') — CENTRALE DE STOCKAGE BATTERIES
+                            </span>
+                            <span style={{ fontSize: '7pt', color: '#64748b' }}>
+                                {bQty}× {bModel} ({bPower} kW / {bCap} kWh) • Dalle {bLen.toFixed(2)}m × 6.00m • Échelle indicative
+                            </span>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="680" height="186" viewBox="0 0 680 186" style={{ width: '100%', height: '100%', maxHeight: '54mm' }}>
+                                <line x1="20" y1="130" x2="660" y2="130" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
+                                <text x="30" y="142" fill="#64748b" fontSize="6.5" fontStyle="italic">Terrain Naturel TN ±0.00</text>
+                                <text x="650" y="142" textAnchor="end" fill="#64748b" fontSize="6.5" fontStyle="italic">Terrain plat conservé</text>
+
+                                <rect x="150" y="122" width="380" height="8" fill="#94a3b8" stroke="#475569" strokeWidth="1" rx="0.5" />
+                                <text x="340" y="128" textAnchor="middle" fill="#1e293b" fontSize="5.5" fontWeight="bold">Dalle béton armé étanche avec bac de rétention</text>
+
+                                {Array.from({ length: Math.min(4, bQty) }).map((_, idx) => {
+                                    const cw = Math.min(65, 260 / Math.min(4, bQty));
+                                    const cx = 175 + idx * (cw + 12);
+                                    return (
+                                        <g key={idx}>
+                                            <rect x={cx} y="55" width={cw} height="67" fill="#1e293b" stroke="#0f172a" strokeWidth="1.2" rx="1.5" />
+                                            <rect x={cx + 4} y="50" width={cw - 8} height="5" fill="#334155" stroke="#0f172a" strokeWidth="0.8" rx="1" />
+                                            <line x1={cx + cw / 2} y1="55" x2={cx + cw / 2} y2="122" stroke="#475569" strokeWidth="0.8" />
+                                            <circle cx={cx + cw / 2 - 3} cy="88" r="1.5" fill="#facc15" />
+                                            <circle cx={cx + cw / 2 + 3} cy="88" r="1.5" fill="#facc15" />
+                                            <text x={cx + cw / 2} y="115" textAnchor="middle" fill="#93c5fd" fontSize="5.5" fontWeight="bold">BESS #{idx + 1}</text>
+                                        </g>
+                                    );
+                                })}
+
+                                <rect x="480" y="65" width="35" height="57" fill="#e2e8f0" stroke="#475569" strokeWidth="1" rx="1" />
+                                <text x="497" y="98" textAnchor="middle" fill="#0f172a" fontSize="5.5" fontWeight="bold">HTA</text>
+
+                                <line x1="130" y1="70" x2="550" y2="70" stroke="#64748b" strokeWidth="1" strokeDasharray="3 2" />
+                                <line x1="130" y1="70" x2="130" y2="130" stroke="#334155" strokeWidth="2" />
+                                <line x1="550" y1="70" x2="550" y2="130" stroke="#334155" strokeWidth="2" />
+                                <text x="125" y="100" textAnchor="end" fill="#64748b" fontSize="6" fontWeight="bold">Clôture 2.00m</text>
+
+                                <line x1="160" y1="55" x2="160" y2="130" stroke="#ef4444" strokeWidth="0.8" />
+                                <line x1="156" y1="55" x2="164" y2="55" stroke="#ef4444" strokeWidth="0.8" />
+                                <line x1="156" y1="130" x2="164" y2="130" stroke="#ef4444" strokeWidth="0.8" />
+                                <text x="152" y="95" textAnchor="end" fill="#ef4444" fontSize="7" fontWeight="bold">H : 2.60m</text>
+
+                                <line x1="150" y1="148" x2="530" y2="148" stroke="#2563eb" strokeWidth="0.8" />
+                                <line x1="150" y1="144" x2="150" y2="152" stroke="#2563eb" strokeWidth="0.8" />
+                                <line x1="530" y1="144" x2="530" y2="152" stroke="#2563eb" strokeWidth="0.8" />
+                                <text x="340" y="156" textAnchor="middle" fill="#2563eb" fontSize="7" fontWeight="bold">Longueur dalle : {bLen.toFixed(2)}m</text>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2.5mm 4.5mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <div style={{ fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            NOTICE D'INSERTION &amp; DESCRIPTIVE DU PROJET
+                        </div>
+                        <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.5pt', lineHeight: '1.3', color: '#334155' }}>
+                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.5pt', lineHeight: '1.3', color: '#334155' }}>
+                                {effectiveNoticeText}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <Footer project={project} />
+            </div>
+        );
+    }
+
     const isOmbriere = rawType.startsWith('ombriere');
     const isPL = isOmbriere && (rawType.includes('ombriere_pl') || (rawType.includes('pl') && !rawType.includes('simple')) || largeur >= 13.0);
     const isSimple = isOmbriere && !isPL && (rawType.includes('simple') || largeur <= 7.5);

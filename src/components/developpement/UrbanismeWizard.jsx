@@ -21,6 +21,7 @@ import ImageCropModal from './ImageCropModal';
 import DimensionsModal from './DimensionsModal';
 import LandscapeIntegrationModal from './LandscapeIntegrationModal';
 import Building3DViewer from './Building3DViewer';
+import BatteryStationVisualizer from './BatteryStationVisualizer';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -210,7 +211,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   }, [isDP]);
 
   const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
-  const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT'
+  const [solutionType, setSolutionType] = useState(isDP ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
+  const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
   const { activeTenantId } = useAuth() || {};
   
   // Zustand Store du Configurateur Nelson
@@ -296,6 +298,40 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const projectCadastre = `${rawSection ? `${rawSection} ` : ''}${rawNumero}`.trim();
     const projectSurface = editedProject?.surface_terrain ? `${editedProject.surface_terrain} m²` : (editedProject?.cadastre_surface ? `${editedProject.cadastre_surface} m²` : (project?.surface_terrain ? `${project.surface_terrain} m²` : '18 384 m²'));
     const projectAltitude = editedProject?.altitude || project?.altitude || '140.62 m';
+
+    // Cas particulier : Projet de stockage d'énergie par batterie Stand-Alone (BESS)
+    if (solutionType === 'battery') {
+      const pQty = batteryStorage.quantity || 1;
+      const pModel = batteryStorage.model || 'CESC Mercury 261';
+      const pPower = batteryStorage.powerKw || (pQty * 125);
+      const pCap = batteryStorage.capacityKwh || (pQty * 261);
+      const pDalleL = batteryStorage.dalleLength || Math.max(6.0, Number((pQty * 3.2 + 3.0).toFixed(1)));
+      const pDalleW = batteryStorage.dalleWidth || 6.0;
+      const pFootprintArea = Math.round(pDalleL * pDalleW);
+
+      return `1- OBJET DE LA DEMANDE
+La présente demande porte sur l'implantation d'un système de stockage d'énergie par batteries stationnaires Stand-Alone (BESS) d'une puissance totale raccordée de ${pPower} kW et d'une capacité de ${pCap} kWh sur dalle béton étanche dédiée (~${pFootprintArea} m²).
+
+2- LE SITE
+Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}). Le terrain est globalement plat et se trouve à une altitude de ${projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un cadre adapté disposant d'un accès direct depuis la voirie existante au Sud de la parcelle.
+
+3- LE PROJET
+Le projet comprend :
+- L'implantation de ${pQty} container(s) technique(s) modulaire(s) de stockage ${pModel} (teinte gris anthracite RAL 7016 / gris clair RAL 7035, hauteur hors-tout : 2.60m),
+- La réalisation d'une dalle en béton armé étanche avec bac de rétention intégré (${pDalleL.toFixed(2)}m × ${pDalleW.toFixed(2)}m, surface : ~${pFootprintArea} m²),
+- L'implantation d'un poste de transformation et de livraison HTA (PDL ENEDIS) compact (2.50m × 2.00m, h : 2.40m),
+- La pose d'une clôture grillagée périphérique de sécurité de 2.00m de hauteur avec portail d'accès pompier et maintenance (largeur 4.00m).
+
+4- RACCORDEMENT AUX RESEAUX
+L'installation est raccordée au réseau public de distribution d'électricité ENEDIS via le poste de livraison HTA situé sur la parcelle. Le dispositif est totalement autonome, silencieux et ne requiert aucun raccordement aux réseaux d'eau ni d'assainissement collectif.
+
+5- SECURITE INCENDIE & PRESCRIPTIONS SDIS
+L'installation intègre tous les dispositifs de sécurité et répond strictement aux préconisations SDIS :
+- Système autonome de détection précoce thermique et dispositif d'extinction d'urgence automatique intégré à chaque container,
+- Dispositif de coupure générale d'urgence asservi et accessible depuis l'extérieur de la clôture,
+- Bac de rétention étanche sous dalle assurant la rétention totale des fluides et des eaux d'extinction éventuelles,
+- Réserve d'eau incendie (bâche à eau de 120 m³) avec aire d'aspiration stabilisée et distance de sécurité minimale de 5.00m préservée vis-à-vis des limites parcellaires.`;
+    }
     
     // Bâtiment / Ombrière 1
     const b1 = buildings[0] || {};
@@ -397,7 +433,7 @@ Le positionnement du point de livraison et d'un transformateur (le cas échéant
 
 5- SECURITE INCENDIE
 ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
-  }, [editedProject, project, config, buildings, additionalRoof, batteryStorage, isDP, getBuildingDisplayName]);
+  }, [editedProject, project, config, buildings, additionalRoof, batteryStorage, isDP, solutionType, getBuildingDisplayName]);
 
   // Mise à jour explicite du bâtiment actif (Single Source of Truth par onglet)
   const updateActiveBuilding = useCallback((updates) => {
@@ -512,13 +548,75 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     const projZip = project.zip || project.postalCode || project.code_postal || project.clientZip || '';
     const projCity = project.city || project.commune || project.clientCity || project.cadastre_commune || '';
 
+    const isBatteryProject = 
+      project?.isBatteryStandAlone === 'Oui' ||
+      project?.isBatteryStandAlone === true ||
+      String(project?.type || '').toLowerCase().includes('batterie') ||
+      String(project?.project || '').toLowerCase().includes('batterie') ||
+      String(project?.name || '').toLowerCase().includes('batterie') ||
+      String(project?.nom || '').toLowerCase().includes('batterie') ||
+      String(project?.description || '').toLowerCase().includes('batterie');
+
+    const detectedSolutionType = isBatteryProject ? 'battery' : (isDP ? 'ombriere' : 'building');
+    setSolutionType(detectedSolutionType);
+
+    let parsedBatteryQty = 1;
+    const projectCombinedStr = `${project?.project || ''} ${project?.name || ''} ${project?.nom || ''} ${project?.description || ''}`;
+    const qMatch = projectCombinedStr.match(/x\s*(\d+)/i) || projectCombinedStr.match(/(\d+)\s*(?:batterie|battery|containers?|unit[eé]s?)/i);
+    if (qMatch && Number(qMatch[1]) > 0) {
+      parsedBatteryQty = Number(qMatch[1]);
+    } else if (Number(project?.battery_quantity) > 0) {
+      parsedBatteryQty = Number(project.battery_quantity);
+    }
+
+    const parsedBatteryPower = Number(project?.kwc || project?.puissance || project?.projectSize || (parsedBatteryQty * 125)) || (parsedBatteryQty * 125);
+    const parsedBatteryCap = Number(project?.battery_capacity || (parsedBatteryQty * 261)) || (parsedBatteryQty * 261);
+    const parsedBatteryModel = project?.battery_model || 'CESC Mercury 261';
+
+    if (isBatteryProject) {
+      setBatteryStorage({
+        enabled: true,
+        name: 'Système de stockage par batterie Stand-Alone',
+        model: parsedBatteryModel,
+        quantity: parsedBatteryQty,
+        capacityKwh: parsedBatteryCap,
+        powerKw: parsedBatteryPower,
+        dalleLength: Math.max(6.0, Number((parsedBatteryQty * 3.2 + 3.0).toFixed(1))),
+        dalleWidth: 6.0,
+        footprint: `${(parsedBatteryQty * 3.2 + 3.0).toFixed(2)}m × 6.00m`,
+        fireSafety: 'Bâche à eau 120m³, rétention étanche intégrée, distance de sécurité 5m, clôture grillagée 2m'
+      });
+    }
+
     const isOmbriere = (project.type || '').toLowerCase().includes('ombriere') || (project.buildingType || '').toLowerCase().includes('ombriere');
     const pGps = project.gps || (project.lat && project.lng ? `${project.lat},${project.lng}` : '43.5612,0.9168');
     const [defLat, defLng] = pGps.split(',').map(Number);
 
     // Restaurer fidèlement les bâtiments existants ou initialiser le Bâtiment 1 avec les paramètres précis du projet
     let initialBuildings = [];
-    if (project.buildings && Array.isArray(project.buildings) && project.buildings.length > 0) {
+    if (isBatteryProject && (!project.buildings || project.buildings.length === 0)) {
+      const batLen = Math.max(6.0, Number((parsedBatteryQty * 3.2 + 3.0).toFixed(1)));
+      const batW = 6.0;
+      initialBuildings = [
+        {
+          id: 'bat-1',
+          name: `Station Batteries (${parsedBatteryQty}× ${parsedBatteryModel})`,
+          length: batLen,
+          width: batW,
+          eaveHeight: 2.6,
+          roofPitch: 0,
+          buildingType: 'battery_standalone',
+          isBattery: true,
+          hasSolar: false,
+          lat: defLat,
+          lng: defLng,
+          gps: `${defLat},${defLng}`,
+          captures: project.urbanisme_captures || project.captures || {},
+          photos: project.pc_photos || project.photos || {},
+          rotation: Number(project.rotation || 0)
+        }
+      ];
+    } else if (project.buildings && Array.isArray(project.buildings) && project.buildings.length > 0) {
       initialBuildings = project.buildings.map((b, idx) => {
         let cleanName = b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
         cleanName = cleanName
@@ -1090,12 +1188,16 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     if (!onGenerate) return;
     setIsGenerating(true);
     
+    const isBattery = solutionType === 'battery' || batteryStorage.enabled || (editedProject.type || '').toLowerCase().includes('batterie');
+    
     // Objet synthétique pour Page 1
-    const defaultObjet = isDP
-      ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
-      : (isPC
-        ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-        : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque");
+    const defaultObjet = isBattery
+      ? "Implantation d'un système de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)"
+      : (isDP
+        ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
+        : (isPC
+          ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+          : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque"));
     const shortObjet = editedProject?.objet_travaux || defaultObjet;
 
     const effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
@@ -1107,7 +1209,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       width: Number(b.width || 16.4),
       eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : (isDP ? 3.0 : 4.0)),
       roofPitch: Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : 10),
-      buildingType: b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1'),
+      buildingType: isBattery ? 'battery_standalone' : (b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1')),
+      isBattery: isBattery || Boolean(b.isBattery),
       leftSide: b.leftSide || 'none',
       rightSide: b.rightSide || 'none',
       leftWidth: b.leftWidth !== undefined ? Number(b.leftWidth) : 0,
@@ -1119,9 +1222,11 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     }));
 
     const isMultiOrOmbriere = updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere'));
-    const finalTypeLabel = isDP
-      ? (updatedBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque')
-      : (isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire'));
+    const finalTypeLabel = isBattery
+      ? "Système de stockage par batterie Stand-Alone"
+      : (isDP
+        ? (updatedBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque')
+        : (isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire')));
 
     // Régénérer les cartes DP1/PC1 et DP2/PC2 avec le dernier GPS et les structures orientées
     const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
@@ -1189,7 +1294,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
       email2: editedProject?.email2 || '',
       buildingType: b1.buildingType || config.buildingType || 'asymetrique_1',
-      type: finalTypeLabel,
+      type: editedProject?.type || project?.type || 'Construction',
+      urbanismeType: finalTypeLabel,
       installationType: finalTypeLabel,
       largeur: String(b1.width || config.width || 16.4),
       longueur: String(b1.length || config.length || 37.5),
@@ -1531,140 +1637,407 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                 </motion.div>
               )}
 
-              {/* ÉTAPE 2 — Configurateur 2D/3D avec support Multi-Bâtiments / Ombrières */}
+              {/* ÉTAPE 2 — Configurateur 2D/3D avec support Bâtiments / Ombrières / Batteries Stand-Alone */}
               {step === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-3 flex flex-col h-[78vh] min-h-[620px] overflow-hidden bg-slate-100/70 rounded-2xl gap-2">
                   
-                  {/* Sélecteur multi-bâtiments / ombrières */}
+                  {/* Sélecteur de type de solution */}
                   <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 flex-shrink-0">
-                    <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
-                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1 flex items-center gap-1">
-                        <Building2 className="w-3.5 h-3.5 text-blue-600" /> {isDP ? 'Ombrières :' : 'Bâtiments :'}
+                    <div className="flex items-center gap-2 overflow-x-auto py-0.5">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">
+                        Solution :
                       </span>
-                      {buildings.map((b, idx) => (
-                        <button
-                          key={b.id || idx}
-                          type="button"
-                          onClick={() => handleSelectBuilding(idx)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
-                            activeBuildingIndex === idx
-                              ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
-                          }`}
-                        >
-                          <span>{getBuildingDisplayName(b, idx)}</span>
-                          <span className="text-[10px] opacity-75 font-normal">
-                            ({(b.width || config.width).toFixed(1)}m × {(b.length || config.length).toFixed(1)}m)
-                          </span>
-                          {idx > 0 && (
-                            <span
-                              onClick={(e) => handleRemoveBuilding(idx, e)}
-                              className="ml-1 p-0.5 hover:bg-red-500 hover:text-white rounded text-slate-400 transition-colors"
-                              title={isDP ? "Supprimer cette ombrière secondaire" : "Supprimer ce bâtiment secondaire"}
-                            >
-                              <X className="w-3 h-3" />
-                            </span>
-                          )}
-                        </button>
-                      ))}
                       <button
                         type="button"
-                        onClick={handleAddBuilding}
-                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center gap-1 shadow-2xs"
+                        onClick={() => {
+                          setSolutionType('building');
+                          setBatteryStorage(prev => ({ ...prev, enabled: false }));
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
+                          solutionType === 'building'
+                            ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                            : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                        }`}
                       >
-                        <Plus className="w-3.5 h-3.5 text-emerald-600" />
-                        {isDP ? 'Ajouter une ombrière' : 'Ajouter un bâtiment'}
+                        <Building2 className="w-3.5 h-3.5" />
+                        <span>Bâtiment / Hangar</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSolutionType('ombriere');
+                          setBatteryStorage(prev => ({ ...prev, enabled: false }));
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
+                          solutionType === 'ombriere'
+                            ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                            : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                        }`}
+                      >
+                        <Car className="w-3.5 h-3.5" />
+                        <span>Ombrière PV</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSolutionType('battery');
+                          setBatteryStorage(prev => ({ ...prev, enabled: true }));
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
+                          solutionType === 'battery'
+                            ? 'bg-purple-600 text-white ring-2 ring-purple-400'
+                            : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                        }`}
+                      >
+                        <Battery className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Batterie Stand-Alone (BESS)</span>
                       </button>
                     </div>
+
+                    {/* Sélecteur multi-bâtiments si mode Bâtiment/Ombrière */}
+                    {solutionType !== 'battery' && (
+                      <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                        {buildings.map((b, idx) => (
+                          <button
+                            key={b.id || idx}
+                            type="button"
+                            onClick={() => handleSelectBuilding(idx)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-2xs ${
+                              activeBuildingIndex === idx
+                                ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                                : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                            }`}
+                          >
+                            <span>{getBuildingDisplayName(b, idx)}</span>
+                            {idx > 0 && (
+                              <span
+                                onClick={(e) => handleRemoveBuilding(idx, e)}
+                                className="ml-1 p-0.5 hover:bg-red-500 hover:text-white rounded text-slate-400 transition-colors"
+                                title={isDP ? "Supprimer cette ombrière" : "Supprimer ce bâtiment"}
+                              >
+                                <X className="w-3 h-3" />
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={handleAddBuilding}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center gap-1 shadow-2xs"
+                        >
+                          <Plus className="w-3 h-3 text-emerald-600" />
+                          <span>+</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Scène & Panneau */}
-                  <div className="flex-1 flex flex-col lg:flex-row gap-3.5 min-h-0 overflow-hidden">
-                    {/* Panneau de contrôle gauche */}
-                    <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1 space-y-3.5 pb-6">
-                      <ControlPanel 
-                        isAcama={false} 
-                        selectedProject={editedProject} 
-                        activeBuilding={buildings[activeBuildingIndex]}
-                        onUpdateBuilding={updateActiveBuilding}
-                      />
-                      <BuildingSummaryCard isAcama={false} />
-                    </div>
-
-                    {/* Scène 3D droite */}
-                    <div className="flex-1 relative h-full rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-b from-slate-50 to-slate-200 shadow-sm isolate">
-                      <div className="absolute top-3 left-3 z-20 flex flex-col gap-2 pointer-events-auto">
-                        <div className="bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-slate-200">
-                          {(() => {
-                            const curB = buildings[activeBuildingIndex] || config;
-                            const curW = Number(curB.width || config.width || 20);
-                            const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
-                            const curArea = Math.round(curW * curL);
-                            return (
-                              <span className="text-slate-800 font-bold text-sm whitespace-nowrap">
-                                {curL.toFixed(2)}m × {curW.toFixed(2)}m — {curArea}m²
-                              </span>
-                            );
-                          })()}
-                        </div>
-
-                        {config.hasSolar && (
-                          <div className="bg-yellow-50/95 backdrop-blur px-3 py-1 rounded-lg shadow-sm border border-yellow-200">
-                            <span className="text-yellow-800 font-bold text-xs whitespace-nowrap">
-                              ⚡ {(() => {
-                                const curB = buildings[activeBuildingIndex] || config;
-                                const curW = Number(curB.width || config.width || 20);
-                                const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
-                                const curArea = Math.round(curW * curL);
-                                return curB.solarStats?.power ? curB.solarStats.power.toFixed(2) : (curArea * 0.20).toFixed(2);
-                              })()} kWc
+                  {/* VUE BATTERIES STAND-ALONE */}
+                  {solutionType === 'battery' ? (
+                    <div className="flex-1 flex flex-col lg:flex-row gap-3.5 min-h-0 overflow-hidden">
+                      {/* Panneau de contrôle gauche pour Batteries */}
+                      <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1 space-y-3 pb-6">
+                        <div className="bg-white rounded-2xl p-4 border border-purple-200 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600">
+                                <Battery className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h3 className="text-sm font-extrabold text-slate-800">Station Batteries Stand-Alone</h3>
+                                <p className="text-[11px] text-purple-600 font-semibold">Stockage stationnaire d'énergie (BESS)</p>
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200">
+                              {batteryStorage.quantity || 1} unité(s)
                             </span>
                           </div>
-                        )}
 
-                        <button
-                          onClick={configActions.toggleDimensions}
-                          className={`px-3 py-1.5 rounded-lg font-semibold text-xs shadow-sm border transition-all flex items-center justify-between gap-2.5 ${
-                            config.showDimensions ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          <span>Afficher les côtes</span>
-                          <div className={`w-8 h-4 rounded-full relative transition-colors ${config.showDimensions ? 'bg-white/30' : 'bg-slate-300'}`}>
-                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${config.showDimensions ? 'left-4' : 'left-0.5'}`} />
+                          {/* Modèle & Presets */}
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Modèle / Presets BESS</label>
+                            <select
+                              value={batteryStorage.model || 'CESC Mercury 261'}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                let unitKw = 125;
+                                let unitKwh = 261;
+                                let uL = 3.50;
+                                let uW = 2.20;
+                                let uH = 2.60;
+
+                                if (val.includes('Megapack')) { unitKw = 1900; unitKwh = 3900; uL = 7.10; uW = 1.65; uH = 2.80; }
+                                else if (val.includes('LUNA')) { unitKw = 1000; unitKwh = 2000; uL = 6.05; uW = 2.44; uH = 2.59; }
+                                else if (val.includes('PowerTitan')) { unitKw = 1375; unitKwh = 2750; uL = 6.05; uW = 2.44; uH = 2.59; }
+                                else if (val.includes('BYD')) { unitKw = 1000; unitKwh = 2000; uL = 6.05; uW = 2.44; uH = 2.59; }
+                                else if (val.includes('20ft')) { unitKw = 125; unitKwh = 250; uL = 6.05; uW = 2.44; uH = 2.59; }
+
+                                const q = batteryStorage.quantity || 1;
+                                setBatteryStorage(prev => ({
+                                  ...prev,
+                                  model: val,
+                                  powerKw: q * unitKw,
+                                  capacityKwh: q * unitKwh,
+                                  unitLength: uL,
+                                  unitWidth: uW,
+                                  unitHeight: uH,
+                                  dalleLength: Math.max(6.0, Number((q * (uL > 4 ? 4.0 : 3.2) + 3.0).toFixed(1))),
+                                  dalleWidth: q > 4 ? 8.0 : 6.0,
+                                  footprint: `${(q * (uL > 4 ? 4.0 : 3.2) + 3.0).toFixed(2)}m × 6.00m`
+                                }));
+                              }}
+                              className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2 bg-slate-50 text-slate-800 focus:ring-2 focus:ring-purple-400 outline-none"
+                            >
+                              <option value="CESC Mercury 261">CESC Mercury 261 (125 kW / 261 kWh — 3.50m × 2.20m)</option>
+                              <option value="Tesla Megapack 2XL">Tesla Megapack 2XL (1 900 kW / 3 900 kWh — 7.10m × 1.65m)</option>
+                              <option value="Huawei LUNA2000-2.0MWH">Huawei LUNA2000 (1 000 kW / 2 000 kWh — 6.05m × 2.44m)</option>
+                              <option value="Sungrow PowerTitan">Sungrow PowerTitan (1 375 kW / 2 750 kWh — 6.05m × 2.44m)</option>
+                              <option value="BYD Energy City">BYD Energy City (1 000 kW / 2 000 kWh — 6.05m × 2.44m)</option>
+                              <option value="Container 20ft Standard">Container 20ft Standard (125 kW / 250 kWh — 6.05m × 2.44m)</option>
+                            </select>
                           </div>
-                        </button>
+
+                          {/* Nombre de containers */}
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Nombre de containers / packs</label>
+                            <div className="flex items-center gap-1.5">
+                              {[1, 2, 4, 6, 8].map(qty => (
+                                <button
+                                  key={qty}
+                                  type="button"
+                                  onClick={() => {
+                                    const curQ = batteryStorage.quantity || 1;
+                                    const unitKw = Math.round((batteryStorage.powerKw || 500) / curQ) || 125;
+                                    const unitKwh = Math.round((batteryStorage.capacityKwh || 1044) / curQ) || 261;
+                                    setBatteryStorage(prev => ({
+                                      ...prev,
+                                      quantity: qty,
+                                      powerKw: qty * unitKw,
+                                      capacityKwh: qty * unitKwh,
+                                      dalleLength: Math.max(6.0, Number((qty * 3.2 + 3.0).toFixed(1))),
+                                      footprint: `${(qty * 3.2 + 3.0).toFixed(2)}m × 6.00m`
+                                    }));
+                                  }}
+                                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                    (batteryStorage.quantity || 1) === qty
+                                      ? 'bg-purple-600 text-white shadow-sm ring-1 ring-purple-400'
+                                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {qty}x
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Puissance & Capacité */}
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-600 mb-1">Puissance raccordée (kW)</label>
+                              <input
+                                type="number"
+                                value={batteryStorage.powerKw || 500}
+                                onChange={(e) => setBatteryStorage(prev => ({ ...prev, powerKw: Number(e.target.value) }))}
+                                className="w-full text-xs font-bold rounded-lg border border-slate-200 p-2 bg-slate-50 text-slate-800 focus:ring-2 focus:ring-purple-400"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-600 mb-1">Capacité totale (kWh)</label>
+                              <input
+                                type="number"
+                                value={batteryStorage.capacityKwh || 1044}
+                                onChange={(e) => setBatteryStorage(prev => ({ ...prev, capacityKwh: Number(e.target.value) }))}
+                                className="w-full text-xs font-bold rounded-lg border border-slate-200 p-2 bg-slate-50 text-slate-800 focus:ring-2 focus:ring-purple-400"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Dalle Béton et Emprise */}
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-600 mb-1">Longueur dalle (m)</label>
+                              <input
+                                type="number"
+                                step="0.5"
+                                value={batteryStorage.dalleLength || Math.max(6.0, Number(((batteryStorage.quantity || 1) * 3.2 + 3.0).toFixed(1)))}
+                                onChange={(e) => setBatteryStorage(prev => ({ ...prev, dalleLength: Number(e.target.value) }))}
+                                className="w-full text-xs font-bold rounded-lg border border-slate-200 p-2 bg-slate-50 text-slate-800 focus:ring-2 focus:ring-purple-400"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-600 mb-1">Largeur dalle (m)</label>
+                              <input
+                                type="number"
+                                step="0.5"
+                                value={batteryStorage.dalleWidth || 6.0}
+                                onChange={(e) => setBatteryStorage(prev => ({ ...prev, dalleWidth: Number(e.target.value) }))}
+                                className="w-full text-xs font-bold rounded-lg border border-slate-200 p-2 bg-slate-50 text-slate-800 focus:ring-2 focus:ring-purple-400"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Sécurité SDIS & Rétention */}
+                          <div className="bg-amber-50/80 rounded-xl p-2.5 border border-amber-200/80 text-[11px] text-amber-900 space-y-1">
+                            <div className="font-bold flex items-center gap-1 text-amber-800">
+                              <span>🛡️ Prescriptions SDIS & Sécurité</span>
+                            </div>
+                            <p className="text-[10px] text-amber-800/90 leading-tight">
+                              Bac de rétention étanche intégré, réserve incendie 120m³, coupure d'urgence asservie, distance d'isolement 5m et clôture 2.00m.
+                            </p>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Toggles Vue 3D / 2D */}
-                      <div className="absolute top-3 right-3 z-20 flex gap-1.5 bg-white/90 backdrop-blur p-1 rounded-xl border border-slate-200 shadow-sm pointer-events-auto">
-                        <button
-                          onClick={() => setViewMode('3D')}
-                          className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
-                            viewMode === '3D' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
-                          }`}
-                        >
-                          Vue 3D
-                        </button>
-                        <button
-                          onClick={() => setViewMode('2D_FRONT')}
-                          className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
-                            viewMode === '2D_FRONT' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
-                          }`}
-                        >
-                          Vue 2D
-                        </button>
-                      </div>
+                      {/* Zone Visualizer à droite */}
+                      <div className="flex-1 relative h-full rounded-2xl overflow-hidden border border-slate-800 shadow-md">
+                        {/* Toggles Vue 3D / 2D Façade / Plan de masse */}
+                        <div className="absolute top-3 right-3 z-30 flex gap-1.5 bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-slate-700 shadow-lg pointer-events-auto">
+                          <button
+                            type="button"
+                            onClick={() => setViewMode('3D')}
+                            className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                              viewMode === '3D' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-300 hover:bg-slate-800'
+                            }`}
+                          >
+                            Vue 3D
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setViewMode('2D_FRONT')}
+                            className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                              viewMode === '2D_FRONT' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-300 hover:bg-slate-800'
+                            }`}
+                          >
+                            Vue 2D Façade
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setViewMode('2D_TOP')}
+                            className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                              viewMode === '2D_TOP' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-300 hover:bg-slate-800'
+                            }`}
+                          >
+                            Plan de masse
+                          </button>
+                        </div>
 
-                      {/* Rendu Canvas BuildingScene avec clé par onglet */}
-                      <div className="w-full h-full">
-                        <BuildingScene 
-                          key={`bldg-scene-${activeBuildingIndex}`}
-                          viewMode={viewMode} 
+                        <BatteryStationVisualizer
+                          batteryStorage={batteryStorage}
+                          viewMode={viewMode}
+                          showDimensions={config.showDimensions !== false}
+                          onCapture={(dataUrl) => {
+                            setCaptures(prev => ({
+                              ...prev,
+                              facades_projet: dataUrl,
+                              facade_sud: dataUrl,
+                              section: dataUrl,
+                              vue_couverture: dataUrl
+                            }));
+                            setEditedProject(prev => ({
+                              ...prev,
+                              urbanisme_captures: {
+                                ...(prev.urbanisme_captures || {}),
+                                facades_projet: dataUrl,
+                                facade_sud: dataUrl,
+                                section: dataUrl,
+                                vue_couverture: dataUrl
+                              }
+                            }));
+                          }}
                         />
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* VUE CLASSIQUE BÂTIMENT / OMBRIÈRE */
+                    <div className="flex-1 flex flex-col lg:flex-row gap-3.5 min-h-0 overflow-hidden">
+                      {/* Panneau de contrôle gauche */}
+                      <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1 space-y-3.5 pb-6">
+                        <ControlPanel 
+                          isAcama={false} 
+                          selectedProject={editedProject} 
+                          activeBuilding={buildings[activeBuildingIndex]}
+                          onUpdateBuilding={updateActiveBuilding}
+                        />
+                        <BuildingSummaryCard isAcama={false} />
+                      </div>
+
+                      {/* Scène 3D droite */}
+                      <div className="flex-1 relative h-full rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-b from-slate-50 to-slate-200 shadow-sm isolate">
+                        <div className="absolute top-3 left-3 z-20 flex flex-col gap-2 pointer-events-auto">
+                          <div className="bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-slate-200">
+                            {(() => {
+                              const curB = buildings[activeBuildingIndex] || config;
+                              const curW = Number(curB.width || config.width || 20);
+                              const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
+                              const curArea = Math.round(curW * curL);
+                              return (
+                                <span className="text-slate-800 font-bold text-sm whitespace-nowrap">
+                                  {curL.toFixed(2)}m × {curW.toFixed(2)}m — {curArea}m²
+                                </span>
+                              );
+                            })()}
+                          </div>
+
+                          {config.hasSolar && (
+                            <div className="bg-yellow-50/95 backdrop-blur px-3 py-1 rounded-lg shadow-sm border border-yellow-200">
+                              <span className="text-yellow-800 font-bold text-xs whitespace-nowrap">
+                                ⚡ {(() => {
+                                  const curB = buildings[activeBuildingIndex] || config;
+                                  const curW = Number(curB.width || config.width || 20);
+                                  const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
+                                  const curArea = Math.round(curW * curL);
+                                  return curB.solarStats?.power ? curB.solarStats.power.toFixed(2) : (curArea * 0.20).toFixed(2);
+                                })()} kWc
+                              </span>
+                            </div>
+                          )}
+
+                          <button
+                            onClick={configActions.toggleDimensions}
+                            className={`px-3 py-1.5 rounded-lg font-semibold text-xs shadow-sm border transition-all flex items-center justify-between gap-2.5 ${
+                              config.showDimensions ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span>Afficher les côtes</span>
+                            <div className={`w-8 h-4 rounded-full relative transition-colors ${config.showDimensions ? 'bg-white/30' : 'bg-slate-300'}`}>
+                              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${config.showDimensions ? 'left-4' : 'left-0.5'}`} />
+                            </div>
+                          </button>
+                        </div>
+
+                        {/* Toggles Vue 3D / 2D */}
+                        <div className="absolute top-3 right-3 z-20 flex gap-1.5 bg-white/90 backdrop-blur p-1 rounded-xl border border-slate-200 shadow-sm pointer-events-auto">
+                          <button
+                            onClick={() => setViewMode('3D')}
+                            className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                              viewMode === '3D' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            Vue 3D
+                          </button>
+                          <button
+                            onClick={() => setViewMode('2D_FRONT')}
+                            className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                              viewMode === '2D_FRONT' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            Vue 2D
+                          </button>
+                        </div>
+
+                        {/* Rendu Canvas BuildingScene avec clé par onglet */}
+                        <div className="w-full h-full">
+                          <BuildingScene 
+                            key={`bldg-scene-${activeBuildingIndex}`}
+                            viewMode={viewMode} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
