@@ -918,6 +918,7 @@ function InstallationsProdLayerManager({ layersRef, activeLayers }) {
   const active = activeLayers?.has('installationsProd');
   const loadedIds = useRef(new Set());
   const layerGroupRef = useRef(L.featureGroup());
+  const cachedCommunesRef = useRef(new Map());
 
   useEffect(() => {
     if (!layersRef.current) return;
@@ -926,71 +927,71 @@ function InstallationsProdLayerManager({ layersRef, activeLayers }) {
 
   const fetchData = async () => {
     if (!active || !map) return;
-    const bounds = map.getBounds();
-    const north = bounds.getNorth();
-    const west = bounds.getWest();
-    const south = bounds.getSouth();
-    const east = bounds.getEast();
+    const center = map.getCenter();
 
     try {
-      let records = [];
-      const whereClause = `within_box(geo_point_2d, ${north}, ${west}, ${south}, ${east})`;
-      const odreUrl = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/registre-national-installation-production-stockage-electricite-agrege/records?where=${encodeURIComponent(whereClause)}&limit=100`;
+      // 1. Récupérer la commune et le département au centre de la carte
+      const rCommune = await fetch(`https://geo.api.gouv.fr/communes?lat=${center.lat}&lon=${center.lng}&fields=code,nom,codeDepartement,centre`);
+      if (!rCommune.ok) return;
+      const communes = await rCommune.json();
+      if (!communes || communes.length === 0) return;
 
-      try {
-        const response = await fetch(odreUrl);
-        if (response.ok) {
-          const data = await response.json();
-          records = data.results || [];
-        }
-      } catch (e) {
-        console.warn('ODRE v2.1 within_box query fallback', e);
-      }
+      const currentCommune = communes[0];
+      const dept = currentCommune.codeDepartement;
+      if (!dept) return;
 
-      // Si le dataset nécessite la géolocalisation par commune visible
-      if (records.length === 0) {
+      // 2. Charger les coordonnées des communes du département
+      if (!cachedCommunesRef.current.has(dept)) {
         try {
-          const rCommunes = await fetch(`https://geo.api.gouv.fr/communes?bbox=${west},${south},${east},${north}&fields=code,nom,centre`);
-          if (rCommunes.ok) {
-            const communes = await rCommunes.json();
-            if (communes.length > 0) {
-              const communeMap = new Map();
-              communes.forEach(c => {
-                if (c.centre?.coordinates) {
-                  communeMap.set(c.code, { lat: c.centre.coordinates[1], lon: c.centre.coordinates[0], nom: c.nom });
-                }
-              });
-              const inseeCodes = communes.map(c => `"${c.code}"`).slice(0, 25).join(',');
-              const fallbackUrl = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/registre-national-installation-production-stockage-electricite-agrege/records?where=${encodeURIComponent(`codeinseecommune in (${inseeCodes})`)}&limit=100`;
-              const rFallback = await fetch(fallbackUrl);
-              if (rFallback.ok) {
-                const dFallback = await rFallback.json();
-                records = (dFallback.results || []).map(item => {
-                  const coords = communeMap.get(item.codeinseecommune);
-                  return {
-                    ...item,
-                    geo_point_2d: item.geo_point_2d || (coords ? { lat: coords.lat, lon: coords.lon } : null)
-                  };
-                });
+          const rDept = await fetch(`https://geo.api.gouv.fr/departements/${dept}/communes?fields=code,nom,centre`);
+          if (rDept.ok) {
+            const deptCommunes = await rDept.json();
+            const communeMap = new Map();
+            deptCommunes.forEach(c => {
+              if (c.centre?.coordinates) {
+                communeMap.set(c.code, { lat: c.centre.coordinates[1], lon: c.centre.coordinates[0], nom: c.nom });
               }
-            }
+            });
+            cachedCommunesRef.current.set(dept, communeMap);
           }
         } catch (err) {
-          console.error("Erreur récupération communes / ODRE", err);
+          console.warn("Erreur chargement communes département", err);
         }
       }
 
-      // Rendu des marqueurs sur la carte
+      const communeMap = cachedCommunesRef.current.get(dept) || new Map();
+
+      // 3. Récupérer les installations ODRÉ du département
+      const url = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/registre-national-installation-production-stockage-electricite-agrege/records?where=codedepartement%3D%22${dept}%22&limit=100&order_by=puismaxinstallee%20desc`;
+      const rOdre = await fetch(url);
+      if (!rOdre.ok) return;
+      const dOdre = await rOdre.json();
+      const records = dOdre.results || [];
+
+      // Décompte par commune pour espacer légèrement les marqueurs multiples
+      const communeOffsets = {};
+
       records.forEach((item, idx) => {
         let latlng = null;
         if (item.geo_point_2d && item.geo_point_2d.lat !== undefined && item.geo_point_2d.lon !== undefined) {
           latlng = [parseFloat(item.geo_point_2d.lat), parseFloat(item.geo_point_2d.lon)];
-        } else if (item.latitude && item.longitude) {
-          latlng = [parseFloat(item.latitude), parseFloat(item.longitude)];
+        } else if (item.codeinseecommune && communeMap.has(item.codeinseecommune)) {
+          const cInfo = communeMap.get(item.codeinseecommune);
+          const cCode = item.codeinseecommune;
+          communeOffsets[cCode] = (communeOffsets[cCode] || 0) + 1;
+          const order = communeOffsets[cCode];
+          if (order === 1) {
+            latlng = [cInfo.lat, cInfo.lon];
+          } else {
+            const angle = (order * 137.5 * Math.PI) / 180;
+            const radius = 0.0035 * Math.sqrt(order);
+            latlng = [cInfo.lat + radius * Math.cos(angle), cInfo.lon + radius * Math.sin(angle)];
+          }
         }
+
         if (!latlng || isNaN(latlng[0]) || isNaN(latlng[1])) return;
 
-        const id = item.codeeicresourceobject || item.nominstallation || `${item.codeinseecommune || ''}-${item.filiere || ''}-${idx}`;
+        const id = item.codeeicresourceobject || `${item.codeinseecommune || ''}-${item.nominstallation || ''}-${item.puismaxinstallee || ''}-${idx}`;
         if (loadedIds.current.has(id)) return;
         loadedIds.current.add(id);
 
@@ -998,10 +999,10 @@ function InstallationsProdLayerManager({ layersRef, activeLayers }) {
         const rawPuis = item.puissance_installee_kw || item.puismaxinstallee || item.puismaxrac || 0;
         const puisNum = parseFloat(rawPuis) || 0;
         const puisFormatted = puisNum >= 1000 ? `${(puisNum / 1000).toFixed(2)} MW` : `${puisNum.toFixed(1)} kW`;
-        const nomCommune = item.nom_commune || item.commune || 'Inconnue';
+        const nomCommune = item.nom_commune || item.commune || currentCommune.nom || 'Commune';
         const nomInst = item.nominstallation && item.nominstallation !== 'Confidentiel' ? item.nominstallation : null;
 
-        let badgeColor = '#eab308'; // Solaire
+        let badgeColor = '#eab308'; // Solaire (jaune)
         if (filiere.toLowerCase().includes('éol') || filiere.toLowerCase().includes('eol')) badgeColor = '#0284c7';
         else if (filiere.toLowerCase().includes('hydr')) badgeColor = '#0ea5e9';
         else if (filiere.toLowerCase().includes('bio')) badgeColor = '#16a34a';
@@ -1010,11 +1011,11 @@ function InstallationsProdLayerManager({ layersRef, activeLayers }) {
         const marker = L.marker(latlng, {
           icon: L.divIcon({
             className: 'installations-prod-icon',
-            html: `<div style="background: ${badgeColor}; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                     <svg viewBox="0 0 24 24" width="12" height="12" stroke="white" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            html: `<div style="background: ${badgeColor}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                     <svg viewBox="0 0 24 24" width="13" height="13" stroke="white" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
                    </div>`,
-            iconSize: [22, 22],
-            iconAnchor: [11, 11]
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
           })
         });
 
