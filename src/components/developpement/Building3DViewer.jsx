@@ -41,9 +41,10 @@ function SceneCameraController({ activeSlot, onReady, controlsRef }) {
 
     // Distances adaptées aux proportions réelles de chaque élément
     const distLong = Math.max(length * 1.05, 36);
-    // Rapprochement de caméra pour élargir et agrandir les vues pignons Est et Ouest dans leur cadre
-    const distGable = Math.max(totalGableWidth * 0.58, 12);
-    const distRoof = Math.max(length * 0.95, 28);
+    // Cadrage dézoomé et élargi pour les vues pignons Est et Ouest
+    const distGable = Math.max(totalGableWidth * 0.95, 20);
+    // Cadrage dézoomé pour la vue Toiture pour laisser une marge confortable aux cotations
+    const distRoof = Math.max(length * 1.30, totalGableWidth * 1.55, 38);
 
     if (activeSlot === 'facade_sud') {
       // 1. Façade Sud (Long Pan Solaire) : Cadrage large horizontal
@@ -56,17 +57,17 @@ function SceneCameraController({ activeSlot, onReady, controlsRef }) {
       ctrl.target.set(targetX, targetY, targetZ);
       camera.lookAt(targetX, targetY, targetZ);
     } else if (activeSlot === 'facade_est') {
-      // 3. Pignon Est (Gable gauche Z=0) : Cadrage rapproché pour remplir le cadre
+      // 3. Pignon Est (Gable gauche Z=0) : Cadrage dézoomé et bien proportionné
       camera.position.set(gableCenterX, gableCenterY, distGable);
       ctrl.target.set(gableCenterX, gableCenterY, 0);
       camera.lookAt(gableCenterX, gableCenterY, 0);
     } else if (activeSlot === 'facade_ouest') {
-      // 4. Pignon Ouest (Gable droit Z=-length) : Cadrage rapproché pour remplir le cadre
+      // 4. Pignon Ouest (Gable droit Z=-length) : Cadrage dézoomé et bien proportionné
       camera.position.set(gableCenterX, gableCenterY, -length - distGable);
       ctrl.target.set(gableCenterX, gableCenterY, -length);
       camera.lookAt(gableCenterX, gableCenterY, -length);
     } else if (activeSlot === 'vue_couverture') {
-      // 5. Vue Toiture Plan (Format Paysage horizontal plein cadre)
+      // 5. Vue Toiture Plan (Format Paysage horizontal dézoomé avec marges)
       camera.up.set(1, 0, 0);
       camera.position.set(gableCenterX, distRoof, targetZ);
       ctrl.target.set(gableCenterX, 0, targetZ);
