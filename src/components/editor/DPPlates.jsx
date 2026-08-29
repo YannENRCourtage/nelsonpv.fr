@@ -1069,8 +1069,8 @@ export const PlateFacades = ({ project, captures }) => {
                             <div>3. FAÇADE EST</div>
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON GAUCHE)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0mm' }}>
-                            <SafePlateImage src={est || sud} alt="Façade Est" style={{ transform: 'scale(1.15)', transformOrigin: 'center center' }} />
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
+                            <SafePlateImage src={est || sud} alt="Façade Est" style={{ maxHeight: '92%' }} />
                         </div>
                     </div>
                     {/* Ouest */}
@@ -1079,15 +1079,15 @@ export const PlateFacades = ({ project, captures }) => {
                             <div>4. FAÇADE OUEST</div>
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON DROIT)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0mm' }}>
-                            <SafePlateImage src={ouest || sud} alt="Façade Ouest" style={{ transform: 'scale(1.15)', transformOrigin: 'center center' }} />
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
+                            <SafePlateImage src={ouest || sud} alt="Façade Ouest" style={{ maxHeight: '92%' }} />
                         </div>
                     </div>
                     {/* Toiture */}
                     <div style={{ flex: 1.35, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>5. VUE COUVERTURE (PAYSAGE)</div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0mm' }}>
-                            <SafePlateImage src={toiture || sud} alt="Vue Toiture" style={{ transform: 'scale(1.10)', transformOrigin: 'center center' }} />
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
+                            <SafePlateImage src={toiture || sud} alt="Vue Toiture" style={{ maxHeight: '92%' }} />
                         </div>
                     </div>
                 </div>

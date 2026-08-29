@@ -1217,14 +1217,14 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                             <div>3. FAÇADE EST</div>
                             <div style={{ fontSize: '6.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '0.5px' }}>(PIGNON GAUCHE)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '0mm' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1.5mm 0.5mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={est || sud} 
                                 onUpload={(data) => onUpload && onUpload('facade_est', data)} 
                                 defaultText="Vue Façade Est" 
                                 label="Façade Est"
-                                imageStyle={{ transform: 'scale(1.15)', transformOrigin: 'center center' }}
+                                imageStyle={{ maxHeight: '92%' }}
                             />
                         </div>
                     </div>
@@ -1235,14 +1235,14 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                             <div>4. FAÇADE OUEST</div>
                             <div style={{ fontSize: '6.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '0.5px' }}>(PIGNON DROIT)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '0mm' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1.5mm 0.5mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={ouest || sud} 
                                 onUpload={(data) => onUpload && onUpload('facade_ouest', data)} 
                                 defaultText="Vue Façade Ouest" 
                                 label="Façade Ouest"
-                                imageStyle={{ transform: 'scale(1.15)', transformOrigin: 'center center' }}
+                                imageStyle={{ maxHeight: '92%' }}
                             />
                         </div>
                     </div>
@@ -1252,14 +1252,14 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                         <div style={{ padding: '1.5mm', background: '#dbeafe', borderBottom: '1px solid #93c5fd', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#1e40af' }}>
                             5. VUE COUVERTURE (PLAN TOITURE PHOTOVOLTAÏQUE)
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '0mm' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1.5mm 0.5mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={toiture || sud} 
                                 onUpload={(data) => onUpload && onUpload('vue_couverture', data)} 
                                 defaultText="Vue Couverture Toiture (Format Paysage)" 
                                 label="Plan Toiture"
-                                imageStyle={{ transform: 'scale(1.10)', transformOrigin: 'center center' }}
+                                imageStyle={{ maxHeight: '92%' }}
                             />
                         </div>
                     </div>
