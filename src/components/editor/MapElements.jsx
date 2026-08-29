@@ -1944,6 +1944,244 @@ function LignesHTBLayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
+function SitesPolluesLayerManager({ layersRef, activeLayers }) {
+  const map = useMap();
+  const active = activeLayers?.has('sitesPollues');
+  const layerGroupRef = useRef(L.featureGroup());
+  const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['sitesPollues'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const calculateGeodesicArea = (geometry) => {
+    if (!geometry) return 0;
+    let totalArea = 0;
+    const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : (geometry.type === 'MultiPolygon' ? geometry.coordinates : []);
+    for (const polygon of polygons) {
+      if (!polygon || polygon.length === 0) continue;
+      const ring = polygon[0];
+      if (!ring || ring.length < 3) continue;
+      let area = 0;
+      const d2r = Math.PI / 180;
+      const earthRadius = 6378137;
+      for (let i = 0; i < ring.length - 1; i++) {
+        const p1 = ring[i];
+        const p2 = ring[i + 1];
+        area += (p2[0] - p1[0]) * d2r * (2 + Math.sin(p1[1] * d2r) + Math.sin(p2[1] * d2r));
+      }
+      totalArea += Math.abs(area * earthRadius * earthRadius / 2.0);
+    }
+    return Math.round(totalArea);
+  };
+
+  const formatAreaLabel = (areaM2) => {
+    if (!areaM2 || areaM2 <= 0) return '';
+    if (areaM2 >= 10000) {
+      return `${(areaM2 / 10000).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ha`;
+    }
+    return `${areaM2.toLocaleString('fr-FR')} m²`;
+  };
+
+  const getCentroid = (geometry) => {
+    if (!geometry) return null;
+    let sumLat = 0, sumLon = 0, count = 0;
+    const extractCoords = (arr) => {
+      if (typeof arr[0] === 'number') {
+        sumLon += arr[0];
+        sumLat += arr[1];
+        count++;
+      } else {
+        arr.forEach(extractCoords);
+      }
+    };
+    extractCoords(geometry.coordinates);
+    if (count === 0) return null;
+    return [sumLat / count, sumLon / count];
+  };
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
+    const bounds = map.getBounds();
+    const minLon = bounds.getWest();
+    const minLat = bounds.getSouth();
+    const maxLon = bounds.getEast();
+    const maxLat = bounds.getNorth();
+    const bbox = `${minLon.toFixed(5)},${minLat.toFixed(5)},${maxLon.toFixed(5)},${maxLat.toFixed(5)}`;
+
+    const wfsLayers = [
+      { name: 'ms:SSP_CLASSIF_SIS_GE', type: 'SIS', color: '#DC2626', label: 'Secteur SIS (Sols pollués)' },
+      { name: 'ms:SSP_INSTR_GE_POLYGONE', type: 'BASOL', color: '#EA580C', label: 'Site BASOL (Action publique)' },
+      { name: 'ms:SSP_ETS_GE_POLYGON', type: 'CASIAS_SURF', color: '#2563EB', label: 'Ancien site industriel (CASIAS)' },
+      { name: 'ms:SSP_ETS_GE_POINT', type: 'CASIAS_POINT', color: '#0284C7', label: 'Ancien site industriel (CASIAS)' }
+    ];
+
+    try {
+      const allFeatures = [];
+      await Promise.all(
+        wfsLayers.map(async (l) => {
+          try {
+            const url = `https://georisques.gouv.fr/services?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=${l.name}&BBOX=${bbox}&OUTPUTFORMAT=geojson&COUNT=80`;
+            const res = await fetch(url, { signal });
+            if (res.ok) {
+              const geojson = await res.json();
+              if (geojson.features && geojson.features.length > 0) {
+                geojson.features.forEach(f => {
+                  f._layerMeta = l;
+                  allFeatures.push(f);
+                });
+              }
+            }
+          } catch (e) {
+            if (e.name !== 'AbortError') console.warn(`WFS error on ${l.name}`, e);
+          }
+        })
+      );
+
+      if (signal.aborted) return;
+      layerGroupRef.current.clearLayers();
+
+      allFeatures.forEach(feature => {
+        const props = feature.properties || {};
+        const meta = feature._layerMeta || {};
+        const isPolygon = feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon';
+
+        const nom = props.nom_etablissement || props.nom || props.nom_usuel || props.raison_sociale || props.libelle_secteur || 'Site répertorié';
+        const commune = props.nom_commune || props.commune || '';
+        const adresse = props.adresse || '';
+        const activite = props.activite_principale || props.etat_activite || props.statut_instruction || props.nature_localisation || '';
+        const codeMetier = props.code_metier || props.identifiant_ssp || props.id_inventaire_classification || '';
+        const ficheUrl = props.fiche_risque || (codeMetier ? `https://fiches-risques.brgm.fr/georisques/casias/${codeMetier}` : null);
+
+        let areaM2 = props.superficie || props.surface || props.surface_m2;
+        if (!areaM2 && isPolygon) {
+          areaM2 = calculateGeodesicArea(feature.geometry);
+        } else if (areaM2) {
+          areaM2 = Math.round(Number(areaM2));
+        }
+
+        const areaFormatted = formatAreaLabel(areaM2);
+
+        if (isPolygon) {
+          const polyLayer = L.geoJSON(feature, {
+            style: {
+              color: meta.color || '#DC2626',
+              weight: 2.5,
+              opacity: 0.9,
+              fillColor: meta.color || '#DC2626',
+              fillOpacity: 0.35
+            }
+          });
+
+          const popupHtml = `
+            <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 220px; padding: 2px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 5px;">
+                <span style="font-weight: 700; font-size: 12px; color: #0f172a;">🏭 ${meta.label || 'Site Pollué'}</span>
+                ${areaFormatted ? `<span style="background: ${meta.color || '#dc2626'}; color: white; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px;">${areaFormatted}</span>` : ''}
+              </div>
+              <div style="font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px; line-height: 1.3;">
+                ${nom}
+              </div>
+              ${commune ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;"><strong>Commune :</strong> ${commune}</div>` : ''}
+              ${adresse ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;"><strong>Adresse :</strong> ${adresse}</div>` : ''}
+              ${activite ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;"><strong>Statut :</strong> ${activite}</div>` : ''}
+              ${ficheUrl ? `<div style="margin-top: 6px; padding-top: 4px; border-top: 1px dashed #e2e8f0;"><a href="${ficheUrl}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; font-size: 11px; font-weight: 600; text-decoration: underline;">Consulter la fiche Géorisques / BRGM →</a></div>` : ''}
+            </div>
+          `;
+
+          polyLayer.bindPopup(popupHtml);
+          polyLayer.bindTooltip(`⚠️ ${nom} ${areaFormatted ? `(${areaFormatted})` : ''}`, { sticky: true, opacity: 0.95 });
+          polyLayer.addTo(layerGroupRef.current);
+
+          const centroid = getCentroid(feature.geometry);
+          if (centroid && areaFormatted) {
+            const surfaceBadgeIcon = L.divIcon({
+              html: `<div style="background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(2px); color: #ffffff; border: 1.5px solid ${meta.color || '#ef4444'}; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); white-space: nowrap; pointer-events: auto; cursor: pointer;">📐 ${areaFormatted}</div>`,
+              className: 'bg-transparent border-none',
+              iconSize: [60, 20],
+              iconAnchor: [30, 10]
+            });
+            const badgeMarker = L.marker(centroid, { icon: surfaceBadgeIcon });
+            badgeMarker.bindPopup(popupHtml);
+            badgeMarker.addTo(layerGroupRef.current);
+          }
+
+        } else if (feature.geometry?.type === 'Point') {
+          const [lon, lat] = feature.geometry.coordinates;
+          if (!lat || !lon) return;
+
+          const pointIcon = L.divIcon({
+            html: `
+              <div style="display: flex; align-items: center; gap: 4px; pointer-events: auto; cursor: pointer;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: ${meta.color || '#0284c7'}; border: 2px solid #ffffff; box-shadow: 0 1px 4px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
+                  <div style="width: 4px; height: 4px; border-radius: 50%; background: #ffffff;"></div>
+                </div>
+                ${nom && nom !== 'Site répertorié' ? `<div style="background: rgba(255,255,255,0.92); color: #0f172a; font-size: 9.5px; font-weight: 600; padding: 1px 5px; border-radius: 4px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.15); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${nom}</div>` : ''}
+              </div>
+            `,
+            className: 'bg-transparent border-none',
+            iconSize: [150, 20],
+            iconAnchor: [6, 10]
+          });
+
+          const pointMarker = L.marker([lat, lon], { icon: pointIcon });
+
+          const popupHtml = `
+            <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 220px; padding: 2px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 5px;">
+                <span style="font-weight: 700; font-size: 12px; color: #0f172a;">🏭 ${meta.label || 'Ancien site industriel (CASIAS)'}</span>
+              </div>
+              <div style="font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 4px; line-height: 1.3;">
+                ${nom}
+              </div>
+              ${commune ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;"><strong>Commune :</strong> ${commune}</div>` : ''}
+              ${adresse ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;"><strong>Adresse :</strong> ${adresse}</div>` : ''}
+              ${activite ? `<div style="font-size: 11px; color: #64748b; margin-bottom: 2px;"><strong>Activité / État :</strong> ${activite}</div>` : ''}
+              ${ficheUrl ? `<div style="margin-top: 6px; padding-top: 4px; border-top: 1px dashed #e2e8f0;"><a href="${ficheUrl}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; font-size: 11px; font-weight: 600; text-decoration: underline;">Consulter la fiche Géorisques / BRGM →</a></div>` : ''}
+            </div>
+          `;
+
+          pointMarker.bindPopup(popupHtml);
+          pointMarker.bindTooltip(`📍 ${nom}${commune ? ` (${commune})` : ''}`, { sticky: true, opacity: 0.95 });
+          pointMarker.addTo(layerGroupRef.current);
+        }
+      });
+
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error("Error fetching sites pollués data", err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => {
+        map.off('moveend', onMoveEnd);
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+      };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+      layerGroupRef.current.clearLayers();
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    }
+  }, [active, map]);
+
+  return null;
+}
+
 
 const rotationIcon = L.divIcon({
   html: `<div class="bg-white rounded-full p-2 shadow-lg border-2 border-blue-500 cursor-move text-blue-600 hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L12 12h9V3"/></svg></div>`,
@@ -3205,16 +3443,11 @@ const LAYERS = {
   },
   sitesPollues: {
     name: "Sites Pollués",
-    url: "https://georisques.gouv.fr/services",
-    layers: "SSP_ETABLISSEMENT,SSP_INSTRUCTION,SSP_CLASSIFICATION_SIS",
-    format: "image/png",
-    transparent: true,
-    opacity: 0.65,
+    type: "sites-pollues-custom",
+    isDynamic: true,
     attribution: "© Géorisques / BRGM",
-    version: "1.3.0",
     isOverlay: true,
-    zIndex: 17,
-    maxZoom: 22
+    zIndex: 17
   },
   cartofriches: {
     name: "Cartofriches",
@@ -3651,6 +3884,66 @@ function FeuxForetOLDLegend({ layersRef }) {
       </div>
       <div className="mt-2 pt-1.5 border-t border-gray-200 text-[9px] text-gray-500">
         Source : IGN - Données Débroussaillement / DFCI
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// LÉGENDE SITES ET SOLS POLLUÉS (CASIAS / BASOL / SIS)
+// ====================================================================
+function SitesPolluesLegend({ layersRef }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    const checkLayer = () => {
+      const layer = layersRef.current['sitesPollues'];
+      setShowLegend(layer && map.hasLayer(layer));
+    };
+    checkLayer();
+    const interval = setInterval(checkLayer, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-[268px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[260px]"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900 flex items-center gap-1.5">
+          <span>🏭</span> Légende Sites Pollués
+        </h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
+      </div>
+      <div className="space-y-1.5 text-[10px]">
+        <div className="flex items-start gap-2">
+          <div className="w-4 h-4 rounded bg-[#DC2626] opacity-80 border border-red-700 shrink-0 mt-0.5"></div>
+          <div>
+            <span className="text-gray-900 font-semibold">Secteur SIS (Sols pollués)</span>
+            <p className="text-gray-600 text-[9px] leading-tight">Secteur d'Information sur les Sols (surface délimitée en m² ou ha).</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <div className="w-4 h-4 rounded bg-[#EA580C] opacity-80 border border-orange-700 shrink-0 mt-0.5"></div>
+          <div>
+            <span className="text-gray-900 font-semibold">Site BASOL (Action publique)</span>
+            <p className="text-gray-600 text-[9px] leading-tight">Site pollué ou suspecté faisant l'objet d'actions des pouvoirs publics.</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <div className="w-3.5 h-3.5 rounded-full bg-[#0284C7] border-2 border-white shadow-sm shrink-0 mt-0.5"></div>
+          <div>
+            <span className="text-gray-900 font-semibold">Ancien site CASIAS / BASIAS</span>
+            <p className="text-gray-600 text-[9px] leading-tight">Activité industrielle historique recensée (garage, atelier, usine).</p>
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 pt-1.5 border-t border-gray-200 text-[9px] text-gray-500">
+        Source : Géorisques / BRGM • Inventaires CASIAS, BASOL & SIS
       </div>
     </div>
   );
@@ -6271,6 +6564,7 @@ export default function MapElements({
           {/* Layer Managers */}
           <ABFLayerManager layersRef={layersRef} activeLayers={activeLayers} project={project} />
           <SDISLayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <SitesPolluesLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <GazDynamicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <LignesHTBLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <HTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
@@ -6290,6 +6584,7 @@ export default function MapElements({
           <ZoneInondableLegend layersRef={layersRef} />
           <ArgilesRGALegend layersRef={layersRef} />
           <FeuxForetOLDLegend layersRef={layersRef} />
+          <SitesPolluesLegend layersRef={layersRef} />
           <SDISLegend layersRef={layersRef} />
           <ParkingLegend layersRef={layersRef} />
           <LoiLittoralLegend layersRef={layersRef} />
