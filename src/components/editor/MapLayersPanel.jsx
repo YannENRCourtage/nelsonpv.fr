@@ -500,6 +500,16 @@ const overlayCategories = {
                 maxNativeZoom: 14,
                 maxZoom: 22
             },
+            'Zones Humides': {
+                url: 'https://wms.reseau-zones-humides.org/cgi-bin/wmsfma',
+                layers: 'zones_humides',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'Réseau Zones Humides',
+                type: 'wms',
+                opacity: 0.6,
+                maxZoom: 22
+            },
         },
     },
     'Réseau Gaz': {

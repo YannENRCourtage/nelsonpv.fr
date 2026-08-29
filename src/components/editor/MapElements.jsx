@@ -2983,6 +2983,18 @@ const LAYERS = {
     maxNativeZoom: 14,
     maxZoom: 22
   },
+  zonesHumides: {
+    name: "Zones Humides",
+    url: "https://wms.reseau-zones-humides.org/cgi-bin/wmsfma",
+    layers: "zones_humides",
+    format: "image/png",
+    transparent: true,
+    attribution: "Réseau Zones Humides",
+    isOverlay: true,
+    zIndex: 100,
+    opacity: 0.6,
+    maxZoom: 22
+  },
   cartofriches: {
     name: "Cartofriches",
     url: "https://data.geopf.fr/wms-v/ows",
