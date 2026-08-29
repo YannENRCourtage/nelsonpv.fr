@@ -515,6 +515,17 @@ const overlayCategories = {
                 opacity: 0.6,
                 maxZoom: 22
             },
+            'Argiles (RGA)': {
+                url: 'https://geoservices.brgm.fr/risques',
+                layers: 'ALEARG',
+                format: 'image/png',
+                transparent: true,
+                attribution: '© BRGM / Géorisques',
+                version: '1.3.0',
+                type: 'wms',
+                opacity: 0.65,
+                maxZoom: 22
+            },
         },
     },
     'Réseau Gaz': {

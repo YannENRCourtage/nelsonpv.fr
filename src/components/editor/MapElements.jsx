@@ -3177,6 +3177,19 @@ const LAYERS = {
     opacity: 0.6,
     maxZoom: 22
   },
+  argilesRGA: {
+    name: "Argiles (RGA)",
+    url: "https://geoservices.brgm.fr/risques",
+    layers: "ALEARG",
+    format: "image/png",
+    transparent: true,
+    opacity: 0.65,
+    attribution: "© BRGM / Géorisques",
+    version: "1.3.0",
+    isOverlay: true,
+    zIndex: 15,
+    maxZoom: 22
+  },
   cartofriches: {
     name: "Cartofriches",
     url: "https://data.geopf.fr/wms-v/ows",
