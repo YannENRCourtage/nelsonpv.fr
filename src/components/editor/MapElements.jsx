@@ -3190,6 +3190,19 @@ const LAYERS = {
     zIndex: 15,
     maxZoom: 22
   },
+  feuxForetOLD: {
+    name: "Feux de forêt (OLD)",
+    url: "https://data.geopf.fr/wms-r/wms",
+    layers: "DEBROUSSAILLEMENT",
+    format: "image/png",
+    transparent: true,
+    opacity: 0.6,
+    attribution: "© IGN - Données Débroussaillement / DFCI",
+    version: "1.3.0",
+    isOverlay: true,
+    zIndex: 16,
+    maxZoom: 22
+  },
   cartofriches: {
     name: "Cartofriches",
     url: "https://data.geopf.fr/wms-v/ows",

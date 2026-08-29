@@ -526,6 +526,17 @@ const overlayCategories = {
                 opacity: 0.65,
                 maxZoom: 22
             },
+            'Feux de forêt (OLD)': {
+                url: 'https://data.geopf.fr/wms-r/wms',
+                layers: 'DEBROUSSAILLEMENT',
+                format: 'image/png',
+                transparent: true,
+                attribution: '© IGN - Données Débroussaillement / DFCI',
+                version: '1.3.0',
+                type: 'wms',
+                opacity: 0.6,
+                maxZoom: 22
+            },
         },
     },
     'Réseau Gaz': {
