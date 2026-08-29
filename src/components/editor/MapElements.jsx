@@ -3203,6 +3203,19 @@ const LAYERS = {
     zIndex: 16,
     maxZoom: 22
   },
+  sitesPollues: {
+    name: "Sites Pollués",
+    url: "https://georisques.gouv.fr/services",
+    layers: "SSP_ETABLISSEMENT,SSP_INSTRUCTION,SSP_CLASSIFICATION_SIS",
+    format: "image/png",
+    transparent: true,
+    opacity: 0.65,
+    attribution: "© Géorisques / BRGM",
+    version: "1.3.0",
+    isOverlay: true,
+    zIndex: 17,
+    maxZoom: 22
+  },
   cartofriches: {
     name: "Cartofriches",
     url: "https://data.geopf.fr/wms-v/ows",
@@ -3592,6 +3605,52 @@ function ArgilesRGALegend({ layersRef }) {
       </div>
       <div className="mt-2 pt-1.5 border-t border-gray-200 text-[9px] text-gray-500">
         Source : BRGM / Géorisques
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// LÉGENDE FEUX DE FORÊT (OLD / IGN DFCI)
+// ====================================================================
+function FeuxForetOLDLegend({ layersRef }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    const checkLayer = () => {
+      const layer = layersRef.current['feuxForetOLD'];
+      setShowLegend(layer && map.hasLayer(layer));
+    };
+    checkLayer();
+    const interval = setInterval(checkLayer, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-[268px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[250px]"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900 flex items-center gap-1.5">
+          <span>🔥</span> Légende Feux de forêt (OLD)
+        </h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
+      </div>
+      <div className="space-y-1.5 text-[10px]">
+        <div className="flex items-start gap-2">
+          <div className="w-4 h-4 rounded bg-[#9333EA] opacity-75 border border-purple-800 shrink-0 mt-0.5"></div>
+          <div>
+            <span className="text-gray-900 font-semibold">Zone d'Obligation Légale (OLD)</span>
+            <p className="text-gray-600 text-[9px] leading-tight">Périmètre à moins de 200m des massifs forestiers soumis à l'obligation de débroussaillement.</p>
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 pt-1.5 border-t border-gray-200 text-[9px] text-gray-500">
+        Source : IGN - Données Débroussaillement / DFCI
       </div>
     </div>
   );
@@ -6230,6 +6289,7 @@ export default function MapElements({
           <RPGLegend layersRef={layersRef} />
           <ZoneInondableLegend layersRef={layersRef} />
           <ArgilesRGALegend layersRef={layersRef} />
+          <FeuxForetOLDLegend layersRef={layersRef} />
           <SDISLegend layersRef={layersRef} />
           <ParkingLegend layersRef={layersRef} />
           <LoiLittoralLegend layersRef={layersRef} />

@@ -537,6 +537,17 @@ const overlayCategories = {
                 opacity: 0.6,
                 maxZoom: 22
             },
+            'Sites Pollués (CASIAS)': {
+                url: 'https://georisques.gouv.fr/services',
+                layers: 'SSP_ETABLISSEMENT,SSP_INSTRUCTION,SSP_CLASSIFICATION_SIS',
+                format: 'image/png',
+                transparent: true,
+                attribution: '© Géorisques / BRGM',
+                version: '1.3.0',
+                type: 'wms',
+                opacity: 0.65,
+                maxZoom: 22
+            },
         },
     },
     'Réseau Gaz': {
