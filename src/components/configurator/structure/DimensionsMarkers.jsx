@@ -19,7 +19,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const { isAcama, configMode, customParams, customSpans, dimensionFontSize: storeFontSize } = useConfiguratorValues();
     const is2DView = isFacadeView || isPignonView;
     const activeSize = dimensionFontSize || (is2DView ? storeFontSize : null);
-    const markerFontSize = activeSize ? Number(activeSize) : (is2DView ? 2.2 : 0.8);
+    const baseFontSize = activeSize ? Number(activeSize) : (is2DView ? 2.2 : 0.8);
+    const markerFontSize = isPignonEstView ? Math.max(0.6, baseFontSize - 1.0) : baseFontSize;
     const markerOutlineWidth = is2DView ? markerFontSize * 0.15 : 0.1;
     const textColor = "#000000";
     const lineColor = "#000000";

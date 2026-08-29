@@ -1217,7 +1217,7 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                             <div>3. FAÇADE EST</div>
                             <div style={{ fontSize: '6.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '0.5px' }}>(PIGNON GAUCHE)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1mm' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '0.5mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={est || sud} 
@@ -1234,7 +1234,7 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                             <div>4. FAÇADE OUEST</div>
                             <div style={{ fontSize: '6.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '0.5px' }}>(PIGNON DROIT)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1mm' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '0.5mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={ouest || sud} 
@@ -1250,7 +1250,7 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                         <div style={{ padding: '1.5mm', background: '#dbeafe', borderBottom: '1px solid #93c5fd', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#1e40af' }}>
                             5. VUE COUVERTURE (PLAN TOITURE PHOTOVOLTAÏQUE)
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1mm' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '0.5mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={toiture || sud} 

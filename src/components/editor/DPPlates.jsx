@@ -1069,7 +1069,7 @@ export const PlateFacades = ({ project, captures }) => {
                             <div>3. FAÇADE EST</div>
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON GAUCHE)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0.5mm' }}>
                             <SafePlateImage src={est || sud} alt="Façade Est" />
                         </div>
                     </div>
@@ -1079,14 +1079,14 @@ export const PlateFacades = ({ project, captures }) => {
                             <div>4. FAÇADE OUEST</div>
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON DROIT)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0.5mm' }}>
                             <SafePlateImage src={ouest || sud} alt="Façade Ouest" />
                         </div>
                     </div>
                     {/* Toiture */}
                     <div style={{ flex: 1.35, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>5. VUE COUVERTURE (PAYSAGE)</div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0.5mm' }}>
                             <SafePlateImage src={toiture || sud} alt="Vue Toiture" />
                         </div>
                     </div>
