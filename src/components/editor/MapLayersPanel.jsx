@@ -502,7 +502,7 @@ const overlayCategories = {
             },
             'Zones Humides': {
                 url: 'https://wms.reseau-zones-humides.org/cgi-bin/wmsfma',
-                layers: 'zones_humides',
+                layers: 'extraire_zh_rpdzh_m',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'Réseau Zones Humides',
