@@ -1175,7 +1175,7 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '148mm', marginBottom: '4mm' }}>
                 
                 {/* Ligne 1 : Façades Longs Pans (Sud & Nord) */}
-                <div style={{ flex: 1, display: 'flex', gap: '3.5mm', minHeight: '62mm' }}>
+                <div style={{ flex: 1.15, display: 'flex', gap: '3.5mm', minHeight: '66mm' }}>
                     {/* Façade Sud */}
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
@@ -1210,7 +1210,7 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                 </div>
 
                 {/* Ligne 2 : Pignons (Est & Ouest) et Vue Toiture */}
-                <div style={{ flex: 1.15, display: 'flex', gap: '3.5mm', minHeight: '64mm', alignItems: 'stretch' }}>
+                <div style={{ flex: 0.95, display: 'flex', gap: '3.5mm', minHeight: '56mm', alignItems: 'stretch' }}>
                     {/* Façade Est */}
                     <div style={{ flex: 1.2, height: '100%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.2' }}>

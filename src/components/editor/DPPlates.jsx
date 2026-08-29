@@ -1047,7 +1047,7 @@ export const PlateFacades = ({ project, captures }) => {
         <div style={PAGE_STYLE} id="dp-plate-facades">
             <PlateHeader title="DP4 — PLAN DES FAÇADES ET TOITURES / VUES 3D" project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '148mm', marginBottom: '4mm' }}>
-                <div style={{ flex: 1, display: 'flex', gap: '3.5mm', minHeight: '62mm' }}>
+                <div style={{ flex: 1.15, display: 'flex', gap: '3.5mm', minHeight: '66mm' }}>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>1. FAÇADE SUD</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
@@ -1062,7 +1062,7 @@ export const PlateFacades = ({ project, captures }) => {
                     </div>
                 </div>
 
-                <div style={{ flex: 1.15, display: 'flex', gap: '3.5mm', minHeight: '64mm', alignItems: 'stretch' }}>
+                <div style={{ flex: 0.95, display: 'flex', gap: '3.5mm', minHeight: '56mm', alignItems: 'stretch' }}>
                     {/* Est */}
                     <div style={{ flex: 1.2, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center', lineHeight: '1.2' }}>

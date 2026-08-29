@@ -1861,19 +1861,6 @@ export default function ProjectEditor() {
 
                 {/* Layer Toggle Buttons - Desktop: always visible */}
                 <div className="hidden lg:flex p-3 bg-gray-50 border-t flex-wrap gap-2">
-                  {/* Badge mode Propriétaires */}
-                  {activeLayers.has('ownersMoral') && (
-                    <div className="w-full flex items-center gap-2 mb-1.5 pb-1.5 border-b border-sky-200">
-                      <div className="flex items-center gap-1.5 bg-sky-100 text-sky-800 px-2.5 py-1 rounded-full text-xs font-bold">
-                        <span>🏠</span>
-                        <span>Mode Propriétaires — Calques Personnes Morales activés</span>
-                      </div>
-                      <div className="ml-auto flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-sky-400 border-2 border-sky-600" style={{opacity: 0.8}}></div>
-                        <span className="text-xs text-sky-600 font-medium">Parcelle avec propriétaire PM identifié</span>
-                      </div>
-                    </div>
-                  )}
                   {activeLayers.has('filiationParcelle') && (
                     <div className="w-full flex items-center gap-2 mb-1.5 pb-1.5 border-b border-violet-200">
                       <div className="flex items-center gap-1.5 bg-violet-100 text-violet-800 px-2.5 py-1 rounded-full text-xs font-bold">
@@ -2025,19 +2012,6 @@ export default function ProjectEditor() {
                       ))}
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-
-            {/* Overlay d'information - Mode Propriétaires */}
-            {activeLayers.has('ownersMoral') && (
-              <div className="absolute bottom-[130px] left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur shadow-xl border border-sky-200 px-5 py-3 rounded-2xl flex items-center gap-3 pointer-events-none">
-                <div className="bg-sky-100 p-2 rounded-full">
-                  <span className="text-sky-600 text-base">🏠</span>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-800">Mode Propriétaires Fonciers</p>
-                  <p className="text-[11px] text-slate-500 font-medium">Parcelles <span className="text-sky-600 font-bold">bleu ciel</span> = propriétaire (PM) identifié • Cliquez pour voir les données • Zoom ≥ 13 requis</p>
                 </div>
               </div>
             )}
