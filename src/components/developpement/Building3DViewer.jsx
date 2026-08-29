@@ -41,10 +41,10 @@ function SceneCameraController({ activeSlot, onReady, controlsRef }) {
 
     // Distances adaptées aux proportions réelles de chaque élément
     const distLong = Math.max(length * 1.05, 36);
-    // Cadrage élargi et harmonieux pour les vues pignons Est et Ouest
-    const distGable = Math.max(totalGableWidth * 0.74, 14);
+    // Cadrage élargi pour les vues pignons Est et Ouest
+    const distGable = Math.max(totalGableWidth * 0.65, 12);
     // Cadrage élargi pour la vue Toiture
-    const distRoof = Math.max(length * 1.08, totalGableWidth * 1.30, 30);
+    const distRoof = Math.max(length * 0.96, totalGableWidth * 1.18, 25);
 
     if (activeSlot === 'facade_sud') {
       // 1. Façade Sud (Long Pan Solaire) : Cadrage large horizontal

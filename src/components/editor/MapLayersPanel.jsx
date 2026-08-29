@@ -269,6 +269,11 @@ const overlayCategories = {
     },
     'Réseau électrique RTE': {
         layers: {
+            'Lignes HTB (RTE)': {
+                type: 'lignes-htb-custom',
+                attribution: 'ODRÉ / RTE',
+                minZoom: 7,
+            },
             'Postes sources RTE': {
                 type: 'postes-sources-rte-custom',
                 attribution: 'ODRÉ / RTE',

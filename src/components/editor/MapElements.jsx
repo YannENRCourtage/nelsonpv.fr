@@ -1769,6 +1769,181 @@ function HTALayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
+function LignesHTBLayerManager({ layersRef, activeLayers }) {
+  const map = useMap();
+  const active = activeLayers?.has('lignesHTB') || activeLayers?.has('lignesRTE');
+  const layerGroupRef = useRef(L.featureGroup());
+  const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['lignesHTB'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
+    const bounds = map.getBounds();
+    const minLon = bounds.getWest();
+    const minLat = bounds.getSouth();
+    const maxLon = bounds.getEast();
+    const maxLat = bounds.getNorth();
+
+    // 1. Primary endpoint: ODRÉ / RTE lines API v2.1 with spatial polygon filter
+    const polygonGeom = `geom'POLYGON((${minLon} ${minLat}, ${maxLon} ${minLat}, ${maxLon} ${maxLat}, ${minLon} ${maxLat}, ${minLon} ${minLat}))'`;
+    const whereClause = `within(geo_shape, ${polygonGeom})`;
+    const odreUrl = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/lignes-aeriennes-rte-nv/records?where=${encodeURIComponent(whereClause)}&limit=100`;
+
+    try {
+      let geoJsonData = null;
+
+      try {
+        const response = await fetch(odreUrl, { signal });
+        if (response.ok) {
+          const json = await response.json();
+          if (json.results && json.results.length > 0) {
+            const features = json.results
+              .map(r => {
+                const geom = r.geo_shape || r.geometry || (typeof r.geometry === 'string' ? JSON.parse(r.geometry) : null);
+                if (!geom) return null;
+                return {
+                  type: 'Feature',
+                  geometry: geom,
+                  properties: r
+                };
+              })
+              .filter(Boolean);
+
+            if (features.length > 0) {
+              geoJsonData = { type: 'FeatureCollection', features };
+            }
+          }
+        }
+      } catch (odreErr) {
+        if (odreErr.name === 'AbortError') return;
+      }
+
+      // 2. Fallback: High Voltage power lines (400kV, 225kV, 90kV, 63kV) in current viewport
+      if (!geoJsonData) {
+        try {
+          const overpassQuery = `[out:json][timeout:8];way["power"="line"](${minLat},${minLon},${maxLat},${maxLon});out geom tags;`;
+          const overpassUrl = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`;
+          const overpassRes = await fetch(overpassUrl, { signal });
+          if (overpassRes.ok) {
+            const overpassJson = await overpassRes.json();
+            if (overpassJson.elements && overpassJson.elements.length > 0) {
+              const features = overpassJson.elements
+                .filter(el => el.geometry && el.geometry.length > 1)
+                .map(el => {
+                  const coordinates = el.geometry.map(pt => [pt.lon, pt.lat]);
+                  const voltage = el.tags?.voltage || el.tags?.['line:voltage'] || '';
+                  const name = el.tags?.name || el.tags?.ref || el.tags?.operator || 'Ligne RTE';
+                  return {
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates },
+                    properties: {
+                      nom_ligne: name,
+                      tension: voltage ? `${Math.round(parseInt(voltage) / 1000)}kV` : (el.tags?.voltage || 'HTB'),
+                      etat: 'En exploitation',
+                      source: el.tags?.operator || 'RTE',
+                      type_ouvrage: 'AERIEN'
+                    }
+                  };
+                });
+              if (features.length > 0) {
+                geoJsonData = { type: 'FeatureCollection', features };
+              }
+            }
+          }
+        } catch (fbErr) {
+          if (fbErr.name !== 'AbortError') console.warn("Fallback error", fbErr);
+        }
+      }
+
+      if (!geoJsonData || !geoJsonData.features) return;
+
+      layerGroupRef.current.clearLayers();
+
+      L.geoJSON(geoJsonData, {
+        style: (feature) => {
+          const tension = String(feature?.properties?.tension || '').toUpperCase();
+          if (tension.includes('400')) {
+            return { color: '#D32F2F', weight: 4, opacity: 0.9 };
+          } else if (tension.includes('225')) {
+            return { color: '#1B5E20', weight: 3.5, opacity: 0.9 };
+          } else if (tension.includes('63') || tension.includes('90')) {
+            return { color: '#7B1FA2', weight: 2.5, opacity: 0.9 };
+          }
+          return { color: '#D32F2F', weight: 3.5, opacity: 0.85 };
+        },
+        onEachFeature: (feature, layer) => {
+          const props = feature.properties || {};
+          const nomLigne = props.nom_ligne || props.nom_ouvrage || props.code_ligne || 'Ligne HTB RTE';
+          const tension = props.tension || 'HTB';
+          const etat = props.etat || 'En exploitation';
+
+          let badgeColor = '#D32F2F';
+          if (String(tension).includes('225')) badgeColor = '#1B5E20';
+          else if (String(tension).includes('63') || String(tension).includes('90')) badgeColor = '#7B1FA2';
+
+          const popupContent = `
+            <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 200px; padding: 2px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 5px;">
+                <span style="font-weight: 700; font-size: 12.5px; color: #0f172a;">⚡ Ligne HTB (RTE)</span>
+                <span style="background: ${badgeColor}; color: white; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">${tension}</span>
+              </div>
+              <div style="font-size: 11.5px; color: #334155; margin-bottom: 4px; line-height: 1.3;">
+                <strong>Nom :</strong> ${nomLigne}
+              </div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 3px;">
+                <strong>Tension :</strong> ${tension}
+              </div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 3px;">
+                <strong>État :</strong> ${etat}
+              </div>
+              ${props.type_ouvrage ? `<div style="font-size: 11px; color: #64748b;"><strong>Type :</strong> ${props.type_ouvrage}</div>` : ''}
+              ${props.source ? `<div style="font-size: 10px; color: #94a3b8; margin-top: 4px; border-top: 1px dashed #e2e8f0; padding-top: 3px;">Source : ${props.source}</div>` : ''}
+            </div>
+          `;
+
+          layer.bindPopup(popupContent);
+          layer.bindTooltip(`⚡ ${nomLigne} (${tension})`, { sticky: true, opacity: 0.9 });
+        }
+      }).addTo(layerGroupRef.current);
+
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error("Error fetching HTB lines data", err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => {
+        map.off('moveend', onMoveEnd);
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+      };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+      layerGroupRef.current.clearLayers();
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    }
+  }, [active, map]);
+
+  return null;
+}
+
 
 const rotationIcon = L.divIcon({
   html: `<div class="bg-white rounded-full p-2 shadow-lg border-2 border-blue-500 cursor-move text-blue-600 hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L12 12h9V3"/></svg></div>`,
@@ -2887,6 +3062,13 @@ const LAYERS = {
   communes: { name: "Limites communales", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ADMINEXPRESS-COG-CARTO.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 32, opacity: 0.5, maxNativeZoom: 20, maxZoom: 22 },
 
   // ENEDIS - Réseau électrique (Using WMS for performance with 1M points)
+  lignesHTB: {
+    name: "Lignes HTB",
+    type: "lignes-htb-custom",
+    attribution: "ODRÉ / RTE",
+    isOverlay: true,
+    zIndex: 55
+  },
   enedisHTA: {
     name: "Lignes HTA",
     url: "https://geobretagne.fr/geoserver/enedis/wms",
@@ -5950,6 +6132,7 @@ export default function MapElements({
           <ABFLayerManager layersRef={layersRef} activeLayers={activeLayers} project={project} />
           <SDISLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <GazDynamicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <LignesHTBLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <HTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <BTLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
