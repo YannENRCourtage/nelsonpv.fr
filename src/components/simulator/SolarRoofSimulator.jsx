@@ -158,19 +158,132 @@ export default function SolarRoofSimulator({
     return 1.00;
   }, [selectedPitch]);
 
-  const effectiveOrientationCoeff = useMemo(() => {
-    if (orientationInfo?.effectiveCoeff) return orientationInfo.effectiveCoeff;
-    if (roofType === 'symetrique' && orientationInfo?.pan1 && orientationInfo?.pan2) {
-      return ((orientationInfo.pan1.coeff || 1) + (orientationInfo.pan2.coeff || 0.75)) / 2;
-    }
-    const key = orientationInfo?.orientationKey || 'south';
-    const cfg = settings?.autoconsommation?.orientationCoefficients?.[key];
-    return cfg ? cfg.coeff : 1.00;
-  }, [orientationInfo, roofType, settings]);
+  // ─── Calcul de répartition et pondération du productible (Symétrique vs Asymétrique) ─
+  const panBreakdown = useMemo(() => {
+    const totalMaxKwc = maxInstallableRoof.maxKwc || 100;
+    const totalMaxPanels = maxInstallableRoof.maxPanels || 1;
+    const currentKwc = installedKwc;
+    const currentPanels = panelCount;
 
-  const annualProductionKwh = useMemo(() => {
-    return Math.round(installedKwc * regionalBaseYield * effectiveOrientationCoeff * inclinationCoeff);
-  }, [installedKwc, regionalBaseYield, effectiveOrientationCoeff, inclinationCoeff]);
+    if (roofType !== 'symetrique' || !orientationInfo?.pan1 || !orientationInfo?.pan2) {
+      const key = orientationInfo?.orientationKey || 'south';
+      const coeff = orientationInfo?.coeff || settings?.autoconsommation?.orientationCoefficients?.[key]?.coeff || 1.00;
+      return {
+        isSymetrique: false,
+        bestPan: {
+          name: 'Pan unique',
+          label: orientationInfo?.orientationLabel || 'Plein Sud (0°)',
+          rawLabel: orientationInfo?.rawOrientationLabel || 'Plein Sud',
+          coeff,
+          maxKwc: totalMaxKwc,
+          maxPanels: totalMaxPanels,
+          installedKwc: currentKwc,
+          installedPanels: currentPanels,
+          fillRatio: totalMaxKwc > 0 ? (currentKwc / totalMaxKwc) : 1,
+          specificYield: Math.round(regionalBaseYield * coeff * inclinationCoeff),
+          productionKwh: Math.round(currentKwc * regionalBaseYield * coeff * inclinationCoeff)
+        },
+        worstPan: null,
+        effectiveOrientationCoeff: coeff,
+        weightedSpecificYield: Math.round(regionalBaseYield * coeff * inclinationCoeff),
+        totalProductionKwh: Math.round(currentKwc * regionalBaseYield * coeff * inclinationCoeff)
+      };
+    }
+
+    // Mode Symétrique (2 pans)
+    const pan1 = orientationInfo.pan1;
+    const pan2 = orientationInfo.pan2;
+
+    const coeff1 = pan1.coeff || 1.00;
+    const coeff2 = pan2.coeff || 0.75;
+
+    // Capacité maximale par pan (50% chacun)
+    const maxPanels1 = Math.round(totalMaxPanels / 2);
+    const maxPanels2 = totalMaxPanels - maxPanels1;
+    const maxKwc1 = Math.round((totalMaxKwc / 2) * 10) / 10;
+    const maxKwc2 = Math.round((totalMaxKwc - maxKwc1) * 10) / 10;
+
+    // Détermination du pan le mieux exposé (prioritaire pour la pose des panneaux)
+    const isPan1Better = coeff1 >= coeff2;
+    const bestPanConfig = isPan1Better
+      ? { id: 'pan1', panNum: 1, info: pan1, coeff: coeff1, maxKwc: maxKwc1, maxPanels: maxPanels1 }
+      : { id: 'pan2', panNum: 2, info: pan2, coeff: coeff2, maxKwc: maxKwc2, maxPanels: maxPanels2 };
+
+    const worstPanConfig = isPan1Better
+      ? { id: 'pan2', panNum: 2, info: pan2, coeff: coeff2, maxKwc: maxKwc2, maxPanels: maxPanels2 }
+      : { id: 'pan1', panNum: 1, info: pan1, coeff: coeff1, maxKwc: maxKwc1, maxPanels: maxPanels1 };
+
+    // Allocation des panneaux : remplissage du meilleur pan d'abord (Sud), puis du second (Nord)
+    let installedPanelsBest = 0;
+    let installedPanelsWorst = 0;
+    let installedKwcBest = 0;
+    let installedKwcWorst = 0;
+
+    if (currentPanels <= bestPanConfig.maxPanels) {
+      installedPanelsBest = currentPanels;
+      installedPanelsWorst = 0;
+      installedKwcBest = currentKwc;
+      installedKwcWorst = 0;
+    } else {
+      installedPanelsBest = bestPanConfig.maxPanels;
+      installedPanelsWorst = currentPanels - bestPanConfig.maxPanels;
+      installedKwcBest = bestPanConfig.maxKwc;
+      installedKwcWorst = Math.max(0, Math.round((currentKwc - bestPanConfig.maxKwc) * 10) / 10);
+    }
+
+    // Calcul du coefficient effectif pondéré selon la puissance réelle posée sur chaque versant
+    const effectiveOrientationCoeff = currentKwc > 0
+      ? ((installedKwcBest * bestPanConfig.coeff) + (installedKwcWorst * worstPanConfig.coeff)) / currentKwc
+      : bestPanConfig.coeff;
+
+    const specificYieldBest = Math.round(regionalBaseYield * bestPanConfig.coeff * inclinationCoeff);
+    const specificYieldWorst = Math.round(regionalBaseYield * worstPanConfig.coeff * inclinationCoeff);
+    const weightedSpecificYield = Math.round(regionalBaseYield * effectiveOrientationCoeff * inclinationCoeff);
+
+    const prodKwhBest = Math.round(installedKwcBest * regionalBaseYield * bestPanConfig.coeff * inclinationCoeff);
+    const prodKwhWorst = Math.round(installedKwcWorst * regionalBaseYield * worstPanConfig.coeff * inclinationCoeff);
+    const totalProductionKwh = prodKwhBest + prodKwhWorst;
+
+    return {
+      isSymetrique: true,
+      bestPan: {
+        id: bestPanConfig.id,
+        panNum: bestPanConfig.panNum,
+        label: bestPanConfig.info.orientationLabel,
+        rawLabel: bestPanConfig.info.rawLabel,
+        angle: bestPanConfig.info.angle,
+        coeff: bestPanConfig.coeff,
+        maxKwc: bestPanConfig.maxKwc,
+        maxPanels: bestPanConfig.maxPanels,
+        installedKwc: installedKwcBest,
+        installedPanels: installedPanelsBest,
+        fillRatio: bestPanConfig.maxKwc > 0 ? (installedKwcBest / bestPanConfig.maxKwc) : 0,
+        specificYield: specificYieldBest,
+        productionKwh: prodKwhBest
+      },
+      worstPan: {
+        id: worstPanConfig.id,
+        panNum: worstPanConfig.panNum,
+        label: worstPanConfig.info.orientationLabel,
+        rawLabel: worstPanConfig.info.rawLabel,
+        angle: worstPanConfig.info.angle,
+        coeff: worstPanConfig.coeff,
+        maxKwc: worstPanConfig.maxKwc,
+        maxPanels: worstPanConfig.maxPanels,
+        installedKwc: installedKwcWorst,
+        installedPanels: installedPanelsWorst,
+        fillRatio: worstPanConfig.maxKwc > 0 ? (installedKwcWorst / worstPanConfig.maxKwc) : 0,
+        specificYield: specificYieldWorst,
+        productionKwh: prodKwhWorst
+      },
+      effectiveOrientationCoeff,
+      weightedSpecificYield,
+      totalProductionKwh
+    };
+  }, [roofType, orientationInfo, maxInstallableRoof, installedKwc, panelCount, regionalBaseYield, inclinationCoeff, settings]);
+
+  const effectiveOrientationCoeff = panBreakdown.effectiveOrientationCoeff;
+  const annualProductionKwh = panBreakdown.totalProductionKwh;
 
   // Tarif EDF OA avec tranches dynamiques
   const tarifEdfOaKwh = useMemo(() => {
@@ -827,7 +940,15 @@ export default function SolarRoofSimulator({
                   <span className="text-2xl font-black text-blue-600">{annualProductionKwh.toLocaleString('fr-FR')}</span>
                   <span className="text-sm font-bold text-slate-500 ml-1">kWh</span>
                 </div>
-                <div className="text-[10px] text-slate-400">{orientationInfo.orientationLabel}</div>
+                <div className="text-[10px] font-bold text-slate-500">
+                  {roofType === 'symetrique' ? (
+                    <span className="text-blue-700 font-extrabold">
+                      Rendement pondéré : {panBreakdown.weightedSpecificYield} kWh/kWc
+                    </span>
+                  ) : (
+                    <span>{orientationInfo.orientationLabel} ({panBreakdown.weightedSpecificYield} kWh/kWc)</span>
+                  )}
+                </div>
               </div>
 
               {/* Carte 3 : Revenus 1ère Année */}
@@ -940,6 +1061,89 @@ export default function SolarRoofSimulator({
                   </span>
                 </div>
               </div>
+
+              {/* Ligne 3 : Détail de la répartition bi-pans et du rendement pondéré (Symétrique) */}
+              {roofType === 'symetrique' && panBreakdown?.isSymetrique && (
+                <div className="pt-3 border-t border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sun className="w-4 h-4 text-amber-500" />
+                      Répartition par versant &amp; Productible pondéré ({panBreakdown.weightedSpecificYield} kWh/kWc/an)
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">
+                      Priorité automatique sur le versant le plus productif
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Versant 1 (Meilleure exposition) */}
+                    <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3.5 flex flex-col justify-between space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
+                          Versant {panBreakdown.bestPan.panNum} : {panBreakdown.bestPan.label}
+                        </span>
+                        <span className="text-[11px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-lg shadow-2xs">
+                          {panBreakdown.bestPan.specificYield} kWh/kWc
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-emerald-950 font-bold">
+                        <span>{panBreakdown.bestPan.installedKwc} kWc ({panBreakdown.bestPan.installedPanels} pan.)</span>
+                        <span className="text-emerald-700 text-[11px]">Capacité : {panBreakdown.bestPan.maxKwc} kWc</span>
+                      </div>
+                      <div className="w-full bg-emerald-200/80 rounded-full h-2.5 overflow-hidden">
+                        <div
+                          className="bg-emerald-600 h-2.5 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(100, Math.round(panBreakdown.bestPan.fillRatio * 100))}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-emerald-800 font-semibold pt-0.5">
+                        <span>Production annuelle :</span>
+                        <span className="font-black text-emerald-950">{panBreakdown.bestPan.productionKwh.toLocaleString('fr-FR')} kWh/an</span>
+                      </div>
+                    </div>
+
+                    {/* Versant 2 (Exposition opposée) */}
+                    <div className={`rounded-2xl p-3.5 flex flex-col justify-between space-y-2 border transition-all shadow-2xs ${
+                      panBreakdown.worstPan.installedKwc > 0
+                        ? 'bg-blue-50/90 border-blue-200'
+                        : 'bg-slate-50 border-slate-200 opacity-75'
+                    }`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                          <span className={`w-2.5 h-2.5 rounded-full ring-2 ${
+                            panBreakdown.worstPan.installedKwc > 0 ? 'bg-blue-500 ring-blue-200' : 'bg-slate-400 ring-slate-200'
+                          }`} />
+                          Versant {panBreakdown.worstPan.panNum} : {panBreakdown.worstPan.label}
+                        </span>
+                        <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg shadow-2xs ${
+                          panBreakdown.worstPan.installedKwc > 0 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {panBreakdown.worstPan.specificYield} kWh/kWc
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-800 font-bold">
+                        <span>
+                          {panBreakdown.worstPan.installedKwc > 0
+                            ? `${panBreakdown.worstPan.installedKwc} kWc (${panBreakdown.worstPan.installedPanels} pan.)`
+                            : '0 panneau (Versant préservé)'}
+                        </span>
+                        <span className="text-slate-500 text-[11px]">Capacité : {panBreakdown.worstPan.maxKwc} kWc</span>
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                        <div
+                          className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(100, Math.round(panBreakdown.worstPan.fillRatio * 100))}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold pt-0.5">
+                        <span>Production annuelle :</span>
+                        <span className="font-black text-slate-900">{panBreakdown.worstPan.productionKwh.toLocaleString('fr-FR')} kWh/an</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Visuel Avant / Après de l'implantation des panneaux sur la toiture */}
