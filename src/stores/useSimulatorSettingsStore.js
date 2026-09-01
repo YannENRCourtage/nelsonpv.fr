@@ -112,6 +112,8 @@ export const DEFAULT_DATABASE_SETTINGS = {
       south_west: { label: 'Sud-Ouest (+45°)', coeff: 0.950 },
       east: { label: 'Plein Est (-90°)', coeff: 0.850 },
       west: { label: 'Plein Ouest (+90°)', coeff: 0.850 },
+      north_west: { label: 'Nord-Ouest (+135°)', coeff: 0.800 },
+      north_east: { label: 'Nord-Est (-135°)', coeff: 0.800 },
       north: { label: 'Plein Nord (180°)', coeff: 0.750 }
     },
     inclinationCoefficients: {

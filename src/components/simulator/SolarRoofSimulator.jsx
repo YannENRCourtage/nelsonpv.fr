@@ -42,7 +42,8 @@ export default function SolarRoofSimulator({
   const [polygonPoints, setPolygonPoints] = useState([]);
   const [roofSurface, setRoofSurface] = useState(1179);
 
-  // Orientation & Pente
+  // Orientation & Pente & Type de toiture
+  const [roofType, setRoofType] = useState('asymetrique'); // 'asymetrique' | 'symetrique'
   const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(0);
   const [orientationInfo, setOrientationInfo] = useState({
     orientationKey: 'south',
@@ -150,9 +151,26 @@ export default function SolarRoofSimulator({
     return getProductionForDepartment(departmentCode);
   }, [departmentCode]);
 
+  const inclinationCoeff = useMemo(() => {
+    if (selectedPitch === 30) return 1.00;
+    if (selectedPitch === 15 || selectedPitch === 45) return 0.96;
+    if (selectedPitch === 0 || selectedPitch > 45) return 0.90;
+    return 1.00;
+  }, [selectedPitch]);
+
+  const effectiveOrientationCoeff = useMemo(() => {
+    if (orientationInfo?.effectiveCoeff) return orientationInfo.effectiveCoeff;
+    if (roofType === 'symetrique' && orientationInfo?.pan1 && orientationInfo?.pan2) {
+      return ((orientationInfo.pan1.coeff || 1) + (orientationInfo.pan2.coeff || 0.75)) / 2;
+    }
+    const key = orientationInfo?.orientationKey || 'south';
+    const cfg = settings?.autoconsommation?.orientationCoefficients?.[key];
+    return cfg ? cfg.coeff : 1.00;
+  }, [orientationInfo, roofType, settings]);
+
   const annualProductionKwh = useMemo(() => {
-    return Math.round(installedKwc * regionalBaseYield);
-  }, [installedKwc, regionalBaseYield]);
+    return Math.round(installedKwc * regionalBaseYield * effectiveOrientationCoeff * inclinationCoeff);
+  }, [installedKwc, regionalBaseYield, effectiveOrientationCoeff, inclinationCoeff]);
 
   // Tarif EDF OA avec tranches dynamiques
   const tarifEdfOaKwh = useMemo(() => {
@@ -260,8 +278,12 @@ export default function SolarRoofSimulator({
         isLandscape: false,
         kwc: installedKwc,
         roofSurface,
+        roofType,
+        pan1: orientationInfo?.pan1,
+        pan2: orientationInfo?.pan2,
         pitch: selectedPitch,
         orientationLabel: orientationInfo.orientationLabel,
+        effectiveOrientationCoeff,
         annualProductionKwh,
         tarifEdfOaKwh,
         annualRevenueReventeTotale,
@@ -277,7 +299,7 @@ export default function SolarRoofSimulator({
     }
   }, [
     installedKwc, roofSurface, clientNameInput, cityName, addressInput, departmentCode,
-    mapCenter, mapZoom, polygonPoints, selectedRidgeIndex, selectedPitch, orientationInfo, annualProductionKwh, tarifEdfOaKwh, annualRevenueReventeTotale,
+    mapCenter, mapZoom, polygonPoints, selectedRidgeIndex, selectedPitch, roofType, orientationInfo, effectiveOrientationCoeff, annualProductionKwh, tarifEdfOaKwh, annualRevenueReventeTotale,
     totalInvestmentHT, paybackReventeYear, financialProjection30Years, mapScreenshotDataUrl, onStateUpdate
   ]);
 
@@ -567,14 +589,42 @@ export default function SolarRoofSimulator({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
               <div>
                 <h3 className="text-xl font-black text-slate-900 leading-tight">
-                  Orientation de la toiture
+                  {roofType === 'symetrique' ? 'Orientation de la toiture symétrique (2 pans)' : 'Orientation de la toiture'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Cliquez sur le faîtage (ligne rouge) pour déterminer l'exposition du pan.
+                  {roofType === 'symetrique'
+                    ? 'Le faîtage est positionné au centre du rectangle (2 versants opposés à 50% de puissance chacun).'
+                    : 'Cliquez sur le faîtage (ligne rouge) pour déterminer l\'exposition du pan de toiture.'}
                 </p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                {/* Sélecteur de type de bâtiment Asymétrique / Symétrique */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setRoofType('asymetrique')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      roofType === 'asymetrique'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                    }`}
+                  >
+                    Asymétrique (1 pan)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoofType('symetrique')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      roofType === 'symetrique'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                    }`}
+                  >
+                    Symétrique (2 pans)
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setCurrentStep(3)}
@@ -601,6 +651,8 @@ export default function SolarRoofSimulator({
               polygonPoints={polygonPoints}
               selectedRidgeIndex={selectedRidgeIndex}
               onRidgeSelect={setSelectedRidgeIndex}
+              roofType={roofType}
+              onRoofTypeChange={setRoofType}
               orientationInfo={orientationInfo}
               onOrientationChange={setOrientationInfo}
               mapContainerRef={mapContainerRef}

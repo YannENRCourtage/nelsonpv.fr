@@ -42,7 +42,8 @@ export default function SolarAutoconsoSimulator({
   const [polygonPoints, setPolygonPoints] = useState([]);
   const [roofSurface, setRoofSurface] = useState(83);
 
-  // Étape 4 : Orientation
+  // Étape 4 : Orientation & Type de toiture
+  const [roofType, setRoofType] = useState('asymetrique'); // 'asymetrique' | 'symetrique'
   const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(0);
   const [orientationInfo, setOrientationInfo] = useState({
     orientationKey: 'south',
@@ -173,11 +174,15 @@ export default function SolarAutoconsoSimulator({
     return getProductionForDepartment(departmentCode);
   }, [departmentCode]);
 
-  const orientationCoeff = useMemo(() => {
+  const effectiveOrientationCoeff = useMemo(() => {
+    if (orientationInfo?.effectiveCoeff) return orientationInfo.effectiveCoeff;
+    if (roofType === 'symetrique' && orientationInfo?.pan1 && orientationInfo?.pan2) {
+      return ((orientationInfo.pan1.coeff || 1) + (orientationInfo.pan2.coeff || 0.75)) / 2;
+    }
     const key = orientationInfo.orientationKey || 'south';
-    const cfg = autoSettings.orientationCoefficients[key];
+    const cfg = autoSettings?.orientationCoefficients?.[key];
     return cfg ? cfg.coeff : 1.00;
-  }, [orientationInfo, autoSettings]);
+  }, [orientationInfo, roofType, autoSettings]);
 
   const inclinationCoeff = useMemo(() => {
     if (selectedPitch === 30) return 1.00;
@@ -187,8 +192,8 @@ export default function SolarAutoconsoSimulator({
   }, [selectedPitch]);
 
   const annualProductionKwh = useMemo(() => {
-    return Math.round(customKwc * regionalBaseYield * orientationCoeff * inclinationCoeff);
-  }, [customKwc, regionalBaseYield, orientationCoeff, inclinationCoeff]);
+    return Math.round(customKwc * regionalBaseYield * effectiveOrientationCoeff * inclinationCoeff);
+  }, [customKwc, regionalBaseYield, effectiveOrientationCoeff, inclinationCoeff]);
 
   const autoconsoKwh = useMemo(() => {
     return Math.round(annualProductionKwh * (customAutoconsoRate / 100));
@@ -281,8 +286,12 @@ export default function SolarAutoconsoSimulator({
         isLandscape: false,
         kwc: customKwc,
         roofSurface,
+        roofType,
+        pan1: orientationInfo?.pan1,
+        pan2: orientationInfo?.pan2,
         pitch: selectedPitch,
         orientationLabel: orientationInfo.orientationLabel,
+        effectiveOrientationCoeff,
         consoKwh,
         annualBillEuro,
         evCount,
@@ -304,7 +313,7 @@ export default function SolarAutoconsoSimulator({
     }
   }, [
     customKwc, cityName, clientNameInput, addressInput, departmentCode, mapCenter, mapZoom, polygonPoints, selectedRidgeIndex,
-    roofSurface, selectedPitch, orientationInfo, consoKwh, annualBillEuro, evCount, recommendedKwc,
+    roofSurface, selectedPitch, roofType, orientationInfo, effectiveOrientationCoeff, consoKwh, annualBillEuro, evCount, recommendedKwc,
     regionalBaseYield, annualProductionKwh, customAutoconsoRate, autoconsoKwh,
     surplusKwh, annualSavingsAutoconso, annualRevenueSurplus, totalAnnualBenefitYear1, totalInvestmentHT, paybackYear,
     totalGains30Years, mapScreenshotDataUrl, onStateUpdate
@@ -585,14 +594,42 @@ export default function SolarAutoconsoSimulator({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
               <div>
                 <h3 className="text-xl font-black text-slate-900 leading-tight">
-                  Déterminons l'orientation de votre toiture
+                  {roofType === 'symetrique' ? 'Orientation de la toiture symétrique (2 pans)' : 'Déterminons l\'orientation de votre toiture'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Cliquez sur le faîtage (côté le plus haut en rouge) pour orienter la pente.
+                  {roofType === 'symetrique'
+                    ? 'Le faîtage est positionné au centre du rectangle (2 versants opposés à 50% de puissance chacun).'
+                    : 'Cliquez sur le faîtage (côté le plus haut en rouge) pour orienter la pente.'}
                 </p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                {/* Sélecteur de type de bâtiment Asymétrique / Symétrique */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setRoofType('asymetrique')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      roofType === 'asymetrique'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                    }`}
+                  >
+                    Asymétrique (1 pan)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoofType('symetrique')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      roofType === 'symetrique'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                    }`}
+                  >
+                    Symétrique (2 pans)
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setCurrentStep(3)}
@@ -619,6 +656,8 @@ export default function SolarAutoconsoSimulator({
               polygonPoints={polygonPoints}
               selectedRidgeIndex={selectedRidgeIndex}
               onRidgeSelect={setSelectedRidgeIndex}
+              roofType={roofType}
+              onRoofTypeChange={setRoofType}
               orientationInfo={orientationInfo}
               onOrientationChange={setOrientationInfo}
               mapContainerRef={mapContainerRef}

@@ -24,8 +24,66 @@ export function calculatePolygonArea(latlngs) {
   return Math.round(area);
 }
 
-// ─── Calcul d'orientation selon le faîtage (Toiture orientée à l'opposé du faîtage) ──
-export function calculateOrientationFromRidge(p1, p2, allPoints = []) {
+// ─── Données et coefficients solaires par orientation ─────────────────────────
+export const ORIENTATION_COEFFS_MAP = {
+  south: 1.000,
+  south_east: 0.950,
+  south_west: 0.950,
+  east: 0.850,
+  west: 0.850,
+  north_east: 0.800,
+  north_west: 0.800,
+  north: 0.750
+};
+
+export function getOrientationDetailsFromAngle(deg) {
+  let normalized = Math.round(deg);
+  while (normalized > 180) normalized -= 360;
+  while (normalized <= -180) normalized += 360;
+
+  let orientationKey = 'south';
+  let orientationLabel = 'Plein Sud';
+
+  if (Math.abs(normalized) <= 22.5) {
+    orientationKey = 'south';
+    orientationLabel = 'Plein Sud';
+  } else if (normalized > 22.5 && normalized < 67.5) {
+    orientationKey = 'south_west';
+    orientationLabel = 'Sud-Ouest';
+  } else if (normalized >= 67.5 && normalized <= 112.5) {
+    orientationKey = 'west';
+    orientationLabel = 'Plein Ouest';
+  } else if (normalized > 112.5 && normalized < 157.5) {
+    orientationKey = 'north_west';
+    orientationLabel = 'Nord-Ouest';
+  } else if (normalized < -22.5 && normalized > -67.5) {
+    orientationKey = 'south_east';
+    orientationLabel = 'Sud-Est';
+  } else if (normalized <= -67.5 && normalized >= -112.5) {
+    orientationKey = 'east';
+    orientationLabel = 'Plein Est';
+  } else if (normalized < -112.5 && normalized > -157.5) {
+    orientationKey = 'north_east';
+    orientationLabel = 'Nord-Est';
+  } else {
+    orientationKey = 'north';
+    orientationLabel = 'Plein Nord';
+  }
+
+  const angleStr = normalized === 0 ? ' (0°)' : (normalized > 0 ? ` (+${normalized}°)` : ` (${normalized}°)`);
+  const coeff = ORIENTATION_COEFFS_MAP[orientationKey] || 0.85;
+
+  return {
+    orientationKey,
+    orientationLabel: `${orientationLabel}${angleStr}`,
+    rawLabel: orientationLabel,
+    angle: normalized,
+    coeff
+  };
+}
+
+// ─── Calcul d'orientation selon le faîtage (Asymétrique ou Symétrique 2 pans) ─
+export function calculateOrientationFromRidge(p1, p2, allPoints = [], roofType = 'asymetrique', ridgeIndex = 0) {
   // 1. Calcul du milieu du faîtage (p1, p2)
   const ridgeMidLat = (p1.lat + p2.lat) / 2;
   const ridgeMidLng = (p1.lng + p2.lng) / 2;
@@ -47,47 +105,45 @@ export function calculateOrientationFromRidge(p1, p2, allPoints = []) {
   const dLat = (polyCenterLat - ridgeMidLat) * 110574; // Nord en mètres (>0 si centre au Nord)
 
   // Boussole : Sud = 0°, Ouest = +90°, Est = -90°, Nord = 180°
-  // Math.atan2(-dLng, -dLat) :
-  // - Sud (dLat < 0, dLng = 0) -> Math.atan2(0, +1) = 0°
-  // - Nord (dLat > 0, dLng = 0) -> Math.atan2(0, -1) = 180°
-  // - Ouest (dLat = 0, dLng < 0) -> Math.atan2(+1, 0) = +90°
-  // - Est (dLat = 0, dLng > 0) -> Math.atan2(-1, 0) = -90°
-  let deg = Math.round((Math.atan2(-dLng, -dLat) * 180) / Math.PI);
-  if (deg === -180) deg = 180;
+  let deg1 = Math.round((Math.atan2(-dLng, -dLat) * 180) / Math.PI);
+  if (deg1 === -180) deg1 = 180;
 
-  let orientationKey = 'south';
-  let orientationLabel = 'Plein Sud';
+  const pan1 = getOrientationDetailsFromAngle(deg1);
 
-  if (Math.abs(deg) <= 22.5) {
-    orientationKey = 'south';
-    orientationLabel = 'Plein Sud';
-  } else if (deg > 22.5 && deg < 67.5) {
-    orientationKey = 'south_west';
-    orientationLabel = 'Sud-Ouest';
-  } else if (deg >= 67.5 && deg <= 112.5) {
-    orientationKey = 'west';
-    orientationLabel = 'Plein Ouest';
-  } else if (deg > 112.5 && deg < 157.5) {
-    orientationKey = 'north_west';
-    orientationLabel = 'Nord-Ouest';
-  } else if (deg < -22.5 && deg > -67.5) {
-    orientationKey = 'south_east';
-    orientationLabel = 'Sud-Est';
-  } else if (deg <= -67.5 && deg >= -112.5) {
-    orientationKey = 'east';
-    orientationLabel = 'Plein Est';
-  } else if (deg < -112.5 && deg > -157.5) {
-    orientationKey = 'north_east';
-    orientationLabel = 'Nord-Est';
-  } else {
-    orientationKey = 'north';
-    orientationLabel = 'Plein Nord';
+  // ─── Mode Symétrique : 2 pans opposés (50% chacun) ───
+  if (roofType === 'symetrique') {
+    let deg2 = deg1 >= 0 ? deg1 - 180 : deg1 + 180;
+    if (deg2 === -180) deg2 = 180;
+    const pan2 = getOrientationDetailsFromAngle(deg2);
+    const effectiveCoeff = (pan1.coeff + pan2.coeff) / 2;
+    const combinedLabel = `Symétrique : ${pan1.orientationLabel} / ${pan2.orientationLabel}`;
+    const rawCombinedLabel = `${pan1.rawLabel} / ${pan2.rawLabel}`;
+
+    return {
+      roofType: 'symetrique',
+      orientationKey: `sym_${pan1.orientationKey}_${pan2.orientationKey}`,
+      orientationLabel: combinedLabel,
+      rawOrientationLabel: rawCombinedLabel,
+      angle: pan1.angle,
+      ridgeIndex,
+      pan1: { ...pan1, share: 0.5 },
+      pan2: { ...pan2, share: 0.5 },
+      effectiveCoeff
+    };
   }
 
-  const angleStr = deg === 0 ? ' (0°)' : (deg > 0 ? ` (+${deg}°)` : ` (${deg}°)`);
-  const fullOrientationLabel = `${orientationLabel}${angleStr}`;
-
-  return { orientationKey, orientationLabel: fullOrientationLabel, rawOrientationLabel: orientationLabel, angle: deg };
+  // ─── Mode Asymétrique / Monopente : 1 seul pan ───
+  return {
+    roofType: 'asymetrique',
+    orientationKey: pan1.orientationKey,
+    orientationLabel: pan1.orientationLabel,
+    rawOrientationLabel: pan1.rawLabel,
+    angle: pan1.angle,
+    ridgeIndex,
+    pan1: { ...pan1, share: 1.0 },
+    pan2: null,
+    effectiveCoeff: pan1.coeff
+  };
 }
 
 // ─── Créateur d'icône HTML pour les 4 coins ─────────────────────────────────
@@ -191,6 +247,7 @@ function NativeCornerMarkersLayer({
   onLiveSurfaceUpdate,
   selectedRidgeIndex,
   onRidgeSelect,
+  roofType = 'asymetrique',
   onOrientationChange
 }) {
   const map = useMap();
@@ -210,15 +267,15 @@ function NativeCornerMarkersLayer({
       const ptA = points[idx];
       const ptB = points[(idx + 1) % 4];
       if (ptA && ptB) {
-        const res = calculateOrientationFromRidge(ptA, ptB, points);
+        const res = calculateOrientationFromRidge(ptA, ptB, points, roofType, idx);
         if (onOrientationChange) {
           onOrientationChange(res);
         }
       }
     }
-  }, [points, selectedRidgeIndex, onOrientationChange]);
+  }, [points, selectedRidgeIndex, roofType, onOrientationChange]);
 
-  // Initialisation et gestion du polygone + arêtes + 4 marqueurs
+  // Initialisation et gestion du polygone + arêtes + faîtage central + 4 marqueurs
   useEffect(() => {
     if (!map) return;
 
@@ -247,29 +304,130 @@ function NativeCornerMarkersLayer({
     }).addTo(map);
     polygonLayerRef.current = polygon;
 
-    // 2. Création des arêtes cliquables (Étape 4)
+    // 2. Gestion de l'Étape 4 : Orientation (Asymétrique ou Symétrique)
     if (step === 4) {
-      for (let i = 0; i < 4; i++) {
-        const p1 = points[i];
-        const p2 = points[(i + 1) % 4];
-        const isSelected = selectedRidgeIndex === i;
+      const idx = selectedRidgeIndex !== undefined && selectedRidgeIndex !== null ? selectedRidgeIndex : 0;
+      const currentPts = pointsRef.current;
 
-        const polyline = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
-          color: isSelected ? '#ef4444' : '#00e699',
-          weight: isSelected ? 6.5 : 4,
-          opacity: 0.95
+      if (roofType === 'symetrique') {
+        // ─── Mode Symétrique : Faîtage au centre ───────────────────────
+        let ridgeStart, ridgeEnd;
+        const isParallel02 = (idx === 0 || idx === 2);
+
+        if (isParallel02) {
+          // Faîtage reliant le milieu de [p3, p0] et le milieu de [p1, p2]
+          ridgeStart = {
+            lat: (currentPts[3].lat + currentPts[0].lat) / 2,
+            lng: (currentPts[3].lng + currentPts[0].lng) / 2
+          };
+          ridgeEnd = {
+            lat: (currentPts[1].lat + currentPts[2].lat) / 2,
+            lng: (currentPts[1].lng + currentPts[2].lng) / 2
+          };
+        } else {
+          // Faîtage reliant le milieu de [p0, p1] et le milieu de [p2, p3]
+          ridgeStart = {
+            lat: (currentPts[0].lat + currentPts[1].lat) / 2,
+            lng: (currentPts[0].lng + currentPts[1].lng) / 2
+          };
+          ridgeEnd = {
+            lat: (currentPts[2].lat + currentPts[3].lat) / 2,
+            lng: (currentPts[2].lng + currentPts[3].lng) / 2
+          };
+        }
+
+        // Ligne rouge centrale (Faîtage central)
+        const ridgeLine = L.polyline([[ridgeStart.lat, ridgeStart.lng], [ridgeEnd.lat, ridgeEnd.lng]], {
+          color: '#ef4444',
+          weight: 7,
+          opacity: 1.0
         }).addTo(map);
 
-        polyline.on('click', () => {
-          if (onRidgeSelect) onRidgeSelect(i);
-          const currentPts = pointsRef.current;
-          const ptA = currentPts[i];
-          const ptB = currentPts[(i + 1) % 4];
-          const res = calculateOrientationFromRidge(ptA, ptB, currentPts);
+        ridgeLine.on('click', () => {
+          const nextIdx = isParallel02 ? 1 : 0;
+          if (onRidgeSelect) onRidgeSelect(nextIdx);
+          const ptA = currentPts[nextIdx];
+          const ptB = currentPts[(nextIdx + 1) % 4];
+          const res = calculateOrientationFromRidge(ptA, ptB, currentPts, 'symetrique', nextIdx);
           if (onOrientationChange) onOrientationChange(res);
         });
+        polylinesRef.current.push(ridgeLine);
 
-        polylinesRef.current.push(polyline);
+        // Étiquette "Faîtage central" au milieu du trait
+        const midRidgeLat = (ridgeStart.lat + ridgeEnd.lat) / 2;
+        const midRidgeLng = (ridgeStart.lng + ridgeEnd.lng) / 2;
+        const ridgeLabelIcon = L.divIcon({
+          className: 'ridge-label-icon',
+          html: `
+            <div style="
+              background: #ef4444;
+              color: #ffffff;
+              padding: 2px 8px;
+              border-radius: 10px;
+              font-size: 11px;
+              font-weight: 900;
+              white-space: nowrap;
+              border: 1.5px solid #ffffff;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+              transform: translate(-50%, -50%);
+              pointer-events: none;
+            ">
+              Faîtage central
+            </div>
+          `,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0]
+        });
+        const ridgeMarker = L.marker([midRidgeLat, midRidgeLng], { icon: ridgeLabelIcon, interactive: false }).addTo(map);
+        markersRef.current.push(ridgeMarker);
+
+        // Les 4 arêtes extérieures sont cliquables pour changer l'axe du faîtage central
+        for (let i = 0; i < 4; i++) {
+          const p1 = currentPts[i];
+          const p2 = currentPts[(i + 1) % 4];
+          const isSelectedAxis = (isParallel02 && (i === 0 || i === 2)) || (!isParallel02 && (i === 1 || i === 3));
+
+          const polyline = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
+            color: isSelectedAxis ? '#10b981' : '#6ee7b7',
+            weight: isSelectedAxis ? 4.5 : 3,
+            dashArray: isSelectedAxis ? null : '6, 6',
+            opacity: 0.9
+          }).addTo(map);
+
+          polyline.on('click', () => {
+            if (onRidgeSelect) onRidgeSelect(i);
+            const ptA = currentPts[i];
+            const ptB = currentPts[(i + 1) % 4];
+            const res = calculateOrientationFromRidge(ptA, ptB, currentPts, 'symetrique', i);
+            if (onOrientationChange) onOrientationChange(res);
+          });
+
+          polylinesRef.current.push(polyline);
+        }
+
+      } else {
+        // ─── Mode Asymétrique / Monopente : Faîtage sur un bord ─────────
+        for (let i = 0; i < 4; i++) {
+          const p1 = currentPts[i];
+          const p2 = currentPts[(i + 1) % 4];
+          const isSelected = selectedRidgeIndex === i;
+
+          const polyline = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
+            color: isSelected ? '#ef4444' : '#00e699',
+            weight: isSelected ? 6.5 : 4,
+            opacity: 0.95
+          }).addTo(map);
+
+          polyline.on('click', () => {
+            if (onRidgeSelect) onRidgeSelect(i);
+            const ptA = currentPts[i];
+            const ptB = currentPts[(i + 1) % 4];
+            const res = calculateOrientationFromRidge(ptA, ptB, currentPts, 'asymetrique', i);
+            if (onOrientationChange) onOrientationChange(res);
+          });
+
+          polylinesRef.current.push(polyline);
+        }
       }
     }
 
@@ -328,7 +486,7 @@ function NativeCornerMarkersLayer({
       polylinesRef.current.forEach(pl => map.removeLayer(pl));
       polylinesRef.current = [];
     };
-  }, [map, step, points, selectedRidgeIndex, onPolygonChange, onLiveSurfaceUpdate, onRidgeSelect, onOrientationChange]);
+  }, [map, step, points, selectedRidgeIndex, roofType, onPolygonChange, onLiveSurfaceUpdate, onRidgeSelect, onOrientationChange]);
 
   return null;
 }
@@ -363,6 +521,8 @@ export default function RoofMapPolygonSelector({
   onPolygonChange,
   selectedRidgeIndex = 0,
   onRidgeSelect,
+  roofType = 'asymetrique',
+  onRoofTypeChange,
   orientationInfo = { orientationKey: 'south', orientationLabel: 'Plein Sud' },
   onOrientationChange,
   mapContainerRef
@@ -446,6 +606,7 @@ export default function RoofMapPolygonSelector({
             onLiveSurfaceUpdate={setLiveSurface}
             selectedRidgeIndex={selectedRidgeIndex}
             onRidgeSelect={onRidgeSelect}
+            roofType={roofType}
             onOrientationChange={onOrientationChange}
           />
         </MapContainer>
@@ -491,23 +652,63 @@ export default function RoofMapPolygonSelector({
 
       {/* Barre d'informations Étape 4 */}
       {step === 4 && (
-        <div className="p-3.5 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-xs text-slate-600 font-medium">
-            <span className="font-bold text-red-600">Ligne rouge :</span> Côté sélectionné comme faîtage
+        <div className="p-3.5 bg-white border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3">
+          
+          {/* Boutons Sélecteur Type de Bâtiment : Asymétrique ou Symétrique */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => onRoofTypeChange && onRoofTypeChange('asymetrique')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                roofType === 'asymetrique'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+              }`}
+              title="Toiture asymétrique / monopente : pente unique, faîtage sur un bord"
+            >
+              <span>Asymétrique (1 pan)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onRoofTypeChange && onRoofTypeChange('symetrique')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                roofType === 'symetrique'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+              }`}
+              title="Toiture symétrique : 2 pans opposés, faîtage au centre du rectangle"
+            >
+              <span>Symétrique (2 pans)</span>
+            </button>
           </div>
 
-          <div className="px-6 py-2 bg-amber-50 border border-amber-200 rounded-2xl text-center shadow-xs">
-            <span className="text-xs font-bold text-amber-800 uppercase tracking-wider block">
-              Votre toiture est exposée :
+          {/* Badge d'exposition selon le mode */}
+          <div className="px-5 py-2 bg-amber-50 border border-amber-200 rounded-2xl text-center shadow-xs">
+            <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
+              {roofType === 'symetrique' ? 'Toiture symétrique (2 pans opposés) :' : 'Votre toiture est exposée :'}
             </span>
-            <span className="text-xl font-black text-amber-900">
-              {orientationInfo?.orientationLabel || 'Plein Sud (0°)'}
-            </span>
+            {roofType === 'symetrique' ? (
+              <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-black text-amber-900 mt-0.5">
+                <span className="bg-amber-100/90 px-2.5 py-0.5 rounded-lg border border-amber-300/60">
+                  Pan 1 (50%) : {orientationInfo?.pan1?.orientationLabel || 'Plein Sud (0°)'}
+                </span>
+                <span className="text-amber-500 font-bold">•</span>
+                <span className="bg-amber-100/90 px-2.5 py-0.5 rounded-lg border border-amber-300/60">
+                  Pan 2 (50%) : {orientationInfo?.pan2?.orientationLabel || 'Plein Nord (180°)'}
+                </span>
+              </div>
+            ) : (
+              <span className="text-lg font-black text-amber-900">
+                {orientationInfo?.orientationLabel || 'Plein Sud (0°)'}
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
             <Compass className="w-4 h-4 text-blue-600" />
-            Cliquez sur un autre côté pour ajuster
+            <span>
+              {roofType === 'symetrique' ? 'Cliquez pour pivoter le faîtage central' : 'Cliquez sur un autre côté pour ajuster'}
+            </span>
           </div>
         </div>
       )}

@@ -294,7 +294,9 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   // HTML conditionnel selon la solution
   const resolveOrientationName = (simObj) => {
     let ori = '';
-    if (simObj?.orientationLabel) {
+    if (simObj?.roofType === 'symetrique' && simObj?.pan1 && simObj?.pan2) {
+      ori = `Symétrique (2 pans) : ${simObj.pan1.rawLabel || 'Sud'} (${simObj.pan1.angle}°) / ${simObj.pan2.rawLabel || 'Nord'} (${simObj.pan2.angle}°)`;
+    } else if (simObj?.orientationLabel) {
       ori = simObj.orientationLabel;
     } else {
       const r = Number(simObj?.rotation !== undefined ? simObj.rotation : (simObj?.buildings && simObj.buildings[0] && simObj.buildings[0].rotation !== undefined ? simObj.buildings[0].rotation : 0));
@@ -308,9 +310,6 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       else ori = 'Plein Sud (0°)';
     }
 
-    // Si ori contient déjà une inclinaison avec "/"
-    if (ori.includes('/')) return ori;
-
     // Détermination de l'inclinaison de la toiture
     const tiltVal = Number(
       simObj?.tilt !== undefined ? simObj.tilt :
@@ -321,7 +320,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       30
     );
 
-    return `${ori} / ${Math.round(tiltVal)}°`;
+    return `${ori} • Pente ${Math.round(tiltVal)}°`;
   };
 
   let technicalHypothesesHtml = '';
