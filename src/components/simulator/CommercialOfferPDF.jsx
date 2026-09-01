@@ -681,7 +681,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         ` : `
           <!-- 4. VISUEL DUAL AVANT / APRÈS (TOITURE & AUTOCONSO) OU UNIQUE (AUTRES) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; position: relative; height: 195px; display: flex; align-items: center; justify-content: center;">
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; position: relative; height: 220px; display: flex; align-items: center; justify-content: center;">
             ${finalMapScreenshot ? `
               <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Implantation Visuelle du Projet" />
             ` : `
@@ -699,7 +699,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
             ${isSechoir ? 'Projection Financière des Gains Cumulés (25 ans)' : 'Projection Financière des Gains Cumulés (30 ans)'}
           </div>
-          <div style="height: ${isStruct && sim.buildings && sim.buildings.length > 1 ? '195px' : '225px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="height: ${isStruct && sim.buildings && sim.buildings.length > 1 ? '210px' : '250px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
           </div>
 

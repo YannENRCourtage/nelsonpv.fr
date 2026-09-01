@@ -384,7 +384,7 @@ function NativeCornerMarkersLayer({
 
         // Étiquette "Faîtage central" au milieu du trait
         const ridgeLabelIcon = L.divIcon({
-          className: 'ridge-label-icon',
+          className: '!bg-transparent !border-none !p-0 !m-0 !w-auto !h-auto !shadow-none',
           html: `
             <div style="
               background: #ef4444;
@@ -396,7 +396,7 @@ function NativeCornerMarkersLayer({
               white-space: nowrap;
               border: 1.5px solid #ffffff;
               box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-              transform: translate(-50%, -150%);
+              transform: translate(-50%, -170%);
               pointer-events: none;
             ">
               Faîtage central
