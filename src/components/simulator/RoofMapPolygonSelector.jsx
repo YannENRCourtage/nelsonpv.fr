@@ -310,52 +310,79 @@ function NativeCornerMarkersLayer({
       const currentPts = pointsRef.current;
 
       if (roofType === 'symetrique') {
-        // ─── Mode Symétrique : Faîtage au centre ───────────────────────
-        let ridgeStart, ridgeEnd;
+        // ─── Mode Symétrique : Faîtage au centre + Axe orthogonal à 90° en pointillés ──
         const isParallel02 = (idx === 0 || idx === 2);
 
-        if (isParallel02) {
-          // Faîtage reliant le milieu de [p3, p0] et le milieu de [p1, p2]
-          ridgeStart = {
-            lat: (currentPts[3].lat + currentPts[0].lat) / 2,
-            lng: (currentPts[3].lng + currentPts[0].lng) / 2
-          };
-          ridgeEnd = {
-            lat: (currentPts[1].lat + currentPts[2].lat) / 2,
-            lng: (currentPts[1].lng + currentPts[2].lng) / 2
-          };
-        } else {
-          // Faîtage reliant le milieu de [p0, p1] et le milieu de [p2, p3]
-          ridgeStart = {
-            lat: (currentPts[0].lat + currentPts[1].lat) / 2,
-            lng: (currentPts[0].lng + currentPts[1].lng) / 2
-          };
-          ridgeEnd = {
-            lat: (currentPts[2].lat + currentPts[3].lat) / 2,
-            lng: (currentPts[2].lng + currentPts[3].lng) / 2
-          };
-        }
+        // Axe A : reliant milieu [p3, p0] et milieu [p1, p2]
+        const axisA_Start = {
+          lat: (currentPts[3].lat + currentPts[0].lat) / 2,
+          lng: (currentPts[3].lng + currentPts[0].lng) / 2
+        };
+        const axisA_End = {
+          lat: (currentPts[1].lat + currentPts[2].lat) / 2,
+          lng: (currentPts[1].lng + currentPts[2].lng) / 2
+        };
 
-        // Ligne rouge centrale (Faîtage central)
-        const ridgeLine = L.polyline([[ridgeStart.lat, ridgeStart.lng], [ridgeEnd.lat, ridgeEnd.lng]], {
-          color: '#ef4444',
-          weight: 7,
-          opacity: 1.0
-        }).addTo(map);
+        // Axe B : reliant milieu [p0, p1] et milieu [p2, p3]
+        const axisB_Start = {
+          lat: (currentPts[0].lat + currentPts[1].lat) / 2,
+          lng: (currentPts[0].lng + currentPts[1].lng) / 2
+        };
+        const axisB_End = {
+          lat: (currentPts[2].lat + currentPts[3].lat) / 2,
+          lng: (currentPts[2].lng + currentPts[3].lng) / 2
+        };
 
-        ridgeLine.on('click', () => {
+        // Centre géométrique d'intersection
+        const centerLat = (axisA_Start.lat + axisA_End.lat + axisB_Start.lat + axisB_End.lat) / 4;
+        const centerLng = (axisA_Start.lng + axisA_End.lng + axisB_Start.lng + axisB_End.lng) / 4;
+
+        const activeStart = isParallel02 ? axisA_Start : axisB_Start;
+        const activeEnd = isParallel02 ? axisA_End : axisB_End;
+
+        const orthoStart = isParallel02 ? axisB_Start : axisA_Start;
+        const orthoEnd = isParallel02 ? axisB_End : axisA_End;
+
+        const toggleAxis = () => {
           const nextIdx = isParallel02 ? 1 : 0;
           if (onRidgeSelect) onRidgeSelect(nextIdx);
           const ptA = currentPts[nextIdx];
           const ptB = currentPts[(nextIdx + 1) % 4];
           const res = calculateOrientationFromRidge(ptA, ptB, currentPts, 'symetrique', nextIdx);
           if (onOrientationChange) onOrientationChange(res);
-        });
+        };
+
+        // 1. Trait rouge en pointillés à 90° (axe orthogonal alternatif pour pivoter)
+        const dashedOrthoLine = L.polyline([[orthoStart.lat, orthoStart.lng], [orthoEnd.lat, orthoEnd.lng]], {
+          color: '#ef4444',
+          weight: 4,
+          dashArray: '8, 8',
+          opacity: 0.85
+        }).addTo(map);
+        dashedOrthoLine.on('click', toggleAxis);
+        polylinesRef.current.push(dashedOrthoLine);
+
+        // 2. Trait rouge continu (Faîtage actif)
+        const ridgeLine = L.polyline([[activeStart.lat, activeStart.lng], [activeEnd.lat, activeEnd.lng]], {
+          color: '#ef4444',
+          weight: 7,
+          opacity: 1.0
+        }).addTo(map);
+        ridgeLine.on('click', toggleAxis);
         polylinesRef.current.push(ridgeLine);
 
+        // 3. Point rouge central d'intersection (cliquable pour pivoter à 90°)
+        const centerCircle = L.circleMarker([centerLat, centerLng], {
+          radius: 9,
+          color: '#ffffff',
+          weight: 2.5,
+          fillColor: '#ef4444',
+          fillOpacity: 1
+        }).addTo(map);
+        centerCircle.on('click', toggleAxis);
+        markersRef.current.push(centerCircle);
+
         // Étiquette "Faîtage central" au milieu du trait
-        const midRidgeLat = (ridgeStart.lat + ridgeEnd.lat) / 2;
-        const midRidgeLng = (ridgeStart.lng + ridgeEnd.lng) / 2;
         const ridgeLabelIcon = L.divIcon({
           className: 'ridge-label-icon',
           html: `
@@ -369,7 +396,7 @@ function NativeCornerMarkersLayer({
               white-space: nowrap;
               border: 1.5px solid #ffffff;
               box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-              transform: translate(-50%, -50%);
+              transform: translate(-50%, -150%);
               pointer-events: none;
             ">
               Faîtage central
@@ -378,7 +405,7 @@ function NativeCornerMarkersLayer({
           iconSize: [0, 0],
           iconAnchor: [0, 0]
         });
-        const ridgeMarker = L.marker([midRidgeLat, midRidgeLng], { icon: ridgeLabelIcon, interactive: false }).addTo(map);
+        const ridgeMarker = L.marker([centerLat, centerLng], { icon: ridgeLabelIcon, interactive: false }).addTo(map);
         markersRef.current.push(ridgeMarker);
 
         // Les 4 arêtes extérieures sont cliquables pour changer l'axe du faîtage central
@@ -666,7 +693,7 @@ export default function RoofMapPolygonSelector({
               }`}
               title="Toiture asymétrique / monopente : pente unique, faîtage sur un bord"
             >
-              <span>Asymétrique (1 pan)</span>
+              <span>Asymétrique</span>
             </button>
             <button
               type="button"
@@ -678,14 +705,14 @@ export default function RoofMapPolygonSelector({
               }`}
               title="Toiture symétrique : 2 pans opposés, faîtage au centre du rectangle"
             >
-              <span>Symétrique (2 pans)</span>
+              <span>Symétrique</span>
             </button>
           </div>
 
           {/* Badge d'exposition selon le mode */}
           <div className="px-5 py-2 bg-amber-50 border border-amber-200 rounded-2xl text-center shadow-xs">
             <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
-              {roofType === 'symetrique' ? 'Toiture symétrique (2 pans opposés) :' : 'Votre toiture est exposée :'}
+              {roofType === 'symetrique' ? 'Toiture symétrique :' : 'Votre toiture est exposée :'}
             </span>
             {roofType === 'symetrique' ? (
               <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-black text-amber-900 mt-0.5">
@@ -704,12 +731,12 @@ export default function RoofMapPolygonSelector({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
-            <Compass className="w-4 h-4 text-blue-600" />
-            <span>
-              {roofType === 'symetrique' ? 'Cliquez pour pivoter le faîtage central' : 'Cliquez sur un autre côté pour ajuster'}
-            </span>
-          </div>
+          {roofType !== 'symetrique' && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
+              <Compass className="w-4 h-4 text-blue-600" />
+              <span>Cliquez sur un autre côté pour ajuster</span>
+            </div>
+          )}
         </div>
       )}
     </div>

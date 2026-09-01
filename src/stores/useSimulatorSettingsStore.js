@@ -128,8 +128,7 @@ export const DEFAULT_DATABASE_SETTINGS = {
   // 3. Toiture Photovoltaïque (Tarifs EDF OA avec 3 chiffres après la virgule)
   toiturePv: {
     tarifsAchatEdfOa: [
-      { id: 'edf_36', minKwc: 0, maxKwc: 36, label: '0 à 36 kWc', tarifAchatKwh: 0.131, primeInjectionKwh: 0.040 },
-      { id: 'edf_100', minKwc: 36, maxKwc: 100, label: '36 à 100 kWc', tarifAchatKwh: 0.114, primeInjectionKwh: 0.030 },
+      { id: 'edf_100', minKwc: 0, maxKwc: 100, label: '0 à 100 kWc', tarifAchatKwh: 0.011, primeInjectionKwh: 0.030 },
       { id: 'edf_500', minKwc: 100, maxKwc: 500, label: '100 à 500 kWc', tarifAchatKwh: 0.085, primeInjectionKwh: 0.020 },
     ],
     surfaceToPowerRatio: 5.0,

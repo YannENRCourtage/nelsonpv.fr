@@ -285,14 +285,13 @@ export default function SolarRoofSimulator({
   const effectiveOrientationCoeff = panBreakdown.effectiveOrientationCoeff;
   const annualProductionKwh = panBreakdown.totalProductionKwh;
 
-  // Tarif EDF OA avec tranches dynamiques
+  // Tarif EDF OA avec tranches dynamiques (0.011 €/kWh pour <100 kWc, 0.085 €/kWh pour >=100 kWc)
   const tarifEdfOaKwh = useMemo(() => {
     const oaTarifs = toitureSettings?.tarifsAchatEdfOa || [];
     const match = oaTarifs.find(t => installedKwc > (t.minKwc || 0) && installedKwc <= (t.maxKwc || 1000));
-    if (match && match.tarifAchatKwh) return Number(match.tarifAchatKwh);
-    if (installedKwc > 100) return 0.085;
-    if (installedKwc > 36) return 0.114;
-    return 0.131;
+    if (match && match.tarifAchatKwh !== undefined) return Number(match.tarifAchatKwh);
+    if (installedKwc >= 100) return 0.085;
+    return 0.011;
   }, [installedKwc, toitureSettings]);
 
   const annualRevenueReventeTotale = useMemo(() => {
@@ -702,7 +701,7 @@ export default function SolarRoofSimulator({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
               <div>
                 <h3 className="text-xl font-black text-slate-900 leading-tight">
-                  {roofType === 'symetrique' ? 'Orientation de la toiture symétrique (2 pans)' : 'Orientation de la toiture'}
+                  {roofType === 'symetrique' ? 'Orientation de la toiture symétrique' : 'Orientation de la toiture'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {roofType === 'symetrique'
@@ -723,7 +722,7 @@ export default function SolarRoofSimulator({
                         : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                     }`}
                   >
-                    Asymétrique (1 pan)
+                    Asymétrique
                   </button>
                   <button
                     type="button"
@@ -734,7 +733,7 @@ export default function SolarRoofSimulator({
                         : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                     }`}
                   >
-                    Symétrique (2 pans)
+                    Symétrique
                   </button>
                 </div>
 
@@ -894,14 +893,24 @@ export default function SolarRoofSimulator({
                 <span className="truncate">{addressInput || 'Adresse du projet'}</span>
                 <span className="text-slate-400 font-semibold">({roofSurface} m² • {orientationInfo.orientationLabel})</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setCurrentStep(1)}
-                className="text-xs font-black text-blue-600 hover:text-blue-800 flex items-center gap-1"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Refaire une simulation
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(5)}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="text-xs font-black text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer ml-1"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Refaire une simulation
+                </button>
+              </div>
             </div>
 
             {/* Titre des Résultats */}

@@ -295,9 +295,13 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   const resolveOrientationName = (simObj) => {
     let ori = '';
     if (simObj?.roofType === 'symetrique' && simObj?.pan1 && simObj?.pan2) {
-      ori = `Symétrique (2 pans) : ${simObj.pan1.rawLabel || 'Sud'} (${simObj.pan1.angle}°) / ${simObj.pan2.rawLabel || 'Nord'} (${simObj.pan2.angle}°)`;
+      ori = `Symétrique : ${simObj.pan1.rawLabel || 'Sud'} (${simObj.pan1.angle}°) / ${simObj.pan2.rawLabel || 'Nord'} (${simObj.pan2.angle}°)`;
     } else if (simObj?.orientationLabel) {
-      ori = simObj.orientationLabel;
+      ori = simObj.orientationLabel
+        .replace(/\(2 pans\)/gi, '')
+        .replace(/\(1 pan\)/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
     } else {
       const r = Number(simObj?.rotation !== undefined ? simObj.rotation : (simObj?.buildings && simObj.buildings[0] && simObj.buildings[0].rotation !== undefined ? simObj.buildings[0].rotation : 0));
       const norm = ((((Number(r) + 180) % 360) + 360) % 360) - 180;

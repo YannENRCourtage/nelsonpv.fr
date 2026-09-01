@@ -707,7 +707,7 @@ export default function SolarAutoconsoSimulator({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
               <div>
                 <h3 className="text-xl font-black text-slate-900 leading-tight">
-                  {roofType === 'symetrique' ? 'Orientation de la toiture symétrique (2 pans)' : 'Déterminons l\'orientation de votre toiture'}
+                  {roofType === 'symetrique' ? 'Orientation de la toiture symétrique' : 'Déterminons l\'orientation de votre toiture'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {roofType === 'symetrique'
@@ -728,7 +728,7 @@ export default function SolarAutoconsoSimulator({
                         : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                     }`}
                   >
-                    Asymétrique (1 pan)
+                    Asymétrique
                   </button>
                   <button
                     type="button"
@@ -739,7 +739,7 @@ export default function SolarAutoconsoSimulator({
                         : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
                     }`}
                   >
-                    Symétrique (2 pans)
+                    Symétrique
                   </button>
                 </div>
 
@@ -1013,6 +1013,33 @@ export default function SolarAutoconsoSimulator({
             exit={{ opacity: 0, y: -15 }}
             className="space-y-4"
           >
+            {/* Barre de navigation & Récapitulatif */}
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="truncate">{addressInput || 'Adresse du projet'}</span>
+                <span className="text-slate-400 font-semibold">({roofSurface} m² • {orientationInfo.orientationLabel})</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(6)}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="text-xs font-black text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer ml-1"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Refaire une simulation
+                </button>
+              </div>
+            </div>
+
             {/* Conseil Intelligent de Puissance */}
             <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border-2 border-emerald-300 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
               <div className="flex items-center gap-3">
