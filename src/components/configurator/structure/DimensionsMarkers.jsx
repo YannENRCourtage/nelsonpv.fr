@@ -376,8 +376,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const wStart = new THREE.Vector3(xStart, yWidth, zFront);
         const wEnd = new THREE.Vector3(xEnd, yWidth, zFront);
 
-        // Gap removed for extensions to put points at ends EXCEPT for EPONA/TALIAN 1/TALIAN 3/TALIAN 4 or Asym 2 Auvent
-        const hasGap = isEpona || isTalian1 || isTalian3 || isTalian4 || (buildingType === 'asymetrique_2' && leftSide === 'auvent');
+        // Always add a gap in the line where the text label sits
+        const hasGap = true;
         const gapOffset = isTalian4 ? 1.25 : (isEpona || isTalian ? 1.0 : 1.5);
         const wPoints = hasGap ? [
             [wStart, new THREE.Vector3(xMid + gapOffset, yWidth, zFront)],
@@ -449,7 +449,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const hEnd = new THREE.Vector3(xH, visualTopRight, 0);
         const hMid = new THREE.Vector3(xH, visualMidRight, 0);
 
-        const hasGap = isEpona || isTalian1 || isTalian3 || isTalian4 || (buildingType === 'asymetrique_2' && rightSide === 'auvent');
+        // Always add a gap in the line where the text label sits
+        const hasGap = true;
         const gapOffset = isTalian4 ? 1.25 : (isEpona || isTalian ? 1.0 : 1.5);
         const wPoints = hasGap ? [
             [wStart, new THREE.Vector3(wMid.x - gapOffset, yWidth, zFront)],

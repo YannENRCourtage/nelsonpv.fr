@@ -34,8 +34,8 @@ export function Bracing({
         <BraceRod key={key} start={start} end={end} material={bracingMaterial} thickness={0.03} />
     );
 
-    // Loop through bays and add bracing every 4 bays
-    for (let i = 0; i < bayCount; i += 4) {
+    // Loop through bays and add bracing - start at 2nd bay (index 1)
+    for (let i = 1; i < bayCount; i += 4) {
         const zStart = -i * baySpacing;
         const zEnd = -(i + 1) * baySpacing;
 
@@ -49,13 +49,13 @@ export function Bracing({
             const apexX = -w / 2 + spans.left;
             const roofOffset = 0.35;
 
-            // Wall Bracing
-            bracings.push(createRod(new THREE.Vector3(-w / 2, yBot, zStart), new THREE.Vector3(-w / 2, cp.leftEaveHeight - 0.5, zEnd), `wall-C-L-${i}-1`));
-            bracings.push(createRod(new THREE.Vector3(-w / 2, cp.leftEaveHeight - 0.5, zStart), new THREE.Vector3(-w / 2, yBot, zEnd), `wall-C-L-${i}-2`));
+            // Wall Bracing (top reaches sablière)
+            bracings.push(createRod(new THREE.Vector3(-w / 2, yBot, zStart), new THREE.Vector3(-w / 2, cp.leftEaveHeight, zEnd), `wall-C-L-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(-w / 2, cp.leftEaveHeight, zStart), new THREE.Vector3(-w / 2, yBot, zEnd), `wall-C-L-${i}-2`));
 
             if (cp.buildingType !== 'monopente') {
-                bracings.push(createRod(new THREE.Vector3(w / 2, yBot, zStart), new THREE.Vector3(w / 2, cp.rightEaveHeight - 0.5, zEnd), `wall-C-R-${i}-1`));
-                bracings.push(createRod(new THREE.Vector3(w / 2, cp.rightEaveHeight - 0.5, zStart), new THREE.Vector3(w / 2, yBot, zEnd), `wall-C-R-${i}-2`));
+                bracings.push(createRod(new THREE.Vector3(w / 2, yBot, zStart), new THREE.Vector3(w / 2, cp.rightEaveHeight, zEnd), `wall-C-R-${i}-1`));
+                bracings.push(createRod(new THREE.Vector3(w / 2, cp.rightEaveHeight, zStart), new THREE.Vector3(w / 2, yBot, zEnd), `wall-C-R-${i}-2`));
             }
 
             // Roof Bracing
@@ -86,13 +86,13 @@ export function Bracing({
             continue; // Move to next bay
         }
 
-        // --- Main Building Eaves ---
-        let yTopMainLeft = (buildingType === 'monopente') ? ridgeHeight - 0.5 : eaveHeight - 0.5;
-        let yTopMainRight = eaveHeight - 0.5;
+        // --- Main Building Eaves --- (Top of cross reaches bottom of sablière)
+        let yTopMainLeft = (buildingType === 'monopente') ? ridgeHeight : eaveHeight;
+        let yTopMainRight = eaveHeight;
         if (buildingType === 'asymetrique_1') {
-            yTopMainRight = 3.9;
+            yTopMainRight = 4.0;
         } else if (buildingType === 'asymetrique_2') {
-            yTopMainRight = 3.7;
+            yTopMainRight = 4.0;
         } else if (buildingType === 'epona_talian5') {
             yTopMainLeft = 7.9; // Reach exactly the eave
             yTopMainRight = 4.3; // Reach exactly the eave
@@ -117,18 +117,18 @@ export function Bracing({
 
         // --- Extension Eaves (TALIAN ACAMA specific) ---
         if (isTalian) {
-            // Extension Eave Heights (Approximate based on Auvent/Awning logic)
-            let leftExtEaveH = eaveHeight - 0.5;
-            let rightExtEaveH = eaveHeight - 0.5;
+            // Extension Eave Heights (top reaches sablière)
+            let leftExtEaveH = eaveHeight;
+            let rightExtEaveH = eaveHeight;
 
             if (leftSide !== 'none' && !isTalian) {
                 if (leftSide === 'auvent') {
                     const auventW = isTalian1 ? 2.3 : (isTalian3 ? 1.8 : 4.0);
                     const auventAngle = (isTalian1 ? 14 : (isTalian3 ? 12 : 10)) * (Math.PI / 180);
                     const auventStartH = isTalian1 ? eaveHeight + 0.2 : (isTalian3 ? eaveHeight + 0.4 : 5.5);
-                    leftExtEaveH = auventStartH - (auventW * Math.tan(auventAngle)) - 0.5;
+                    leftExtEaveH = auventStartH - (auventW * Math.tan(auventAngle));
                 } else if (leftSide === 'appentis') {
-                    leftExtEaveH = eaveHeight - (leftWidth * Math.tan(angleRad)) - 0.5;
+                    leftExtEaveH = eaveHeight - (leftWidth * Math.tan(angleRad));
                 }
                 const xLExt = -(width / 2 + leftWidth);
                 bracings.push(createRod(new THREE.Vector3(xLExt, yBot, zStart), new THREE.Vector3(xLExt, leftExtEaveH, zEnd), `wall-extL-${i}-1`));
@@ -140,9 +140,9 @@ export function Bracing({
                     const auventW = isTalian1 ? 2.3 : (isTalian3 ? 1.8 : 4.0);
                     const auventAngle = (isTalian1 ? 14 : (isTalian3 ? 12 : 10)) * (Math.PI / 180);
                     const auventStartH = isTalian1 ? eaveHeight + 0.2 : (isTalian3 ? eaveHeight + 0.4 : 5.5);
-                    rightExtEaveH = auventStartH - (auventW * Math.tan(auventAngle)) - 0.5;
+                    rightExtEaveH = auventStartH - (auventW * Math.tan(auventAngle));
                 } else if (rightSide === 'appentis') {
-                    rightExtEaveH = eaveHeight - (rightWidth * Math.tan(angleRad)) - 0.5;
+                    rightExtEaveH = eaveHeight - (rightWidth * Math.tan(angleRad));
                 }
                 const xRExt = width / 2 + rightWidth;
                 bracings.push(createRod(new THREE.Vector3(xRExt, yBot, zStart), new THREE.Vector3(xRExt, rightExtEaveH, zEnd), `wall-extR-${i}-1`));
