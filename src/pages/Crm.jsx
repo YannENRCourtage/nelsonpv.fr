@@ -902,8 +902,8 @@ export default function Crm() {
   });
 
   const renderDashboard = () => (
-    <div className="space-y-4 lg:space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5 crm-kpi-grid">
+    <div className="flex-1 flex flex-col min-h-0 space-y-4 lg:space-y-5">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5 crm-kpi-grid shrink-0">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
@@ -920,15 +920,15 @@ export default function Crm() {
           );
         })}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
-        <div className="lg:col-span-2 space-y-6 flex flex-col">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 lg:p-5 flex-1 flex flex-col max-h-[380px]">
-            <h2 className="text-lg lg:text-xl font-bold text-slate-900 mb-3 lg:mb-4">Nouveaux Projets</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6 flex-1 min-h-0">
+        <div className="lg:col-span-2 flex flex-col min-h-0 h-full">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 lg:p-5 flex-1 flex flex-col min-h-0 h-full">
+            <h2 className="text-lg lg:text-xl font-bold text-slate-900 mb-3 lg:mb-4 shrink-0">Nouveaux Projets</h2>
             <div className="space-y-2.5 flex-1 overflow-y-auto pr-1">
               {projects
                 .filter(p => !p.status || p.status === 'Nouveau' || p.status === 'draft')
                 .sort((a, b) => (new Date(b.createdAt || 0) - new Date(a.createdAt || 0)) || (b.id - a.id)) // Sort by newest (using createdAt or fallback to id)
-                .slice(0, 8) // Limit to 8 items
+                .slice(0, 20)
                 .map(p => (
                   <div key={p.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
                     <div><div className="font-bold text-sm lg:text-base text-slate-900">{p.name || 'Projet'}</div><div className="text-xs text-slate-500">{p.city || '-'} • {p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau')}</div></div>
@@ -938,10 +938,10 @@ export default function Crm() {
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 lg:p-5 h-full max-h-[380px] flex flex-col">
-          <h2 className="text-lg lg:text-xl font-bold text-slate-900 mb-3 lg:mb-4">Activités récentes</h2>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 lg:p-5 h-full flex flex-col min-h-0">
+          <h2 className="text-lg lg:text-xl font-bold text-slate-900 mb-3 lg:mb-4 shrink-0">Activités récentes</h2>
           <div className="space-y-2 flex-1 overflow-y-auto pr-1">
-            {activities.length > 0 ? activities.slice(0, 9).map(a => {
+            {activities.length > 0 ? activities.slice(0, 20).map(a => {
               const colors = { project: 'bg-green-500', contact: 'bg-blue-500', task: 'bg-orange-500', user: 'bg-indigo-500' };
               // Résoudre la photo de l'utilisateur : d'abord depuis l'activité, sinon depuis la liste des utilisateurs
               const activityUser = users.find(u => u.id === a.userId);
@@ -2274,9 +2274,9 @@ export default function Crm() {
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden flex flex-col">
-        <div className="p-4 lg:p-6">
+        <div className="p-4 lg:p-6 flex-1 flex flex-col min-h-0">
           {/* Header */}
-          <div className="mb-5">
+          <div className="mb-4 lg:mb-5 shrink-0">
             <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 mb-1">
               {navItems.find(item => item.id === activeTab)?.label}
               {activeTab === 'contacts' && <span className="text-slate-400 font-normal ml-2 text-xl lg:text-2xl">({filteredContacts.length})</span>}
