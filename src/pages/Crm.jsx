@@ -368,7 +368,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.contacts, contacts, 'contacts'),
       color: 'bg-blue-500',
       bgLight: 'bg-blue-50',
-      height: 'h-32 lg:h-48'
+      height: 'h-28 lg:h-32'
     },
     {
       icon: FolderHeart,
@@ -377,7 +377,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.projectsInProgress, projects, 'projects_in_progress'),
       color: 'bg-green-500',
       bgLight: 'bg-green-50',
-      height: 'h-32 lg:h-48'
+      height: 'h-28 lg:h-32'
     },
     {
       icon: CheckSquare,
@@ -386,7 +386,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.tasksInProgress, tasks, 'tasks_in_progress'),
       color: 'bg-orange-500',
       bgLight: 'bg-orange-50',
-      height: 'h-32 lg:h-48'
+      height: 'h-28 lg:h-32'
     },
     {
       icon: CheckCircle2,
@@ -395,7 +395,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.projectsCompleted, projects, 'projects_completed'),
       color: 'bg-purple-500',
       bgLight: 'bg-purple-50',
-      height: 'h-32 lg:h-48'
+      height: 'h-28 lg:h-32'
     },
   ];
 
@@ -902,75 +902,75 @@ export default function Crm() {
   });
 
   const renderDashboard = () => (
-    <div className="space-y-6 lg:space-y-8">
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 crm-kpi-grid">
+    <div className="space-y-4 lg:space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5 crm-kpi-grid">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
-            <div key={idx} className={`bg-white rounded-xl lg:rounded-2xl shadow-sm border border-slate-200 p-3 lg:p-6 ${kpi.height || ''} flex flex-col justify-between hover:shadow-md transition-shadow`}>
-              <div className="flex items-start justify-between mb-2 lg:mb-4">
-                <div className={`${kpi.bgLight} p-1.5 lg:p-3 rounded-lg lg:rounded-xl`}><Icon className={`w-4 h-4 lg:w-6 lg:h-6 ${kpi.color.replace('bg-', 'text-')}`} /></div>
-                <span className={`text-[10px] lg:text-sm font-semibold px-1.5 lg:py-1 rounded-full ${kpi.trendPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{kpi.trend}</span>
+            <div key={idx} className={`bg-white rounded-xl lg:rounded-2xl shadow-sm border border-slate-200 p-3 lg:p-4 ${kpi.height || ''} flex flex-col justify-between hover:shadow-md transition-shadow`}>
+              <div className="flex items-start justify-between mb-1.5 lg:mb-2">
+                <div className={`${kpi.bgLight} p-1.5 lg:p-2.5 rounded-lg lg:rounded-xl`}><Icon className={`w-4 h-4 lg:w-5 lg:h-5 ${kpi.color.replace('bg-', 'text-')}`} /></div>
+                <span className={`text-[10px] lg:text-xs font-semibold px-1.5 lg:px-2 py-0.5 rounded-full ${kpi.trendPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{kpi.trend}</span>
               </div>
               <div className="mt-auto">
                 <p className="text-lg lg:text-2xl font-bold text-slate-900 mb-0.5">{kpi.value}</p>
-                <p className="text-[10px] lg:text-sm text-slate-600 line-clamp-1">{kpi.label}</p>
+                <p className="text-[10px] lg:text-xs text-slate-600 line-clamp-1">{kpi.label}</p>
               </div>
             </div>
           );
         })}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
-        <div className="lg:col-span-2 space-y-8 flex flex-col">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex-1 flex flex-col">
-            <h2 className="text-xl font-bold text-slate-900 mb-6">Nouveaux Projets</h2>
-            <div className="space-y-4 flex-1">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+        <div className="lg:col-span-2 space-y-6 flex flex-col">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 lg:p-5 flex-1 flex flex-col max-h-[380px]">
+            <h2 className="text-lg lg:text-xl font-bold text-slate-900 mb-3 lg:mb-4">Nouveaux Projets</h2>
+            <div className="space-y-2.5 flex-1 overflow-y-auto pr-1">
               {projects
                 .filter(p => !p.status || p.status === 'Nouveau' || p.status === 'draft')
                 .sort((a, b) => (new Date(b.createdAt || 0) - new Date(a.createdAt || 0)) || (b.id - a.id)) // Sort by newest (using createdAt or fallback to id)
                 .slice(0, 8) // Limit to 8 items
                 .map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                    <div><div className="font-bold text-slate-900">{p.name || 'Projet'}</div><div className="text-xs text-slate-500">{p.city || '-'} • {p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau')}</div></div>
+                  <div key={p.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <div><div className="font-bold text-sm lg:text-base text-slate-900">{p.name || 'Projet'}</div><div className="text-xs text-slate-500">{p.city || '-'} • {p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau')}</div></div>
                     <Button size="sm" variant="ghost" className="text-blue-600" onClick={() => navigate(`/project/${p.id}/edit`)}><ExternalLink className="w-4 h-4" /></Button>
                   </div>
                 ))}
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full flex flex-col">
-          <h2 className="text-xl font-bold text-slate-900 mb-6">Activités récentes</h2>
-          <div className="space-y-4 flex-1 overflow-y-auto">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 lg:p-5 h-full max-h-[380px] flex flex-col">
+          <h2 className="text-lg lg:text-xl font-bold text-slate-900 mb-3 lg:mb-4">Activités récentes</h2>
+          <div className="space-y-2 flex-1 overflow-y-auto pr-1">
             {activities.length > 0 ? activities.slice(0, 9).map(a => {
               const colors = { project: 'bg-green-500', contact: 'bg-blue-500', task: 'bg-orange-500', user: 'bg-indigo-500' };
               // Résoudre la photo de l'utilisateur : d'abord depuis l'activité, sinon depuis la liste des utilisateurs
               const activityUser = users.find(u => u.id === a.userId);
               const photoURL = activityUser?.photoURL || a.userPhotoURL;
               return (
-                <div key={a.id} className="flex items-start gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors">
+                <div key={a.id} className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-lg transition-colors">
                   {photoURL ? (
                     <img
                       src={photoURL}
                       alt={a.userName || 'User'}
-                      className="w-10 h-10 rounded-full flex-shrink-0 object-cover border-2 border-white shadow"
+                      className="w-8 h-8 rounded-full flex-shrink-0 object-cover border-2 border-white shadow"
                     />
                   ) : (
-                    <div className={`${colors[a.type] || 'bg-slate-500'} w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}>
+                    <div className={`${colors[a.type] || 'bg-slate-500'} w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 text-xs`}>
                       {a.userName?.[0]?.toUpperCase() || 'U'}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-900 leading-snug">
+                    <p className="text-xs lg:text-sm text-slate-900 leading-snug">
                       {a.description?.replace(/ACAMA|GREEN INVEST/g, 'un tiers')}
                     </p>
-                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                    <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {formatTime(a.timestamp)}
                     </p>
                   </div>
                 </div>
               );
-            }) : <div className="text-center py-10 text-slate-500 text-sm">Aucune activité récente</div>}
+            }) : <div className="text-center py-8 text-slate-500 text-sm">Aucune activité récente</div>}
           </div>
         </div>
       </div>
@@ -2170,7 +2170,7 @@ export default function Crm() {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 overflow-hidden">
+    <div className="flex h-[calc(100vh-65px)] bg-gradient-to-br from-slate-50 via-white to-slate-100 overflow-hidden">
       {/* Sidebar */}
       <aside
         className={cn(
@@ -2233,7 +2233,7 @@ export default function Crm() {
         </div>
 
         {/* User Profile */}
-        <div className="p-3 border-t border-slate-800">
+        <div className="p-3 pb-3.5 border-t border-slate-800">
           <div className={cn("flex items-center rounded-xl bg-slate-800/50", sidebarOpen ? "gap-3 p-2.5" : "justify-center p-2")}>
             <div className={`${currentUser.color} w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs overflow-hidden shrink-0`}>
               {currentUser.photoURL ? (
@@ -2274,15 +2274,15 @@ export default function Crm() {
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden flex flex-col">
-        <div className="p-4 lg:p-8">
+        <div className="p-4 lg:p-6">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">
+          <div className="mb-5">
+            <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 mb-1">
               {navItems.find(item => item.id === activeTab)?.label}
-              {activeTab === 'contacts' && <span className="text-slate-400 font-normal ml-2 text-2xl">({filteredContacts.length})</span>}
-              {activeTab === 'projects' && <span className="text-slate-400 font-normal ml-2 text-2xl">({filteredProjects.length})</span>}
+              {activeTab === 'contacts' && <span className="text-slate-400 font-normal ml-2 text-xl lg:text-2xl">({filteredContacts.length})</span>}
+              {activeTab === 'projects' && <span className="text-slate-400 font-normal ml-2 text-xl lg:text-2xl">({filteredProjects.length})</span>}
             </h1>
-            <p className="text-slate-600">
+            <p className="text-sm lg:text-base text-slate-600">
               {activeTab === 'dashboard' && 'Vue d\'ensemble de votre activité'}
               {activeTab === 'contacts' && 'Gérez vos contacts et leurs projets'}
               {activeTab === 'projects' && 'Gérer les projets de construction et de location de toitures'}
