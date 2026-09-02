@@ -199,10 +199,17 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const hasInitializedRef = React.useRef(false);
   const prevProjectIdRef = React.useRef(null);
 
+  const { activeTenantId } = useAuth() || {};
+  const isAcama = activeTenantId === 'acama';
+  
+  // Zustand Store du Configurateur Nelson
+  const config = useConfiguratorValues();
+  const configActions = useConfiguratorActions();
+
   const getBuildingDisplayName = useCallback((b, idx) => {
     if (!b) return isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
-    const bLen = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config.length || 30)));
-    const bWid = Number(b.width || config.width || 15);
+    const bLen = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config?.length || 30)));
+    const bWid = Number(b.width || config?.width || 15);
     
     // For ACAMA or whenever the name has "Station Batteries" or generic name
     if (isAcama || (b.name && b.name.toLowerCase().includes('batterie'))) {
@@ -215,17 +222,11 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
       .trim();
     return name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
-  }, [isDP, isAcama, config.length, config.width]);
+  }, [isDP, isAcama, config?.length, config?.width]);
 
   const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
   const [solutionType, setSolutionType] = useState(isDP ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
-  const { activeTenantId } = useAuth() || {};
-  const isAcama = activeTenantId === 'acama';
-  
-  // Zustand Store du Configurateur Nelson
-  const config = useConfiguratorValues();
-  const configActions = useConfiguratorActions();
 
   // Sync ACAMA mode on open
   useEffect(() => {
