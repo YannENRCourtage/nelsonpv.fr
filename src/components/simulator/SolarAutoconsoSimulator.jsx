@@ -1257,6 +1257,8 @@ export default function SolarAutoconsoSimulator({
               orientationInfo={orientationInfo}
               consoKwh={consoKwh}
               annualProductionKwh={annualProductionKwh}
+              roofType={roofType}
+              panBreakdown={panBreakdown}
             />
 
             {/* Graphique Financier 30 ans */}

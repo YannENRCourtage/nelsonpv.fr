@@ -7,7 +7,7 @@ import {
   RotateCw, ArrowRightLeft, Maximize2, ShieldCheck, Compass
 } from 'lucide-react';
 
-import { computeValidSolarSlots } from '@/utils/solarCalepinage';
+import { computeMultiPanSolarSlots } from '@/utils/solarCalepinage';
 
 // Ajustement automatique de la vue sur le polygone
 function AutoFitPolygon({ polygonPoints, center }) {
@@ -25,66 +25,86 @@ function AutoFitPolygon({ polygonPoints, center }) {
   return null;
 }
 
-// Couche de dessin réaliste des panneaux solaires sur le polygone à la côte exacte (parallèle à la sablière)
-function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, ridgeIndex = 0, isLandscape = false }) {
+// Couche de dessin SVG haute fidélité des panneaux solaires
+function SolarPanelsSvgOverlay({ polygonPoints, customKwc = 6, panelCount, ridgeIndex = 0, isLandscape = false, roofType = 'asymetrique', panBreakdown = null, sliderPosition = null }) {
   const map = useMap();
-  const layerRef = useRef(null);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    if (!map || !polygonPoints || polygonPoints.length < 3) return;
-
-    if (layerRef.current) {
-      map.removeLayer(layerRef.current);
-      layerRef.current = null;
-    }
-
-    const group = L.layerGroup().addTo(map);
-    layerRef.current = group;
-
-    const latlngs = polygonPoints.map(p => [p.lat, p.lng]);
-
-    // 1. Cadre de base toiture / rails de fixation
-    L.polygon(latlngs, {
-      color: '#0284c7',
-      weight: 2,
-      fillColor: '#0f172a',
-      fillOpacity: 0.25,
-      dashArray: '4, 3'
-    }).addTo(group);
-
-    // 2. Calcul des emplacements géométriquement valides (strictement parallèle à la sablière)
-    try {
-      const { slots, maxPanels } = computeValidSolarSlots(polygonPoints, ridgeIndex, isLandscape);
-      const targetPanels = panelCount || Math.max(1, Math.round((customKwc * 1000) / 465));
-      const countToPlace = Math.min(targetPanels, maxPanels);
-
-      for (let i = 0; i < countToPlace; i++) {
-        const slot = slots[i];
-        if (!slot) break;
-
-        const cornersLatLng = slot.corners.map(c => [c.lat, c.lng]);
-
-        // Panneau Solaire (Bleu nuit antireflet + bordure cyan/alu)
-        L.polygon(cornersLatLng, {
-          color: '#38bdf8',
-          weight: 1.2,
-          fillColor: '#0c192c',
-          fillOpacity: 0.95,
-          className: 'solar-panel-portrait'
-        }).addTo(group);
-      }
-    } catch (e) {
-      console.warn('Erreur calepinage panneaux:', e);
-    }
-
+    if (!map) return;
+    const update = () => setTick(t => t + 1);
+    map.on('move', update);
+    map.on('zoom', update);
+    map.on('resize', update);
+    map.invalidateSize();
     return () => {
-      if (layerRef.current && map) {
-        map.removeLayer(layerRef.current);
-      }
+      map.off('move', update);
+      map.off('zoom', update);
+      map.off('resize', update);
     };
-  }, [map, polygonPoints, customKwc, panelCount, ridgeIndex, isLandscape]);
+  }, [map]);
 
-  return null;
+  const targetPanels = panelCount || Math.max(1, Math.round((customKwc * 1000) / 465));
+
+  const multiPanResult = useMemo(() => {
+    return computeMultiPanSolarSlots(polygonPoints, roofType, ridgeIndex, isLandscape, panBreakdown, targetPanels);
+  }, [polygonPoints, roofType, ridgeIndex, isLandscape, panBreakdown, targetPanels]);
+
+  if (!map || !polygonPoints || polygonPoints.length < 3) return null;
+
+  const slots = multiPanResult.slots || [];
+
+  // Conversion des coordonnées de chaque coin de panneau en pixels écran
+  const renderedPanels = slots.map(slot => {
+    return slot.corners.map(c => {
+      const pt = map.latLngToContainerPoint([c.lat, c.lng]);
+      return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+    }).join(' ');
+  });
+
+  // Contour du polygone de toiture
+  const roofOutlinePts = polygonPoints.map(p => {
+    const pt = map.latLngToContainerPoint([p.lat, p.lng]);
+    return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+  }).join(' ');
+
+  // Masque dynamique : la droite de la ligne (sliderPosition% à 100%) est VISIBLE, la gauche est MASQUÉE
+  const clipStyle = typeof sliderPosition === 'number'
+    ? {
+        clipPath: `polygon(${sliderPosition}% 0, 100% 0, 100% 100%, ${sliderPosition}% 100%)`,
+        WebkitClipPath: `polygon(${sliderPosition}% 0, 100% 0, 100% 100%, ${sliderPosition}% 100%)`
+      }
+    : {};
+
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none z-[400]"
+      style={clipStyle}
+    >
+      {/* Cadre de fixation / rails */}
+      {roofOutlinePts && (
+        <polygon
+          points={roofOutlinePts}
+          fill="#0f172a"
+          fillOpacity="0.25"
+          stroke="#0284c7"
+          strokeWidth="2"
+          strokeDasharray="4 3"
+        />
+      )}
+      {/* Panneaux solaires (Bleu nuit antireflet + bordure cyan/alu) */}
+      {renderedPanels.map((pts, i) => (
+        <polygon
+          key={i}
+          points={pts}
+          fill="#0c192c"
+          fillOpacity="0.96"
+          stroke="#38bdf8"
+          strokeWidth="1.2"
+        />
+      ))}
+    </svg>
+  );
 }
 
 /**
@@ -100,7 +120,9 @@ export default function SolarRoofBeforeAfterViewer({
   isLandscape = false,
   orientationInfo = { orientationLabel: 'Plein Sud (0°)', angle: 0 },
   consoKwh = 10000,
-  annualProductionKwh = 7500
+  annualProductionKwh = 7500,
+  roofType = 'asymetrique',
+  panBreakdown = null
 }) {
   const [viewMode, setViewMode] = useState('slider'); // 'slider' | 'side-by-side' | 'before' | 'after'
   const [sliderPosition, setSliderPosition] = useState(50); // 0 à 100%
@@ -161,7 +183,7 @@ export default function SolarRoofBeforeAfterViewer({
               Visuel Avant / Après de votre Toiture Solaire
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Visualisez l’intégration esthétique des <strong>{panelCount} modules photovoltaïques ({customKwc} kWc)</strong> sur votre pan de toiture de <strong>{roofSurface} m²</strong>.
+              Visualisez l’intégration esthétique des <strong>{panelCount} modules photovoltaïques ({customKwc} kWc)</strong> sur votre toiture de <strong>{roofSurface} m²</strong>.
             </p>
           </div>
         </div>
@@ -231,7 +253,7 @@ export default function SolarRoofBeforeAfterViewer({
           onPointerCancel={handlePointerUp}
           className="relative w-full h-[420px] sm:h-[480px] rounded-3xl overflow-hidden shadow-lg border border-slate-200 select-none bg-slate-950 cursor-ew-resize touch-none"
         >
-          {/* COUCHE 1 (Fond / Dessous) : Vue APRÈS avec panneaux solaires complets */}
+          {/* CARTE SATELLITE UNIQUE (Fond Avant & Après) */}
           <div className="absolute inset-0 w-full h-full">
             <MapContainer
               center={center}
@@ -251,43 +273,7 @@ export default function SolarRoofBeforeAfterViewer({
                 maxZoom={23}
                 crossOrigin="anonymous"
               />
-              <SolarPanelsLayer
-                polygonPoints={polygonPoints}
-                customKwc={customKwc}
-                panelCount={panelCount}
-                ridgeIndex={ridgeIndex}
-                isLandscape={isLandscape}
-              />
-            </MapContainer>
-          </div>
-
-          {/* COUCHE 2 (Dessus) : Vue AVANT (Toiture Brute clippée de 0 à sliderPosition%) */}
-          <div
-            className="absolute inset-0 w-full h-full pointer-events-none z-10 overflow-hidden"
-            style={{
-              clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`,
-              WebkitClipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`
-            }}
-          >
-            <MapContainer
-              center={center}
-              zoom={20}
-              maxZoom={23}
-              scrollWheelZoom={false}
-              dragging={false}
-              zoomControl={false}
-              doubleClickZoom={false}
-              touchZoom={false}
-              className="w-full h-full pointer-events-none"
-            >
-              <AutoFitPolygon polygonPoints={polygonPoints} center={center} />
-              <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                maxNativeZoom={19}
-                maxZoom={23}
-                crossOrigin="anonymous"
-              />
-              {/* Contour discret de la toiture brute */}
+              {/* Contour discret de la toiture brute (toujours visible) */}
               {polygonPoints && polygonPoints.length >= 3 && (
                 <Polygon
                   positions={polygonPoints.map(p => [p.lat, p.lng])}
@@ -300,6 +286,17 @@ export default function SolarRoofBeforeAfterViewer({
                   }}
                 />
               )}
+              {/* Surcouche SVG des panneaux solaires clippée à la ligne du curseur */}
+              <SolarPanelsSvgOverlay
+                polygonPoints={polygonPoints}
+                customKwc={customKwc}
+                panelCount={panelCount}
+                ridgeIndex={ridgeIndex}
+                isLandscape={isLandscape}
+                roofType={roofType}
+                panBreakdown={panBreakdown}
+                sliderPosition={sliderPosition}
+              />
             </MapContainer>
           </div>
 
@@ -400,12 +397,15 @@ export default function SolarRoofBeforeAfterViewer({
                 maxZoom={23}
                 crossOrigin="anonymous"
               />
-              <SolarPanelsLayer
+              <SolarPanelsSvgOverlay
                 polygonPoints={polygonPoints}
                 customKwc={customKwc}
                 panelCount={panelCount}
                 ridgeIndex={ridgeIndex}
                 isLandscape={isLandscape}
+                roofType={roofType}
+                panBreakdown={panBreakdown}
+                sliderPosition={null}
               />
             </MapContainer>
             <div className="absolute top-3 left-3 z-[1000] bg-emerald-950/90 backdrop-blur text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-black border border-emerald-500/50 flex items-center gap-1.5 shadow-md">
@@ -436,12 +436,15 @@ export default function SolarRoofBeforeAfterViewer({
               crossOrigin="anonymous"
             />
             {viewMode === 'after' ? (
-              <SolarPanelsLayer
+              <SolarPanelsSvgOverlay
                 polygonPoints={polygonPoints}
                 customKwc={customKwc}
                 panelCount={panelCount}
                 ridgeIndex={ridgeIndex}
                 isLandscape={isLandscape}
+                roofType={roofType}
+                panBreakdown={panBreakdown}
+                sliderPosition={null}
               />
             ) : (
               polygonPoints && polygonPoints.length >= 3 && (

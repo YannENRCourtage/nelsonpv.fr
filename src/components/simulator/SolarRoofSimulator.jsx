@@ -1174,6 +1174,8 @@ export default function SolarRoofSimulator({
               isLandscape={false}
               orientationInfo={orientationInfo}
               annualProductionKwh={annualProductionKwh}
+              roofType={roofType}
+              panBreakdown={panBreakdown}
             />
 
             {/* ─── SECTION REVENUS CUMULÉS SUR 30 ANS ───────────── */}

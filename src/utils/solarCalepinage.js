@@ -177,3 +177,96 @@ export function computeValidSolarSlots(polygonPoints, ridgeIndex = 0, isLandscap
 
   return { slots, maxPanels, maxKwc, rowsCount: rows.length };
 }
+
+/**
+ * Découpe géométrique précise d'un polygone à 4 sommets selon l'axe du faîtage central
+ * Retourne le sous-polygone OUEST (gauche, Versant 1) et le sous-polygone EST (droite, Versant 2)
+ */
+export function splitPolygonByRidge(polygonPoints, ridgeIndex = 0) {
+  if (!polygonPoints || polygonPoints.length < 4) {
+    return { polyWest: polygonPoints || [], polyEast: polygonPoints || [] };
+  }
+  const pts = polygonPoints;
+  const isParallel02 = (ridgeIndex === 0 || ridgeIndex === 2);
+
+  let midA, midB, polyA, polyB;
+
+  if (isParallel02) {
+    // Faîtage horizontal (Axe A reliant [p3, p0] et [p1, p2])
+    midA = { lat: (pts[3].lat + pts[0].lat) / 2, lng: (pts[3].lng + pts[0].lng) / 2 };
+    midB = { lat: (pts[1].lat + pts[2].lat) / 2, lng: (pts[1].lng + pts[2].lng) / 2 };
+    polyA = [pts[0], pts[1], midB, midA];
+    polyB = [midA, midB, pts[2], pts[3]];
+  } else {
+    // Faîtage vertical standard Nord-Sud (Axe B reliant [p0, p1] et [p2, p3])
+    midA = { lat: (pts[0].lat + pts[1].lat) / 2, lng: (pts[0].lng + pts[1].lng) / 2 }; // Milieu haut
+    midB = { lat: (pts[2].lat + pts[3].lat) / 2, lng: (pts[2].lng + pts[3].lng) / 2 }; // Milieu bas
+    polyA = [pts[0], midA, midB, pts[3]]; // Moitié gauche
+    polyB = [midA, pts[1], pts[2], midB]; // Moitié droite
+  }
+
+  // Calcul du centre de longitude pour distinguer formellement Ouest (gauche) vs Est (droite)
+  const cLngA = polyA.reduce((sum, p) => sum + p.lng, 0) / polyA.length;
+  const cLngB = polyB.reduce((sum, p) => sum + p.lng, 0) / polyB.length;
+
+  const polyWest = cLngA <= cLngB ? polyA : polyB; // Versant 1 : Plein Ouest (Gauche)
+  const polyEast = cLngA <= cLngB ? polyB : polyA; // Versant 2 : Plein Est (Droite)
+
+  return { polyWest, polyEast };
+}
+
+/**
+ * Calcule l'implantation complète des panneaux pour une toiture monopente ou bi-pans symétrique
+ */
+export function computeMultiPanSolarSlots(polygonPoints, roofType = 'asymetrique', ridgeIndex = 0, isLandscape = false, panBreakdown = null, totalTargetPanels = 14) {
+  if (!polygonPoints || polygonPoints.length < 3) {
+    return { slots: [], maxPanels: 0, maxKwc: 0 };
+  }
+
+  if (roofType === 'symetrique' && polygonPoints.length >= 4) {
+    const { polyWest, polyEast } = splitPolygonByRidge(polygonPoints, ridgeIndex);
+
+    const resWest = computeValidSolarSlots(polyWest, 0, isLandscape);
+    const resEast = computeValidSolarSlots(polyEast, 0, isLandscape);
+
+    // Détermination du nombre de panneaux à placer sur chaque versant
+    let targetPanelsWest = 0; // Versant 1 (Ouest)
+    let targetPanelsEast = 0; // Versant 2 (Est)
+
+    if (panBreakdown && panBreakdown.bestPan) {
+      if (panBreakdown.bestPan.panNum === 2) {
+        // Versant 2 (Est) est prioritaire
+        targetPanelsEast = panBreakdown.bestPan.installedPanels || 0;
+        targetPanelsWest = panBreakdown.worstPan?.installedPanels || 0;
+      } else {
+        // Versant 1 (Ouest) est prioritaire
+        targetPanelsWest = panBreakdown.bestPan.installedPanels || 0;
+        targetPanelsEast = panBreakdown.worstPan?.installedPanels || 0;
+      }
+    } else {
+      const half = Math.ceil(totalTargetPanels / 2);
+      targetPanelsEast = half;
+      targetPanelsWest = totalTargetPanels - half;
+    }
+
+    const slotsWestPlaced = resWest.slots.slice(0, Math.min(targetPanelsWest, resWest.maxPanels));
+    const slotsEastPlaced = resEast.slots.slice(0, Math.min(targetPanelsEast, resEast.maxPanels));
+
+    const allSlots = [...slotsWestPlaced, ...slotsEastPlaced];
+    const totalMax = resWest.maxPanels + resEast.maxPanels;
+    const maxKwc = Math.round((totalMax * PANEL_POWER_W) / 100) / 10;
+
+    return {
+      slots: allSlots,
+      maxPanels: totalMax,
+      maxKwc,
+      slotsWest: slotsWestPlaced,
+      slotsEast: slotsEastPlaced,
+      polyWest,
+      polyEast
+    };
+  }
+
+  // Toiture monopente / asymétrique
+  return computeValidSolarSlots(polygonPoints, ridgeIndex, isLandscape);
+}
