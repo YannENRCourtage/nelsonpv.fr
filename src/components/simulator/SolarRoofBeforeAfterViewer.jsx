@@ -122,23 +122,28 @@ export default function SolarRoofBeforeAfterViewer({
     setSliderPosition(Math.max(0, Math.min(100, pos)));
   };
 
-  const handleMouseDown = () => {
+  const handlePointerDown = (e) => {
     isDragging.current = true;
+    handleSliderMove(e.clientX);
+    if (e.currentTarget.setPointerCapture) {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch (err) {}
+    }
   };
 
-  const handleMouseMove = (e) => {
+  const handlePointerMove = (e) => {
     if (isDragging.current) {
       handleSliderMove(e.clientX);
     }
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (e) => {
     isDragging.current = false;
-  };
-
-  const handleTouchMove = (e) => {
-    if (e.touches && e.touches[0]) {
-      handleSliderMove(e.touches[0].clientX);
+    if (e.currentTarget.releasePointerCapture) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (err) {}
     }
   };
 
@@ -219,10 +224,11 @@ export default function SolarRoofBeforeAfterViewer({
       {viewMode === 'slider' && (
         <div
           ref={containerRef}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onTouchMove={handleTouchMove}
-          className="relative w-full h-[420px] sm:h-[480px] rounded-3xl overflow-hidden shadow-lg border border-slate-200 select-none bg-slate-950 cursor-ew-resize"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          className="relative w-full h-[420px] sm:h-[480px] rounded-3xl overflow-hidden shadow-lg border border-slate-200 select-none bg-slate-950 cursor-ew-resize touch-none"
         >
           {/* FOND : Vue APRÈS (Centrale Solaire Complète) */}
           <div className="absolute inset-0 w-full h-full">
@@ -254,7 +260,7 @@ export default function SolarRoofBeforeAfterViewer({
             </MapContainer>
 
             {/* Badge Après (Haut Droite) */}
-            <div className="absolute top-4 right-4 z-[1000] bg-emerald-950/90 backdrop-blur-md text-emerald-300 border border-emerald-500/40 px-3.5 py-1.5 rounded-xl shadow-lg flex items-center gap-2">
+            <div className="absolute top-4 right-4 z-[1000] bg-emerald-950/90 backdrop-blur-md text-emerald-300 border border-emerald-500/40 px-3.5 py-1.5 rounded-xl shadow-lg flex items-center gap-2 pointer-events-none">
               <Zap className="w-4 h-4 text-emerald-400 animate-pulse" />
               <span className="text-xs font-black tracking-wide">
                 APRÈS : {customKwc} kWc ({panelCount} panneaux)
@@ -262,48 +268,49 @@ export default function SolarRoofBeforeAfterViewer({
             </div>
           </div>
 
-          {/* DESSUS (Clipped) : Vue AVANT (Toiture Brute) */}
+          {/* DESSUS : Vue AVANT (Toiture Brute clippée au pixel exact) */}
           <div
-            className="absolute inset-0 h-full overflow-hidden border-r-2 border-white shadow-2xl z-10"
-            style={{ width: `${sliderPosition}%` }}
+            className="absolute inset-0 w-full h-full pointer-events-none z-10"
+            style={{
+              clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
+              WebkitClipPath: `inset(0 ${100 - sliderPosition}% 0 0)`
+            }}
           >
-            <div style={{ width: containerRef.current ? `${containerRef.current.clientWidth}px` : '100%', height: '100%' }}>
-              <MapContainer
-                center={center}
-                zoom={20}
+            <MapContainer
+              center={center}
+              zoom={20}
+              maxZoom={23}
+              scrollWheelZoom={false}
+              dragging={false}
+              zoomControl={false}
+              doubleClickZoom={false}
+              touchZoom={false}
+              className="w-full h-full pointer-events-none"
+            >
+              <AutoFitPolygon polygonPoints={polygonPoints} center={center} />
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                maxNativeZoom={19}
                 maxZoom={23}
-                scrollWheelZoom={false}
-                dragging={false}
-                zoomControl={false}
-                doubleClickZoom={false}
-                touchZoom={false}
-                className="w-full h-full pointer-events-none"
-              >
-                <AutoFitPolygon polygonPoints={polygonPoints} center={center} />
-                <TileLayer
-                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  maxNativeZoom={19}
-                  maxZoom={23}
-                  crossOrigin="anonymous"
+                crossOrigin="anonymous"
+              />
+              {/* Contour discret de la toiture brute */}
+              {polygonPoints && polygonPoints.length >= 3 && (
+                <Polygon
+                  positions={polygonPoints.map(p => [p.lat, p.lng])}
+                  pathOptions={{
+                    color: '#ffffff',
+                    weight: 2,
+                    fillColor: '#ffffff',
+                    fillOpacity: 0.08,
+                    dashArray: '4, 4'
+                  }}
                 />
-                {/* Contour discret de la toiture brute */}
-                {polygonPoints && polygonPoints.length >= 3 && (
-                  <Polygon
-                    positions={polygonPoints.map(p => [p.lat, p.lng])}
-                    pathOptions={{
-                      color: '#ffffff',
-                      weight: 1.5,
-                      fillColor: '#ffffff',
-                      fillOpacity: 0.05,
-                      dashArray: '4, 4'
-                    }}
-                  />
-                )}
-              </MapContainer>
-            </div>
+              )}
+            </MapContainer>
 
             {/* Badge Avant (Haut Gauche) */}
-            <div className="absolute top-4 left-4 z-[1000] bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-xl shadow-lg flex items-center gap-2">
+            <div className="absolute top-4 left-4 z-[1000] bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-xl shadow-lg flex items-center gap-2 pointer-events-none">
               <Eye className="w-4 h-4 text-slate-400" />
               <span className="text-xs font-black tracking-wide">
                 AVANT : Toiture d'origine ({roofSurface} m²)
@@ -311,15 +318,17 @@ export default function SolarRoofBeforeAfterViewer({
             </div>
           </div>
 
-          {/* Ligne & Poignée de contrôle centrale */}
+          {/* Ligne verticale de séparation et Curseur central interactif */}
           <div
-            className="absolute top-0 bottom-0 z-20 flex items-center justify-center pointer-events-none"
-            style={{ left: `calc(${sliderPosition}% - 20px)` }}
+            className="absolute top-0 bottom-0 z-20 pointer-events-none"
+            style={{ left: `${sliderPosition}%` }}
           >
+            {/* Ligne blanche verticale continue avec lueur */}
+            <div className="absolute top-0 bottom-0 -left-[1.5px] w-[3px] bg-white shadow-[0_0_12px_rgba(0,0,0,0.8)]" />
+
+            {/* Bouton / Pastille circulaire centrale */}
             <div
-              onMouseDown={handleMouseDown}
-              onTouchStart={handleMouseDown}
-              className="w-10 h-10 rounded-full bg-white text-slate-900 shadow-2xl flex items-center justify-center border-2 border-emerald-500 cursor-grab active:cursor-grabbing hover:scale-110 transition-transform pointer-events-auto"
+              className="absolute top-1/2 -translate-y-1/2 -left-5 w-10 h-10 rounded-full bg-white text-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.4)] flex items-center justify-center border-2 border-emerald-500 hover:scale-110 active:scale-95 transition-transform"
             >
               <ArrowRightLeft className="w-4 h-4 text-emerald-700" />
             </div>

@@ -203,8 +203,10 @@ export default function SolarRoofSimulator({
     const maxKwc1 = Math.round((totalMaxKwc / 2) * 10) / 10;
     const maxKwc2 = Math.round((totalMaxKwc - maxKwc1) * 10) / 10;
 
-    // Détermination du pan le mieux exposé (prioritaire pour la pose des panneaux)
-    const isPan1Better = coeff1 >= coeff2;
+    // Détermination du pan le mieux exposé (celui le plus proche du Sud, i.e. plus petit écart angulaire à 0° / plus grand coeff)
+    const dev1 = Math.abs(pan1.angle !== undefined ? pan1.angle : (pan1.absSouthDeviation || 0));
+    const dev2 = Math.abs(pan2.angle !== undefined ? pan2.angle : (pan2.absSouthDeviation || 0));
+    const isPan1Better = coeff1 !== coeff2 ? (coeff1 > coeff2) : (dev1 <= dev2);
     const bestPanConfig = isPan1Better
       ? { id: 'pan1', panNum: 1, info: pan1, coeff: coeff1, maxKwc: maxKwc1, maxPanels: maxPanels1 }
       : { id: 'pan2', panNum: 2, info: pan2, coeff: coeff2, maxKwc: maxKwc2, maxPanels: maxPanels2 };

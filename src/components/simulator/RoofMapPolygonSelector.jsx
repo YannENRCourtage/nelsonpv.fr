@@ -71,14 +71,20 @@ export function getOrientationDetailsFromAngle(deg) {
   }
 
   const angleStr = normalized === 0 ? ' (0°)' : (normalized > 0 ? ` (+${normalized}°)` : ` (${normalized}°)`);
-  const coeff = ORIENTATION_COEFFS_MAP[orientationKey] || 0.85;
+  
+  // Calcul précis du coefficient d'exposition solaire selon l'angle par rapport au Sud (0°)
+  // Sud (0°) = 1.000, SE/SO (45°) = 0.956, Est/Ouest (90°) = 0.850, Nord (180°) = 0.700
+  const absDev = Math.abs(normalized);
+  const rad = (absDev * Math.PI) / 180;
+  const coeff = Math.round((0.70 + 0.30 * ((1 + Math.cos(rad)) / 2)) * 1000) / 1000;
 
   return {
     orientationKey,
     orientationLabel: `${orientationLabel}${angleStr}`,
     rawLabel: orientationLabel,
     angle: normalized,
-    coeff
+    coeff,
+    absSouthDeviation: absDev
   };
 }
 

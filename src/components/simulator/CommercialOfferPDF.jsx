@@ -172,8 +172,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         roofSurface: sim.roofSurface || 83,
         ridgeIndex: sim.ridgeIndex || 0,
         isLandscape: sim.isLandscape ?? false,
-        width: 900,
-        height: 420,
+        width: 950,
+        height: 480,
         zoom: 19
       });
     } catch (e) {
@@ -497,7 +497,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         ${technicalHypothesesHtml}
 
         <!-- 3. SYNTHÈSE DES 4 KPIS -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 12px;">
           <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 6px; text-align: center;">
             <div style="font-size: 6.5pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Puissance</div>
             <div style="font-size: 13pt; font-weight: 900; color: #00429d; margin: 1px 0;">${calculatedPower}</div>
@@ -681,7 +681,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         ` : `
           <!-- 4. VISUEL DUAL AVANT / APRÈS (TOITURE & AUTOCONSO) OU UNIQUE (AUTRES) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; position: relative; height: 220px; display: flex; align-items: center; justify-content: center;">
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 12px; position: relative; height: 248px; display: flex; align-items: center; justify-content: center;">
             ${finalMapScreenshot ? `
               <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Implantation Visuelle du Projet" />
             ` : `
@@ -695,11 +695,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         `}
 
         <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT -->
-        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
+        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 9px 12px; margin-bottom: 11px;">
           <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
             ${isSechoir ? 'Projection Financière des Gains Cumulés (25 ans)' : 'Projection Financière des Gains Cumulés (30 ans)'}
           </div>
-          <div style="height: ${isStruct && sim.buildings && sim.buildings.length > 1 ? '210px' : '250px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="height: ${isStruct && sim.buildings && sim.buildings.length > 1 ? '210px' : '240px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
           </div>
 
@@ -723,8 +723,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         </div>
 
         <!-- 6. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT VERTICALEMENT CENTRÉE -->
-        <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 9px 12px; margin-bottom: 4px;">
-          <div style="font-size: 8pt; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 5px;">
+        <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 8px 12px; margin-bottom: 6px;">
+          <div style="font-size: 8pt; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 4px;">
             🌱 Votre Impact sur l'Environnement
           </div>
 
