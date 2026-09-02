@@ -160,22 +160,29 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
         }
     };
 
+    useEffect(() => {
+        if (isAcama && configMode !== 'custom') {
+            setConfigMode('custom');
+            if (onUpdateBuilding) onUpdateBuilding({ configMode: 'custom' });
+        }
+    }, [isAcama, configMode]);
+
     return (
         <div className="control-panel bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-2xl border border-slate-200">
 
-            {/* HEADER */}
-            <div className="mb-4 border-b border-slate-100 pb-3">
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => {
-                            setConfigMode('predefined');
-                            if (onUpdateBuilding) onUpdateBuilding({ configMode: 'predefined' });
-                        }}
-                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'predefined' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                    >
-                        {isAcama ? "Gamme ACAMA" : "ECO-EVO"}
-                    </button>
-                    {!isAcama && (
+            {/* HEADER (Masqué pour ACAMA qui est 100% Sur-Mesure) */}
+            {!isAcama && (
+                <div className="mb-4 border-b border-slate-100 pb-3">
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => {
+                                setConfigMode('predefined');
+                                if (onUpdateBuilding) onUpdateBuilding({ configMode: 'predefined' });
+                            }}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'predefined' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                        >
+                            ECO-EVO
+                        </button>
                         <button
                             onClick={() => {
                                 setConfigMode('batitech');
@@ -185,18 +192,18 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                         >
                             BatiTech®
                         </button>
-                    )}
-                    <button
-                        onClick={() => {
-                            setConfigMode('custom');
-                            if (onUpdateBuilding) onUpdateBuilding({ configMode: 'custom' });
-                        }}
-                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'custom' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                    >
-                        Sur-mesure
-                    </button>
+                        <button
+                            onClick={() => {
+                                setConfigMode('custom');
+                                if (onUpdateBuilding) onUpdateBuilding({ configMode: 'custom' });
+                            }}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'custom' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                        >
+                            Sur-mesure
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {configMode === 'predefined' ? (
                 <>

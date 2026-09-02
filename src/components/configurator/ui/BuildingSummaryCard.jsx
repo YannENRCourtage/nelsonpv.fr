@@ -5,6 +5,8 @@ import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
 import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 
 export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
+    if (isAcama) return null;
+
     const config = useConfiguratorValues();
 
     const length = Number(config.length || 30.0);

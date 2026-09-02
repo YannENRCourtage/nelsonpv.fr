@@ -201,6 +201,13 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
   const getBuildingDisplayName = useCallback((b, idx) => {
     if (!b) return isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
+    const bLen = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config.length || 30)));
+    const bWid = Number(b.width || config.width || 15);
+    
+    // For ACAMA or whenever the name has "Station Batteries" or generic name
+    if (isAcama || (b.name && b.name.toLowerCase().includes('batterie'))) {
+      return `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
+    }
     let name = b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
     name = name
       .replace(/Bâtiment/gi, isDP ? 'Ombrière' : 'Bâtiment')
@@ -208,7 +215,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
       .trim();
     return name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
-  }, [isDP]);
+  }, [isDP, isAcama, config.length, config.width]);
 
   const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
   const [solutionType, setSolutionType] = useState(isDP ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
@@ -224,8 +231,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   useEffect(() => {
     if (isOpen) {
       configActions.setIsAcama(isAcama);
-      if (isAcama && config.buildingType !== 'epona') {
-        configActions.setEponaModel('EPONA_45');
+      if (isAcama) {
+        configActions.setConfigMode('custom');
       }
     }
   }, [isOpen, isAcama]);
@@ -560,15 +567,17 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     const projCity = project.city || project.commune || project.clientCity || project.cadastre_commune || '';
 
     const isBatteryProject = 
-      project?.isBatteryStandAlone === 'Oui' ||
-      project?.isBatteryStandAlone === true ||
-      String(project?.type || '').toLowerCase().includes('batterie') ||
-      String(project?.project || '').toLowerCase().includes('batterie') ||
-      String(project?.name || '').toLowerCase().includes('batterie') ||
-      String(project?.nom || '').toLowerCase().includes('batterie') ||
-      String(project?.description || '').toLowerCase().includes('batterie');
+      !isAcama && (
+        project?.isBatteryStandAlone === 'Oui' ||
+        project?.isBatteryStandAlone === true ||
+        String(project?.type || '').toLowerCase().includes('batterie') ||
+        String(project?.project || '').toLowerCase().includes('batterie') ||
+        String(project?.name || '').toLowerCase().includes('batterie') ||
+        String(project?.nom || '').toLowerCase().includes('batterie') ||
+        String(project?.description || '').toLowerCase().includes('batterie')
+      );
 
-    const detectedSolutionType = isBatteryProject ? 'battery' : (isDP ? 'ombriere' : 'building');
+    const detectedSolutionType = isAcama ? 'building' : (isBatteryProject ? 'battery' : (isDP ? 'ombriere' : 'building'));
     setSolutionType(detectedSolutionType);
 
     let parsedBatteryQty = 1;
@@ -717,6 +726,9 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     const b1 = initialBuildings[0];
     if (b1) {
       useConfiguratorStore.getState().loadBuildingConfig(b1);
+      if (isAcama) {
+        useConfiguratorStore.getState().setConfigMode('custom');
+      }
     }
 
       const initialNotice = project?.noticeText || buildAutoNoticeText();
@@ -1675,21 +1687,23 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                         <span>Bâtiment / Hangar</span>
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSolutionType('ombriere');
-                          setBatteryStorage(prev => ({ ...prev, enabled: false }));
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
-                          solutionType === 'ombriere'
-                            ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                            : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
-                        }`}
-                      >
-                        <Car className="w-3.5 h-3.5" />
-                        <span>Ombrière PV</span>
-                      </button>
+                      {!isAcama && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSolutionType('ombriere');
+                            setBatteryStorage(prev => ({ ...prev, enabled: false }));
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
+                            solutionType === 'ombriere'
+                              ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                          }`}
+                        >
+                          <Car className="w-3.5 h-3.5" />
+                          <span>Ombrière PV</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Sélecteur multi-bâtiments si mode Bâtiment/Ombrière */}

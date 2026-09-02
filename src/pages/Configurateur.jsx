@@ -27,13 +27,11 @@ export default function Configurateur() {
     const [ficheImages, setFicheImages] = useState({ imgMain3D: null, imgPignon: null, imgFacadeSud: null });
     const [isPreparingFiche, setIsPreparingFiche] = useState(false);
 
-    // ACAMA: default to EPONA_45 on first load
+    // ACAMA: default to Sur-mesure (custom) mode on load
     useEffect(() => {
         actions.setIsAcama(isAcama);
         if (isAcama) {
-            if (config.buildingType !== 'epona') {
-                actions.setEponaModel('EPONA_45');
-            }
+            actions.setConfigMode('custom');
         } else {
             // Reset to defaults when switching back to GREEN INVEST
             actions.reset();
