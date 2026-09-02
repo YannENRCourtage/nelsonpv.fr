@@ -137,12 +137,14 @@ export default function IrveSimulator() {
   const tabRefs = useRef({});
 
   useEffect(() => {
-    if (tabRefs.current[activeSolution]) {
+    const container = tabsContainerRef.current;
+    const tab = tabRefs.current[activeSolution];
+    if (container && tab) {
       try {
-        tabRefs.current[activeSolution].scrollIntoView({
-          behavior: 'smooth',
-          inline: 'center',
-          block: 'nearest'
+        const scrollLeft = tab.offsetLeft - (container.clientWidth / 2) + (tab.clientWidth / 2);
+        container.scrollTo({
+          left: Math.max(0, scrollLeft),
+          behavior: 'smooth'
         });
       } catch (e) {}
     }
@@ -515,34 +517,34 @@ export default function IrveSimulator() {
       {/* ═══════════════════════════════════════════════════════════════════════
           ZONE DE CONTENU PRINCIPALE (SANS SCROLL INUTILE)
          ═══════════════════════════════════════════════════════════════════════ */}
-      <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden flex flex-col">
+      <main className="flex-1 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden flex flex-col">
         
-        {/* BARRE SUPÉRIEURE AVEC LES 4 SOLUTIONS ET LES BOUTONS SAUVEGARDER / PDF */}
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-3 shadow-2xs flex flex-col gap-2 min-w-0 max-w-full">
+        {/* BARRE SUPÉRIEURE AVEC LES 5 SOLUTIONS ET LES BOUTONS SAUVEGARDER / PDF */}
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-3 shadow-2xs flex flex-col gap-2.5 w-full min-w-0 max-w-full overflow-hidden">
           
-          {/* Ligne 1 : Titre et Sélecteur des 4 solutions */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 min-w-0">
-            <div className="flex items-center gap-3 min-w-0 shrink-0">
-              <h1 className="text-lg sm:text-xl font-black text-slate-900 truncate">
+          {/* Ligne 1 : Titre et Sélecteur des 5 solutions avec scroll horizontal fluide */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 w-full min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
+              <h1 className="text-base sm:text-xl font-black text-slate-900 truncate">
                 {activeMainTab === 'simulateurs' && 'Interface de Simulation'}
                 {activeMainTab === 'archives' && 'Archives des Études Commerciales'}
                 {activeMainTab === 'database' && 'Base de Données & Paramétrage'}
               </h1>
               {selectedProject && (
-                <span className="text-xs font-bold bg-blue-50 text-blue-800 px-3 py-1 rounded-xl border border-blue-200 truncate">
+                <span className="text-xs font-bold bg-blue-50 text-blue-800 px-2.5 py-0.5 rounded-xl border border-blue-200 truncate max-w-[130px] sm:max-w-xs">
                   Dossier : {selectedProject.name}
                 </span>
               )}
             </div>
 
             {activeMainTab === 'simulateurs' && (
-              <div className="w-full lg:w-auto min-w-0 max-w-full overflow-hidden">
+              <div className="w-full lg:w-auto min-w-0 max-w-full">
                 <div 
                   ref={tabsContainerRef}
-                  className="w-full overflow-x-auto scrollbar-none flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 overscroll-x-contain touch-pan-x"
-                  style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  className="w-full overflow-x-auto scrollbar-none flex items-center bg-slate-100 p-1 sm:p-1.5 rounded-2xl border border-slate-200 overscroll-x-contain touch-pan-x"
+                  style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
                 >
-                  <div className="flex items-center gap-1.5 min-w-max pr-10 lg:pr-0">
+                  <div className="flex items-center gap-1.5 min-w-max pr-3 lg:pr-0">
                     {[
                       { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
                       { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
@@ -580,11 +582,11 @@ export default function IrveSimulator() {
             )}
           </div>
 
-          {/* Ligne 2 : CHAMP NOM DU CLIENT + BOUTONS SAUVEGARDER ET PDF ALIGNÉS À DROITE */}
+          {/* Ligne 2 : CHAMP NOM DU CLIENT + BOUTONS SAUVEGARDER ET PDF ALIGNÉS SANS DÉPASSEMENT SUR MOBILE */}
           {activeMainTab === 'simulateurs' && (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1 min-w-0">
-              <div className="flex items-center gap-2 min-w-0 flex-1 max-w-full sm:max-w-md">
-                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Nom du client :</span>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 pt-0.5 w-full min-w-0 max-w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0 flex-1 w-full max-w-full">
+                <span className="text-xs font-bold text-slate-700 whitespace-nowrap shrink-0">Nom du client :</span>
                 <input
                   type="text"
                   value={activeSolution === 'sechoir' ? (useSechoirStore.getState().clientName || clientNameGlobal) : clientNameGlobal}
@@ -596,15 +598,15 @@ export default function IrveSimulator() {
                     }
                   }}
                   placeholder="ex: EARL des Terres Noires, M. Jean Dupont..."
-                  className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-300 focus:border-blue-500 rounded-xl px-3 py-1.5 text-slate-900 font-semibold text-xs focus:outline-none placeholder:text-slate-400 transition-all shadow-2xs"
+                  className="w-full min-w-0 flex-1 bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-300 focus:border-blue-500 rounded-xl px-3 py-1.5 text-slate-900 font-semibold text-xs focus:outline-none placeholder:text-slate-400 transition-all shadow-2xs"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 shrink-0">
+              <div className="flex items-center justify-end gap-2 w-full sm:w-auto shrink-0">
                 <button
                   type="button"
                   onClick={() => handleSaveCurrentSimulation()}
-                  className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:scale-105 shrink-0 cursor-pointer"
+                  className="flex-1 sm:flex-none justify-center px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:scale-105 shrink-0 cursor-pointer"
                   title="Sauvegarder l'étude en cours dans les archives"
                 >
                   <Save className="w-3.5 h-3.5 text-emerald-400" />
@@ -614,7 +616,7 @@ export default function IrveSimulator() {
                 <button
                   type="button"
                   onClick={() => handleExportPDF()}
-                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all hover:scale-105 shrink-0 cursor-pointer"
+                  className="flex-1 sm:flex-none justify-center px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all hover:scale-105 shrink-0 cursor-pointer"
                   title="Générer l'Offre Commerciale au format PDF A4 Portrait"
                 >
                   <FileDown className="w-3.5 h-3.5" />
@@ -626,7 +628,7 @@ export default function IrveSimulator() {
         </div>
 
         {/* CONTENU PRINCIPAL */}
-        <div className="flex-1 p-5">
+        <div className="flex-1 p-3 sm:p-5 w-full min-w-0 max-w-full overflow-x-hidden">
           
           {/* ═══ ONGLET 1 : SIMULATEURS (FRONT-OFFICE) ═══════════════════════ */}
           {activeMainTab === 'simulateurs' && (
