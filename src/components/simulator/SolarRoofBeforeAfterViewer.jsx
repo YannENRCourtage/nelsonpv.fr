@@ -25,9 +25,41 @@ function AutoFitPolygon({ polygonPoints, center }) {
 }
 
 // Couche de dessin réaliste des panneaux solaires sur le polygone à la côte exacte (parallèle à la sablière)
-function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, ridgeIndex = 0, isLandscape = false }) {
+function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, ridgeIndex = 0, isLandscape = false, sliderPosition = null }) {
   const map = useMap();
   const layerRef = useRef(null);
+
+  // Initialisation du pane personnalisé pour le clipping
+  useEffect(() => {
+    if (!map) return;
+    let pane = map.getPane('solar-panels-pane');
+    if (!pane) {
+      pane = map.createPane('solar-panels-pane');
+      pane.style.zIndex = '600';
+      pane.style.pointerEvents = 'none';
+      pane.style.position = 'absolute';
+      pane.style.top = '0';
+      pane.style.left = '0';
+      pane.style.width = '100%';
+      pane.style.height = '100%';
+    }
+  }, [map]);
+
+  // Mise à jour dynamique du clipping quand sliderPosition change
+  useEffect(() => {
+    if (!map) return;
+    const pane = map.getPane('solar-panels-pane');
+    if (pane) {
+      if (typeof sliderPosition === 'number') {
+        const clipVal = `inset(0 0 0 ${sliderPosition}%)`;
+        pane.style.clipPath = clipVal;
+        pane.style.webkitClipPath = clipVal;
+      } else {
+        pane.style.clipPath = 'none';
+        pane.style.webkitClipPath = 'none';
+      }
+    }
+  }, [map, sliderPosition]);
 
   useEffect(() => {
     if (!map || !polygonPoints || polygonPoints.length < 3) return;
@@ -42,8 +74,9 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, ridge
 
     const latlngs = polygonPoints.map(p => [p.lat, p.lng]);
 
-    // 1. Cadre de base toiture / rails de fixation
+    // 1. Cadre de base toiture / rails de fixation dans le pane
     L.polygon(latlngs, {
+      pane: 'solar-panels-pane',
       color: '#0284c7',
       weight: 2,
       fillColor: '#0f172a',
@@ -65,6 +98,7 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, ridge
 
         // Panneau Solaire (Bleu nuit antireflet + bordure cyan/alu)
         L.polygon(cornersLatLng, {
+          pane: 'solar-panels-pane',
           color: '#38bdf8',
           weight: 1.2,
           fillColor: '#0c192c',
@@ -230,52 +264,8 @@ export default function SolarRoofBeforeAfterViewer({
           onPointerCancel={handlePointerUp}
           className="relative w-full h-[420px] sm:h-[480px] rounded-3xl overflow-hidden shadow-lg border border-slate-200 select-none bg-slate-950 cursor-ew-resize touch-none"
         >
-          {/* FOND : Vue APRÈS (Centrale Solaire Complète) */}
+          {/* UNE SEULE CARTE SATELLITE UNIFIÉE */}
           <div className="absolute inset-0 w-full h-full">
-            <MapContainer
-              center={center}
-              zoom={20}
-              maxZoom={23}
-              scrollWheelZoom={false}
-              dragging={false}
-              zoomControl={false}
-              doubleClickZoom={false}
-              touchZoom={false}
-              className="w-full h-full pointer-events-none"
-            >
-              <AutoFitPolygon polygonPoints={polygonPoints} center={center} />
-              <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                maxNativeZoom={19}
-                maxZoom={23}
-                crossOrigin="anonymous"
-              />
-              <SolarPanelsLayer
-                polygonPoints={polygonPoints}
-                customKwc={customKwc}
-                panelCount={panelCount}
-                ridgeIndex={ridgeIndex}
-                isLandscape={isLandscape}
-              />
-            </MapContainer>
-
-            {/* Badge Après (Haut Droite) */}
-            <div className="absolute top-4 right-4 z-[1000] bg-emerald-950/90 backdrop-blur-md text-emerald-300 border border-emerald-500/40 px-3.5 py-1.5 rounded-xl shadow-lg flex items-center gap-2 pointer-events-none">
-              <Zap className="w-4 h-4 text-emerald-400 animate-pulse" />
-              <span className="text-xs font-black tracking-wide">
-                APRÈS : {customKwc} kWc ({panelCount} panneaux)
-              </span>
-            </div>
-          </div>
-
-          {/* DESSUS : Vue AVANT (Toiture Brute clippée au pixel exact) */}
-          <div
-            className="absolute inset-0 w-full h-full pointer-events-none z-10"
-            style={{
-              clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
-              WebkitClipPath: `inset(0 ${100 - sliderPosition}% 0 0)`
-            }}
-          >
             <MapContainer
               center={center}
               zoom={20}
@@ -307,15 +297,32 @@ export default function SolarRoofBeforeAfterViewer({
                   }}
                 />
               )}
+              {/* Panneaux solaires (clippés dynamiquement à droite de la ligne verticale) */}
+              <SolarPanelsLayer
+                polygonPoints={polygonPoints}
+                customKwc={customKwc}
+                panelCount={panelCount}
+                ridgeIndex={ridgeIndex}
+                isLandscape={isLandscape}
+                sliderPosition={sliderPosition}
+              />
             </MapContainer>
+          </div>
 
-            {/* Badge Avant (Haut Gauche) */}
-            <div className="absolute top-4 left-4 z-[1000] bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-xl shadow-lg flex items-center gap-2 pointer-events-none">
-              <Eye className="w-4 h-4 text-slate-400" />
-              <span className="text-xs font-black tracking-wide">
-                AVANT : Toiture d'origine ({roofSurface} m²)
-              </span>
-            </div>
+          {/* Badge Avant (Haut Gauche) */}
+          <div className="absolute top-4 left-4 z-[1000] bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-xl shadow-lg flex items-center gap-2 pointer-events-none">
+            <Eye className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-black tracking-wide">
+              AVANT : Toiture d'origine ({roofSurface} m²)
+            </span>
+          </div>
+
+          {/* Badge Après (Haut Droite) */}
+          <div className="absolute top-4 right-4 z-[1000] bg-emerald-950/90 backdrop-blur-md text-emerald-300 border border-emerald-500/40 px-3.5 py-1.5 rounded-xl shadow-lg flex items-center gap-2 pointer-events-none">
+            <Zap className="w-4 h-4 text-emerald-400 animate-pulse" />
+            <span className="text-xs font-black tracking-wide">
+              APRÈS : {customKwc} kWc ({panelCount} panneaux)
+            </span>
           </div>
 
           {/* Ligne verticale de séparation et Curseur central interactif */}

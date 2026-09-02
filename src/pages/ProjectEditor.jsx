@@ -2020,18 +2020,7 @@ export default function ProjectEditor() {
               </div>
             )}
 
-            {/* Overlay d'information - Mode Filiation Parcelle */}
-            {activeLayers.has('filiationParcelle') && (
-              <div className="absolute bottom-[130px] left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur shadow-xl border border-violet-200 px-5 py-3 rounded-2xl flex items-center gap-3 pointer-events-none">
-                <div className="bg-violet-100 p-2 rounded-full">
-                  <span className="text-violet-600 text-base">🧬</span>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-800">Mode Filiation Parcelle</p>
-                  <p className="text-[11px] text-slate-500 font-medium">Cliquez sur une parcelle cadastrale sur la carte pour consulter son historique de filiation (divisions / fusions).</p>
-                </div>
-              </div>
-            )}
+
 
 
 
