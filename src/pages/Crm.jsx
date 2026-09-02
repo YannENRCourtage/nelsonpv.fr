@@ -1260,14 +1260,14 @@ export default function Crm() {
                           (contactCreator?.toLowerCase().trim().includes('jack') ? '/assets/avatars/jack.jpg' : null);
 
                         return (
-                          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(contactCreator)} w-fit pr-5 text-left`}>
+                          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(contactCreator)} w-fit pr-1 lg:pr-5 text-left`}>
                             <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
                               {avatarSrc ?
                                 <img src={avatarSrc} className="w-full h-full object-cover" alt={contactCreator} /> :
                                 <span className="flex items-center justify-center w-full h-full text-xs font-bold">{contactCreator?.[0]}</span>
                               }
                             </div>
-                            <span className="text-sm font-semibold truncate max-w-[120px]">{contactCreator || 'Utilisateur'}</span>
+                            <span className="text-sm font-semibold truncate max-w-[120px] hidden lg:inline">{contactCreator || 'Utilisateur'}</span>
                           </div>
                         );
                       })()}
@@ -1612,8 +1612,8 @@ export default function Crm() {
 
           {/* Filtres Statuts (Boutons avec scroll fluide sur mobile) */}
           <div 
-            className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto max-w-full flex-nowrap shrink-0 touch-pan-x"
-            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
+            className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto max-w-full flex-nowrap shrink-0 touch-pan-x scrollbar-none"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {[
               { id: 'all', label: 'Tous' },
@@ -1789,11 +1789,11 @@ export default function Crm() {
                         }
                         if (!commercial) return <span className="text-slate-400 text-sm italic">-</span>;
                         return (
-                          <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full ${getUserColor(commercial)} w-fit pr-3 text-left`}>
+                          <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full ${getUserColor(commercial)} w-fit pr-1 lg:pr-3 text-left`}>
                             <div className="w-6 h-6 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
                               <UserAvatar name={commercial} photoURL={photoURL} size="w-full h-full" showName={false} />
                             </div>
-                            <span className="text-sm font-bold truncate max-w-[100px]">{commercial}</span>
+                            <span className="text-sm font-bold truncate max-w-[100px] hidden lg:inline">{commercial}</span>
                           </div>
                         );
                       })()}
@@ -1803,9 +1803,9 @@ export default function Crm() {
                         const projectUser = project.assignedUser;
                         if (!projectUser) return <span className="text-slate-400 text-sm italic">-</span>;
                         return (
-                          <div className="flex items-center gap-2 w-fit pr-2 text-left">
+                          <div className="flex items-center gap-2 w-fit pr-0 lg:pr-2 text-left">
                             <UserAvatar name={projectUser} size="w-6 h-6" showName={false} />
-                            <span className="text-sm font-bold truncate max-w-[100px]">{projectUser}</span>
+                            <span className="text-sm font-bold truncate max-w-[100px] hidden lg:inline">{projectUser}</span>
                           </div>
                         );
                       })()}

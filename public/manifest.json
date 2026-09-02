@@ -1,5 +1,5 @@
 {
-  "name": "NELSON CRM",
+  "name": "NELSON",
   "short_name": "NELSON",
   "description": "Votre éditeur de projet et CRM métier",
   "start_url": "/",
@@ -16,7 +16,8 @@
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

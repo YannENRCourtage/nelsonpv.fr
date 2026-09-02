@@ -230,7 +230,7 @@ export default function DossiersListView({
             <span>Mes projets</span>
             {onlyMyProjects && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>}
           </button>
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto no-scrollbar scrollbar-none max-w-full flex-nowrap shrink-0">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto no-scrollbar scrollbar-none max-w-full flex-nowrap shrink-0 touch-pan-x" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
               <button key={key} onClick={() => handleToggleStatus(key)} className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all whitespace-nowrap shrink-0 ${selectedStatuses.includes(key) ? `${cfg.bg} ${cfg.text} shadow-xs scale-102` : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'}`}>
                 {cfg.label}

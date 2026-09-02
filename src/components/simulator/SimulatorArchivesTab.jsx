@@ -111,7 +111,7 @@ export default function SimulatorArchivesTab({
 
         {/* Filtres & Recherche */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none touch-pan-x flex-nowrap" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {[
               { id: 'all', label: 'Toutes' },
               { id: 'autoconsommation', label: 'Autoconsommation' },
@@ -124,7 +124,7 @@ export default function SimulatorArchivesTab({
                 key={tab.id}
                 type="button"
                 onClick={() => setFilterType(tab.id)}
-                className={`px-4 py-2 rounded-xl text-sm font-black transition-all whitespace-nowrap ${
+                className={`px-4 py-2 rounded-xl text-sm font-black transition-all whitespace-nowrap shrink-0 ${
                   filterType === tab.id
                     ? 'bg-amber-500 text-white shadow-md'
                     : 'bg-white/10 text-slate-300 hover:bg-white/20'
