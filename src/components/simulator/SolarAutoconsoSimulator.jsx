@@ -275,38 +275,76 @@ export default function SolarAutoconsoSimulator({
     const prodKwhWorst = Math.round(installedKwcWorst * worstPanConfig.specificYield);
     const totalProductionKwh = prodKwhBest + prodKwhWorst;
 
+    const pan1Obj = bestPanConfig.panNum === 1 ? {
+      id: bestPanConfig.id,
+      panNum: 1,
+      label: bestPanConfig.info.orientationLabel,
+      rawLabel: bestPanConfig.info.rawLabel,
+      angle: bestPanConfig.info.angle,
+      coeff: bestPanConfig.coeff,
+      maxKwc: bestPanConfig.maxKwc,
+      maxPanels: bestPanConfig.maxPanels,
+      installedKwc: installedKwcBest,
+      installedPanels: installedPanelsBest,
+      fillRatio: bestPanConfig.maxKwc > 0 ? (installedKwcBest / bestPanConfig.maxKwc) : 0,
+      specificYield: bestPanConfig.specificYield,
+      productionKwh: prodKwhBest,
+      isPrioritized: true
+    } : {
+      id: worstPanConfig.id,
+      panNum: 1,
+      label: worstPanConfig.info.orientationLabel,
+      rawLabel: worstPanConfig.info.rawLabel,
+      angle: worstPanConfig.info.angle,
+      coeff: worstPanConfig.coeff,
+      maxKwc: worstPanConfig.maxKwc,
+      maxPanels: worstPanConfig.maxPanels,
+      installedKwc: installedKwcWorst,
+      installedPanels: installedPanelsWorst,
+      fillRatio: worstPanConfig.maxKwc > 0 ? (installedKwcWorst / worstPanConfig.maxKwc) : 0,
+      specificYield: worstPanConfig.specificYield,
+      productionKwh: prodKwhWorst,
+      isPrioritized: false
+    };
+
+    const pan2Obj = bestPanConfig.panNum === 2 ? {
+      id: bestPanConfig.id,
+      panNum: 2,
+      label: bestPanConfig.info.orientationLabel,
+      rawLabel: bestPanConfig.info.rawLabel,
+      angle: bestPanConfig.info.angle,
+      coeff: bestPanConfig.coeff,
+      maxKwc: bestPanConfig.maxKwc,
+      maxPanels: bestPanConfig.maxPanels,
+      installedKwc: installedKwcBest,
+      installedPanels: installedPanelsBest,
+      fillRatio: bestPanConfig.maxKwc > 0 ? (installedKwcBest / bestPanConfig.maxKwc) : 0,
+      specificYield: bestPanConfig.specificYield,
+      productionKwh: prodKwhBest,
+      isPrioritized: true
+    } : {
+      id: worstPanConfig.id,
+      panNum: 2,
+      label: worstPanConfig.info.orientationLabel,
+      rawLabel: worstPanConfig.info.rawLabel,
+      angle: worstPanConfig.info.angle,
+      coeff: worstPanConfig.coeff,
+      maxKwc: worstPanConfig.maxKwc,
+      maxPanels: worstPanConfig.maxPanels,
+      installedKwc: installedKwcWorst,
+      installedPanels: installedPanelsWorst,
+      fillRatio: worstPanConfig.maxKwc > 0 ? (installedKwcWorst / worstPanConfig.maxKwc) : 0,
+      specificYield: worstPanConfig.specificYield,
+      productionKwh: prodKwhWorst,
+      isPrioritized: false
+    };
+
     return {
       isSymetrique: true,
-      bestPan: {
-        id: bestPanConfig.id,
-        panNum: bestPanConfig.panNum,
-        label: bestPanConfig.info.orientationLabel,
-        rawLabel: bestPanConfig.info.rawLabel,
-        angle: bestPanConfig.info.angle,
-        coeff: bestPanConfig.coeff,
-        maxKwc: bestPanConfig.maxKwc,
-        maxPanels: bestPanConfig.maxPanels,
-        installedKwc: installedKwcBest,
-        installedPanels: installedPanelsBest,
-        fillRatio: bestPanConfig.maxKwc > 0 ? (installedKwcBest / bestPanConfig.maxKwc) : 0,
-        specificYield: bestPanConfig.specificYield,
-        productionKwh: prodKwhBest
-      },
-      worstPan: {
-        id: worstPanConfig.id,
-        panNum: worstPanConfig.panNum,
-        label: worstPanConfig.info.orientationLabel,
-        rawLabel: worstPanConfig.info.rawLabel,
-        angle: worstPanConfig.info.angle,
-        coeff: worstPanConfig.coeff,
-        maxKwc: worstPanConfig.maxKwc,
-        maxPanels: worstPanConfig.maxPanels,
-        installedKwc: installedKwcWorst,
-        installedPanels: installedPanelsWorst,
-        fillRatio: worstPanConfig.maxKwc > 0 ? (installedKwcWorst / worstPanConfig.maxKwc) : 0,
-        specificYield: worstPanConfig.specificYield,
-        productionKwh: prodKwhWorst
-      },
+      pan1: pan1Obj,
+      pan2: pan2Obj,
+      bestPan: bestPanConfig.panNum === 1 ? pan1Obj : pan2Obj,
+      worstPan: bestPanConfig.panNum === 2 ? pan1Obj : pan2Obj,
       effectiveOrientationCoeff,
       weightedSpecificYield,
       totalProductionKwh
@@ -1179,67 +1217,81 @@ export default function SolarAutoconsoSimulator({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3.5 flex flex-col justify-between space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
-                        Versant {panBreakdown.bestPan.panNum} : {panBreakdown.bestPan.label}
-                      </span>
-                      <span className="text-[11px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-lg">
-                        {panBreakdown.bestPan.specificYield} kWh/kWc
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-emerald-950 font-bold">
-                      <span>{panBreakdown.bestPan.installedKwc} kWc ({panBreakdown.bestPan.installedPanels} pan.)</span>
-                      <span className="text-emerald-700 text-[11px]">Capacité : {panBreakdown.bestPan.maxKwc} kWc</span>
-                    </div>
-                    <div className="w-full bg-emerald-200/80 rounded-full h-2.5 overflow-hidden">
-                      <div
-                        className="bg-emerald-600 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(100, Math.round(panBreakdown.bestPan.fillRatio * 100))}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-emerald-800 font-semibold pt-0.5">
-                      <span>Production annuelle :</span>
-                      <span className="font-black text-emerald-950">{panBreakdown.bestPan.productionKwh.toLocaleString('fr-FR')} kWh/an</span>
-                    </div>
-                  </div>
-
+                  {/* Versant 1 (Gauche) */}
                   <div className={`rounded-2xl p-3.5 flex flex-col justify-between space-y-2 border transition-all ${
-                    panBreakdown.worstPan.installedKwc > 0
-                      ? 'bg-blue-50/90 border-blue-200'
+                    panBreakdown.pan1.installedKwc > 0
+                      ? 'bg-emerald-50/90 border-emerald-200'
                       : 'bg-slate-50 border-slate-200 opacity-75'
                   }`}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
                         <span className={`w-2.5 h-2.5 rounded-full ring-2 ${
-                          panBreakdown.worstPan.installedKwc > 0 ? 'bg-blue-500 ring-blue-200' : 'bg-slate-400 ring-slate-200'
+                          panBreakdown.pan1.installedKwc > 0 ? 'bg-emerald-500 ring-emerald-200' : 'bg-slate-400 ring-slate-200'
                         }`} />
-                        Versant {panBreakdown.worstPan.panNum} : {panBreakdown.worstPan.label}
+                        Versant 1 : {panBreakdown.pan1.label}
                       </span>
                       <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg ${
-                        panBreakdown.worstPan.installedKwc > 0 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                        panBreakdown.pan1.installedKwc > 0 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
                       }`}>
-                        {panBreakdown.worstPan.specificYield} kWh/kWc
+                        {panBreakdown.pan1.specificYield} kWh/kWc
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-slate-800 font-bold">
                       <span>
-                        {panBreakdown.worstPan.installedKwc > 0
-                          ? `${panBreakdown.worstPan.installedKwc} kWc (${panBreakdown.worstPan.installedPanels} pan.)`
+                        {panBreakdown.pan1.installedKwc > 0
+                          ? `${panBreakdown.pan1.installedKwc} kWc (${panBreakdown.pan1.installedPanels} pan.)`
                           : '0 panneau (Versant préservé)'}
                       </span>
-                      <span className="text-slate-500 text-[11px]">Capacité : {panBreakdown.worstPan.maxKwc} kWc</span>
+                      <span className="text-slate-500 text-[11px]">Capacité : {panBreakdown.pan1.maxKwc} kWc</span>
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
                       <div
-                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(100, Math.round(panBreakdown.worstPan.fillRatio * 100))}%` }}
+                        className="bg-emerald-600 h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.round(panBreakdown.pan1.fillRatio * 100))}%` }}
                       />
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold pt-0.5">
                       <span>Production annuelle :</span>
-                      <span className="font-black text-slate-900">{panBreakdown.worstPan.productionKwh.toLocaleString('fr-FR')} kWh/an</span>
+                      <span className="font-black text-slate-900">{panBreakdown.pan1.productionKwh.toLocaleString('fr-FR')} kWh/an</span>
+                    </div>
+                  </div>
+
+                  {/* Versant 2 (Droite) */}
+                  <div className={`rounded-2xl p-3.5 flex flex-col justify-between space-y-2 border transition-all ${
+                    panBreakdown.pan2.installedKwc > 0
+                      ? 'bg-emerald-50/90 border-emerald-200'
+                      : 'bg-slate-50 border-slate-200 opacity-75'
+                  }`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                        <span className={`w-2.5 h-2.5 rounded-full ring-2 ${
+                          panBreakdown.pan2.installedKwc > 0 ? 'bg-emerald-500 ring-emerald-200' : 'bg-slate-400 ring-slate-200'
+                        }`} />
+                        Versant 2 : {panBreakdown.pan2.label}
+                      </span>
+                      <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg ${
+                        panBreakdown.pan2.installedKwc > 0 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {panBreakdown.pan2.specificYield} kWh/kWc
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-800 font-bold">
+                      <span>
+                        {panBreakdown.pan2.installedKwc > 0
+                          ? `${panBreakdown.pan2.installedKwc} kWc (${panBreakdown.pan2.installedPanels} pan.)`
+                          : '0 panneau (Versant préservé)'}
+                      </span>
+                      <span className="text-slate-500 text-[11px]">Capacité : {panBreakdown.pan2.maxKwc} kWc</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className="bg-emerald-600 h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.round(panBreakdown.pan2.fillRatio * 100))}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold pt-0.5">
+                      <span>Production annuelle :</span>
+                      <span className="font-black text-slate-900">{panBreakdown.pan2.productionKwh.toLocaleString('fr-FR')} kWh/an</span>
                     </div>
                   </div>
                 </div>
