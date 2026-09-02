@@ -203,81 +203,85 @@ export default function SolarRoofSimulator({
     const maxKwc1 = Math.round((totalMaxKwc / 2) * 10) / 10;
     const maxKwc2 = Math.round((totalMaxKwc - maxKwc1) * 10) / 10;
 
-    // Détermination du pan le mieux exposé (celui le plus proche du Sud, i.e. plus petit écart angulaire à 0° / plus grand coeff)
-    const dev1 = Math.abs(pan1.angle !== undefined ? pan1.angle : (pan1.absSouthDeviation || 0));
-    const dev2 = Math.abs(pan2.angle !== undefined ? pan2.angle : (pan2.absSouthDeviation || 0));
+    // Détermination du pan le mieux exposé (celui le plus proche du Sud)
+    // pan1 = côté du centre du polygone (= là où les panneaux sont visuellement rendus sur la carte)
+    // pan2 = côté opposé
+    const dev1 = Math.abs(pan1.angle !== undefined ? pan1.angle : 0);
+    const dev2 = Math.abs(pan2.angle !== undefined ? pan2.angle : 0);
     const isPan1Better = coeff1 !== coeff2 ? (coeff1 > coeff2) : (dev1 <= dev2);
-    const bestPanConfig = isPan1Better
-      ? { id: 'pan1', panNum: 1, info: pan1, coeff: coeff1, maxKwc: maxKwc1, maxPanels: maxPanels1 }
-      : { id: 'pan2', panNum: 2, info: pan2, coeff: coeff2, maxKwc: maxKwc2, maxPanels: maxPanels2 };
 
-    const worstPanConfig = isPan1Better
-      ? { id: 'pan2', panNum: 2, info: pan2, coeff: coeff2, maxKwc: maxKwc2, maxPanels: maxPanels2 }
-      : { id: 'pan1', panNum: 1, info: pan1, coeff: coeff1, maxKwc: maxKwc1, maxPanels: maxPanels1 };
+    // Allocation des panneaux : remplissage du meilleur pan d'abord, puis du second
+    // Le calepinage remplit les panneaux dans le polygone du bas (sablière) vers le haut (faîtage).
+    // Visuellement les panneaux apparaissent sur le versant pan1 (côté centre du polygone).
+    // Les numéros de versant restent fixes : pan1 = Versant 1, pan2 = Versant 2.
+    let installedPanels1 = 0;
+    let installedPanels2 = 0;
+    let installedKwc1 = 0;
+    let installedKwc2 = 0;
 
-    // Allocation des panneaux : remplissage du meilleur pan d'abord (Sud), puis du second (Nord)
-    let installedPanelsBest = 0;
-    let installedPanelsWorst = 0;
-    let installedKwcBest = 0;
-    let installedKwcWorst = 0;
-
-    if (currentPanels <= bestPanConfig.maxPanels) {
-      installedPanelsBest = currentPanels;
-      installedPanelsWorst = 0;
-      installedKwcBest = currentKwc;
-      installedKwcWorst = 0;
+    if (isPan1Better) {
+      // Pan1 est le meilleur → on le remplit d'abord
+      if (currentPanels <= maxPanels1) {
+        installedPanels1 = currentPanels;
+        installedPanels2 = 0;
+        installedKwc1 = currentKwc;
+        installedKwc2 = 0;
+      } else {
+        installedPanels1 = maxPanels1;
+        installedPanels2 = currentPanels - maxPanels1;
+        installedKwc1 = maxKwc1;
+        installedKwc2 = Math.max(0, Math.round((currentKwc - maxKwc1) * 10) / 10);
+      }
     } else {
-      installedPanelsBest = bestPanConfig.maxPanels;
-      installedPanelsWorst = currentPanels - bestPanConfig.maxPanels;
-      installedKwcBest = bestPanConfig.maxKwc;
-      installedKwcWorst = Math.max(0, Math.round((currentKwc - bestPanConfig.maxKwc) * 10) / 10);
+      // Pan2 est le meilleur → on le remplit d'abord, puis pan1
+      if (currentPanels <= maxPanels2) {
+        installedPanels2 = currentPanels;
+        installedPanels1 = 0;
+        installedKwc2 = currentKwc;
+        installedKwc1 = 0;
+      } else {
+        installedPanels2 = maxPanels2;
+        installedPanels1 = currentPanels - maxPanels2;
+        installedKwc2 = maxKwc2;
+        installedKwc1 = Math.max(0, Math.round((currentKwc - maxKwc2) * 10) / 10);
+      }
     }
 
     // Calcul du coefficient effectif pondéré selon la puissance réelle posée sur chaque versant
     const effectiveOrientationCoeff = currentKwc > 0
-      ? ((installedKwcBest * bestPanConfig.coeff) + (installedKwcWorst * worstPanConfig.coeff)) / currentKwc
-      : bestPanConfig.coeff;
+      ? ((installedKwc1 * coeff1) + (installedKwc2 * coeff2)) / currentKwc
+      : (isPan1Better ? coeff1 : coeff2);
 
-    const specificYieldBest = Math.round(regionalBaseYield * bestPanConfig.coeff * inclinationCoeff);
-    const specificYieldWorst = Math.round(regionalBaseYield * worstPanConfig.coeff * inclinationCoeff);
+    const specificYield1 = Math.round(regionalBaseYield * coeff1 * inclinationCoeff);
+    const specificYield2 = Math.round(regionalBaseYield * coeff2 * inclinationCoeff);
     const weightedSpecificYield = Math.round(regionalBaseYield * effectiveOrientationCoeff * inclinationCoeff);
 
-    const prodKwhBest = Math.round(installedKwcBest * regionalBaseYield * bestPanConfig.coeff * inclinationCoeff);
-    const prodKwhWorst = Math.round(installedKwcWorst * regionalBaseYield * worstPanConfig.coeff * inclinationCoeff);
-    const totalProductionKwh = prodKwhBest + prodKwhWorst;
+    const prodKwh1 = Math.round(installedKwc1 * regionalBaseYield * coeff1 * inclinationCoeff);
+    const prodKwh2 = Math.round(installedKwc2 * regionalBaseYield * coeff2 * inclinationCoeff);
+    const totalProductionKwh = prodKwh1 + prodKwh2;
+
+    // bestPan et worstPan pour l'affichage (numéros de versant fixes, seul le statut best/worst change)
+    const pan1Data = {
+      id: 'pan1', panNum: 1,
+      label: pan1.orientationLabel, rawLabel: pan1.rawLabel, angle: pan1.angle,
+      coeff: coeff1, maxKwc: maxKwc1, maxPanels: maxPanels1,
+      installedKwc: installedKwc1, installedPanels: installedPanels1,
+      fillRatio: maxKwc1 > 0 ? (installedKwc1 / maxKwc1) : 0,
+      specificYield: specificYield1, productionKwh: prodKwh1
+    };
+    const pan2Data = {
+      id: 'pan2', panNum: 2,
+      label: pan2.orientationLabel, rawLabel: pan2.rawLabel, angle: pan2.angle,
+      coeff: coeff2, maxKwc: maxKwc2, maxPanels: maxPanels2,
+      installedKwc: installedKwc2, installedPanels: installedPanels2,
+      fillRatio: maxKwc2 > 0 ? (installedKwc2 / maxKwc2) : 0,
+      specificYield: specificYield2, productionKwh: prodKwh2
+    };
 
     return {
       isSymetrique: true,
-      bestPan: {
-        id: bestPanConfig.id,
-        panNum: bestPanConfig.panNum,
-        label: bestPanConfig.info.orientationLabel,
-        rawLabel: bestPanConfig.info.rawLabel,
-        angle: bestPanConfig.info.angle,
-        coeff: bestPanConfig.coeff,
-        maxKwc: bestPanConfig.maxKwc,
-        maxPanels: bestPanConfig.maxPanels,
-        installedKwc: installedKwcBest,
-        installedPanels: installedPanelsBest,
-        fillRatio: bestPanConfig.maxKwc > 0 ? (installedKwcBest / bestPanConfig.maxKwc) : 0,
-        specificYield: specificYieldBest,
-        productionKwh: prodKwhBest
-      },
-      worstPan: {
-        id: worstPanConfig.id,
-        panNum: worstPanConfig.panNum,
-        label: worstPanConfig.info.orientationLabel,
-        rawLabel: worstPanConfig.info.rawLabel,
-        angle: worstPanConfig.info.angle,
-        coeff: worstPanConfig.coeff,
-        maxKwc: worstPanConfig.maxKwc,
-        maxPanels: worstPanConfig.maxPanels,
-        installedKwc: installedKwcWorst,
-        installedPanels: installedPanelsWorst,
-        fillRatio: worstPanConfig.maxKwc > 0 ? (installedKwcWorst / worstPanConfig.maxKwc) : 0,
-        specificYield: specificYieldWorst,
-        productionKwh: prodKwhWorst
-      },
+      bestPan: isPan1Better ? pan1Data : pan2Data,
+      worstPan: isPan1Better ? pan2Data : pan1Data,
       effectiveOrientationCoeff,
       weightedSpecificYield,
       totalProductionKwh

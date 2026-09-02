@@ -320,7 +320,7 @@ export default function SolarRoofBeforeAfterViewer({
 
           {/* Ligne verticale de séparation et Curseur central interactif */}
           <div
-            className="absolute top-0 bottom-0 z-20 pointer-events-none"
+            className="absolute top-0 bottom-0 z-[1500] pointer-events-none"
             style={{ left: `${sliderPosition}%` }}
           >
             {/* Ligne blanche verticale continue avec lueur */}
