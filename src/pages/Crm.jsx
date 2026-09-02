@@ -368,7 +368,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.contacts, contacts, 'contacts'),
       color: 'bg-blue-500',
       bgLight: 'bg-blue-50',
-      height: 'h-28 lg:h-32'
+      height: 'h-14 sm:h-16 lg:h-32'
     },
     {
       icon: FolderHeart,
@@ -377,7 +377,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.projectsInProgress, projects, 'projects_in_progress'),
       color: 'bg-green-500',
       bgLight: 'bg-green-50',
-      height: 'h-28 lg:h-32'
+      height: 'h-14 sm:h-16 lg:h-32'
     },
     {
       icon: CheckSquare,
@@ -386,7 +386,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.tasksInProgress, tasks, 'tasks_in_progress'),
       color: 'bg-orange-500',
       bgLight: 'bg-orange-50',
-      height: 'h-28 lg:h-32'
+      height: 'h-14 sm:h-16 lg:h-32'
     },
     {
       icon: CheckCircle2,
@@ -395,7 +395,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.projectsCompleted, projects, 'projects_completed'),
       color: 'bg-purple-500',
       bgLight: 'bg-purple-50',
-      height: 'h-28 lg:h-32'
+      height: 'h-14 sm:h-16 lg:h-32'
     },
   ];
 
@@ -903,18 +903,20 @@ export default function Crm() {
 
   const renderDashboard = () => (
     <div className="flex-1 flex flex-col min-h-0 space-y-4 lg:space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5 crm-kpi-grid shrink-0">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 lg:gap-5 crm-kpi-grid shrink-0">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
-            <div key={idx} className={`bg-white rounded-xl lg:rounded-2xl shadow-sm border border-slate-200 p-3 lg:p-4 ${kpi.height || ''} flex flex-col justify-between hover:shadow-md transition-shadow`}>
-              <div className="flex items-start justify-between mb-1.5 lg:mb-2">
-                <div className={`${kpi.bgLight} p-1.5 lg:p-2.5 rounded-lg lg:rounded-xl`}><Icon className={`w-4 h-4 lg:w-5 lg:h-5 ${kpi.color.replace('bg-', 'text-')}`} /></div>
-                <span className={`text-[10px] lg:text-xs font-semibold px-1.5 lg:px-2 py-0.5 rounded-full ${kpi.trendPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{kpi.trend}</span>
+            <div key={idx} className={`bg-white rounded-xl lg:rounded-2xl shadow-sm border border-slate-200 p-2 sm:p-2.5 lg:p-4 ${kpi.height || 'h-14 sm:h-16 lg:h-32'} flex flex-col justify-between hover:shadow-md transition-shadow`}>
+              <div className="flex items-center justify-between">
+                <div className={`${kpi.bgLight} p-1 sm:p-1.5 lg:p-2.5 rounded-md lg:rounded-xl`}><Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 ${kpi.color.replace('bg-', 'text-')}`} /></div>
+                <span className={`text-[9px] sm:text-[10px] lg:text-xs font-semibold px-1.5 lg:px-2 py-0.5 rounded-full ${kpi.trendPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{kpi.trend}</span>
               </div>
               <div className="mt-auto">
-                <p className="text-lg lg:text-2xl font-bold text-slate-900 mb-0.5">{kpi.value}</p>
-                <p className="text-[10px] lg:text-xs text-slate-600 line-clamp-1">{kpi.label}</p>
+                <div className="flex items-baseline justify-between lg:block">
+                  <p className="text-base sm:text-lg lg:text-2xl font-bold text-slate-900 leading-tight lg:mb-0.5">{kpi.value}</p>
+                  <p className="text-[10px] sm:text-[11px] lg:text-xs text-slate-600 truncate">{kpi.label}</p>
+                </div>
               </div>
             </div>
           );

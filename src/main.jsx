@@ -14,3 +14,12 @@ createRoot(document.getElementById("root")).render(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+// Retirer le splash screen une fois React initialisé
+const splash = document.getElementById("app-splash");
+if (splash) {
+  setTimeout(() => {
+    splash.classList.add("fade-out");
+    setTimeout(() => splash.remove(), 350);
+  }, 100);
+}
