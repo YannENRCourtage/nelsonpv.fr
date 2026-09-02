@@ -5,10 +5,20 @@ import { preloadProjectImages } from '@/utils/imageProxy';
 
 // ─── Types d'installation ────────────────────────────────────────────────────
 
-export function getInstallationTypeInfo(type, kwc) {
+export function getInstallationTypeInfo(type, kwc, isAcama = false) {
   const t = (type || '').toLowerCase();
   const kwcSubtitle = '';
   const kwcSuffix = '';
+
+  if (isAcama) {
+    return {
+      title: "Bâtiment à charpente métallique équipé d'une centrale photovoltaïque",
+      subtitle: kwcSubtitle,
+      cerfaText: `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque${kwcSuffix}`,
+      code: 'BAT_SOLAIRE',
+      isNewConstruction: true,
+    };
+  }
 
   if (t.includes('batterie')) {
     return {

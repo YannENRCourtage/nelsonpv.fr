@@ -95,7 +95,8 @@ export const Footer = ({ project }) => (
  * PLANCHE 1 : COUVERTURE DP
  */
 export const PlateCover = ({ project, installationType }) => {
-    const typeInfo = getInstallationTypeInfo(installationType || project?.type || 'batiment_solaire', project?.kwc || project?.projectSize);
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+    const typeInfo = getInstallationTypeInfo(isAcama ? 'batiment_solaire' : (installationType || project?.type || 'batiment_solaire'), project?.kwc || project?.projectSize);
     const clientFullName = `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Demandeur';
 
     return (
@@ -139,7 +140,7 @@ export const PlateCover = ({ project, installationType }) => {
                         <div>{project?.zip || project?.zipCode || ''} {project?.city || project?.commune || ''}</div>
                         <div style={{ marginTop: '2mm', fontWeight: 'bold', color: '#00429d' }}>DESCRIPTIF SOMMAIRE :</div>
                         <div style={{ fontSize: '8.5pt', color: '#334155' }}>
-                            {project?.description || `Installation d'une ombrière photovoltaïque en structure métallique d'une puissance de ${project?.kwc || 100} kWc.`}
+                            {project?.description || (isAcama ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque d'une puissance de ${project?.kwc || 100} kWc.` : `Installation d'une ombrière photovoltaïque en structure métallique d'une puissance de ${project?.kwc || 100} kWc.`)}
                         </div>
                     </div>
                 </div>
@@ -346,7 +347,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
         );
     }
 
-    const isOmbriere = rawType.startsWith('ombriere') || rawType.includes('ombriere') || rawType.includes('ombrière');
+    const isOmbriere = !isAcama && (rawType.startsWith('ombriere') || rawType.includes('ombriere') || rawType.includes('ombrière'));
     const isPL = isOmbriere && (rawType.includes('ombriere_pl') || (rawType.includes('pl') && !rawType.includes('simple')) || largeur >= 13.0);
     const isSimple = isOmbriere && !isPL && (rawType.includes('simple') || largeur <= 7.5);
     const isDouble = isOmbriere && !isPL && !isSimple;

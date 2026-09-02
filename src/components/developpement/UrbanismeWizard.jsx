@@ -225,7 +225,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   }, [isDP, isAcama, config?.length, config?.width]);
 
   const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
-  const [solutionType, setSolutionType] = useState(isDP ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
+  const [solutionType, setSolutionType] = useState((!isAcama && isDP) ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
 
   // Sync ACAMA mode on open
@@ -234,6 +234,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       configActions.setIsAcama(isAcama);
       if (isAcama) {
         configActions.setConfigMode('custom');
+        setSolutionType('building');
+        setBatteryStorage(prev => ({ ...prev, enabled: false }));
       }
     }
   }, [isOpen, isAcama]);
@@ -242,15 +244,15 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [buildings, setBuildings] = useState([
     {
       id: 'bat-1',
-      name: isDP ? 'Ombrière 1' : 'Bâtiment 1',
-      length: 37.5,
-      width: 16.4,
+      name: isAcama ? 'Bâtiment 30m × 15m' : (isDP ? 'Ombrière 1' : 'Bâtiment 1'),
+      length: isAcama ? 30 : 37.5,
+      width: isAcama ? 15 : 16.4,
       eaveHeight: 4,
-      roofPitch: 15,
-      buildingType: 'asymetrique_1',
+      roofPitch: isAcama ? 10 : 15,
+      buildingType: isAcama ? 'symetrique' : (isDP ? 'ombriere_pl' : 'asymetrique_1'),
       leftSide: 'none',
       rightSide: 'none',
-      bayCount: 5,
+      bayCount: isAcama ? 4 : 5,
       baySpacing: 7.5,
       captures: {},
       photos: {}
@@ -358,7 +360,7 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
     const largeur1 = Number(b1.width || config.width || 16.4);
     const totalSurface1 = (largeur1 * longueur1).toFixed(2);
     const b1Type = b1.buildingType || config.buildingType || 'asymetrique_1';
-    const isB1Ombriere = isDP || b1Type.includes('ombriere');
+    const isB1Ombriere = !isAcama && (isDP || b1Type.includes('ombriere'));
     const isB1Asym = b1Type.startsWith('asym');
     const isB1Sym = b1Type.startsWith('sym');
     const b1RoofLabel = isB1Ombriere ? 'monopente (10°)' : isB1Asym ? 'double pente asymétrique (15°)' : isB1Sym ? 'double pente symétrique (10°)' : 'photovoltaïque';
@@ -376,7 +378,7 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
     const secondaryBuildings = buildings.slice(1);
     const hasMultiBuildings = secondaryBuildings.length > 0;
 
-    let batimentDesc = isDP
+    let batimentDesc = (!isAcama && isDP)
       ? `Le projet a pour objet l'implantation d'une ombrière photovoltaïque${hasMultiBuildings ? ' (Ombrière 1)' : ''} de dimensions ${longueur1.toFixed(2)}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${b1Pitch}°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`
       : (isB1Ombriere
         ? `Le projet a pour objet l'implantation d'une ombrière photovoltaïque${hasMultiBuildings ? ' (Bâtiment 1)' : ''} de dimensions ${longueur1.toFixed(2)}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à 10°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire.`
@@ -387,8 +389,8 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
         const bW = Number(b.width || 16.4);
         const bL = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : 37.5));
         const bSurface = (bW * bL).toFixed(2);
-        const bType = (b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1')).toLowerCase();
-        const isOmb = isDP || bType.includes('ombriere');
+        const bType = (b.buildingType || ((!isAcama && isDP) ? 'ombriere_pl' : 'asymetrique_1')).toLowerCase();
+        const isOmb = !isAcama && (isDP || bType.includes('ombriere'));
         const bAuvent = b.rightSide === 'auvent' || b.leftSide === 'auvent';
         const bEave = Number(b.eaveHeight || (bType.startsWith('asym') ? 4.0 : (bType === 'ombriere_pl' ? 5.08 : (isOmb ? 3.0 : 5.5))));
         const bPitch = Number(b.roofPitch || (bType.startsWith('asym') ? 15 : 10));
@@ -419,20 +421,22 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
 
     const totalBuildingCount = buildings.length;
     let objetDemande = isDP
-      ? `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} ${totalBuildingCount > 1 ? 'ombrières photovoltaïques' : 'ombrière photovoltaïque'} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${(!isAcama && batteryStorage.enabled) ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`
+      ? (isAcama
+        ? `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}.`
+        : `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} ${totalBuildingCount > 1 ? 'ombrières photovoltaïques' : 'ombrière photovoltaïque'} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${(!isAcama && batteryStorage.enabled) ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`)
       : `La demande de permis de construire porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${(!isAcama && batteryStorage.enabled) ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
 
-    const p3Details = isDP
+    const p3Details = (!isAcama && isDP)
       ? `Cette ombrière sera ouverte et non close. Les façades Est, Ouest, Nord et Sud seront ouvertes.\nUn terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.\nDes tranchées drainantes seront réalisées tout autour de l'ombrière projet afin d'évacuer les eaux pluviales par infiltration dans le sol.`
       : `Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes.\nUn terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.\nDes tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.`;
 
-    const p4Details = isDP
+    const p4Details = (!isAcama && isDP)
       ? `L'ombrière ne sera pas raccordée aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.`
       : `Le bâtiment ne sera pas raccordé aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.`;
 
-    const p5Details = isDP
+    const p5Details = (!isAcama && isDP)
       ? `Une bâche à eau de 120m³ sera installée à proximité immédiate de la future ombrière. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf DP 02 - Plan de masse).`
-      : `Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).`;
+      : `Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf ${isDP ? 'DP' : 'PC'} 02 - Plan de masse).`;
 
     return `1- OBJET DE LA DEMANDE
 ${objetDemande}
@@ -479,18 +483,18 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     const projLng = Number(editedProject?.lng || project?.lng || 0.9168);
     const newBuilding = {
       id: `bat-${newIdx}`,
-      name: isDP ? `Ombrière ${newIdx}` : `Bâtiment ${newIdx}`,
-      length: 30,
-      width: isDP ? 15.8 : 16.4,
-      eaveHeight: isDP ? 5.08 : 4.0,
-      roofPitch: isDP ? 10 : 15,
-      buildingType: isDP ? 'ombriere_pl' : 'asymetrique_1',
+      name: isAcama ? `Bâtiment 30m × 15m` : (isDP ? `Ombrière ${newIdx}` : `Bâtiment ${newIdx}`),
+      length: isAcama ? 30 : 30,
+      width: isAcama ? 15.0 : (isDP ? 15.8 : 16.4),
+      eaveHeight: isAcama ? 4.0 : (isDP ? 5.08 : 4.0),
+      roofPitch: isAcama ? 10 : (isDP ? 10 : 15),
+      buildingType: isAcama ? 'symetrique' : (isDP ? 'ombriere_pl' : 'asymetrique_1'),
       leftSide: 'none',
       rightSide: 'none',
       bayCount: 4,
       baySpacing: 7.5,
-      leftWidth: 9.3,
-      rightWidth: 9.3,
+      leftWidth: isAcama ? 4.0 : 9.3,
+      rightWidth: isAcama ? 4.0 : 9.3,
       hasSolar: true,
       lat: projLat,
       lng: projLng,
@@ -639,18 +643,22 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       ];
     } else if (project.buildings && Array.isArray(project.buildings) && project.buildings.length > 0) {
       initialBuildings = project.buildings.map((b, idx) => {
-        let cleanName = b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
-        cleanName = cleanName
-          .replace(/Bâtiment/gi, isDP ? 'Ombrière' : 'Bâtiment')
-          .replace(/Ombrière/gi, isDP ? 'Ombrière' : 'Bâtiment')
-          .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
-          .trim();
-        if (!cleanName) cleanName = isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
+        let cleanName = isAcama 
+          ? `Bâtiment ${Number(b.length || (config?.length || 30)).toFixed(0)}m × ${Number(b.width || (config?.width || 15)).toFixed(0)}m`
+          : (b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`));
+        if (!isAcama) {
+          cleanName = cleanName
+            .replace(/Bâtiment/gi, isDP ? 'Ombrière' : 'Bâtiment')
+            .replace(/Ombrière/gi, isDP ? 'Ombrière' : 'Bâtiment')
+            .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
+            .trim();
+          if (!cleanName) cleanName = isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
+        }
 
         const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || defLat);
         const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || defLng);
 
-        const bType = b.buildingType || 'asymetrique_1';
+        const bType = (isAcama && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? 'symetrique' : (b.buildingType || 'asymetrique_1');
         const bIsAsym = bType.startsWith('asymetrique');
         const bIsMono = bType === 'monopente';
         const bIsPL = bType === 'ombriere_pl';
@@ -666,28 +674,29 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
           lng: bLng,
           gps: `${bLat},${bLng}`,
           rotation: Number(b.rotation || 0),
-          length: Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || 37.5),
-          width: Number(b.width || (bIsAsym ? 20.0 : 16.4)),
+          length: Number(b.length || (b.bayCount || (isAcama ? 4 : 5)) * (b.baySpacing || 7.5) || (isAcama ? 30 : 37.5)),
+          width: Number(b.width || (isAcama ? 15.0 : (bIsAsym ? 20.0 : 16.4))),
           eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : defEave),
           roofPitch: Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : defPitch),
           buildingType: bType,
+          isBattery: false,
           leftSide: b.leftSide || 'none',
           rightSide: b.rightSide || 'none',
           leftWidth: b.leftWidth !== undefined ? Number(b.leftWidth) : (b.leftSide === 'appentis' ? 9.3 : (b.leftSide === 'auvent' ? 4.0 : 0)),
           rightWidth: b.rightWidth !== undefined ? Number(b.rightWidth) : (b.rightSide === 'appentis' ? 9.3 : (b.rightSide === 'auvent' ? 4.0 : 0)),
-          bayCount: Number(b.bayCount || 5),
+          bayCount: Number(b.bayCount || (isAcama ? 4 : 5)),
           baySpacing: Number(b.baySpacing || 7.5),
           captures: b.captures || b.urbanisme_captures || (idx === 0 ? (project.urbanisme_captures || project.captures || {}) : {}),
           photos: b.photos || b.pc_photos || (idx === 0 ? (project.pc_photos || project.photos || {}) : {})
         };
       });
     } else {
-      const pLen = Number(project.longueur || 37.5);
-      const pW = Number(project.largeur || 16.4);
-      const pBc = Number(project.bayCount) || Math.max(1, Math.round(pLen / 7.5)) || 5;
+      const pLen = isAcama ? Number(project.longueur || 30.0) : Number(project.longueur || 37.5);
+      const pW = isAcama ? Number(project.largeur || 15.0) : Number(project.largeur || 16.4);
+      const pBc = Number(project.bayCount) || Math.max(1, Math.round(pLen / 7.5)) || (isAcama ? 4 : 5);
       const pBs = Number(project.baySpacing) || 7.5;
-      const pType = project.buildingType || 'asymetrique_1';
-      const pEave = Number(project.hauteur_egout) || (pType === 'ombriere_pl' ? 5.08 : (pType === 'ombriere_vl_double' ? 3.0 : (pType.startsWith('asymetrique') || pType === 'monopente' ? 4.0 : 5.5)));
+      const pType = isAcama ? 'symetrique' : (project.buildingType || ((!isAcama && isDP) ? 'ombriere_pl' : 'asymetrique_1'));
+      const pEave = Number(project.hauteur_egout) || (isAcama ? 4.0 : (pType === 'ombriere_pl' ? 5.08 : (pType === 'ombriere_vl_double' ? 3.0 : (pType.startsWith('asymetrique') || pType === 'monopente' ? 4.0 : 5.5))));
       const pPitch = Number(project.pente) || ((pType.startsWith('asymetrique') || pType === 'monopente') ? 15 : 10);
       const pRightSide = project.rightSide || (project.appentis ? 'appentis' : project.auvent ? 'auvent' : 'none');
       const pLeftSide = project.leftSide || 'none';
@@ -697,12 +706,13 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       initialBuildings = [
         {
           id: 'bat-1',
-          name: isDP ? 'Ombrière 1' : 'Bâtiment 1',
+          name: isAcama ? `Bâtiment ${pLen.toFixed(0)}m × ${pW.toFixed(0)}m` : (isDP ? 'Ombrière 1' : 'Bâtiment 1'),
           length: pBc * pBs,
           width: pW,
           eaveHeight: pEave,
           roofPitch: pPitch,
           buildingType: pType,
+          isBattery: false,
           leftSide: pLeftSide,
           rightSide: pRightSide,
           leftWidth: pLeftWidth,
@@ -1383,11 +1393,11 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       puissance: preservedKwc,
       kwc: preservedKwc,
       projectSize: preservedKwc,
-      type: isDP ? (buildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière',
+      type: isAcama ? 'batiment_solaire' : (isDP ? (buildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'),
       docType: type,
       buildings
     },
-    editedProject.type || (isDP ? 'ombriere' : 'batiment_solaire')
+    isAcama ? 'batiment_solaire' : (editedProject.type || (isDP ? 'ombriere' : 'batiment_solaire'))
   );
   const STEPS = ['Déclarant', isDP ? 'Cartes DP1' : 'Cartes PC1', 'Cotations & Côtes', 'Photos', isDP ? 'Carte DP2' : 'Carte PC2', 'Notice Descriptive', 'Validation'];
 
@@ -1694,7 +1704,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                         }`}
                       >
                         <Building2 className="w-3.5 h-3.5" />
-                        <span>Bâtiment / Hangar</span>
+                        <span>{isAcama ? "Bâtiment Sur-mesure" : "Bâtiment / Hangar"}</span>
                       </button>
 
                       {!isAcama && (
