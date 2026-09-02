@@ -273,8 +273,9 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
     
     // Détection stricte du type d'ouvrage
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const rawType = (project?.buildingType || '').toLowerCase();
-    const isBattery = rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie');
+    const isBattery = !isAcama && (rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie'));
     
     if (isBattery) {
         const bQty = Number(project?.battery_quantity || project?.batteryStorage?.quantity || 1) || 1;

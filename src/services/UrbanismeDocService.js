@@ -130,7 +130,8 @@ async function drawCoverPage(doc, project, type, installationType) {
   } else {
     installCode = 'Bâtiment et Ombrière';
   }
-  if (project?.batteryStorage?.enabled) {
+  const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+  if (!isAcama && project?.batteryStorage?.enabled) {
     installCode += ' + Stockage batterie';
   }
 

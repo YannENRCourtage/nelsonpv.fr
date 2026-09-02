@@ -327,11 +327,20 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
           : (project?.pc_notice && project.pc_notice.includes("1- OBJET"))
             ? project.pc_notice
             : (noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.notice_descriptive);
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const effectiveNoticeText = (candidateNotice && candidateNotice.length > 50) ? candidateNotice : null;
+    const cleanedNoticeText = (isAcama && effectiveNoticeText) 
+        ? effectiveNoticeText
+            .replace(/Le système de stockage batterie est[^\n]*\n?/gi, '')
+            .replace(/ainsi qu'un système de stockage batterie[^\n,\.]*/gi, '')
+            .replace(/Le site sera également équipé d'un système de stockage d'énergie[^\n]*\n?/gi, '')
+            .replace(/et le système de stockage batterie/gi, '')
+            .replace(/Station Batteries \([^\)]*\)/gi, 'Bâtiment')
+        : effectiveNoticeText;
     
     // Détection stricte du type d'ouvrage
     const rawType = (project?.buildingType || '').toLowerCase();
-    const isBattery = rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie');
+    const isBattery = !isAcama && (rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie'));
     
     if (isBattery) {
         const bQty = Number(project?.battery_quantity || project?.batteryStorage?.quantity || 1) || 1;
@@ -615,8 +624,8 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const baySpacing = project?.baySpacing || 7.5;
     const displayKwcStr = displayKwc ? `${displayKwc} kWc` : '0 kWc';
 
-    const cleanNoticeText = effectiveNoticeText
-        ? effectiveNoticeText.replace(/^\s*NOTICE\s+D['’]INSERTION(?:\s*&|\s+ET)?\s*(?:DESCRIPTIVE\s+DU\s+PROJET)?\s*\n+/i, '').trim()
+    const cleanNoticeText = cleanedNoticeText
+        ? cleanedNoticeText.replace(/^\s*NOTICE\s+D['’]INSERTION(?:\s*&|\s+ET)?\s*(?:DESCRIPTIVE\s+DU\s+PROJET)?\s*\n+/i, '').trim()
         : null;
 
     const default5PointsNotice = `1- OBJET DE LA DEMANDE

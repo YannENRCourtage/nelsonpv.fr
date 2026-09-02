@@ -577,8 +577,15 @@ export default function Developpement() {
 
       {/* ═══ ZONE DE RENDU HTML2CANVAS POUR LE PDF CERFA ════════════ */}
       {(() => {
-        const activeProj = pdfProjectState || selectedProject;
-        if (!activeProj) return null;
+        const rawActiveProj = pdfProjectState || selectedProject;
+        if (!rawActiveProj) return null;
+        const activeProj = {
+          ...rawActiveProj,
+          isAcama,
+          tenantId: activeTenantId,
+          isBattery: isAcama ? false : (rawActiveProj.isBattery || false),
+          batteryStorage: isAcama ? { enabled: false } : rawActiveProj.batteryStorage
+        };
         return (
           <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '297mm', pointerEvents: 'none', zIndex: -100, opacity: 1 }}>
             {/* DP & CU Plates */}
@@ -613,16 +620,21 @@ export default function Developpement() {
               const bProj = {
                 ...activeProj,
                 ...b,
+                isAcama,
+                tenantId: activeTenantId,
+                isBattery: isAcama ? false : (b.isBattery || false),
                 largeur: String(b.width || b.largeur || 20.0),
                 longueur: String(b.length || b.longueur || 30.0),
                 hauteur_egout: String(b.eaveHeight || b.hauteur_egout || 4.0),
                 pente: String(b.roofPitch || b.pente || 15),
-                buildingType: b.buildingType || 'asymetrique_1',
+                buildingType: (isAcama && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? 'symetrique' : (b.buildingType || 'asymetrique_1'),
                 leftSide: b.leftSide || 'none',
                 rightSide: b.rightSide || 'none',
                 leftWidth: b.leftWidth || 4.0,
                 rightWidth: b.rightWidth || 4.0,
-                buildingName: b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Ombrière ${bIdx + 1}`,
+                buildingName: isAcama
+                  ? `Bâtiment ${Number(b.length || 30).toFixed(0)}m × ${Number(b.width || 15).toFixed(0)}m`
+                  : (b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Ombrière ${bIdx + 1}`),
                 urbanisme_captures: mergedCaptures,
                 captures: mergedCaptures,
                 pc_photos: mergedPhotos,
@@ -681,16 +693,21 @@ export default function Developpement() {
               const bProj = {
                 ...activeProj,
                 ...b,
+                isAcama,
+                tenantId: activeTenantId,
+                isBattery: isAcama ? false : (b.isBattery || false),
                 largeur: String(b.width || b.largeur || 20.0),
                 longueur: String(b.length || b.longueur || 30.0),
                 hauteur_egout: String(b.eaveHeight || b.hauteur_egout || 4.0),
                 pente: String(b.roofPitch || b.pente || 15),
-                buildingType: b.buildingType || 'asymetrique_1',
+                buildingType: (isAcama && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? 'symetrique' : (b.buildingType || 'asymetrique_1'),
                 leftSide: b.leftSide || 'none',
                 rightSide: b.rightSide || 'none',
                 leftWidth: b.leftWidth || 4.0,
                 rightWidth: b.rightWidth || 4.0,
-                buildingName: b.name ? b.name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Bâtiment ${bIdx + 1}`,
+                buildingName: isAcama
+                  ? `Bâtiment ${Number(b.length || 30).toFixed(0)}m × ${Number(b.width || 15).toFixed(0)}m`
+                  : (b.name ? b.name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Bâtiment ${bIdx + 1}`),
                 urbanisme_captures: mergedCaptures,
                 captures: mergedCaptures,
                 pc_photos: mergedPhotos,

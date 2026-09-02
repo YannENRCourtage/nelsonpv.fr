@@ -319,7 +319,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const projectAltitude = editedProject?.altitude || project?.altitude || '140.62 m';
 
     // Cas particulier : Projet de stockage d'énergie par batterie Stand-Alone (BESS)
-    if (solutionType === 'battery') {
+    if (!isAcama && solutionType === 'battery') {
       const pQty = batteryStorage.quantity || 1;
       const pModel = batteryStorage.model || 'CESC Mercury 261';
       const pPower = batteryStorage.powerKw || (pQty * 125);
@@ -406,7 +406,7 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
       batimentDesc += `\nLe projet intègre par ailleurs l'équipement photovoltaïque d'une toiture existante (${additionalRoof.name}) d'une surface de ${additionalRoof.surface} m² développant ${additionalRoof.kwc} kWc supplémentaires en couverture ${additionalRoof.roofType}.`;
     }
 
-    if (batteryStorage.enabled) {
+    if (!isAcama && batteryStorage.enabled) {
       batimentDesc += `\nLe site sera également équipé d'un système de stockage d'énergie par batterie stationnaire (${batteryStorage.quantity} unité(s) ${batteryStorage.model}) d'une capacité de ${batteryStorage.capacityKwh} kWh (${batteryStorage.powerKw} kW) implantée sur une dalle béton dédiée (${batteryStorage.footprint}).`;
     }
 
@@ -419,8 +419,8 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
 
     const totalBuildingCount = buildings.length;
     let objetDemande = isDP
-      ? `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} ${totalBuildingCount > 1 ? 'ombrières photovoltaïques' : 'ombrière photovoltaïque'} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`
-      : `La demande de permis de construire porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
+      ? `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} ${totalBuildingCount > 1 ? 'ombrières photovoltaïques' : 'ombrière photovoltaïque'} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${(!isAcama && batteryStorage.enabled) ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`
+      : `La demande de permis de construire porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${(!isAcama && batteryStorage.enabled) ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
 
     const p3Details = isDP
       ? `Cette ombrière sera ouverte et non close. Les façades Est, Ouest, Nord et Sud seront ouvertes.\nUn terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.\nDes tranchées drainantes seront réalisées tout autour de l'ombrière projet afin d'évacuer les eaux pluviales par infiltration dans le sol.`
@@ -446,7 +446,7 @@ ${p3Details}
 
 4- RACCORDEMENT AUX RESEAUX
 ${p4Details}
-Seule l'électricité produite par la centrale photovoltaïque${batteryStorage.enabled ? ' et le système de stockage batterie' : ''} est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL).
+Seule l'électricité produite par la centrale photovoltaïque${(!isAcama && batteryStorage.enabled) ? ' et le système de stockage batterie' : ''} est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL).
 L'emplacement du point de livraison indiqué dans les pièces graphiques de l'autorisation d'urbanisme n'apparaît qu'à titre indicatif.
 Le positionnement du point de livraison et d'un transformateur (le cas échéant) demeure à l'appréciation finale du gestionnaire de réseau en fonction du site et des équipements déjà existants.
 
@@ -1212,7 +1212,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     if (!onGenerate) return;
     setIsGenerating(true);
     
-    const isBattery = solutionType === 'battery' || batteryStorage.enabled || (editedProject.type || '').toLowerCase().includes('batterie');
+    const isBattery = !isAcama && (solutionType === 'battery' || batteryStorage.enabled || (editedProject.type || '').toLowerCase().includes('batterie'));
     
     // Objet synthétique pour Page 1
     const defaultObjet = isBattery
@@ -1224,7 +1224,15 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
           : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque"));
     const shortObjet = editedProject?.objet_travaux || defaultObjet;
 
-    const effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
+    let effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
+    if (isAcama && effectiveNotice) {
+      effectiveNotice = effectiveNotice
+        .replace(/Le système de stockage batterie est[^\n]*\n?/gi, '')
+        .replace(/ainsi qu'un système de stockage batterie[^\n,\.]*/gi, '')
+        .replace(/Le site sera également équipé d'un système de stockage d'énergie[^\n]*\n?/gi, '')
+        .replace(/et le système de stockage batterie/gi, '')
+        .replace(/Station Batteries \([^\)]*\)/gi, 'Bâtiment');
+    }
 
     // Conserver fidèlement chaque bâtiment avec ses propres dimensions et paramètres
     const updatedBuildings = buildings.map((b, idx) => ({
@@ -1233,8 +1241,9 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       width: Number(b.width || 16.4),
       eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : (isDP ? 3.0 : 4.0)),
       roofPitch: Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : 10),
-      buildingType: isBattery ? 'battery_standalone' : (b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1')),
-      isBattery: isBattery || Boolean(b.isBattery),
+      buildingType: (isAcama && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? 'symetrique' : (isBattery ? 'battery_standalone' : (b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1'))),
+      isBattery: isAcama ? false : (isBattery || Boolean(b.isBattery)),
+      name: isAcama ? `Bâtiment ${Number(b.length || 30).toFixed(0)}m × ${Number(b.width || 15).toFixed(0)}m` : b.name,
       leftSide: b.leftSide || 'none',
       rightSide: b.rightSide || 'none',
       leftWidth: b.leftWidth !== undefined ? Number(b.leftWidth) : 0,
