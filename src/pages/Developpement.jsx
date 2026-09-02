@@ -64,6 +64,7 @@ const SIDEBAR_SECTIONS = [
 
 export default function Developpement() {
   const { user, activeTenantId } = useAuth();
+  const isAcama = activeTenantId === 'acama';
   const [activeSection, setActiveSection] = useState('dossiers');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
