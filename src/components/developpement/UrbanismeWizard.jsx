@@ -214,10 +214,21 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [solutionType, setSolutionType] = useState(isDP ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
   const { activeTenantId } = useAuth() || {};
+  const isAcama = activeTenantId === 'acama';
   
   // Zustand Store du Configurateur Nelson
   const config = useConfiguratorValues();
   const configActions = useConfiguratorActions();
+
+  // Sync ACAMA mode on open
+  useEffect(() => {
+    if (isOpen) {
+      configActions.setIsAcama(isAcama);
+      if (isAcama && config.buildingType !== 'epona') {
+        configActions.setEponaModel('EPONA_45');
+      }
+    }
+  }, [isOpen, isAcama]);
 
   // Multi-Bâtiments
   const [buildings, setBuildings] = useState([
@@ -1679,22 +1690,6 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                         <Car className="w-3.5 h-3.5" />
                         <span>Ombrière PV</span>
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSolutionType('battery');
-                          setBatteryStorage(prev => ({ ...prev, enabled: true }));
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
-                          solutionType === 'battery'
-                            ? 'bg-purple-600 text-white ring-2 ring-purple-400'
-                            : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
-                        }`}
-                      >
-                        <Battery className="w-3.5 h-3.5 text-purple-600" />
-                        <span>Batterie Stand-Alone (BESS)</span>
-                      </button>
                     </div>
 
                     {/* Sélecteur multi-bâtiments si mode Bâtiment/Ombrière */}
@@ -1956,12 +1951,12 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                       {/* Panneau de contrôle gauche */}
                       <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1 space-y-3.5 pb-6">
                         <ControlPanel 
-                          isAcama={false} 
+                          isAcama={isAcama} 
                           selectedProject={editedProject} 
                           activeBuilding={buildings[activeBuildingIndex]}
                           onUpdateBuilding={updateActiveBuilding}
                         />
-                        <BuildingSummaryCard isAcama={false} />
+                        <BuildingSummaryCard isAcama={isAcama} />
                       </div>
 
                       {/* Scène 3D droite */}

@@ -630,6 +630,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const mHeightVal = 6.0;
         const midHeightZ = 0;
 
+        const lHeightVal = buildingType === 'epona_talian5' ? 4.3 : 4.0;
+        const lHeightX = leftPostX - 1.5;
+        const lHeightPoints = [
+            [new THREE.Vector3(lHeightX, 0, markerZ), new THREE.Vector3(lHeightX, lHeightVal / 2 - 0.6, markerZ)],
+            [new THREE.Vector3(lHeightX, lHeightVal / 2 + 0.6, markerZ), new THREE.Vector3(lHeightX, lHeightVal, markerZ)]
+        ];
+
         return { rSpanStart, rSpanEnd, rSpanMid, rSpanPoints, rightSpanLabel, lCenterStart, lCenterEnd, lCenterMid, lCenterPoints, lAwningStart, lAwningEnd, lAwningMid, lAwningPoints, rHeightPoints, rHeightVal, rHeightX, mHeightPoints, mHeightX, mHeightVal, midHeightZ, lHeightPoints, lHeightVal, lHeightX, markerZ, lCenterLabel };
     }, [isEpona, buildingType, length]);
 

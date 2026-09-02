@@ -173,7 +173,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                         }}
                         className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'predefined' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                     >
-                        {isAcama ? "Bâtiments prédéfinis" : "ECO-EVO"}
+                        {isAcama ? "Gamme ACAMA" : "ECO-EVO"}
                     </button>
                     {!isAcama && (
                         <button
