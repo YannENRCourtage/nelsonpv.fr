@@ -672,7 +672,7 @@ const MapLayersPanel = ({ map }) => {
 
         window.addEventListener('map:toggle-layer', handleExternalToggle);
         return () => window.removeEventListener('map:toggle-layer', handleExternalToggle);
-    }, [overlayCategories, activeOverlays, handleOverlayToggle]);
+    }, [overlayCategories, activeOverlays]);
 
     const handleOverlayToggle = async (layerName, checked) => {
         setActiveOverlays(prev => {

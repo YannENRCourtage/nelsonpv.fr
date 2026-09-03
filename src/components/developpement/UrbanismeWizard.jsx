@@ -645,6 +645,59 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
   }, []);
 
+  const handleGpsUpdate = useCallback((lat, lng) => {
+    setEditedProject(prev => ({ ...prev, lat, lng, gps: `${lat},${lng}` }));
+    setSolutions(prev => {
+      const nextSolutions = { ...prev };
+      let gIdx = 0;
+      ['building', 'ombriere'].forEach(solKey => {
+        if (nextSolutions[solKey]?.buildings) {
+          nextSolutions[solKey] = {
+            ...nextSolutions[solKey],
+            buildings: nextSolutions[solKey].buildings.map(b => {
+              const offLat = gIdx * 0.00015;
+              const offLng = gIdx * 0.00020;
+              gIdx++;
+              return {
+                ...b,
+                lat: lat + offLat,
+                lng: lng + offLng,
+                gps: `${lat + offLat},${lng + offLng}`
+              };
+            })
+          };
+        }
+      });
+      return nextSolutions;
+    });
+    setBuildings(prev => {
+      return prev.map((b, bIdx) => ({
+        ...b,
+        lat: lat + bIdx * 0.00015,
+        lng: lng + bIdx * 0.00020,
+        gps: `${lat + bIdx * 0.00015},${lng + bIdx * 0.00020}`
+      }));
+    });
+    generateStaticMapImage(lat, lng, 'map', 16).then(ign => {
+      if (ign) {
+        setCaptures(c => ({ ...c, ign }));
+        setEditedProject(p => ({ ...p, urbanisme_captures: { ...(p.urbanisme_captures || {}), ign } }));
+      }
+    });
+    generateStaticMapImage(lat, lng, 'satellite', 17).then(satellite => {
+      if (satellite) {
+        setCaptures(c => ({ ...c, satellite }));
+        setEditedProject(p => ({ ...p, urbanisme_captures: { ...(p.urbanisme_captures || {}), satellite } }));
+      }
+    });
+    generateStaticMapImage(lat, lng, 'map', 19, buildings).then(masse => {
+      if (masse) {
+        setCaptures(c => ({ ...c, masse_projet: masse }));
+        setEditedProject(p => ({ ...p, urbanisme_captures: { ...(p.urbanisme_captures || {}), masse_projet: masse } }));
+      }
+    });
+  }, [buildings]);
+
   // Synchronisation stricte de toutes les structures avec l'adresse du site (Étape Déclarant)
   useEffect(() => {
     if (step === 4) {
@@ -1933,59 +1986,6 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     setFieldValues(prev => ({ ...prev, [field]: value }));
     setEditedProject(prev => ({ ...prev, [field]: value }));
   };
-
-  const handleGpsUpdate = useCallback((lat, lng) => {
-    setEditedProject(prev => ({ ...prev, lat, lng, gps: `${lat},${lng}` }));
-    setSolutions(prev => {
-      const nextSolutions = { ...prev };
-      let gIdx = 0;
-      ['building', 'ombriere'].forEach(solKey => {
-        if (nextSolutions[solKey]?.buildings) {
-          nextSolutions[solKey] = {
-            ...nextSolutions[solKey],
-            buildings: nextSolutions[solKey].buildings.map(b => {
-              const offLat = gIdx * 0.00015;
-              const offLng = gIdx * 0.00020;
-              gIdx++;
-              return {
-                ...b,
-                lat: lat + offLat,
-                lng: lng + offLng,
-                gps: `${lat + offLat},${lng + offLng}`
-              };
-            })
-          };
-        }
-      });
-      return nextSolutions;
-    });
-    setBuildings(prev => {
-      return prev.map((b, bIdx) => ({
-        ...b,
-        lat: lat + bIdx * 0.00015,
-        lng: lng + bIdx * 0.00020,
-        gps: `${lat + bIdx * 0.00015},${lng + bIdx * 0.00020}`
-      }));
-    });
-    generateStaticMapImage(lat, lng, 'map', 16).then(ign => {
-      if (ign) {
-        setCaptures(c => ({ ...c, ign }));
-        setEditedProject(p => ({ ...p, urbanisme_captures: { ...(p.urbanisme_captures || {}), ign } }));
-      }
-    });
-    generateStaticMapImage(lat, lng, 'satellite', 17).then(satellite => {
-      if (satellite) {
-        setCaptures(c => ({ ...c, satellite }));
-        setEditedProject(p => ({ ...p, urbanisme_captures: { ...(p.urbanisme_captures || {}), satellite } }));
-      }
-    });
-    generateStaticMapImage(lat, lng, 'map', 19, buildings).then(masse => {
-      if (masse) {
-        setCaptures(c => ({ ...c, masse_projet: masse }));
-        setEditedProject(p => ({ ...p, urbanisme_captures: { ...(p.urbanisme_captures || {}), masse_projet: masse } }));
-      }
-    });
-  }, [buildings]);
 
   const handleGenerate = async () => {
     if (!onGenerate) return;
