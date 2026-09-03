@@ -199,8 +199,10 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const hasInitializedRef = React.useRef(false);
   const prevProjectIdRef = React.useRef(null);
 
-  const { activeTenantId } = useAuth() || {};
-  const isAcama = activeTenantId === 'acama';
+  const { activeTenantId, user } = useAuth() || {};
+  const isAcama = activeTenantId === 'acama' || project?.tenantId === 'acama' || Boolean(project?.isAcama);
+  const isGreenInvest = activeTenantId === 'green-invest' || activeTenantId === 'greeninvest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest' || Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest';
+  const isNoBattery = isAcama || isGreenInvest;
   
   // Zustand Store du Configurateur Nelson
   const config = useConfiguratorValues();
@@ -211,9 +213,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const bLen = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config?.length || 30)));
     const bWid = Number(b.width || config?.width || 15);
     
-    // For ACAMA or whenever the name has "Station Batteries" or generic name
-    if (isAcama || (b.name && b.name.toLowerCase().includes('batterie'))) {
-      return `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
+    // For ACAMA / Green Invest or whenever the name has "Station Batteries" or generic name
+    if (isNoBattery || (b.name && b.name.toLowerCase().includes('batterie'))) {
+      return isDP && !isAcama ? `Ombrière ${idx + 1}` : `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
     }
     let name = b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
     name = name
@@ -222,23 +224,23 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
       .trim();
     return name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
-  }, [isDP, isAcama, config?.length, config?.width]);
+  }, [isDP, isAcama, isNoBattery, config?.length, config?.width]);
 
   const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
   const [solutionType, setSolutionType] = useState((!isAcama && isDP) ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
 
-  // Sync ACAMA mode on open
+  // Sync ACAMA / Green Invest mode on open
   useEffect(() => {
     if (isOpen) {
       configActions.setIsAcama(isAcama);
-      if (isAcama) {
+      if (isNoBattery) {
         configActions.setConfigMode('custom');
-        setSolutionType('building');
+        setSolutionType((!isAcama && isDP) ? 'ombriere' : 'building');
         setBatteryStorage(prev => ({ ...prev, enabled: false }));
       }
     }
-  }, [isOpen, isAcama]);
+  }, [isOpen, isAcama, isNoBattery, isDP]);
 
   // Multi-Bâtiments
   const [buildings, setBuildings] = useState([
@@ -408,7 +410,7 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
       batimentDesc += `\nLe projet intègre par ailleurs l'équipement photovoltaïque d'une toiture existante (${additionalRoof.name}) d'une surface de ${additionalRoof.surface} m² développant ${additionalRoof.kwc} kWc supplémentaires en couverture ${additionalRoof.roofType}.`;
     }
 
-    if (!isAcama && batteryStorage.enabled) {
+    if (!isNoBattery && batteryStorage.enabled) {
       batimentDesc += `\nLe site sera également équipé d'un système de stockage d'énergie par batterie stationnaire (${batteryStorage.quantity} unité(s) ${batteryStorage.model}) d'une capacité de ${batteryStorage.capacityKwh} kWh (${batteryStorage.powerKw} kW) implantée sur une dalle béton dédiée (${batteryStorage.footprint}).`;
     }
 
@@ -421,10 +423,12 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
 
     const totalBuildingCount = buildings.length;
     let objetDemande = isDP
-      ? (isAcama
-        ? `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}.`
-        : `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} ${totalBuildingCount > 1 ? 'ombrières photovoltaïques' : 'ombrière photovoltaïque'} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${(!isAcama && batteryStorage.enabled) ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`)
-      : `La demande de permis de construire porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${(!isAcama && batteryStorage.enabled) ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
+      ? (isNoBattery
+        ? (isAcama
+          ? `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}.`
+          : `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} ${totalBuildingCount > 1 ? 'ombrières photovoltaïques' : 'ombrière photovoltaïque'} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}.`)
+        : `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} ${totalBuildingCount > 1 ? 'ombrières photovoltaïques' : 'ombrière photovoltaïque'} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`)
+      : `La demande de permis de construire porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${(!isNoBattery && batteryStorage.enabled) ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
 
     const p3Details = (!isAcama && isDP)
       ? `Cette ombrière sera ouverte et non close. Les façades Est, Ouest, Nord et Sud seront ouvertes.\nUn terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.\nDes tranchées drainantes seront réalisées tout autour de l'ombrière projet afin d'évacuer les eaux pluviales par infiltration dans le sol.`
@@ -450,13 +454,13 @@ ${p3Details}
 
 4- RACCORDEMENT AUX RESEAUX
 ${p4Details}
-Seule l'électricité produite par la centrale photovoltaïque${(!isAcama && batteryStorage.enabled) ? ' et le système de stockage batterie' : ''} est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL).
+Seule l'électricité produite par la centrale photovoltaïque${(!isNoBattery && batteryStorage.enabled) ? ' et le système de stockage batterie' : ''} est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL).
 L'emplacement du point de livraison indiqué dans les pièces graphiques de l'autorisation d'urbanisme n'apparaît qu'à titre indicatif.
 Le positionnement du point de livraison et d'un transformateur (le cas échéant) demeure à l'appréciation finale du gestionnaire de réseau en fonction du site et des équipements déjà existants.
 
 5- SECURITE INCENDIE
-${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
-  }, [editedProject, project, config, buildings, additionalRoof, batteryStorage, isDP, solutionType, getBuildingDisplayName]);
+${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
+  }, [editedProject, project, config, buildings, additionalRoof, batteryStorage, isDP, solutionType, getBuildingDisplayName, isNoBattery, isAcama]);
 
   // Mise à jour explicite du bâtiment actif (Single Source of Truth par onglet)
   const updateActiveBuilding = useCallback((updates) => {
@@ -572,7 +576,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     const projCity = project.city || project.commune || project.clientCity || project.cadastre_commune || '';
 
     const isBatteryProject = 
-      !isAcama && (
+      !isNoBattery && (
         project?.isBatteryStandAlone === 'Oui' ||
         project?.isBatteryStandAlone === true ||
         String(project?.type || '').toLowerCase().includes('batterie') ||
@@ -582,7 +586,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
         String(project?.description || '').toLowerCase().includes('batterie')
       );
 
-    const detectedSolutionType = isAcama ? 'building' : (isBatteryProject ? 'battery' : (isDP ? 'ombriere' : 'building'));
+    const detectedSolutionType = isNoBattery ? ((!isAcama && isDP) ? 'ombriere' : 'building') : (isBatteryProject ? 'battery' : (isDP ? 'ombriere' : 'building'));
     setSolutionType(detectedSolutionType);
 
     let parsedBatteryQty = 1;
@@ -646,19 +650,27 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
         let cleanName = isAcama 
           ? `Bâtiment ${Number(b.length || (config?.length || 30)).toFixed(0)}m × ${Number(b.width || (config?.width || 15)).toFixed(0)}m`
           : (b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`));
-        if (!isAcama) {
-          cleanName = cleanName
-            .replace(/Bâtiment/gi, isDP ? 'Ombrière' : 'Bâtiment')
-            .replace(/Ombrière/gi, isDP ? 'Ombrière' : 'Bâtiment')
-            .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
-            .trim();
-          if (!cleanName) cleanName = isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
+        if (isNoBattery) {
+          cleanName = cleanName.replace(/Station Batteries[^\)]*\)?/gi, isDP ? 'Ombrière' : 'Bâtiment');
         }
+        cleanName = cleanName
+          .replace(/Bâtiment/gi, isDP ? 'Ombrière' : 'Bâtiment')
+          .replace(/Ombrière/gi, isDP ? 'Ombrière' : 'Bâtiment')
+          .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
+          .trim();
+        if (!cleanName) cleanName = isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
 
         const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || defLat);
         const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || defLng);
 
-        const bType = (isAcama && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? 'symetrique' : (b.buildingType || 'asymetrique_1');
+        let bType = (isNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isAcama ? 'symetrique' : (isDP ? 'ombriere_pl' : 'asymetrique_1')) : (b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1'));
+        let bLen = Number(b.length || (b.bayCount || (isAcama ? 4 : 5)) * (b.baySpacing || 7.5) || (isAcama ? 30 : 37.5));
+        let bWid = Number(b.width || (isAcama ? 15.0 : (bType.startsWith('asymetrique') ? 20.0 : 16.4)));
+        if (isNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
+          bLen = isAcama ? 30 : 37.5;
+          bWid = isAcama ? 15 : 16.4;
+        }
+
         const bIsAsym = bType.startsWith('asymetrique');
         const bIsMono = bType === 'monopente';
         const bIsPL = bType === 'ombriere_pl';
@@ -674,8 +686,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
           lng: bLng,
           gps: `${bLat},${bLng}`,
           rotation: Number(b.rotation || 0),
-          length: Number(b.length || (b.bayCount || (isAcama ? 4 : 5)) * (b.baySpacing || 7.5) || (isAcama ? 30 : 37.5)),
-          width: Number(b.width || (isAcama ? 15.0 : (bIsAsym ? 20.0 : 16.4))),
+          length: bLen,
+          width: bWid,
           eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : defEave),
           roofPitch: Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : defPitch),
           buildingType: bType,
@@ -691,11 +703,18 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
         };
       });
     } else {
-      const pLen = isAcama ? Number(project.longueur || 30.0) : Number(project.longueur || 37.5);
-      const pW = isAcama ? Number(project.largeur || 15.0) : Number(project.largeur || 16.4);
+      let pLen = isAcama ? Number(project.longueur || 30.0) : Number(project.longueur || 37.5);
+      let pW = isAcama ? Number(project.largeur || 15.0) : Number(project.largeur || 16.4);
+      if (isNoBattery && (pW <= 6.0 || pLen <= 6.0)) {
+        pLen = isAcama ? 30.0 : 37.5;
+        pW = isAcama ? 15.0 : 16.4;
+      }
       const pBc = Number(project.bayCount) || Math.max(1, Math.round(pLen / 7.5)) || (isAcama ? 4 : 5);
       const pBs = Number(project.baySpacing) || 7.5;
-      const pType = isAcama ? 'symetrique' : (project.buildingType || ((!isAcama && isDP) ? 'ombriere_pl' : 'asymetrique_1'));
+      let pType = isAcama ? 'symetrique' : (project.buildingType || ((!isAcama && isDP) ? 'ombriere_pl' : 'asymetrique_1'));
+      if (isNoBattery && (pType === 'battery_standalone' || pType.includes('battery'))) {
+        pType = isAcama ? 'symetrique' : (isDP ? 'ombriere_pl' : 'asymetrique_1');
+      }
       const pEave = Number(project.hauteur_egout) || (isAcama ? 4.0 : (pType === 'ombriere_pl' ? 5.08 : (pType === 'ombriere_vl_double' ? 3.0 : (pType.startsWith('asymetrique') || pType === 'monopente' ? 4.0 : 5.5))));
       const pPitch = Number(project.pente) || ((pType.startsWith('asymetrique') || pType === 'monopente') ? 15 : 10);
       const pRightSide = project.rightSide || (project.appentis ? 'appentis' : project.auvent ? 'auvent' : 'none');
@@ -706,8 +725,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       initialBuildings = [
         {
           id: 'bat-1',
-          name: isAcama ? `Bâtiment ${pLen.toFixed(0)}m × ${pW.toFixed(0)}m` : (isDP ? 'Ombrière 1' : 'Bâtiment 1'),
-          length: pBc * pBs,
+          name: isAcama ? 'Bâtiment 30m × 15m' : (isDP ? 'Ombrière 1' : 'Bâtiment 1'),
+          length: pLen,
           width: pW,
           eaveHeight: pEave,
           roofPitch: pPitch,
@@ -719,7 +738,6 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
           rightWidth: pRightWidth,
           bayCount: pBc,
           baySpacing: pBs,
-          hasSolar: true,
           lat: defLat,
           lng: defLng,
           gps: `${defLat},${defLng}`,
@@ -1222,7 +1240,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     if (!onGenerate) return;
     setIsGenerating(true);
     
-    const isBattery = !isAcama && (solutionType === 'battery' || batteryStorage.enabled || (editedProject.type || '').toLowerCase().includes('batterie'));
+    const isBattery = !isNoBattery && (solutionType === 'battery' || batteryStorage.enabled || (editedProject.type || '').toLowerCase().includes('batterie'));
     
     // Objet synthétique pour Page 1
     const defaultObjet = isBattery
@@ -1235,34 +1253,50 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     const shortObjet = editedProject?.objet_travaux || defaultObjet;
 
     let effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
-    if (isAcama && effectiveNotice) {
+    if (isNoBattery && effectiveNotice) {
       effectiveNotice = effectiveNotice
         .replace(/Le système de stockage batterie est[^\n]*\n?/gi, '')
         .replace(/ainsi qu'un système de stockage batterie[^\n,\.]*/gi, '')
         .replace(/Le site sera également équipé d'un système de stockage d'énergie[^\n]*\n?/gi, '')
         .replace(/et le système de stockage batterie/gi, '')
-        .replace(/Station Batteries \([^\)]*\)/gi, 'Bâtiment');
+        .replace(/Station Batteries \([^\)]*\)/gi, isDP ? 'Ombrière' : 'Bâtiment');
     }
 
     // Conserver fidèlement chaque bâtiment avec ses propres dimensions et paramètres
-    const updatedBuildings = buildings.map((b, idx) => ({
-      ...b,
-      length: Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : 37.5)),
-      width: Number(b.width || 16.4),
-      eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : (isDP ? 3.0 : 4.0)),
-      roofPitch: Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : 10),
-      buildingType: (isAcama && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? 'symetrique' : (isBattery ? 'battery_standalone' : (b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1'))),
-      isBattery: isAcama ? false : (isBattery || Boolean(b.isBattery)),
-      name: isAcama ? `Bâtiment ${Number(b.length || 30).toFixed(0)}m × ${Number(b.width || 15).toFixed(0)}m` : b.name,
-      leftSide: b.leftSide || 'none',
-      rightSide: b.rightSide || 'none',
-      leftWidth: b.leftWidth !== undefined ? Number(b.leftWidth) : 0,
-      rightWidth: b.rightWidth !== undefined ? Number(b.rightWidth) : 0,
-      bayCount: Number(b.bayCount || 5),
-      baySpacing: Number(b.baySpacing || 7.5),
-      captures: { ...(b.captures || {}) },
-      photos: { ...(b.photos || {}) },
-    }));
+    const updatedBuildings = buildings.map((b, idx) => {
+      let bLen = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (isAcama ? 30 : 37.5)));
+      let bWid = Number(b.width || (isAcama ? 15 : 16.4));
+      if (isNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
+        bLen = isAcama ? 30 : 37.5;
+        bWid = isAcama ? 15 : 16.4;
+      }
+      let bName = b.name;
+      if (isNoBattery) {
+        if (isAcama) {
+          bName = `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
+        } else if (bName) {
+          bName = bName.replace(/Station Batteries[^\)]*\)?/gi, isDP ? 'Ombrière' : 'Bâtiment').trim();
+        }
+      }
+      return {
+        ...b,
+        length: bLen,
+        width: bWid,
+        eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : (isDP ? 3.0 : 4.0)),
+        roofPitch: Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : 10),
+        buildingType: (isNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isAcama ? 'symetrique' : (isDP ? 'ombriere_pl' : 'asymetrique_1')) : (isBattery ? 'battery_standalone' : (b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1'))),
+        isBattery: isNoBattery ? false : (isBattery || Boolean(b.isBattery)),
+        name: bName || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`),
+        leftSide: b.leftSide || 'none',
+        rightSide: b.rightSide || 'none',
+        leftWidth: b.leftWidth !== undefined ? Number(b.leftWidth) : 0,
+        rightWidth: b.rightWidth !== undefined ? Number(b.rightWidth) : 0,
+        bayCount: Number(b.bayCount || 5),
+        baySpacing: Number(b.baySpacing || 7.5),
+        captures: { ...(b.captures || {}) },
+        photos: { ...(b.photos || {}) },
+      };
+    });
 
     const isMultiOrOmbriere = updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere'));
     const finalTypeLabel = isBattery
@@ -1334,6 +1368,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
     const finalProject = {
       ...editedProject,
       ...fieldValues,
+      isAcama,
+      isGreenInvest,
       cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
       email2: editedProject?.email2 || '',
       buildingType: b1.buildingType || config.buildingType || 'asymetrique_1',
@@ -1365,7 +1401,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       photos: finalPhotos,
       buildings: enrichedBuildings,
       additionalRoof: additionalRoof,
-      batteryStorage: batteryStorage,
+      batteryStorage: isNoBattery ? { enabled: false } : batteryStorage,
     };
 
     // Sauvegarder automatiquement dans Firebase Storage et Firestore

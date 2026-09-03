@@ -1,6 +1,7 @@
 import React from 'react';
 import { getInstallationTypeInfo } from '@/services/UrbanismeDocService';
 import { getProxiedImageUrl } from '@/utils/imageProxy';
+import { resolveDemandeurNames } from '@/services/SmartCerfaService';
 
 const batteryPhotoDefault = '/images/battery_photo.jpg';
 
@@ -52,8 +53,20 @@ export const SafePlateImage = ({ src, alt = '', style = {}, className = '' }) =>
 }; 
 
 export const PlateHeader = ({ title, project, showBranding }) => {
-    const clientFullName = `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Client';
-    const bName = project?.buildingName ? project.buildingName.toUpperCase() : '';
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+
+    const names = resolveDemandeurNames(project);
+    let clientFullName = project?.clientFullName || (names.lastName ? `${names.lastName} ${names.firstName}`.trim() : (project?.clientName || project?.name || 'Demandeur'));
+    if (isNoBattery && clientFullName.toLowerCase().includes('batterie')) {
+        clientFullName = (project?.firstName ? `${project.firstName} ${project?.lastName || ''}`.trim() : '') || project?.clientName || 'Demandeur';
+    }
+
+    let bName = project?.buildingName ? project.buildingName.toUpperCase() : '';
+    if (isNoBattery && bName) {
+        bName = bName.replace(/STATION BATTERIES[^\)]*\)?/gi, isAcama ? 'BÂTIMENT' : (project?.buildingType?.includes('ombriere') ? 'OMBRIÈRE' : 'BÂTIMENT')).trim();
+    }
     const cleanTitle = (title || '').trim();
     // Ne jamais doubler le nom du bâtiment
     const finalTitle = bName && !cleanTitle.toUpperCase().includes(bName) 
@@ -96,8 +109,15 @@ export const Footer = ({ project }) => (
  */
 export const PlateCover = ({ project, installationType }) => {
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
-    const typeInfo = getInstallationTypeInfo(isAcama ? 'batiment_solaire' : (installationType || project?.type || 'batiment_solaire'), project?.kwc || project?.projectSize);
-    const clientFullName = `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Demandeur';
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+    const typeInfo = getInstallationTypeInfo(isNoBattery ? 'batiment_solaire' : (installationType || project?.type || 'batiment_solaire'), project?.kwc || project?.projectSize, isNoBattery);
+    
+    const names = resolveDemandeurNames(project);
+    let clientFullName = project?.clientFullName || (names.lastName ? `${names.lastName} ${names.firstName}`.trim() : (project?.clientName || project?.name || 'Demandeur'));
+    if (isNoBattery && clientFullName.toLowerCase().includes('batterie')) {
+        clientFullName = (project?.firstName ? `${project.firstName} ${project?.lastName || ''}`.trim() : '') || project?.clientName || 'Demandeur';
+    }
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-cover">
@@ -140,7 +160,7 @@ export const PlateCover = ({ project, installationType }) => {
                         <div>{project?.zip || project?.zipCode || ''} {project?.city || project?.commune || ''}</div>
                         <div style={{ marginTop: '2mm', fontWeight: 'bold', color: '#00429d' }}>DESCRIPTIF SOMMAIRE :</div>
                         <div style={{ fontSize: '8.5pt', color: '#334155' }}>
-                            {project?.description || (isAcama ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque d'une puissance de ${project?.kwc || 100} kWc.` : `Installation d'une ombrière photovoltaïque en structure métallique d'une puissance de ${project?.kwc || 100} kWc.`)}
+                            {project?.description || (isNoBattery ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque d'une puissance de ${project?.kwc || 100} kWc.` : `Installation d'une ombrière photovoltaïque en structure métallique d'une puissance de ${project?.kwc || 100} kWc.`)}
                         </div>
                     </div>
                 </div>
@@ -188,10 +208,14 @@ export const PlateSituation = ({ project, captures }) => {
  * PLANCHE DP2 : PLAN DE MASSE (Cadre réduit en hauteur pour rehausser le footer)
  */
 export const PlateMasse = ({ project, captures }) => {
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+
     const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
         ? project.buildings
         : [{
-            name: 'Ombrière 1',
+            name: isNoBattery ? (isAcama ? 'Bâtiment 1' : 'Ombrière 1') : 'Ombrière 1',
             length: Number(project?.longueur || 30),
             width: Number(project?.largeur || 20),
             masse_capture: captures?.masse_projet || captures?.satellite
@@ -207,12 +231,23 @@ export const PlateMasse = ({ project, captures }) => {
                     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(rawBuildings.length, 2)}, 1fr)`, gap: '4mm', flex: 1, height: '100%' }}>
                         {rawBuildings.map((b, idx) => {
                             const bPhoto = b.masse_capture || (idx === 0 ? captures?.masse_projet : null) || captures?.satellite;
-                            const bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
-                            const bW = Number(b.width || project?.largeur || 20);
+                            let bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
+                            let bW = Number(b.width || project?.largeur || 20);
+                            if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
+                                bLen = Math.max(bLen, 30);
+                                bW = Math.max(bW, 15);
+                            }
                             const bArea = Math.round(bLen * bW);
-                            const bDisplayName = b.name 
-                                ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() 
-                                : `Ombrière ${idx + 1}`;
+                            let bDisplayName = b.name || (isAcama ? `Bâtiment ${idx + 1}` : `Ombrière ${idx + 1}`);
+                            if (isNoBattery) {
+                                bDisplayName = bDisplayName.replace(/Station Batteries[^\)]*\)?/gi, isAcama ? 'Bâtiment' : 'Ombrière');
+                            }
+                            bDisplayName = bDisplayName
+                                .replace(/Bâtiment/gi, isAcama ? 'Bâtiment' : 'Ombrière')
+                                .replace(/Ombrière/gi, isAcama ? 'Bâtiment' : 'Ombrière')
+                                .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
+                                .trim();
+                            if (!bDisplayName) bDisplayName = isAcama ? `Bâtiment ${idx + 1}` : `Ombrière ${idx + 1}`;
 
                             return (
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
@@ -234,12 +269,23 @@ export const PlateMasse = ({ project, captures }) => {
                 ) : (() => {
                     const b = rawBuildings[0];
                     const bPhoto = b?.masse_capture || captures?.masse_projet || captures?.satellite;
-                    const bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
-                    const bW = Number(b?.width || project?.largeur || 20);
+                    let bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
+                    let bW = Number(b?.width || project?.largeur || 20);
+                    if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
+                        bLen = Math.max(bLen, 30);
+                        bW = Math.max(bW, 15);
+                    }
                     const bArea = Math.round(bLen * bW);
-                    const bDisplayName = b?.name 
-                        ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() 
-                        : 'Ombrière 1';
+                    let bDisplayName = b?.name || (isAcama ? 'Bâtiment 1' : 'Ombrière 1');
+                    if (isNoBattery) {
+                        bDisplayName = bDisplayName.replace(/Station Batteries[^\)]*\)?/gi, isAcama ? 'Bâtiment' : 'Ombrière');
+                    }
+                    bDisplayName = bDisplayName
+                        .replace(/Bâtiment/gi, isAcama ? 'Bâtiment' : 'Ombrière')
+                        .replace(/Ombrière/gi, isAcama ? 'Bâtiment' : 'Ombrière')
+                        .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
+                        .trim();
+                    if (!bDisplayName) bDisplayName = isAcama ? 'Bâtiment 1' : 'Ombrière 1';
 
                     return (
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
@@ -267,16 +313,29 @@ export const PlateMasse = ({ project, captures }) => {
  * COMPOSANT ATOMIQUE : BOÎTE PLAN EN COUPE TRANSVERSALE SVG
  */
 export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHeight = '62mm' }) => {
-    const longueur = project?.longueur || project?.length || '30.0';
-    const largeur = parseFloat(project?.largeur || project?.width || 20.0);
-    const hauteurEgout = parseFloat(project?.hauteur_egout || project?.eaveHeight || 4.0);
-    const pente = parseFloat(project?.pente || project?.roofPitch || 15);
-    const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
-    
     // Détection stricte du type d'ouvrage
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
-    const rawType = (project?.buildingType || '').toLowerCase();
-    const isBattery = !isAcama && (rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie'));
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+
+    let longueur = project?.longueur || project?.length || '30.0';
+    let largeur = parseFloat(project?.largeur || project?.width || 20.0);
+    let hauteurEgout = parseFloat(project?.hauteur_egout || project?.eaveHeight || 4.0);
+    let pente = parseFloat(project?.pente || project?.roofPitch || 15);
+    const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
+
+    if (isNoBattery) {
+        if (largeur <= 6.0) largeur = 16.4;
+        if (parseFloat(longueur) <= 6.0) longueur = '30.0';
+        if (hauteurEgout <= 2.6) hauteurEgout = 4.0;
+        if (pente === 0) pente = 10;
+    }
+    
+    let rawType = (project?.buildingType || '').toLowerCase();
+    if (isNoBattery && (rawType.includes('battery') || rawType.includes('batterie') || rawType === 'battery_standalone')) {
+        rawType = isAcama ? 'symetrique' : 'asymetrique_1';
+    }
+    const isBattery = !isNoBattery && (rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie'));
     
     if (isBattery) {
         const bQty = Number(project?.battery_quantity || project?.batteryStorage?.quantity || 1) || 1;
@@ -912,9 +971,22 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
  * PLANCHE DP3 : PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION (& NOTICE DESCRIPTIVE OPTIONNELLE)
  */
 export const PlateCoupe = ({ project, captures, noticeText, includeNotice = false }) => {
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+
     const hasNotice = Boolean(includeNotice || project?.includeNotice || project?.hasNotice);
     const rawNoticeText = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description;
-    const cleanNoticeText = (rawNoticeText || '').replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
+    let cleanNoticeText = (rawNoticeText || '').replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
+
+    if (isNoBattery && cleanNoticeText) {
+        cleanNoticeText = cleanNoticeText
+            .replace(/Le système de stockage batterie est[^\n]*\n?/gi, '')
+            .replace(/ainsi qu'un système de stockage batterie[^\n,\.]*/gi, '')
+            .replace(/Le site sera également équipé d'un système de stockage d'énergie[^\n]*\n?/gi, '')
+            .replace(/et le système de stockage batterie/gi, '')
+            .replace(/Station Batteries \([^\)]*\)/gi, isAcama ? 'Bâtiment' : 'Ombrière');
+    }
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-coupe">
@@ -953,38 +1025,54 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
  * PLANCHE DP3 MULTI-BÂTIMENTS : 2 COUPES SUPERPOSÉES SUR UNE SEULE PAGE
  */
 export const PlateCoupeMulti = ({ project, buildings = [] }) => {
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+
     const bList = (buildings && buildings.length > 0) ? buildings : (project?.buildings || [project]);
     const b1 = bList[0] || project;
     const b2 = bList[1] || project;
 
+    const b1Name = isNoBattery 
+        ? (b1.name ? b1.name.replace(/Station Batteries[^\)]*\)?/gi, isAcama ? 'Bâtiment' : 'Ombrière').replace(/Bâtiment/gi, isAcama ? 'Bâtiment' : 'Ombrière').trim() : (isAcama ? 'Bâtiment 1' : 'Ombrière 1'))
+        : (b1.name ? b1.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : 'Ombrière 1');
+
+    const b2Name = isNoBattery 
+        ? (b2.name ? b2.name.replace(/Station Batteries[^\)]*\)?/gi, isAcama ? 'Bâtiment' : 'Ombrière').replace(/Bâtiment/gi, isAcama ? 'Bâtiment' : 'Ombrière').trim() : (isAcama ? 'Bâtiment 2' : 'Ombrière 2'))
+        : (b2.name ? b2.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : 'Ombrière 2');
+
     const b1Proj = {
         ...project,
         ...b1,
-        largeur: String(b1.width || b1.largeur || 20.0),
-        longueur: String(b1.length || b1.longueur || 67.5),
+        isAcama,
+        isGreenInvest,
+        largeur: String(b1.width || b1.largeur || (isNoBattery ? 16.4 : 20.0)),
+        longueur: String(b1.length || b1.longueur || 37.5),
         hauteur_egout: String(b1.eaveHeight || b1.hauteur_egout || 4.0),
         pente: String(b1.roofPitch || b1.pente || 15),
-        buildingType: b1.buildingType || 'asymetrique_1',
+        buildingType: (isNoBattery && (b1.buildingType === 'battery_standalone' || !b1.buildingType)) ? (isAcama ? 'symetrique' : 'asymetrique_1') : (b1.buildingType || 'asymetrique_1'),
         leftSide: b1.leftSide || 'none',
         rightSide: b1.rightSide || 'none',
         leftWidth: b1.leftWidth || 4.0,
         rightWidth: b1.rightWidth || 4.0,
-        buildingName: b1.name ? b1.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : 'Ombrière 1',
+        buildingName: b1Name || 'Ombrière 1',
     };
 
     const b2Proj = {
         ...project,
         ...b2,
-        largeur: String(b2.width || b2.largeur || 9.1),
+        isAcama,
+        isGreenInvest,
+        largeur: String(b2.width || b2.largeur || (isNoBattery ? 16.4 : 9.1)),
         longueur: String(b2.length || b2.longueur || 30.0),
         hauteur_egout: String(b2.eaveHeight || b2.hauteur_egout || 4.0),
         pente: String(b2.roofPitch || b2.pente || 15),
-        buildingType: b2.buildingType || 'asymetrique_1',
+        buildingType: (isNoBattery && (b2.buildingType === 'battery_standalone' || !b2.buildingType)) ? (isAcama ? 'symetrique' : 'asymetrique_1') : (b2.buildingType || 'asymetrique_1'),
         leftSide: b2.leftSide || 'none',
         rightSide: b2.rightSide || 'none',
         leftWidth: b2.leftWidth || 4.0,
         rightWidth: b2.rightWidth || 4.0,
-        buildingName: b2.name ? b2.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : 'Ombrière 2',
+        buildingName: b2Name || 'Ombrière 2',
     };
 
     return (
@@ -994,10 +1082,10 @@ export const PlateCoupeMulti = ({ project, buildings = [] }) => {
                 project={project} 
             />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', marginBottom: '6mm', justifyContent: 'space-between' }}>
-                {/* 1ère Coupe : Ombrière 1 */}
+                {/* 1ère Coupe */}
                 <CoupeBox project={b1Proj} coupeLetter="AA'" isMulti={true} boxHeight="62mm" />
 
-                {/* 2ème Coupe : Ombrière 2 */}
+                {/* 2ème Coupe */}
                 <CoupeBox project={b2Proj} coupeLetter="BB'" isMulti={true} boxHeight="62mm" />
             </div>
             <Footer project={project} />
@@ -1009,8 +1097,21 @@ export const PlateCoupeMulti = ({ project, buildings = [] }) => {
  * PLANCHE NOTICE DÉDIÉE PLEINE PAGE (POUR PROJET MULTI-BÂTIMENTS)
  */
 export const PlateNoticeDedicated = ({ project, noticeText }) => {
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+
     const rawNotice = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description || '';
-    const cleanNotice = rawNotice.replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
+    let cleanNotice = rawNotice.replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
+
+    if (isNoBattery && cleanNotice) {
+        cleanNotice = cleanNotice
+            .replace(/Le système de stockage batterie est[^\n]*\n?/gi, '')
+            .replace(/ainsi qu'un système de stockage batterie[^\n,\.]*/gi, '')
+            .replace(/Le site sera également équipé d'un système de stockage d'énergie[^\n]*\n?/gi, '')
+            .replace(/et le système de stockage batterie/gi, '')
+            .replace(/Station Batteries \([^\)]*\)/gi, isAcama ? 'Bâtiment' : 'Ombrière');
+    }
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-notice-dedicated">

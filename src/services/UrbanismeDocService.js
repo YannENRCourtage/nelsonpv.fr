@@ -5,12 +5,12 @@ import { preloadProjectImages } from '@/utils/imageProxy';
 
 // ─── Types d'installation ────────────────────────────────────────────────────
 
-export function getInstallationTypeInfo(type, kwc, isAcama = false) {
+export function getInstallationTypeInfo(type, kwc, isNoBattery = false) {
   const t = (type || '').toLowerCase();
   const kwcSubtitle = '';
   const kwcSuffix = '';
 
-  if (isAcama) {
+  if (isNoBattery) {
     return {
       title: "Bâtiment à charpente métallique équipé d'une centrale photovoltaïque",
       subtitle: kwcSubtitle,
@@ -141,7 +141,9 @@ async function drawCoverPage(doc, project, type, installationType) {
     installCode = 'Bâtiment et Ombrière';
   }
   const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
-  if (!isAcama && project?.batteryStorage?.enabled) {
+  const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+  const isNoBattery = isAcama || isGreenInvest;
+  if (!isNoBattery && project?.batteryStorage?.enabled) {
     installCode += ' + Stockage batterie';
   }
 
@@ -171,7 +173,7 @@ async function drawCoverPage(doc, project, type, installationType) {
   page.drawText('Dossier de demande d\'autorisation d\'urbanisme', { x: cx + 16, y: H - 73, size: 8, font: fontR, color: rgb(1,1,1,0.75) });
 
   // Titre du projet
-  const typeInfo = getInstallationTypeInfo(installationType || project?.type, project?.kwc || project?.projectSize);
+  const typeInfo = getInstallationTypeInfo(installationType || project?.type, project?.kwc || project?.projectSize, isNoBattery);
   page.drawText(typeInfo.title, { x: cx + 16, y: H - 115, size: 16, font: fontB, color: C.dark });
   page.drawText(typeInfo.subtitle, { x: cx + 16, y: H - 135, size: 10, font: fontR, color: C.gray });
 

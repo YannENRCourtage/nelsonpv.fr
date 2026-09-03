@@ -65,6 +65,8 @@ const SIDEBAR_SECTIONS = [
 export default function Developpement() {
   const { user, activeTenantId } = useAuth();
   const isAcama = activeTenantId === 'acama';
+  const isGreenInvest = activeTenantId === 'green-invest' || activeTenantId === 'greeninvest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
+  const isNoBattery = isAcama || isGreenInvest;
   const [activeSection, setActiveSection] = useState('dossiers');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -580,12 +582,17 @@ export default function Developpement() {
       {(() => {
         const rawActiveProj = pdfProjectState || selectedProject;
         if (!rawActiveProj) return null;
+        const isProjectGreenInvest = isGreenInvest || rawActiveProj?.tenantId === 'green-invest' || rawActiveProj?.tenantId === 'greeninvest' || rawActiveProj?.tenant === 'greeninvest' || rawActiveProj?.tenant === 'green-invest' || Boolean(rawActiveProj?.isGreenInvest);
+        const isProjectAcama = isAcama || rawActiveProj?.tenantId === 'acama' || Boolean(rawActiveProj?.isAcama);
+        const isProjectNoBattery = isProjectAcama || isProjectGreenInvest;
+
         const activeProj = {
           ...rawActiveProj,
-          isAcama,
+          isAcama: isProjectAcama,
+          isGreenInvest: isProjectGreenInvest,
           tenantId: activeTenantId,
-          isBattery: isAcama ? false : (rawActiveProj.isBattery || false),
-          batteryStorage: isAcama ? { enabled: false } : rawActiveProj.batteryStorage
+          isBattery: isProjectNoBattery ? false : (rawActiveProj.isBattery || false),
+          batteryStorage: isProjectNoBattery ? { enabled: false } : rawActiveProj.batteryStorage
         };
         return (
           <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '297mm', pointerEvents: 'none', zIndex: -100, opacity: 1 }}>
@@ -618,24 +625,40 @@ export default function Developpement() {
                 ...(b.photos || {}),
                 ...(b.pc_photos || {}),
               };
+              let bLen = Number(b.length || b.longueur || (isProjectAcama ? 30.0 : 37.5));
+              let bWid = Number(b.width || b.largeur || (isProjectAcama ? 15.0 : 16.4));
+              if (isProjectNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
+                bLen = isProjectAcama ? 30.0 : 37.5;
+                bWid = isProjectAcama ? 15.0 : 16.4;
+              }
+              let bName = b.name;
+              if (isProjectNoBattery) {
+                if (isProjectAcama) {
+                  bName = `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
+                } else if (bName) {
+                  bName = bName.replace(/Station Batteries[^\)]*\)?/gi, 'Ombrière').trim();
+                }
+              }
+              let bType = (isProjectNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isProjectAcama ? 'symetrique' : 'ombriere_pl') : (b.buildingType || 'ombriere_pl');
+
               const bProj = {
                 ...activeProj,
                 ...b,
-                isAcama,
+                name: bName || (isProjectAcama ? 'Bâtiment 1' : `Ombrière ${bIdx + 1}`),
+                isAcama: isProjectAcama,
+                isGreenInvest: isProjectGreenInvest,
                 tenantId: activeTenantId,
-                isBattery: isAcama ? false : (b.isBattery || false),
-                largeur: String(b.width || b.largeur || 20.0),
-                longueur: String(b.length || b.longueur || 30.0),
+                isBattery: isProjectNoBattery ? false : (b.isBattery || false),
+                largeur: String(bWid),
+                longueur: String(bLen),
                 hauteur_egout: String(b.eaveHeight || b.hauteur_egout || 4.0),
                 pente: String(b.roofPitch || b.pente || 15),
-                buildingType: (isAcama && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? 'symetrique' : (b.buildingType || 'asymetrique_1'),
+                buildingType: bType,
                 leftSide: b.leftSide || 'none',
                 rightSide: b.rightSide || 'none',
                 leftWidth: b.leftWidth || 4.0,
                 rightWidth: b.rightWidth || 4.0,
-                buildingName: isAcama
-                  ? `Bâtiment ${Number(b.length || 30).toFixed(0)}m × ${Number(b.width || 15).toFixed(0)}m`
-                  : (b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Ombrière ${bIdx + 1}`),
+                buildingName: bName || (isProjectAcama ? `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m` : `Ombrière ${bIdx + 1}`),
                 urbanisme_captures: mergedCaptures,
                 captures: mergedCaptures,
                 pc_photos: mergedPhotos,
@@ -691,24 +714,40 @@ export default function Developpement() {
                 ...(b.photos || {}),
                 ...(b.pc_photos || {}),
               };
+              let bLen = Number(b.length || b.longueur || (isProjectAcama ? 30.0 : 30.0));
+              let bWid = Number(b.width || b.largeur || (isProjectAcama ? 15.0 : 20.0));
+              if (isProjectNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
+                bLen = isProjectAcama ? 30.0 : 30.0;
+                bWid = isProjectAcama ? 15.0 : 20.0;
+              }
+              let bName = b.name;
+              if (isProjectNoBattery) {
+                if (isProjectAcama) {
+                  bName = `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
+                } else if (bName) {
+                  bName = bName.replace(/Station Batteries[^\)]*\)?/gi, 'Bâtiment').trim();
+                }
+              }
+              let bType = (isProjectNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isProjectAcama ? 'symetrique' : 'asymetrique_1') : (b.buildingType || 'asymetrique_1');
+
               const bProj = {
                 ...activeProj,
                 ...b,
-                isAcama,
+                name: bName || `Bâtiment ${bIdx + 1}`,
+                isAcama: isProjectAcama,
+                isGreenInvest: isProjectGreenInvest,
                 tenantId: activeTenantId,
-                isBattery: isAcama ? false : (b.isBattery || false),
-                largeur: String(b.width || b.largeur || 20.0),
-                longueur: String(b.length || b.longueur || 30.0),
+                isBattery: isProjectNoBattery ? false : (b.isBattery || false),
+                largeur: String(bWid),
+                longueur: String(bLen),
                 hauteur_egout: String(b.eaveHeight || b.hauteur_egout || 4.0),
                 pente: String(b.roofPitch || b.pente || 15),
-                buildingType: (isAcama && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? 'symetrique' : (b.buildingType || 'asymetrique_1'),
+                buildingType: bType,
                 leftSide: b.leftSide || 'none',
                 rightSide: b.rightSide || 'none',
                 leftWidth: b.leftWidth || 4.0,
                 rightWidth: b.rightWidth || 4.0,
-                buildingName: isAcama
-                  ? `Bâtiment ${Number(b.length || 30).toFixed(0)}m × ${Number(b.width || 15).toFixed(0)}m`
-                  : (b.name ? b.name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() : `Bâtiment ${bIdx + 1}`),
+                buildingName: bName || (isProjectAcama ? `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m` : `Bâtiment ${bIdx + 1}`),
                 urbanisme_captures: mergedCaptures,
                 captures: mergedCaptures,
                 pc_photos: mergedPhotos,

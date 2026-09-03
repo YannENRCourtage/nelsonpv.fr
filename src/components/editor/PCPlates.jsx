@@ -17,10 +17,23 @@ const PAGE_STYLE = {
 };
 
 const PlateHeader = ({ title, project }) => {
-    const bName = project?.buildingName ? project.buildingName.toUpperCase() : '';
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+
+    let bName = project?.buildingName ? project.buildingName.toUpperCase() : '';
+    if (isNoBattery && bName) {
+        bName = bName.replace(/STATION BATTERIES[^\)]*\)?/gi, isAcama ? 'BÂTIMENT' : (project?.buildingType?.includes('ombriere') ? 'OMBRIÈRE' : 'BÂTIMENT')).trim();
+    }
     const cleanTitle = (title || '').trim();
     const showSuffix = bName && bName !== 'BÂTIMENT 1 (PRINCIPAL)' && !cleanTitle.toUpperCase().includes(bName);
     const finalTitle = showSuffix ? `${cleanTitle} — ${bName}` : cleanTitle;
+
+    const names = resolveDemandeurNames(project);
+    let clientFullName = `${names.lastName} ${names.firstName}`.trim() || project?.lastName || project?.name || 'Demandeur';
+    if (isNoBattery && clientFullName.toLowerCase().includes('batterie')) {
+        clientFullName = (project?.firstName ? `${project.firstName} ${project?.lastName || ''}`.trim() : '') || project?.clientName || 'Demandeur';
+    }
 
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #00429d', paddingBottom: '2mm', marginBottom: '3mm' }}>
@@ -35,7 +48,7 @@ const PlateHeader = ({ title, project }) => {
                     {finalTitle}
                 </div>
                 <div style={{ fontSize: '7.5pt', color: '#333' }}>
-                    Projet : {project?.lastName || project?.name || 'Solaire'} {project?.firstName || ''} — {project?.city || project?.commune || 'Cadastre'} ({project?.zip || project?.zipCode || '32'})
+                    Projet : {clientFullName} — {project?.city || project?.commune || 'Cadastre'} ({project?.zip || project?.zipCode || '32'})
                 </div>
             </div>
         </div>
@@ -117,8 +130,15 @@ const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Clique
 };
 
 export const PlateGarde = ({ project }) => {
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+
     const names = resolveDemandeurNames(project);
-    const clientFullName = `${names.lastName} ${names.firstName}`.trim() || project?.name || 'Demandeur';
+    let clientFullName = `${names.lastName} ${names.firstName}`.trim() || project?.name || 'Demandeur';
+    if (isNoBattery && clientFullName.toLowerCase().includes('batterie')) {
+        clientFullName = (project?.firstName ? `${project.firstName} ${project?.lastName || ''}`.trim() : '') || project?.clientName || 'Demandeur';
+    }
     const displayKwc = project?.kwc || project?.puissance || project?.projectSize || '';
 
     return (
@@ -219,6 +239,10 @@ export const PlateSituation = ({ project, captures, isInteractive, onUpload }) =
 };
 
 export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+
     const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
         ? project.buildings
         : [{
@@ -238,12 +262,19 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(rawBuildings.length, 2)}, 1fr)`, gap: '4mm', flex: 1, height: '100%' }}>
                         {rawBuildings.map((b, idx) => {
                             const bPhoto = b.masse_capture || (idx === 0 ? captures?.masse_projet : null) || captures?.satellite;
-                            const bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
-                            const bW = Number(b.width || project?.largeur || 20);
+                            let bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
+                            let bW = Number(b.width || project?.largeur || 20);
+                            if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
+                                bLen = Math.max(bLen, 30);
+                                bW = Math.max(bW, 15);
+                            }
                             const bArea = Math.round(bLen * bW);
-                            const bDisplayName = b.name 
-                                ? b.name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() 
-                                : `Bâtiment ${idx + 1}`;
+                            let bDisplayName = b.name || `Bâtiment ${idx + 1}`;
+                            if (isNoBattery) {
+                                bDisplayName = bDisplayName.replace(/Station Batteries[^\)]*\)?/gi, 'Bâtiment');
+                            }
+                            bDisplayName = bDisplayName.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
+                            if (!bDisplayName) bDisplayName = `Bâtiment ${idx + 1}`;
 
                             return (
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
@@ -271,12 +302,19 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                 ) : (() => {
                     const b = rawBuildings[0];
                     const bPhoto = b?.masse_capture || captures?.masse_projet || captures?.satellite;
-                    const bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
-                    const bW = Number(b?.width || project?.largeur || 20);
+                    let bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
+                    let bW = Number(b?.width || project?.largeur || 20);
+                    if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
+                        bLen = Math.max(bLen, 30);
+                        bW = Math.max(bW, 15);
+                    }
                     const bArea = Math.round(bLen * bW);
-                    const bDisplayName = b?.name 
-                        ? b.name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim() 
-                        : 'Bâtiment 1';
+                    let bDisplayName = b?.name || 'Bâtiment 1';
+                    if (isNoBattery) {
+                        bDisplayName = bDisplayName.replace(/Station Batteries[^\)]*\)?/gi, 'Bâtiment');
+                    }
+                    bDisplayName = bDisplayName.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
+                    if (!bDisplayName) bDisplayName = 'Bâtiment 1';
 
                     return (
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
@@ -310,12 +348,23 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
  * PLANCHE COMBINÉE PC3 / PC4 : COUPE TRANSVERSALE ASYMÉTRIQUE FIDÈLE AU MODÈLE
  */
 export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isInteractive }) => {
-    const longueur = project?.longueur || '30.0';
-    const largeur = parseFloat(project?.largeur || 20.0);
-    const hauteurEgout = parseFloat(project?.hauteur_egout || 4.0);
-    const pente = parseFloat(project?.pente || 15);
+    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+    const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+    const isNoBattery = isAcama || isGreenInvest;
+
+    let longueur = project?.longueur || '30.0';
+    let largeur = parseFloat(project?.largeur || 20.0);
+    let hauteurEgout = parseFloat(project?.hauteur_egout || 4.0);
+    let pente = parseFloat(project?.pente || 15);
     const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
     const displayKwc = project?.kwc || project?.puissance || project?.projectSize || '';
+
+    if (isNoBattery) {
+        if (largeur <= 6.0) largeur = 16.4;
+        if (parseFloat(longueur) <= 6.0) longueur = '30.0';
+        if (hauteurEgout <= 2.6) hauteurEgout = 4.0;
+        if (pente === 0) pente = 10;
+    }
     
     // Priorité absolue à la notice descriptive structurée en 5 points
     const candidateNotice = (noticeText && noticeText.includes("1- OBJET"))
@@ -327,9 +376,8 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
           : (project?.pc_notice && project.pc_notice.includes("1- OBJET"))
             ? project.pc_notice
             : (noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.notice_descriptive);
-    const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const effectiveNoticeText = (candidateNotice && candidateNotice.length > 50) ? candidateNotice : null;
-    const cleanedNoticeText = (isAcama && effectiveNoticeText) 
+    const cleanedNoticeText = (isNoBattery && effectiveNoticeText) 
         ? effectiveNoticeText
             .replace(/Le système de stockage batterie est[^\n]*\n?/gi, '')
             .replace(/ainsi qu'un système de stockage batterie[^\n,\.]*/gi, '')
@@ -339,8 +387,11 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
         : effectiveNoticeText;
     
     // Détection stricte du type d'ouvrage
-    const rawType = (project?.buildingType || '').toLowerCase();
-    const isBattery = !isAcama && (rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie'));
+    let rawType = (project?.buildingType || '').toLowerCase();
+    if (isNoBattery && (rawType.includes('battery') || rawType.includes('batterie') || rawType === 'battery_standalone')) {
+        rawType = isAcama ? 'symetrique' : 'asymetrique_1';
+    }
+    const isBattery = !isNoBattery && (rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie'));
     
     if (isBattery) {
         const bQty = Number(project?.battery_quantity || project?.batteryStorage?.quantity || 1) || 1;
