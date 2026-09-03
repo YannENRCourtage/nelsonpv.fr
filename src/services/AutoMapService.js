@@ -320,18 +320,18 @@ export async function getOrGenerateProjectMaps(project) {
   let lat = Number(project?.lat);
   let lng = Number(project?.lng);
 
-  if ((!lat || !lng) && project?.gps) {
-    const parts = String(project.gps).split(',').map(Number);
-    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+  if ((!lat || !lng || (Math.abs(lat - 43.5612) < 0.001 && Math.abs(lng - 0.9168) < 0.001)) && project?.gps) {
+    const parts = String(project.gps).split(',').map(v => Number(v.trim()));
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]) && parts[0] !== 0) {
       lat = parts[0];
       lng = parts[1];
     }
   }
 
-  // Coordonnées par défaut si non définies (ex: Gers 43.5612, 0.9168)
-  if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-    lat = 43.5612;
-    lng = 0.9168;
+  // Coordonnées par défaut du site projet LABERGUERIE 64120 OREGUE (3810 Route des Barthes)
+  if (!lat || !lng || isNaN(lat) || isNaN(lng) || (Math.abs(lat - 43.5612) < 0.001 && Math.abs(lng - 0.9168) < 0.001)) {
+    lat = 43.43571;
+    lng = -1.17644;
   }
 
   const existingCaptures = project?.urbanisme_captures || {};

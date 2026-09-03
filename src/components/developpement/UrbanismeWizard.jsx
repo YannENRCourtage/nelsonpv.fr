@@ -36,10 +36,59 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// Détermination infaillible des coordonnées GPS réelles du site (Adresse / Projet / Déclarant)
+function resolveProjectCoordinates(edProj, proj) {
+  // 1. Chercher dans les chaînes GPS existantes
+  const candidates = [
+    edProj?.gps,
+    proj?.gps,
+    edProj?.gpsCoordinates,
+    proj?.gpsCoordinates
+  ];
+  for (const c of candidates) {
+    if (c && typeof c === 'string' && c.includes(',')) {
+      const p = c.split(',').map(v => Number(v.trim()));
+      if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0) {
+        // Exclure formellement l'ancien faux fallback (Gers / Chemin de Fresqueville 43.5612, 0.9168)
+        if (Math.abs(p[0] - 43.5612) > 0.001 || Math.abs(p[1] - 0.9168) > 0.001) {
+          return { lat: p[0], lng: p[1] };
+        }
+      }
+    }
+  }
+
+  // 2. Chercher dans les nombres directs lat / lng
+  const dLat = Number(edProj?.lat ?? proj?.lat);
+  const dLng = Number(edProj?.lng ?? proj?.lng);
+  if (!isNaN(dLat) && !isNaN(dLng) && dLat !== 0 && dLng !== 0) {
+    if (Math.abs(dLat - 43.5612) > 0.001 || Math.abs(dLng - 0.9168) > 0.001) {
+      return { lat: dLat, lng: dLng };
+    }
+  }
+
+  // 3. Chercher dans les bâtiments du projet
+  if (proj?.buildings && Array.isArray(proj.buildings)) {
+    for (const b of proj.buildings) {
+      const bGps = b.gps || (b.lat && b.lng ? `${b.lat},${b.lng}` : null);
+      if (bGps && typeof bGps === 'string' && bGps.includes(',')) {
+        const p = bGps.split(',').map(v => Number(v.trim()));
+        if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0) {
+          if (Math.abs(p[0] - 43.5612) > 0.001 || Math.abs(p[1] - 0.9168) > 0.001) {
+            return { lat: p[0], lng: p[1] };
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Coordonnées par défaut du site projet LABERGUERIE 64120 OREGUE (3810 Route des Barthes)
+  return { lat: 43.43571, lng: -1.17644 };
+}
+
 // Calcul précis des coordonnées GPS des 4 coins d'une structure orientée
 function getBuildingCorners(centerLat, centerLng, lengthMeters, widthMeters, rotationDeg) {
-  const lat = Number(centerLat) || 43.5612;
-  const lng = Number(centerLng) || 0.9168;
+  const lat = Number(centerLat) || 43.43571;
+  const lng = Number(centerLng) || -1.17644;
   const len = Number(lengthMeters) || 30;
   const wid = Number(widthMeters) || 15;
   const rotRad = ((Number(rotationDeg) || 0) * Math.PI) / 180;
@@ -312,27 +361,28 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const getBuildingDisplayName = useCallback((buildingItem, idx) => {
     const isOmb = (buildingItem?.solutionType === 'ombriere') || (buildingItem?.buildingType || '').toLowerCase().startsWith('ombriere') || (solutionType === 'ombriere');
     const defaultPrefix = isOmb ? 'Ombrière' : 'Bâtiment';
-    if (!buildingItem) return `${defaultPrefix} ${idx + 1}`;
+    if (!buildingItem) return `${defaultPrefix} ${(idx || 0) + 1}`;
 
     const bLen = Number(buildingItem.length || (buildingItem.bayCount ? buildingItem.bayCount * (buildingItem.baySpacing || 7.5) : (config?.length || 30)));
     const bWid = Number(buildingItem.width || config?.width || 15);
     
-    // For ACAMA or whenever the name has "Station Batteries"
-    if (isAcama) {
-      return `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
+    // Si dimensions définies (ex: 60m x 16m)
+    if (bLen > 0 && bWid > 0) {
+      return `${defaultPrefix} ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
     }
+    
     if (buildingItem.name && buildingItem.name.toLowerCase().includes('batterie')) {
-      return `${defaultPrefix} ${idx + 1}`;
+      return `${defaultPrefix} ${(idx || 0) + 1}`;
     }
-    let name = buildingItem.name || `${defaultPrefix} ${idx + 1}`;
+    let name = buildingItem.name || `${defaultPrefix} ${(idx || 0) + 1}`;
     if (isOmb) {
       name = name.replace(/Bâtiment/gi, 'Ombrière');
     } else {
       name = name.replace(/Ombrière/gi, 'Bâtiment');
     }
     name = name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
-    return name || `${defaultPrefix} ${idx + 1}`;
-  }, [solutionType, isAcama, config?.length, config?.width]);
+    return name || `${defaultPrefix} ${(idx || 0) + 1}`;
+  }, [solutionType, config?.length, config?.width]);
 
   // Sync ACAMA / Green Invest mode on open
   useEffect(() => {
@@ -435,26 +485,87 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const list = [];
     (solutions.building?.buildings || []).forEach((b, i) => {
       const bId = b.id ? (String(b.id).startsWith('bat-') ? String(b.id) : `bat-${b.id}`) : `bat-${i + 1}`;
+      const isCurrentActive = solutionType === 'building' && activeBuildingIndex === i;
+
+      const effectiveLen = isCurrentActive
+        ? Number(config.length || (config.bayCount ? config.bayCount * (config.baySpacing || 7.5) : b.length || 30))
+        : Number(b.length || 30);
+      const effectiveWid = isCurrentActive
+        ? Number(config.width || b.width || 15)
+        : Number(b.width || 15);
+      const effectiveType = isCurrentActive
+        ? (config.buildingType || b.buildingType)
+        : b.buildingType;
+      const effectiveLeftSide = isCurrentActive
+        ? (config.leftSide || b.leftSide || 'none')
+        : (b.leftSide || 'none');
+      const effectiveRightSide = isCurrentActive
+        ? (config.rightSide || b.rightSide || 'none')
+        : (b.rightSide || 'none');
+      const effectiveLeftWidth = isCurrentActive
+        ? (config.leftWidth ?? b.leftWidth ?? 0)
+        : (b.leftWidth ?? 0);
+      const effectiveRightWidth = isCurrentActive
+        ? (config.rightWidth ?? b.rightWidth ?? 0)
+        : (b.rightWidth ?? 0);
+
+      const dynamicName = getBuildingDisplayName({
+        ...b,
+        length: effectiveLen,
+        width: effectiveWid,
+        solutionType: 'building'
+      }, i);
+
       list.push({
         ...b,
         id: bId,
+        name: dynamicName,
+        length: effectiveLen,
+        width: effectiveWid,
+        buildingType: effectiveType,
+        leftSide: effectiveLeftSide,
+        rightSide: effectiveRightSide,
+        leftWidth: effectiveLeftWidth,
+        rightWidth: effectiveRightWidth,
         solutionKey: 'building',
         solutionLabel: isAcama ? 'Bâtiment Sur-mesure' : 'Bâtiment / Hangar',
         indexInSol: i
       });
     });
-    (solutions.ombriere?.buildings || []).forEach((b, i) => {
-      const oId = b.id ? (String(b.id).startsWith('omb-') ? String(b.id) : `omb-${b.id}`) : `omb-${i + 1}`;
-      list.push({
-        ...b,
-        id: oId,
-        solutionKey: 'ombriere',
-        solutionLabel: 'Ombrière PV',
-        indexInSol: i
+
+    if (!isAcama) {
+      (solutions.ombriere?.buildings || []).forEach((b, i) => {
+        const oId = b.id ? (String(b.id).startsWith('omb-') ? String(b.id) : `omb-${b.id}`) : `omb-${i + 1}`;
+        const isCurrentActive = solutionType === 'ombriere' && activeBuildingIndex === i;
+
+        const effectiveLen = isCurrentActive
+          ? Number(config.length || (config.bayCount ? config.bayCount * (config.baySpacing || 7.5) : b.length || 45))
+          : Number(b.length || 45);
+        const effectiveWid = isCurrentActive
+          ? Number(config.width || b.width || 6.9)
+          : Number(b.width || 6.9);
+
+        const dynamicName = getBuildingDisplayName({
+          ...b,
+          length: effectiveLen,
+          width: effectiveWid,
+          solutionType: 'ombriere'
+        }, i);
+
+        list.push({
+          ...b,
+          id: oId,
+          name: dynamicName,
+          length: effectiveLen,
+          width: effectiveWid,
+          solutionKey: 'ombriere',
+          solutionLabel: 'Ombrière PV',
+          indexInSol: i
+        });
       });
-    });
+    }
     return list;
-  }, [solutions, isAcama]);
+  }, [solutions, isAcama, solutionType, activeBuildingIndex, config, getBuildingDisplayName]);
 
   const hasInitializedSelectionRef = React.useRef(false);
 
@@ -537,8 +648,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   // Synchronisation stricte de toutes les structures avec l'adresse du site (Étape Déclarant)
   useEffect(() => {
     if (step === 4) {
-      const refLat = Number(editedProject?.lat || project?.lat || 43.5612);
-      const refLng = Number(editedProject?.lng || project?.lng || 0.9168);
+      const siteCoords = resolveProjectCoordinates(editedProject, project);
+      const refLat = siteCoords.lat;
+      const refLng = siteCoords.lng;
 
       setSolutions(prev => {
         let hasChange = false;
@@ -551,8 +663,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
               const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null));
               const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null));
               const isOutOfSync = !bLat || !bLng || isNaN(bLat) || isNaN(bLng) ||
-                Math.hypot(bLat - refLat, bLng - refLng) > 0.02 ||
-                (Math.abs(bLat - 43.5612) < 0.0001 && Math.abs(refLat - 43.5612) > 0.01);
+                Math.hypot(bLat - refLat, bLng - refLng) > 0.05 ||
+                (Math.abs(bLat - 43.5612) < 0.001 && Math.abs(refLat - 43.5612) > 0.001);
 
               if (isOutOfSync) {
                 hasChange = true;
@@ -576,7 +688,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         return hasChange ? nextSolutions : prev;
       });
     }
-  }, [step, editedProject?.lat, editedProject?.lng, project?.lat, project?.lng]);
+  }, [step, editedProject, project]);
 
   // Helper pour générer automatiquement la notice structurée en 5 points
   const buildAutoNoticeText = useCallback(() => {
@@ -812,15 +924,18 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     isSwitchingBuildingRef.current = true;
     const isOmb = solutionType === 'ombriere';
     const newIdx = buildings.length + 1;
-    const projLat = Number(editedProject?.lat || project?.lat || 43.5612);
-    const projLng = Number(editedProject?.lng || project?.lng || 0.9168);
+    const siteCoords = resolveProjectCoordinates(editedProject, project);
+    const projLat = siteCoords.lat;
+    const projLng = siteCoords.lng;
 
+    const bLen = isOmb ? 45.0 : (isAcama ? 30 : 37.5);
+    const bWid = isOmb ? 6.9 : (isAcama ? 15.0 : 16.4);
     const newBuilding = {
       id: `${isOmb ? 'omb' : 'bat'}-${Date.now()}`,
-      name: isOmb ? `Ombrière ${newIdx}` : (isAcama ? `Bâtiment ${newIdx}` : `Bâtiment ${newIdx}`),
+      name: isOmb ? `Ombrière ${newIdx}` : `Bâtiment ${newIdx} (${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m)`,
       solutionType: solutionType,
-      length: isOmb ? 45.0 : (isAcama ? 30 : 37.5),
-      width: isOmb ? 6.9 : (isAcama ? 15.0 : 16.4),
+      length: bLen,
+      width: bWid,
       eaveHeight: isOmb ? 3.7 : (isAcama ? 4.0 : 4.0),
       roofPitch: isOmb ? 10 : (isAcama ? 10 : 15),
       buildingType: isOmb ? 'ombriere_vl_simple_gauche' : (isAcama ? 'symetrique' : 'asymetrique_1'),
@@ -1034,8 +1149,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const isOmbriere = (project.type || '').toLowerCase().includes('ombriere') || (project.buildingType || '').toLowerCase().includes('ombriere');
     
     // Déterminer la référence GPS fiable du site (adresse du déclarant)
-    let defLat = Number(project.lat || (project.gps ? project.gps.split(',')[0] : null) || 43.5612);
-    let defLng = Number(project.lng || (project.gps ? project.gps.split(',')[1] : null) || 0.9168);
+    const siteCoords = resolveProjectCoordinates(null, project);
+    let defLat = siteCoords.lat;
+    let defLng = siteCoords.lng;
 
     // Si un bâtiment existant possède déjà les coordonnées géocodées réelles du site, les prioriser
     if (project.buildings && Array.isArray(project.buildings)) {
@@ -1157,7 +1273,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       initialBuildings = [
         {
           id: 'bat-1',
-          name: isAcama ? 'Bâtiment 30m × 15m' : (isDP ? 'Ombrière 1' : 'Bâtiment 1'),
+          name: isAcama ? `Bâtiment ${pLen.toFixed(0)}m × ${pW.toFixed(0)}m` : (isDP ? 'Ombrière 1' : `Bâtiment ${pLen.toFixed(0)}m × ${pW.toFixed(0)}m`),
           length: pLen,
           width: pW,
           eaveHeight: pEave,
@@ -1206,12 +1322,14 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       });
 
       if (buildingList.length === 0) {
+        const bInitLen = isAcama ? 30 : 37.5;
+        const bInitWid = isAcama ? 15 : 16.4;
         buildingList.push({
           id: 'bat-1',
-          name: isAcama ? 'Bâtiment 30m × 15m' : 'Bâtiment 1',
+          name: `Bâtiment ${bInitLen.toFixed(0)}m × ${bInitWid.toFixed(0)}m`,
           solutionType: 'building',
-          length: isAcama ? 30 : 37.5,
-          width: isAcama ? 15 : 16.4,
+          length: bInitLen,
+          width: bInitWid,
           eaveHeight: 4,
           roofPitch: isAcama ? 10 : 15,
           buildingType: isAcama ? 'symetrique' : 'asymetrique_1',
@@ -1299,6 +1417,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
       const initProj = {
         ...project,
+        lat: defLat,
+        lng: defLng,
+        gps: `${defLat},${defLng}`,
         type: isOmbriere ? 'ombriere' : (project.type || 'batiment_solaire'),
         buildingType: b1?.buildingType || project.buildingType || 'asymetrique_1',
         lastName: names.lastName || project.name || '',
@@ -1394,6 +1515,77 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       }).catch(() => setGeneratingMaps(false));
   }, [project, isOpen]);
 
+  // Synchronisation explicite de la configuration courante du store dans les solutions
+  const syncActiveConfigToSolutions = useCallback(() => {
+    if (solutionType === 'battery') return;
+    setSolutions(prev => {
+      const curSol = prev[solutionType];
+      if (!curSol?.buildings?.[activeBuildingIndex]) return prev;
+      const nextBuildings = [...curSol.buildings];
+      const cur = nextBuildings[activeBuildingIndex];
+      const bLen = Number(config.length || (config.bayCount ? config.bayCount * (config.baySpacing || 7.5) : cur.length || 30));
+      const bWid = Number(config.width || cur.width || 15);
+      const dynamicName = getBuildingDisplayName({
+        ...cur,
+        length: bLen,
+        width: bWid,
+        solutionType
+      }, activeBuildingIndex);
+
+      nextBuildings[activeBuildingIndex] = {
+        ...cur,
+        name: dynamicName,
+        width: bWid,
+        length: bLen,
+        eaveHeight: config.eaveHeight,
+        roofPitch: config.roofPitch,
+        buildingType: config.buildingType,
+        bayCount: config.bayCount,
+        baySpacing: config.baySpacing,
+        leftSide: config.leftSide || 'none',
+        rightSide: config.rightSide || 'none',
+        leftWidth: config.leftWidth,
+        rightWidth: config.rightWidth,
+        hasSolar: config.hasSolar,
+        solarStats: config.solarStats,
+      };
+
+      return {
+        ...prev,
+        [solutionType]: {
+          ...curSol,
+          buildings: nextBuildings
+        }
+      };
+    });
+  }, [solutionType, activeBuildingIndex, config, getBuildingDisplayName]);
+
+  // Géocodage automatique à partir de l'adresse du déclarant (Étape 1 ou Fiche Projet)
+  useEffect(() => {
+    if (!isOpen) return;
+    const addr = editedProject?.address || project?.address;
+    const zip = editedProject?.zip || project?.zip;
+    const city = editedProject?.city || project?.city;
+    const fullAddress = [addr, zip, city].filter(Boolean).join(' ');
+
+    if (!fullAddress || fullAddress.trim().length < 5) return;
+
+    const currentLat = Number(editedProject?.lat || (editedProject?.gps ? editedProject.gps.split(',')[0] : null));
+    const isBogusGps = !currentLat || isNaN(currentLat) || (Math.abs(currentLat - 43.5612) < 0.001);
+
+    if (isBogusGps) {
+      fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(fullAddress)}&limit=1`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.features?.[0]?.geometry?.coordinates) {
+            const [lng, lat] = data.features[0].geometry.coordinates;
+            handleGpsUpdate(lat, lng);
+          }
+        })
+        .catch(e => console.warn('[UrbanismeWizard] Erreur géocodage adresse:', e));
+    }
+  }, [isOpen, editedProject?.address, editedProject?.zip, editedProject?.city, project?.address, project?.zip, project?.city, handleGpsUpdate]);
+
   // Synchronisation continue des valeurs du configurateur vers le projet (sans écraser le kWc du client)
   useEffect(() => {
     // Ne synchroniser QUE lors de l'étape 2 (Cotations & Côtes)
@@ -1431,8 +1623,16 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       if (!hasChanged) return prev;
 
       const next = [...prev];
+      const dynamicName = getBuildingDisplayName({
+        ...cur,
+        length: config.length,
+        width: config.width,
+        solutionType
+      }, activeBuildingIndex);
+
       next[activeBuildingIndex] = {
         ...cur,
+        name: dynamicName,
         buildingType: config.buildingType,
         width: config.width,
         length: config.length,
@@ -1865,8 +2065,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         : (isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire')));
 
     // Régénérer les cartes DP1/PC1 et DP2/PC2 avec le dernier GPS et les structures orientées
-    const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
-    const [lat, lng] = gps.split(',').map(Number);
+    const siteCoords = resolveProjectCoordinates(editedProject, project);
+    const lat = siteCoords.lat;
+    const lng = siteCoords.lng;
+    const gps = `${lat},${lng}`;
     const ignMap = await generateStaticMapImage(lat, lng, 'map', 16);
     const satMap = await generateStaticMapImage(lat, lng, 'satellite', 17);
     
@@ -2038,7 +2240,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                 return (
                   <React.Fragment key={label}>
                     <button
-                      onClick={() => setStep(i)}
+                      onClick={() => {
+                        syncActiveConfigToSolutions();
+                        setStep(i);
+                      }}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                         isCurrent
                           ? `${dossierInfo.accentColor} text-white shadow-md`
@@ -2234,8 +2439,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                       <span className="text-xs font-bold text-gray-700 block mb-2 flex-shrink-0">{isDP ? 'DP1' : 'PC1'} — Plan de Situation (IGN Cartographique)</span>
                       <div className="relative rounded-xl overflow-hidden border border-gray-200 z-10 flex-1 min-h-0 w-full shadow-inner">
                         {(() => {
-                          const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
-                          const [lat, lng] = gps.split(',').map(Number);
+                          const coords = resolveProjectCoordinates(editedProject, project);
+                          const lat = coords.lat;
+                          const lng = coords.lng;
                           return (
                             <MapContainer center={[lat, lng]} zoom={16} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                               <TileLayer
@@ -2255,8 +2461,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                       <span className="text-xs font-bold text-gray-700 block mb-2 flex-shrink-0">{isDP ? 'DP1' : 'PC1'} — Vue Aérienne Satellite</span>
                       <div className="relative rounded-xl overflow-hidden border border-gray-200 z-10 flex-1 min-h-0 w-full shadow-inner">
                         {(() => {
-                          const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
-                          const [lat, lng] = gps.split(',').map(Number);
+                          const coords = resolveProjectCoordinates(editedProject, project);
+                          const lat = coords.lat;
+                          const lng = coords.lng;
                           return (
                             <MapContainer center={[lat, lng]} zoom={17} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                               <TileLayer
@@ -3075,13 +3282,14 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                   </div>
                 </motion.div>
                 );
-              })()}
+                              })()}
 
               {/* ÉTAPE 4 — Carte DP2 / PC2 (Visionneuses actives divisées en 1, 2, 3 ou 4 cadres dynamiques) */}
               {step === 4 && (() => {
                 const activeStructures = allConfiguredStructures.filter(str => selectedStructureIds.includes(str.id));
-                const refSiteLat = Number(editedProject?.lat || project?.lat || 43.5612);
-                const refSiteLng = Number(editedProject?.lng || project?.lng || 0.9168);
+                const siteCoords = resolveProjectCoordinates(editedProject, project);
+                const refSiteLat = siteCoords.lat;
+                const refSiteLng = siteCoords.lng;
 
                 return (
                   <motion.div
@@ -3140,7 +3348,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           );
                         })}
 
-                        <div className="flex items-center gap-1 pl-1.5 border-l border-slate-200">
+                        <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200">
                           <button
                             type="button"
                             onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
@@ -3163,9 +3371,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         <button
                           type="button"
                           onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
-                          className="mt-3 px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-blue-700 transition-all"
+                          className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-sm"
                         >
-                          Activer toutes les visionneuses
+                          Réactiver toutes les structures
                         </button>
                       </div>
                     ) : (
@@ -3182,15 +3390,18 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           // Coordonnées vérifiées et garanties sur le site du déclarant
                           let strLat = Number(str.lat || (str.gps ? str.gps.split(',')[0] : null));
                           let strLng = Number(str.lng || (str.gps ? str.gps.split(',')[1] : null));
-                          if (!strLat || !strLng || isNaN(strLat) || isNaN(strLng) || Math.hypot(strLat - refSiteLat, strLng - refSiteLng) > 0.05) {
+                          if (!strLat || !strLng || isNaN(strLat) || isNaN(strLng) || Math.hypot(strLat - refSiteLat, strLng - refSiteLng) > 0.05 || (Math.abs(strLat - 43.5612) < 0.001 && Math.abs(refSiteLat - 43.5612) > 0.001)) {
                             strLat = refSiteLat + sIdx * 0.00015;
                             strLng = refSiteLng + sIdx * 0.00020;
                           }
 
                           const sLen = Number(str.length || (str.bayCount ? str.bayCount * (str.baySpacing || 7.5) : (config.length || 30)));
                           const sWid = Number(str.width || config.width || 15);
+                          const extLeft = str.leftSide !== 'none' ? Number(str.leftWidth || (str.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+                          const extRight = str.rightSide !== 'none' ? Number(str.rightWidth || (str.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+                          const totalWid = sWid + extLeft + extRight;
                           const sRot = Number(str.rotation || 0);
-                          const corners = getBuildingCorners(strLat, strLng, sLen, sWid, sRot);
+                          const corners = getBuildingCorners(strLat, strLng, sLen, totalWid, sRot);
 
                           return (
                             <div
@@ -3227,7 +3438,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               <div className="p-2.5 bg-white border-b border-slate-100 space-y-1.5 flex-shrink-0">
                                 <div className="flex items-center justify-between text-[11px]">
                                   <span className="font-semibold text-slate-500 truncate">
-                                    {sLen.toFixed(1)}m × {sWid.toFixed(1)}m ({Math.round(sLen * sWid)} m²)
+                                    {sLen.toFixed(1)}m × {totalWid.toFixed(1)}m ({Math.round(sLen * totalWid)} m²){(extLeft > 0 || extRight > 0) ? ` [${sWid}m + ext.]` : ''}
                                   </span>
                                   <span className="font-black text-blue-700 whitespace-nowrap">
                                     {sRot}° ({getOrientationLabel(sRot)})
@@ -3322,14 +3533,17 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   {activeStructures.filter(other => other.id !== str.id).map(other => {
                                     let oLat = Number(other.lat || (other.gps ? other.gps.split(',')[0] : null));
                                     let oLng = Number(other.lng || (other.gps ? other.gps.split(',')[1] : null));
-                                    if (!oLat || !oLng || isNaN(oLat) || isNaN(oLng) || Math.hypot(oLat - refSiteLat, oLng - refSiteLng) > 0.05) {
-                                      oLat = refSiteLat;
-                                      oLng = refSiteLng;
+                                    if (!oLat || !oLng || isNaN(oLat) || isNaN(oLng) || Math.hypot(oLat - refSiteLat, oLng - refSiteLng) > 0.05 || (Math.abs(oLat - 43.5612) < 0.001 && Math.abs(refSiteLat - 43.5612) > 0.001)) {
+                                      oLat = refSiteLat + (other.indexInSol || 0) * 0.00015;
+                                      oLng = refSiteLng + (other.indexInSol || 0) * 0.00020;
                                     }
                                     const oLen = Number(other.length || (other.bayCount ? other.bayCount * (other.baySpacing || 7.5) : 30));
                                     const oWid = Number(other.width || 15);
+                                    const oExtL = other.leftSide !== 'none' ? Number(other.leftWidth || (other.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+                                    const oExtR = other.rightSide !== 'none' ? Number(other.rightWidth || (other.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+                                    const oTotalWid = oWid + oExtL + oExtR;
                                     const oRot = Number(other.rotation || 0);
-                                    const oCorners = getBuildingCorners(oLat, oLng, oLen, oWid, oRot);
+                                    const oCorners = getBuildingCorners(oLat, oLng, oLen, oTotalWid, oRot);
 
                                     return (
                                       <Polygon
@@ -3961,6 +4175,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
             {step < STEPS.length - 1 ? (
               <button
                 onClick={() => {
+                  syncActiveConfigToSolutions();
                   if (step === 4 && !isNoticeUserModified) {
                     const auto = buildAutoNoticeText();
                     setNoticeText(auto);
