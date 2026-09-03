@@ -1140,11 +1140,22 @@ export const PlateSection = PlateCoupe;
  */
 export const PlateFacades = ({ project, captures }) => {
     const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
-    const sud = safeCaptures.facade_sud || safeCaptures.facades_projet || project?.urbanisme_captures?.facade_sud || project?.captures?.facade_sud || project?.facade_sud;
-    const nord = safeCaptures.facade_nord || project?.urbanisme_captures?.facade_nord || project?.captures?.facade_nord || project?.facade_nord;
-    const est = safeCaptures.facade_est || project?.urbanisme_captures?.facade_est || project?.captures?.facade_est || project?.facade_est;
-    const ouest = safeCaptures.facade_ouest || project?.urbanisme_captures?.facade_ouest || project?.captures?.facade_ouest || project?.facade_ouest;
-    const toiture = safeCaptures.vue_couverture || safeCaptures.toiture || project?.urbanisme_captures?.vue_couverture || project?.captures?.vue_couverture || project?.vue_couverture;
+    const sud = safeCaptures.facade_sud || safeCaptures.facades_projet;
+    const nord = safeCaptures.facade_nord;
+    const est = safeCaptures.facade_est;
+    const ouest = safeCaptures.facade_ouest;
+    const toiture = safeCaptures.vue_couverture || safeCaptures.toiture;
+
+    const renderSlot = (src, alt, label) => {
+        if (src) {
+            return <SafePlateImage src={src} alt={alt} style={{ maxHeight: '92%' }} />;
+        }
+        return (
+            <div style={{ color: '#94a3b8', fontSize: '7pt', fontStyle: 'italic', textAlign: 'center', padding: '2mm' }}>
+                {label || 'En attente de capture 3D'}
+            </div>
+        );
+    };
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-facades">
@@ -1154,13 +1165,13 @@ export const PlateFacades = ({ project, captures }) => {
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>1. FAÇADE SUD</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <SafePlateImage src={sud} alt="Façade Sud" />
+                            {renderSlot(sud, "Façade Sud", "Façade Sud non capturée")}
                         </div>
                     </div>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>2. FAÇADE NORD</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            <SafePlateImage src={nord || sud} alt="Façade Nord" />
+                            {renderSlot(nord, "Façade Nord", "Façade Nord non capturée")}
                         </div>
                     </div>
                 </div>
@@ -1173,7 +1184,7 @@ export const PlateFacades = ({ project, captures }) => {
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON GAUCHE)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
-                            <SafePlateImage src={est || sud} alt="Façade Est" style={{ maxHeight: '92%' }} />
+                            {renderSlot(est, "Façade Est", "Façade Est non capturée")}
                         </div>
                     </div>
                     {/* Ouest */}
@@ -1183,14 +1194,14 @@ export const PlateFacades = ({ project, captures }) => {
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON DROIT)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
-                            <SafePlateImage src={ouest || sud} alt="Façade Ouest" style={{ maxHeight: '92%' }} />
+                            {renderSlot(ouest, "Façade Ouest", "Façade Ouest non capturée")}
                         </div>
                     </div>
                     {/* Toiture */}
                     <div style={{ flex: 1.35, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>5. VUE COUVERTURE (PAYSAGE)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
-                            <SafePlateImage src={toiture || sud} alt="Vue Toiture" style={{ maxHeight: '92%' }} />
+                            {renderSlot(toiture, "Vue Toiture", "Vue Toiture non capturée")}
                         </div>
                     </div>
                 </div>
@@ -1206,8 +1217,8 @@ export const PlateFacades = ({ project, captures }) => {
 export const PlateInsertion = ({ project, captures, photos }) => {
     const safePhotos = photos || project?.pc_photos || project?.photos || {};
     const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
-    const photoAvant = safePhotos.avant || safeCaptures.photo_avant || project?.pc_photos?.avant || project?.photos?.avant || project?.urbanisme_captures?.photo_avant || project?.avant || '';
-    const photoApres = safePhotos.apres || safeCaptures.photo_apres || project?.pc_photos?.apres || project?.photos?.apres || project?.urbanisme_captures?.photo_apres || project?.apres || '';
+    const photoAvant = safePhotos.avant || safeCaptures.photo_avant || project?.pc_photos?.avant || project?.photos?.avant || '';
+    const photoApres = safePhotos.apres || safeCaptures.photo_apres || project?.pc_photos?.apres || project?.photos?.apres || '';
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-insertion">
@@ -1219,7 +1230,13 @@ export const PlateInsertion = ({ project, captures, photos }) => {
                         <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '1px' }}>(AVANT TRAVAUX)</div>
                     </div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm', background: '#ffffff' }}>
-                        <SafePlateImage src={photoAvant} alt="État Initial (Avant Travaux)" />
+                        {photoAvant ? (
+                            <SafePlateImage src={photoAvant} alt="État Initial (Avant Travaux)" />
+                        ) : (
+                            <div style={{ color: '#94a3b8', fontSize: '8pt', fontStyle: 'italic', textAlign: 'center', padding: '4mm' }}>
+                                En attente de photographie de terrain (État initial)
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -1229,7 +1246,13 @@ export const PlateInsertion = ({ project, captures, photos }) => {
                         <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#15803d', marginTop: '1px' }}>(SIMULATION 3D D'INSERTION PAYSAGÈRE)</div>
                     </div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm', background: '#ffffff' }}>
-                        <SafePlateImage src={photoApres} alt="Vue après projet (Simulation 3D)" />
+                        {photoApres ? (
+                            <SafePlateImage src={photoApres} alt="Vue après projet (Simulation 3D)" />
+                        ) : (
+                            <div style={{ color: '#94a3b8', fontSize: '8pt', fontStyle: 'italic', textAlign: 'center', padding: '4mm' }}>
+                                En attente de simulation 3D (Insertion paysagère)
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -1240,10 +1263,10 @@ export const PlateInsertion = ({ project, captures, photos }) => {
 
 export const PlateEnv = ({ project, captures, photos, includeLointain = true }) => {
     const safePhotos = photos || project?.pc_photos || project?.photos || {};
-    const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
-    const photoProche = safePhotos.proche || safeCaptures.env_proche || safeCaptures.satellite || project?.pc_photos?.proche || project?.photos?.proche || project?.urbanisme_captures?.env_proche || project?.proche || '';
-    const photoLointain = safePhotos.lointain || safeCaptures.env_lointain || safeCaptures.satellite || project?.pc_photos?.lointain || project?.photos?.lointain || project?.urbanisme_captures?.env_lointain || project?.lointain || '';
-    const showBoth = Boolean(includeLointain && (photoLointain || safePhotos.lointain || project?.hasLointain));
+    // Rendu conditionnel strict : uniquement les photos importées par l'utilisateur (AUCUN fallback satellite)
+    const photoProche = safePhotos.proche || project?.pc_photos?.proche || project?.photos?.proche || '';
+    const photoLointain = safePhotos.lointain || project?.pc_photos?.lointain || project?.photos?.lointain || '';
+    const showBoth = Boolean(includeLointain && (photoLointain || project?.hasLointain));
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-env">
@@ -1257,7 +1280,14 @@ export const PlateEnv = ({ project, captures, photos, includeLointain = true }) 
                         DP7 — Photographie dans l'environnement proche
                     </div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm', background: '#ffffff' }}>
-                        <SafePlateImage src={photoProche} alt="Environnement Proche" />
+                        {photoProche ? (
+                            <SafePlateImage src={photoProche} alt="Environnement Proche" />
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#94a3b8', fontSize: '8pt', fontStyle: 'italic' }}>
+                                <span>Emplacement réservé à la photographie de l'environnement proche</span>
+                                <span style={{ fontSize: '7pt', color: '#cbd5e1' }}>(Aucune photo importée)</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -1267,7 +1297,14 @@ export const PlateEnv = ({ project, captures, photos, includeLointain = true }) 
                             DP8 — Photographie dans le paysage lointain
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm', background: '#ffffff' }}>
-                            <SafePlateImage src={photoLointain} alt="Paysage Lointain" />
+                            {photoLointain ? (
+                                <SafePlateImage src={photoLointain} alt="Paysage Lointain" />
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#94a3b8', fontSize: '8pt', fontStyle: 'italic' }}>
+                                    <span>Emplacement réservé à la photographie du paysage lointain</span>
+                                    <span style={{ fontSize: '7pt', color: '#cbd5e1' }}>(Aucune photo importée)</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -1279,13 +1316,18 @@ export const PlateEnv = ({ project, captures, photos, includeLointain = true }) 
 
 export const PlateEnvProche = ({ project, captures, photos }) => {
     const safePhotos = photos || project?.pc_photos || project?.photos || {};
-    const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
-    const photoProche = safePhotos.proche || safeCaptures.env_proche || safeCaptures.satellite || project?.pc_photos?.proche || project?.photos?.proche || project?.urbanisme_captures?.env_proche || project?.proche || '';
+    const photoProche = safePhotos.proche || project?.pc_photos?.proche || project?.photos?.proche || '';
     return (
         <div style={PAGE_STYLE} id="dp-plate-env-proche">
             <PlateHeader title="DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE" project={project} />
             <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm', padding: '1mm' }}>
-                <SafePlateImage src={photoProche} alt="Environnement Proche" />
+                {photoProche ? (
+                    <SafePlateImage src={photoProche} alt="Environnement Proche" />
+                ) : (
+                    <div style={{ color: '#94a3b8', fontSize: '8.5pt', fontStyle: 'italic' }}>
+                        Emplacement réservé à la photographie de l'environnement proche (Aucune photo importée)
+                    </div>
+                )}
             </div>
             <Footer project={project} />
         </div>
@@ -1329,15 +1371,25 @@ export const PlateAspect = ({ project, batteryPhoto }) => {
     );
 };
 
-export const PlateEnvLointain = ({ project, captures, photos }) => (
-    <div style={PAGE_STYLE} id="dp-plate-env-lointain">
-        <PlateHeader title="DP8 : PHOTOGRAPHIE DE L'ENVIRONNEMENT LOINTAIN" project={project} />
-        <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm' }}>
-            <img src={getProxiedImageUrl(photos?.lointain || captures?.env_lointain || captures?.satellite || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
+export const PlateEnvLointain = ({ project, captures, photos }) => {
+    const safePhotos = photos || project?.pc_photos || project?.photos || {};
+    const photoLointain = safePhotos.lointain || project?.pc_photos?.lointain || project?.photos?.lointain || '';
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-env-lointain">
+            <PlateHeader title="DP8 : PHOTOGRAPHIE DE L'ENVIRONNEMENT LOINTAIN" project={project} />
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm' }}>
+                {photoLointain ? (
+                    <img src={getProxiedImageUrl(photoLointain)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
+                ) : (
+                    <div style={{ color: '#94a3b8', fontSize: '8.5pt', fontStyle: 'italic' }}>
+                        Emplacement réservé à la photographie du paysage lointain (Aucune photo importée)
+                    </div>
+                )}
+            </div>
+            <Footer project={project} />
         </div>
-        <Footer project={project} />
-    </div>
-);
+    );
+};
 
 export const PlateNotice = ({ project, captures }) => (
     <PlateInsertionNotice project={project} />

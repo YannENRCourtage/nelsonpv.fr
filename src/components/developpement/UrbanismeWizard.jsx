@@ -211,22 +211,29 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const configActions = useConfiguratorActions();
 
   const getBuildingDisplayName = useCallback((b, idx) => {
-    if (!b) return isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
+    const isOmb = (b?.solutionType === 'ombriere') || (b?.buildingType || '').toLowerCase().startsWith('ombriere') || (solutionType === 'ombriere');
+    const defaultPrefix = isOmb ? 'Ombrière' : 'Bâtiment';
+    if (!b) return `${defaultPrefix} ${idx + 1}`;
+
     const bLen = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config?.length || 30)));
     const bWid = Number(b.width || config?.width || 15);
     
-    // For ACAMA / Green Invest or whenever the name has "Station Batteries" or generic name
-    if (isNoBattery || (b.name && b.name.toLowerCase().includes('batterie'))) {
-      return isDP && !isAcama ? `Ombrière ${idx + 1}` : `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
+    // For ACAMA or whenever the name has "Station Batteries"
+    if (isAcama) {
+      return `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
     }
-    let name = b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
-    name = name
-      .replace(/Bâtiment/gi, isDP ? 'Ombrière' : 'Bâtiment')
-      .replace(/Ombrière/gi, isDP ? 'Ombrière' : 'Bâtiment')
-      .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
-      .trim();
-    return name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
-  }, [isDP, isAcama, isNoBattery, config?.length, config?.width]);
+    if (b.name && b.name.toLowerCase().includes('batterie')) {
+      return `${defaultPrefix} ${idx + 1}`;
+    }
+    let name = b.name || `${defaultPrefix} ${idx + 1}`;
+    if (isOmb) {
+      name = name.replace(/Bâtiment/gi, 'Ombrière');
+    } else {
+      name = name.replace(/Ombrière/gi, 'Bâtiment');
+    }
+    name = name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
+    return name || `${defaultPrefix} ${idx + 1}`;
+  }, [solutionType, isAcama, config?.length, config?.width]);
 
   const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
   const [solutionType, setSolutionType] = useState((!isAcama && isDP) ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
@@ -244,26 +251,113 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     }
   }, [isOpen, isAcama, isNoBattery, isDP]);
 
-  // Multi-Bâtiments
-  const [buildings, setBuildings] = useState([
-    {
-      id: 'bat-1',
-      name: isAcama ? 'Bâtiment 30m × 15m' : (isDP ? 'Ombrière 1' : 'Bâtiment 1'),
-      length: isAcama ? 30 : 37.5,
-      width: isAcama ? 15 : 16.4,
-      eaveHeight: 4,
-      roofPitch: isAcama ? 10 : 15,
-      buildingType: isAcama ? 'symetrique' : (isDP ? 'ombriere_pl' : 'asymetrique_1'),
-      leftSide: 'none',
-      rightSide: 'none',
-      bayCount: isAcama ? 4 : 5,
-      baySpacing: 7.5,
-      captures: {},
-      photos: {}
+  // État cloisonné et indépendant pour chaque solution (Bâtiment vs Ombrière)
+  const [solutions, setSolutions] = useState(() => ({
+    building: {
+      activeBuildingIndex: 0,
+      buildings: [
+        {
+          id: 'bat-1',
+          name: isAcama ? 'Bâtiment 30m × 15m' : 'Bâtiment 1',
+          solutionType: 'building',
+          length: isAcama ? 30 : 37.5,
+          width: isAcama ? 15 : 16.4,
+          eaveHeight: 4,
+          roofPitch: isAcama ? 10 : 15,
+          buildingType: isAcama ? 'symetrique' : 'asymetrique_1',
+          leftSide: 'none',
+          rightSide: 'none',
+          leftWidth: 0,
+          rightWidth: 0,
+          bayCount: isAcama ? 4 : 5,
+          baySpacing: 7.5,
+          captures: {},
+          photos: {}
+        }
+      ]
+    },
+    ombriere: {
+      activeBuildingIndex: 0,
+      buildings: [
+        {
+          id: 'omb-1',
+          name: 'Ombrière 1',
+          solutionType: 'ombriere',
+          length: 45.0,
+          width: 6.9,
+          eaveHeight: 3.7,
+          roofPitch: 10,
+          buildingType: 'ombriere_vl_simple_gauche',
+          leftSide: 'none',
+          rightSide: 'none',
+          leftWidth: 0,
+          rightWidth: 0,
+          bayCount: 6,
+          baySpacing: 7.5,
+          captures: {},
+          photos: {}
+        }
+      ]
     }
-  ]);
+  }));
 
-  const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
+  // Dérivation dynamique des bâtiments de la solution active
+  const currentSolution = solutions[solutionType] || solutions.building;
+  const buildings = currentSolution?.buildings || [];
+  const activeBuildingIndex = currentSolution?.activeBuildingIndex || 0;
+
+  // Setters encapsulés pour cibler strictement la solution active
+  const setBuildings = useCallback((arg) => {
+    setSolutions(prev => {
+      const curSol = prev[solutionType];
+      if (!curSol) return prev;
+      const nextBuildings = typeof arg === 'function' ? arg(curSol.buildings) : arg;
+      return {
+        ...prev,
+        [solutionType]: {
+          ...curSol,
+          buildings: nextBuildings
+        }
+      };
+    });
+  }, [solutionType]);
+
+  const setActiveBuildingIndex = useCallback((idx) => {
+    setSolutions(prev => {
+      const curSol = prev[solutionType];
+      if (!curSol) return prev;
+      return {
+        ...prev,
+        [solutionType]: {
+          ...curSol,
+          activeBuildingIndex: typeof idx === 'function' ? idx(curSol.activeBuildingIndex) : idx
+        }
+      };
+    });
+  }, [solutionType]);
+
+  // Collecte globale de toutes les structures configurées et sélection pour le PDF final
+  const [selectedStructureIds, setSelectedStructureIds] = useState([]);
+  const allConfiguredStructures = useMemo(() => {
+    const list = [];
+    (solutions.building?.buildings || []).forEach((b, i) => {
+      list.push({ ...b, solutionKey: 'building', solutionLabel: isAcama ? 'Bâtiment Sur-mesure' : 'Bâtiment / Hangar', indexInSol: i });
+    });
+    (solutions.ombriere?.buildings || []).forEach((b, i) => {
+      list.push({ ...b, solutionKey: 'ombriere', solutionLabel: 'Ombrière PV', indexInSol: i });
+    });
+    return list;
+  }, [solutions, isAcama]);
+
+  // Synchronisation des identifiants sélectionnés (tous cochés par défaut)
+  useEffect(() => {
+    setSelectedStructureIds(prev => {
+      if (prev.length === 0 && allConfiguredStructures.length > 0) {
+        return allConfiguredStructures.map(s => s.id);
+      }
+      return prev;
+    });
+  }, [allConfiguredStructures]);
 
   // Configuration additionnelle Toiture & Batterie
   const [additionalRoof, setAdditionalRoof] = useState({
@@ -466,41 +560,109 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
   // Mise à jour explicite du bâtiment actif (Single Source of Truth par onglet)
   const updateActiveBuilding = useCallback((updates) => {
-    setBuildings(prev => {
-      if (!prev[activeBuildingIndex]) return prev;
-      const next = [...prev];
-      const cur = next[activeBuildingIndex];
+    setSolutions(prev => {
+      const curSol = prev[solutionType];
+      if (!curSol || !curSol.buildings[curSol.activeBuildingIndex]) return prev;
+      const nextBuildings = [...curSol.buildings];
+      const cur = nextBuildings[curSol.activeBuildingIndex];
       const merged = { ...cur, ...updates };
       if (updates.bayCount !== undefined || updates.baySpacing !== undefined) {
         const bc = updates.bayCount !== undefined ? updates.bayCount : (cur.bayCount || 5);
         const bs = updates.baySpacing !== undefined ? updates.baySpacing : (cur.baySpacing || 7.5);
         merged.length = bc * bs;
       }
-      next[activeBuildingIndex] = merged;
+      nextBuildings[curSol.activeBuildingIndex] = merged;
       useConfiguratorStore.getState().loadBuildingConfig(merged);
-      return next;
+      return {
+        ...prev,
+        [solutionType]: {
+          ...curSol,
+          buildings: nextBuildings
+        }
+      };
     });
-  }, [activeBuildingIndex]);
+  }, [solutionType]);
 
-  // Gestion des bâtiments / ombrières multiples avec isolation stricte des onglets
+  // Bascule étanche entre les solutions ("Bâtiment / Hangar" vs "Ombrière PV")
+  const handleSwitchSolution = (newSolType) => {
+    if (newSolType === solutionType) return;
+
+    isSwitchingBuildingRef.current = true;
+    
+    // 1. Sauvegarder l'état 3D courant dans le bâtiment actif de la solution SORTANTE
+    setSolutions(prev => {
+      const curSol = prev[solutionType];
+      if (!curSol) return prev;
+      const nextBuildings = [...curSol.buildings];
+      const curB = nextBuildings[curSol.activeBuildingIndex];
+      if (curB) {
+        nextBuildings[curSol.activeBuildingIndex] = {
+          ...curB,
+          width: config.width,
+          length: config.length,
+          eaveHeight: config.eaveHeight,
+          roofPitch: config.roofPitch,
+          buildingType: config.buildingType,
+          bayCount: config.bayCount,
+          baySpacing: config.baySpacing,
+          leftSide: config.leftSide || 'none',
+          rightSide: config.rightSide || 'none',
+          leftWidth: config.leftWidth,
+          rightWidth: config.rightWidth,
+          hasSolar: config.hasSolar,
+          solarStats: config.solarStats,
+        };
+      }
+      return {
+        ...prev,
+        [solutionType]: {
+          ...curSol,
+          buildings: nextBuildings
+        }
+      };
+    });
+
+    // 2. Basculer le type de solution
+    setSolutionType(newSolType);
+    setBatteryStorage(prev => ({ ...prev, enabled: false }));
+
+    // 3. Charger fidèlement le bâtiment actif de la solution ENTRANTE dans le store 3D
+    const targetSol = solutions[newSolType];
+    const targetIdx = targetSol?.activeBuildingIndex || 0;
+    const targetB = targetSol?.buildings[targetIdx] || targetSol?.buildings[0];
+    if (targetB) {
+      lastActiveBuildingIdxRef.current = targetIdx;
+      useConfiguratorStore.getState().loadBuildingConfig(targetB);
+    }
+
+    setTimeout(() => {
+      isSwitchingBuildingRef.current = false;
+    }, 150);
+  };
+
+  // Gestion des sous-onglets rattachés strictement à la solution active
   const handleAddBuilding = () => {
+    isSwitchingBuildingRef.current = true;
+    const isOmb = solutionType === 'ombriere';
     const newIdx = buildings.length + 1;
     const projLat = Number(editedProject?.lat || project?.lat || 43.5612);
     const projLng = Number(editedProject?.lng || project?.lng || 0.9168);
+
     const newBuilding = {
-      id: `bat-${newIdx}`,
-      name: isAcama ? `Bâtiment 30m × 15m` : (isDP ? `Ombrière ${newIdx}` : `Bâtiment ${newIdx}`),
-      length: isAcama ? 30 : 30,
-      width: isAcama ? 15.0 : (isDP ? 15.8 : 16.4),
-      eaveHeight: isAcama ? 4.0 : (isDP ? 5.08 : 4.0),
-      roofPitch: isAcama ? 10 : (isDP ? 10 : 15),
-      buildingType: isAcama ? 'symetrique' : (isDP ? 'ombriere_pl' : 'asymetrique_1'),
+      id: `${isOmb ? 'omb' : 'bat'}-${Date.now()}`,
+      name: isOmb ? `Ombrière ${newIdx}` : (isAcama ? `Bâtiment ${newIdx}` : `Bâtiment ${newIdx}`),
+      solutionType: solutionType,
+      length: isOmb ? 45.0 : (isAcama ? 30 : 37.5),
+      width: isOmb ? 6.9 : (isAcama ? 15.0 : 16.4),
+      eaveHeight: isOmb ? 3.7 : (isAcama ? 4.0 : 4.0),
+      roofPitch: isOmb ? 10 : (isAcama ? 10 : 15),
+      buildingType: isOmb ? 'ombriere_vl_simple_gauche' : (isAcama ? 'symetrique' : 'asymetrique_1'),
       leftSide: 'none',
       rightSide: 'none',
-      bayCount: 4,
+      bayCount: isOmb ? 6 : (isAcama ? 4 : 5),
       baySpacing: 7.5,
-      leftWidth: isAcama ? 4.0 : 9.3,
-      rightWidth: isAcama ? 4.0 : 9.3,
+      leftWidth: 0,
+      rightWidth: 0,
       hasSolar: true,
       lat: projLat,
       lng: projLng,
@@ -509,13 +671,45 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       captures: {},
       photos: {}
     };
-    const updated = [...buildings, newBuilding];
-    const newIdxPos = updated.length - 1;
 
-    isSwitchingBuildingRef.current = true;
+    setSolutions(prev => {
+      const curSol = prev[solutionType];
+      if (!curSol) return prev;
+      const nextBuildings = [...curSol.buildings];
+      if (nextBuildings[activeBuildingIndex]) {
+        nextBuildings[activeBuildingIndex] = {
+          ...nextBuildings[activeBuildingIndex],
+          width: config.width,
+          length: config.length,
+          eaveHeight: config.eaveHeight,
+          roofPitch: config.roofPitch,
+          buildingType: config.buildingType,
+          bayCount: config.bayCount,
+          baySpacing: config.baySpacing,
+          leftSide: config.leftSide || 'none',
+          rightSide: config.rightSide || 'none',
+          leftWidth: config.leftWidth,
+          rightWidth: config.rightWidth,
+          hasSolar: config.hasSolar,
+          solarStats: config.solarStats,
+        };
+      }
+      nextBuildings.push(newBuilding);
+      const newPos = nextBuildings.length - 1;
+      return {
+        ...prev,
+        [solutionType]: {
+          ...curSol,
+          activeBuildingIndex: newPos,
+          buildings: nextBuildings
+        }
+      };
+    });
+
+    setSelectedStructureIds(prev => [...prev, newBuilding.id]);
+    lastActiveBuildingIdxRef.current = buildings.length;
     useConfiguratorStore.getState().loadBuildingConfig(newBuilding);
-    setBuildings(updated);
-    setActiveBuildingIndex(newIdxPos);
+
     setTimeout(() => {
       isSwitchingBuildingRef.current = false;
     }, 150);
@@ -525,9 +719,44 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     if (index === activeBuildingIndex || !buildings[index]) return;
 
     isSwitchingBuildingRef.current = true;
+    
+    // Sauvegarder la configuration courante sur l'ancien sous-onglet avant bascule
+    setSolutions(prev => {
+      const curSol = prev[solutionType];
+      if (!curSol) return prev;
+      const nextBuildings = [...curSol.buildings];
+      if (nextBuildings[activeBuildingIndex]) {
+        nextBuildings[activeBuildingIndex] = {
+          ...nextBuildings[activeBuildingIndex],
+          width: config.width,
+          length: config.length,
+          eaveHeight: config.eaveHeight,
+          roofPitch: config.roofPitch,
+          buildingType: config.buildingType,
+          bayCount: config.bayCount,
+          baySpacing: config.baySpacing,
+          leftSide: config.leftSide || 'none',
+          rightSide: config.rightSide || 'none',
+          leftWidth: config.leftWidth,
+          rightWidth: config.rightWidth,
+          hasSolar: config.hasSolar,
+          solarStats: config.solarStats,
+        };
+      }
+      return {
+        ...prev,
+        [solutionType]: {
+          ...curSol,
+          activeBuildingIndex: index,
+          buildings: nextBuildings
+        }
+      };
+    });
+
     const target = buildings[index];
+    lastActiveBuildingIdxRef.current = index;
     useConfiguratorStore.getState().loadBuildingConfig(target);
-    setActiveBuildingIndex(index);
+
     setTimeout(() => {
       isSwitchingBuildingRef.current = false;
     }, 150);
@@ -536,11 +765,27 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
   const handleRemoveBuilding = (index, e) => {
     e.stopPropagation();
     if (buildings.length <= 1) return;
-    const updated = buildings.filter((_, i) => i !== index);
+    const removedId = buildings[index]?.id;
+
     isSwitchingBuildingRef.current = true;
-    setBuildings(updated);
-    setActiveBuildingIndex(0);
-    const first = updated[0];
+    const updated = buildings.filter((_, i) => i !== index);
+    const nextIdx = Math.min(activeBuildingIndex, updated.length - 1);
+
+    setSolutions(prev => ({
+      ...prev,
+      [solutionType]: {
+        ...prev[solutionType],
+        activeBuildingIndex: nextIdx,
+        buildings: updated
+      }
+    }));
+
+    if (removedId) {
+      setSelectedStructureIds(prev => prev.filter(id => id !== removedId));
+    }
+
+    lastActiveBuildingIdxRef.current = nextIdx;
+    const first = updated[nextIdx] || updated[0];
     if (first) {
       useConfiguratorStore.getState().loadBuildingConfig(first);
     }
@@ -750,19 +995,114 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       ];
     }
 
-    setBuildings(initialBuildings);
-    setActiveBuildingIndex(0);
+    // Partitionner et structurer les bâtiments par solution (Bâtiment vs Ombrière)
+    let loadedSolutions;
+    if (project?.solutions?.building?.buildings && project?.solutions?.ombriere?.buildings) {
+      loadedSolutions = project.solutions;
+    } else {
+      const buildingList = [];
+      const ombriereList = [];
 
-    // Charger immédiatement le premier bâtiment dans le store 3D
-    const b1 = initialBuildings[0];
+      initialBuildings.forEach((b) => {
+        const isOmb = (b.solutionType === 'ombriere') || (b.buildingType || '').toLowerCase().startsWith('ombriere') || (b.category === 'ombriere');
+        if (isOmb) {
+          ombriereList.push({
+            ...b,
+            solutionType: 'ombriere',
+            name: b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière') : `Ombrière ${ombriereList.length + 1}`
+          });
+        } else {
+          buildingList.push({
+            ...b,
+            solutionType: 'building',
+            name: b.name ? b.name.replace(/Ombrière/gi, 'Bâtiment') : (isAcama ? `Bâtiment ${Number(b.length || 30).toFixed(0)}m × ${Number(b.width || 15).toFixed(0)}m` : `Bâtiment ${buildingList.length + 1}`)
+          });
+        }
+      });
+
+      if (buildingList.length === 0) {
+        buildingList.push({
+          id: 'bat-1',
+          name: isAcama ? 'Bâtiment 30m × 15m' : 'Bâtiment 1',
+          solutionType: 'building',
+          length: isAcama ? 30 : 37.5,
+          width: isAcama ? 15 : 16.4,
+          eaveHeight: 4,
+          roofPitch: isAcama ? 10 : 15,
+          buildingType: isAcama ? 'symetrique' : 'asymetrique_1',
+          leftSide: 'none',
+          rightSide: 'none',
+          bayCount: isAcama ? 4 : 5,
+          baySpacing: 7.5,
+          lat: defLat,
+          lng: defLng,
+          gps: `${defLat},${defLng}`,
+          rotation: 0,
+          captures: {},
+          photos: {}
+        });
+      }
+
+      if (ombriereList.length === 0) {
+        ombriereList.push({
+          id: 'omb-1',
+          name: 'Ombrière 1',
+          solutionType: 'ombriere',
+          length: 45.0,
+          width: 6.9,
+          eaveHeight: 3.7,
+          roofPitch: 10,
+          buildingType: 'ombriere_vl_simple_gauche',
+          leftSide: 'none',
+          rightSide: 'none',
+          bayCount: 6,
+          baySpacing: 7.5,
+          lat: defLat,
+          lng: defLng,
+          gps: `${defLat},${defLng}`,
+          rotation: 0,
+          captures: {},
+          photos: {}
+        });
+      }
+
+      loadedSolutions = {
+        building: {
+          activeBuildingIndex: 0,
+          buildings: buildingList
+        },
+        ombriere: {
+          activeBuildingIndex: 0,
+          buildings: ombriereList
+        }
+      };
+    }
+
+    setSolutions(loadedSolutions);
+
+    // Initialiser les structures sélectionnées
+    if (project?.selectedStructureIds && Array.isArray(project.selectedStructureIds) && project.selectedStructureIds.length > 0) {
+      setSelectedStructureIds(project.selectedStructureIds);
+    } else {
+      const allIds = [
+        ...(loadedSolutions.building?.buildings || []).map(b => b.id),
+        ...(loadedSolutions.ombriere?.buildings || []).map(b => b.id),
+      ];
+      setSelectedStructureIds(allIds);
+    }
+
+    // Charger immédiatement le bâtiment de la solution active dans le store 3D
+    const activeSolutionObj = loadedSolutions[detectedSolutionType] || loadedSolutions.building;
+    const b1 = activeSolutionObj?.buildings[activeSolutionObj.activeBuildingIndex] || activeSolutionObj?.buildings[0] || initialBuildings[0];
     if (b1) {
+      lastActiveBuildingIdxRef.current = activeSolutionObj?.activeBuildingIndex || 0;
       useConfiguratorStore.getState().loadBuildingConfig(b1);
       if (isAcama) {
         useConfiguratorStore.getState().setConfigMode('custom');
       }
     }
 
-      const initialNotice = project?.noticeText || buildAutoNoticeText();
+    const initialNotice = project?.noticeText || buildAutoNoticeText();
       setNoticeText(initialNotice);
       const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
       const shortObjet = isDP
@@ -1264,8 +1604,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         .replace(/Station Batteries \([^\)]*\)/gi, isDP ? 'Ombrière' : 'Bâtiment');
     }
 
-    // Conserver fidèlement chaque bâtiment avec ses propres dimensions et paramètres
-    const updatedBuildings = buildings.map((b, idx) => {
+    // Rassembler toutes les structures configurées de toutes les solutions actives
+    const allConfigured = allConfiguredStructures;
+    
+    // Filtrer selon la sélection explicite de l'utilisateur (selectedStructureIds)
+    const candidateBuildings = allConfigured.filter(b => selectedStructureIds.includes(b.id));
+    const structuresToExport = candidateBuildings.length > 0 ? candidateBuildings : (allConfigured.length > 0 ? allConfigured.slice(0, 1) : buildings);
+
+    // Conserver fidèlement chaque structure retenue avec ses propres dimensions et paramètres
+    const updatedBuildings = structuresToExport.map((b, idx) => {
       let bLen = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (isAcama ? 30 : 37.5)));
       let bWid = Number(b.width || (isAcama ? 15 : 16.4));
       if (isNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
@@ -1273,22 +1620,23 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         bWid = isAcama ? 15 : 16.4;
       }
       let bName = b.name;
+      const isOmb = b.solutionKey === 'ombriere' || (b.buildingType || '').toLowerCase().startsWith('ombriere');
       if (isNoBattery) {
         if (isAcama) {
           bName = `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
         } else if (bName) {
-          bName = bName.replace(/Station Batteries[^\)]*\)?/gi, isDP ? 'Ombrière' : 'Bâtiment').trim();
+          bName = bName.replace(/Station Batteries[^\)]*\)?/gi, isOmb ? 'Ombrière' : 'Bâtiment').trim();
         }
       }
       return {
         ...b,
         length: bLen,
         width: bWid,
-        eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : (isDP ? 3.0 : 4.0)),
+        eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : (isOmb ? 3.7 : 4.0)),
         roofPitch: Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : 10),
-        buildingType: (isNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isAcama ? 'symetrique' : (isDP ? 'ombriere_pl' : 'asymetrique_1')) : (isBattery ? 'battery_standalone' : (b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1'))),
+        buildingType: (isNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isAcama ? 'symetrique' : (isOmb ? 'ombriere_pl' : 'asymetrique_1')) : (isBattery ? 'battery_standalone' : (b.buildingType || (isOmb ? 'ombriere_pl' : 'asymetrique_1'))),
         isBattery: isNoBattery ? false : (isBattery || Boolean(b.isBattery)),
-        name: bName || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`),
+        name: bName || (isOmb ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`),
         leftSide: b.leftSide || 'none',
         rightSide: b.rightSide || 'none',
         leftWidth: b.leftWidth !== undefined ? Number(b.leftWidth) : 0,
@@ -1356,13 +1704,14 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       ...allBuildingsPhotos,
     };
 
-    // Garder les photos et captures de chaque bâtiment strictement indépendantes
-    const enrichedBuildings = buildingsWithMasse.map((b, idx) => ({
+    // Garder les photos et captures de chaque structure strictement indépendantes (AUCUN fallback satellite sur les photos)
+    const enrichedBuildings = buildingsWithMasse.map((b) => ({
       ...b,
-      captures: { ...(idx === 0 ? finalCaptures : {}), ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
-      urbanisme_captures: { ...(idx === 0 ? finalCaptures : {}), ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
-      photos: { ...(idx === 0 ? finalPhotos : {}), ...(b.photos || {}), ...(b.pc_photos || {}) },
-      pc_photos: { ...(idx === 0 ? finalPhotos : {}), ...(b.photos || {}), ...(b.pc_photos || {}) },
+      masse_capture: b.masse_capture || masseMap,
+      captures: { ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
+      urbanisme_captures: { ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
+      photos: { ...(b.photos || {}), ...(b.pc_photos || {}) },
+      pc_photos: { ...(b.photos || {}), ...(b.pc_photos || {}) },
     }));
 
     const preservedKwc = project?.kwc || editedProject?.kwc || project?.projectSize || editedProject?.projectSize || project?.puissance || editedProject?.puissance || '';
@@ -1402,6 +1751,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       pc_photos: finalPhotos,
       photos: finalPhotos,
       buildings: enrichedBuildings,
+      solutions: solutions,
+      selectedStructureIds: selectedStructureIds,
       additionalRoof: additionalRoof,
       batteryStorage: isNoBattery ? { enabled: false } : batteryStorage,
     };
@@ -1731,10 +2082,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                       </span>
                       <button
                         type="button"
-                        onClick={() => {
-                          setSolutionType('building');
-                          setBatteryStorage(prev => ({ ...prev, enabled: false }));
-                        }}
+                        onClick={() => handleSwitchSolution('building')}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
                           solutionType === 'building'
                             ? 'bg-blue-600 text-white ring-2 ring-blue-400'
@@ -1748,10 +2096,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                       {!isAcama && (
                         <button
                           type="button"
-                          onClick={() => {
-                            setSolutionType('ombriere');
-                            setBatteryStorage(prev => ({ ...prev, enabled: false }));
-                          }}
+                          onClick={() => handleSwitchSolution('ombriere')}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
                             solutionType === 'ombriere'
                               ? 'bg-blue-600 text-white ring-2 ring-blue-400'
@@ -2136,43 +2481,60 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
               {/* ÉTAPE 3 — Visionneuse 3D (DP4/PC5 5 VUES) & Insertion Paysagère 3D (DP6/PC6) */}
               {step === 3 && (() => {
                 const b = buildings[activeBuildingIndex] || {};
-                const currentPhotos = {
-                  ...(activeBuildingIndex === 0 ? (photos || {}) : {}),
-                  ...(activeBuildingIndex === 0 ? (editedProject?.pc_photos || {}) : {}),
-                  ...(b.photos || {}),
-                  ...(b.pc_photos || {})
-                };
-                const currentCaptures = {
-                  ...(activeBuildingIndex === 0 ? (captures || {}) : {}),
-                  ...(activeBuildingIndex === 0 ? (editedProject?.urbanisme_captures || {}) : {}),
-                  ...(b.captures || {}),
-                  ...(b.urbanisme_captures || {})
-                };
+                const currentPhotos = b.photos || b.pc_photos || {};
+                const currentCaptures = b.captures || b.urbanisme_captures || {};
                 return (
                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-5 space-y-3 overflow-y-auto max-h-[70vh]">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <h3 className="text-sm font-bold text-gray-800">Étape 4 : Photos, Façades & Insertion Paysagère 3D</h3>
                       <p className="text-xs text-gray-500">{isDP ? "Capturez les 5 vues de façades pour la DP4 et positionnez le modèle 3D sur votre photo de terrain pour la DP6." : "Capturez les 5 vues de façades pour la PC5 et positionnez le modèle 3D sur votre photo de terrain pour la PC6."}</p>
                     </div>
 
-                    {buildings.length > 1 && (
-                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                        {buildings.map((b, idx) => (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => handleSwitchSolution('building')}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                            solutionType === 'building' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Building2 className="w-3 h-3" />
+                          <span>{isAcama ? "Bâtiment" : "Bâtiment / Hangar"}</span>
+                        </button>
+                        {!isAcama && (
                           <button
-                            key={b.id || idx}
                             type="button"
-                            onClick={() => handleSelectBuilding(idx)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                              activeBuildingIndex === idx ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'
+                            onClick={() => handleSwitchSolution('ombriere')}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                              solutionType === 'ombriere' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
                             }`}
                           >
-                            {getBuildingDisplayName(b, idx)}
+                            <Car className="w-3 h-3" />
+                            <span>Ombrière PV</span>
                           </button>
-                        ))}
+                        )}
                       </div>
-                    )}
+
+                      {buildings.length > 1 && (
+                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                          {buildings.map((b, idx) => (
+                            <button
+                              key={b.id || idx}
+                              type="button"
+                              onClick={() => handleSelectBuilding(idx)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                activeBuildingIndex === idx ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'
+                              }`}
+                            >
+                              {getBuildingDisplayName(b, idx)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 items-stretch">
@@ -2839,26 +3201,80 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                     </div>
                   </div>
 
-                  {/* Résumé des composants du projet configurés */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  {/* Sélection interactive des structures et sous-onglets à inclure dans le dossier PDF */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                         <Layers className="w-4 h-4 text-blue-600" />
-                        Composants du projet configurés
+                        Structures &amp; Sous-onglets à inclure dans le PDF ({selectedStructureIds.length}/{allConfiguredStructures.length})
                       </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
+                          className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
+                        >
+                          Toutes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (allConfiguredStructures.length > 0) {
+                              setSelectedStructureIds([allConfiguredStructures[0].id]);
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
+                        >
+                          Seulement la 1ère
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                      <div className="flex items-center justify-between font-bold text-slate-800 mb-1">
-                        <span className="flex items-center gap-1 text-blue-600">
-                          <Building2 className="w-3.5 h-3.5" /> {buildings.length} {isDP ? 'Ombrière(s)' : 'Bâtiment(s)'}
-                        </span>
-                        <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">Configuré</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500">
-                        {config.length.toFixed(1)}m × {config.width.toFixed(1)}m ({Math.round(config.length * config.width)} m²)
-                        {buildings.length > 1 && ` + ${buildings.length - 1} secondaire(s)`}
-                      </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                      {allConfiguredStructures.map((str) => {
+                        const isSelected = selectedStructureIds.includes(str.id);
+                        const strLen = Number(str.length || (str.bayCount || 5) * (str.baySpacing || 7.5));
+                        const strWid = Number(str.width || 15);
+                        return (
+                          <div
+                            key={str.id}
+                            onClick={() => {
+                              setSelectedStructureIds(prev => {
+                                if (prev.includes(str.id)) {
+                                  if (prev.length <= 1) return prev; // Garder au moins 1 structure
+                                  return prev.filter(id => id !== str.id);
+                                }
+                                return [...prev, str.id];
+                              });
+                            }}
+                            className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                              isSelected
+                                ? 'bg-white border-blue-600 shadow-xs ring-2 ring-blue-200'
+                                : 'bg-slate-100/70 border-slate-200 opacity-60 hover:opacity-85'
+                            }`}
+                          >
+                            <div className="min-w-0 pr-2">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                                  str.solutionKey === 'ombriere' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {str.solutionLabel}
+                                </span>
+                                <span className="font-bold text-xs text-slate-900 truncate">{str.name}</span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-medium">
+                                {strLen.toFixed(1)}m × {strWid.toFixed(1)}m — {Math.round(strLen * strWid)} m²
+                              </p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              className="w-4 h-4 rounded text-blue-600 pointer-events-none flex-shrink-0"
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 

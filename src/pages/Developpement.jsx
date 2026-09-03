@@ -301,11 +301,13 @@ export default function Developpement() {
       let plateIds = [];
       if (isPC) {
         if (!selectedPages || selectedPages.situation) plateIds.push(`${prefix}plate-situation`);
-        if (!selectedPages || selectedPages.masse) plateIds.push(`${prefix}plate-masse`);
         
-        // Répéter PC3/PC4, PC5, PC6, PC7/PC8 pour chaque bâtiment configuré dans l'unique PDF
+        // Répéter PC2 (Plan de masse), PC3/PC4, PC5, PC6, PC7/PC8 pour chaque bâtiment configuré dans l'unique PDF
         for (let bIdx = 0; bIdx < bList.length; bIdx++) {
           const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+          if (!selectedPages || selectedPages.masse) {
+            plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse` : `${prefix}plate-masse${suffix}`);
+          }
           if (!selectedPages || selectedPages.section_notice) plateIds.push(`${prefix}plate-section-notice${suffix}`);
           if (!selectedPages || selectedPages.facades) plateIds.push(`${prefix}plate-facades${suffix}`);
           if (!selectedPages || selectedPages.insertion) plateIds.push(`${prefix}plate-insertion${suffix}`);
@@ -316,10 +318,12 @@ export default function Developpement() {
         if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
       } else {
         if (!selectedPages || selectedPages.situation !== false) plateIds.push(`dev-plate-situation`);
-        if (!selectedPages || selectedPages.masse !== false) plateIds.push(`dev-plate-masse`);
 
         for (let bIdx = 0; bIdx < bList.length; bIdx++) {
           const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+          if (!selectedPages || selectedPages.masse !== false) {
+            plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse` : `dev-plate-masse${suffix}`);
+          }
           if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
           if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
           if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
@@ -613,15 +617,13 @@ export default function Developpement() {
             </div>
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
-              const mergedCaptures = {
+              const bCaptures = {
                 ...(activeProj.urbanisme_captures || {}),
-                ...(activeProj.captures || {}),
                 ...(b.captures || {}),
                 ...(b.urbanisme_captures || {}),
+                ...(b.masse_capture ? { masse_projet: b.masse_capture } : {}),
               };
-              const mergedPhotos = {
-                ...(activeProj.pc_photos || {}),
-                ...(activeProj.photos || {}),
+              const bPhotos = {
                 ...(b.photos || {}),
                 ...(b.pc_photos || {}),
               };
@@ -659,14 +661,18 @@ export default function Developpement() {
                 leftWidth: b.leftWidth || 4.0,
                 rightWidth: b.rightWidth || 4.0,
                 buildingName: bName || (isProjectAcama ? `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m` : `Ombrière ${bIdx + 1}`),
-                urbanisme_captures: mergedCaptures,
-                captures: mergedCaptures,
-                pc_photos: mergedPhotos,
-                photos: mergedPhotos,
+                urbanisme_captures: bCaptures,
+                captures: bCaptures,
+                pc_photos: bPhotos,
+                photos: bPhotos,
               };
               const suffix = bIdx === 0 ? '' : `-${bIdx}`;
               return (
                 <React.Fragment key={`dp-b-${b.id || bIdx}`}>
+                  {/* DP2 — Plan de masse individuel par structure */}
+                  <div id={`dev-plate-masse${suffix}`}>
+                    <PlateMasse project={bProj} captures={bCaptures} />
+                  </div>
                   {/* DP3 — Plan en coupe par bâtiment */}
                   <div id={`dev-plate-section${suffix}`}>
                     <PlateSection 
@@ -702,15 +708,13 @@ export default function Developpement() {
             <div id="dev-pc-plate-masse"><PCPlateMasse project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
-              const mergedCaptures = {
+              const bCaptures = {
                 ...(activeProj.urbanisme_captures || {}),
-                ...(activeProj.captures || {}),
                 ...(b.captures || {}),
                 ...(b.urbanisme_captures || {}),
+                ...(b.masse_capture ? { masse_projet: b.masse_capture } : {}),
               };
-              const mergedPhotos = {
-                ...(activeProj.pc_photos || {}),
-                ...(activeProj.photos || {}),
+              const bPhotos = {
                 ...(b.photos || {}),
                 ...(b.pc_photos || {}),
               };
@@ -748,14 +752,18 @@ export default function Developpement() {
                 leftWidth: b.leftWidth || 4.0,
                 rightWidth: b.rightWidth || 4.0,
                 buildingName: bName || (isProjectAcama ? `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m` : `Bâtiment ${bIdx + 1}`),
-                urbanisme_captures: mergedCaptures,
-                captures: mergedCaptures,
-                pc_photos: mergedPhotos,
-                photos: mergedPhotos,
+                urbanisme_captures: bCaptures,
+                captures: bCaptures,
+                pc_photos: bPhotos,
+                photos: bPhotos,
               };
               const suffix = bIdx === 0 ? '' : `-${bIdx}`;
               return (
                 <React.Fragment key={`pc-b-${b.id || bIdx}`}>
+                  {/* PC2 — Plan de masse individuel par structure */}
+                  <div id={`dev-pc-plate-masse${suffix}`}>
+                    <PCPlateMasse project={bProj} captures={bCaptures} />
+                  </div>
                   <div id={`dev-pc-plate-section-notice${suffix}`}>
                     <PCPlateSectionAndNotice 
                       project={bProj} 
@@ -764,7 +772,13 @@ export default function Developpement() {
                   </div>
                   <div id={`dev-pc-plate-facades${suffix}`}><PCPlateFacades project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
                   <div id={`dev-pc-plate-insertion${suffix}`}><PCPlateInsertion project={bProj} photos={bProj.pc_photos || {}} /></div>
-                  <div id={`dev-pc-plate-env${suffix}`}><PCPlateEnv project={bProj} photos={bProj.pc_photos || {}} /></div>
+                  <div id={`dev-pc-plate-env${suffix}`}>
+                    <PCPlateEnv 
+                      project={bProj} 
+                      captures={bProj.urbanisme_captures || {}} 
+                      photos={bProj.pc_photos || {}} 
+                    />
+                  </div>
                 </React.Fragment>
               );
             })}

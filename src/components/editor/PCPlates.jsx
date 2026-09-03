@@ -1260,9 +1260,9 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
-                                photo={nord || sud} 
+                                photo={nord} 
                                 onUpload={(data) => onUpload && onUpload('facade_nord', data)} 
-                                defaultText="Vue Façade Nord" 
+                                defaultText="Vue Façade Nord non capturée" 
                                 label="Façade Nord"
                             />
                         </div>
@@ -1280,9 +1280,9 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1.5mm 0.5mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
-                                photo={est || sud} 
+                                photo={est} 
                                 onUpload={(data) => onUpload && onUpload('facade_est', data)} 
-                                defaultText="Vue Façade Est" 
+                                defaultText="Vue Façade Est non capturée" 
                                 label="Façade Est"
                                 imageStyle={{ maxHeight: '92%' }}
                             />
@@ -1298,9 +1298,9 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1.5mm 0.5mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
-                                photo={ouest || sud} 
+                                photo={ouest} 
                                 onUpload={(data) => onUpload && onUpload('facade_ouest', data)} 
-                                defaultText="Vue Façade Ouest" 
+                                defaultText="Vue Façade Ouest non capturée" 
                                 label="Façade Ouest"
                                 imageStyle={{ maxHeight: '92%' }}
                             />
@@ -1315,9 +1315,9 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1.5mm 0.5mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
-                                photo={toiture || sud} 
+                                photo={toiture} 
                                 onUpload={(data) => onUpload && onUpload('vue_couverture', data)} 
-                                defaultText="Vue Couverture Toiture (Format Paysage)" 
+                                defaultText="Vue Couverture non capturée" 
                                 label="Plan Toiture"
                                 imageStyle={{ maxHeight: '92%' }}
                             />
@@ -1334,8 +1334,8 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
 export const PlateInsertion = ({ project, captures, photos, isInteractive, onUpload }) => {
     const safePhotos = photos || project?.pc_photos || project?.photos || {};
     const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
-    const photoAvant = safePhotos.avant || safeCaptures.photo_avant || project?.pc_photos?.avant || project?.photos?.avant || project?.urbanisme_captures?.photo_avant || project?.avant || '';
-    const photoApres = safePhotos.apres || safeCaptures.photo_apres || project?.pc_photos?.apres || project?.photos?.apres || project?.urbanisme_captures?.photo_apres || project?.apres || '';
+    const photoAvant = safePhotos.avant || safeCaptures.photo_avant || project?.pc_photos?.avant || project?.photos?.avant || '';
+    const photoApres = safePhotos.apres || safeCaptures.photo_apres || project?.pc_photos?.apres || project?.photos?.apres || '';
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-insertion">
@@ -1351,7 +1351,7 @@ export const PlateInsertion = ({ project, captures, photos, isInteractive, onUpl
                             isInteractive={isInteractive} 
                             photo={photoAvant} 
                             onUpload={(data) => onUpload && onUpload('avant', data)} 
-                            defaultText="Photo du terrain existant" 
+                            defaultText="En attente de photographie du terrain existant" 
                             label="État Initial"
                         />
                     </div>
@@ -1367,7 +1367,7 @@ export const PlateInsertion = ({ project, captures, photos, isInteractive, onUpl
                             isInteractive={isInteractive} 
                             photo={photoApres} 
                             onUpload={(data) => onUpload && onUpload('apres', data)} 
-                            defaultText="Incrustation 3D du projet sur le terrain" 
+                            defaultText="En attente de simulation 3D d'insertion paysagère" 
                             label="Projet 3D"
                         />
                     </div>
@@ -1380,9 +1380,9 @@ export const PlateInsertion = ({ project, captures, photos, isInteractive, onUpl
 
 export const PlateEnv = ({ project, captures, photos, isInteractive, onUpload }) => {
     const safePhotos = photos || project?.pc_photos || project?.photos || {};
-    const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
-    const photoProche = safePhotos.proche || safeCaptures.env_proche || safeCaptures.satellite || project?.pc_photos?.proche || project?.photos?.proche || project?.urbanisme_captures?.env_proche || project?.proche || '';
-    const photoLointain = safePhotos.lointain || safeCaptures.env_lointain || safeCaptures.satellite || project?.pc_photos?.lointain || project?.photos?.lointain || project?.urbanisme_captures?.env_lointain || project?.lointain || '';
+    // Rendu conditionnel strict : uniquement les photos uploadées (aucun fallback satellite)
+    const photoProche = safePhotos.proche || project?.pc_photos?.proche || project?.photos?.proche || '';
+    const photoLointain = safePhotos.lointain || project?.pc_photos?.lointain || project?.photos?.lointain || '';
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-env">
@@ -1397,7 +1397,7 @@ export const PlateEnv = ({ project, captures, photos, isInteractive, onUpload })
                             isInteractive={isInteractive} 
                             photo={photoProche} 
                             onUpload={(data) => onUpload && onUpload('proche', data)} 
-                            defaultText="Photo environnement proche" 
+                            defaultText="En attente de photo environnement proche" 
                             label="Env. Proche"
                         />
                     </div>
@@ -1412,7 +1412,7 @@ export const PlateEnv = ({ project, captures, photos, isInteractive, onUpload })
                             isInteractive={isInteractive} 
                             photo={photoLointain} 
                             onUpload={(data) => onUpload && onUpload('lointain', data)} 
-                            defaultText="Photo paysage lointain" 
+                            defaultText="En attente de photo paysage lointain" 
                             label="Paysage Lointain"
                         />
                     </div>
