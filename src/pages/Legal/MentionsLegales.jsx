@@ -33,15 +33,18 @@ export default function MentionsLegales() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-600">
                 <div className="space-y-3">
-                  <p><span className="font-semibold text-slate-800">Raison sociale :</span> ENR Courtage Énergie</p>
+                  <p><span className="font-semibold text-slate-800">Raison sociale :</span> ENR PV Holding</p>
                   <p><span className="font-semibold text-slate-800">Forme juridique :</span> SAS</p>
-                  <p><span className="font-semibold text-slate-800">Capital social :</span> 10 000 €</p>
-                  <p><span className="font-semibold text-slate-800">SIREN :</span> 943 854 430</p>
+                  <p><span className="font-semibold text-slate-800">Capital social :</span> 110 000 €</p>
+                  <p><span className="font-semibold text-slate-800">SIREN :</span> 908 565 195</p>
+                  <p><span className="font-semibold text-slate-800">SIRET (siège) :</span> 908 565 195 00025</p>
+                  <p><span className="font-semibold text-slate-800">RCS :</span> RCS Périgueux 908 565 195</p>
+                  <p><span className="font-semibold text-slate-800">N° TVA :</span> FR59908565195</p>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-start gap-2">
                     <MapPin className="w-4 h-4 text-blue-500 mt-1" />
-                    <p>7 Rue Gutenberg, 33700 Mérignac, France</p>
+                    <p>76 Route de Lyon, 24330 Boulazac Isle Manoire, France</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-blue-500" />
@@ -62,7 +65,7 @@ export default function MentionsLegales() {
                 Responsable de la publication
               </h2>
               <p className="text-slate-600">
-                Le responsable de la publication du site est <span className="font-semibold text-slate-800">Yann Barberis</span>, en sa qualité de Président de ENR Courtage Énergie.
+                Le responsable de la publication du site est <span className="font-semibold text-slate-800">Yann Barberis</span>, en sa qualité de Président de ENR PV Holding.
               </p>
             </section>
 
@@ -83,7 +86,7 @@ export default function MentionsLegales() {
             <section className="space-y-4">
               <h2 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-2">Propriété intellectuelle</h2>
               <p className="text-slate-600 leading-relaxed">
-                L'ensemble du contenu de ce site (textes, images, graphismes, logo, icônes, etc.) est la propriété exclusive de ENR Courtage Énergie, sauf mention contraire. Toute reproduction, distribution, modification, adaptation, retransmission ou publication, même partielle, de ces différents éléments est strictement interdite sans l'accord exprès par écrit de ENR Courtage Énergie.
+                L'ensemble du contenu de ce site (textes, images, graphismes, logo, icônes, etc.) est la propriété exclusive de ENR PV Holding, sauf mention contraire. Toute reproduction, distribution, modification, adaptation, retransmission ou publication, même partielle, de ces différents éléments est strictement interdite sans l'accord exprès par écrit de ENR PV Holding.
               </p>
             </section>
 
@@ -98,7 +101,7 @@ export default function MentionsLegales() {
           </div>
           
           <div className="bg-slate-50 px-8 py-4 text-xs text-slate-400 text-center border-t border-slate-100">
-            Dernière mise à jour : Mai 2026
+            Dernière mise à jour : Septembre 2026
           </div>
         </div>
       </div>
