@@ -24,7 +24,7 @@ import DimensionsModal from './DimensionsModal';
 import LandscapeIntegrationModal from './LandscapeIntegrationModal';
 import Building3DViewer from './Building3DViewer';
 import BatteryStationVisualizer from './BatteryStationVisualizer';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polygon, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -35,6 +35,37 @@ let DefaultIcon = L.icon({
     shadowUrl: iconShadow
 });
 L.Marker.prototype.options.icon = DefaultIcon;
+
+// Calcul précis des coordonnées GPS des 4 coins d'une structure orientée
+function getBuildingCorners(centerLat, centerLng, lengthMeters, widthMeters, rotationDeg) {
+  const lat = Number(centerLat) || 43.5612;
+  const lng = Number(centerLng) || 0.9168;
+  const len = Number(lengthMeters) || 30;
+  const wid = Number(widthMeters) || 15;
+  const rotRad = ((Number(rotationDeg) || 0) * Math.PI) / 180;
+
+  const dx = len / 2;
+  const dy = wid / 2;
+
+  const localCorners = [
+    { x: -dx, y: -dy },
+    { x: +dx, y: -dy },
+    { x: +dx, y: +dy },
+    { x: -dx, y: +dy }
+  ];
+
+  const mPerLat = 111139;
+  const mPerLng = 111139 * Math.cos((lat * Math.PI) / 180);
+
+  return localCorners.map(corner => {
+    const rx = corner.x * Math.cos(rotRad) - corner.y * Math.sin(rotRad);
+    const ry = corner.x * Math.sin(rotRad) + corner.y * Math.cos(rotRad);
+
+    const cLat = lat + (ry / mPerLat);
+    const cLng = lng + (rx / (mPerLng || 1));
+    return [cLat, cLng];
+  });
+}
 
 function MapResizer() {
   const map = useMap();
@@ -338,6 +369,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
   // Collecte globale de toutes les structures configurées et sélection pour le PDF final
   const [selectedStructureIds, setSelectedStructureIds] = useState([]);
+  const [activeMasseStructureId, setActiveMasseStructureId] = useState(null);
+
   const allConfiguredStructures = useMemo(() => {
     const list = [];
     (solutions.building?.buildings || []).forEach((b, i) => {
@@ -356,6 +389,59 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         return allConfiguredStructures.map(s => s.id);
       }
       return prev;
+    });
+    if (!activeMasseStructureId && allConfiguredStructures.length > 0) {
+      setActiveMasseStructureId(allConfiguredStructures[0].id);
+    }
+  }, [allConfiguredStructures, activeMasseStructureId]);
+
+  // Mise à jour de l'orientation d'une structure quelconque depuis Carte DP2/PC2
+  const handleMasseRotationUpdate = useCallback((targetId, val) => {
+    const targetStr = allConfiguredStructures.find(s => s.id === targetId);
+    if (!targetStr) return;
+    setSolutions(prev => {
+      const curSol = prev[targetStr.solutionKey];
+      if (!curSol) return prev;
+      const nextBuildings = [...curSol.buildings];
+      if (nextBuildings[targetStr.indexInSol]) {
+        nextBuildings[targetStr.indexInSol] = {
+          ...nextBuildings[targetStr.indexInSol],
+          rotation: val
+        };
+      }
+      return {
+        ...prev,
+        [targetStr.solutionKey]: {
+          ...curSol,
+          buildings: nextBuildings
+        }
+      };
+    });
+  }, [allConfiguredStructures]);
+
+  // Mise à jour des coordonnées GPS d'une structure quelconque depuis Carte DP2/PC2
+  const handleMasseGpsUpdate = useCallback((targetId, newLat, newLng) => {
+    const targetStr = allConfiguredStructures.find(s => s.id === targetId);
+    if (!targetStr) return;
+    setSolutions(prev => {
+      const curSol = prev[targetStr.solutionKey];
+      if (!curSol) return prev;
+      const nextBuildings = [...curSol.buildings];
+      if (nextBuildings[targetStr.indexInSol]) {
+        nextBuildings[targetStr.indexInSol] = {
+          ...nextBuildings[targetStr.indexInSol],
+          lat: newLat,
+          lng: newLng,
+          gps: `${newLat},${newLng}`
+        };
+      }
+      return {
+        ...prev,
+        [targetStr.solutionKey]: {
+          ...curSol,
+          buildings: nextBuildings
+        }
+      };
     });
   }, [allConfiguredStructures]);
 
@@ -2868,70 +2954,154 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                 );
               })()}
 
-              {/* ÉTAPE 4 — Carte DP2 / PC2 (Plan de masse dynamique par bâtiment / ombrière — PLEINE HAUTEUR) */}
+              {/* ÉTAPE 4 — Carte DP2 / PC2 (Plan de masse dynamique multi-structures — PLEINE HAUTEUR) */}
               {step === 4 && (
                 <motion.div
                   key="step4-masse"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="p-5 h-full flex flex-col gap-3 overflow-hidden"
+                  className="p-4 h-full flex flex-col gap-2.5 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between flex-shrink-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 flex-shrink-0">
                     <div>
                       <h3 className="text-sm font-bold text-gray-800">
-                        Étape 5 : {isDP ? 'DP2' : 'PC2'} — Plan de Masse ({buildings.length} {isDP ? 'ombrière' : 'bâtiment'}{buildings.length > 1 ? 's' : ''})
+                        Étape 5 : {isDP ? 'DP2' : 'PC2'} — Plan de Masse ({allConfiguredStructures.length} structure{allConfiguredStructures.length > 1 ? 's' : ''} configurée{allConfiguredStructures.length > 1 ? 's' : ''})
                       </h3>
                       <p className="text-xs text-gray-500">
-                        Visualisez et ajustez l'emprise au sol et l'orientation de chaque {isDP ? 'ombrière' : 'bâtiment'} à l'échelle sur le plan cadastral (OSM Zoom 19).
+                        Sélectionnez les structures à inclure dans le dossier, positionnez-les et orientez-les sur le plan cadastral.
                       </p>
                     </div>
 
-                    {buildings.length > 1 && (
-                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                        {buildings.map((b, idx) => (
+                    {/* Onglets de sélection de la structure à déplacer / orienter */}
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto max-w-full">
+                      {allConfiguredStructures.map((str) => {
+                        const isAct = (activeMasseStructureId || allConfiguredStructures[0]?.id) === str.id;
+                        const isInc = selectedStructureIds.includes(str.id);
+                        return (
                           <button
-                            key={b.id || idx}
+                            key={str.id}
                             type="button"
-                            onClick={() => handleSelectBuilding(idx)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                              activeBuildingIndex === idx ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'
+                            onClick={() => setActiveMasseStructureId(str.id)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs ${
+                              isAct
+                                ? (str.solutionKey === 'ombriere' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-blue-600 text-white shadow-xs')
+                                : (isInc ? 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200' : 'bg-slate-200/60 text-slate-400 border border-slate-200 line-through')
                             }`}
                           >
-                            {getBuildingDisplayName(b, idx)}
+                            <span className={`w-2 h-2 rounded-full ${isAct ? 'bg-white' : (str.solutionKey === 'ombriere' ? 'bg-emerald-500' : 'bg-blue-500')}`} />
+                            <span>{str.name}</span>
                           </button>
-                        ))}
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Sélection interactive des structures et sous-onglets à inclure dans le dossier PDF */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 space-y-1.5 flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-blue-600" />
+                        Structures &amp; Sous-onglets à inclure dans le PDF ({selectedStructureIds.length}/{allConfiguredStructures.length})
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
+                          className="px-2 py-0.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md text-[11px] font-bold transition-all shadow-2xs"
+                        >
+                          Toutes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (allConfiguredStructures.length > 0) {
+                              setSelectedStructureIds([allConfiguredStructures[0].id]);
+                            }
+                          }}
+                          className="px-2 py-0.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md text-[11px] font-bold transition-all shadow-2xs"
+                        >
+                          Seulement la 1ère
+                        </button>
                       </div>
-                    )}
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {allConfiguredStructures.map((str) => {
+                        const isSelected = selectedStructureIds.includes(str.id);
+                        const isCurAct = (activeMasseStructureId || allConfiguredStructures[0]?.id) === str.id;
+                        const strLen = Number(str.length || (str.bayCount || 5) * (str.baySpacing || 7.5));
+                        const strWid = Number(str.width || 15);
+                        return (
+                          <div
+                            key={str.id}
+                            onClick={() => {
+                              setSelectedStructureIds(prev => {
+                                if (prev.includes(str.id)) {
+                                  if (prev.length <= 1) return prev; // Garder au moins 1 structure
+                                  return prev.filter(id => id !== str.id);
+                                }
+                                return [...prev, str.id];
+                              });
+                            }}
+                            className={`p-2 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                              isSelected
+                                ? (isCurAct ? 'bg-white border-blue-600 shadow-xs ring-2 ring-blue-300' : 'bg-white border-slate-300 shadow-2xs')
+                                : 'bg-slate-100/70 border-slate-200 opacity-60 hover:opacity-85'
+                            }`}
+                          >
+                            <div className="min-w-0 pr-1">
+                              <div className="flex items-center gap-1 mb-0.5">
+                                <span className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
+                                  str.solutionKey === 'ombriere' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {str.solutionKey === 'ombriere' ? 'Ombrière' : 'Bâtiment'}
+                                </span>
+                                <span className="font-bold text-xs text-slate-900 truncate">{str.name}</span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 font-medium truncate">
+                                {strLen.toFixed(1)}m × {strWid.toFixed(1)}m ({Math.round(strLen * strWid)} m²)
+                              </p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              className="w-3.5 h-3.5 rounded text-blue-600 pointer-events-none flex-shrink-0"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {(() => {
-                    const bIdx = activeBuildingIndex >= buildings.length ? 0 : activeBuildingIndex;
-                    const b = buildings[bIdx] || buildings[0] || {};
-                    const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || editedProject?.lat || 43.5612);
-                    const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || editedProject?.lng || 0.9168);
-                    const bLength = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config.length || 30)));
-                    const bWidth = Number(b.width || config.width || 20);
-                    const currentRotation = Number(b.rotation || 0);
+                    const activeStr = allConfiguredStructures.find(s => s.id === (activeMasseStructureId || allConfiguredStructures[0]?.id)) || allConfiguredStructures[0] || {};
+                    const bLength = Number(activeStr.length || (activeStr.bayCount ? activeStr.bayCount * (activeStr.baySpacing || 7.5) : (config.length || 30)));
+                    const bWidth = Number(activeStr.width || config.width || 20);
+                    const currentRotation = Number(activeStr.rotation || 0);
+
+                    const activeLat = Number(activeStr.lat || (activeStr.gps ? activeStr.gps.split(',')[0] : null) || editedProject?.lat || 43.5612);
+                    const activeLng = Number(activeStr.lng || (activeStr.gps ? activeStr.gps.split(',')[1] : null) || editedProject?.lng || 0.9168);
 
                     return (
-                      <div className="flex-1 flex flex-col min-h-0 bg-gray-50 border border-gray-200 rounded-2xl p-3.5 shadow-xs overflow-hidden gap-2.5">
+                      <div className="flex-1 flex flex-col min-h-0 bg-gray-50 border border-gray-200 rounded-2xl p-3 shadow-xs overflow-hidden gap-2">
                         <div className="flex items-center justify-between flex-shrink-0">
                           <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                             <Building2 className="w-4 h-4 text-blue-600" />
-                            {isDP ? 'DP2' : 'PC2'} — Plan de Masse : {getBuildingDisplayName(b, bIdx)}
+                            {isDP ? 'DP2' : 'PC2'} — Structure active : <strong className="text-blue-600 font-black">{activeStr.name}</strong>
                           </span>
                           <span className="text-[11px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                             {bLength.toFixed(1)}m × {bWidth.toFixed(1)}m ({Math.round(bLength * bWidth)} m²)
                           </span>
                         </div>
 
-                        {/* Contrôle de Rotation du bâtiment / de l'ombrière */}
-                        <div className="bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs shadow-2xs space-y-2 flex-shrink-0">
+                        {/* Contrôle de Rotation de la structure active */}
+                        <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs shadow-2xs space-y-1.5 flex-shrink-0">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-slate-700 flex items-center gap-1.5">
                               <Compass className="w-4 h-4 text-blue-600" />
-                              Orientation ({getBuildingDisplayName(b, bIdx)})
+                              Orientation de {activeStr.name}
                             </span>
                             <span className="text-blue-600 font-black text-sm">
                               {currentRotation}°
@@ -2944,119 +3114,35 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                             max="90"
                             step="1"
                             value={currentRotation}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setBuildings(prev => {
-                                const upd = [...prev];
-                                if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: val };
-                                return upd;
-                              });
-                            }}
-                            className="w-full h-7 bg-slate-200 rounded-xl appearance-none cursor-pointer accent-blue-600 my-1.5 shadow-inner"
+                            onChange={(e) => handleMasseRotationUpdate(activeStr.id, Number(e.target.value))}
+                            className="w-full h-5 bg-slate-200 rounded-xl appearance-none cursor-pointer accent-blue-600 my-1 shadow-inner"
                           />
 
-                          <div className="bg-blue-50 border border-blue-200 rounded-xl py-2 px-3 text-center text-xs font-black text-blue-900 shadow-2xs">
-                            {(() => {
-                              const r = Number(currentRotation) || 0;
-                              const norm = ((((r + 180) % 360) + 360) % 360) - 180;
-                              if (norm === 0) return 'Plein Sud (0°)';
-                              if (Math.abs(norm) >= 135) return `Nord (${r > 0 ? `+${r}` : r}°)`;
-                              if (norm > 45) {
-                                if (norm >= 85 && norm <= 95) return `Plein Ouest (+${r}°)`;
-                                return `Ouest (+${r}°)`;
-                              }
-                              if (norm > 0 && norm <= 45) return `Sud-Ouest (+${r}°)`;
-                              if (norm < -45) {
-                                if (norm <= -85 && norm >= -95) return `Plein Est (${r}°)`;
-                                return `Est (${r}°)`;
-                              }
-                              if (norm < 0 && norm >= -45) return `Sud-Est (${r}°)`;
-                              return `Plein Sud (0°)`;
-                            })()}
-                          </div>
-
                           <div className="grid grid-cols-5 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setBuildings(prev => {
-                                  const upd = [...prev];
-                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: 90 };
-                                  return upd;
-                                });
-                              }}
-                              className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
-                                currentRotation === 90 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                              }`}
-                            >
-                              Ouest (90°)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setBuildings(prev => {
-                                  const upd = [...prev];
-                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: 45 };
-                                  return upd;
-                                });
-                              }}
-                              className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
-                                currentRotation === 45 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                              }`}
-                            >
-                              Sud-Ouest (45°)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setBuildings(prev => {
-                                  const upd = [...prev];
-                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: 0 };
-                                  return upd;
-                                });
-                              }}
-                              className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
-                                currentRotation === 0 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                              }`}
-                            >
-                              Sud (0°)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setBuildings(prev => {
-                                  const upd = [...prev];
-                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: -45 };
-                                  return upd;
-                                });
-                              }}
-                              className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
-                                currentRotation === -45 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                              }`}
-                            >
-                              Sud-Est (-45°)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setBuildings(prev => {
-                                  const upd = [...prev];
-                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: -90 };
-                                  return upd;
-                                });
-                              }}
-                              className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
-                                currentRotation === -90 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                              }`}
-                            >
-                              Est (-90°)
-                            </button>
+                            {[
+                              { label: 'Ouest (90°)', val: 90 },
+                              { label: 'Sud-Ouest (45°)', val: 45 },
+                              { label: 'Sud (0°)', val: 0 },
+                              { label: 'Sud-Est (-45°)', val: -45 },
+                              { label: 'Est (-90°)', val: -90 },
+                            ].map(({ label, val }) => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => handleMasseRotationUpdate(activeStr.id, val)}
+                                className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
+                                  currentRotation === val ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
                           </div>
                         </div>
 
-                        {/* Visionneuse Carte occupant 100% de la hauteur disponible */}
+                        {/* Visionneuse Carte occupant 100% de la hauteur disponible avec TOUTES les structures */}
                         <div className="relative rounded-xl overflow-hidden border border-gray-200 z-10 flex-1 min-h-0 w-full shadow-inner">
-                          <MapContainer center={[bLat, bLng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                          <MapContainer center={[activeLat, activeLng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                             <TileLayer
                               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                               attribution="&copy; OpenStreetMap contributors"
@@ -3064,14 +3150,60 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               maxNativeZoom={19}
                             />
                             <MapResizer />
-                            <MapSyncCenter lat={bLat} lng={bLng} />
-                            <DraggableLocationMarker lat={bLat} lng={bLng} setGps={(newLat, newLng) => handleBuildingGpsUpdate(bIdx, newLat, newLng)} />
-                            <PC2ScaledBuildingOverlay
-                              bLength={bLength}
-                              bWidth={bWidth}
-                              rotation={currentRotation}
-                              label={`${getBuildingDisplayName(b, bIdx)} (${currentRotation}°)`}
-                            />
+                            <MapSyncCenter lat={activeLat} lng={activeLng} />
+
+                            {allConfiguredStructures.map((str, sIdx) => {
+                              const isCurActive = str.id === activeStr.id;
+                              const isInc = selectedStructureIds.includes(str.id);
+                              const strLat = Number(str.lat || (str.gps ? str.gps.split(',')[0] : null) || (Number(editedProject?.lat || 43.5612) + sIdx * 0.00025));
+                              const strLng = Number(str.lng || (str.gps ? str.gps.split(',')[1] : null) || (Number(editedProject?.lng || 0.9168) + sIdx * 0.00030));
+                              const sLen = Number(str.length || (str.bayCount ? str.bayCount * (str.baySpacing || 7.5) : (config.length || 30)));
+                              const sWid = Number(str.width || config.width || 15);
+                              const sRot = Number(str.rotation || 0);
+                              const corners = getBuildingCorners(strLat, strLng, sLen, sWid, sRot);
+
+                              return (
+                                <React.Fragment key={str.id}>
+                                  <Polygon
+                                    positions={corners}
+                                    eventHandlers={{
+                                      click: () => setActiveMasseStructureId(str.id)
+                                    }}
+                                    pathOptions={{
+                                      color: isCurActive ? '#ef4444' : (str.solutionKey === 'ombriere' ? '#059669' : '#2563eb'),
+                                      fillColor: isCurActive ? '#ef4444' : (str.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6'),
+                                      fillOpacity: isCurActive ? 0.35 : (isInc ? 0.20 : 0.08),
+                                      dashArray: isCurActive ? '6, 4' : '4, 4',
+                                      weight: isCurActive ? 3 : 1.5,
+                                    }}
+                                  >
+                                    <Tooltip permanent direction="center">
+                                      <div className={`text-[10px] font-bold px-1 py-0.5 rounded shadow-2xs whitespace-nowrap cursor-pointer ${
+                                        isCurActive ? 'bg-red-600 text-white' : 'bg-white text-slate-800 border border-slate-200'
+                                      }`}>
+                                        {str.name} ({sRot}°)
+                                      </div>
+                                    </Tooltip>
+                                  </Polygon>
+
+                                  {isCurActive ? (
+                                    <DraggableLocationMarker
+                                      lat={strLat}
+                                      lng={strLng}
+                                      setGps={(newLat, newLng) => handleMasseGpsUpdate(str.id, newLat, newLng)}
+                                    />
+                                  ) : (
+                                    <Marker
+                                      position={[strLat, strLng]}
+                                      eventHandlers={{
+                                        click: () => setActiveMasseStructureId(str.id)
+                                      }}
+                                    />
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+
                             <PC2MapScaleBar />
                           </MapContainer>
                         </div>
