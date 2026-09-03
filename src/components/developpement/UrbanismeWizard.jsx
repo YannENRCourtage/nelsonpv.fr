@@ -259,6 +259,56 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [solutionType, setSolutionType] = useState((!isAcama && isDP) ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
 
+  const [editedProject, setEditedProject] = useState(project || {});
+  const [captures, setCaptures] = useState(project?.urbanisme_captures || {});
+  const [photos, setPhotos] = useState(project?.pc_photos || {});
+  const [fetchingCadastre, setFetchingCadastre] = useState(false);
+  const [generatingMaps, setGeneratingMaps] = useState(false);
+  const [fieldValues, setFieldValues] = useState({});
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [noticeText, setNoticeText] = useState('');
+  const [isNoticeUserModified, setIsNoticeUserModified] = useState(false);
+  const [selectedPages, setSelectedPages] = useState({
+    cover: true,
+    situation: true,
+    masse: true,
+    section_notice: true,
+    section: true,
+    facades: true,
+    insertion: true,
+    env: true,
+    cerfa: true,
+  });
+
+  const [additionalRoof, setAdditionalRoof] = useState({
+    enabled: false,
+    name: 'Toiture solaire existante',
+    surface: 500,
+    kwc: 100,
+    roofType: 'Bac acier',
+    pitch: 15,
+    orientation: 'Sud'
+  });
+
+  const [batteryStorage, setBatteryStorage] = useState({
+    enabled: false,
+    name: 'Système de stockage par batterie',
+    model: 'CESC Mercury 261',
+    quantity: 1,
+    capacityKwh: 261,
+    powerKw: 125,
+    footprint: '3.50m × 2.20m',
+    fireSafety: 'Bâche à eau 120m³, rétention intégrée, distance de sécurité 5m'
+  });
+
+  const [showRoofModal, setShowRoofModal] = useState(false);
+  const [showBatteryModal, setShowBatteryModal] = useState(false);
+  const isSwitchingBuildingRef = React.useRef(false);
+  const lastActiveBuildingIdxRef = React.useRef(0);
+
+  const [selectedStructureIds, setSelectedStructureIds] = useState([]);
+  const [activeMasseStructureId, setActiveMasseStructureId] = useState(null);
+
   const getBuildingDisplayName = useCallback((buildingItem, idx) => {
     const isOmb = (buildingItem?.solutionType === 'ombriere') || (buildingItem?.buildingType || '').toLowerCase().startsWith('ombriere') || (solutionType === 'ombriere');
     const defaultPrefix = isOmb ? 'Ombrière' : 'Bâtiment';
@@ -381,10 +431,6 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
   }, [solutionType]);
 
-  // Collecte globale de toutes les structures configurées et sélection pour le PDF final
-  const [selectedStructureIds, setSelectedStructureIds] = useState([]);
-  const [activeMasseStructureId, setActiveMasseStructureId] = useState(null);
-
   const allConfiguredStructures = useMemo(() => {
     const list = [];
     (solutions.building?.buildings || []).forEach((b, i) => {
@@ -502,54 +548,6 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       });
     }
   }, [step, editedProject?.lat, editedProject?.lng, project?.lat, project?.lng]);
-
-  // Configuration additionnelle Toiture & Batterie
-  const [additionalRoof, setAdditionalRoof] = useState({
-    enabled: false,
-    name: 'Toiture solaire existante',
-    surface: 500,
-    kwc: 100,
-    roofType: 'Bac acier',
-    pitch: 15,
-    orientation: 'Sud'
-  });
-
-  const [batteryStorage, setBatteryStorage] = useState({
-    enabled: false,
-    name: 'Système de stockage par batterie',
-    model: 'CESC Mercury 261',
-    quantity: 1,
-    capacityKwh: 261,
-    powerKw: 125,
-    footprint: '3.50m × 2.20m',
-    fireSafety: 'Bâche à eau 120m³, rétention intégrée, distance de sécurité 5m'
-  });
-
-  const [showRoofModal, setShowRoofModal] = useState(false);
-  const [showBatteryModal, setShowBatteryModal] = useState(false);
-  const isSwitchingBuildingRef = React.useRef(false);
-  const lastActiveBuildingIdxRef = React.useRef(0);
-
-  const [editedProject, setEditedProject] = useState(project || {});
-  const [captures, setCaptures] = useState(project?.urbanisme_captures || {});
-  const [photos, setPhotos] = useState(project?.pc_photos || {});
-  const [fetchingCadastre, setFetchingCadastre] = useState(false);
-  const [generatingMaps, setGeneratingMaps] = useState(false);
-  const [fieldValues, setFieldValues] = useState({});
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [noticeText, setNoticeText] = useState('');
-  const [isNoticeUserModified, setIsNoticeUserModified] = useState(false);
-  const [selectedPages, setSelectedPages] = useState({
-    cover: true,
-    situation: true,
-    masse: true,
-    section_notice: true,
-    section: true,
-    facades: true,
-    insertion: true,
-    env: true,
-    cerfa: true,
-  });
 
   // Helper pour générer automatiquement la notice structurée en 5 points
   const buildAutoNoticeText = useCallback(() => {
