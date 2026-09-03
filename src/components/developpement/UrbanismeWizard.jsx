@@ -459,6 +459,50 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
   }, [allConfiguredStructures]);
 
+  // Synchronisation stricte de toutes les structures avec l'adresse du site (Étape Déclarant)
+  useEffect(() => {
+    if (step === 4) {
+      const refLat = Number(editedProject?.lat || project?.lat || 43.5612);
+      const refLng = Number(editedProject?.lng || project?.lng || 0.9168);
+
+      setSolutions(prev => {
+        let hasChange = false;
+        const nextSolutions = { ...prev };
+
+        let gIdx = 0;
+        ['building', 'ombriere'].forEach(solKey => {
+          if (nextSolutions[solKey]?.buildings) {
+            const updated = nextSolutions[solKey].buildings.map(b => {
+              const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null));
+              const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null));
+              const isOutOfSync = !bLat || !bLng || isNaN(bLat) || isNaN(bLng) ||
+                Math.hypot(bLat - refLat, bLng - refLng) > 0.02 ||
+                (Math.abs(bLat - 43.5612) < 0.0001 && Math.abs(refLat - 43.5612) > 0.01);
+
+              if (isOutOfSync) {
+                hasChange = true;
+                const offLat = gIdx * 0.00015;
+                const offLng = gIdx * 0.00020;
+                gIdx++;
+                return {
+                  ...b,
+                  lat: refLat + offLat,
+                  lng: refLng + offLng,
+                  gps: `${refLat + offLat},${refLng + offLng}`
+                };
+              }
+              gIdx++;
+              return b;
+            });
+            nextSolutions[solKey] = { ...nextSolutions[solKey], buildings: updated };
+          }
+        });
+
+        return hasChange ? nextSolutions : prev;
+      });
+    }
+  }, [step, editedProject?.lat, editedProject?.lng, project?.lat, project?.lng]);
+
   // Configuration additionnelle Toiture & Batterie
   const [additionalRoof, setAdditionalRoof] = useState({
     enabled: false,
@@ -965,8 +1009,22 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     }
 
     const isOmbriere = (project.type || '').toLowerCase().includes('ombriere') || (project.buildingType || '').toLowerCase().includes('ombriere');
-    const pGps = project.gps || (project.lat && project.lng ? `${project.lat},${project.lng}` : '43.5612,0.9168');
-    const [defLat, defLng] = pGps.split(',').map(Number);
+    
+    // Déterminer la référence GPS fiable du site (adresse du déclarant)
+    let defLat = Number(project.lat || (project.gps ? project.gps.split(',')[0] : null) || 43.5612);
+    let defLng = Number(project.lng || (project.gps ? project.gps.split(',')[1] : null) || 0.9168);
+
+    // Si un bâtiment existant possède déjà les coordonnées géocodées réelles du site, les prioriser
+    if (project.buildings && Array.isArray(project.buildings)) {
+      const validBuilding = project.buildings.find(b => {
+        const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null));
+        return bLat && !isNaN(bLat) && Math.abs(bLat - 43.5612) > 0.01;
+      });
+      if (validBuilding) {
+        defLat = Number(validBuilding.lat || validBuilding.gps.split(',')[0]);
+        defLng = Number(validBuilding.lng || validBuilding.gps.split(',')[1]);
+      }
+    }
 
     // Restaurer fidèlement les bâtiments existants ou initialiser le Bâtiment 1 avec les paramètres précis du projet
     let initialBuildings = [];
@@ -1007,8 +1065,12 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
           .trim();
         if (!cleanName) cleanName = isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
 
-        const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || defLat);
-        const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || defLng);
+        let bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || defLat);
+        let bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || defLng);
+        if (Math.abs(bLat - 43.5612) < 0.0001 && Math.abs(defLat - 43.5612) > 0.01) {
+          bLat = defLat + idx * 0.00015;
+          bLng = defLng + idx * 0.00020;
+        }
 
         let bType = (isNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isAcama ? 'symetrique' : (isDP ? 'ombriere_pl' : 'asymetrique_1')) : (b.buildingType || (isDP ? 'ombriere_pl' : 'asymetrique_1'));
         let bLen = Number(b.length || (b.bayCount || (isAcama ? 4 : 5)) * (b.baySpacing || 7.5) || (isAcama ? 30 : 37.5));
@@ -1650,13 +1712,36 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
   const handleGpsUpdate = useCallback((lat, lng) => {
     setEditedProject(prev => ({ ...prev, lat, lng, gps: `${lat},${lng}` }));
+    setSolutions(prev => {
+      const nextSolutions = { ...prev };
+      let gIdx = 0;
+      ['building', 'ombriere'].forEach(solKey => {
+        if (nextSolutions[solKey]?.buildings) {
+          nextSolutions[solKey] = {
+            ...nextSolutions[solKey],
+            buildings: nextSolutions[solKey].buildings.map(b => {
+              const offLat = gIdx * 0.00015;
+              const offLng = gIdx * 0.00020;
+              gIdx++;
+              return {
+                ...b,
+                lat: lat + offLat,
+                lng: lng + offLng,
+                gps: `${lat + offLat},${lng + offLng}`
+              };
+            })
+          };
+        }
+      });
+      return nextSolutions;
+    });
     setBuildings(prev => {
-      if (prev.length > 0) {
-        const next = [...prev];
-        next[0] = { ...next[0], lat, lng, gps: `${lat},${lng}` };
-        return next;
-      }
-      return prev;
+      return prev.map((b, bIdx) => ({
+        ...b,
+        lat: lat + bIdx * 0.00015,
+        lng: lng + bIdx * 0.00020,
+        gps: `${lat + bIdx * 0.00015},${lng + bIdx * 0.00020}`
+      }));
     });
     generateStaticMapImage(lat, lng, 'map', 16).then(ign => {
       if (ign) {
@@ -2968,229 +3053,292 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                 );
               })()}
 
-              {/* ÉTAPE 4 — Carte DP2 / PC2 (Visionneuse divisée en 1, 2, 3 ou 4 cadres selon le nombre de structures configurées) */}
-              {step === 4 && (
-                <motion.div
-                  key="step4-masse"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="p-4 h-full flex flex-col gap-2.5 overflow-hidden"
-                >
-                  <div className="flex items-center justify-between flex-shrink-0">
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-800">
-                        Étape 5 : {isDP ? 'DP2' : 'PC2'} — Plan de Masse ({allConfiguredStructures.length} cadre{allConfiguredStructures.length > 1 ? 's' : ''} : {allConfiguredStructures.length} {isDP ? 'ombrière' : 'structure'}{allConfiguredStructures.length > 1 ? 's' : ''})
-                      </h3>
-                      <p className="text-xs text-gray-500">
-                        Chaque cadre correspond à un bâtiment ou une ombrière. Ajustez indépendamment la position et l'orientation de chacun.
-                      </p>
-                    </div>
+              {/* ÉTAPE 4 — Carte DP2 / PC2 (Visionneuses actives divisées en 1, 2, 3 ou 4 cadres dynamiques) */}
+              {step === 4 && (() => {
+                const activeStructures = allConfiguredStructures.filter(str => selectedStructureIds.includes(str.id));
+                const refSiteLat = Number(editedProject?.lat || project?.lat || 43.5612);
+                const refSiteLng = Number(editedProject?.lng || project?.lng || 0.9168);
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-500">
-                        Inclus dans le PDF : {selectedStructureIds.length}/{allConfiguredStructures.length}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
-                        className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
-                      >
-                        Tout inclure
-                      </button>
-                    </div>
-                  </div>
+                return (
+                  <motion.div
+                    key="step4-masse"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="p-4 h-full flex flex-col gap-2.5 overflow-hidden"
+                  >
+                    {/* Barre de contrôle et d'activation des visionneuses */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5 flex-shrink-0">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5">
+                            <Layers className="w-4 h-4 text-blue-600" />
+                            Étape 5 : {isDP ? 'DP2' : 'PC2'} — Plan de Masse ({activeStructures.length} visionneuse{activeStructures.length > 1 ? 's' : ''} active{activeStructures.length > 1 ? 's' : ''})
+                          </h3>
+                        </div>
+                        <p className="text-[11px] text-gray-500">
+                          Activez les visionneuses souhaitées. Chaque cadre correspond à un bâtiment ou une ombrière géoréférencé sur le site du déclarant.
+                        </p>
+                      </div>
 
-                  {/* Grille divisée en 1, 2, 3 ou 4 cadres */}
-                  <div className={`grid gap-3 flex-1 min-h-0 overflow-y-auto pr-1 pb-1 ${
-                    allConfiguredStructures.length === 1
-                      ? 'grid-cols-1'
-                      : allConfiguredStructures.length === 2
-                      ? 'grid-cols-1 md:grid-cols-2'
-                      : allConfiguredStructures.length === 3
-                      ? 'grid-cols-1 md:grid-cols-3'
-                      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-                  }`}>
-                    {allConfiguredStructures.map((str, sIdx) => {
-                      const isIncluded = selectedStructureIds.includes(str.id);
-                      const strLat = Number(str.lat || (str.gps ? str.gps.split(',')[0] : null) || (Number(editedProject?.lat || 43.5612) + sIdx * 0.00025));
-                      const strLng = Number(str.lng || (str.gps ? str.gps.split(',')[1] : null) || (Number(editedProject?.lng || 0.9168) + sIdx * 0.00030));
-                      const sLen = Number(str.length || (str.bayCount ? str.bayCount * (str.baySpacing || 7.5) : (config.length || 30)));
-                      const sWid = Number(str.width || config.width || 15);
-                      const sRot = Number(str.rotation || 0);
-                      const corners = getBuildingCorners(strLat, strLng, sLen, sWid, sRot);
-
-                      return (
-                        <div
-                          key={str.id}
-                          className={`flex flex-col bg-white border-2 rounded-2xl shadow-xs overflow-hidden transition-all min-h-[360px] ${
-                            isIncluded
-                              ? (str.solutionKey === 'ombriere' ? 'border-emerald-500/80 shadow-emerald-50' : 'border-blue-500/80 shadow-blue-50')
-                              : 'border-slate-200 opacity-60'
-                          }`}
-                        >
-                          {/* En-tête du Cadre */}
-                          <div className={`flex items-center justify-between p-2.5 border-b select-none ${
-                            str.solutionKey === 'ombriere' ? 'bg-emerald-50/80 border-emerald-100' : 'bg-blue-50/80 border-blue-100'
-                          }`}>
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide ${
-                                str.solutionKey === 'ombriere' ? 'bg-emerald-200 text-emerald-900' : 'bg-blue-200 text-blue-900'
+                      {/* Boutons d'activation / désactivation des visionneuses */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {allConfiguredStructures.map((str) => {
+                          const isAct = selectedStructureIds.includes(str.id);
+                          return (
+                            <button
+                              key={str.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedStructureIds(prev => {
+                                  if (prev.includes(str.id)) {
+                                    return prev.filter(id => id !== str.id);
+                                  }
+                                  return [...prev, str.id];
+                                });
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs ${
+                                isAct
+                                  ? (str.solutionKey === 'ombriere'
+                                      ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-300'
+                                      : 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-300')
+                                  : 'bg-white text-slate-500 border border-slate-300 hover:bg-slate-100 opacity-70'
+                              }`}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${isAct ? 'bg-white' : 'bg-slate-400'}`} />
+                              <span>{str.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                                isAct ? 'bg-black/20 text-white' : 'bg-slate-200 text-slate-600'
                               }`}>
-                                {str.solutionKey === 'ombriere' ? 'Ombrière' : 'Bâtiment'}
+                                {isAct ? 'Visible' : 'Désactivé'}
                               </span>
-                              <span className="font-black text-xs text-slate-900 truncate">{str.name}</span>
-                            </div>
+                            </button>
+                          );
+                        })}
 
-                            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={isIncluded}
-                                onChange={() => {
-                                  setSelectedStructureIds(prev => {
-                                    if (prev.includes(str.id)) {
-                                      if (prev.length <= 1) return prev;
-                                      return prev.filter(id => id !== str.id);
-                                    }
-                                    return [...prev, str.id];
-                                  });
-                                }}
-                                className="w-4 h-4 rounded text-blue-600 cursor-pointer"
-                              />
-                              <span className="text-[11px] font-bold">{isIncluded ? 'Inclus' : 'Exclu'}</span>
-                            </label>
-                          </div>
+                        <div className="flex items-center gap-1 pl-1.5 border-l border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
+                            className="px-2 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-[11px] font-bold shadow-2xs"
+                          >
+                            Tout voir
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
-                          {/* Contrôle Dimensions & Orientation */}
-                          <div className="p-2.5 bg-white border-b border-slate-100 space-y-1.5 flex-shrink-0">
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className="font-semibold text-slate-500 truncate">
-                                {sLen.toFixed(1)}m × {sWid.toFixed(1)}m ({Math.round(sLen * sWid)} m²)
-                              </span>
-                              <span className="font-black text-blue-700 whitespace-nowrap">
-                                {sRot}° ({getOrientationLabel(sRot)})
-                              </span>
-                            </div>
+                    {/* Grille divisée selon le nombre de visionneuses activées (1, 2, 3 ou 4) */}
+                    {activeStructures.length === 0 ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-center">
+                        <Building2 className="w-12 h-12 text-slate-300 mb-2" />
+                        <h4 className="text-sm font-bold text-slate-700">Aucune visionneuse activée</h4>
+                        <p className="text-xs text-slate-500 mt-1 max-w-md">
+                          Toutes les visionneuses sont actuellement masquées. Activez au moins un bâtiment ou une ombrière via les boutons ci-dessus pour afficher son plan de masse.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
+                          className="mt-3 px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-blue-700 transition-all"
+                        >
+                          Activer toutes les visionneuses
+                        </button>
+                      </div>
+                    ) : (
+                      <div className={`grid gap-3 flex-1 min-h-0 overflow-y-auto pr-1 pb-1 ${
+                        activeStructures.length === 1
+                          ? 'grid-cols-1'
+                          : activeStructures.length === 2
+                          ? 'grid-cols-1 md:grid-cols-2'
+                          : activeStructures.length === 3
+                          ? 'grid-cols-1 md:grid-cols-3'
+                          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+                      }`}>
+                        {activeStructures.map((str, sIdx) => {
+                          // Coordonnées vérifiées et garanties sur le site du déclarant
+                          let strLat = Number(str.lat || (str.gps ? str.gps.split(',')[0] : null));
+                          let strLng = Number(str.lng || (str.gps ? str.gps.split(',')[1] : null));
+                          if (!strLat || !strLng || isNaN(strLat) || isNaN(strLng) || Math.hypot(strLat - refSiteLat, strLng - refSiteLng) > 0.02) {
+                            strLat = refSiteLat + sIdx * 0.00015;
+                            strLng = refSiteLng + sIdx * 0.00020;
+                          }
 
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="range"
-                                min="-90"
-                                max="90"
-                                step="1"
-                                value={sRot}
-                                onChange={(e) => handleMasseRotationUpdate(str.id, Number(e.target.value))}
-                                className="flex-1 h-5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 shadow-inner"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleMasseRotationUpdate(str.id, 0)}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded border transition-all ${
-                                  sRot === 0 ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-                                }`}
-                                title="Plein Sud"
-                              >
-                                0°
-                              </button>
-                            </div>
+                          const sLen = Number(str.length || (str.bayCount ? str.bayCount * (str.baySpacing || 7.5) : (config.length || 30)));
+                          const sWid = Number(str.width || config.width || 15);
+                          const sRot = Number(str.rotation || 0);
+                          const corners = getBuildingCorners(strLat, strLng, sLen, sWid, sRot);
 
-                            {/* Raccourcis d'orientation compacts */}
-                            <div className="grid grid-cols-4 gap-1 pt-0.5">
-                              {[
-                                { label: 'Ouest', val: 90 },
-                                { label: 'S-O', val: 45 },
-                                { label: 'S-E', val: -45 },
-                                { label: 'Est', val: -90 },
-                              ].map(({ label, val }) => (
+                          return (
+                            <div
+                              key={str.id}
+                              className={`flex flex-col bg-white border-2 rounded-2xl shadow-xs overflow-hidden transition-all min-h-[360px] ${
+                                str.solutionKey === 'ombriere' ? 'border-emerald-500/80 shadow-emerald-50' : 'border-blue-500/80 shadow-blue-50'
+                              }`}
+                            >
+                              {/* En-tête du Cadre avec bouton de désactivation immédiate */}
+                              <div className={`flex items-center justify-between p-2.5 border-b select-none ${
+                                str.solutionKey === 'ombriere' ? 'bg-emerald-50/80 border-emerald-100' : 'bg-blue-50/80 border-blue-100'
+                              }`}>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide ${
+                                    str.solutionKey === 'ombriere' ? 'bg-emerald-200 text-emerald-900' : 'bg-blue-200 text-blue-900'
+                                  }`}>
+                                    {str.solutionKey === 'ombriere' ? 'Ombrière' : 'Bâtiment'}
+                                  </span>
+                                  <span className="font-black text-xs text-slate-900 truncate">{str.name}</span>
+                                </div>
+
                                 <button
-                                  key={val}
                                   type="button"
-                                  onClick={() => handleMasseRotationUpdate(str.id, val)}
-                                  className={`py-0.5 rounded text-[10px] font-bold transition-all border ${
-                                    sRot === val
-                                      ? 'bg-[#0e2b4d] text-white border-[#0e2b4d] shadow-2xs'
-                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                                  }`}
+                                  onClick={() => setSelectedStructureIds(prev => prev.filter(id => id !== str.id))}
+                                  className="px-2 py-0.5 rounded-lg text-[11px] font-bold text-slate-600 hover:text-red-600 hover:bg-white/80 transition-all flex items-center gap-1 border border-slate-200 bg-white/50"
+                                  title="Masquer cette visionneuse"
                                 >
-                                  {label}
+                                  <X className="w-3 h-3" />
+                                  <span>Désactiver</span>
                                 </button>
-                              ))}
-                            </div>
-                          </div>
+                              </div>
 
-                          {/* Visionneuse Carte pour ce bâtiment / cette ombrière */}
-                          <div className="relative flex-1 min-h-[220px] w-full overflow-hidden">
-                            <MapContainer center={[strLat, strLng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
-                              <TileLayer
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                attribution="&copy; OpenStreetMap"
-                                maxZoom={21}
-                                maxNativeZoom={19}
-                              />
-                              <MapResizer />
-                              <MapSyncCenter lat={strLat} lng={strLng} />
+                              {/* Contrôle Dimensions & Orientation exclusif à ce bâtiment */}
+                              <div className="p-2.5 bg-white border-b border-slate-100 space-y-1.5 flex-shrink-0">
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="font-semibold text-slate-500 truncate">
+                                    {sLen.toFixed(1)}m × {sWid.toFixed(1)}m ({Math.round(sLen * sWid)} m²)
+                                  </span>
+                                  <span className="font-black text-blue-700 whitespace-nowrap">
+                                    {sRot}° ({getOrientationLabel(sRot)})
+                                  </span>
+                                </div>
 
-                              {/* Polygone de la structure de ce cadre */}
-                              <Polygon
-                                positions={corners}
-                                pathOptions={{
-                                  color: str.solutionKey === 'ombriere' ? '#059669' : '#2563eb',
-                                  fillColor: str.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6',
-                                  fillOpacity: 0.35,
-                                  dashArray: '5, 4',
-                                  weight: 2.5,
-                                }}
-                              >
-                                <Tooltip permanent direction="center">
-                                  <div className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs whitespace-nowrap bg-white text-slate-900 border border-slate-200">
-                                    {str.name} ({sRot}°)
-                                  </div>
-                                </Tooltip>
-                              </Polygon>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="range"
+                                    min="-90"
+                                    max="90"
+                                    step="1"
+                                    value={sRot}
+                                    onChange={(e) => handleMasseRotationUpdate(str.id, Number(e.target.value))}
+                                    className="flex-1 h-5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 shadow-inner"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMasseRotationUpdate(str.id, 0)}
+                                    className={`px-2 py-0.5 text-[10px] font-bold rounded border transition-all ${
+                                      sRot === 0 ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                                    }`}
+                                    title="Plein Sud"
+                                  >
+                                    0°
+                                  </button>
+                                </div>
 
-                              {/* Marqueur déplaçable propre à cette structure */}
-                              <DraggableLocationMarker
-                                lat={strLat}
-                                lng={strLng}
-                                setGps={(newLat, newLng) => handleMasseGpsUpdate(str.id, newLat, newLng)}
-                              />
+                                {/* Raccourcis d'orientation compacts */}
+                                <div className="grid grid-cols-4 gap-1 pt-0.5">
+                                  {[
+                                    { label: 'Ouest', val: 90 },
+                                    { label: 'S-O', val: 45 },
+                                    { label: 'S-E', val: -45 },
+                                    { label: 'Est', val: -90 },
+                                  ].map(({ label, val }) => (
+                                    <button
+                                      key={val}
+                                      type="button"
+                                      onClick={() => handleMasseRotationUpdate(str.id, val)}
+                                      className={`py-0.5 rounded text-[10px] font-bold transition-all border ${
+                                        sRot === val
+                                          ? 'bg-[#0e2b4d] text-white border-[#0e2b4d] shadow-2xs'
+                                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                                      }`}
+                                    >
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
 
-                              {/* Afficher également les autres structures sur la même parcelle en filigrane */}
-                              {allConfiguredStructures.filter(other => other.id !== str.id).map(other => {
-                                const oLat = Number(other.lat || (other.gps ? other.gps.split(',')[0] : null) || editedProject?.lat);
-                                const oLng = Number(other.lng || (other.gps ? other.gps.split(',')[1] : null) || editedProject?.lng);
-                                const oLen = Number(other.length || (other.bayCount ? other.bayCount * (other.baySpacing || 7.5) : 30));
-                                const oWid = Number(other.width || 15);
-                                const oRot = Number(other.rotation || 0);
-                                const oCorners = getBuildingCorners(oLat, oLng, oLen, oWid, oRot);
-                                return (
+                              {/* Visionneuse Carte pour ce bâtiment / cette ombrière */}
+                              <div className="relative flex-1 min-h-[220px] w-full overflow-hidden">
+                                <MapContainer center={[strLat, strLng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                                  <TileLayer
+                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                    attribution="&copy; OpenStreetMap"
+                                    maxZoom={21}
+                                    maxNativeZoom={19}
+                                  />
+                                  <MapResizer />
+                                  <MapSyncCenter lat={strLat} lng={strLng} />
+
+                                  {/* Polygone de la structure active de ce cadre */}
                                   <Polygon
-                                    key={`cadre-${str.id}-other-${other.id}`}
-                                    positions={oCorners}
+                                    positions={corners}
                                     pathOptions={{
-                                      color: '#94a3b8',
-                                      fillColor: '#cbd5e1',
-                                      fillOpacity: 0.15,
-                                      dashArray: '3, 3',
-                                      weight: 1,
+                                      color: str.solutionKey === 'ombriere' ? '#059669' : '#2563eb',
+                                      fillColor: str.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6',
+                                      fillOpacity: 0.35,
+                                      dashArray: '5, 4',
+                                      weight: 2.5,
                                     }}
                                   >
-                                    <Tooltip direction="center">
-                                      <span className="text-[9px] font-medium text-slate-500">{other.name}</span>
+                                    <Tooltip permanent direction="center">
+                                      <div className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs whitespace-nowrap bg-white text-slate-900 border border-slate-200">
+                                        {str.name} ({sRot}°)
+                                      </div>
                                     </Tooltip>
                                   </Polygon>
-                                );
-                              })}
 
-                              <PC2MapScaleBar />
-                            </MapContainer>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
+                                  {/* Marqueur déplaçable propre UNIQUEMENT à cette structure */}
+                                  <DraggableLocationMarker
+                                    lat={strLat}
+                                    lng={strLng}
+                                    setGps={(newLat, newLng) => handleMasseGpsUpdate(str.id, newLat, newLng)}
+                                  />
+
+                                  {/* Rendu dynamique en temps réel des autres structures activées sur la parcelle */}
+                                  {activeStructures.filter(other => other.id !== str.id).map(other => {
+                                    let oLat = Number(other.lat || (other.gps ? other.gps.split(',')[0] : null));
+                                    let oLng = Number(other.lng || (other.gps ? other.gps.split(',')[1] : null));
+                                    if (!oLat || !oLng || isNaN(oLat) || isNaN(oLng) || Math.hypot(oLat - refSiteLat, oLng - refSiteLng) > 0.02) {
+                                      oLat = refSiteLat;
+                                      oLng = refSiteLng;
+                                    }
+                                    const oLen = Number(other.length || (other.bayCount ? other.bayCount * (other.baySpacing || 7.5) : 30));
+                                    const oWid = Number(other.width || 15);
+                                    const oRot = Number(other.rotation || 0);
+                                    const oCorners = getBuildingCorners(oLat, oLng, oLen, oWid, oRot);
+
+                                    return (
+                                      <Polygon
+                                        key={`cadre-${str.id}-other-${other.id}`}
+                                        positions={oCorners}
+                                        pathOptions={{
+                                          color: other.solutionKey === 'ombriere' ? '#059669' : '#2563eb',
+                                          fillColor: other.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6',
+                                          fillOpacity: 0.20,
+                                          dashArray: '3, 3',
+                                          weight: 1.5,
+                                          interactive: false,
+                                        }}
+                                      >
+                                        <Tooltip permanent direction="center">
+                                          <div className="text-[9px] font-bold px-1 py-0.5 rounded shadow-2xs whitespace-nowrap bg-white/95 text-slate-700 border border-slate-200">
+                                            {other.name} ({oRot}°)
+                                          </div>
+                                        </Tooltip>
+                                      </Polygon>
+                                    );
+                                  })}
+
+                                  <PC2MapScaleBar />
+                                </MapContainer>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })()}
 
               {/* ÉTAPE 5 — Notice d'insertion & Descriptive du projet (PLEINE HAUTEUR) */}
               {step === 5 && (
