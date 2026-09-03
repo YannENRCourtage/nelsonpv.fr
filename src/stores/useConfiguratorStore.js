@@ -481,16 +481,20 @@ export const useConfiguratorStore = create(
             customParams: {
                 ...DEFAULT_CUSTOM_PARAMS,
                 ...(data.customParams || {}),
-                width: Number(data.customParams?.width) > 0 ? Number(data.customParams.width) : 15.0,
-                baySpacing: Number(data.customParams?.baySpacing) > 0 ? Number(data.customParams.baySpacing) : 7.5,
-                bayCount: Number(data.customParams?.bayCount) > 0 ? Number(data.customParams.bayCount) : 4,
+                width: Number(data.customParams?.width) > 0 ? Number(data.customParams.width) : (Number(data.width) || 15.0),
+                baySpacing: Number(data.customParams?.baySpacing) > 0 ? Number(data.customParams.baySpacing) : (Number(data.baySpacing) || 7.5),
+                bayCount: Number(data.customParams?.bayCount) > 0 ? Number(data.customParams.bayCount) : (Number(data.bayCount) || 4),
                 ridgeHeight: Number(data.customParams?.ridgeHeight) > 0 ? Number(data.customParams.ridgeHeight) : 5.0,
-                leftEaveHeight: Number(data.customParams?.leftEaveHeight) > 0 ? Number(data.customParams.leftEaveHeight) : 3.5,
-                rightEaveHeight: Number(data.customParams?.rightEaveHeight) > 0 ? Number(data.customParams.rightEaveHeight) : 3.5,
-                leftPitch: !isNaN(Number(data.customParams?.leftPitch)) ? Number(data.customParams.leftPitch) : 11.31,
-                rightPitch: !isNaN(Number(data.customParams?.rightPitch)) ? Number(data.customParams.rightPitch) : 11.31,
-                buildingType: data.customParams?.buildingType || 'symetrique',
+                leftEaveHeight: Number(data.customParams?.leftEaveHeight) > 0 ? Number(data.customParams.leftEaveHeight) : (Number(data.eaveHeight) || 3.5),
+                rightEaveHeight: Number(data.customParams?.rightEaveHeight) > 0 ? Number(data.customParams.rightEaveHeight) : (Number(data.eaveHeight) || 3.5),
+                leftPitch: !isNaN(Number(data.customParams?.leftPitch)) ? Number(data.customParams.leftPitch) : (Number(data.roofPitch) || 11.31),
+                rightPitch: !isNaN(Number(data.customParams?.rightPitch)) ? Number(data.customParams.rightPitch) : (Number(data.roofPitch) || 11.31),
+                buildingType: data.customParams?.buildingType || data.buildingType || 'symetrique',
                 proportion: data.customParams?.proportion || '1/2-1/2',
+                leftExtension: data.customParams?.leftExtension || data.leftSide || 'none',
+                rightExtension: data.customParams?.rightExtension || data.rightSide || 'none',
+                leftExtWidth: Number(data.customParams?.leftExtWidth || data.leftWidth) || (data.leftSide === 'appentis' ? 9.3 : 4.0),
+                rightExtWidth: Number(data.customParams?.rightExtWidth || data.rightWidth) || (data.rightSide === 'appentis' ? 9.3 : 4.0),
             }
         });
     },
@@ -498,18 +502,30 @@ export const useConfiguratorStore = create(
     // New Extension Actions
     setLeftSide: (type) => {
         if (['none', 'auvent', 'appentis'].includes(type)) {
-            set({
+            const w = type === 'appentis' ? 9.3 : (type === 'auvent' ? 4.0 : 0);
+            set(state => ({
                 leftSide: type,
-                leftWidth: type === 'appentis' ? 9.3 : (type === 'auvent' ? 4.0 : 0)
-            });
+                leftWidth: w,
+                customParams: {
+                    ...state.customParams,
+                    leftExtension: type,
+                    leftExtWidth: w
+                }
+            }));
         }
     },
     setRightSide: (type) => {
         if (['none', 'auvent', 'appentis'].includes(type)) {
-            set({
+            const w = type === 'appentis' ? 9.3 : (type === 'auvent' ? 4.0 : 0);
+            set(state => ({
                 rightSide: type,
-                rightWidth: type === 'appentis' ? 9.3 : (type === 'auvent' ? 4.0 : 0)
-            });
+                rightWidth: w,
+                customParams: {
+                    ...state.customParams,
+                    rightExtension: type,
+                    rightExtWidth: w
+                }
+            }));
         }
     },
 
@@ -755,7 +771,21 @@ export const useConfiguratorStore = create(
                 newParams.rightExtHeight = newParams.rightEaveHeight;
             }
 
-            return { customParams: newParams };
+            const topLevelUpdates = {};
+            if (updates.leftExtension !== undefined) {
+                topLevelUpdates.leftSide = updates.leftExtension;
+            }
+            if (updates.rightExtension !== undefined) {
+                topLevelUpdates.rightSide = updates.rightExtension;
+            }
+            if (updates.leftExtWidth !== undefined) {
+                topLevelUpdates.leftWidth = updates.leftExtWidth;
+            }
+            if (updates.rightExtWidth !== undefined) {
+                topLevelUpdates.rightWidth = updates.rightExtWidth;
+            }
+
+            return { customParams: newParams, ...topLevelUpdates };
         });
     },
 
@@ -983,14 +1013,14 @@ export const useConfiguratorValues = () => {
                 rightEaveHeight: Number(rawCp.rightEaveHeight) > 0 ? Number(rawCp.rightEaveHeight) : DEFAULT_CUSTOM_PARAMS.rightEaveHeight,
                 leftPitch: !isNaN(Number(rawCp.leftPitch)) ? Number(rawCp.leftPitch) : DEFAULT_CUSTOM_PARAMS.leftPitch,
                 rightPitch: !isNaN(Number(rawCp.rightPitch)) ? Number(rawCp.rightPitch) : DEFAULT_CUSTOM_PARAMS.rightPitch,
-                leftExtWidth: Number(rawCp.leftExtWidth) || DEFAULT_CUSTOM_PARAMS.leftExtWidth,
+                leftExtWidth: Number(rawCp.leftExtWidth) || Number(state.leftWidth) || DEFAULT_CUSTOM_PARAMS.leftExtWidth,
                 leftExtHeight: Number(rawCp.leftExtHeight) || DEFAULT_CUSTOM_PARAMS.leftExtHeight,
-                rightExtWidth: Number(rawCp.rightExtWidth) || DEFAULT_CUSTOM_PARAMS.rightExtWidth,
+                rightExtWidth: Number(rawCp.rightExtWidth) || Number(state.rightWidth) || DEFAULT_CUSTOM_PARAMS.rightExtWidth,
                 rightExtHeight: Number(rawCp.rightExtHeight) || DEFAULT_CUSTOM_PARAMS.rightExtHeight,
                 buildingType: rawCp.buildingType || DEFAULT_CUSTOM_PARAMS.buildingType,
                 proportion: rawCp.proportion || DEFAULT_CUSTOM_PARAMS.proportion,
-                leftExtension: rawCp.leftExtension || DEFAULT_CUSTOM_PARAMS.leftExtension,
-                rightExtension: rawCp.rightExtension || DEFAULT_CUSTOM_PARAMS.rightExtension,
+                leftExtension: rawCp.leftExtension || state.leftSide || DEFAULT_CUSTOM_PARAMS.leftExtension,
+                rightExtension: rawCp.rightExtension || state.rightSide || DEFAULT_CUSTOM_PARAMS.rightExtension,
             };
             const customLength = cp.bayCount * cp.baySpacing;
             

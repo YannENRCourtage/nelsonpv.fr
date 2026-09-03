@@ -358,32 +358,6 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [selectedStructureIds, setSelectedStructureIds] = useState([]);
   const [activeMasseStructureId, setActiveMasseStructureId] = useState(null);
 
-  const getBuildingDisplayName = useCallback((buildingItem, idx) => {
-    const isOmb = (buildingItem?.solutionType === 'ombriere') || (buildingItem?.buildingType || '').toLowerCase().startsWith('ombriere') || (solutionType === 'ombriere');
-    const defaultPrefix = isOmb ? 'Ombrière' : 'Bâtiment';
-    if (!buildingItem) return `${defaultPrefix} ${(idx || 0) + 1}`;
-
-    const bLen = Number(buildingItem.length || (buildingItem.bayCount ? buildingItem.bayCount * (buildingItem.baySpacing || 7.5) : (config?.length || 30)));
-    const bWid = Number(buildingItem.width || config?.width || 15);
-    
-    // Si dimensions définies (ex: 60m x 16m)
-    if (bLen > 0 && bWid > 0) {
-      return `${defaultPrefix} ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
-    }
-    
-    if (buildingItem.name && buildingItem.name.toLowerCase().includes('batterie')) {
-      return `${defaultPrefix} ${(idx || 0) + 1}`;
-    }
-    let name = buildingItem.name || `${defaultPrefix} ${(idx || 0) + 1}`;
-    if (isOmb) {
-      name = name.replace(/Bâtiment/gi, 'Ombrière');
-    } else {
-      name = name.replace(/Ombrière/gi, 'Bâtiment');
-    }
-    name = name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
-    return name || `${defaultPrefix} ${(idx || 0) + 1}`;
-  }, [solutionType, config?.length, config?.width]);
-
   // Sync ACAMA / Green Invest mode on open
   useEffect(() => {
     if (isOpen) {
@@ -481,6 +455,51 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
   }, [solutionType]);
 
+  const getBuildingDisplayName = useCallback((buildingItem, idx) => {
+    const isOmb = (buildingItem?.solutionType === 'ombriere') || (buildingItem?.buildingType || '').toLowerCase().startsWith('ombriere') || (solutionType === 'ombriere');
+    const defaultPrefix = isOmb ? 'Ombrière' : 'Bâtiment';
+    if (!buildingItem) return `${defaultPrefix} ${(idx || 0) + 1}`;
+
+    const isCurrentActive = (idx === activeBuildingIndex) || (buildingItem?.id && buildings[activeBuildingIndex]?.id === buildingItem.id);
+
+    const bLen = Number(buildingItem.length || (isCurrentActive && config?.length) || (buildingItem.bayCount ? buildingItem.bayCount * (buildingItem.baySpacing || 7.5) : 30));
+    const bWid = Number(buildingItem.width || (isCurrentActive && config?.width) || 15);
+
+    const curLeftSide = (buildingItem.leftSide && buildingItem.leftSide !== 'none')
+      ? buildingItem.leftSide
+      : (isCurrentActive && config?.leftSide && config?.leftSide !== 'none' ? config.leftSide : 'none');
+    const curRightSide = (buildingItem.rightSide && buildingItem.rightSide !== 'none')
+      ? buildingItem.rightSide
+      : (isCurrentActive && config?.rightSide && config?.rightSide !== 'none' ? config.rightSide : 'none');
+
+    const curLeftWidth = (curLeftSide !== 'none')
+      ? Number(buildingItem.leftWidth !== undefined ? buildingItem.leftWidth : (isCurrentActive && config?.leftWidth !== undefined ? config.leftWidth : (curLeftSide === 'appentis' ? 9.3 : 4.0)))
+      : 0;
+    const curRightWidth = (curRightSide !== 'none')
+      ? Number(buildingItem.rightWidth !== undefined ? buildingItem.rightWidth : (isCurrentActive && config?.rightWidth !== undefined ? config.rightWidth : (curRightSide === 'appentis' ? 9.3 : 4.0)))
+      : 0;
+
+    const totalWid = bWid + curLeftWidth + curRightWidth;
+
+    // Si dimensions définies (ex: 60m x 27.2m)
+    if (bLen > 0 && totalWid > 0) {
+      const formattedWid = (totalWid % 1 === 0) ? totalWid.toFixed(0) : totalWid.toFixed(1);
+      return `${defaultPrefix} ${bLen.toFixed(0)}m × ${formattedWid}m`;
+    }
+    
+    if (buildingItem.name && buildingItem.name.toLowerCase().includes('batterie')) {
+      return `${defaultPrefix} ${(idx || 0) + 1}`;
+    }
+    let name = buildingItem.name || `${defaultPrefix} ${(idx || 0) + 1}`;
+    if (isOmb) {
+      name = name.replace(/Bâtiment/gi, 'Ombrière');
+    } else {
+      name = name.replace(/Ombrière/gi, 'Bâtiment');
+    }
+    name = name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
+    return name || `${defaultPrefix} ${(idx || 0) + 1}`;
+  }, [solutionType, activeBuildingIndex, buildings, config?.length, config?.width, config?.leftSide, config?.rightSide, config?.leftWidth, config?.rightWidth]);
+
   const allConfiguredStructures = useMemo(() => {
     const list = [];
     (solutions.building?.buildings || []).forEach((b, i) => {
@@ -509,10 +528,18 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         ? (config.rightWidth ?? b.rightWidth ?? 0)
         : (b.rightWidth ?? 0);
 
+      const extLeft = effectiveLeftSide !== 'none' ? Number(effectiveLeftWidth || (effectiveLeftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const extRight = effectiveRightSide !== 'none' ? Number(effectiveRightWidth || (effectiveRightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const effectiveTotalWid = effectiveWid + extLeft + extRight;
+
       const dynamicName = getBuildingDisplayName({
         ...b,
         length: effectiveLen,
         width: effectiveWid,
+        leftSide: effectiveLeftSide,
+        rightSide: effectiveRightSide,
+        leftWidth: effectiveLeftWidth,
+        rightWidth: effectiveRightWidth,
         solutionType: 'building'
       }, i);
 
@@ -522,6 +549,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         name: dynamicName,
         length: effectiveLen,
         width: effectiveWid,
+        totalWidth: effectiveTotalWid,
         buildingType: effectiveType,
         leftSide: effectiveLeftSide,
         rightSide: effectiveRightSide,
@@ -799,8 +827,11 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
     let totalGlobalSurface = 0;
     activeList.forEach(s => {
       const sL = Number(s.length || (s.bayCount ? s.bayCount * (s.baySpacing || 7.5) : 30));
-      const sW = Number(s.width || 15);
-      totalGlobalSurface += (sL * sW);
+      const sMainW = Number(s.width || 15);
+      const extL = (s.leftSide && s.leftSide !== 'none') ? Number(s.leftWidth || (s.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const extR = (s.rightSide && s.rightSide !== 'none') ? Number(s.rightWidth || (s.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const sTotalW = s.totalWidth || (sMainW + extL + extR);
+      totalGlobalSurface += (sL * sTotalW);
     });
 
     const batCount = activeList.filter(s => s.solutionKey === 'building').length;
@@ -822,8 +853,11 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
     let batimentDesc = '';
     activeList.forEach((s, idx) => {
       const sL = Number(s.length || (s.bayCount ? s.bayCount * (s.baySpacing || 7.5) : (config.length || 30)));
-      const sW = Number(s.width || config.width || 15);
-      const sSurf = (sL * sW).toFixed(2);
+      const sMainW = Number(s.width || config.width || 15);
+      const extL = (s.leftSide && s.leftSide !== 'none') ? Number(s.leftWidth || (s.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const extR = (s.rightSide && s.rightSide !== 'none') ? Number(s.rightWidth || (s.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const sTotalW = s.totalWidth || (sMainW + extL + extR);
+      const sSurf = (sL * sTotalW).toFixed(2);
       const isOmb = s.solutionKey === 'ombriere' || (s.buildingType || '').toLowerCase().startsWith('ombriere');
       const sType = s.buildingType || (isOmb ? 'ombriere_vl_simple_gauche' : 'asymetrique_1');
       const sRot = Number(s.rotation || 0);
@@ -832,20 +866,39 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
       const sEave = Number(s.eaveHeight || (sType.startsWith('asym') ? 4.0 : (sType === 'ombriere_pl' ? 5.08 : (isOmb ? 3.7 : 5.5))));
       const sBays = Number(s.bayCount || (isOmb ? 6 : 5));
       const sSpacing = Number(s.baySpacing || 7.5);
-      const sAuvent = Boolean(s.rightSide === 'auvent' || s.leftSide === 'auvent');
-      const sName = s.name || (isOmb ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
+
+      let extDesc = '';
+      if (extL > 0 && extR > 0) {
+        extDesc = ` (dont ${sMainW.toFixed(2)}m principal + ${extL.toFixed(2)}m extension gauche + ${extR.toFixed(2)}m extension droite)`;
+      } else if (extL > 0) {
+        extDesc = ` (dont ${sMainW.toFixed(2)}m principal + ${extL.toFixed(2)}m ${s.leftSide === 'appentis' ? 'appentis gauche' : 'auvent gauche'})`;
+      } else if (extR > 0) {
+        extDesc = ` (dont ${sMainW.toFixed(2)}m principal + ${extR.toFixed(2)}m ${s.rightSide === 'appentis' ? 'appentis droit' : 'auvent droit'})`;
+      }
+
+      const sName = getBuildingDisplayName({
+        ...s,
+        length: sL,
+        width: sMainW,
+        leftSide: s.leftSide,
+        rightSide: s.rightSide,
+        leftWidth: extL,
+        rightWidth: extR
+      }, idx);
+
+      const pwrForStruct = displayKwc || (sTotalW * sL * 0.223235).toFixed(2);
 
       if (idx === 0) {
         if (isOmb) {
-          batimentDesc = `Le projet a pour objet l'implantation d'une ombrière photovoltaïque (${sName}) de dimensions ${sL.toFixed(2)}m × ${sW.toFixed(2)}m (surface couverte : ${sSurf} m²), orientée ${rotLabel} (${sRot}°), à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${sPitch}°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`;
+          batimentDesc = `Le projet a pour objet l'implantation d'une ombrière photovoltaïque (${sName}) de dimensions ${sL.toFixed(2)}m × ${sTotalW.toFixed(2)}m (surface couverte : ${sSurf} m²), orientée ${rotLabel} (${sRot}°), à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${sPitch}°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire${pwrForStruct ? `, développant une puissance installée de ${pwrForStruct} kWc` : ''}.`;
         } else {
-          batimentDesc = `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique (${sName}) de forme rectangulaire (longueur : ${sL.toFixed(2)}m, largeur : ${sW.toFixed(2)}m${sAuvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${sEave.toFixed(2)}m, surface couverte : ${sSurf} m²), orienté ${rotLabel} (${sRot}°), en structure métallique (RAL 7016 / 7005), composé de ${sBays} travées de ${sSpacing}m d'entraxe. La toiture sera constituée d'une couverture avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`;
+          batimentDesc = `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique (${sName}) de forme rectangulaire (longueur : ${sL.toFixed(2)}m, largeur : ${sTotalW.toFixed(2)}m${extDesc}, hauteur sablière : ${sEave.toFixed(2)}m, surface couverte : ${sSurf} m²), orienté ${rotLabel} (${sRot}°), en structure métallique (RAL 7016 / 7005), composé de ${sBays} travées de ${sSpacing}m d'entraxe. La toiture sera constituée d'une couverture avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${pwrForStruct ? `, développant une puissance installée de ${pwrForStruct} kWc` : ''}.`;
         }
       } else {
         if (isOmb) {
-          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque (${sName}) de dimensions ${sL.toFixed(2)}m × ${sW.toFixed(2)}m (surface couverte : ${sSurf} m²), orientée ${rotLabel} (${sRot}°), à structure métallique en Y/V avec toiture monopente inclinée à ${sPitch}°.`;
+          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque (${sName}) de dimensions ${sL.toFixed(2)}m × ${sTotalW.toFixed(2)}m (surface couverte : ${sSurf} m²), orientée ${rotLabel} (${sRot}°), à structure métallique en Y/V avec toiture monopente inclinée à ${sPitch}°.`;
         } else {
-          batimentDesc += `\nIl comprend également la construction d'un bâtiment (${sName}) de dimensions ${sL.toFixed(2)}m × ${sW.toFixed(2)}m${sAuvent ? ' (+ Auvent)' : ''} d'une emprise au sol de ${sSurf} m² (hauteur sablière : ${sEave.toFixed(2)}m, pente : ${sPitch}°, orienté ${rotLabel} ${sRot}°) en structure métallique similaire.`;
+          batimentDesc += `\nIl comprend également la construction d'un bâtiment (${sName}) de dimensions ${sL.toFixed(2)}m × ${sTotalW.toFixed(2)}m${extDesc} d'une emprise au sol de ${sSurf} m² (hauteur sablière : ${sEave.toFixed(2)}m, pente : ${sPitch}°, orienté ${rotLabel} ${sRot}°) en structure métallique similaire.`;
         }
       }
     });
@@ -1578,10 +1631,18 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       const cur = nextBuildings[activeBuildingIndex];
       const bLen = Number(config.length || (config.bayCount ? config.bayCount * (config.baySpacing || 7.5) : cur.length || 30));
       const bWid = Number(config.width || cur.width || 15);
+      const extLeft = config.leftSide !== 'none' ? Number(config.leftWidth !== undefined ? config.leftWidth : (config.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const extRight = config.rightSide !== 'none' ? Number(config.rightWidth !== undefined ? config.rightWidth : (config.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const totalWid = bWid + extLeft + extRight;
+
       const dynamicName = getBuildingDisplayName({
         ...cur,
         length: bLen,
         width: bWid,
+        leftSide: config.leftSide || 'none',
+        rightSide: config.rightSide || 'none',
+        leftWidth: config.leftWidth,
+        rightWidth: config.rightWidth,
         solutionType
       }, activeBuildingIndex);
 
@@ -1589,6 +1650,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         ...cur,
         name: dynamicName,
         width: bWid,
+        totalWidth: totalWid,
         length: bLen,
         eaveHeight: config.eaveHeight,
         roofPitch: config.roofPitch,
@@ -1676,10 +1738,18 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       if (!hasChanged) return prev;
 
       const next = [...prev];
+      const extLeft = config.leftSide !== 'none' ? Number(config.leftWidth !== undefined ? config.leftWidth : (config.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const extRight = config.rightSide !== 'none' ? Number(config.rightWidth !== undefined ? config.rightWidth : (config.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const totalWid = Number(config.width || cur.width || 15) + extLeft + extRight;
+
       const dynamicName = getBuildingDisplayName({
         ...cur,
         length: config.length,
         width: config.width,
+        leftSide: config.leftSide || 'none',
+        rightSide: config.rightSide || 'none',
+        leftWidth: config.leftWidth,
+        rightWidth: config.rightWidth,
         solutionType
       }, activeBuildingIndex);
 
@@ -1688,6 +1758,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         name: dynamicName,
         buildingType: config.buildingType,
         width: config.width,
+        totalWidth: totalWid,
         length: config.length,
         eaveHeight: config.eaveHeight,
         roofPitch: config.roofPitch,
@@ -1709,15 +1780,11 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         ...prev,
         type: category,
         installationType: category,
+        width: config.width,
+        length: config.length,
+        eaveHeight: config.eaveHeight,
+        roofPitch: config.roofPitch,
         buildingType: config.buildingType,
-        largeur: String(config.width.toFixed(2)),
-        longueur: String(config.length.toFixed(2)),
-        hauteur_egout: String(config.eaveHeight.toFixed(2)),
-        pente: String(config.roofPitch),
-        leftSide: config.leftSide || 'none',
-        rightSide: config.rightSide || 'none',
-        leftWidth: config.leftWidth,
-        rightWidth: config.rightWidth,
         bayCount: config.bayCount,
         baySpacing: config.baySpacing,
         kwc: clientKwc,
@@ -1725,11 +1792,11 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         puissance: clientKwc,
       };
     });
-  }, [step, config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, config.bayCount, config.baySpacing, activeBuildingIndex]);
+  }, [step, config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.leftWidth, config.rightWidth, config.solarStats, config.bayCount, config.baySpacing, activeBuildingIndex]);
 
   // Mise à jour automatique de la notice selon les structures retenues (selectedStructureIds) et le projet
   useEffect(() => {
-    if (!isNoticeUserModified || !noticeText || noticeText.includes("SAINT ARAILLES")) {
+    if (!isNoticeUserModified || !noticeText || noticeText.includes("SAINT ARAILLES") || noticeText.includes("960.00 m²") || noticeText.includes("60m × 16m")) {
       const auto = buildAutoNoticeText();
       setNoticeText(auto);
       setEditedProject(prev => ({ ...prev, noticeText: auto }));
@@ -2798,12 +2865,19 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           <div className="bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-slate-200">
                             {(() => {
                               const curB = buildings[activeBuildingIndex] || config;
-                              const curW = Number(curB.width || config.width || 20);
-                              const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
-                              const curArea = Math.round(curW * curL);
+                              const curMainW = Number(curB.width || config.width || 15.0);
+                              const curLen = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
+                              const curLeftExt = (curB.leftSide && curB.leftSide !== 'none')
+                                ? Number(curB.leftWidth !== undefined ? curB.leftWidth : (config.leftWidth || (curB.leftSide === 'appentis' ? 9.3 : 4.0)))
+                                : (config.leftSide && config.leftSide !== 'none' ? Number(config.leftWidth || 0) : 0);
+                              const curRightExt = (curB.rightSide && curB.rightSide !== 'none')
+                                ? Number(curB.rightWidth !== undefined ? curB.rightWidth : (config.rightWidth || (curB.rightSide === 'appentis' ? 9.3 : 4.0)))
+                                : (config.rightSide && config.rightSide !== 'none' ? Number(config.rightWidth || 0) : 0);
+                              const curTotalW = curMainW + curLeftExt + curRightExt;
+                              const curArea = Math.round(curTotalW * curLen);
                               return (
                                 <span className="text-slate-800 font-bold text-sm whitespace-nowrap">
-                                  {curL.toFixed(2)}m × {curW.toFixed(2)}m — {curArea}m²
+                                  {curLen.toFixed(2)}m × {curTotalW.toFixed(2)}m — {curArea}m²
                                 </span>
                               );
                             })()}
@@ -2816,10 +2890,20 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   const curB = buildings[activeBuildingIndex] || config;
                                   const curLen = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
                                   const curMainW = Number(curB.width || config.width || 15.0);
-                                  const curLeftExt = curB.leftSide !== 'none' ? Number(curB.leftWidth || 0) : 0;
-                                  const curRightExt = curB.rightSide !== 'none' ? Number(curB.rightWidth || 0) : 0;
+                                  const curLeftExt = (curB.leftSide && curB.leftSide !== 'none')
+                                    ? Number(curB.leftWidth !== undefined ? curB.leftWidth : (config.leftWidth || (curB.leftSide === 'appentis' ? 9.3 : 4.0)))
+                                    : (config.leftSide && config.leftSide !== 'none' ? Number(config.leftWidth || 0) : 0);
+                                  const curRightExt = (curB.rightSide && curB.rightSide !== 'none')
+                                    ? Number(curB.rightWidth !== undefined ? curB.rightWidth : (config.rightWidth || (curB.rightSide === 'appentis' ? 9.3 : 4.0)))
+                                    : (config.rightSide && config.rightSide !== 'none' ? Number(config.rightWidth || 0) : 0);
                                   const curTotalW = curMainW + curLeftExt + curRightExt;
                                   const curFloorArea = Math.round(curLen * curTotalW);
+
+                                  // Priorité 1 : Puissance spécifiée sur le dossier/projet
+                                  const projectKwc = Number(editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || project?.kwc || project?.puissance || project?.projectSize);
+                                  if (projectKwc && !isNaN(projectKwc) && projectKwc > 0) {
+                                    return projectKwc.toFixed(2);
+                                  }
 
                                   const isBatitech = curB.configMode === 'batitech' || config.configMode === 'batitech';
                                   const batitechModel = isBatitech ? (BATITECH_MODELS[curB.selectedBatitechModel || config.selectedBatitechModel] || BATITECH_MODELS['BT-3.1.15']) : null;
@@ -2836,13 +2920,16 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                     isAcama,
                                   });
 
-                                  const pwr = isBatitech
-                                    ? (batitechModel?.puissanceKwc || 30.15)
-                                    : (isCustom
-                                      ? (Number(curB.solarStats?.power) || Number(config.solarStats?.power) || Math.round(curFloorArea * 0.20))
-                                      : (barcMatch.kwc || Number(curB.solarStats?.power) || Number(config.solarStats?.power) || Math.round(curFloorArea * 0.20)));
+                                  // Calcul de puissance proportionnel à la surface totale avec auvents / appentis
+                                  let calcPwr = 0;
+                                  if (curTotalW > curMainW) {
+                                    calcPwr = Math.round(curFloorArea * 0.223235 * 100) / 100;
+                                  } else {
+                                    const storePwr = Number(curB.solarStats?.power) || Number(config.solarStats?.power) || 0;
+                                    calcPwr = storePwr > 0 ? storePwr : (isBatitech ? (batitechModel?.puissanceKwc || 30.15) : (barcMatch.kwc || Math.round(curFloorArea * 0.20)));
+                                  }
 
-                                  return Number(pwr).toFixed(2);
+                                  return Number(calcPwr).toFixed(2);
                                 })()} kWc
                               </span>
                             </div>
@@ -3438,7 +3525,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               <div className="p-2.5 bg-white border-b border-slate-100 space-y-1.5 flex-shrink-0">
                                 <div className="flex items-center justify-between text-[11px]">
                                   <span className="font-semibold text-slate-500 truncate">
-                                    {sLen.toFixed(1)}m × {totalWid.toFixed(1)}m ({Math.round(sLen * totalWid)} m²){(extLeft > 0 || extRight > 0) ? ` [${sWid}m + ext.]` : ''}
+                                    {sLen.toFixed(1)}m × {totalWid.toFixed(1)}m ({Math.round(sLen * totalWid)} m²){(extLeft > 0 || extRight > 0) ? ` (${sWid}m + ${(extLeft + extRight).toFixed(1)}m)` : ''}
                                   </span>
                                   <span className="font-black text-blue-700 whitespace-nowrap">
                                     {sRot}° ({getOrientationLabel(sRot)})
