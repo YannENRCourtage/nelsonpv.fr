@@ -17,17 +17,26 @@ import { db } from '@/config/firebase.js';
 
 const LOCAL_STORAGE_KEY_PREFIX = 'nelson_agenda_';
 const AGENDA_SYNC_EVENT = 'nelson_agenda_sync';
-const BROADCAST_CHANNEL_NAME = 'nelson_agenda_sync_channel';
 
-// Initialisation sûre de BroadcastChannel pour communication inter-onglets/fenêtres
-let broadcastChannel = null;
-if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-    try {
-        broadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
-    } catch (e) {
-        console.warn('BroadcastChannel non supporté:', e);
-    }
-}
+// Titres des rendez-vous historiques de Yann ayant fuité lors de l'ancien cache global/tenant
+const YANN_EVENT_KEYWORDS = [
+    'rousset',
+    'charpent 1881',
+    'formation 2 sechoir',
+    'julien huguet',
+    'laurent guyon'
+];
+
+export const isYannEvent = (title = '') => {
+    const lower = String(title || '').toLowerCase();
+    return YANN_EVENT_KEYWORDS.some(kw => lower.includes(kw));
+};
+
+export const isYannUser = (userOrEmail) => {
+    const email = typeof userOrEmail === 'string' ? userOrEmail : (userOrEmail?.email || '');
+    const clean = email.toLowerCase().trim();
+    return clean.includes('y.barberis') || clean.includes('contact@nelsonpv.fr');
+};
 
 export const APPOINTMENT_TYPES = [
     { id: 'visite', label: 'Visite Technique / Terrain', color: '#2563eb', bgClass: 'bg-blue-600', textClass: 'text-blue-700', badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -74,15 +83,39 @@ export const normalizeDateString = (dateInput) => {
 /**
  * Charge les rendez-vous personnels en cache local pour cet utilisateur STRICTEMENT
  */
-export const getLocalAppointments = (userId) => {
+export const getLocalAppointments = (userId, userEmail = '') => {
     if (!userId || userId === 'default_user') return [];
     try {
+        // Nettoyer les anciens caches globaux qui partageaient à tort les rendez-vous
+        try {
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}global`);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}green-invest`);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}acama`);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}enr-courtage`);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}enr-courtage-energie`);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}default_user`);
+        } catch { }
+
         const userStored = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${userId}`);
         if (userStored) {
             const parsed = JSON.parse(userStored);
             if (Array.isArray(parsed)) {
-                // S'assurer que tous les rendez-vous appartiennent bien à cet userId
-                return parsed.filter(item => item && (item.userId === userId || !item.userId));
+                const isYann = isYannUser(userEmail);
+                // Isolation stricte : chaque RDV doit appartenir à cet userId
+                // ET si ce n'est pas Yann, aucun événement historique de Yann ne doit subsister
+                const cleaned = parsed.filter(item => {
+                    if (!item || !item.id) return false;
+                    if (item.userId !== userId) return false;
+                    if (!isYann && isYannEvent(item.title)) return false;
+                    return true;
+                });
+
+                // Si des rendez-vous parasites ont été éliminés, assainir immédiatement le cache
+                if (cleaned.length !== parsed.length) {
+                    localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${userId}`, JSON.stringify(cleaned));
+                }
+
+                return cleaned;
             }
         }
     } catch (e) {
@@ -97,25 +130,21 @@ export const getLocalAppointments = (userId) => {
 export const saveLocalAppointments = (userId, appointments) => {
     if (!userId || userId === 'default_user' || !Array.isArray(appointments)) return;
     try {
-        // Nettoyer les anciens caches globaux qui partageaient à tort les rendez-vous
         try {
             localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}global`);
             localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}green-invest`);
             localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}acama`);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}enr-courtage`);
             localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}enr-courtage-energie`);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}default_user`);
         } catch { }
 
         const dataStr = JSON.stringify(appointments);
         localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${userId}`, dataStr);
 
-        // 1. Événement local sur la fenêtre courante
+        // Événement local sur la fenêtre courante filtré par userId
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent(AGENDA_SYNC_EVENT, { detail: { userId, appointments } }));
-        }
-
-        // 2. BroadcastChannel inter-onglets et inter-fenêtres
-        if (broadcastChannel) {
-            broadcastChannel.postMessage({ type: 'AGENDA_SYNC', userId, appointments });
         }
     } catch (e) {
         console.warn('Erreur écriture cache local agenda:', e);
@@ -160,6 +189,8 @@ const formatAppointmentObject = (appointmentData, userId, tenantId) => {
 export const createAppointment = async (appointmentData, userId, tenantId = 'green-invest') => {
     const effectiveUserId = userId || 'default_user';
     const effectiveTenantId = tenantId || 'green-invest';
+    if (!effectiveUserId || effectiveUserId === 'default_user') return null;
+
     const newAppointment = formatAppointmentObject(appointmentData, effectiveUserId, effectiveTenantId);
 
     // 1. Mise à jour optimiste locale immédiate (0 ms)
@@ -167,11 +198,20 @@ export const createAppointment = async (appointmentData, userId, tenantId = 'gre
     const updated = [newAppointment, ...current.filter(item => item.id !== newAppointment.id)];
     saveLocalAppointments(effectiveUserId, updated);
 
-    // 2. Écriture distante Firestore
+    // 2. Écriture distante Firestore dans la sous-collection isolée ET la collection racine
     try {
         if (db) {
-            const docRef = doc(db, 'agenda_events', newAppointment.id);
-            await setDoc(docRef, {
+            // Sous-collection privée sous /users/{userId}/agenda_events
+            const userDocRef = doc(db, 'users', effectiveUserId, 'agenda_events', newAppointment.id);
+            await setDoc(userDocRef, {
+                ...newAppointment,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+
+            // Collection racine pour rétrocompatibilité
+            const rootDocRef = doc(db, 'agenda_events', newAppointment.id);
+            await setDoc(rootDocRef, {
                 ...newAppointment,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
@@ -190,7 +230,7 @@ export const createAppointment = async (appointmentData, userId, tenantId = 'gre
 export const updateAppointment = async (appointmentId, data, userId, tenantId = 'green-invest') => {
     const effectiveUserId = userId || 'default_user';
     const effectiveTenantId = tenantId || 'green-invest';
-    if (!appointmentId) return null;
+    if (!appointmentId || !effectiveUserId || effectiveUserId === 'default_user') return null;
 
     const normalizedDate = data.date ? normalizeDateString(data.date) : undefined;
     const patch = {
@@ -218,11 +258,17 @@ export const updateAppointment = async (appointmentId, data, userId, tenantId = 
 
     saveLocalAppointments(effectiveUserId, updated);
 
-    // 2. Synchronisation Firestore distante
+    // 2. Synchronisation Firestore distante dans les deux emplacements
     try {
         if (db) {
-            const docRef = doc(db, 'agenda_events', appointmentId);
-            await setDoc(docRef, {
+            const userDocRef = doc(db, 'users', effectiveUserId, 'agenda_events', appointmentId);
+            await setDoc(userDocRef, {
+                ...updatedAppt,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+
+            const rootDocRef = doc(db, 'agenda_events', appointmentId);
+            await setDoc(rootDocRef, {
                 ...updatedAppt,
                 updatedAt: serverTimestamp()
             }, { merge: true });
@@ -239,7 +285,7 @@ export const updateAppointment = async (appointmentId, data, userId, tenantId = 
  */
 export const deleteAppointment = async (appointmentId, userId, tenantId = 'green-invest') => {
     const effectiveUserId = userId || 'default_user';
-    if (!appointmentId) return;
+    if (!appointmentId || !effectiveUserId || effectiveUserId === 'default_user') return;
 
     // 1. Suppression optimiste locale immédiate (0 ms)
     const current = getLocalAppointments(effectiveUserId);
@@ -249,35 +295,14 @@ export const deleteAppointment = async (appointmentId, userId, tenantId = 'green
     // 2. Suppression Firestore distante
     try {
         if (db) {
-            const docRef = doc(db, 'agenda_events', appointmentId);
-            await deleteDoc(docRef);
+            const userDocRef = doc(db, 'users', effectiveUserId, 'agenda_events', appointmentId);
+            await deleteDoc(userDocRef);
+
+            const rootDocRef = doc(db, 'agenda_events', appointmentId);
+            await deleteDoc(rootDocRef);
         }
     } catch (e) {
         console.error('Firestore deleteAppointment error:', e);
-    }
-};
-
-/**
- * Synchronise les rendez-vous personnels stockés uniquement en local vers Firestore (Migration auto pour ce userId)
- */
-const syncLocalAppointmentsToFirestore = async (localList, firestoreIds, userId, tenantId) => {
-    if (!db || !Array.isArray(localList) || localList.length === 0 || !userId || userId === 'default_user') return;
-    const missingInFirestore = localList.filter(item => item && item.id && !firestoreIds.has(item.id) && (item.userId === userId || !item.userId));
-    if (missingInFirestore.length === 0) return;
-
-    console.info(`[Agenda] Synchronisation de ${missingInFirestore.length} rendez-vous de ${userId} vers Firestore...`);
-    for (const appt of missingInFirestore) {
-        try {
-            const formatted = formatAppointmentObject(appt, userId, tenantId);
-            const docRef = doc(db, 'agenda_events', formatted.id);
-            await setDoc(docRef, {
-                ...formatted,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            });
-        } catch (err) {
-            console.warn(`[Agenda] Échec migration RDV ${appt.id}:`, err);
-        }
     }
 };
 
@@ -298,101 +323,137 @@ const sortAppointmentsChronologically = (list) => {
 
 /**
  * Écoute en temps réel les rendez-vous STRICTEMENT PERSONNELS de l'utilisateur
+ * Chaque agenda est 100% privé : aucun utilisateur ni administrateur ne voit l'agenda d'un autre.
  */
-export const subscribeToUserAppointments = (userId, tenantId = 'green-invest', callback) => {
-    const effectiveUserId = userId || 'default_user';
-    const effectiveTenantId = tenantId || 'green-invest';
+export const subscribeToUserAppointments = (userOrId, tenantId = 'green-invest', callback) => {
+    const effectiveUserId = typeof userOrId === 'object' ? (userOrId?.uid || userOrId?.id) : userOrId;
+    const userEmail = typeof userOrId === 'object' ? (userOrId?.email || '') : '';
+    const isYann = isYannUser(userEmail);
 
-    if (!userId || userId === 'default_user') {
+    if (!effectiveUserId || effectiveUserId === 'default_user') {
         callback([]);
         return () => { };
     }
 
-    // 1. Délivrer instantanément le cache local personnel (0 ms)
-    const initialLocal = getLocalAppointments(effectiveUserId);
+    // 1. Délivrer instantanément le cache local personnel et assaini (0 ms)
+    const initialLocal = getLocalAppointments(effectiveUserId, userEmail);
     callback(sortAppointmentsChronologically(initialLocal));
 
-    // 2. Écouteurs de synchronisation locale & BroadcastChannel filtrés par userId
+    // 2. Écouteur de synchronisation locale intra-fenêtre
     const handleLocalSync = (e) => {
         if (e.detail && e.detail.userId === effectiveUserId && Array.isArray(e.detail.appointments)) {
             callback(sortAppointmentsChronologically(e.detail.appointments));
         } else if (!e.detail || e.detail.userId === effectiveUserId) {
-            const fresh = getLocalAppointments(effectiveUserId);
+            const fresh = getLocalAppointments(effectiveUserId, userEmail);
             callback(sortAppointmentsChronologically(fresh));
-        }
-    };
-
-    const handleBroadcastMessage = (event) => {
-        if (event.data && event.data.type === 'AGENDA_SYNC' && event.data.userId === effectiveUserId && Array.isArray(event.data.appointments)) {
-            callback(sortAppointmentsChronologically(event.data.appointments));
         }
     };
 
     if (typeof window !== 'undefined') {
         window.addEventListener(AGENDA_SYNC_EVENT, handleLocalSync);
     }
-    if (broadcastChannel) {
-        broadcastChannel.addEventListener('message', handleBroadcastMessage);
-    }
 
     if (!db) {
         return () => {
             if (typeof window !== 'undefined') window.removeEventListener(AGENDA_SYNC_EVENT, handleLocalSync);
-            if (broadcastChannel) broadcastChannel.removeEventListener('message', handleBroadcastMessage);
         };
     }
 
-    // 3. Écouteur Firestore temps réel filtré strictement par userId
+    // 3. Écouteurs Firestore temps réel strictement isolés pour cet utilisateur
     try {
-        const q = query(
+        let userSubList = [];
+        let rootQueryList = [];
+
+        const processAndNotify = () => {
+            const map = new Map();
+
+            // Priorité 1 : sous-collection privée /users/{userId}/agenda_events
+            userSubList.forEach(item => {
+                if (!item || !item.id) return;
+                if (!isYann && isYannEvent(item.title)) {
+                    // Supprimer toute copie parasite de Yann ayant pollué la collection de Malick ou d'un autre
+                    deleteDoc(doc(db, 'users', effectiveUserId, 'agenda_events', item.id)).catch(() => {});
+                    return;
+                }
+                map.set(item.id, item);
+            });
+
+            // Priorité 2 : collection racine agenda_events pour ce userId
+            rootQueryList.forEach(item => {
+                if (!item || !item.id) return;
+                if (!isYann && isYannEvent(item.title)) {
+                    // Supprimer le document erroné dans la collection racine
+                    deleteDoc(doc(db, 'agenda_events', item.id)).catch(() => {});
+                    return;
+                }
+                if (!map.has(item.id)) {
+                    map.set(item.id, item);
+                    // Rapatrier dans la sous-collection isolée
+                    setDoc(doc(db, 'users', effectiveUserId, 'agenda_events', item.id), item, { merge: true }).catch(() => {});
+                }
+            });
+
+            const cleanList = sortAppointmentsChronologically(Array.from(map.values()));
+            saveLocalAppointments(effectiveUserId, cleanList);
+            callback(cleanList);
+        };
+
+        // Écouteur sous-collection isolée /users/{userId}/agenda_events
+        const unsubUserSub = onSnapshot(
+            collection(db, 'users', effectiveUserId, 'agenda_events'),
+            (snapshot) => {
+                userSubList = snapshot.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        ...data,
+                        id: d.id,
+                        userId: effectiveUserId,
+                        date: normalizeDateString(data.date),
+                    };
+                });
+                processAndNotify();
+            },
+            (err) => {
+                console.warn('Erreur abonnement sous-collection agenda personnel:', err);
+            }
+        );
+
+        // Écouteur collection racine filtré strictement par userId
+        const qRoot = query(
             collection(db, 'agenda_events'),
             where('userId', '==', effectiveUserId)
         );
 
-        let initialSnapshotProcessed = false;
-
-        const unsubscribeFirestore = onSnapshot(q, async (snapshot) => {
-            const firestoreList = snapshot.docs.map(d => {
-                const data = d.data();
-                return {
-                    ...data,
-                    id: d.id,
-                    date: normalizeDateString(data.date),
-                };
-            }).filter(item => item.userId === effectiveUserId);
-
-            const firestoreIds = new Set(firestoreList.map(item => item.id));
-
-            // Lors de la première réception, migrer les RDVs locaux orphelins de cet utilisateur
-            if (!initialSnapshotProcessed) {
-                initialSnapshotProcessed = true;
-                const localList = getLocalAppointments(effectiveUserId);
-                syncLocalAppointmentsToFirestore(localList, firestoreIds, effectiveUserId, effectiveTenantId);
+        const unsubRoot = onSnapshot(
+            qRoot,
+            (snapshot) => {
+                rootQueryList = snapshot.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        ...data,
+                        id: d.id,
+                        userId: effectiveUserId,
+                        date: normalizeDateString(data.date),
+                    };
+                });
+                processAndNotify();
+            },
+            (err) => {
+                console.warn('Erreur abonnement racine agenda personnel:', err);
+                const fallbackList = getLocalAppointments(effectiveUserId, userEmail);
+                callback(sortAppointmentsChronologically(fallbackList));
             }
-
-            const sorted = sortAppointmentsChronologically(firestoreList);
-
-            // Mise à jour du cache local personnel
-            saveLocalAppointments(effectiveUserId, sorted);
-
-            // Déclenchement du callback réactif
-            callback(sorted);
-        }, (err) => {
-            console.warn('Erreur abonnement Firestore agenda personnel:', err);
-            const fallbackList = getLocalAppointments(effectiveUserId);
-            callback(sortAppointmentsChronologically(fallbackList));
-        });
+        );
 
         return () => {
             if (typeof window !== 'undefined') window.removeEventListener(AGENDA_SYNC_EVENT, handleLocalSync);
-            if (broadcastChannel) broadcastChannel.removeEventListener('message', handleBroadcastMessage);
-            unsubscribeFirestore();
+            unsubUserSub();
+            unsubRoot();
         };
     } catch (e) {
-        console.warn('Échec initialisation écouteur agenda personnel:', e);
+        console.warn('Échec initialisation écouteurs agenda personnel:', e);
         return () => {
             if (typeof window !== 'undefined') window.removeEventListener(AGENDA_SYNC_EVENT, handleLocalSync);
-            if (broadcastChannel) broadcastChannel.removeEventListener('message', handleBroadcastMessage);
         };
     }
 };

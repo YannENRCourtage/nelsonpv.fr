@@ -62,8 +62,9 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     const [viewMode, setViewMode] = useState('month');
     const [currentDate, setCurrentDate] = useState(new Date());
     
-    const userId = user?.uid || user?.id || user?.email || 'default_user';
-    const [appointments, setAppointments] = useState(() => getLocalAppointments(userId));
+    const userId = user?.uid || user?.id || '';
+    const userEmail = (user?.email || '').toLowerCase();
+    const [appointments, setAppointments] = useState(() => getLocalAppointments(userId, userEmail));
     
     // Filtre par catégorie
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -76,20 +77,20 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     const [hoveredAppt, setHoveredAppt] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-    // Synchronisation temps réel des rendez-vous personnels
+    // Synchronisation temps réel des rendez-vous personnels (strictement privé)
     useEffect(() => {
         if (!userId || userId === 'default_user') {
             setAppointments([]);
             return;
         }
-        setAppointments(getLocalAppointments(userId));
-        const unsubscribe = subscribeToUserAppointments(userId, activeTenantId, (list) => {
+        setAppointments(getLocalAppointments(userId, userEmail));
+        const unsubscribe = subscribeToUserAppointments(user, activeTenantId, (list) => {
             if (list) {
                 setAppointments(list);
             }
         });
         return () => unsubscribe && unsubscribe();
-    }, [userId, activeTenantId]);
+    }, [userId, userEmail, activeTenantId, user]);
 
     // Filtrage des rendez-vous
     const filteredAppointments = useMemo(() => {
@@ -166,10 +167,12 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
 
     // Sauvegarde immédiate et synchrone du RDV pour affichage instantané
     const handleSaveAppointment = async (data) => {
+        if (!userId || userId === 'default_user') return;
         const normalizedDate = formatDateKey(data.date) || formatDateKey(new Date());
         const cleanedData = {
             ...data,
             date: normalizedDate,
+            userId,
         };
 
         try {
@@ -198,6 +201,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     };
 
     const handleDeleteAppointment = async (apptId) => {
+        if (!userId || userId === 'default_user') return;
         try {
             // Suppression optimiste immédiate
             setAppointments(prev => prev.filter(a => a.id !== apptId));

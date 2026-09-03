@@ -49,6 +49,11 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow create, delete: if isAdmin();
+
+      // Agenda personnel strictement privé à chaque utilisateur (y compris pour les administrateurs)
+      match /agenda_events/{eventId} {
+        allow read, write, delete: if isAuthenticated() && request.auth.uid == userId;
+      }
     }
     
     // Contacts collection
