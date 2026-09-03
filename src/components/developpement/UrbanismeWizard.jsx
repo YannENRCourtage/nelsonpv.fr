@@ -67,13 +67,27 @@ function getBuildingCorners(centerLat, centerLng, lengthMeters, widthMeters, rot
   });
 }
 
+function getOrientationLabel(deg) {
+  const r = Number(deg) || 0;
+  const norm = ((((r + 180) % 360) + 360) % 360) - 180;
+  if (norm === 0) return 'Sud';
+  if (Math.abs(norm) >= 135) return 'Nord';
+  if (norm > 45) return norm >= 85 && norm <= 95 ? 'Plein Ouest' : 'Ouest';
+  if (norm > 0 && norm <= 45) return 'Sud-Ouest';
+  if (norm < -45) return norm <= -85 && norm >= -95 ? 'Plein Est' : 'Est';
+  if (norm < 0 && norm >= -45) return 'Sud-Est';
+  return 'Sud';
+}
+
 function MapResizer() {
   const map = useMap();
   useEffect(() => {
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 150);
-    return () => clearTimeout(timer);
+    const t1 = setTimeout(() => map.invalidateSize(), 150);
+    const t2 = setTimeout(() => map.invalidateSize(), 450);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [map]);
   return null;
 }
@@ -2954,7 +2968,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                 );
               })()}
 
-              {/* ÉTAPE 4 — Carte DP2 / PC2 (Plan de masse dynamique multi-structures — PLEINE HAUTEUR) */}
+              {/* ÉTAPE 4 — Carte DP2 / PC2 (Visionneuse divisée en 1, 2, 3 ou 4 cadres selon le nombre de structures configurées) */}
               {step === 4 && (
                 <motion.div
                   key="step4-masse"
@@ -2963,253 +2977,218 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                   exit={{ opacity: 0, x: -20 }}
                   className="p-4 h-full flex flex-col gap-2.5 overflow-hidden"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 flex-shrink-0">
+                  <div className="flex items-center justify-between flex-shrink-0">
                     <div>
                       <h3 className="text-sm font-bold text-gray-800">
-                        Étape 5 : {isDP ? 'DP2' : 'PC2'} — Plan de Masse ({allConfiguredStructures.length} structure{allConfiguredStructures.length > 1 ? 's' : ''} configurée{allConfiguredStructures.length > 1 ? 's' : ''})
+                        Étape 5 : {isDP ? 'DP2' : 'PC2'} — Plan de Masse ({allConfiguredStructures.length} cadre{allConfiguredStructures.length > 1 ? 's' : ''} : {allConfiguredStructures.length} {isDP ? 'ombrière' : 'structure'}{allConfiguredStructures.length > 1 ? 's' : ''})
                       </h3>
                       <p className="text-xs text-gray-500">
-                        Sélectionnez les structures à inclure dans le dossier, positionnez-les et orientez-les sur le plan cadastral.
+                        Chaque cadre correspond à un bâtiment ou une ombrière. Ajustez indépendamment la position et l'orientation de chacun.
                       </p>
                     </div>
 
-                    {/* Onglets de sélection de la structure à déplacer / orienter */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto max-w-full">
-                      {allConfiguredStructures.map((str) => {
-                        const isAct = (activeMasseStructureId || allConfiguredStructures[0]?.id) === str.id;
-                        const isInc = selectedStructureIds.includes(str.id);
-                        return (
-                          <button
-                            key={str.id}
-                            type="button"
-                            onClick={() => setActiveMasseStructureId(str.id)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs ${
-                              isAct
-                                ? (str.solutionKey === 'ombriere' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-blue-600 text-white shadow-xs')
-                                : (isInc ? 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200' : 'bg-slate-200/60 text-slate-400 border border-slate-200 line-through')
-                            }`}
-                          >
-                            <span className={`w-2 h-2 rounded-full ${isAct ? 'bg-white' : (str.solutionKey === 'ombriere' ? 'bg-emerald-500' : 'bg-blue-500')}`} />
-                            <span>{str.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Sélection interactive des structures et sous-onglets à inclure dans le dossier PDF */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 space-y-1.5 flex-shrink-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <Layers className="w-4 h-4 text-blue-600" />
-                        Structures &amp; Sous-onglets à inclure dans le PDF ({selectedStructureIds.length}/{allConfiguredStructures.length})
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-500">
+                        Inclus dans le PDF : {selectedStructureIds.length}/{allConfiguredStructures.length}
                       </span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
-                          className="px-2 py-0.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md text-[11px] font-bold transition-all shadow-2xs"
-                        >
-                          Toutes
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (allConfiguredStructures.length > 0) {
-                              setSelectedStructureIds([allConfiguredStructures[0].id]);
-                            }
-                          }}
-                          className="px-2 py-0.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md text-[11px] font-bold transition-all shadow-2xs"
-                        >
-                          Seulement la 1ère
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {allConfiguredStructures.map((str) => {
-                        const isSelected = selectedStructureIds.includes(str.id);
-                        const isCurAct = (activeMasseStructureId || allConfiguredStructures[0]?.id) === str.id;
-                        const strLen = Number(str.length || (str.bayCount || 5) * (str.baySpacing || 7.5));
-                        const strWid = Number(str.width || 15);
-                        return (
-                          <div
-                            key={str.id}
-                            onClick={() => {
-                              setSelectedStructureIds(prev => {
-                                if (prev.includes(str.id)) {
-                                  if (prev.length <= 1) return prev; // Garder au moins 1 structure
-                                  return prev.filter(id => id !== str.id);
-                                }
-                                return [...prev, str.id];
-                              });
-                            }}
-                            className={`p-2 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
-                              isSelected
-                                ? (isCurAct ? 'bg-white border-blue-600 shadow-xs ring-2 ring-blue-300' : 'bg-white border-slate-300 shadow-2xs')
-                                : 'bg-slate-100/70 border-slate-200 opacity-60 hover:opacity-85'
-                            }`}
-                          >
-                            <div className="min-w-0 pr-1">
-                              <div className="flex items-center gap-1 mb-0.5">
-                                <span className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
-                                  str.solutionKey === 'ombriere' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
-                                }`}>
-                                  {str.solutionKey === 'ombriere' ? 'Ombrière' : 'Bâtiment'}
-                                </span>
-                                <span className="font-bold text-xs text-slate-900 truncate">{str.name}</span>
-                              </div>
-                              <p className="text-[10px] text-slate-500 font-medium truncate">
-                                {strLen.toFixed(1)}m × {strWid.toFixed(1)}m ({Math.round(strLen * strWid)} m²)
-                              </p>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => {}}
-                              className="w-3.5 h-3.5 rounded text-blue-600 pointer-events-none flex-shrink-0"
-                            />
-                          </div>
-                        );
-                      })}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
+                        className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
+                      >
+                        Tout inclure
+                      </button>
                     </div>
                   </div>
 
-                  {(() => {
-                    const activeStr = allConfiguredStructures.find(s => s.id === (activeMasseStructureId || allConfiguredStructures[0]?.id)) || allConfiguredStructures[0] || {};
-                    const bLength = Number(activeStr.length || (activeStr.bayCount ? activeStr.bayCount * (activeStr.baySpacing || 7.5) : (config.length || 30)));
-                    const bWidth = Number(activeStr.width || config.width || 20);
-                    const currentRotation = Number(activeStr.rotation || 0);
+                  {/* Grille divisée en 1, 2, 3 ou 4 cadres */}
+                  <div className={`grid gap-3 flex-1 min-h-0 overflow-y-auto pr-1 pb-1 ${
+                    allConfiguredStructures.length === 1
+                      ? 'grid-cols-1'
+                      : allConfiguredStructures.length === 2
+                      ? 'grid-cols-1 md:grid-cols-2'
+                      : allConfiguredStructures.length === 3
+                      ? 'grid-cols-1 md:grid-cols-3'
+                      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+                  }`}>
+                    {allConfiguredStructures.map((str, sIdx) => {
+                      const isIncluded = selectedStructureIds.includes(str.id);
+                      const strLat = Number(str.lat || (str.gps ? str.gps.split(',')[0] : null) || (Number(editedProject?.lat || 43.5612) + sIdx * 0.00025));
+                      const strLng = Number(str.lng || (str.gps ? str.gps.split(',')[1] : null) || (Number(editedProject?.lng || 0.9168) + sIdx * 0.00030));
+                      const sLen = Number(str.length || (str.bayCount ? str.bayCount * (str.baySpacing || 7.5) : (config.length || 30)));
+                      const sWid = Number(str.width || config.width || 15);
+                      const sRot = Number(str.rotation || 0);
+                      const corners = getBuildingCorners(strLat, strLng, sLen, sWid, sRot);
 
-                    const activeLat = Number(activeStr.lat || (activeStr.gps ? activeStr.gps.split(',')[0] : null) || editedProject?.lat || 43.5612);
-                    const activeLng = Number(activeStr.lng || (activeStr.gps ? activeStr.gps.split(',')[1] : null) || editedProject?.lng || 0.9168);
+                      return (
+                        <div
+                          key={str.id}
+                          className={`flex flex-col bg-white border-2 rounded-2xl shadow-xs overflow-hidden transition-all min-h-[360px] ${
+                            isIncluded
+                              ? (str.solutionKey === 'ombriere' ? 'border-emerald-500/80 shadow-emerald-50' : 'border-blue-500/80 shadow-blue-50')
+                              : 'border-slate-200 opacity-60'
+                          }`}
+                        >
+                          {/* En-tête du Cadre */}
+                          <div className={`flex items-center justify-between p-2.5 border-b select-none ${
+                            str.solutionKey === 'ombriere' ? 'bg-emerald-50/80 border-emerald-100' : 'bg-blue-50/80 border-blue-100'
+                          }`}>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide ${
+                                str.solutionKey === 'ombriere' ? 'bg-emerald-200 text-emerald-900' : 'bg-blue-200 text-blue-900'
+                              }`}>
+                                {str.solutionKey === 'ombriere' ? 'Ombrière' : 'Bâtiment'}
+                              </span>
+                              <span className="font-black text-xs text-slate-900 truncate">{str.name}</span>
+                            </div>
 
-                    return (
-                      <div className="flex-1 flex flex-col min-h-0 bg-gray-50 border border-gray-200 rounded-2xl p-3 shadow-xs overflow-hidden gap-2">
-                        <div className="flex items-center justify-between flex-shrink-0">
-                          <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                            <Building2 className="w-4 h-4 text-blue-600" />
-                            {isDP ? 'DP2' : 'PC2'} — Structure active : <strong className="text-blue-600 font-black">{activeStr.name}</strong>
-                          </span>
-                          <span className="text-[11px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                            {bLength.toFixed(1)}m × {bWidth.toFixed(1)}m ({Math.round(bLength * bWidth)} m²)
-                          </span>
-                        </div>
-
-                        {/* Contrôle de Rotation de la structure active */}
-                        <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs shadow-2xs space-y-1.5 flex-shrink-0">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                              <Compass className="w-4 h-4 text-blue-600" />
-                              Orientation de {activeStr.name}
-                            </span>
-                            <span className="text-blue-600 font-black text-sm">
-                              {currentRotation}°
-                            </span>
+                            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isIncluded}
+                                onChange={() => {
+                                  setSelectedStructureIds(prev => {
+                                    if (prev.includes(str.id)) {
+                                      if (prev.length <= 1) return prev;
+                                      return prev.filter(id => id !== str.id);
+                                    }
+                                    return [...prev, str.id];
+                                  });
+                                }}
+                                className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                              />
+                              <span className="text-[11px] font-bold">{isIncluded ? 'Inclus' : 'Exclu'}</span>
+                            </label>
                           </div>
 
-                          <input
-                            type="range"
-                            min="-90"
-                            max="90"
-                            step="1"
-                            value={currentRotation}
-                            onChange={(e) => handleMasseRotationUpdate(activeStr.id, Number(e.target.value))}
-                            className="w-full h-5 bg-slate-200 rounded-xl appearance-none cursor-pointer accent-blue-600 my-1 shadow-inner"
-                          />
+                          {/* Contrôle Dimensions & Orientation */}
+                          <div className="p-2.5 bg-white border-b border-slate-100 space-y-1.5 flex-shrink-0">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-semibold text-slate-500 truncate">
+                                {sLen.toFixed(1)}m × {sWid.toFixed(1)}m ({Math.round(sLen * sWid)} m²)
+                              </span>
+                              <span className="font-black text-blue-700 whitespace-nowrap">
+                                {sRot}° ({getOrientationLabel(sRot)})
+                              </span>
+                            </div>
 
-                          <div className="grid grid-cols-5 gap-1.5">
-                            {[
-                              { label: 'Ouest (90°)', val: 90 },
-                              { label: 'Sud-Ouest (45°)', val: 45 },
-                              { label: 'Sud (0°)', val: 0 },
-                              { label: 'Sud-Est (-45°)', val: -45 },
-                              { label: 'Est (-90°)', val: -90 },
-                            ].map(({ label, val }) => (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="range"
+                                min="-90"
+                                max="90"
+                                step="1"
+                                value={sRot}
+                                onChange={(e) => handleMasseRotationUpdate(str.id, Number(e.target.value))}
+                                className="flex-1 h-5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 shadow-inner"
+                              />
                               <button
-                                key={val}
                                 type="button"
-                                onClick={() => handleMasseRotationUpdate(activeStr.id, val)}
-                                className={`py-1 rounded-xl text-[11px] font-black transition-all border ${
-                                  currentRotation === val ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                                onClick={() => handleMasseRotationUpdate(str.id, 0)}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded border transition-all ${
+                                  sRot === 0 ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                                 }`}
+                                title="Plein Sud"
                               >
-                                {label}
+                                0°
                               </button>
-                            ))}
+                            </div>
+
+                            {/* Raccourcis d'orientation compacts */}
+                            <div className="grid grid-cols-4 gap-1 pt-0.5">
+                              {[
+                                { label: 'Ouest', val: 90 },
+                                { label: 'S-O', val: 45 },
+                                { label: 'S-E', val: -45 },
+                                { label: 'Est', val: -90 },
+                              ].map(({ label, val }) => (
+                                <button
+                                  key={val}
+                                  type="button"
+                                  onClick={() => handleMasseRotationUpdate(str.id, val)}
+                                  className={`py-0.5 rounded text-[10px] font-bold transition-all border ${
+                                    sRot === val
+                                      ? 'bg-[#0e2b4d] text-white border-[#0e2b4d] shadow-2xs'
+                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Visionneuse Carte occupant 100% de la hauteur disponible avec TOUTES les structures */}
-                        <div className="relative rounded-xl overflow-hidden border border-gray-200 z-10 flex-1 min-h-0 w-full shadow-inner">
-                          <MapContainer center={[activeLat, activeLng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
-                            <TileLayer
-                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                              attribution="&copy; OpenStreetMap contributors"
-                              maxZoom={21}
-                              maxNativeZoom={19}
-                            />
-                            <MapResizer />
-                            <MapSyncCenter lat={activeLat} lng={activeLng} />
+                          {/* Visionneuse Carte pour ce bâtiment / cette ombrière */}
+                          <div className="relative flex-1 min-h-[220px] w-full overflow-hidden">
+                            <MapContainer center={[strLat, strLng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                              <TileLayer
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                attribution="&copy; OpenStreetMap"
+                                maxZoom={21}
+                                maxNativeZoom={19}
+                              />
+                              <MapResizer />
+                              <MapSyncCenter lat={strLat} lng={strLng} />
 
-                            {allConfiguredStructures.map((str, sIdx) => {
-                              const isCurActive = str.id === activeStr.id;
-                              const isInc = selectedStructureIds.includes(str.id);
-                              const strLat = Number(str.lat || (str.gps ? str.gps.split(',')[0] : null) || (Number(editedProject?.lat || 43.5612) + sIdx * 0.00025));
-                              const strLng = Number(str.lng || (str.gps ? str.gps.split(',')[1] : null) || (Number(editedProject?.lng || 0.9168) + sIdx * 0.00030));
-                              const sLen = Number(str.length || (str.bayCount ? str.bayCount * (str.baySpacing || 7.5) : (config.length || 30)));
-                              const sWid = Number(str.width || config.width || 15);
-                              const sRot = Number(str.rotation || 0);
-                              const corners = getBuildingCorners(strLat, strLng, sLen, sWid, sRot);
+                              {/* Polygone de la structure de ce cadre */}
+                              <Polygon
+                                positions={corners}
+                                pathOptions={{
+                                  color: str.solutionKey === 'ombriere' ? '#059669' : '#2563eb',
+                                  fillColor: str.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6',
+                                  fillOpacity: 0.35,
+                                  dashArray: '5, 4',
+                                  weight: 2.5,
+                                }}
+                              >
+                                <Tooltip permanent direction="center">
+                                  <div className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs whitespace-nowrap bg-white text-slate-900 border border-slate-200">
+                                    {str.name} ({sRot}°)
+                                  </div>
+                                </Tooltip>
+                              </Polygon>
 
-                              return (
-                                <React.Fragment key={str.id}>
+                              {/* Marqueur déplaçable propre à cette structure */}
+                              <DraggableLocationMarker
+                                lat={strLat}
+                                lng={strLng}
+                                setGps={(newLat, newLng) => handleMasseGpsUpdate(str.id, newLat, newLng)}
+                              />
+
+                              {/* Afficher également les autres structures sur la même parcelle en filigrane */}
+                              {allConfiguredStructures.filter(other => other.id !== str.id).map(other => {
+                                const oLat = Number(other.lat || (other.gps ? other.gps.split(',')[0] : null) || editedProject?.lat);
+                                const oLng = Number(other.lng || (other.gps ? other.gps.split(',')[1] : null) || editedProject?.lng);
+                                const oLen = Number(other.length || (other.bayCount ? other.bayCount * (other.baySpacing || 7.5) : 30));
+                                const oWid = Number(other.width || 15);
+                                const oRot = Number(other.rotation || 0);
+                                const oCorners = getBuildingCorners(oLat, oLng, oLen, oWid, oRot);
+                                return (
                                   <Polygon
-                                    positions={corners}
-                                    eventHandlers={{
-                                      click: () => setActiveMasseStructureId(str.id)
-                                    }}
+                                    key={`cadre-${str.id}-other-${other.id}`}
+                                    positions={oCorners}
                                     pathOptions={{
-                                      color: isCurActive ? '#ef4444' : (str.solutionKey === 'ombriere' ? '#059669' : '#2563eb'),
-                                      fillColor: isCurActive ? '#ef4444' : (str.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6'),
-                                      fillOpacity: isCurActive ? 0.35 : (isInc ? 0.20 : 0.08),
-                                      dashArray: isCurActive ? '6, 4' : '4, 4',
-                                      weight: isCurActive ? 3 : 1.5,
+                                      color: '#94a3b8',
+                                      fillColor: '#cbd5e1',
+                                      fillOpacity: 0.15,
+                                      dashArray: '3, 3',
+                                      weight: 1,
                                     }}
                                   >
-                                    <Tooltip permanent direction="center">
-                                      <div className={`text-[10px] font-bold px-1 py-0.5 rounded shadow-2xs whitespace-nowrap cursor-pointer ${
-                                        isCurActive ? 'bg-red-600 text-white' : 'bg-white text-slate-800 border border-slate-200'
-                                      }`}>
-                                        {str.name} ({sRot}°)
-                                      </div>
+                                    <Tooltip direction="center">
+                                      <span className="text-[9px] font-medium text-slate-500">{other.name}</span>
                                     </Tooltip>
                                   </Polygon>
+                                );
+                              })}
 
-                                  {isCurActive ? (
-                                    <DraggableLocationMarker
-                                      lat={strLat}
-                                      lng={strLng}
-                                      setGps={(newLat, newLng) => handleMasseGpsUpdate(str.id, newLat, newLng)}
-                                    />
-                                  ) : (
-                                    <Marker
-                                      position={[strLat, strLng]}
-                                      eventHandlers={{
-                                        click: () => setActiveMasseStructureId(str.id)
-                                      }}
-                                    />
-                                  )}
-                                </React.Fragment>
-                              );
-                            })}
-
-                            <PC2MapScaleBar />
-                          </MapContainer>
+                              <PC2MapScaleBar />
+                            </MapContainer>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })}
+                  </div>
                 </motion.div>
               )}
 
