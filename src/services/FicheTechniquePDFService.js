@@ -86,7 +86,16 @@ export async function generateFicheTechniquePDF({
 
     const isBatitech = config.configMode === 'batitech';
     const batitechModel = isBatitech ? (BATITECH_MODELS[config.selectedBatitechModel] || BATITECH_MODELS['BT-3.1.15']) : null;
-    const isCustom = !isBatitech && (config.configMode === 'custom' || (!isAcama && config.buildingType === 'custom'));
+    const isCustom = !isBatitech && (
+        config.configMode === 'custom' || 
+        (!isAcama && config.buildingType === 'custom') ||
+        Boolean(config.isCustom) ||
+        Boolean(config.isSurMesure) ||
+        (config.gamme && String(config.gamme).toLowerCase().includes('sur-mesure')) ||
+        (config.model && String(config.model).toLowerCase().includes('sur-mesure')) ||
+        (config.selectedModel && String(config.selectedModel).toLowerCase().includes('sur-mesure')) ||
+        (config.name && String(config.name).toLowerCase().includes('sur-mesure'))
+    );
 
     const barcMatch = isBatitech ? {} : findBarconniereBuilding({
         length,
@@ -409,32 +418,34 @@ export async function generateFicheTechniquePDF({
     }
     curY += 1.5;
 
-    // --- BLOC 5 : TARIFICATION & RATIOS ---
-    drawSectionTitle('5. Chiffrage & Ratios', [52, 211, 153]);
-    drawRow('Structure métal. :', `${formatNumber(totalBuildingCost)} € HT`, true, [255, 255, 255]);
-    if (isBatitech) {
-        drawRow("Système Cogen'Air :", `${formatNumber(cogenAirCost)} € HT`, true, [251, 191, 36]);
-        drawRow('Centrale Solaire :', `${formatNumber(pvInstallationCost)} € HT`, true, [251, 191, 36]);
-        drawRow('Total Projet :', `${formatNumber(totalProjectCost)} € HT`, true, [52, 211, 153]);
-    } else if (config.hasSolar) {
-        drawRow('Centrale PV :', `${formatNumber(pvInstallationCost)} € HT`);
-        drawRow('Total Projet :', `${formatNumber(totalProjectCost)} € HT`, true, [52, 211, 153]);
+    // --- BLOC 5 : TARIFICATION & RATIOS (Masqué pour les bâtiments Sur-Mesure) ---
+    if (!isCustom) {
+        drawSectionTitle('5. Chiffrage & Ratios', [52, 211, 153]);
+        drawRow('Structure métal. :', `${formatNumber(totalBuildingCost)} € HT`, true, [255, 255, 255]);
+        if (isBatitech) {
+            drawRow("Système Cogen'Air :", `${formatNumber(cogenAirCost)} € HT`, true, [251, 191, 36]);
+            drawRow('Centrale Solaire :', `${formatNumber(pvInstallationCost)} € HT`, true, [251, 191, 36]);
+            drawRow('Total Projet :', `${formatNumber(totalProjectCost)} € HT`, true, [52, 211, 153]);
+        } else if (config.hasSolar) {
+            drawRow('Centrale PV :', `${formatNumber(pvInstallationCost)} € HT`);
+            drawRow('Total Projet :', `${formatNumber(totalProjectCost)} € HT`, true, [52, 211, 153]);
 
-        // Couleurs conditionnelles : ROUGE si puissance < 100 kWc
-        const isLowPower = installedKwc < 100;
-        const amortissementColor = isLowPower ? [239, 68, 68] : [52, 211, 153];
-        const performanceColor = isLowPower ? [239, 68, 68] : [251, 191, 36];
+            // Couleurs conditionnelles : ROUGE si puissance < 100 kWc
+            const isLowPower = installedKwc < 100;
+            const amortissementColor = isLowPower ? [239, 68, 68] : [52, 211, 153];
+            const performanceColor = isLowPower ? [239, 68, 68] : [251, 191, 36];
 
-        drawRow('Amortissement :', paybackYears, true, amortissementColor);
-        drawRow('Performance Financière :', performanceFinanciere, true, performanceColor);
+            drawRow('Amortissement :', paybackYears, true, amortissementColor);
+            drawRow('Performance Financière :', performanceFinanciere, true, performanceColor);
+        }
+        curY += 1.5;
+        drawRow('Ratio / Surface :', `${formatNumber(ratioCostPerM2)} € / m²`, true, [56, 189, 248]);
+        if ((config.hasSolar || isBatitech) && installedKwc > 0) {
+            drawRow('Ratio Total / Wc :', `${ratioTotalCostPerWc} € / Wc`);
+            drawRow('Ratio Struct. / Wc :', `${ratioStructureCostPerWc} € / Wc`);
+        }
+        curY += 1.5;
     }
-    curY += 1.5;
-    drawRow('Ratio / Surface :', `${formatNumber(ratioCostPerM2)} € / m²`, true, [56, 189, 248]);
-    if ((config.hasSolar || isBatitech) && installedKwc > 0) {
-        drawRow('Ratio Total / Wc :', `${ratioTotalCostPerWc} € / Wc`);
-        drawRow('Ratio Struct. / Wc :', `${ratioStructureCostPerWc} € / Wc`);
-    }
-    curY += 1.5;
 
     // --- BLOC 6 : OPTIONS (UNIQUEMENT POUR BATITECH) ---
     if (isBatitech && batitechModel?.options) {

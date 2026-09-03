@@ -562,7 +562,16 @@ export function FicheTechniqueModal({
 
                             const isBatitech = config?.configMode === 'batitech';
                             const batitechModel = isBatitech ? (BATITECH_MODELS[config?.selectedBatitechModel] || BATITECH_MODELS['BT-3.1.15']) : null;
-                            const isCustom = !isBatitech && (config?.configMode === 'custom' || (!isAcama && config?.buildingType === 'custom'));
+                            const isCustom = !isBatitech && (
+                                config?.configMode === 'custom' || 
+                                (!isAcama && config?.buildingType === 'custom') ||
+                                Boolean(config?.isCustom) ||
+                                Boolean(config?.isSurMesure) ||
+                                (config?.gamme && String(config?.gamme).toLowerCase().includes('sur-mesure')) ||
+                                (config?.model && String(config?.model).toLowerCase().includes('sur-mesure')) ||
+                                (config?.selectedModel && String(config?.selectedModel).toLowerCase().includes('sur-mesure')) ||
+                                (config?.name && String(config?.name).toLowerCase().includes('sur-mesure'))
+                            );
 
                             const barcMatch = isBatitech ? {} : findBarconniereBuilding({
                                 length,
@@ -734,20 +743,22 @@ export function FicheTechniqueModal({
                                                 </div>
 
                                                 {/* 5. Chiffrage & Ratios */}
-                                                <div className="space-y-0.5">
-                                                    <h4 className="font-bold text-emerald-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">5. Chiffrage &amp; Ratios</h4>
-                                                    <div className="flex justify-between text-slate-400"><span>Structure métal. :</span><strong className="text-white font-bold">{totalBuildingCost.toLocaleString('fr-FR')} € HT</strong></div>
-                                                    {isBatitech && <div className="flex justify-between text-slate-400"><span>Système Cogen'Air :</span><strong className="text-amber-400 font-bold">{cogenAirCost.toLocaleString('fr-FR')} € HT</strong></div>}
-                                                    {(config.hasSolar || isBatitech) && <div className="flex justify-between text-slate-400"><span>Centrale {isBatitech ? 'Solaire' : 'PV'} :</span><span className="text-slate-200">{pvInstallationCost.toLocaleString('fr-FR')} € HT</span></div>}
-                                                    <div className="flex justify-between text-slate-400"><span>Total Projet :</span><strong className="text-emerald-400 font-bold">{totalProjectCost.toLocaleString('fr-FR')} € HT</strong></div>
-                                                    <div className="flex justify-between text-slate-400 pt-0.5 border-t border-slate-800"><span>Ratio / Surface :</span><strong className="text-sky-400 font-bold">{ratioCostPerM2} € / m²</strong></div>
-                                                    {(config.hasSolar || isBatitech) && installedKwc > 0 && (
-                                                        <>
-                                                            <div className="flex justify-between text-slate-400"><span>Ratio Total / Wc :</span><span className="text-slate-200">{ratioTotalCostPerWc} € / Wc</span></div>
-                                                            <div className="flex justify-between text-slate-400"><span>Ratio Struct. / Wc :</span><span className="text-slate-200">{ratioStructureCostPerWc} € / Wc</span></div>
-                                                        </>
-                                                    )}
-                                                </div>
+                                                {!isCustom && (
+                                                    <div className="space-y-0.5">
+                                                        <h4 className="font-bold text-emerald-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">5. Chiffrage &amp; Ratios</h4>
+                                                        <div className="flex justify-between text-slate-400"><span>Structure métal. :</span><strong className="text-white font-bold">{totalBuildingCost.toLocaleString('fr-FR')} € HT</strong></div>
+                                                        {isBatitech && <div className="flex justify-between text-slate-400"><span>Système Cogen'Air :</span><strong className="text-amber-400 font-bold">{cogenAirCost.toLocaleString('fr-FR')} € HT</strong></div>}
+                                                        {(config.hasSolar || isBatitech) && <div className="flex justify-between text-slate-400"><span>Centrale {isBatitech ? 'Solaire' : 'PV'} :</span><span className="text-slate-200">{pvInstallationCost.toLocaleString('fr-FR')} € HT</span></div>}
+                                                        <div className="flex justify-between text-slate-400"><span>Total Projet :</span><strong className="text-emerald-400 font-bold">{totalProjectCost.toLocaleString('fr-FR')} € HT</strong></div>
+                                                        <div className="flex justify-between text-slate-400 pt-0.5 border-t border-slate-800"><span>Ratio / Surface :</span><strong className="text-sky-400 font-bold">{ratioCostPerM2} € / m²</strong></div>
+                                                        {(config.hasSolar || isBatitech) && installedKwc > 0 && (
+                                                            <>
+                                                                <div className="flex justify-between text-slate-400"><span>Ratio Total / Wc :</span><span className="text-slate-200">{ratioTotalCostPerWc} € / Wc</span></div>
+                                                                <div className="flex justify-between text-slate-400"><span>Ratio Struct. / Wc :</span><span className="text-slate-200">{ratioStructureCostPerWc} € / Wc</span></div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
 
                                                 {/* 6. Options (UNIQUEMENT POUR BATITECH) */}
                                                 {isBatitech && batitechModel?.options && (
