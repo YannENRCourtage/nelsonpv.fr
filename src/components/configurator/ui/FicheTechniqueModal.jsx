@@ -634,8 +634,9 @@ export function FicheTechniqueModal({
                             const ratioStructureCostPerWc = installedKwc > 0 ? (totalBuildingCost / (installedKwc * 1000)).toFixed(2) : (barcMatch.ratioKwc?.toFixed(2) || '0.00');
 
                             const pitchDeg = isBatitech ? 15 : Number(config?.roofPitch || 10);
+                            const roundedPitchDeg = Number.isInteger(pitchDeg) ? pitchDeg : Number(pitchDeg.toFixed(2));
                             const pitchPct = Math.round(Math.tan(pitchDeg * (Math.PI / 180)) * 100);
-                            const pitchLabel = `${pitchDeg}° (${pitchPct}%)`;
+                            const pitchLabel = `${roundedPitchDeg}° (${pitchPct}%)`;
 
                             const bType = (config?.buildingType || '').toLowerCase();
                             const gName = (config?.gamme || '').toLowerCase();
@@ -741,7 +742,7 @@ export function FicheTechniqueModal({
                                                             <div className="flex justify-between text-slate-400"><span>Prod. estimée :</span><span className="text-slate-200">~{estimatedProductionKwh.toLocaleString('fr-FR')} kWh/an</span></div>
                                                         </>
                                                     ) : (
-                                                        <div className="text-slate-400 italic">Option solaire non incluse</div>
+                                                        <div className="flex justify-between text-slate-400"><span>Option solaire :</span><span className="text-slate-400">Non incluse</span></div>
                                                     )}
                                                 </div>
 

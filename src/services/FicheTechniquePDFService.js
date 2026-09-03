@@ -162,8 +162,9 @@ export async function generateFicheTechniquePDF({
 
     // Calcul Pente en Degrés et Pourcentage
     const pitchDeg = isBatitech ? 15 : Number(config.roofPitch || 10);
+    const roundedPitchDeg = Number.isInteger(pitchDeg) ? pitchDeg : Number(pitchDeg.toFixed(2));
     const pitchPct = Math.round(Math.tan(pitchDeg * (Math.PI / 180)) * 100);
-    const pitchLabel = `${pitchDeg}° (${pitchPct}%)`;
+    const pitchLabel = `${roundedPitchDeg}° (${pitchPct}%)`;
 
     // ==========================================
     // 1. BANDE SUPÉRIEURE (HEADER AVEC ÉCART SUPÉRIEUR)
@@ -416,7 +417,7 @@ export async function generateFicheTechniquePDF({
             }
         }
     } else {
-        drawRow('Option solaire :', 'Non incluse (Sans PV)', false, [148, 163, 184]);
+        drawRow('Option solaire :', 'Non incluse', false, [148, 163, 184]);
     }
     curY += 1.5;
 

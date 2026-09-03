@@ -210,22 +210,26 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const config = useConfiguratorValues();
   const configActions = useConfiguratorActions();
 
-  const getBuildingDisplayName = useCallback((b, idx) => {
-    const isOmb = (b?.solutionType === 'ombriere') || (b?.buildingType || '').toLowerCase().startsWith('ombriere') || (solutionType === 'ombriere');
-    const defaultPrefix = isOmb ? 'Ombrière' : 'Bâtiment';
-    if (!b) return `${defaultPrefix} ${idx + 1}`;
+  const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
+  const [solutionType, setSolutionType] = useState((!isAcama && isDP) ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
+  const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
 
-    const bLen = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config?.length || 30)));
-    const bWid = Number(b.width || config?.width || 15);
+  const getBuildingDisplayName = useCallback((buildingItem, idx) => {
+    const isOmb = (buildingItem?.solutionType === 'ombriere') || (buildingItem?.buildingType || '').toLowerCase().startsWith('ombriere') || (solutionType === 'ombriere');
+    const defaultPrefix = isOmb ? 'Ombrière' : 'Bâtiment';
+    if (!buildingItem) return `${defaultPrefix} ${idx + 1}`;
+
+    const bLen = Number(buildingItem.length || (buildingItem.bayCount ? buildingItem.bayCount * (buildingItem.baySpacing || 7.5) : (config?.length || 30)));
+    const bWid = Number(buildingItem.width || config?.width || 15);
     
     // For ACAMA or whenever the name has "Station Batteries"
     if (isAcama) {
       return `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
     }
-    if (b.name && b.name.toLowerCase().includes('batterie')) {
+    if (buildingItem.name && buildingItem.name.toLowerCase().includes('batterie')) {
       return `${defaultPrefix} ${idx + 1}`;
     }
-    let name = b.name || `${defaultPrefix} ${idx + 1}`;
+    let name = buildingItem.name || `${defaultPrefix} ${idx + 1}`;
     if (isOmb) {
       name = name.replace(/Bâtiment/gi, 'Ombrière');
     } else {
@@ -234,10 +238,6 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     name = name.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
     return name || `${defaultPrefix} ${idx + 1}`;
   }, [solutionType, isAcama, config?.length, config?.width]);
-
-  const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
-  const [solutionType, setSolutionType] = useState((!isAcama && isDP) ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
-  const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
 
   // Sync ACAMA / Green Invest mode on open
   useEffect(() => {
