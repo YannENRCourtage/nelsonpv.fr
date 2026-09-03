@@ -39,10 +39,12 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
     const buildingCode = isBatitech ? batitechModel.name : String(barcMatch.id || '').replace(/^#/, '').trim();
     const equivalenceCode = isBatitech ? 'AS9.2' : String(barcMatch.code || '').trim();
 
-    // Puissance solaire
+    // Puissance solaire : Priorité à la colonne Puissance du catalogue officiel (Tableaux bâtiments complet.xlsx)
     const installedKwc = isBatitech
         ? batitechModel.puissanceKwc
-        : (Number(config.solarStats?.power) || barcMatch.kwc || Math.round(floorArea * 0.20));
+        : (isCustom
+            ? (Number(config.solarStats?.power) || Math.round(floorArea * 0.20))
+            : (barcMatch.kwc || Number(config.solarStats?.power) || Math.round(floorArea * 0.20)));
     const panelCount = isBatitech
         ? batitechModel.nbModules
         : (Number(config.solarStats?.count) || Math.round((installedKwc * 1000) / (isAcama ? 460 : 465)));

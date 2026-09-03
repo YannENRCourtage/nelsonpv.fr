@@ -2,6 +2,7 @@ import React from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
+import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
 
 /**
  * Mapping of Building Types to Allowed Widths
@@ -904,27 +905,59 @@ export const useConfiguratorValues = () => {
         let finalSolarCount = solarCount;
         let finalSolarPower = (solarCount * PANEL_WATT) / 1000;
 
-        // Override for ACAMA EPONA/TALIAN models if fixed values exist
-        if (state.isAcama) {
-            let model = null;
-            if (state.buildingType === 'epona') {
-                model = EPONA_MODELS[state.selectedEponaModel];
-            } else if (state.buildingType === 'epona_talian5') {
-                model = TALIAN_5_MODELS[state.selectedTalian5Model];
-            } else if (state.buildingType === 'symetrique') {
-                // Check if it's one of the TALIAN families
-                if (TALIAN_MODELS[state.selectedTalianModel] && Math.abs(state.width - 13.7) < 0.1) {
-                    model = TALIAN_MODELS[state.selectedTalianModel];
-                } else if (TALIAN_1_MODELS[state.selectedTalian1Model] && Math.abs(state.width - 18.8) < 0.1) {
-                    model = TALIAN_1_MODELS[state.selectedTalian1Model];
-                } else if (TALIAN_3_MODELS[state.selectedTalian3Model] && Math.abs(state.width - 17.5) < 0.1) {
-                    model = TALIAN_3_MODELS[state.selectedTalian3Model];
+        if (state.configMode === 'predefined') {
+            if (state.isAcama) {
+                let model = null;
+                if (state.buildingType === 'epona') {
+                    model = EPONA_MODELS[state.selectedEponaModel];
+                } else if (state.buildingType === 'epona_talian5') {
+                    model = TALIAN_5_MODELS[state.selectedTalian5Model];
+                } else if (state.buildingType === 'symetrique') {
+                    // Check if it's one of the TALIAN families
+                    if (TALIAN_MODELS[state.selectedTalianModel] && Math.abs(state.width - 13.7) < 0.1) {
+                        model = TALIAN_MODELS[state.selectedTalianModel];
+                    } else if (TALIAN_1_MODELS[state.selectedTalian1Model] && Math.abs(state.width - 18.8) < 0.1) {
+                        model = TALIAN_1_MODELS[state.selectedTalian1Model];
+                    } else if (TALIAN_3_MODELS[state.selectedTalian3Model] && Math.abs(state.width - 17.5) < 0.1) {
+                        model = TALIAN_3_MODELS[state.selectedTalian3Model];
+                    }
                 }
-            }
 
-            if (model?.fixedPower !== undefined) {
-                finalSolarPower = model.fixedPower;
-                finalSolarCount = model.fixedPanelCount || solarCount;
+                if (model?.fixedPower !== undefined) {
+                    finalSolarPower = model.fixedPower;
+                    finalSolarCount = model.fixedPanelCount || Math.round((model.fixedPower * 1000) / PANEL_WATT);
+                } else {
+                    const acamaMatch = findBarconniereBuilding({
+                        length,
+                        width: state.width,
+                        buildingType: state.buildingType || 'symetrique',
+                        leftSide: state.leftSide || 'none',
+                        rightSide: state.rightSide || 'none',
+                        leftWidth: state.leftWidth || 0,
+                        rightWidth: state.rightWidth || 0,
+                        isAcama: true
+                    });
+                    if (acamaMatch?.kwc) {
+                        finalSolarPower = acamaMatch.kwc;
+                        finalSolarCount = Math.round((acamaMatch.kwc * 1000) / PANEL_WATT);
+                    }
+                }
+            } else {
+                // Catalogue complet Barconnière / Green Invest
+                const barcMatch = findBarconniereBuilding({
+                    length,
+                    width: state.width,
+                    buildingType: state.buildingType || 'symetrique',
+                    leftSide: state.leftSide || 'none',
+                    rightSide: state.rightSide || 'none',
+                    leftWidth: state.leftWidth || 0,
+                    rightWidth: state.rightWidth || 0,
+                    isAcama: false
+                });
+                if (barcMatch?.kwc) {
+                    finalSolarPower = barcMatch.kwc;
+                    finalSolarCount = Math.round((barcMatch.kwc * 1000) / PANEL_WATT);
+                }
             }
         }
 

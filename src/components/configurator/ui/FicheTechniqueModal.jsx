@@ -601,9 +601,12 @@ export function FicheTechniqueModal({
                             };
                             const typologyLabel = isBatitech ? 'Asymétrique 1 zone' : (TYPE_LABELS[config?.buildingType] || config?.buildingType || 'Structure Métallique');
 
+                            // Puissance solaire : Priorité à la colonne Puissance du catalogue officiel (Tableaux bâtiments complet.xlsx)
                             const installedKwc = isBatitech
                                 ? (batitechModel?.puissanceKwc || 30.15)
-                                : (Number(config?.solarStats?.power) || barcMatch.kwc || Math.round(floorArea * 0.20));
+                                : (isCustom
+                                    ? (Number(config?.solarStats?.power) || Math.round(floorArea * 0.20))
+                                    : (barcMatch.kwc || Number(config?.solarStats?.power) || Math.round(floorArea * 0.20)));
                             const panelCount = isBatitech
                                 ? (batitechModel?.nbModules || 90)
                                 : (Number(config?.solarStats?.count) || Math.round((installedKwc * 1000) / (isAcama ? 460 : 465)));

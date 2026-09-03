@@ -17,6 +17,8 @@ import { useAuth } from '@/contexts/AuthContext.jsx';
 import { ControlPanel } from '../configurator/ui/ControlPanel.jsx';
 import { BuildingSummaryCard } from '../configurator/ui/BuildingSummaryCard.jsx';
 import BuildingScene from '../configurator/BuildingScene.jsx';
+import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
+import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 import ImageCropModal from './ImageCropModal';
 import DimensionsModal from './DimensionsModal';
 import LandscapeIntegrationModal from './LandscapeIntegrationModal';
@@ -2051,10 +2053,35 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               <span className="text-yellow-800 font-bold text-xs whitespace-nowrap">
                                 ⚡ {(() => {
                                   const curB = buildings[activeBuildingIndex] || config;
-                                  const curW = Number(curB.width || config.width || 20);
-                                  const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
-                                  const curArea = Math.round(curW * curL);
-                                  return curB.solarStats?.power ? curB.solarStats.power.toFixed(2) : (curArea * 0.20).toFixed(2);
+                                  const curLen = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
+                                  const curMainW = Number(curB.width || config.width || 15.0);
+                                  const curLeftExt = curB.leftSide !== 'none' ? Number(curB.leftWidth || 0) : 0;
+                                  const curRightExt = curB.rightSide !== 'none' ? Number(curB.rightWidth || 0) : 0;
+                                  const curTotalW = curMainW + curLeftExt + curRightExt;
+                                  const curFloorArea = Math.round(curLen * curTotalW);
+
+                                  const isBatitech = curB.configMode === 'batitech' || config.configMode === 'batitech';
+                                  const batitechModel = isBatitech ? (BATITECH_MODELS[curB.selectedBatitechModel || config.selectedBatitechModel] || BATITECH_MODELS['BT-3.1.15']) : null;
+                                  const isCustom = !isBatitech && (curB.configMode === 'custom' || config.configMode === 'custom' || (!isAcama && curB.buildingType === 'custom'));
+
+                                  const barcMatch = isBatitech ? {} : findBarconniereBuilding({
+                                    length: curLen,
+                                    width: curMainW,
+                                    buildingType: curB.buildingType || config.buildingType || 'symetrique',
+                                    leftSide: curB.leftSide || config.leftSide || 'none',
+                                    rightSide: curB.rightSide || config.rightSide || 'none',
+                                    leftWidth: curB.leftWidth || config.leftWidth || 0,
+                                    rightWidth: curB.rightWidth || config.rightWidth || 0,
+                                    isAcama,
+                                  });
+
+                                  const pwr = isBatitech
+                                    ? (batitechModel?.puissanceKwc || 30.15)
+                                    : (isCustom
+                                      ? (Number(curB.solarStats?.power) || Number(config.solarStats?.power) || Math.round(curFloorArea * 0.20))
+                                      : (barcMatch.kwc || Number(curB.solarStats?.power) || Number(config.solarStats?.power) || Math.round(curFloorArea * 0.20)));
+
+                                  return Number(pwr).toFixed(2);
                                 })()} kWc
                               </span>
                             </div>
