@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Database, Zap, Sun, Building2, Sliders, CheckCircle2,
   Euro, Info, Table, Plus, Trash2, Leaf
 } from 'lucide-react';
 import { useSimulatorSettingsStore, DEFAULT_ECO_EVO_CATALOG } from '@/stores/useSimulatorSettingsStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 
 export default function SimulatorDatabaseTab() {
+  const { activeTenantId } = useAuth();
+  const isAcama = activeTenantId === 'acama';
+
   const {
     settings,
     updateIrveSettings,
@@ -33,6 +37,13 @@ export default function SimulatorDatabaseTab() {
   } = useSimulatorSettingsStore();
 
   const [activeSubTab, setActiveSubTab] = useState('autoconso'); // 'autoconso' | 'toiture' | 'structure' | 'irve' | 'sechoir'
+
+  // Sur ACAMA, interdire l'accès aux paramétrages Séchoir BatiTech
+  useEffect(() => {
+    if (isAcama && activeSubTab === 'sechoir') {
+      setActiveSubTab('autoconso');
+    }
+  }, [isAcama, activeSubTab]);
 
   const irve = settings.irve;
   const auto = settings.autoconsommation;
@@ -79,10 +90,10 @@ export default function SimulatorDatabaseTab() {
           {[
             { id: 'autoconso', label: '1. Autoconsommation', icon: Sun },
             { id: 'toiture', label: '2. Toiture Photovoltaïque', icon: Building2 },
-            { id: 'structure', label: '3. Structure Métallique & ECO-EVO', icon: Sliders },
+            { id: 'structure', label: isAcama ? '3. Structure Métallique' : '3. Structure Métallique & ECO-EVO', icon: Sliders },
             { id: 'irve', label: '4. Borne IRVE', icon: Zap },
             { id: 'sechoir', label: '5. Séchoir BatiTech', icon: Leaf },
-          ].map((tab) => {
+          ].filter(tab => isAcama ? tab.id !== 'sechoir' : true).map((tab) => {
             const Icon = tab.icon;
             const isActive = activeSubTab === tab.id;
             return (
@@ -462,9 +473,10 @@ export default function SimulatorDatabaseTab() {
             </div>
           </div>
 
-          {/* TABLEAU COMPLET DE LA GAMME ECO & EVO AVEC AJOUT / SUPPRESSION */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          {/* TABLEAU COMPLET DE LA GAMME ECO & EVO AVEC AJOUT / SUPPRESSION (Masqué pour ACAMA) */}
+          {!isAcama && (
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                   <Table className="w-5 h-5 text-indigo-600" />
@@ -612,6 +624,7 @@ export default function SimulatorDatabaseTab() {
               </table>
             </div>
           </div>
+        )}
         </div>
       )}
 
@@ -759,8 +772,8 @@ export default function SimulatorDatabaseTab() {
         </div>
       )}
 
-      {/* ═══ 5. SÉCHOIR MULTI-MATIÈRES BATITECH® COGEN'AIR® ═══ */}
-      {activeSubTab === 'sechoir' && (
+      {/* ═══ 5. SÉCHOIR MULTI-MATIÈRES BATITECH® COGEN'AIR® (Masqué pour ACAMA) ═══ */}
+      {activeSubTab === 'sechoir' && !isAcama && (
         <div className="space-y-6">
 
           {/* 5a. Hypothèses Économiques & Paramètres Financiers */}

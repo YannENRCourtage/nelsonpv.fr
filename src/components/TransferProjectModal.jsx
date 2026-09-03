@@ -46,8 +46,8 @@ const TransferProjectModal = ({ show, onClose, project, projects = [], onTransfe
         }
     };
 
-    const currentTenantLabel = firstProject.tenantId === 'acama' ? 'ACAMA' : (firstProject.tenantId === 'enr-courtage-energie' ? 'ENR COURTAGE ENERGIE' : 'GREEN INVEST');
-    const targetTenantLabel = targetTenant === 'acama' ? 'ACAMA' : (targetTenant === 'enr-courtage-energie' ? 'ENR COURTAGE ENERGIE' : (targetTenant === 'green-invest' ? 'GREEN INVEST' : 'Sélectionner...'));
+    const currentTenantLabel = firstProject.tenantId === 'acama' ? 'ACAMA' : (firstProject.tenantId === 'enr-courtage-energie' ? 'ENR COURTAGE' : 'GREEN INVEST');
+    const targetTenantLabel = targetTenant === 'acama' ? 'ACAMA' : (targetTenant === 'enr-courtage-energie' ? 'ENR COURTAGE' : (targetTenant === 'green-invest' ? 'GREEN INVEST' : 'Sélectionner...'));
 
     return createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[99999] p-4 text-left">
@@ -95,7 +95,7 @@ const TransferProjectModal = ({ show, onClose, project, projects = [], onTransfe
                             >
                                 <option value="">Choisir la destination...</option>
                                 {firstProject.tenantId !== 'green-invest' && <option value="green-invest">GREEN INVEST</option>}
-                                {firstProject.tenantId !== 'enr-courtage-energie' && <option value="enr-courtage-energie">ENR COURTAGE ENERGIE</option>}
+                                {firstProject.tenantId !== 'enr-courtage-energie' && <option value="enr-courtage-energie">ENR COURTAGE</option>}
                                 {firstProject.tenantId !== 'acama' && <option value="acama">ACAMA</option>}
                             </select>
                         </div>

@@ -9,6 +9,7 @@ import { toast } from '@/components/ui/use-toast';
 
 export default function SimulatorArchivesTab({
   simulations = [],
+  isAcama = false,
   onLoadSimulation,
   onDeleteSimulation,
   onExportPDF
@@ -17,7 +18,22 @@ export default function SimulatorArchivesTab({
   const [searchQuery, setSearchQuery] = useState('');
   const [displayMode, setDisplayMode] = useState('grid'); // 'grid' | 'table'
 
+  // Sur ACAMA, interdire le filtre Séchoir BatiTech
+  React.useEffect(() => {
+    if (isAcama && filterType === 'sechoir_batitech') {
+      setFilterType('all');
+    }
+  }, [isAcama, filterType]);
+
   const filteredSimulations = simulations.filter(sim => {
+    // Si interface ACAMA : filtrage strict des archives
+    if (isAcama) {
+      if (sim.tenantId && sim.tenantId !== 'acama') return false;
+      if (sim.interface && sim.interface !== 'ACAMA') return false;
+      const isSechoir = sim.type === 'sechoir_batitech' || sim.type === 'sechoir' || sim.projectType === 'sechoir_batitech' || (sim.title && sim.title.toLowerCase().includes('séchoir'));
+      if (isSechoir) return false;
+    }
+
     const isSechoirSim = sim.type === 'sechoir_batitech' || sim.type === 'sechoir' || sim.projectType === 'sechoir_batitech' || (sim.title && sim.title.toLowerCase().includes('séchoir'));
     const isAutoconsoSim = sim.type === 'autoconsommation' || sim.projectType === 'solar';
     const isToitureSim = sim.type === 'toiture_pv';
@@ -119,7 +135,7 @@ export default function SimulatorArchivesTab({
               { id: 'structure_metallique', label: 'Bâtiment 3D' },
               { id: 'irve', label: 'IRVE' },
               { id: 'sechoir_batitech', label: 'Séchoir BatiTech' },
-            ].map(tab => (
+            ].filter(tab => isAcama ? tab.id !== 'sechoir_batitech' : true).map(tab => (
               <button
                 key={tab.id}
                 type="button"

@@ -174,7 +174,7 @@ export default function AosAoModal({ project, isOpen, onClose }) {
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
-      doc.text('Document généré par nelsonpv.fr — ENR COURTAGE ENERGIE — Usage interne et confidentiel', margins, 291);
+      doc.text('Document généré par nelsonpv.fr — ENR COURTAGE — Usage interne et confidentiel', margins, 291);
 
       doc.save(`AOS_AO_Fiche_${(project?.name || project?.lastName || 'Projet').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
       toast({ title: 'Fiche PDF générée', description: 'La fiche récapitulative a été téléchargée.' });

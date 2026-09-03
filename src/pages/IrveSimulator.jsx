@@ -119,8 +119,11 @@ const ProjectSelect = ({ projects, activeProjectId, onSelect }) => {
 };
 
 export default function IrveSimulator() {
-  const { user } = useAuth();
+  const { user, activeTenantId } = useAuth();
   const { projects } = useProjects();
+
+  const currentTenant = activeTenantId || user?.tenantId || 'green-invest';
+  const isAcama = currentTenant === 'acama';
 
   // ─── Navigation Principale Gauche : 'simulateurs' | 'archives' | 'database' ─
   const [activeMainTab, setActiveMainTab] = useState('simulateurs');
@@ -135,6 +138,13 @@ export default function IrveSimulator() {
   const [activeSolution, setActiveSolution] = useState('autoconso');
   const tabsContainerRef = useRef(null);
   const tabRefs = useRef({});
+
+  // Sur ACAMA, interdire la solution séchoir et basculer sur structure métallique
+  useEffect(() => {
+    if (isAcama && activeSolution === 'sechoir') {
+      setActiveSolution('structure');
+    }
+  }, [isAcama, activeSolution]);
 
   useEffect(() => {
     const container = tabsContainerRef.current;
@@ -162,9 +172,8 @@ export default function IrveSimulator() {
   const selectedProject = (projects || []).find(p => p.id === selectedProjectId);
 
   const getSimulationsCollection = useCallback(() => {
-    const tenantId = user?.activeTenantId || user?.tenantId || 'enr-courtage-energie';
-    return collection(db, 'tenants', tenantId, 'unified_simulations');
-  }, [user]);
+    return collection(db, 'tenants', currentTenant, 'unified_simulations');
+  }, [currentTenant]);
 
   const loadSimulations = useCallback(async () => {
     setIsLoadingSimulations(true);
@@ -173,17 +182,52 @@ export default function IrveSimulator() {
       const q = query(col, orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setSimulations(list);
+
+      // Isolation stricte par tenant : les archives ACAMA ne doivent afficher que les archives ACAMA
+      const filtered = list.filter(sim => {
+        if (isAcama) {
+          if (sim.tenantId && sim.tenantId !== 'acama') return false;
+          if (sim.interface && sim.interface !== 'ACAMA') return false;
+          if (sim.type === 'sechoir' || sim.type === 'sechoir_batitech' || (sim.title && sim.title.toLowerCase().includes('séchoir'))) return false;
+          return true;
+        } else if (currentTenant === 'green-invest') {
+          if (sim.tenantId && sim.tenantId !== 'green-invest') return false;
+          if (sim.interface && sim.interface === 'ACAMA') return false;
+          return true;
+        } else {
+          // enr-courtage-energie / enr-courtage
+          if (sim.tenantId && sim.tenantId !== 'enr-courtage-energie') return false;
+          if (sim.interface && sim.interface === 'ACAMA') return false;
+          return true;
+        }
+      });
+      setSimulations(filtered);
     } catch (err) {
       console.warn('Chargement Firebase fallback localStorage:', err);
       try {
-        const local = localStorage.getItem('nelson_saved_simulations');
-        if (local) setSimulations(JSON.parse(local));
-      } catch (e) {}
+        const local = localStorage.getItem(`nelson_saved_simulations_${currentTenant}`);
+        if (local) {
+          const parsed = JSON.parse(local);
+          const filtered = parsed.filter(sim => {
+            if (isAcama) {
+              if (sim.tenantId && sim.tenantId !== 'acama') return false;
+              if (sim.interface && sim.interface !== 'ACAMA') return false;
+              if (sim.type === 'sechoir' || sim.type === 'sechoir_batitech') return false;
+              return true;
+            }
+            return true;
+          });
+          setSimulations(filtered);
+        } else {
+          setSimulations([]);
+        }
+      } catch (e) {
+        setSimulations([]);
+      }
     } finally {
       setIsLoadingSimulations(false);
     }
-  }, [getSimulationsCollection]);
+  }, [getSimulationsCollection, currentTenant, isAcama]);
 
   useEffect(() => {
     loadSimulations();
@@ -200,6 +244,8 @@ export default function IrveSimulator() {
     const payload = {
       id: simId,
       ...dataToSave,
+      tenantId: currentTenant,
+      interface: isAcama ? 'ACAMA' : (currentTenant === 'green-invest' ? 'GREEN INVEST' : 'ENR COURTAGE'),
       clientProjectId: selectedProjectId || null,
       clientName: selectedProject?.name || selectedProject?.lastName || dataToSave.cityName || 'Client Privé',
       createdAt: new Date().toISOString()
@@ -215,7 +261,7 @@ export default function IrveSimulator() {
     setSimulations(prev => {
       const updated = [payload, ...prev];
       try {
-        localStorage.setItem('nelson_saved_simulations', JSON.stringify(updated));
+        localStorage.setItem(`nelson_saved_simulations_${currentTenant}`, JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -238,7 +284,7 @@ export default function IrveSimulator() {
     setSimulations(prev => {
       const updated = prev.filter(s => s.id !== simId);
       try {
-        localStorage.setItem('nelson_saved_simulations', JSON.stringify(updated));
+        localStorage.setItem(`nelson_saved_simulations_${currentTenant}`, JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -417,7 +463,9 @@ export default function IrveSimulator() {
                 <Calculator className="w-5 h-5 text-amber-400" />
                 Simulateurs Pro
               </h2>
-              <p className="text-xs text-slate-400 font-semibold">ENR Courtage Énergie</p>
+              <p className="text-xs text-slate-400 font-semibold">
+                {isAcama ? 'ACAMA' : (currentTenant === 'green-invest' ? 'GREEN INVEST' : 'ENR COURTAGE')}
+              </p>
             </div>
           ) : (
             <Calculator className="w-6 h-6 text-amber-400 mx-auto" />
@@ -459,7 +507,7 @@ export default function IrveSimulator() {
             {
               id: 'simulateurs',
               label: 'Simulateurs',
-              desc: '4 solutions clés en main',
+              desc: isAcama ? '4 solutions clés en main' : '5 solutions clés en main',
               icon: Calculator,
               color: 'from-blue-600 to-indigo-600',
               activeRing: 'ring-blue-400'
@@ -509,7 +557,7 @@ export default function IrveSimulator() {
         {sidebarOpen && (
           <div className="p-4 border-t border-white/10 text-center text-xs text-slate-400">
             <p className="font-bold text-slate-300">NELSON Platform</p>
-            <p>© {new Date().getFullYear()} ENR Courtage</p>
+            <p>© {new Date().getFullYear()} {isAcama ? 'ACAMA' : (currentTenant === 'green-invest' ? 'Green Invest' : 'ENR Courtage')}</p>
           </div>
         )}
       </aside>
@@ -519,10 +567,10 @@ export default function IrveSimulator() {
          ═══════════════════════════════════════════════════════════════════════ */}
       <main className="flex-1 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden flex flex-col">
         
-        {/* BARRE SUPÉRIEURE AVEC LES 5 SOLUTIONS ET LES BOUTONS SAUVEGARDER / PDF */}
+        {/* BARRE SUPÉRIEURE AVEC LES SOLUTIONS ET LES BOUTONS SAUVEGARDER / PDF */}
         <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-3 shadow-2xs flex flex-col gap-2.5 w-full min-w-0 max-w-full overflow-hidden">
           
-          {/* Ligne 1 : Titre et Sélecteur des 5 solutions avec scroll horizontal fluide */}
+          {/* Ligne 1 : Titre et Sélecteur des solutions avec scroll horizontal fluide */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 w-full min-w-0">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
               <h1 className="text-base sm:text-xl font-black text-slate-900 truncate">
@@ -551,7 +599,7 @@ export default function IrveSimulator() {
                       { id: 'structure', label: 'Structure Métallique', icon: Sliders, color: 'text-indigo-500' },
                       { id: 'irve', label: 'Borne IRVE', icon: Zap, color: 'text-emerald-500' },
                       { id: 'sechoir', label: 'Séchoir BatiTech®', icon: Wheat, color: 'text-orange-500' },
-                    ].map(sol => {
+                    ].filter(sol => isAcama ? sol.id !== 'sechoir' : true).map(sol => {
                       const Icon = sol.icon;
                       const isSelected = activeSolution === sol.id;
                       return (
@@ -669,7 +717,7 @@ export default function IrveSimulator() {
                 />
               )}
 
-              {activeSolution === 'sechoir' && (
+              {activeSolution === 'sechoir' && !isAcama && (
                 <SechoirBatitechSimulator
                   selectedProject={selectedProject}
                   onSaveSimulation={handleSaveCurrentSimulation}
@@ -684,6 +732,7 @@ export default function IrveSimulator() {
           {activeMainTab === 'archives' && (
             <SimulatorArchivesTab
               simulations={simulations}
+              isAcama={isAcama}
               onLoadSimulation={handleLoadSimulation}
               onDeleteSimulation={handleDeleteSimulation}
               onExportPDF={handleExportPDF}

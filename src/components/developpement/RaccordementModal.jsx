@@ -119,7 +119,7 @@ Caractéristiques de l'installation :
 Nous vous remercions de bien vouloir nous transmettre une proposition technique et financière (PTF).
 
 Cordialement,
-ENR COURTAGE ENERGIE — nelsonpv.fr`;
+ENR COURTAGE — nelsonpv.fr`;
 
   const handleCopyEmail = () => {
     navigator.clipboard.writeText(emailBody);
@@ -213,7 +213,7 @@ ENR COURTAGE ENERGIE — nelsonpv.fr`;
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
-      doc.text('Document généré par nelsonpv.fr — ENR COURTAGE ENERGIE', m, 291);
+      doc.text('Document généré par nelsonpv.fr — ENR COURTAGE', m, 291);
 
       doc.save(`Raccordement_${(project?.name || project?.lastName || 'Projet').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`);
       toast({ title: 'Dossier PDF généré', description: 'Le récapitulatif de raccordement a été téléchargé.' });
