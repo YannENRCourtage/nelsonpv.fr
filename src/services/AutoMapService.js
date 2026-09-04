@@ -95,85 +95,88 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
         const mx = centerX;
         const my = centerY;
 
-        if (zoom >= 18) {
-          // Repère Plan de Masse avec emprise exacte, position GPS personnalisée et rotation de chaque bâtiment
-          const bList = (buildings && Array.isArray(buildings) && buildings.length > 0)
-            ? buildings
-            : [{ length: 30, width: 20, rotation: 0, name: 'Bâtiment 1' }];
+        const hasBuildings = Boolean(buildings && Array.isArray(buildings) && buildings.length > 0);
 
-          // Facteur d'échelle mètres -> pixels à zoom 19
+        if (hasBuildings) {
+          // Repère Plan de Masse avec emprise exacte, position GPS personnalisée et rotation de chaque bâtiment
+          const bList = buildings;
+
+          // Facteur d'échelle mètres -> pixels au niveau de zoom courant
           const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
           const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 2.0;
 
           bList.forEach((b, bIdx) => {
             const bLength = Number(b.length || b.longueur || 30);
-            const bWidth = Number(b.width || b.largeur || 20);
+            const bWidth = Number(b.totalWidth || b.width || b.largeur || 20);
             const bRot = Number(b.rotation || 0);
-            const rectW = Math.max(30, bLength * pxPerMeter);
-            const rectH = Math.max(20, bWidth * pxPerMeter);
+            const rectW = Math.max(20, bLength * pxPerMeter);
+            const rectH = Math.max(12, bWidth * pxPerMeter);
 
-            // Calcul de la position exacte du bâtiment
+            // Calcul de la position exacte du bâtiment par rapport au centre de la carte (lat, lng)
             let bPixelX = mx;
             let bPixelY = my;
 
-            if (bList.length > 1) {
-              const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null));
-              const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null));
+            const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || lat);
+            const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || lng);
 
-              if (bLat && bLng && !isNaN(bLat) && !isNaN(bLng)) {
-                const bRad = (bLat * Math.PI) / 180;
-                const bExactX = ((bLng + 180) / 360) * n;
-                const bExactY = ((1 - Math.log(Math.tan(bRad) + 1 / Math.cos(bRad)) / Math.PI) / 2) * n;
-                bPixelX = centerX + (bExactX - exactX) * tileSize;
-                bPixelY = centerY + (bExactY - exactY) * tileSize;
-              } else {
-                bPixelX = mx + (bIdx * 80 - ((bList.length - 1) * 40));
-              }
+            if (bLat && bLng && !isNaN(bLat) && !isNaN(bLng)) {
+              const bRad = (bLat * Math.PI) / 180;
+              const bExactX = ((bLng + 180) / 360) * n;
+              const bExactY = ((1 - Math.log(Math.tan(bRad) + 1 / Math.cos(bRad)) / Math.PI) / 2) * n;
+              bPixelX = centerX + (bExactX - exactX) * tileSize;
+              bPixelY = centerY + (bExactY - exactY) * tileSize;
             }
 
             ctx.save();
             ctx.translate(bPixelX, bPixelY);
             ctx.rotate((bRot * Math.PI) / 180);
 
-            // Emprise au sol colorée fidèle à l'interface PC2
-            ctx.fillStyle = 'rgba(239, 68, 68, 0.22)';
+            // Détection du type de structure pour un rendu fidèle à l'interface DP2 / PC2
+            const isOmbriere = b.solutionKey === 'ombriere' || (b.buildingType || '').toLowerCase().includes('ombriere') || (b.name || '').toLowerCase().includes('ombrière');
+            const strokeColor = isOmbriere ? '#059669' : '#2563eb';
+            const fillColor = isOmbriere ? 'rgba(16, 185, 129, 0.35)' : 'rgba(59, 130, 246, 0.35)';
+            const badgeBorder = isOmbriere ? '#a7f3d0' : '#bfdbfe';
+            const badgeTextColor = isOmbriere ? '#065f46' : '#1e40af';
+
+            // Emprise au sol colorée avec pointillés
+            ctx.fillStyle = fillColor;
             ctx.fillRect(-rectW / 2, -rectH / 2, rectW, rectH);
-            ctx.strokeStyle = '#ef4444';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 3]);
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([5, 4]);
             ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
             ctx.setLineDash([]);
 
             // Faîtage médian en pointillés discrets
             ctx.beginPath();
             ctx.setLineDash([4, 3]);
-            ctx.strokeStyle = '#f59e0b';
+            ctx.strokeStyle = isOmbriere ? '#10b981' : '#60a5fa';
             ctx.lineWidth = 1.5;
             ctx.moveTo(-rectW / 2, 0);
             ctx.lineTo(rectW / 2, 0);
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Badge central blanc avec libellé du bâtiment (style identique à l'étape PC2)
-            const badgeText = `${b.name || `Bâtiment ${bIdx + 1}`} (${bRot}°)`;
-            ctx.font = 'bold 9.5px sans-serif';
+            // Badge central blanc avec libellé du bâtiment (style identique au Tooltip Leaflet)
+            const badgeText = `${b.name || (isOmbriere ? `Ombrière ${bIdx + 1}` : `Bâtiment ${bIdx + 1}`)} (${bRot}°)`;
+            ctx.font = 'bold 10px sans-serif';
             const metrics = ctx.measureText(badgeText);
-            const badgeW = metrics.width + 10;
-            const badgeH = 16;
+            const badgeW = metrics.width + 12;
+            const badgeH = 18;
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
-            ctx.strokeStyle = '#fca5a5';
-            ctx.lineWidth = 0.8;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.strokeStyle = badgeBorder;
+            ctx.lineWidth = 1;
             ctx.beginPath();
             if (ctx.roundRect) {
-              ctx.roundRect(-badgeW / 2, -badgeH / 2, badgeW, badgeH, 3);
+              ctx.roundRect(-badgeW / 2, -badgeH / 2, badgeW, badgeH, 4);
             } else {
               ctx.rect(-badgeW / 2, -badgeH / 2, badgeW, badgeH);
             }
             ctx.fill();
             ctx.stroke();
 
-            ctx.fillStyle = '#7f1d1d';
+            ctx.fillStyle = badgeTextColor;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(badgeText, 0, 0);
@@ -222,8 +225,8 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
           ctx.restore();
         }
 
-        // Marqueur Pin de localisation (uniquement pour PC1 Situation et Satellite, masqué en PC2 Plan de masse)
-        if (zoom < 18) {
+        // Marqueur Pin de localisation (uniquement pour PC1/DP1 Situation et Satellite sans bâtiments configurés)
+        if (!hasBuildings) {
           // Halo
           ctx.beginPath();
           ctx.arc(mx, my, 14, 0, Math.PI * 2);
@@ -243,11 +246,11 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
         // Légende filigrane
         ctx.font = 'bold 11px sans-serif';
         ctx.fillStyle = mode === 'satellite' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
-        const legendText = zoom >= 19
-          ? 'PC2 / DP2 — Plan de masse (OpenStreetMap Zoom 19)'
-          : mode === 'satellite'
-          ? 'PC1 / DP1 — Vue Aérienne (Géoportail / Satellite)'
-          : 'PC1 / DP1 — Plan de Situation (IGN / OSM)';
+        const legendText = hasBuildings
+          ? `PC2 / DP2 — Plan de masse (OpenStreetMap Zoom ${zoom})`
+          : (mode === 'satellite'
+            ? 'PC1 / DP1 — Vue Aérienne (Géoportail / Satellite)'
+            : 'PC1 / DP1 — Plan de Situation (IGN / OSM)');
         ctx.fillText(legendText, 12, height - 12);
 
         try {

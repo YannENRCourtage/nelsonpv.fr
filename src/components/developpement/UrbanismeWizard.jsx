@@ -24,6 +24,7 @@ import DimensionsModal from './DimensionsModal';
 import LandscapeIntegrationModal from './LandscapeIntegrationModal';
 import Building3DViewer from './Building3DViewer';
 import BatteryStationVisualizer from './BatteryStationVisualizer';
+import html2canvas from 'html2canvas';
 import { MapContainer, TileLayer, Marker, Polygon, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -262,11 +263,40 @@ function PC2MapScaleBar() {
 
 function MapSyncCenter({ lat, lng }) {
   const map = useMap();
+  const prevCoordsRef = React.useRef({ lat, lng });
+
   useEffect(() => {
     if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-      map.setView([lat, lng], map.getZoom(), { animate: true });
+      if (prevCoordsRef.current.lat !== lat || prevCoordsRef.current.lng !== lng) {
+        prevCoordsRef.current = { lat, lng };
+        map.setView([lat, lng], map.getZoom(), { animate: true });
+      }
     }
   }, [lat, lng, map]);
+  return null;
+}
+
+function MasseMapController({ strId, onMapChange }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!onMapChange) return;
+    const handleUpdate = () => {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      onMapChange(strId, {
+        centerLat: center.lat,
+        centerLng: center.lng,
+        zoom: zoom
+      });
+    };
+
+    map.on('moveend zoomend', handleUpdate);
+    return () => {
+      map.off('moveend zoomend', handleUpdate);
+    };
+  }, [strId, map, onMapChange]);
+
   return null;
 }
 
@@ -638,6 +668,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           name: dynamicName,
           length: effectiveLen,
           width: effectiveWid,
+          totalWidth: effectiveWid,
           solutionKey: 'ombriere',
           solutionLabel: 'Ombrière PV',
           indexInSol: i
@@ -678,7 +709,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
             nextList[bIdx] = {
               ...nextList[bIdx],
               id: targetId,
-              rotation: numRot
+              rotation: numRot,
+              masse_capture: null
             };
             nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
             updated = true;
@@ -713,7 +745,45 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
               id: targetId,
               lat: numLat,
               lng: numLng,
-              gps: `${numLat},${numLng}`
+              gps: `${numLat},${numLng}`,
+              masse_capture: null
+            };
+            nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
+            updated = true;
+          }
+        }
+      });
+
+      return updated ? nextSol : prev;
+    });
+  }, []);
+
+  // Mise à jour du cadrage (centre et zoom) d'une structure quelconque depuis Carte DP2/PC2
+  const handleMasseMapChange = useCallback((targetId, { centerLat, centerLng, zoom }) => {
+    const numLat = Number(centerLat);
+    const numLng = Number(centerLng);
+    const numZoom = Number(zoom);
+    if (!numLat || !numLng || isNaN(numLat) || isNaN(numLng)) return;
+
+    setSolutions(prev => {
+      const nextSol = { ...prev };
+      let updated = false;
+
+      ['building', 'ombriere'].forEach(solKey => {
+        if (nextSol[solKey]?.buildings) {
+          const bIdx = nextSol[solKey].buildings.findIndex(b => {
+            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : 'bat-') ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-1`;
+            return b.id === targetId || currentId === targetId;
+          });
+          if (bIdx !== -1) {
+            const nextList = [...nextSol[solKey].buildings];
+            nextList[bIdx] = {
+              ...nextList[bIdx],
+              id: targetId,
+              masse_center_lat: numLat,
+              masse_center_lng: numLng,
+              masse_zoom: numZoom || 18,
+              masse_capture: null
             };
             nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
             updated = true;
@@ -780,7 +850,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
   // Synchronisation stricte de toutes les structures avec l'adresse du site (Étape Déclarant)
   useEffect(() => {
-    if (step === 4) {
+    if (step === 0) {
       const siteCoords = resolveProjectCoordinates(editedProject, project);
       const refLat = siteCoords.lat;
       const refLng = siteCoords.lng;
@@ -1909,6 +1979,90 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     }).catch(err => console.warn('[UrbanismeWizard] Upload Storage échoué:', err));
   };
 
+  // Sauvegarde d'une capture fidèle de plan de masse (DP2 / PC2)
+  const handleSaveMasseCapture = useCallback((targetId, dataUrl) => {
+    if (!dataUrl) return;
+
+    setSolutions(prev => {
+      const nextSol = { ...prev };
+      let updated = false;
+
+      ['building', 'ombriere'].forEach(solKey => {
+        if (nextSol[solKey]?.buildings) {
+          const bIdx = nextSol[solKey].buildings.findIndex(b => {
+            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : 'bat-') ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-1`;
+            return b.id === targetId || currentId === targetId;
+          });
+          if (bIdx !== -1) {
+            const nextList = [...nextSol[solKey].buildings];
+            nextList[bIdx] = {
+              ...nextList[bIdx],
+              id: targetId,
+              masse_capture: dataUrl
+            };
+            nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
+            updated = true;
+          }
+        }
+      });
+
+      return updated ? nextSol : prev;
+    });
+
+    setCaptures(prev => ({ ...prev, masse_projet: dataUrl }));
+    setEditedProject(prev => ({
+      ...prev,
+      urbanisme_captures: { ...(prev.urbanisme_captures || {}), masse_projet: dataUrl }
+    }));
+    persistMediaItem(targetId, 'masse_projet', dataUrl, 'captures');
+  }, [persistMediaItem]);
+
+  // Capture haute résolution du conteneur Leaflet d'une structure donnée
+  const captureStructureMasseMap = useCallback(async (strId) => {
+    const el = document.getElementById(`masse-map-container-${strId}`);
+    if (!el) return null;
+    try {
+      const canvas = await html2canvas(el, {
+        useCORS: true,
+        logging: false,
+        scale: 1.5,
+        ignoreElements: (element) => Boolean(
+          element.classList && (
+            element.classList.contains('leaflet-control-zoom') ||
+            element.classList.contains('leaflet-control-attribution') ||
+            element.classList.contains('leaflet-marker-icon') ||
+            element.classList.contains('leaflet-marker-shadow')
+          )
+        )
+      });
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      if (dataUrl) {
+        handleSaveMasseCapture(strId, dataUrl);
+        return dataUrl;
+      }
+    } catch (e) {
+      console.warn('[UrbanismeWizard] html2canvas error on map container:', e);
+    }
+    return null;
+  }, [handleSaveMasseCapture]);
+
+  // Capture séquentielle de toutes les visionneuses de plan de masse actives
+  const captureAllActiveMasseMaps = useCallback(async () => {
+    const activeList = allConfiguredStructures.filter(str => selectedStructureIds.includes(str.id));
+    for (const str of activeList) {
+      await captureStructureMasseMap(str.id);
+    }
+  }, [allConfiguredStructures, selectedStructureIds, captureStructureMasseMap]);
+
+  // Auto-capture initiale dès que l'utilisateur entre sur l'étape Carte DP2/PC2 (étape 4)
+  useEffect(() => {
+    if (step !== 4) return;
+    const timer = setTimeout(() => {
+      captureAllActiveMasseMaps();
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [step, captureAllActiveMasseMaps]);
+
   // Sauvegarde simulation 3D après projet (DP6 / PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
     const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
@@ -2191,11 +2345,59 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const ignMap = await generateStaticMapImage(lat, lng, 'map', 16);
     const satMap = await generateStaticMapImage(lat, lng, 'satellite', 17);
     
-    // Génération de la capture de plan de masse individuelle par bâtiment
+    // Génération / validation de la capture de plan de masse individuelle par bâtiment
     const buildingsWithMasse = await Promise.all(updatedBuildings.map(async (b) => {
       const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || lat);
       const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || lng);
-      const bMasse = await generateStaticMapImage(bLat, bLng, 'map', 19, [b]);
+      
+      // 1. Si une capture live fidèle de la visionneuse Leaflet existe déjà, la réutiliser
+      if (b.masse_capture && typeof b.masse_capture === 'string' && b.masse_capture.startsWith('data:image')) {
+        return {
+          ...b,
+          lat: bLat,
+          lng: bLng,
+          gps: `${bLat},${bLng}`,
+          masse_capture: b.masse_capture
+        };
+      }
+
+      // 2. Si l'élément DOM de la visionneuse Leaflet est actuellement présent, le capturer
+      const mapEl = document.getElementById(`masse-map-container-${b.id}`);
+      if (mapEl) {
+        try {
+          const c = await html2canvas(mapEl, {
+            useCORS: true,
+            logging: false,
+            scale: 1.5,
+            ignoreElements: (el) => Boolean(
+              el.classList && (
+                el.classList.contains('leaflet-control-zoom') ||
+                el.classList.contains('leaflet-control-attribution') ||
+                el.classList.contains('leaflet-marker-icon') ||
+                el.classList.contains('leaflet-marker-shadow')
+              )
+            )
+          });
+          const liveDataUrl = c.toDataURL('image/jpeg', 0.92);
+          if (liveDataUrl) {
+            return {
+              ...b,
+              lat: bLat,
+              lng: bLng,
+              gps: `${bLat},${bLng}`,
+              masse_capture: liveDataUrl
+            };
+          }
+        } catch (e) {
+          console.warn('[handleGenerate] html2canvas live map capture error:', e);
+        }
+      }
+
+      // 3. Sinon (fallback), générer fidèlement avec le bon zoom et le bon centrage
+      const bZoom = Number(b.masse_zoom || b.map_zoom || 18);
+      const bCenterLat = Number(b.masse_center_lat || bLat);
+      const bCenterLng = Number(b.masse_center_lng || bLng);
+      const bMasse = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, [b]);
       return {
         ...b,
         lat: bLat,
@@ -2205,7 +2407,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       };
     }));
 
-    const masseMap = buildingsWithMasse[0]?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 19, updatedBuildings);
+    const masseMap = buildingsWithMasse[0]?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 18, updatedBuildings);
 
     const allBuildingsCaptures = updatedBuildings.reduce((acc, b) => ({
       ...acc,
@@ -2359,8 +2561,11 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                 return (
                   <React.Fragment key={label}>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         syncActiveConfigToSolutions();
+                        if (step === 4 && i !== 4) {
+                          await captureAllActiveMasseMaps();
+                        }
                         setStep(i);
                       }}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
@@ -3631,11 +3836,17 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               </div>
 
                               {/* Visionneuse Carte pour ce bâtiment / cette ombrière */}
-                              <div className="relative flex-1 min-h-[260px] w-full overflow-hidden">
+                              <div
+                                id={`masse-map-container-${str.id}`}
+                                className="relative flex-1 min-h-[260px] w-full overflow-hidden"
+                              >
                                 <MapContainer
                                   key={`map-masse-${str.id}-${activeStructures.length}`}
-                                  center={[strLat, strLng]}
-                                  zoom={18}
+                                  center={[
+                                    Number(str.masse_center_lat || strLat),
+                                    Number(str.masse_center_lng || strLng)
+                                  ]}
+                                  zoom={Number(str.masse_zoom || 18)}
                                   scrollWheelZoom={true}
                                   className="h-full w-full"
                                   style={{ height: '100%', width: '100%' }}
@@ -3643,11 +3854,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   <TileLayer
                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                     attribution="&copy; OpenStreetMap"
+                                    crossOrigin="anonymous"
                                     maxZoom={21}
                                     maxNativeZoom={19}
                                   />
                                   <MapResizer activeCount={activeStructures.length} center={[strLat, strLng]} />
                                   <MapSyncCenter lat={strLat} lng={strLng} />
+                                  <MasseMapController strId={str.id} onMapChange={handleMasseMapChange} />
 
                                   {/* Polygone de la structure active de ce cadre (clé dynamique pour mise à jour instantanée) */}
                                   <Polygon
@@ -4301,7 +4514,16 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
           {/* Footer */}
           <div className="px-6 py-3.5 border-t border-gray-100 flex items-center justify-between bg-gray-50/80 flex-shrink-0">
             <button
-              onClick={step === 0 ? onClose : () => setStep(s => Math.max(0, s - 1))}
+              onClick={async () => {
+                if (step === 0) {
+                  onClose();
+                } else {
+                  if (step === 4) {
+                    await captureAllActiveMasseMaps();
+                  }
+                  setStep(s => Math.max(0, s - 1));
+                }
+              }}
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -4310,12 +4532,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
             {step < STEPS.length - 1 ? (
               <button
-                onClick={() => {
+                onClick={async () => {
                   syncActiveConfigToSolutions();
-                  if (step === 4 && !isNoticeUserModified) {
-                    const auto = buildAutoNoticeText();
-                    setNoticeText(auto);
-                    setEditedProject(prev => ({ ...prev, noticeText: auto }));
+                  if (step === 4) {
+                    await captureAllActiveMasseMaps();
+                    if (!isNoticeUserModified) {
+                      const auto = buildAutoNoticeText();
+                      setNoticeText(auto);
+                      setEditedProject(prev => ({ ...prev, noticeText: auto }));
+                    }
                   }
                   setStep(s => Math.min(STEPS.length - 1, s + 1));
                 }}

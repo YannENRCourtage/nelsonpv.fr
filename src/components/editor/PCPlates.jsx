@@ -263,7 +263,7 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                         {rawBuildings.map((b, idx) => {
                             const bPhoto = b.masse_capture || (idx === 0 ? captures?.masse_projet : null) || captures?.satellite;
                             let bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
-                            let bW = Number(b.width || project?.largeur || 20);
+                            let bW = Number(b.totalWidth || b.width || project?.largeur || 20);
                             if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
                                 bLen = Math.max(bLen, 30);
                                 bW = Math.max(bW, 15);
@@ -276,11 +276,13 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                             bDisplayName = bDisplayName.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
                             if (!bDisplayName) bDisplayName = `Bâtiment ${idx + 1}`;
 
+                            const bZoom = b.masse_zoom || project?.masse_zoom || captures?.masse_zoom || 18;
+
                             return (
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                         <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                            PC2 — Plan de Masse : {bDisplayName}
+                                            PC2 — Plan de Masse : {bDisplayName} (OpenStreetMap Zoom {bZoom})
                                         </span>
                                         <span style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 1.5mm', borderRadius: '2mm' }}>
                                             {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
@@ -303,7 +305,7 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                     const b = rawBuildings[0];
                     const bPhoto = b?.masse_capture || captures?.masse_projet || captures?.satellite;
                     let bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
-                    let bW = Number(b?.width || project?.largeur || 20);
+                    let bW = Number(b?.totalWidth || b?.width || project?.largeur || 20);
                     if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
                         bLen = Math.max(bLen, 30);
                         bW = Math.max(bW, 15);
@@ -316,11 +318,13 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                     bDisplayName = bDisplayName.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
                     if (!bDisplayName) bDisplayName = 'Bâtiment 1';
 
+                    const bZoom = b?.masse_zoom || project?.masse_zoom || captures?.masse_zoom || 18;
+
                     return (
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                 <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                    PC2 — Plan de Masse : {bDisplayName} (OpenStreetMap Zoom 19)
+                                    PC2 — Plan de Masse : {bDisplayName} (OpenStreetMap Zoom {bZoom})
                                 </span>
                                 <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 2mm', borderRadius: '2mm' }}>
                                     {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
