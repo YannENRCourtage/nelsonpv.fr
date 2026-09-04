@@ -232,8 +232,8 @@ async function drawCoverPage(doc, project, type, installationType) {
   if (type === 'dp') {
     const encartX = cx + 16;
     const encartW = W - cx - 36;
-    const encartH = 68;
-    const encartY = 42;
+    const encartH = 88;
+    const encartY = 30;
 
     // Fond encart
     page.drawRectangle({
@@ -264,13 +264,13 @@ async function drawCoverPage(doc, project, type, installationType) {
       color: C.green,
     });
 
-    // Phrase réglementaire sur 3 lignes couvrant toute la largeur de l'encart
+    // Phrase réglementaire intégrale couvrant toute la hauteur de l'encart
     const legalText = "« Les ouvrages de production d'électricité à partir de l'énergie solaire installés sur le sol et les ombrières intégrant un procédé de production d'énergies renouvelables, dont la puissance crête est inférieure à trois kilowatts et dont la hauteur maximum au-dessus du sol peut dépasser un mètre quatre-vingts ainsi que ceux dont la puissance crête est supérieure ou égale à trois kilowatts et inférieure à trois mégawatts quelle que soit leur hauteur. »";
-    const legalLines = wrapText(legalText, 145);
-    legalLines.slice(0, 3).forEach((line, idx) => {
+    const legalLines = wrapText(legalText, 140);
+    legalLines.forEach((line, idx) => {
       page.drawText(line, {
         x: encartX + 14,
-        y: encartY + encartH - 30 - (idx * 11.5),
+        y: encartY + encartH - 32 - (idx * 12),
         size: 8,
         font: fontR,
         color: rgb(0.20, 0.25, 0.30),
