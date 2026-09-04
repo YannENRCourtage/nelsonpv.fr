@@ -623,30 +623,6 @@ export default function Developpement() {
             {/* DP & CU Plates */}
             <div id="dev-plate-cover"><PlateCover project={activeProj} installationType={activeProj.type || 'batiment_solaire'} /></div>
             <div id="dev-plate-situation"><PlateSituation project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
-            <div id="dev-plate-masse">
-              <PlateMasse 
-                project={activeProj} 
-                captures={{
-                  ...(activeProj.urbanisme_captures || {}),
-                  ...(activeProj.buildings?.[0]?.masse_capture ? { masse_projet: activeProj.buildings[0].masse_capture } : {}),
-                  ...(activeProj.masse_capture ? { masse_projet: activeProj.masse_capture } : {})
-                }} 
-              />
-            </div>
-            <div id="dev-plate-masse-vue2">
-              <PlateMasse 
-                project={{ 
-                  ...activeProj, 
-                  masse_zoom: activeProj.buildings?.[0]?.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || 16 
-                }} 
-                captures={{
-                  ...(activeProj.urbanisme_captures || {}),
-                  masse_projet: activeProj.buildings?.[0]?.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2,
-                  masse_zoom: activeProj.buildings?.[0]?.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || 16
-                }} 
-                viewNumber={2}
-              />
-            </div>
 
             {/* Planches DP Spécifiques Multi-Bâtiments */}
             <div id="dev-plate-coupe-multi">
@@ -660,11 +636,19 @@ export default function Developpement() {
             </div>
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
+              const bRawZoom = Number(b.masse_zoom || activeProj.masse_zoom || 18);
+              const bEffectiveZoom = bRawZoom < 17 ? 18 : bRawZoom;
+              const bEffectiveZoom2 = Number(b.masse_zoom_2 || activeProj.masse_zoom_2 || Math.max(14, bEffectiveZoom - 2));
               const bCaptures = {
                 ...(activeProj.urbanisme_captures || {}),
                 ...(b.captures || {}),
                 ...(b.urbanisme_captures || {}),
-                ...(b.masse_capture ? { masse_projet: b.masse_capture } : {}),
+                masse_projet: b.masse_capture || activeProj.masse_capture || activeProj.urbanisme_captures?.masse_projet,
+                masse_zoom: bEffectiveZoom,
+                ...(b.masse_capture_2 || activeProj.masse_capture_2 ? {
+                  masse_projet_2: b.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2,
+                  masse_zoom_2: bEffectiveZoom2
+                } : {})
               };
               const bPhotos = {
                 ...(b.photos || {}),
@@ -704,6 +688,8 @@ export default function Developpement() {
                 leftWidth: b.leftWidth || 4.0,
                 rightWidth: b.rightWidth || 4.0,
                 buildingName: bName || (isProjectAcama ? `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m` : `Ombrière ${bIdx + 1}`),
+                masse_zoom: bEffectiveZoom,
+                masse_zoom_2: bEffectiveZoom2,
                 urbanisme_captures: bCaptures,
                 captures: bCaptures,
                 pc_photos: bPhotos,
@@ -719,11 +705,11 @@ export default function Developpement() {
                   {/* DP2 — Seconde page Plan de masse (Vue 2 - Zoom différent) */}
                   <div id={`dev-plate-masse-vue2${suffix}`}>
                     <PlateMasse 
-                      project={{ ...bProj, masse_zoom: b.masse_zoom_2 || activeProj.masse_zoom_2 || 16 }} 
+                      project={{ ...bProj, masse_zoom: bEffectiveZoom2 }} 
                       captures={{ 
                         ...bCaptures, 
                         masse_projet: b.masse_capture_2 || bCaptures.masse_projet_2 || activeProj.urbanisme_captures?.masse_projet_2,
-                        masse_zoom: b.masse_zoom_2 || activeProj.masse_zoom_2 || 16
+                        masse_zoom: bEffectiveZoom2
                       }} 
                       viewNumber={2}
                     />
@@ -759,37 +745,21 @@ export default function Developpement() {
 
             {/* PC Plates — Multi-Bâtiments */}
             <div id="dev-pc-plate-cover"><PCPlateCover project={activeProj} installationType={activeProj.type || 'batiment_solaire'} /></div>
-            <div id="dev-pc-plate-masse">
-              <PCPlateMasse 
-                project={activeProj} 
-                captures={{
-                  ...(activeProj.urbanisme_captures || {}),
-                  ...(activeProj.buildings?.[0]?.masse_capture ? { masse_projet: activeProj.buildings[0].masse_capture } : {}),
-                  ...(activeProj.masse_capture ? { masse_projet: activeProj.masse_capture } : {})
-                }} 
-              />
-            </div>
-            <div id="dev-pc-plate-masse-vue2">
-              <PCPlateMasse 
-                project={{ 
-                  ...activeProj, 
-                  masse_zoom: activeProj.buildings?.[0]?.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || 16 
-                }} 
-                captures={{
-                  ...(activeProj.urbanisme_captures || {}),
-                  masse_projet: activeProj.buildings?.[0]?.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2,
-                  masse_zoom: activeProj.buildings?.[0]?.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || 16
-                }} 
-                viewNumber={2}
-              />
-            </div>
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
+              const bRawZoom = Number(b.masse_zoom || activeProj.masse_zoom || 18);
+              const bEffectiveZoom = bRawZoom < 17 ? 18 : bRawZoom;
+              const bEffectiveZoom2 = Number(b.masse_zoom_2 || activeProj.masse_zoom_2 || Math.max(14, bEffectiveZoom - 2));
               const bCaptures = {
                 ...(activeProj.urbanisme_captures || {}),
                 ...(b.captures || {}),
                 ...(b.urbanisme_captures || {}),
-                ...(b.masse_capture ? { masse_projet: b.masse_capture } : {}),
+                masse_projet: b.masse_capture || activeProj.masse_capture || activeProj.urbanisme_captures?.masse_projet,
+                masse_zoom: bEffectiveZoom,
+                ...(b.masse_capture_2 || activeProj.masse_capture_2 ? {
+                  masse_projet_2: b.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2,
+                  masse_zoom_2: bEffectiveZoom2
+                } : {})
               };
               const bPhotos = {
                 ...(b.photos || {}),
@@ -829,6 +799,8 @@ export default function Developpement() {
                 leftWidth: b.leftWidth || 4.0,
                 rightWidth: b.rightWidth || 4.0,
                 buildingName: bName || (isProjectAcama ? `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m` : `Bâtiment ${bIdx + 1}`),
+                masse_zoom: bEffectiveZoom,
+                masse_zoom_2: bEffectiveZoom2,
                 urbanisme_captures: bCaptures,
                 captures: bCaptures,
                 pc_photos: bPhotos,
@@ -844,11 +816,11 @@ export default function Developpement() {
                   {/* PC2 — Seconde page Plan de masse (Vue 2 - Zoom différent) */}
                   <div id={`dev-pc-plate-masse-vue2${suffix}`}>
                     <PCPlateMasse 
-                      project={{ ...bProj, masse_zoom: b.masse_zoom_2 || activeProj.masse_zoom_2 || 16 }} 
+                      project={{ ...bProj, masse_zoom: bEffectiveZoom2 }} 
                       captures={{ 
                         ...bCaptures, 
                         masse_projet: b.masse_capture_2 || bCaptures.masse_projet_2 || activeProj.urbanisme_captures?.masse_projet_2,
-                        masse_zoom: b.masse_zoom_2 || activeProj.masse_zoom_2 || 16
+                        masse_zoom: bEffectiveZoom2
                       }} 
                       viewNumber={2}
                     />

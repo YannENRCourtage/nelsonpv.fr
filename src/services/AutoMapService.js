@@ -60,7 +60,7 @@ function getBuildingCorners(centerLat, centerLng, lengthMeters, widthMeters, rot
  * @param {number} zoom Level de zoom (16-17 pour situation, 19 pour plan de masse)
  * @returns {Promise<string>} Data URL Image JPEG (data:image/jpeg;base64,...)
  */
-export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, buildings = null, showDimensions = true) {
+export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, buildings = null, showDimensions = true) {
   return new Promise((resolve) => {
     try {
       const width = 800;
@@ -76,16 +76,19 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
         return;
       }
 
+      const hasBuildings = Boolean(buildings && Array.isArray(buildings) && buildings.length > 0);
+      const currentZoom = Number(zoom || (hasBuildings ? 18 : 16));
+
       // Fond de secours
       ctx.fillStyle = mode === 'satellite' ? '#1e293b' : '#f8fafc';
       ctx.fillRect(0, 0, width, height);
 
       // Calcul des tuiles
-      const tileCenter = latLngToTile(lat, lng, zoom);
+      const tileCenter = latLngToTile(lat, lng, currentZoom);
       const tileSize = 256;
 
       // Calcul du décalage exact du point dans la tuile centrale
-      const n = Math.pow(2, zoom);
+      const n = Math.pow(2, currentZoom);
       const exactX = ((lng + 180) / 360) * n;
       const rad = (lat * Math.PI) / 180;
       const exactY = ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n;
@@ -112,7 +115,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
         for (let dy = -range; dy <= range; dy++) {
           const tx = tileCenter.x + dx;
           const ty = tileCenter.y + dy;
-          const url = getTileUrl(tx, ty, zoom);
+          const url = getTileUrl(tx, ty, currentZoom);
           
           imagesToLoad.push({
             dx,
@@ -130,14 +133,12 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
         const mx = centerX;
         const my = centerY;
 
-        const hasBuildings = Boolean(buildings && Array.isArray(buildings) && buildings.length > 0);
-
         if (hasBuildings) {
           // Repère Plan de Masse avec emprise exacte, position GPS personnalisée et rotation de chaque bâtiment
           const bList = buildings;
 
           // Facteur d'échelle mètres -> pixels au niveau de zoom courant
-          const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+          const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, currentZoom + 8);
           const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 2.0;
 
           bList.forEach((b, bIdx) => {
@@ -293,7 +294,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
         ctx.font = 'bold 11px sans-serif';
         ctx.fillStyle = mode === 'satellite' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
         const legendText = hasBuildings
-          ? `PC2 / DP2 — Plan de masse (OpenStreetMap Zoom ${zoom})`
+          ? `PC2 / DP2 — Plan de masse (OpenStreetMap Zoom ${currentZoom})`
           : (mode === 'satellite'
             ? 'PC1 / DP1 — Vue Aérienne (Géoportail / Satellite)'
             : 'PC1 / DP1 — Plan de Situation (IGN / OSM)');

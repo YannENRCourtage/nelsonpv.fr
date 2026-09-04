@@ -191,17 +191,20 @@ export async function preloadProjectImages(project) {
         }
     }
 
-    // 1. Convertir urbanisme_captures
+    // 1. Convertir urbanisme_captures (ne jamais écraser une Data URL fraîche par un vieux cache)
     if (cloned.urbanisme_captures && typeof cloned.urbanisme_captures === 'object') {
         const keys = Object.keys(cloned.urbanisme_captures);
         await Promise.all(
             keys.map(async (k) => {
+                const val = cloned.urbanisme_captures[k];
+                if (val && typeof val === 'string' && val.startsWith('data:')) {
+                    return;
+                }
                 if (cached?.captures?.[k]) {
                     cloned.urbanisme_captures[k] = cached.captures[k];
                     return;
                 }
-                const val = cloned.urbanisme_captures[k];
-                if (val && typeof val === 'string' && !val.startsWith('data:')) {
+                if (val && typeof val === 'string') {
                     const dataUrl = await fetchImageAsDataUrl(val);
                     if (dataUrl) cloned.urbanisme_captures[k] = dataUrl;
                 }
@@ -215,7 +218,14 @@ export async function preloadProjectImages(project) {
         await Promise.all(
             keys.map(async (k) => {
                 const val = cloned.pc_photos[k];
-                if (val && typeof val === 'string' && !val.startsWith('data:')) {
+                if (val && typeof val === 'string' && val.startsWith('data:')) {
+                    return;
+                }
+                if (cached?.photos?.[k]) {
+                    cloned.pc_photos[k] = cached.photos[k];
+                    return;
+                }
+                if (val && typeof val === 'string') {
                     const dataUrl = await fetchImageAsDataUrl(val);
                     if (dataUrl) cloned.pc_photos[k] = dataUrl;
                 }
@@ -249,12 +259,15 @@ export async function preloadProjectImages(project) {
                         const bKeys = Object.keys(b.captures);
                         await Promise.all(
                             bKeys.map(async (k) => {
+                                const val = b.captures[k];
+                                if (val && typeof val === 'string' && val.startsWith('data:')) {
+                                    return;
+                                }
                                 if (bCache?.captures?.[k]) {
                                     b.captures[k] = bCache.captures[k];
                                     return;
                                 }
-                                const val = b.captures[k];
-                                if (val && typeof val === 'string' && !val.startsWith('data:')) {
+                                if (val && typeof val === 'string') {
                                     const dataUrl = await fetchImageAsDataUrl(val);
                                     if (dataUrl) b.captures[k] = dataUrl;
                                 }
@@ -265,29 +278,44 @@ export async function preloadProjectImages(project) {
                         const bKeys = Object.keys(b.urbanisme_captures);
                         await Promise.all(
                             bKeys.map(async (k) => {
+                                const val = b.urbanisme_captures[k];
+                                if (val && typeof val === 'string' && val.startsWith('data:')) {
+                                    return;
+                                }
                                 if (bCache?.captures?.[k]) {
                                     b.urbanisme_captures[k] = bCache.captures[k];
                                     return;
                                 }
-                                const val = b.urbanisme_captures[k];
-                                if (val && typeof val === 'string' && !val.startsWith('data:')) {
+                                if (val && typeof val === 'string') {
                                     const dataUrl = await fetchImageAsDataUrl(val);
                                     if (dataUrl) b.urbanisme_captures[k] = dataUrl;
                                 }
                             })
                         );
                     }
+                    // Propriétés directes de plan de masse du bâtiment
+                    if (b.masse_capture && typeof b.masse_capture === 'string' && !b.masse_capture.startsWith('data:')) {
+                        const dataUrl = await fetchImageAsDataUrl(b.masse_capture);
+                        if (dataUrl) b.masse_capture = dataUrl;
+                    }
+                    if (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && !b.masse_capture_2.startsWith('data:')) {
+                        const dataUrl = await fetchImageAsDataUrl(b.masse_capture_2);
+                        if (dataUrl) b.masse_capture_2 = dataUrl;
+                    }
                     // Photos du bâtiment
                     if (b.photos && typeof b.photos === 'object') {
                         const bKeys = Object.keys(b.photos);
                         await Promise.all(
                             bKeys.map(async (k) => {
+                                const val = b.photos[k];
+                                if (val && typeof val === 'string' && val.startsWith('data:')) {
+                                    return;
+                                }
                                 if (bCache?.photos?.[k]) {
                                     b.photos[k] = bCache.photos[k];
                                     return;
                                 }
-                                const val = b.photos[k];
-                                if (val && typeof val === 'string' && !val.startsWith('data:')) {
+                                if (val && typeof val === 'string') {
                                     const dataUrl = await fetchImageAsDataUrl(val);
                                     if (dataUrl) b.photos[k] = dataUrl;
                                 }
@@ -298,12 +326,15 @@ export async function preloadProjectImages(project) {
                         const bKeys = Object.keys(b.pc_photos);
                         await Promise.all(
                             bKeys.map(async (k) => {
+                                const val = b.pc_photos[k];
+                                if (val && typeof val === 'string' && val.startsWith('data:')) {
+                                    return;
+                                }
                                 if (bCache?.photos?.[k]) {
                                     b.pc_photos[k] = bCache.photos[k];
                                     return;
                                 }
-                                const val = b.pc_photos[k];
-                                if (val && typeof val === 'string' && !val.startsWith('data:')) {
+                                if (val && typeof val === 'string') {
                                     const dataUrl = await fetchImageAsDataUrl(val);
                                     if (dataUrl) b.pc_photos[k] = dataUrl;
                                 }

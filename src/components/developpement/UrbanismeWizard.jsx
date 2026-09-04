@@ -2189,7 +2189,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
   };
 
   // Sauvegarde d'une capture fidèle de plan de masse (DP2 / PC2) pour Vue 1 ou Vue 2
-  const handleSaveMasseCapture = useCallback((targetId, dataUrl, viewNum = 1) => {
+  const handleSaveMasseCapture = useCallback((targetId, dataUrl, viewNum = 1, zoom = null, centerLat = null, centerLng = null) => {
     if (!dataUrl) return;
 
     setSolutions(prev => {
@@ -2208,13 +2208,19 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
               nextList[bIdx] = {
                 ...nextList[bIdx],
                 id: targetId,
-                masse_capture_2: dataUrl
+                masse_capture_2: dataUrl,
+                ...(zoom ? { masse_zoom_2: zoom } : {}),
+                ...(centerLat ? { masse_center_lat_2: centerLat } : {}),
+                ...(centerLng ? { masse_center_lng_2: centerLng } : {}),
               };
             } else {
               nextList[bIdx] = {
                 ...nextList[bIdx],
                 id: targetId,
-                masse_capture: dataUrl
+                masse_capture: dataUrl,
+                ...(zoom ? { masse_zoom: zoom } : {}),
+                ...(centerLat ? { masse_center_lat: centerLat } : {}),
+                ...(centerLng ? { masse_center_lng: centerLng } : {}),
               };
             }
             nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
@@ -2227,10 +2233,20 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     });
 
     const captureKey = viewNum === 2 ? 'masse_projet_2' : 'masse_projet';
-    setCaptures(prev => ({ ...prev, [captureKey]: dataUrl }));
+    const zoomKey = viewNum === 2 ? 'masse_zoom_2' : 'masse_zoom';
+    setCaptures(prev => ({ 
+      ...prev, 
+      [captureKey]: dataUrl,
+      ...(zoom ? { [zoomKey]: zoom } : {})
+    }));
     setEditedProject(prev => ({
       ...prev,
-      urbanisme_captures: { ...(prev.urbanisme_captures || {}), [captureKey]: dataUrl }
+      urbanisme_captures: { 
+        ...(prev.urbanisme_captures || {}), 
+        [captureKey]: dataUrl,
+        ...(zoom ? { [zoomKey]: zoom } : {})
+      },
+      ...(viewNum === 1 ? { masse_capture: dataUrl, ...(zoom ? { masse_zoom: zoom } : {}) } : {})
     }));
     persistMediaItem(targetId, captureKey, dataUrl, 'captures');
   }, [persistMediaItem]);
@@ -2246,28 +2262,39 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
           ? Boolean(masseShowDimensions[strId])
           : (targetStr?.masse_show_dimensions !== false));
 
+    const bLat = Number(targetStr?.lat || (targetStr?.gps ? targetStr.gps.split(',')[0] : null) || 43.43571);
+    const bLng = Number(targetStr?.lng || (targetStr?.gps ? targetStr.gps.split(',')[1] : null) || -1.17644);
+
+    const isCurrentViewOnScreen = map && (masseViewTabs[strId] || 1) === viewNum;
+    const liveZoom = isCurrentViewOnScreen ? map.getZoom() : null;
+    const liveCenter = isCurrentViewOnScreen ? map.getCenter() : null;
+
+    const cLat = liveCenter ? liveCenter.lat : Number((viewNum === 2 ? targetStr?.masse_center_lat_2 : targetStr?.masse_center_lat) || bLat);
+    const cLng = liveCenter ? liveCenter.lng : Number((viewNum === 2 ? targetStr?.masse_center_lng_2 : targetStr?.masse_center_lng) || bLng);
+
+    // Zoom garanti : au minimum 18 pour Vue 1
+    let cZoom = liveZoom || Number((viewNum === 2 ? targetStr?.masse_zoom_2 : targetStr?.masse_zoom) || (viewNum === 2 ? 16 : 18));
+    if (viewNum === 1 && (!cZoom || cZoom < 17)) {
+      cZoom = 18;
+    }
+
     let dataUrl = null;
-    // 1. Tenter la capture directe instantanée sur le conteneur Leaflet (sans passer par html2canvas)
-    if (map) {
+    // 1. Tenter la capture directe instantanée sur le conteneur Leaflet si la vue affichée correspond
+    if (map && isCurrentViewOnScreen) {
       dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim);
     }
 
     // 2. Fallback de haute précision : génération statique sans faille (AutoMapService)
-    if (!dataUrl && targetStr) {
-      const bLat = Number(targetStr.lat || (targetStr.gps ? targetStr.gps.split(',')[0] : null) || 43.43571);
-      const bLng = Number(targetStr.lng || (targetStr.gps ? targetStr.gps.split(',')[1] : null) || -1.17644);
-      const cLat = Number((viewNum === 2 ? targetStr.masse_center_lat_2 : targetStr.masse_center_lat) || bLat);
-      const cLng = Number((viewNum === 2 ? targetStr.masse_center_lng_2 : targetStr.masse_center_lng) || bLng);
-      const cZoom = Number((viewNum === 2 ? targetStr.masse_zoom_2 : targetStr.masse_zoom) || (viewNum === 2 ? 16 : 18));
+    if (!dataUrl) {
       dataUrl = await generateStaticMapImage(cLat, cLng, 'map', cZoom, activeList, showDim);
     }
 
     if (dataUrl) {
-      handleSaveMasseCapture(strId, dataUrl, viewNum);
+      handleSaveMasseCapture(strId, dataUrl, viewNum, cZoom, cLat, cLng);
       return dataUrl;
     }
     return null;
-  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions]);
+  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs]);
 
   // Bascule active entre la Vue 1 et la Vue 2 d'une structure
   const handleSwitchMasseView = useCallback(async (strId, targetViewNum) => {
@@ -2774,41 +2801,52 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || lat);
       const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || lng);
       
-      const bZoom = Number(b.masse_zoom || b.map_zoom || 18);
-      const bCenterLat = Number(b.masse_center_lat || bLat);
-      const bCenterLng = Number(b.masse_center_lng || bLng);
+      const map = masseMapInstancesRef.current[b.id];
+      const isView1OnMap = map && (masseViewTabs[b.id] || 1) === 1;
+
+      // Zoom garanti : au minimum 18 pour Vue 1
+      let bZoom = Number((isView1OnMap ? map.getZoom() : b.masse_zoom) || 18);
+      if (bZoom < 17) bZoom = 18;
+
+      const bCenterLat = Number((isView1OnMap ? map.getCenter().lat : b.masse_center_lat) || bLat);
+      const bCenterLng = Number((isView1OnMap ? map.getCenter().lng : b.masse_center_lng) || bLng);
 
       const bShowDim = masseShowDimensions[b.id] !== undefined
         ? Boolean(masseShowDimensions[b.id])
         : (b.masse_show_dimensions !== false);
 
-      // --- VUE 1 ---
-      let masse1 = b.masse_capture;
-      if (!masse1 || typeof masse1 !== 'string' || !masse1.startsWith('data:image')) {
-        const map = masseMapInstancesRef.current[b.id];
-        if (map && (masseViewTabs[b.id] || 1) === 1) {
-          masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim);
-        }
-        if (!masse1) {
-          masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, updatedBuildings, bShowDim);
-        }
+      // --- VUE 1 : TOUJOURS fraîchement régénérée avec le zoom exact (>= 18) et les côtes ---
+      let masse1 = null;
+      if (isView1OnMap) {
+        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim);
+      }
+      if (!masse1) {
+        masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, updatedBuildings, bShowDim);
+      }
+      if (!masse1) {
+        masse1 = b.masse_capture;
       }
 
       // --- VUE 2 (si demandée) ---
-      let masse2 = b.masse_capture_2;
       const wantsVue2 = hasMasseView2[b.id] || Boolean(b.masse_capture_2 || b.masse_zoom_2);
+      let masse2 = null;
+      let bZoom2 = Number(b.masse_zoom_2 || Math.max(14, bZoom - 2));
+      let bCenterLat2 = Number(b.masse_center_lat_2 || bLat);
+      let bCenterLng2 = Number(b.masse_center_lng_2 || bLng);
+
       if (wantsVue2) {
-        if (!masse2 || typeof masse2 !== 'string' || !masse2.startsWith('data:image')) {
-          const map = masseMapInstancesRef.current[b.id];
-          if (map && masseViewTabs[b.id] === 2) {
-            masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim);
-          }
-          if (!masse2) {
-            const bZoom2 = Number(b.masse_zoom_2 || Math.max(14, bZoom - 2));
-            const bCenterLat2 = Number(b.masse_center_lat_2 || bLat);
-            const bCenterLng2 = Number(b.masse_center_lng_2 || bLng);
-            masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'map', bZoom2, updatedBuildings, bShowDim);
-          }
+        const isView2OnMap = map && masseViewTabs[b.id] === 2;
+        if (isView2OnMap) {
+          bZoom2 = Number(map.getZoom() || bZoom2);
+          bCenterLat2 = Number(map.getCenter().lat || bCenterLat2);
+          bCenterLng2 = Number(map.getCenter().lng || bCenterLng2);
+          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim);
+        }
+        if (!masse2) {
+          masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'map', bZoom2, updatedBuildings, bShowDim);
+        }
+        if (!masse2) {
+          masse2 = b.masse_capture_2;
         }
       }
 
@@ -2821,16 +2859,20 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         masse_zoom: bZoom,
         masse_center_lat: bCenterLat,
         masse_center_lng: bCenterLng,
+        masse_show_dimensions: bShowDim,
         ...(wantsVue2 ? {
           masse_capture_2: masse2 || null,
-          masse_zoom_2: Number(b.masse_zoom_2 || Math.max(14, bZoom - 2)),
-          masse_center_lat_2: Number(b.masse_center_lat_2 || bLat),
-          masse_center_lng_2: Number(b.masse_center_lng_2 || bLng),
+          masse_zoom_2: bZoom2,
+          masse_center_lat_2: bCenterLat2,
+          masse_center_lng_2: bCenterLng2,
         } : {})
       };
     }));
 
-    const masseMap = buildingsWithMasse[0]?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 18, updatedBuildings);
+    const firstShowDim = masseShowDimensions[buildingsWithMasse[0]?.id] !== undefined
+      ? Boolean(masseShowDimensions[buildingsWithMasse[0]?.id])
+      : (buildingsWithMasse[0]?.masse_show_dimensions !== false);
+    const masseMap = buildingsWithMasse[0]?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 18, updatedBuildings, firstShowDim);
     const masseMap2 = buildingsWithMasse[0]?.masse_capture_2 || null;
 
     const allBuildingsCaptures = updatedBuildings.reduce((acc, b) => ({
@@ -2853,6 +2895,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       ...(satMap ? { satellite: satMap } : {}),
       ...(masseMap ? { masse_projet: masseMap } : {}),
       ...(masseMap2 ? { masse_projet_2: masseMap2 } : {}),
+      masse_zoom: buildingsWithMasse[0]?.masse_zoom || 18,
+      ...(masseMap2 ? { masse_zoom_2: buildingsWithMasse[0]?.masse_zoom_2 || 16 } : {})
     };
 
     const finalPhotos = {
@@ -2865,9 +2909,31 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const enrichedBuildings = buildingsWithMasse.map((b) => ({
       ...b,
       masse_capture: b.masse_capture || masseMap,
-      ...(b.masse_capture_2 ? { masse_capture_2: b.masse_capture_2 } : {}),
-      captures: { ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
-      urbanisme_captures: { ...(b.captures || {}), ...(b.urbanisme_captures || {}) },
+      masse_zoom: b.masse_zoom || 18,
+      ...(b.masse_capture_2 ? { 
+        masse_capture_2: b.masse_capture_2,
+        masse_zoom_2: b.masse_zoom_2 || 16 
+      } : {}),
+      captures: { 
+        ...(b.captures || {}), 
+        ...(b.urbanisme_captures || {}),
+        masse_projet: b.masse_capture || masseMap,
+        masse_zoom: b.masse_zoom || 18,
+        ...(b.masse_capture_2 ? {
+          masse_projet_2: b.masse_capture_2,
+          masse_zoom_2: b.masse_zoom_2 || 16
+        } : {})
+      },
+      urbanisme_captures: { 
+        ...(b.captures || {}), 
+        ...(b.urbanisme_captures || {}),
+        masse_projet: b.masse_capture || masseMap,
+        masse_zoom: b.masse_zoom || 18,
+        ...(b.masse_capture_2 ? {
+          masse_projet_2: b.masse_capture_2,
+          masse_zoom_2: b.masse_zoom_2 || 16
+        } : {})
+      },
       photos: { ...(b.photos || {}), ...(b.pc_photos || {}) },
       pc_photos: { ...(b.photos || {}), ...(b.pc_photos || {}) },
     }));
@@ -2919,6 +2985,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       urbanisme_captures: finalCaptures,
       captures: finalCaptures,
       masse_capture: masseMap,
+      masse_zoom: buildingsWithMasse[0]?.masse_zoom || 18,
       ...(masseMap2 ? { masse_capture_2: masseMap2 } : {}),
       ...(buildingsWithMasse[0]?.masse_zoom_2 ? { masse_zoom_2: buildingsWithMasse[0].masse_zoom_2 } : {}),
       pc_photos: finalPhotos,
