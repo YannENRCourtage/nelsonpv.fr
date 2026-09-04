@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Building2, Car, CheckCircle2, AlertCircle,
@@ -128,16 +128,62 @@ function getOrientationLabel(deg) {
   return 'Sud';
 }
 
-function MapResizer() {
+function MapResizer({ activeCount, center } = {}) {
   const map = useMap();
+  const centerRef = useRef(center);
+  centerRef.current = center;
+
   useEffect(() => {
-    const t1 = setTimeout(() => map.invalidateSize(), 150);
-    const t2 = setTimeout(() => map.invalidateSize(), 450);
+    if (!map) return;
+
+    const doResize = (recenter = false) => {
+      try {
+        map.invalidateSize({ pan: false, debounceMoveend: true });
+        if (recenter && centerRef.current && Array.isArray(centerRef.current)) {
+          const [cLat, cLng] = centerRef.current;
+          if (cLat && cLng && !isNaN(cLat) && !isNaN(cLng) && cLat !== 0 && cLng !== 0) {
+            map.setView([cLat, cLng], map.getZoom(), { animate: false });
+          }
+        }
+      } catch (e) {
+        console.warn('MapResizer error:', e);
+      }
+    };
+
+    // Staggered triggers for initialization, tab switches, and layout changes
+    doResize(true);
+    const t1 = setTimeout(() => doResize(true), 80);
+    const t2 = setTimeout(() => doResize(true), 200);
+    const t3 = setTimeout(() => doResize(true), 450);
+    const t4 = setTimeout(() => doResize(true), 800);
+
+    // Continuous resize observer on DOM container
+    let ro = null;
+    try {
+      const container = map.getContainer();
+      if (container && typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver(() => {
+          requestAnimationFrame(() => {
+            if (map && map.getContainer()) {
+              map.invalidateSize({ pan: false });
+            }
+          });
+        });
+        ro.observe(container);
+      }
+    } catch (e) {
+      console.warn('ResizeObserver setup error:', e);
+    }
+
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+      if (ro) ro.disconnect();
     };
-  }, [map]);
+  }, [map, activeCount]);
+
   return null;
 }
 
@@ -3493,7 +3539,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           return (
                             <div
                               key={str.id}
-                              className={`flex flex-col bg-white border-2 rounded-2xl shadow-xs overflow-hidden transition-all min-h-[360px] ${
+                              className={`flex flex-col bg-white border-2 rounded-2xl shadow-xs overflow-hidden transition-colors min-h-[360px] ${
                                 str.solutionKey === 'ombriere' ? 'border-emerald-500/80 shadow-emerald-50' : 'border-blue-500/80 shadow-blue-50'
                               }`}
                             >
@@ -3579,15 +3625,22 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               </div>
 
                               {/* Visionneuse Carte pour ce bâtiment / cette ombrière */}
-                              <div className="relative flex-1 min-h-[220px] w-full overflow-hidden">
-                                <MapContainer center={[strLat, strLng]} zoom={18} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                              <div className="relative flex-1 min-h-[260px] w-full overflow-hidden">
+                                <MapContainer
+                                  key={`map-masse-${str.id}-${activeStructures.length}`}
+                                  center={[strLat, strLng]}
+                                  zoom={18}
+                                  scrollWheelZoom={true}
+                                  className="h-full w-full"
+                                  style={{ height: '100%', width: '100%' }}
+                                >
                                   <TileLayer
                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                     attribution="&copy; OpenStreetMap"
                                     maxZoom={21}
                                     maxNativeZoom={19}
                                   />
-                                  <MapResizer />
+                                  <MapResizer activeCount={activeStructures.length} center={[strLat, strLng]} />
                                   <MapSyncCenter lat={strLat} lng={strLng} />
 
                                   {/* Polygone de la structure active de ce cadre (clé dynamique pour mise à jour instantanée) */}
