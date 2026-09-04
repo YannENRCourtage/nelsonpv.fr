@@ -318,7 +318,7 @@ export default function LandscapeIntegrationModal({
                   <span className="text-blue-400 font-bold">{transform.posX.toFixed(1)} m</span>
                 </div>
                 <input
-                  type="range" min="-30" max="30" step="0.5"
+                  type="range" min="-80" max="80" step="0.5"
                   value={transform.posX}
                   onChange={e => setTransform(t => ({ ...t, posX: parseFloat(e.target.value) }))}
                   className="w-full accent-blue-500 cursor-pointer"
@@ -344,7 +344,7 @@ export default function LandscapeIntegrationModal({
                   <span className="text-blue-400 font-bold">{transform.posZ.toFixed(1)} m</span>
                 </div>
                 <input
-                  type="range" min="-120" max="120" step="0.5"
+                  type="range" min="-300" max="300" step="0.5"
                   value={transform.posZ}
                   onChange={e => setTransform(t => ({ ...t, posZ: parseFloat(e.target.value) }))}
                   className="w-full accent-blue-500 cursor-pointer"
