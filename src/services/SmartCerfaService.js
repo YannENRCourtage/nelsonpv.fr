@@ -38,34 +38,36 @@ export const CERFA_FIELDS = {
     sig_date:     ['topmostSubform[0].Page9[0].E1D_date[0]', 'E1D_date'],
   },
   dp: {
-    // CERFA 13404 — Déclaration Préalable
-    nom:          ['topmostSubform[0].Page2[0].D1N_nom[0]', 'D1N_nom', 'topmostSubform[0].Page8[0].V1N_nom[0]', 'V1N_nom'],
-    prenom:       ['topmostSubform[0].Page2[0].D1P_prenom[0]', 'D1P_prenom', 'topmostSubform[0].Page8[0].V1P_prenom[0]', 'V1P_prenom'],
-    naissance:    ['topmostSubform[0].Page2[0].D1A_naissance[0]', 'D1A_naissance'],
-    commune_naiss:['topmostSubform[0].Page2[0].D1C_commune[0]', 'D1C_commune'],
-    dept_naiss:   ['topmostSubform[0].Page2[0].D1D_dept[0]', 'D1D_dept'],
-    pays_naiss:   ['topmostSubform[0].Page2[0].D1E_pays[0]', 'D1E_pays'],
-    siret:        ['topmostSubform[0].Page2[0].D2S_SIRET[0]', 'D2S_SIRET', 'topmostSubform[0].Page8[0].V1MS1_siret[0]'],
-    denomination: ['topmostSubform[0].Page2[0].D2D_denomination[0]', 'D2D_denomination', 'topmostSubform[0].Page8[0].V1MD1_denomination[0]'],
-    raison:       ['topmostSubform[0].Page2[0].D2R_raison[0]', 'D2R_raison', 'topmostSubform[0].Page8[0].V1R_raison[0]'],
-    type_societe: ['topmostSubform[0].Page2[0].D2J_type[0]', 'D2J_type'],
-    adresse_num:  ['topmostSubform[0].Page2[0].D3N_numero[0]', 'D3N_numero', 'topmostSubform[0].Page8[0].V1Z_numero[0]'],
-    adresse_voie: ['topmostSubform[0].Page2[0].D3V_voie[0]', 'D3V_voie', 'topmostSubform[0].Page8[0].V1V_voie[0]'],
-    adresse_lieudit:['topmostSubform[0].Page2[0].D3W_lieudit[0]', 'D3W_lieudit'],
-    commune:      ['topmostSubform[0].Page2[0].D3L_localite[0]', 'D3L_localite', 'topmostSubform[0].Page8[0].V1L_localite[0]'],
-    cp:           ['topmostSubform[0].Page2[0].D3C_code[0]', 'D3C_code', 'topmostSubform[0].Page8[0].V1C_code[0]'],
-    tel:          ['topmostSubform[0].Page2[0].D3T_telephone[0]', 'D3T_telephone', 'topmostSubform[0].Page8[0].V1T_telephone[0]'],
-    pays:         ['topmostSubform[0].Page2[0].D3P_pays[0]', 'D3P_pays', 'topmostSubform[0].Page8[0].V1E_pays[0]'],
-    email_left:   ['topmostSubform[0].Page3[0].D5GE1_email[0]', 'D5GE1_email'],
-    email_right:  ['topmostSubform[0].Page3[0].D5GE2_email[0]', 'D5GE2_email'],
-    prefixe:      ['topmostSubform[0].Page3[0].T2F_prefixe[0]', 'T2F_prefixe'],
-    section:      ['topmostSubform[0].Page3[0].T2S_section[0]', 'T2S_section'],
-    parcelle:     ['topmostSubform[0].Page3[0].T2N_numero[0]', 'T2N_numero'],
-    surface:      ['topmostSubform[0].Page3[0].T2T_superficie[0]', 'T2T_superficie'],
-    description:  ['topmostSubform[0].Page5[0].C2ZD1_description[0]', 'C2ZD1_description'],
-    puissance:    ['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'],
-    sig_lieu:     ['topmostSubform[0].Page9[0].E1L_lieu[0]', 'E1L_lieu'],
-    sig_date:     ['topmostSubform[0].Page9[0].E1D_date[0]', 'E1D_date'],
+    // CERFA 16702*03 / 13404 — Déclaration Préalable
+    nom:          ['D1N_nom', 'topmostSubform[0].Page2[0].D1N_nom[0]', 'topmostSubform[0].Page8[0].V1N_nom[0]', 'V1N_nom'],
+    prenom:       ['D1P_prenom', 'topmostSubform[0].Page2[0].D1P_prenom[0]', 'topmostSubform[0].Page8[0].V1P_prenom[0]', 'V1P_prenom'],
+    naissance:    ['D1A_naissance', 'topmostSubform[0].Page2[0].D1A_naissance[0]'],
+    commune_naiss:['D1C_commune', 'topmostSubform[0].Page2[0].D1C_commune[0]'],
+    dept_naiss:   ['D1D_dept', 'topmostSubform[0].Page2[0].D1D_dept[0]'],
+    pays_naiss:   ['D1E_pays', 'topmostSubform[0].Page2[0].D1E_pays[0]'],
+    siret:        ['D2S_siret', 'D2S_SIRET', 'topmostSubform[0].Page2[0].D2S_SIRET[0]', 'topmostSubform[0].Page8[0].V1MS1_siret[0]'],
+    denomination: ['D2D_denomination', 'topmostSubform[0].Page2[0].D2D_denomination[0]', 'topmostSubform[0].Page8[0].V1MD1_denomination[0]'],
+    raison:       ['D2R_raison', 'topmostSubform[0].Page2[0].D2R_raison[0]', 'topmostSubform[0].Page8[0].V1R_raison[0]'],
+    type_societe: ['D2J_type', 'topmostSubform[0].Page2[0].D2J_type[0]'],
+    rep_nom:      ['D2N_nom'],
+    rep_prenom:   ['D2P_prenom'],
+    adresse_num:  ['D3N_numero', 'topmostSubform[0].Page2[0].D3N_numero[0]', 'topmostSubform[0].Page8[0].V1Z_numero[0]'],
+    adresse_voie: ['D3V_voie', 'topmostSubform[0].Page2[0].D3V_voie[0]', 'topmostSubform[0].Page8[0].V1V_voie[0]'],
+    adresse_lieudit:['D3W_lieudit', 'topmostSubform[0].Page2[0].D3W_lieudit[0]'],
+    commune:      ['D3L_localite', 'topmostSubform[0].Page2[0].D3L_localite[0]', 'topmostSubform[0].Page8[0].V1L_localite[0]'],
+    cp:           ['D3C_code', 'topmostSubform[0].Page2[0].D3C_code[0]', 'topmostSubform[0].Page8[0].V1C_code[0]'],
+    tel:          ['D3T_telephone', 'topmostSubform[0].Page2[0].D3T_telephone[0]', 'topmostSubform[0].Page8[0].V1T_telephone[0]'],
+    pays:         ['D3P_pays', 'topmostSubform[0].Page2[0].D3P_pays[0]', 'topmostSubform[0].Page8[0].V1E_pays[0]'],
+    email_left:   ['D5GE1_email', 'topmostSubform[0].Page3[0].D5GE1_email[0]'],
+    email_right:  ['D5GE2_email', 'topmostSubform[0].Page3[0].D5GE2_email[0]'],
+    prefixe:      ['T2F_prefixe', 'topmostSubform[0].Page3[0].T2F_prefixe[0]'],
+    section:      ['T2S_section', 'topmostSubform[0].Page3[0].T2S_section[0]'],
+    parcelle:     ['T2N_numero', 'topmostSubform[0].Page3[0].T2N_numero[0]'],
+    surface:      ['T2T_superficie', 'topmostSubform[0].Page3[0].T2T_superficie[0]'],
+    description:  ['C2ZD1_description', 'topmostSubform[0].Page5[0].C2ZD1_description[0]'],
+    puissance:    ['C2ZP1_crete', 'C2ZE1_puissance', 'topmostSubform[0].Page5[0].C2ZE1_puissance[0]'],
+    sig_lieu:     ['E1L_lieu', 'topmostSubform[0].Page9[0].E1L_lieu[0]'],
+    sig_date:     ['E1D_date', 'topmostSubform[0].Page9[0].E1D_date[0]'],
   },
   pc: {
     // CERFA 13409 / 13404 — Permis de Construire
@@ -75,10 +77,12 @@ export const CERFA_FIELDS = {
     commune_naiss:['topmostSubform[0].Page2[0].D1C_commune[0]', 'D1C_commune'],
     dept_naiss:   ['topmostSubform[0].Page2[0].D1D_dept[0]', 'D1D_dept'],
     pays_naiss:   ['topmostSubform[0].Page2[0].D1E_pays[0]', 'D1E_pays'],
-    siret:        ['topmostSubform[0].Page2[0].D2S_SIRET[0]', 'D2S_SIRET', 'topmostSubform[0].Page8[0].V1MS1_siret[0]'],
+    siret:        ['topmostSubform[0].Page2[0].D2S_SIRET[0]', 'D2S_SIRET', 'D2S_siret', 'topmostSubform[0].Page8[0].V1MS1_siret[0]'],
     denomination: ['topmostSubform[0].Page2[0].D2D_denomination[0]', 'D2D_denomination', 'topmostSubform[0].Page8[0].V1MD1_denomination[0]'],
     raison:       ['topmostSubform[0].Page2[0].D2R_raison[0]', 'D2R_raison', 'topmostSubform[0].Page8[0].V1R_raison[0]'],
     type_societe: ['topmostSubform[0].Page2[0].D2J_type[0]', 'D2J_type'],
+    rep_nom:      ['D2N_nom'],
+    rep_prenom:   ['D2P_prenom'],
     adresse_num:  ['topmostSubform[0].Page2[0].D3N_numero[0]', 'D3N_numero', 'topmostSubform[0].Page8[0].V1Z_numero[0]'],
     adresse_voie: ['topmostSubform[0].Page2[0].D3V_voie[0]', 'D3V_voie', 'topmostSubform[0].Page8[0].V1V_voie[0]'],
     adresse_lieudit:['topmostSubform[0].Page2[0].D3W_lieudit[0]', 'D3W_lieudit'],
@@ -99,7 +103,7 @@ export const CERFA_FIELDS = {
   },
 };
 
-// Mapping des pièces graphiques aux cases à cocher du Bordereau (DP1 à DP11)
+// Mapping des pièces graphiques aux cases à cocher du Bordereau (DP1 à DP11) pour formulaires classiques
 const PLATE_CHECKBOX_MAP = {
   dpc1: ['topmostSubform[0].Page13[0].P1FP1[0]', 'P1FP1'],
   dpc2: ['topmostSubform[0].Page11[0].P3GD1[0]', 'topmostSubform[0].Page11[0].P3GE1[0]', 'topmostSubform[0].Page11[0].P5PA1[0]', 'P3GD1', 'P3GE1', 'P5PA1'],
@@ -112,6 +116,14 @@ const PLATE_CHECKBOX_MAP = {
 };
 
 const ALL_BORDEREAU_CHECKBOXES = Object.values(PLATE_CHECKBOX_MAP).flat();
+
+// Mapping des pièces pour le CERFA 16702*03 (Bordereau pages 13-16)
+const CERFA_16702_03_ALL_BORDEREAU = [
+  'P5PA2', 'P5PB1', 'P3GE1', 'P3GD1', 'P5PC1', 'P3GF1', 'P3GG1', 'P3GH1',
+  'P4LC1', 'P4CD1', 'P4CF1', 'P4EA1', 'P4EB1', 'P4EC1', 'P4EH1', 'P4GE1',
+  'P4GF1', 'P4LA1', 'P4LG1', 'P4LD1', 'P4LE1', 'P5PD1', 'P5PE1', 'P6PF1',
+  'P1FP1', 'P4HG1', 'P4EG1', 'P8EA1', 'P9ZA1'
+];
 
 export function resolveDemandeurNames(project) {
   const rawName = project?.demandeur || project?.clientName || project?.fullName || project?.lastName || project?.name || '';
@@ -302,7 +314,28 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         return false;
       };
 
-      // 1. Identité du déclarant (Page 2 du CERFA)
+      let isCerfa16702_03 = false;
+      try {
+        isCerfa16702_03 = Boolean(form.getCheckBox('P5PA2') || form.getTextField('R2N_deposant'));
+      } catch (_) {}
+
+      const fullDeclarantName = `${firstName} ${lastName}`.trim() || lastName || project?.demandeur || '';
+
+      // 0. Page 2 : Récépissé de dépôt (uniquement sur CERFA 16702*03)
+      if (isCerfa16702_03) {
+        setField(['R2N_deposant'], fullDeclarantName, 9.5);
+        setField(['R3D_denomination'], project?.company || project?.denomination || '', 9.5);
+        setField(['R3N_numero'], addrNum, 9.5);
+        setField(['R3V_voie'], addrVoie, 9.5);
+        setField(['R3W_lieudit'], project?.lieudit || '', 9);
+        setField(['R3L_localite'], city, 9.5);
+        setField(['R3C_code'], zip, 9.5);
+        setField(['R3T_telephone'], tel, 9.5);
+        setField(['R3GE1_email'], emailLeft, 8.5);
+        setField(['R3GE2_email'], emailRight, 8.5);
+      }
+
+      // 1. Identité du déclarant (Page 2 ou 4 du CERFA)
       setCheck(['topmostSubform[0].Page2[0].D1H_homme[0]', 'D1H_homme'], true);
       setField(fieldMap.nom,            lastName, 9.5);
       setField(fieldMap.prenom,         firstName, 9.5);
@@ -316,8 +349,10 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       setField(fieldMap.denomination,   project?.company || project?.denomination || '', 9);
       setField(fieldMap.raison,         project?.raison || '', 9);
       setField(fieldMap.type_societe,   project?.companyType || '', 9);
+      setField(fieldMap.rep_nom,        lastName, 9);
+      setField(fieldMap.rep_prenom,     firstName, 9);
 
-      // 2. Coordonnées du déclarant (Page 2 du CERFA)
+      // 2. Coordonnées du déclarant (Page 2 ou 4 du CERFA)
       setField(fieldMap.adresse_num,    addrNum, 9.5);
       setField(fieldMap.adresse_voie,   addrVoie, 9.5);
       setField(fieldMap.adresse_lieudit,project?.lieudit || '', 9);
@@ -328,10 +363,10 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       setField(fieldMap.email_left,     emailLeft, 8.5);
       setField(fieldMap.email_right,    emailRight, 8.5);
 
-      // Case d'acceptation par voie électronique (Page 2 du CERFA)
+      // Case d'acceptation par voie électronique (Page 2 ou 4 du CERFA)
       setCheck(['topmostSubform[0].Page2[0].D5A_acceptation[0]', 'D5A_acceptation'], true);
 
-      // 3. Le terrain & Cadastre (Page 3 du CERFA)
+      // 3. Le terrain & Cadastre (Page 3 ou 5 du CERFA)
       // Adresse du terrain (Section 2.1)
       setField(['topmostSubform[0].Page3[0].T2Q_numero[0]', 'T2Q_numero'], terrainNum, 9.5);
       setField(['topmostSubform[0].Page3[0].T2V_voie[0]', 'T2V_voie'], terrainVoie, 9.5);
@@ -354,7 +389,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       setCheck(['topmostSubform[0].Page3[0].T3E_AFUnc[0]', 'T3E_AFUnc'], true);
       setCheck(['topmostSubform[0].Page3[0].T3F_PUPnc[0]', 'T3F_PUPnc'], true);
 
-      // 4. Page 4 : Nature des travaux & Description
+      // 4. Nature des travaux & Description (Page 4 ou 6 du CERFA)
       // Cocher "Nouvelle construction" par défaut
       if (isNewConstruction) {
         setCheck(['topmostSubform[0].Page4[0].C2ZA1_nouvelle[0]', 'topmostSubform[0].Page5[0].C2ZA1_nouvelle[0]', 'C2ZA1_nouvelle'], true);
@@ -363,45 +398,90 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       }
       setField(fieldMap.description,    objet, 9.5);
 
-      // 5. Page 5 : Partie 4.2.1 Puissance crête (ex: 256)
+      // 5. Puissance crête (ex: 256) & Matériaux
       if (cleanKwcVal) {
         setField(['topmostSubform[0].Page5[0].C2ZP1_crete[0]', 'C2ZP1_crete'], cleanKwcVal, 9.5);
         setField(['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'], cleanKwcVal, 9.5);
       }
+      // Cocher "Métal" pour les structures ombrières métalliques
+      if (isDP || installationType === 'ombriere' || installationType === 'batiment_solaire') {
+        setCheck(['C6ZL2_metal'], true);
+      }
 
-      // 6. Page 9 : Engagement & Signature
-      const fullDeclarantName = `${firstName} ${lastName}`.trim() || lastName || project?.demandeur || '';
+      // 6. Engagement & Signature
       setField(fieldMap.sig_lieu,       terrainCity || city || 'CONDOM', 9.5);
       setField(fieldMap.sig_date,       dateStr, 9.5);
-      setField(['topmostSubform[0].Page9[0].E1S_signature[0]', 'E1S_signature'], fullDeclarantName, 9.5);
+      setField(['topmostSubform[0].Page9[0].E1S_signature[0]', 'topmostSubform[0].Page11[0].E1S_signature[0]', 'E1S_signature'], fullDeclarantName, 9.5);
 
       // 7. Bordereau des pièces jointes
-      ALL_BORDEREAU_CHECKBOXES.forEach(name => setCheck(name, false));
       const plateList = Array.isArray(plateIds) ? plateIds : [];
 
-      if (plateList.some(id => id.includes('situation')) || plateList.length > 0) {
-        PLATE_CHECKBOX_MAP.dpc1.forEach(name => setCheck(name, true));
-      }
-      if (plateList.some(id => id.includes('masse')) || plateList.length > 0) {
-        PLATE_CHECKBOX_MAP.dpc2.forEach(name => setCheck(name, true));
-      }
-      if (plateList.some(id => id.includes('section'))) {
-        PLATE_CHECKBOX_MAP.dpc3.forEach(name => setCheck(name, true));
-      }
-      if (plateList.some(id => id.includes('facades'))) {
-        PLATE_CHECKBOX_MAP.dpc4.forEach(name => setCheck(name, true));
-      }
-      if (plateList.some(id => id.includes('insertion'))) {
-        PLATE_CHECKBOX_MAP.dpc6.forEach(name => setCheck(name, true));
-      }
-      if (plateList.some(id => id.includes('env-proche') || (id.includes('env') && !id.includes('env-lointain')))) {
-        PLATE_CHECKBOX_MAP.dpc7.forEach(name => setCheck(name, true));
-      }
-      if (plateList.some(id => id.includes('env-lointain') || (id.includes('env') && !id.includes('env-proche')))) {
-        PLATE_CHECKBOX_MAP.dpc8.forEach(name => setCheck(name, true));
-      }
-      if (plateList.some(id => id.includes('notice'))) {
-        PLATE_CHECKBOX_MAP.dpc11.forEach(name => setCheck(name, true));
+      if (isCerfa16702_03) {
+        CERFA_16702_03_ALL_BORDEREAU.forEach(name => setCheck(name, false));
+
+        // DPC1 : Plan de situation
+        if (plateList.some(id => id.includes('situation')) || plateList.length > 0) {
+          setCheck('P5PA2', true);
+        }
+        // DPC2 : Plan de masse
+        if (plateList.some(id => id.includes('masse')) || plateList.length > 0) {
+          setCheck('P5PB1', true);
+        }
+        // DPC3 : Plan en coupe
+        if (plateList.some(id => id.includes('section') || id.includes('coupe'))) {
+          setCheck('P3GE1', true);
+        }
+        // DPC4 : Plan des façades et des toitures
+        if (plateList.some(id => id.includes('facades') || id.includes('toiture'))) {
+          setCheck('P3GD1', true);
+        }
+        // DPC5 : Représentation de l'aspect extérieur
+        if (plateList.some(id => id.includes('aspect') || id.includes('materiaux'))) {
+          setCheck('P5PC1', true);
+        }
+        // DPC6 : Insertion paysagère dans son environnement
+        if (plateList.some(id => id.includes('insertion') || id.includes('dp6') || id.includes('pc6'))) {
+          setCheck('P3GF1', true);
+        }
+        // DPC7 : Environnement proche
+        if (plateList.some(id => id.includes('env-proche') || id.includes('dp7') || id.includes('pc7') || (id.includes('env') && !id.includes('env-lointain')))) {
+          setCheck('P3GG1', true);
+        }
+        // DPC8 : Paysage lointain
+        if (plateList.some(id => id.includes('env-lointain') || id.includes('dp8') || id.includes('pc8') || (id.includes('env') && !id.includes('env-proche')))) {
+          setCheck('P3GH1', true);
+        }
+        // DPC11 : Notice descriptive
+        if (plateList.some(id => id.includes('notice') || id.includes('dp11') || id.includes('pc11'))) {
+          setCheck('P4CD1', true);
+        }
+      } else {
+        ALL_BORDEREAU_CHECKBOXES.forEach(name => setCheck(name, false));
+
+        if (plateList.some(id => id.includes('situation')) || plateList.length > 0) {
+          PLATE_CHECKBOX_MAP.dpc1.forEach(name => setCheck(name, true));
+        }
+        if (plateList.some(id => id.includes('masse')) || plateList.length > 0) {
+          PLATE_CHECKBOX_MAP.dpc2.forEach(name => setCheck(name, true));
+        }
+        if (plateList.some(id => id.includes('section'))) {
+          PLATE_CHECKBOX_MAP.dpc3.forEach(name => setCheck(name, true));
+        }
+        if (plateList.some(id => id.includes('facades'))) {
+          PLATE_CHECKBOX_MAP.dpc4.forEach(name => setCheck(name, true));
+        }
+        if (plateList.some(id => id.includes('insertion'))) {
+          PLATE_CHECKBOX_MAP.dpc6.forEach(name => setCheck(name, true));
+        }
+        if (plateList.some(id => id.includes('env-proche') || (id.includes('env') && !id.includes('env-lointain')))) {
+          PLATE_CHECKBOX_MAP.dpc7.forEach(name => setCheck(name, true));
+        }
+        if (plateList.some(id => id.includes('env-lointain') || (id.includes('env') && !id.includes('env-proche')))) {
+          PLATE_CHECKBOX_MAP.dpc8.forEach(name => setCheck(name, true));
+        }
+        if (plateList.some(id => id.includes('notice'))) {
+          PLATE_CHECKBOX_MAP.dpc11.forEach(name => setCheck(name, true));
+        }
       }
 
     } catch (e) {
