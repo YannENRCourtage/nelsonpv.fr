@@ -394,10 +394,10 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       if (plateList.some(id => id.includes('insertion'))) {
         PLATE_CHECKBOX_MAP.dpc6.forEach(name => setCheck(name, true));
       }
-      if (plateList.some(id => id.includes('env-proche'))) {
+      if (plateList.some(id => id.includes('env-proche') || (id.includes('env') && !id.includes('env-lointain')))) {
         PLATE_CHECKBOX_MAP.dpc7.forEach(name => setCheck(name, true));
       }
-      if (plateList.some(id => id.includes('env') && !id.includes('env-proche'))) {
+      if (plateList.some(id => id.includes('env-lointain') || (id.includes('env') && !id.includes('env-proche')))) {
         PLATE_CHECKBOX_MAP.dpc8.forEach(name => setCheck(name, true));
       }
       if (plateList.some(id => id.includes('notice'))) {

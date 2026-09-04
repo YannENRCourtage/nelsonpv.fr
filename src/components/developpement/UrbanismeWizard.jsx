@@ -372,6 +372,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     facades: true,
     insertion: true,
     env: true,
+    env_proche: true,
+    env_lointain: true,
+    dp7: true,
+    dp8: true,
+    pc7: true,
+    pc8: true,
     cerfa: true,
   });
 
@@ -3931,7 +3937,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         { id: 'section_notice', code: 'PC3+PC4', title: 'Coupe & Notice', desc: 'Coupe transversale & notice descriptive', badge: 'Obligatoire', color: 'indigo' },
                         { id: 'facades', code: 'PC5', title: 'Façades & Toitures', desc: '5 vues 3D (Sud, Nord, Est, Ouest, Toit)', badge: !!captures?.facade_sud ? 'Prêt' : '3D', color: 'emerald' },
                         { id: 'insertion', code: 'PC6', title: 'Insertion paysagère', desc: 'Vue avant / simulation 3D après', badge: (photos?.avant || photos?.apres) ? 'Prêt' : 'Photo 3D', color: 'emerald' },
-                        { id: 'env', code: 'PC7+PC8', title: 'Env. Proche & Lointain', desc: 'Photos dans le paysage proche et lointain', badge: (photos?.proche || photos?.lointain) ? 'Prêt' : 'Optionnel', color: 'purple' },
+                        { id: 'env_proche', code: 'PC7', title: 'Environnement proche', desc: 'Photographie dans le paysage proche', badge: (photos?.proche || editedProject?.pc_photos?.proche) ? 'Prêt' : 'Optionnel', color: 'purple' },
+                        { id: 'env_lointain', code: 'PC8', title: 'Paysage lointain', desc: 'Photographie dans le paysage lointain', badge: (photos?.lointain || editedProject?.pc_photos?.lointain) ? 'Prêt' : 'Optionnel', color: 'purple' },
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA', desc: 'CERFA 13404 officiel pré-rempli', badge: 'Administratif', color: 'amber' },
                       ] : type === 'dp' ? [
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte & synthèse', badge: 'Recommandé', color: 'blue' },
@@ -3952,19 +3959,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         },
                         { id: 'facades', code: 'DP4', title: 'Façades & Toitures', desc: "5 vues 3D de l'ombrière", badge: '3D', color: 'emerald' },
                         { id: 'insertion', code: 'DP6', title: 'Insertion paysagère', desc: 'Simulation d\'intégration paysagère', badge: (photos?.avant || photos?.apres) ? 'Prêt' : 'Photo 3D', color: 'emerald' },
-                        { 
-                          id: 'env', 
-                          code: selectedPages.dp8 !== false ? 'DP7+DP8' : 'DP7', 
-                          title: 'Environnement proche', 
-                          desc: selectedPages.dp8 !== false ? "Photographies dans le paysage proche et lointain" : "Photographie dans le paysage proche", 
-                          badge: (photos?.proche || photos?.lointain) ? 'Prêt' : 'Optionnel', 
-                          color: 'purple',
-                          subOption: {
-                            key: 'dp8',
-                            label: '+ Photo paysage lointain (DP8)',
-                            checked: selectedPages.dp8 !== false
-                          }
-                        },
+                        { id: 'env_proche', code: 'DP7', title: 'Environnement proche', desc: 'Photographie de l\'environnement proche', badge: (photos?.proche || editedProject?.pc_photos?.proche) ? 'Prêt' : 'Optionnel', color: 'purple' },
+                        { id: 'env_lointain', code: 'DP8', title: 'Paysage lointain', desc: 'Photographie du paysage lointain', badge: (photos?.lointain || editedProject?.pc_photos?.lointain) ? 'Prêt' : 'Optionnel', color: 'purple' },
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA DP', desc: 'Déclaration préalable officielle', badge: 'Administratif', color: 'amber' },
                       ] : [
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte', badge: 'Recommandé', color: 'blue' },

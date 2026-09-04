@@ -46,6 +46,8 @@ import {
   PlateFacades as PCPlateFacades,
   PlateInsertion as PCPlateInsertion,
   PlateEnvProcheLointain as PCPlateEnv,
+  PlateEnvProche as PCPlateEnvProche,
+  PlateEnvLointain as PCPlateEnvLointain,
 } from '@/components/editor/PCPlates';
 
 // Services & Data
@@ -311,7 +313,12 @@ export default function Developpement() {
           if (!selectedPages || selectedPages.section_notice) plateIds.push(`${prefix}plate-section-notice${suffix}`);
           if (!selectedPages || selectedPages.facades) plateIds.push(`${prefix}plate-facades${suffix}`);
           if (!selectedPages || selectedPages.insertion) plateIds.push(`${prefix}plate-insertion${suffix}`);
-          if (!selectedPages || selectedPages.env) plateIds.push(`${prefix}plate-env${suffix}`);
+          
+          // PC7 (Environnement proche) & PC8 (Paysage lointain) dissociés sur 2 pages distinctes
+          const wantPC7 = !selectedPages || (selectedPages.env !== false && selectedPages.pc7 !== false && selectedPages.env_proche !== false);
+          const wantPC8 = !selectedPages || (selectedPages.env !== false && selectedPages.pc8 !== false && selectedPages.env_lointain !== false);
+          if (wantPC7) plateIds.push(`${prefix}plate-env-proche${suffix}`);
+          if (wantPC8) plateIds.push(`${prefix}plate-env-lointain${suffix}`);
         }
       } else if (isCU) {
         if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
@@ -327,7 +334,12 @@ export default function Developpement() {
           if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
           if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
           if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
-          if (!selectedPages || selectedPages.env !== false) plateIds.push(`dev-plate-env${suffix}`);
+          
+          // DP7 (Environnement proche) & DP8 (Paysage lointain) dissociés sur 2 pages distinctes
+          const wantDP7 = !selectedPages || (selectedPages.env !== false && selectedPages.dp7 !== false && selectedPages.env_proche !== false);
+          const wantDP8 = !selectedPages || (selectedPages.env !== false && selectedPages.dp8 !== false && selectedPages.env_lointain !== false);
+          if (wantDP7) plateIds.push(`dev-plate-env-proche${suffix}`);
+          if (wantDP8) plateIds.push(`dev-plate-env-lointain${suffix}`);
         }
       }
 
@@ -774,6 +786,20 @@ export default function Developpement() {
                   <div id={`dev-pc-plate-insertion${suffix}`}><PCPlateInsertion project={bProj} photos={bProj.pc_photos || {}} /></div>
                   <div id={`dev-pc-plate-env${suffix}`}>
                     <PCPlateEnv 
+                      project={bProj} 
+                      captures={bProj.urbanisme_captures || {}} 
+                      photos={bProj.pc_photos || {}} 
+                    />
+                  </div>
+                  <div id={`dev-pc-plate-env-proche${suffix}`}>
+                    <PCPlateEnvProche 
+                      project={bProj} 
+                      captures={bProj.urbanisme_captures || {}} 
+                      photos={bProj.pc_photos || {}} 
+                    />
+                  </div>
+                  <div id={`dev-pc-plate-env-lointain${suffix}`}>
+                    <PCPlateEnvLointain 
                       project={bProj} 
                       captures={bProj.urbanisme_captures || {}} 
                       photos={bProj.pc_photos || {}} 

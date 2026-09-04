@@ -1423,8 +1423,58 @@ export const PlateEnv = ({ project, captures, photos, isInteractive, onUpload })
     );
 };
 
-export const PlateEnvProche = (props) => <PlateEnv {...props} />;
-export const PlateEnvLointain = (props) => <PlateEnv {...props} />;
+export const PlateEnvProche = ({ project, captures, photos, isInteractive, onUpload }) => {
+    const safePhotos = photos || project?.pc_photos || project?.photos || {};
+    const photoProche = safePhotos.proche || project?.pc_photos?.proche || project?.photos?.proche || '';
+
+    return (
+        <div style={PAGE_STYLE} id="pc-plate-env-proche">
+            <PlateHeader title="PC7 — PHOTOGRAPHIE DANS L'ENVIRONNEMENT PROCHE" project={project} />
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '145mm', marginBottom: '5mm' }}>
+                <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                    PC7 — Photographie dans l'environnement proche
+                </div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '2mm' }}>
+                    <ImageUploadZone 
+                        isInteractive={isInteractive} 
+                        photo={photoProche} 
+                        onUpload={(data) => onUpload && onUpload('proche', data)} 
+                        defaultText="En attente de photo environnement proche" 
+                        label="Env. Proche"
+                    />
+                </div>
+            </div>
+            <Footer project={project} />
+        </div>
+    );
+};
+
+export const PlateEnvLointain = ({ project, captures, photos, isInteractive, onUpload }) => {
+    const safePhotos = photos || project?.pc_photos || project?.photos || {};
+    const photoLointain = safePhotos.lointain || project?.pc_photos?.lointain || project?.photos?.lointain || '';
+
+    return (
+        <div style={PAGE_STYLE} id="pc-plate-env-lointain">
+            <PlateHeader title="PC8 — PHOTOGRAPHIE DANS LE PAYSAGE LOINTAIN" project={project} />
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '145mm', marginBottom: '5mm' }}>
+                <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                    PC8 — Photographie dans le paysage lointain
+                </div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '2mm' }}>
+                    <ImageUploadZone 
+                        isInteractive={isInteractive} 
+                        photo={photoLointain} 
+                        onUpload={(data) => onUpload && onUpload('lointain', data)} 
+                        defaultText="En attente de photo paysage lointain" 
+                        label="Paysage Lointain"
+                    />
+                </div>
+            </div>
+            <Footer project={project} />
+        </div>
+    );
+};
+
 export const PlateEnvProcheLointain = (props) => <PlateEnv {...props} />;
 export const PlateImpact = (props) => <PlateNotice {...props} />;
 export const PlateCover = PlateGarde;

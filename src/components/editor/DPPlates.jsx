@@ -1320,14 +1320,20 @@ export const PlateEnvProche = ({ project, captures, photos }) => {
     return (
         <div style={PAGE_STYLE} id="dp-plate-env-proche">
             <PlateHeader title="DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE" project={project} />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm', padding: '1mm' }}>
-                {photoProche ? (
-                    <SafePlateImage src={photoProche} alt="Environnement Proche" />
-                ) : (
-                    <div style={{ color: '#94a3b8', fontSize: '8.5pt', fontStyle: 'italic' }}>
-                        Emplacement réservé à la photographie de l'environnement proche (Aucune photo importée)
-                    </div>
-                )}
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '145mm', marginBottom: '5mm' }}>
+                <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                    DP7 — Photographie dans l'environnement proche
+                </div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '2mm', background: '#ffffff' }}>
+                    {photoProche ? (
+                        <SafePlateImage src={photoProche} alt="Environnement Proche" />
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#94a3b8', fontSize: '8.5pt', fontStyle: 'italic' }}>
+                            <span>Emplacement réservé à la photographie de l'environnement proche</span>
+                            <span style={{ fontSize: '7.5pt', color: '#cbd5e1' }}>(Aucune photo importée)</span>
+                        </div>
+                    )}
+                </div>
             </div>
             <Footer project={project} />
         </div>
@@ -1376,15 +1382,21 @@ export const PlateEnvLointain = ({ project, captures, photos }) => {
     const photoLointain = safePhotos.lointain || project?.pc_photos?.lointain || project?.photos?.lointain || '';
     return (
         <div style={PAGE_STYLE} id="dp-plate-env-lointain">
-            <PlateHeader title="DP8 : PHOTOGRAPHIE DE L'ENVIRONNEMENT LOINTAIN" project={project} />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm' }}>
-                {photoLointain ? (
-                    <img src={getProxiedImageUrl(photoLointain)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
-                ) : (
-                    <div style={{ color: '#94a3b8', fontSize: '8.5pt', fontStyle: 'italic' }}>
-                        Emplacement réservé à la photographie du paysage lointain (Aucune photo importée)
-                    </div>
-                )}
+            <PlateHeader title="DP8 — PHOTOGRAPHIE DU PAYSAGE LOINTAIN" project={project} />
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '145mm', marginBottom: '5mm' }}>
+                <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                    DP8 — Photographie dans le paysage lointain
+                </div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '2mm', background: '#ffffff' }}>
+                    {photoLointain ? (
+                        <SafePlateImage src={photoLointain} alt="Paysage Lointain" />
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#94a3b8', fontSize: '8.5pt', fontStyle: 'italic' }}>
+                            <span>Emplacement réservé à la photographie du paysage lointain</span>
+                            <span style={{ fontSize: '7.5pt', color: '#cbd5e1' }}>(Aucune photo importée)</span>
+                        </div>
+                    )}
+                </div>
             </div>
             <Footer project={project} />
         </div>
