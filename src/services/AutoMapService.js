@@ -217,7 +217,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
             ctx.setLineDash([]);
 
             // Cotations architecturales du bâtiment (Longueur et Largeur sur les arêtes uniquement)
-            const bShowDim = b.masse_show_dimensions !== false && showDimensions !== false;
+            const bShowDim = showDimensions !== false;
             if (bShowDim) {
               const centerPt = { x: bPixelX, y: bPixelY };
               drawDimensionLine(ctx, pixelCorners[0], pixelCorners[1], centerPt, `${bLength.toFixed(1)} M`, strokeColor, 20);

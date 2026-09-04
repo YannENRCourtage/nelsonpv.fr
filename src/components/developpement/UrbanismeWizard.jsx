@@ -241,7 +241,7 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
       ctx.setLineDash([]);
 
       // Cotations architecturales en plan : SEULEMENT Longueur et Largeur sur les arêtes extérieures
-      const strShowDim = str.masse_show_dimensions !== false && showDimensions !== false;
+      const strShowDim = showDimensions !== false;
       if (strShowDim) {
         const centerPt = map.latLngToContainerPoint([strLat, strLng]);
         drawDimensionLine(ctx, pixelCorners[0], pixelCorners[1], centerPt, `${sLen.toFixed(1)} M`, strokeColor, 20);
@@ -2241,8 +2241,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const targetStr = allConfiguredStructures.find(s => s.id === strId);
     const activeList = allConfiguredStructures.filter(str => selectedStructureIds.includes(str.id));
     const showDim = forceShowDimensions !== null
-      ? forceShowDimensions
-      : (masseShowDimensions[strId] !== false && targetStr?.masse_show_dimensions !== false);
+      ? Boolean(forceShowDimensions)
+      : (masseShowDimensions[strId] !== undefined
+          ? Boolean(masseShowDimensions[strId])
+          : (targetStr?.masse_show_dimensions !== false));
 
     let dataUrl = null;
     // 1. Tenter la capture directe instantanée sur le conteneur Leaflet (sans passer par html2canvas)
@@ -2373,22 +2375,49 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
   // Capture manuelle à la demande avec confirmation visuelle
   const handleManualCapture = useCallback(async (strId) => {
     const activeView = masseViewTabs[strId] || 1;
-    const res = await captureStructureMasseMap(strId, activeView);
+    const targetStr = allConfiguredStructures.find(s => s.id === strId);
+    const isDim = masseShowDimensions[strId] !== undefined
+      ? Boolean(masseShowDimensions[strId])
+      : (targetStr?.masse_show_dimensions !== false);
+    const res = await captureStructureMasseMap(strId, activeView, isDim);
     if (res) {
       setMasseCapturedToast(prev => ({ ...prev, [strId]: `Vue ${activeView} capturée !` }));
       setTimeout(() => {
         setMasseCapturedToast(prev => ({ ...prev, [strId]: null }));
       }, 2500);
     }
-  }, [masseViewTabs, captureStructureMasseMap]);
+  }, [masseViewTabs, captureStructureMasseMap, allConfiguredStructures, masseShowDimensions]);
 
   // Bascule de l'affichage des côtes (longueur et largeur) sur le plan de masse
   const handleToggleMasseDimensions = useCallback((strId) => {
     const targetStr = allConfiguredStructures.find(s => s.id === strId);
-    const currentVal = masseShowDimensions[strId] !== false && targetStr?.masse_show_dimensions !== false;
+    const currentVal = masseShowDimensions[strId] !== undefined
+      ? Boolean(masseShowDimensions[strId])
+      : (targetStr?.masse_show_dimensions !== false);
     const nextVal = !currentVal;
 
     setMasseShowDimensions(prev => ({ ...prev, [strId]: nextVal }));
+
+    setSolutions(prev => {
+      const nextSol = { ...prev };
+      let updated = false;
+      ['building', 'ombriere'].forEach(solKey => {
+        if (nextSol[solKey]?.buildings) {
+          const nextList = nextSol[solKey].buildings.map(b => {
+            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : 'bat-') ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-1`;
+            if (b.id === strId || currentId === strId) {
+              updated = true;
+              return { ...b, masse_show_dimensions: nextVal };
+            }
+            return b;
+          });
+          if (updated) {
+            nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
+          }
+        }
+      });
+      return updated ? nextSol : prev;
+    });
 
     setBuildings(prev => prev.map(b => b.id === strId ? { ...b, masse_show_dimensions: nextVal } : b));
     setSolutionStates(prev => {
@@ -2420,12 +2449,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const activeList = allConfiguredStructures.filter(str => selectedStructureIds.includes(str.id));
     for (const str of activeList) {
       const activeView = masseViewTabs[str.id] || 1;
-      await captureStructureMasseMap(str.id, activeView);
+      const isDim = masseShowDimensions[str.id] !== undefined
+        ? Boolean(masseShowDimensions[str.id])
+        : (str.masse_show_dimensions !== false);
+      await captureStructureMasseMap(str.id, activeView, isDim);
       if (hasMasseView2[str.id] && !str.masse_capture_2) {
-        await captureStructureMasseMap(str.id, 2);
+        await captureStructureMasseMap(str.id, 2, isDim);
       }
     }
-  }, [allConfiguredStructures, selectedStructureIds, masseViewTabs, hasMasseView2, captureStructureMasseMap]);
+  }, [allConfiguredStructures, selectedStructureIds, masseViewTabs, hasMasseView2, captureStructureMasseMap, masseShowDimensions]);
 
   // Auto-détection de Vue 2 si existante dans le projet
   useEffect(() => {
@@ -2746,7 +2778,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       const bCenterLat = Number(b.masse_center_lat || bLat);
       const bCenterLng = Number(b.masse_center_lng || bLng);
 
-      const bShowDim = b.masse_show_dimensions !== false && masseShowDimensions[b.id] !== false;
+      const bShowDim = masseShowDimensions[b.id] !== undefined
+        ? Boolean(masseShowDimensions[b.id])
+        : (b.masse_show_dimensions !== false);
 
       // --- VUE 1 ---
       let masse1 = b.masse_capture;
@@ -4311,25 +4345,32 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 {/* Boutons d'action droite : Afficher les côtes (style configurateur) & Capturer */}
                                 <div className="flex items-center gap-2">
                                   {/* Bouton Toggle Afficher les côtes */}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleMasseDimensions(str.id)}
-                                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 border shadow-2xs ${
-                                      (masseShowDimensions[str.id] !== false && str.masse_show_dimensions !== false)
-                                        ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
-                                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                                    }`}
-                                    title="Afficher ou masquer les traits d'indication de mesure (longueur et largeur)"
-                                  >
-                                    <span>Afficher les côtes</span>
-                                    <div className={`w-7 h-4 rounded-full relative transition-colors ${
-                                      (masseShowDimensions[str.id] !== false && str.masse_show_dimensions !== false) ? 'bg-white/30' : 'bg-slate-300'
-                                    }`}>
-                                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
-                                        (masseShowDimensions[str.id] !== false && str.masse_show_dimensions !== false) ? 'left-3.5' : 'left-0.5'
-                                      }`} />
-                                    </div>
-                                  </button>
+                                  {(() => {
+                                    const isDimensionsShown = masseShowDimensions[str.id] !== undefined
+                                      ? Boolean(masseShowDimensions[str.id])
+                                      : (str.masse_show_dimensions !== false);
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleMasseDimensions(str.id)}
+                                        className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 border shadow-2xs ${
+                                          isDimensionsShown
+                                            ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                        title="Afficher ou masquer les traits d'indication de mesure (longueur et largeur)"
+                                      >
+                                        <span>Afficher les côtes</span>
+                                        <div className={`w-7 h-4 rounded-full relative transition-colors ${
+                                          isDimensionsShown ? 'bg-white/30' : 'bg-slate-300'
+                                        }`}>
+                                          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
+                                            isDimensionsShown ? 'left-3.5' : 'left-0.5'
+                                          }`} />
+                                        </div>
+                                      </button>
+                                    );
+                                  })()}
 
                                   {/* Bouton manuel de capture avec feedback */}
                                   {masseCapturedToast[str.id] && (
@@ -4408,7 +4449,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   </Polygon>
 
                                   {/* Cotations architecturales le long des côtés extérieurs du rectangle si activées */}
-                                  {(masseShowDimensions[str.id] !== false && str.masse_show_dimensions !== false) && (() => {
+                                  {(masseShowDimensions[str.id] !== undefined ? Boolean(masseShowDimensions[str.id]) : (str.masse_show_dimensions !== false)) && (() => {
                                     const dim = getBuildingDimensionLines(strLat, strLng, sLen, totalWid, sRot, 2.8);
                                     const strokeColor = str.solutionKey === 'ombriere' ? '#059669' : '#2563eb';
                                     return (
