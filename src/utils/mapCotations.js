@@ -89,31 +89,30 @@ export function drawDimensionLine(ctx, ptA, ptB, centerPt, label, color = '#1e3a
   const dimMidX = (d0.x + d1.x) / 2;
   const dimMidY = (d0.y + d1.y) / 2;
 
-  ctx.font = 'bold 9.5px sans-serif';
-  const metrics = ctx.measureText(label);
-  const padX = 5;
-  const bW = metrics.width + padX * 2;
-  const bH = 15;
+  // Décaler le texte vers l'extérieur pour laisser un espace vide sous l'indication de mesure
+  const textGapPx = 7;
+  const textPosX = dimMidX + nx * textGapPx;
+  const textPosY = dimMidY + ny * textGapPx;
 
   let angle = Math.atan2(dy, dx);
   if (angle > Math.PI / 2) angle -= Math.PI;
   else if (angle < -Math.PI / 2) angle += Math.PI;
 
-  ctx.translate(dimMidX, dimMidY);
+  ctx.translate(textPosX, textPosY);
   ctx.rotate(angle);
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-  ctx.strokeStyle = '#94a3b8';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(-bW / 2, -bH / 2, bW, bH, 3);
-  else ctx.rect(-bW / 2, -bH / 2, bW, bH);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = color;
+  // Police augmentée de 2 points (9.5px -> 11.5px)
+  ctx.font = 'bold 11.5px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+
+  // Halo blanc net pour la lisibilité sur fond de carte, sans cadre rectangulaire opaque
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  ctx.strokeText(label, 0, 0);
+
+  ctx.fillStyle = color;
   ctx.fillText(label, 0, 0);
 
   ctx.restore();
@@ -275,6 +274,24 @@ export function draw3DStructureBadge(ctx, centerPt, name, rotation, length, widt
 }
 
 /**
+ * Calcule l'angle d'orientation écran en degrés (-90° à +90°) d'un segment GPS
+ */
+export function getLineScreenAngle(ptA, ptB) {
+  if (!ptA || !ptB) return 0;
+  const dLat = ptB[0] - ptA[0];
+  const dLng = ptB[1] - ptA[1];
+  const midLat = (ptA[0] + ptB[0]) / 2;
+  const latRad = (midLat * Math.PI) / 180;
+  const dy = -dLat * 111139; // Écran : Sud vers le bas (dy > 0)
+  const dx = dLng * 111139 * Math.cos(latRad); // Écran : Est vers la droite (dx > 0)
+  let deg = Math.atan2(dy, dx) * (180 / Math.PI);
+  // Normaliser pour que le texte soit lisible de gauche à droite (entre -90° et +90°)
+  if (deg > 90) deg -= 180;
+  else if (deg < -90) deg += 180;
+  return deg;
+}
+
+/**
  * Calcule les lignes de cote GPS architecturales (Longueur et Largeur) sur les côtés extérieurs du rectangle
  */
 export function getBuildingDimensionLines(centerLat, centerLng, lengthMeters, widthMeters, rotationDeg, offsetMeters = 2.5) {
@@ -297,13 +314,20 @@ export function getBuildingDimensionLines(centerLat, centerLng, lengthMeters, wi
     return [lat + (ry / mPerLat), lng + (rx / (mPerLng || 1))];
   };
 
+  // Espace vide sous l'indication de mesure (décalage vers l'extérieur au-delà du trait de cote)
+  const textGap = 2.4;
+
   // Ligne de cote Longueur (côté -Y extérieur)
   const lenLine = [toGps(-dx, -dy - off), toGps(dx, -dy - off)];
   const lenMid = toGps(0, -dy - off);
+  const lenTextPos = toGps(0, -dy - off - textGap);
+  const lenAngle = getLineScreenAngle(lenLine[0], lenLine[1]);
 
   // Ligne de cote Largeur (côté +X extérieur)
   const widLine = [toGps(dx + off, -dy), toGps(dx + off, dy)];
   const widMid = toGps(dx + off, 0);
+  const widTextPos = toGps(dx + off + textGap, 0);
+  const widAngle = getLineScreenAngle(widLine[0], widLine[1]);
 
   // Lignes témoins de rappel aux angles
   const lenWitness1 = [toGps(-dx, -dy - 0.4), toGps(-dx, -dy - off - 0.8)];
@@ -314,10 +338,14 @@ export function getBuildingDimensionLines(centerLat, centerLng, lengthMeters, wi
   return {
     lenLine,
     lenMid,
+    lenTextPos,
+    lenAngle,
     lenWitness1,
     lenWitness2,
     widLine,
     widMid,
+    widTextPos,
+    widAngle,
     widWitness1,
     widWitness2
   };

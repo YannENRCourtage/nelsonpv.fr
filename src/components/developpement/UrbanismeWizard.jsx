@@ -4418,10 +4418,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                         <Polyline positions={dim.lenWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
                                         <Polyline positions={dim.lenWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
                                         <Marker
-                                          position={dim.lenMid}
+                                          position={dim.lenTextPos || dim.lenMid}
                                           icon={L.divIcon({
                                             className: 'bg-transparent',
-                                            html: `<div style="transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.96); border: 1px solid #94a3b8; border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: bold; color: ${strokeColor}; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.15); pointer-events: none;">${sLen.toFixed(1)} M</div>`,
+                                            html: `<div style="transform: translate(-50%, -50%) rotate(${(dim.lenAngle || 0).toFixed(1)}deg); font-size: 12px; font-weight: 800; color: ${strokeColor}; white-space: nowrap; text-shadow: 0 0 3px #ffffff, 0 0 2px #ffffff, 0 0 1px #ffffff; pointer-events: none; user-select: none;">${sLen.toFixed(1)} M</div>`,
                                             iconSize: [0, 0]
                                           })}
                                           interactive={false}
@@ -4432,10 +4432,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                         <Polyline positions={dim.widWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
                                         <Polyline positions={dim.widWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
                                         <Marker
-                                          position={dim.widMid}
+                                          position={dim.widTextPos || dim.widMid}
                                           icon={L.divIcon({
                                             className: 'bg-transparent',
-                                            html: `<div style="transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.96); border: 1px solid #94a3b8; border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: bold; color: ${strokeColor}; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.15); pointer-events: none;">${totalWid.toFixed(1)} M</div>`,
+                                            html: `<div style="transform: translate(-50%, -50%) rotate(${(dim.widAngle || 0).toFixed(1)}deg); font-size: 12px; font-weight: 800; color: ${strokeColor}; white-space: nowrap; text-shadow: 0 0 3px #ffffff, 0 0 2px #ffffff, 0 0 1px #ffffff; pointer-events: none; user-select: none;">${totalWid.toFixed(1)} M</div>`,
                                             iconSize: [0, 0]
                                           })}
                                           interactive={false}
