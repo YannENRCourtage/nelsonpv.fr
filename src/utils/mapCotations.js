@@ -273,3 +273,52 @@ export function draw3DStructureBadge(ctx, centerPt, name, rotation, length, widt
 
   ctx.restore();
 }
+
+/**
+ * Calcule les lignes de cote GPS architecturales (Longueur et Largeur) sur les côtés extérieurs du rectangle
+ */
+export function getBuildingDimensionLines(centerLat, centerLng, lengthMeters, widthMeters, rotationDeg, offsetMeters = 2.5) {
+  const lat = Number(centerLat) || 43.43571;
+  const lng = Number(centerLng) || -1.17644;
+  const len = Number(lengthMeters) || 30;
+  const wid = Number(widthMeters) || 15;
+  const rotRad = ((Number(rotationDeg) || 0) * Math.PI) / 180;
+
+  const dx = len / 2;
+  const dy = wid / 2;
+  const off = Math.max(1.8, Math.min(6, offsetMeters));
+
+  const mPerLat = 111139;
+  const mPerLng = 111139 * Math.cos((lat * Math.PI) / 180);
+
+  const toGps = (localX, localY) => {
+    const rx = localX * Math.cos(rotRad) - localY * Math.sin(rotRad);
+    const ry = localX * Math.sin(rotRad) + localY * Math.cos(rotRad);
+    return [lat + (ry / mPerLat), lng + (rx / (mPerLng || 1))];
+  };
+
+  // Ligne de cote Longueur (côté -Y extérieur)
+  const lenLine = [toGps(-dx, -dy - off), toGps(dx, -dy - off)];
+  const lenMid = toGps(0, -dy - off);
+
+  // Ligne de cote Largeur (côté +X extérieur)
+  const widLine = [toGps(dx + off, -dy), toGps(dx + off, dy)];
+  const widMid = toGps(dx + off, 0);
+
+  // Lignes témoins de rappel aux angles
+  const lenWitness1 = [toGps(-dx, -dy - 0.4), toGps(-dx, -dy - off - 0.8)];
+  const lenWitness2 = [toGps(dx, -dy - 0.4), toGps(dx, -dy - off - 0.8)];
+  const widWitness1 = [toGps(dx + 0.4, -dy), toGps(dx + off + 0.8, -dy)];
+  const widWitness2 = [toGps(dx + 0.4, dy), toGps(dx + off + 0.8, dy)];
+
+  return {
+    lenLine,
+    lenMid,
+    lenWitness1,
+    lenWitness2,
+    widLine,
+    widMid,
+    widWitness1,
+    widWitness2
+  };
+}

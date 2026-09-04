@@ -6,9 +6,7 @@
 import {
   getStructureHeights,
   drawDimensionLine,
-  drawSetbackLine,
-  drawNorthArrow,
-  draw3DStructureBadge
+  drawNorthArrow
 } from '@/utils/mapCotations';
 
 /**
@@ -62,7 +60,7 @@ function getBuildingCorners(centerLat, centerLng, lengthMeters, widthMeters, rot
  * @param {number} zoom Level de zoom (16-17 pour situation, 19 pour plan de masse)
  * @returns {Promise<string>} Data URL Image JPEG (data:image/jpeg;base64,...)
  */
-export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, buildings = null) {
+export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, buildings = null, showDimensions = true) {
   return new Promise((resolve) => {
     try {
       const width = 800;
@@ -218,37 +216,13 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Cotations architecturales du bâtiment (Longueur et Largeur sur les arêtes)
-            const centerPt = { x: bPixelX, y: bPixelY };
-            drawDimensionLine(ctx, pixelCorners[0], pixelCorners[1], centerPt, `${bLength.toFixed(1)} M`, strokeColor, 22);
-            drawDimensionLine(ctx, pixelCorners[1], pixelCorners[2], centerPt, `${bWidth.toFixed(1)} M`, strokeColor, 22);
-
-            // Cote d'implantation / recul aux limites parcellaires ou voirie (en rouge, conforme style urbanisme)
-            const edgeLen = Math.hypot(pixelCorners[1].x - pixelCorners[0].x, pixelCorners[1].y - pixelCorners[0].y) || 1;
-            const perpX = -(pixelCorners[1].y - pixelCorners[0].y) / edgeLen;
-            const perpY = (pixelCorners[1].x - pixelCorners[0].x) / edgeLen;
-            let setbackVec = { x: perpX, y: perpY };
-            const toCenter = { x: bPixelX - pixelCorners[1].x, y: bPixelY - pixelCorners[1].y };
-            if (setbackVec.x * toCenter.x + setbackVec.y * toCenter.y > 0) {
-              setbackVec.x = -setbackVec.x;
-              setbackVec.y = -setbackVec.y;
+            // Cotations architecturales du bâtiment (Longueur et Largeur sur les arêtes uniquement)
+            const bShowDim = b.masse_show_dimensions !== false && showDimensions !== false;
+            if (bShowDim) {
+              const centerPt = { x: bPixelX, y: bPixelY };
+              drawDimensionLine(ctx, pixelCorners[0], pixelCorners[1], centerPt, `${bLength.toFixed(1)} M`, strokeColor, 20);
+              drawDimensionLine(ctx, pixelCorners[1], pixelCorners[2], centerPt, `${bWidth.toFixed(1)} M`, strokeColor, 20);
             }
-            const setbackMeters = Number(b.setback || 13.0);
-            drawSetbackLine(ctx, pixelCorners[1], setbackVec, setbackMeters, pxPerMeter, `Recul : ${setbackMeters.toFixed(1)} M`);
-
-            // Cartouche 3D complet (3 dimensions : L, l, H faîtage/sablière + TN 0.00m)
-            const heights = getStructureHeights(b);
-            draw3DStructureBadge(
-              ctx,
-              centerPt,
-              b.name || (isOmbriere ? `Ombrière ${bIdx + 1}` : `Bâtiment ${bIdx + 1}`),
-              bRot,
-              bLength,
-              bWidth,
-              heights.eaveHeight,
-              heights.ridgeHeight,
-              isOmbriere
-            );
 
             ctx.restore();
           });

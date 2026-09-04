@@ -14,9 +14,8 @@ import { getOrGenerateProjectMaps, generateStaticMapImage } from '@/services/Aut
 import {
   getStructureHeights,
   drawDimensionLine,
-  drawSetbackLine,
   drawNorthArrow,
-  draw3DStructureBadge
+  getBuildingDimensionLines
 } from '@/utils/mapCotations';
 import { useConfiguratorStore, useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import { cacheMediaLocal, getAllCachedMediaForProject, uploadUrbanismeDataUrl, persistProjectUrbanismeMedia } from '@/services/urbanismeMediaService';
@@ -32,7 +31,7 @@ import LandscapeIntegrationModal from './LandscapeIntegrationModal';
 import Building3DViewer from './Building3DViewer';
 import BatteryStationVisualizer from './BatteryStationVisualizer';
 import html2canvas from 'html2canvas';
-import { MapContainer, TileLayer, Marker, Polygon, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polygon, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -137,7 +136,7 @@ function getOrientationLabel(deg) {
 }
 
 // Capture directe haute fidélité d'une carte Leaflet sans passer par html2canvas sur le SVG (élimine tout décalage)
-async function captureDirectLeafletMap(map, targetStr, allActiveStructures = []) {
+async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [], showDimensions = true) {
   if (!map) return null;
   try {
     const size = map.getSize();
@@ -208,7 +207,7 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [])
       const fillColor = isOmb ? 'rgba(16, 185, 129, 0.35)' : 'rgba(59, 130, 246, 0.35)';
 
       ctx.save();
-      // Polygone précis
+      // Polygone précis (rectangle de la construction parfaitement visible)
       ctx.beginPath();
       ctx.moveTo(pixelCorners[0].x, pixelCorners[0].y);
       ctx.lineTo(pixelCorners[1].x, pixelCorners[1].y);
@@ -241,37 +240,13 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [])
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Cotations architecturales en plan (Longueur et Largeur sur les arêtes)
-      const centerPt = map.latLngToContainerPoint([strLat, strLng]);
-      drawDimensionLine(ctx, pixelCorners[0], pixelCorners[1], centerPt, `${sLen.toFixed(1)} M`, strokeColor, 22);
-      drawDimensionLine(ctx, pixelCorners[1], pixelCorners[2], centerPt, `${totalWid.toFixed(1)} M`, strokeColor, 22);
-
-      // Cote d'implantation / recul aux limites parcellaires ou voirie (en rouge)
-      const edgeLen = Math.hypot(pixelCorners[1].x - pixelCorners[0].x, pixelCorners[1].y - pixelCorners[0].y) || 1;
-      const perpX = -(pixelCorners[1].y - pixelCorners[0].y) / edgeLen;
-      const perpY = (pixelCorners[1].x - pixelCorners[0].x) / edgeLen;
-      let setbackVec = { x: perpX, y: perpY };
-      const toCenter = { x: centerPt.x - pixelCorners[1].x, y: centerPt.y - pixelCorners[1].y };
-      if (setbackVec.x * toCenter.x + setbackVec.y * toCenter.y > 0) {
-        setbackVec.x = -setbackVec.x;
-        setbackVec.y = -setbackVec.y;
+      // Cotations architecturales en plan : SEULEMENT Longueur et Largeur sur les arêtes extérieures
+      const strShowDim = str.masse_show_dimensions !== false && showDimensions !== false;
+      if (strShowDim) {
+        const centerPt = map.latLngToContainerPoint([strLat, strLng]);
+        drawDimensionLine(ctx, pixelCorners[0], pixelCorners[1], centerPt, `${sLen.toFixed(1)} M`, strokeColor, 20);
+        drawDimensionLine(ctx, pixelCorners[1], pixelCorners[2], centerPt, `${totalWid.toFixed(1)} M`, strokeColor, 20);
       }
-      const setbackMeters = Number(str.setback || 13.0);
-      drawSetbackLine(ctx, pixelCorners[1], setbackVec, setbackMeters, pxPerMeter, `Recul : ${setbackMeters.toFixed(1)} M`);
-
-      // Cartouche 3D complet (3 dimensions : L, l, H faîtage/sablière + TN 0.00m)
-      const heights = getStructureHeights(str);
-      draw3DStructureBadge(
-        ctx,
-        centerPt,
-        str.name || (isOmb ? 'Ombrière' : 'Bâtiment'),
-        sRot,
-        sLen,
-        totalWid,
-        heights.eaveHeight,
-        heights.ridgeHeight,
-        isOmb
-      );
 
       ctx.restore();
     });
@@ -652,6 +627,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [activeMasseStructureId, setActiveMasseStructureId] = useState(null);
   const [masseViewTabs, setMasseViewTabs] = useState({}); // { [strId]: 1 | 2 }
   const [hasMasseView2, setHasMasseView2] = useState({}); // { [strId]: boolean }
+  const [masseShowDimensions, setMasseShowDimensions] = useState({}); // { [strId]: boolean }
   const [masseCapturedToast, setMasseCapturedToast] = useState({}); // { [strId]: string }
   const masseMapInstancesRef = useRef({});
 
@@ -2260,15 +2236,18 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
   }, [persistMediaItem]);
 
   // Capture haute résolution fidèle du plan de masse sans décalage
-  const captureStructureMasseMap = useCallback(async (strId, viewNum = 1) => {
+  const captureStructureMasseMap = useCallback(async (strId, viewNum = 1, forceShowDimensions = null) => {
     const map = masseMapInstancesRef.current[strId];
     const targetStr = allConfiguredStructures.find(s => s.id === strId);
     const activeList = allConfiguredStructures.filter(str => selectedStructureIds.includes(str.id));
+    const showDim = forceShowDimensions !== null
+      ? forceShowDimensions
+      : (masseShowDimensions[strId] !== false && targetStr?.masse_show_dimensions !== false);
 
     let dataUrl = null;
     // 1. Tenter la capture directe instantanée sur le conteneur Leaflet (sans passer par html2canvas)
     if (map) {
-      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList);
+      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim);
     }
 
     // 2. Fallback de haute précision : génération statique sans faille (AutoMapService)
@@ -2278,7 +2257,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       const cLat = Number((viewNum === 2 ? targetStr.masse_center_lat_2 : targetStr.masse_center_lat) || bLat);
       const cLng = Number((viewNum === 2 ? targetStr.masse_center_lng_2 : targetStr.masse_center_lng) || bLng);
       const cZoom = Number((viewNum === 2 ? targetStr.masse_zoom_2 : targetStr.masse_zoom) || (viewNum === 2 ? 16 : 18));
-      dataUrl = await generateStaticMapImage(cLat, cLng, 'map', cZoom, activeList);
+      dataUrl = await generateStaticMapImage(cLat, cLng, 'map', cZoom, activeList, showDim);
     }
 
     if (dataUrl) {
@@ -2286,7 +2265,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       return dataUrl;
     }
     return null;
-  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture]);
+  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions]);
 
   // Bascule active entre la Vue 1 et la Vue 2 d'une structure
   const handleSwitchMasseView = useCallback(async (strId, targetViewNum) => {
@@ -2402,6 +2381,39 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       }, 2500);
     }
   }, [masseViewTabs, captureStructureMasseMap]);
+
+  // Bascule de l'affichage des côtes (longueur et largeur) sur le plan de masse
+  const handleToggleMasseDimensions = useCallback((strId) => {
+    const targetStr = allConfiguredStructures.find(s => s.id === strId);
+    const currentVal = masseShowDimensions[strId] !== false && targetStr?.masse_show_dimensions !== false;
+    const nextVal = !currentVal;
+
+    setMasseShowDimensions(prev => ({ ...prev, [strId]: nextVal }));
+
+    setBuildings(prev => prev.map(b => b.id === strId ? { ...b, masse_show_dimensions: nextVal } : b));
+    setSolutionStates(prev => {
+      let updated = false;
+      const next = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (v?.structures?.some(s => s.id === strId)) {
+          updated = true;
+          next[k] = {
+            ...v,
+            structures: v.structures.map(s => s.id === strId ? { ...s, masse_show_dimensions: nextVal } : s)
+          };
+        } else {
+          next[k] = v;
+        }
+      }
+      return updated ? next : prev;
+    });
+
+    // Re-capturer immédiatement la vue active avec l'état de cotation choisi
+    setTimeout(async () => {
+      const activeView = masseViewTabs[strId] || 1;
+      await captureStructureMasseMap(strId, activeView, nextVal);
+    }, 150);
+  }, [allConfiguredStructures, masseShowDimensions, masseViewTabs, captureStructureMasseMap]);
 
   // Capture de toutes les visionneuses de plan de masse actives
   const captureAllActiveMasseMaps = useCallback(async () => {
@@ -2734,15 +2746,17 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       const bCenterLat = Number(b.masse_center_lat || bLat);
       const bCenterLng = Number(b.masse_center_lng || bLng);
 
+      const bShowDim = b.masse_show_dimensions !== false && masseShowDimensions[b.id] !== false;
+
       // --- VUE 1 ---
       let masse1 = b.masse_capture;
       if (!masse1 || typeof masse1 !== 'string' || !masse1.startsWith('data:image')) {
         const map = masseMapInstancesRef.current[b.id];
         if (map && (masseViewTabs[b.id] || 1) === 1) {
-          masse1 = await captureDirectLeafletMap(map, b, updatedBuildings);
+          masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim);
         }
         if (!masse1) {
-          masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, updatedBuildings);
+          masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, updatedBuildings, bShowDim);
         }
       }
 
@@ -2753,13 +2767,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         if (!masse2 || typeof masse2 !== 'string' || !masse2.startsWith('data:image')) {
           const map = masseMapInstancesRef.current[b.id];
           if (map && masseViewTabs[b.id] === 2) {
-            masse2 = await captureDirectLeafletMap(map, b, updatedBuildings);
+            masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim);
           }
           if (!masse2) {
             const bZoom2 = Number(b.masse_zoom_2 || Math.max(14, bZoom - 2));
             const bCenterLat2 = Number(b.masse_center_lat_2 || bLat);
             const bCenterLng2 = Number(b.masse_center_lng_2 || bLng);
-            masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'map', bZoom2, updatedBuildings);
+            masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'map', bZoom2, updatedBuildings, bShowDim);
           }
         }
       }
@@ -4294,8 +4308,30 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   )}
                                 </div>
 
-                                {/* Bouton manuel de capture avec feedback */}
-                                <div className="flex items-center gap-1.5">
+                                {/* Boutons d'action droite : Afficher les côtes (style configurateur) & Capturer */}
+                                <div className="flex items-center gap-2">
+                                  {/* Bouton Toggle Afficher les côtes */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleMasseDimensions(str.id)}
+                                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 border shadow-2xs ${
+                                      (masseShowDimensions[str.id] !== false && str.masse_show_dimensions !== false)
+                                        ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                    }`}
+                                    title="Afficher ou masquer les traits d'indication de mesure (longueur et largeur)"
+                                  >
+                                    <span>Afficher les côtes</span>
+                                    <div className={`w-7 h-4 rounded-full relative transition-colors ${
+                                      (masseShowDimensions[str.id] !== false && str.masse_show_dimensions !== false) ? 'bg-white/30' : 'bg-slate-300'
+                                    }`}>
+                                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
+                                        (masseShowDimensions[str.id] !== false && str.masse_show_dimensions !== false) ? 'left-3.5' : 'left-0.5'
+                                      }`} />
+                                    </div>
+                                  </button>
+
+                                  {/* Bouton manuel de capture avec feedback */}
                                   {masseCapturedToast[str.id] && (
                                     <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 animate-fade-in">
                                       <CheckCircle2 className="w-3 h-3" />
@@ -4364,14 +4400,49 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                       weight: 2.5,
                                     }}
                                   >
-                                    <Tooltip permanent direction="center">
-                                      <div className="text-[9.5px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap bg-white/95 text-slate-900 border border-slate-300 text-center leading-tight">
-                                        <div className="font-bold text-slate-900">{str.name} ({sRot}°)</div>
-                                        <div className="text-[8.5px] text-blue-700 font-semibold">{sLen.toFixed(1)}m × {totalWid.toFixed(1)}m</div>
-                                        <div className="text-[7.5px] text-emerald-700 font-medium">Faîtage +{getStructureHeights(str, editedProject).ridgeHeight}m | Sablière +{getStructureHeights(str, editedProject).eaveHeight}m</div>
+                                    <Tooltip sticky direction="top" offset={[0, -10]}>
+                                      <div className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs whitespace-nowrap bg-white/95 text-slate-800 border border-slate-300 text-center">
+                                        {str.name || 'Projet'} ({sRot}°)
                                       </div>
                                     </Tooltip>
                                   </Polygon>
+
+                                  {/* Cotations architecturales le long des côtés extérieurs du rectangle si activées */}
+                                  {(masseShowDimensions[str.id] !== false && str.masse_show_dimensions !== false) && (() => {
+                                    const dim = getBuildingDimensionLines(strLat, strLng, sLen, totalWid, sRot, 2.8);
+                                    const strokeColor = str.solutionKey === 'ombriere' ? '#059669' : '#2563eb';
+                                    return (
+                                      <>
+                                        {/* Longueur */}
+                                        <Polyline positions={dim.lenLine} pathOptions={{ color: strokeColor, weight: 2 }} />
+                                        <Polyline positions={dim.lenWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                        <Polyline positions={dim.lenWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                        <Marker
+                                          position={dim.lenMid}
+                                          icon={L.divIcon({
+                                            className: 'bg-transparent',
+                                            html: `<div style="transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.96); border: 1px solid #94a3b8; border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: bold; color: ${strokeColor}; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.15); pointer-events: none;">${sLen.toFixed(1)} M</div>`,
+                                            iconSize: [0, 0]
+                                          })}
+                                          interactive={false}
+                                        />
+
+                                        {/* Largeur */}
+                                        <Polyline positions={dim.widLine} pathOptions={{ color: strokeColor, weight: 2 }} />
+                                        <Polyline positions={dim.widWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                        <Polyline positions={dim.widWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                        <Marker
+                                          position={dim.widMid}
+                                          icon={L.divIcon({
+                                            className: 'bg-transparent',
+                                            html: `<div style="transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.96); border: 1px solid #94a3b8; border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: bold; color: ${strokeColor}; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.15); pointer-events: none;">${totalWid.toFixed(1)} M</div>`,
+                                            iconSize: [0, 0]
+                                          })}
+                                          interactive={false}
+                                        />
+                                      </>
+                                    );
+                                  })()}
 
                                   {/* Marqueur déplaçable propre UNIQUEMENT à cette structure */}
                                   <DraggableLocationMarker
@@ -4409,7 +4480,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                           interactive: false,
                                         }}
                                       >
-                                        <Tooltip permanent direction="center">
+                                        <Tooltip sticky direction="top" offset={[0, -10]}>
                                           <div className="text-[9px] font-bold px-1.5 py-0.5 rounded shadow-2xs whitespace-nowrap bg-white/95 text-slate-700 border border-slate-200">
                                             {other.name} ({oRot}°)
                                           </div>
