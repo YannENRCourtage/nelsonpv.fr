@@ -3,6 +3,13 @@
  * (Plan IGN + Vue aérienne Satellite + Plan de masse OSM zoom 19)
  * Rendu dynamique via Canvas HTML5 à partir de coordonnées GPS (lat, lng) ou d'une adresse.
  */
+import {
+  getStructureHeights,
+  drawDimensionLine,
+  drawSetbackLine,
+  drawNorthArrow,
+  draw3DStructureBadge
+} from '@/utils/mapCotations';
 
 /**
  * Convertit des coordonnées GPS (lat, lng) en coordonnées de tuiles Web Mercator (x, y, z)
@@ -211,32 +218,43 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Badge central blanc avec libellé du bâtiment (style identique au Tooltip Leaflet)
-            const badgeText = `${b.name || (isOmbriere ? `Ombrière ${bIdx + 1}` : `Bâtiment ${bIdx + 1}`)} (${bRot}°)`;
-            ctx.font = 'bold 10px sans-serif';
-            const metrics = ctx.measureText(badgeText);
-            const badgeW = metrics.width + 12;
-            const badgeH = 18;
+            // Cotations architecturales du bâtiment (Longueur et Largeur sur les arêtes)
+            const centerPt = { x: bPixelX, y: bPixelY };
+            drawDimensionLine(ctx, pixelCorners[0], pixelCorners[1], centerPt, `${bLength.toFixed(1)} M`, strokeColor, 22);
+            drawDimensionLine(ctx, pixelCorners[1], pixelCorners[2], centerPt, `${bWidth.toFixed(1)} M`, strokeColor, 22);
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.strokeStyle = badgeBorder;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            if (ctx.roundRect) {
-              ctx.roundRect(bPixelX - badgeW / 2, bPixelY - badgeH / 2, badgeW, badgeH, 4);
-            } else {
-              ctx.rect(bPixelX - badgeW / 2, bPixelY - badgeH / 2, badgeW, badgeH);
+            // Cote d'implantation / recul aux limites parcellaires ou voirie (en rouge, conforme style urbanisme)
+            const edgeLen = Math.hypot(pixelCorners[1].x - pixelCorners[0].x, pixelCorners[1].y - pixelCorners[0].y) || 1;
+            const perpX = -(pixelCorners[1].y - pixelCorners[0].y) / edgeLen;
+            const perpY = (pixelCorners[1].x - pixelCorners[0].x) / edgeLen;
+            let setbackVec = { x: perpX, y: perpY };
+            const toCenter = { x: bPixelX - pixelCorners[1].x, y: bPixelY - pixelCorners[1].y };
+            if (setbackVec.x * toCenter.x + setbackVec.y * toCenter.y > 0) {
+              setbackVec.x = -setbackVec.x;
+              setbackVec.y = -setbackVec.y;
             }
-            ctx.fill();
-            ctx.stroke();
+            const setbackMeters = Number(b.setback || 13.0);
+            drawSetbackLine(ctx, pixelCorners[1], setbackVec, setbackMeters, pxPerMeter, `Recul : ${setbackMeters.toFixed(1)} M`);
 
-            ctx.fillStyle = badgeTextColor;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(badgeText, bPixelX, bPixelY);
+            // Cartouche 3D complet (3 dimensions : L, l, H faîtage/sablière + TN 0.00m)
+            const heights = getStructureHeights(b);
+            draw3DStructureBadge(
+              ctx,
+              centerPt,
+              b.name || (isOmbriere ? `Ombrière ${bIdx + 1}` : `Bâtiment ${bIdx + 1}`),
+              bRot,
+              bLength,
+              bWidth,
+              heights.eaveHeight,
+              heights.ridgeHeight,
+              isOmbriere
+            );
 
             ctx.restore();
           });
+
+          // Flèche Nord officielle en haut à droite
+          drawNorthArrow(ctx, width - 42, 42, 22);
 
           // Échelle métrique dans le coin inférieur gauche (identique à PC2MapScaleBar)
           const targets = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];

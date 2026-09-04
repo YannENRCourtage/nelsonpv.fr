@@ -11,6 +11,13 @@ import {
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
 import { cadastreService } from '@/services/CadastreService';
 import { getOrGenerateProjectMaps, generateStaticMapImage } from '@/services/AutoMapService';
+import {
+  getStructureHeights,
+  drawDimensionLine,
+  drawSetbackLine,
+  drawNorthArrow,
+  draw3DStructureBadge
+} from '@/utils/mapCotations';
 import { useConfiguratorStore, useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import { cacheMediaLocal, getAllCachedMediaForProject, uploadUrbanismeDataUrl, persistProjectUrbanismeMedia } from '@/services/urbanismeMediaService';
 import { useAuth } from '@/contexts/AuthContext.jsx';
@@ -169,6 +176,12 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [])
       }
     }
 
+    // Facteur d'échelle mètres -> pixels au niveau de zoom courant Leaflet
+    const currentZoom = map.getZoom();
+    const mapCenter = map.getCenter();
+    const metersPerPx = (40075016.686 * Math.cos((mapCenter.lat * Math.PI) / 180)) / Math.pow(2, currentZoom + 8);
+    const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 2.0;
+
     // 2. Rendu des structures orientées via projection conteneur exacte Leaflet (zéro décalage)
     const listToDraw = allActiveStructures && allActiveStructures.length > 0
       ? allActiveStructures
@@ -228,38 +241,45 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [])
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Tooltip badge central
+      // Cotations architecturales en plan (Longueur et Largeur sur les arêtes)
       const centerPt = map.latLngToContainerPoint([strLat, strLng]);
-      const badgeText = `${str.name || (isOmb ? 'Ombrière' : 'Bâtiment')} (${sRot}°)`;
-      ctx.font = 'bold 10px sans-serif';
-      const metrics = ctx.measureText(badgeText);
-      const badgeW = metrics.width + 12;
-      const badgeH = 18;
+      drawDimensionLine(ctx, pixelCorners[0], pixelCorners[1], centerPt, `${sLen.toFixed(1)} M`, strokeColor, 22);
+      drawDimensionLine(ctx, pixelCorners[1], pixelCorners[2], centerPt, `${totalWid.toFixed(1)} M`, strokeColor, 22);
 
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.strokeStyle = isOmb ? '#a7f3d0' : '#bfdbfe';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(centerPt.x - badgeW / 2, centerPt.y - badgeH / 2, badgeW, badgeH, 4);
-      } else {
-        ctx.rect(centerPt.x - badgeW / 2, centerPt.y - badgeH / 2, badgeW, badgeH);
+      // Cote d'implantation / recul aux limites parcellaires ou voirie (en rouge)
+      const edgeLen = Math.hypot(pixelCorners[1].x - pixelCorners[0].x, pixelCorners[1].y - pixelCorners[0].y) || 1;
+      const perpX = -(pixelCorners[1].y - pixelCorners[0].y) / edgeLen;
+      const perpY = (pixelCorners[1].x - pixelCorners[0].x) / edgeLen;
+      let setbackVec = { x: perpX, y: perpY };
+      const toCenter = { x: centerPt.x - pixelCorners[1].x, y: centerPt.y - pixelCorners[1].y };
+      if (setbackVec.x * toCenter.x + setbackVec.y * toCenter.y > 0) {
+        setbackVec.x = -setbackVec.x;
+        setbackVec.y = -setbackVec.y;
       }
-      ctx.fill();
-      ctx.stroke();
+      const setbackMeters = Number(str.setback || 13.0);
+      drawSetbackLine(ctx, pixelCorners[1], setbackVec, setbackMeters, pxPerMeter, `Recul : ${setbackMeters.toFixed(1)} M`);
 
-      ctx.fillStyle = isOmb ? '#065f46' : '#1e40af';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(badgeText, centerPt.x, centerPt.y);
+      // Cartouche 3D complet (3 dimensions : L, l, H faîtage/sablière + TN 0.00m)
+      const heights = getStructureHeights(str);
+      draw3DStructureBadge(
+        ctx,
+        centerPt,
+        str.name || (isOmb ? 'Ombrière' : 'Bâtiment'),
+        sRot,
+        sLen,
+        totalWid,
+        heights.eaveHeight,
+        heights.ridgeHeight,
+        isOmb
+      );
 
       ctx.restore();
     });
 
-    // 3. Échelle métrique dynamique (en bas à gauche)
-    const currentZoom = map.getZoom();
-    const mapCenter = map.getCenter();
-    const metersPerPx = (40075016.686 * Math.cos((mapCenter.lat * Math.PI) / 180)) / Math.pow(2, currentZoom + 8);
+    // 3. Flèche Nord officielle en haut à droite
+    drawNorthArrow(ctx, size.x - 36, 36, 22);
+
+    // 4. Échelle métrique dynamique (en bas à gauche)
     const targets = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
     const maxBarPx = 80;
     const maxMeters = maxBarPx * metersPerPx;
@@ -4279,6 +4299,12 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 id={`masse-map-container-${str.id}`}
                                 className="relative flex-1 min-h-[260px] w-full overflow-hidden"
                               >
+                                {/* Boussole / Flèche Nord réglementaire en overlay */}
+                                <div className="absolute top-3 right-3 z-[1000] pointer-events-none bg-white/95 backdrop-blur-xs border border-slate-300 rounded-full w-9 h-9 flex flex-col items-center justify-center shadow-md">
+                                  <span className="text-[10px] font-black text-slate-800 leading-none">N</span>
+                                  <span className="text-blue-600 text-[10px] leading-none font-bold">▲</span>
+                                </div>
+
                                 <MapContainer
                                   key={`map-masse-${str.id}-${activeStructures.length}`}
                                   center={[
@@ -4319,8 +4345,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                     }}
                                   >
                                     <Tooltip permanent direction="center">
-                                      <div className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs whitespace-nowrap bg-white text-slate-900 border border-slate-200">
-                                        {str.name} ({sRot}°)
+                                      <div className="text-[9.5px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap bg-white/95 text-slate-900 border border-slate-300 text-center leading-tight">
+                                        <div className="font-bold text-slate-900">{str.name} ({sRot}°)</div>
+                                        <div className="text-[8.5px] text-blue-700 font-semibold">{sLen.toFixed(1)}m × {totalWid.toFixed(1)}m</div>
+                                        <div className="text-[7.5px] text-emerald-700 font-medium">Faîtage +{getStructureHeights(str, editedProject).ridgeHeight}m | Sablière +{getStructureHeights(str, editedProject).eaveHeight}m</div>
                                       </div>
                                     </Tooltip>
                                   </Polygon>
@@ -4721,7 +4749,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           handleFieldChange('objet_travaux', val);
                         }}
                         placeholder={isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"}
-                        className="w-full flex-1 min-h-[160px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed resize-none outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
+                        className="w-full flex-1 min-h-[220px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
                       />
                     </div>
                   </div>

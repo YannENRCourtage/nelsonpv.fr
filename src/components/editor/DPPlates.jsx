@@ -227,8 +227,8 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
         <div style={PAGE_STYLE} id={`dp-plate-masse${viewNumber === 2 ? '-vue2' : ''}`}>
             <PlateHeader 
                 title={viewNumber === 2 
-                    ? "DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Vue 2 — Zoom étendu)" 
-                    : "DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS"} 
+                    ? "DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Vue 2 — Zoom étendu — Coté dans les 3 dimensions — Art. R. 431-36 b)" 
+                    : "DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Coté dans les 3 dimensions — Art. R. 431-36 b)"} 
                 project={project} 
             />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '135mm', marginBottom: '5mm' }}>
@@ -255,6 +255,8 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                             if (!bDisplayName) bDisplayName = isAcama ? `Bâtiment ${idx + 1}` : `Ombrière ${idx + 1}`;
 
                             const bZoom = (viewNumber === 2 ? (b.masse_zoom_2 || project?.masse_zoom_2 || captures?.masse_zoom_2) : null) || b.masse_zoom || project?.masse_zoom || captures?.masse_zoom || 18;
+                            const bRidge = Number(b.ridgeHeight || project?.hauteur_faitage || 6.2);
+                            const bEave = Number(b.eaveHeight || project?.hauteur_egout || 4.5);
 
                             return (
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
@@ -268,6 +270,13 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                                     </div>
                                     <div style={{ flex: 1, position: 'relative', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <img src={getProxiedImageUrl(bPhoto || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.2mm', padding: '1mm 1.5mm', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '1.5mm', fontSize: '6.5pt', color: '#334155' }}>
+                                        <div style={{ display: 'flex', gap: '2.5mm', flexWrap: 'wrap' }}>
+                                            <span><strong>Cotation 3D :</strong> L={bLen.toFixed(1)}m × l={bW.toFixed(1)}m</span>
+                                            <span><strong>Altimétrie :</strong> Faîtage +{bRidge.toFixed(2)}m / Sablière +{bEave.toFixed(2)}m (TN 0.00m)</span>
+                                        </div>
+                                        <span style={{ fontWeight: 'bold', color: '#0f172a' }}>Nord ↑ | Cotes d'implantation</span>
                                     </div>
                                 </div>
                             );
@@ -295,6 +304,8 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                     if (!bDisplayName) bDisplayName = isAcama ? 'Bâtiment 1' : 'Ombrière 1';
 
                     const bZoom = (viewNumber === 2 ? (b?.masse_zoom_2 || project?.masse_zoom_2 || captures?.masse_zoom_2) : null) || b?.masse_zoom || project?.masse_zoom || captures?.masse_zoom || 18;
+                    const bRidge = Number(b?.ridgeHeight || project?.hauteur_faitage || 6.2);
+                    const bEave = Number(b?.eaveHeight || project?.hauteur_egout || 4.5);
 
                     return (
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
@@ -308,6 +319,17 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                             </div>
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff' }}>
                                 <img src={getProxiedImageUrl(bPhoto || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5mm', padding: '1.2mm 2.5mm', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '1.5mm', fontSize: '7.2pt', color: '#334155' }}>
+                                <div style={{ display: 'flex', gap: '3.5mm' }}>
+                                    <span><strong>1. Longueur :</strong> {bLen.toFixed(1)} m</span>
+                                    <span><strong>2. Largeur :</strong> {bW.toFixed(1)} m (Emprise : {bArea} m²)</span>
+                                    <span><strong>3. Altimétrie :</strong> Faîtage +{bRidge.toFixed(2)} m | Sablière +{bEave.toFixed(2)} m (TN = 0.00 m)</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '3mm', fontWeight: 'bold' }}>
+                                    <span style={{ color: '#0f172a' }}>Orientation : N ↑</span>
+                                    <span style={{ color: '#dc2626' }}>Cotes de recul & d'implantation aux limites</span>
+                                </div>
                             </div>
                         </div>
                     );

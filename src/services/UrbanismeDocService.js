@@ -71,21 +71,28 @@ const C = {
   accent:     rgb(0.98, 0.65, 0.02),     // #FAA505
 };
 
-// Utilitaire : coupe le texte en lignes de maxChars caractères
+// Utilitaire : coupe le texte en lignes de maxChars caractères en respectant les retours à la ligne
 function wrapText(text, maxChars) {
   if (!text) return [];
-  const words = text.split(' ');
+  const paragraphs = String(text).split(/\r?\n/);
   const lines = [];
-  let current = '';
-  for (const word of words) {
-    if ((current + ' ' + word).trim().length > maxChars) {
-      if (current) lines.push(current.trim());
-      current = word;
-    } else {
-      current = current ? current + ' ' + word : word;
+  for (const para of paragraphs) {
+    if (!para.trim()) {
+      lines.push('');
+      continue;
     }
+    const words = para.split(' ');
+    let current = '';
+    for (const word of words) {
+      if ((current + ' ' + word).trim().length > maxChars) {
+        if (current) lines.push(current.trim());
+        current = word;
+      } else {
+        current = current ? current + ' ' + word : word;
+      }
+    }
+    if (current) lines.push(current.trim());
   }
-  if (current) lines.push(current.trim());
   return lines;
 }
 
@@ -213,19 +220,64 @@ async function drawCoverPage(doc, project, type, installationType) {
     }
   });
 
-  // ── Description (objet des travaux) ──────────────────────────
-  page.drawText('OBJET DES TRAVAUX', { x: cx + 16, y: H - 285, size: 7.5, font: fontB, color: C.gray });
+  // ── Description (objet des travaux) — Cadre Élargi Stylisé ────────────────
+  const cardX = cx + 16;
+  const cardW = W - cx - 36; // 585.89 pt (pleine largeur)
+  const cardBottom = isDP ? 128 : 32;
+  const cardTop = H - 248;
+  const cardH = cardTop - cardBottom;
+
+  // Fond du cadre avec bordure douce et légère teinte
+  page.drawRectangle({
+    x: cardX,
+    y: cardBottom,
+    width: cardW,
+    height: cardH,
+    color: rgb(0.985, 0.99, 1.0),
+    borderColor: rgb(0.85, 0.90, 0.95),
+    borderWidth: 1,
+  });
+
+  // Barre latérale décorative typeColor
+  page.drawRectangle({
+    x: cardX,
+    y: cardBottom,
+    width: 4,
+    height: cardH,
+    color: typeColor,
+  });
+
+  // Titre du cadre
+  page.drawText('OBJET DES TRAVAUX', {
+    x: cardX + 14,
+    y: cardBottom + cardH - 17,
+    size: 8,
+    font: fontB,
+    color: typeColor,
+  });
   
-  // Utiliser le texte synthétique Cerfa / nature des travaux et non la notice PC4 complète
+  // Utiliser le texte personnalisé saisi ou synthétique
   const objetText = (project?.objet_travaux || project?.objetTravaux)
     ? (project.objet_travaux || project.objetTravaux)
-    : (project?.description && !project.description.includes("NOTICE D'INSERTION") && !project.description.includes('1- OBJET') && project.description.length < 250)
+    : (project?.description && !project.description.includes("NOTICE D'INSERTION") && !project.description.includes('1- OBJET') && project.description.length < 350)
       ? project.description
       : typeInfo.cerfaText;
 
-  const descLines = wrapText(objetText, 72);
-  descLines.slice(0, 6).forEach((line, i) => {
-    page.drawText(line, { x: cx + 16, y: H - 300 - i * 13, size: 9.5, font: fontR, color: C.dark });
+  // Largeur maximale : ~112 caractères par ligne sur 550 pt de largeur utile
+  const descLines = wrapText(objetText, 112);
+  const isLong = descLines.length > 8;
+  const fontSize = isLong ? 8.5 : 9.0;
+  const lineHeight = isLong ? 12.0 : 13.5;
+  const maxAvailableLines = Math.floor((cardH - 32) / lineHeight);
+
+  descLines.slice(0, maxAvailableLines).forEach((line, i) => {
+    page.drawText(line, {
+      x: cardX + 14,
+      y: cardBottom + cardH - 33 - (i * lineHeight),
+      size: fontSize,
+      font: fontR,
+      color: C.dark,
+    });
   });
 
   // ── Encart Réglementaire Déclaration Préalable (Article R.421-9 du Code de l'Urbanisme) ──
