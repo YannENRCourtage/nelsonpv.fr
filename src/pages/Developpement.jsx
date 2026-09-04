@@ -309,6 +309,10 @@ export default function Developpement() {
           const suffix = bIdx === 0 ? '' : `-${bIdx}`;
           if (!selectedPages || selectedPages.masse) {
             plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse` : `${prefix}plate-masse${suffix}`);
+            const hasMasse2 = Boolean(bList[bIdx]?.masse_capture_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.masse_capture_2);
+            if (hasMasse2) {
+              plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue2` : `${prefix}plate-masse-vue2${suffix}`);
+            }
           }
           if (!selectedPages || selectedPages.section_notice) plateIds.push(`${prefix}plate-section-notice${suffix}`);
           if (!selectedPages || selectedPages.facades) plateIds.push(`${prefix}plate-facades${suffix}`);
@@ -330,6 +334,10 @@ export default function Developpement() {
           const suffix = bIdx === 0 ? '' : `-${bIdx}`;
           if (!selectedPages || selectedPages.masse !== false) {
             plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse` : `dev-plate-masse${suffix}`);
+            const hasMasse2 = Boolean(bList[bIdx]?.masse_capture_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.masse_capture_2);
+            if (hasMasse2) {
+              plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse-vue2` : `dev-plate-masse-vue2${suffix}`);
+            }
           }
           if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
           if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
@@ -615,7 +623,30 @@ export default function Developpement() {
             {/* DP & CU Plates */}
             <div id="dev-plate-cover"><PlateCover project={activeProj} installationType={activeProj.type || 'batiment_solaire'} /></div>
             <div id="dev-plate-situation"><PlateSituation project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
-            <div id="dev-plate-masse"><PlateMasse project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
+            <div id="dev-plate-masse">
+              <PlateMasse 
+                project={activeProj} 
+                captures={{
+                  ...(activeProj.urbanisme_captures || {}),
+                  ...(activeProj.buildings?.[0]?.masse_capture ? { masse_projet: activeProj.buildings[0].masse_capture } : {}),
+                  ...(activeProj.masse_capture ? { masse_projet: activeProj.masse_capture } : {})
+                }} 
+              />
+            </div>
+            <div id="dev-plate-masse-vue2">
+              <PlateMasse 
+                project={{ 
+                  ...activeProj, 
+                  masse_zoom: activeProj.buildings?.[0]?.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || 16 
+                }} 
+                captures={{
+                  ...(activeProj.urbanisme_captures || {}),
+                  masse_projet: activeProj.buildings?.[0]?.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2,
+                  masse_zoom: activeProj.buildings?.[0]?.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || 16
+                }} 
+                viewNumber={2}
+              />
+            </div>
 
             {/* Planches DP Spécifiques Multi-Bâtiments */}
             <div id="dev-plate-coupe-multi">
@@ -681,9 +712,21 @@ export default function Developpement() {
               const suffix = bIdx === 0 ? '' : `-${bIdx}`;
               return (
                 <React.Fragment key={`dp-b-${b.id || bIdx}`}>
-                  {/* DP2 — Plan de masse individuel par structure */}
+                  {/* DP2 — Plan de masse individuel par structure (Vue 1) */}
                   <div id={`dev-plate-masse${suffix}`}>
                     <PlateMasse project={bProj} captures={bCaptures} />
+                  </div>
+                  {/* DP2 — Seconde page Plan de masse (Vue 2 - Zoom différent) */}
+                  <div id={`dev-plate-masse-vue2${suffix}`}>
+                    <PlateMasse 
+                      project={{ ...bProj, masse_zoom: b.masse_zoom_2 || activeProj.masse_zoom_2 || 16 }} 
+                      captures={{ 
+                        ...bCaptures, 
+                        masse_projet: b.masse_capture_2 || bCaptures.masse_projet_2 || activeProj.urbanisme_captures?.masse_projet_2,
+                        masse_zoom: b.masse_zoom_2 || activeProj.masse_zoom_2 || 16
+                      }} 
+                      viewNumber={2}
+                    />
                   </div>
                   {/* DP3 — Plan en coupe par bâtiment */}
                   <div id={`dev-plate-section${suffix}`}>
@@ -716,8 +759,30 @@ export default function Developpement() {
 
             {/* PC Plates — Multi-Bâtiments */}
             <div id="dev-pc-plate-cover"><PCPlateCover project={activeProj} installationType={activeProj.type || 'batiment_solaire'} /></div>
-            <div id="dev-pc-plate-situation"><PCPlateSituation project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
-            <div id="dev-pc-plate-masse"><PCPlateMasse project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
+            <div id="dev-pc-plate-masse">
+              <PCPlateMasse 
+                project={activeProj} 
+                captures={{
+                  ...(activeProj.urbanisme_captures || {}),
+                  ...(activeProj.buildings?.[0]?.masse_capture ? { masse_projet: activeProj.buildings[0].masse_capture } : {}),
+                  ...(activeProj.masse_capture ? { masse_projet: activeProj.masse_capture } : {})
+                }} 
+              />
+            </div>
+            <div id="dev-pc-plate-masse-vue2">
+              <PCPlateMasse 
+                project={{ 
+                  ...activeProj, 
+                  masse_zoom: activeProj.buildings?.[0]?.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || 16 
+                }} 
+                captures={{
+                  ...(activeProj.urbanisme_captures || {}),
+                  masse_projet: activeProj.buildings?.[0]?.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2,
+                  masse_zoom: activeProj.buildings?.[0]?.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || 16
+                }} 
+                viewNumber={2}
+              />
+            </div>
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
               const bCaptures = {
@@ -772,9 +837,21 @@ export default function Developpement() {
               const suffix = bIdx === 0 ? '' : `-${bIdx}`;
               return (
                 <React.Fragment key={`pc-b-${b.id || bIdx}`}>
-                  {/* PC2 — Plan de masse individuel par structure */}
+                  {/* PC2 — Plan de masse individuel par structure (Vue 1) */}
                   <div id={`dev-pc-plate-masse${suffix}`}>
                     <PCPlateMasse project={bProj} captures={bCaptures} />
+                  </div>
+                  {/* PC2 — Seconde page Plan de masse (Vue 2 - Zoom différent) */}
+                  <div id={`dev-pc-plate-masse-vue2${suffix}`}>
+                    <PCPlateMasse 
+                      project={{ ...bProj, masse_zoom: b.masse_zoom_2 || activeProj.masse_zoom_2 || 16 }} 
+                      captures={{ 
+                        ...bCaptures, 
+                        masse_projet: b.masse_capture_2 || bCaptures.masse_projet_2 || activeProj.urbanisme_captures?.masse_projet_2,
+                        masse_zoom: b.masse_zoom_2 || activeProj.masse_zoom_2 || 16
+                      }} 
+                      viewNumber={2}
+                    />
                   </div>
                   <div id={`dev-pc-plate-section-notice${suffix}`}>
                     <PCPlateSectionAndNotice 

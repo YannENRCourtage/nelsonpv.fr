@@ -238,7 +238,7 @@ export const PlateSituation = ({ project, captures, isInteractive, onUpload }) =
     );
 };
 
-export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
+export const PlateMasse = ({ project, captures, isInteractive, onUpload, viewNumber = 1 }) => {
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
     const isNoBattery = isAcama || isGreenInvest;
@@ -255,13 +255,18 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
     const isMulti = rawBuildings.length > 1;
 
     return (
-        <div style={PAGE_STYLE} id="pc-plate-masse">
-            <PlateHeader title="PC2 : PLAN DE MASSE DES CONSTRUCTIONS" project={project} />
+        <div style={PAGE_STYLE} id={`pc-plate-masse${viewNumber === 2 ? '-vue2' : ''}`}>
+            <PlateHeader 
+                title={viewNumber === 2 
+                    ? "PC2 : PLAN DE MASSE DES CONSTRUCTIONS (Vue 2 — Zoom étendu)" 
+                    : "PC2 : PLAN DE MASSE DES CONSTRUCTIONS"} 
+                project={project} 
+            />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '135mm', marginBottom: '5mm' }}>
                 {isMulti ? (
                     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(rawBuildings.length, 2)}, 1fr)`, gap: '4mm', flex: 1, height: '100%' }}>
                         {rawBuildings.map((b, idx) => {
-                            const bPhoto = b.masse_capture || (idx === 0 ? captures?.masse_projet : null) || captures?.satellite;
+                            const bPhoto = (viewNumber === 2 ? (b.masse_capture_2 || captures?.masse_projet_2) : null) || b.masse_capture || (idx === 0 ? captures?.masse_projet : null) || captures?.satellite;
                             let bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
                             let bW = Number(b.totalWidth || b.width || project?.largeur || 20);
                             if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
@@ -276,13 +281,13 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                             bDisplayName = bDisplayName.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
                             if (!bDisplayName) bDisplayName = `Bâtiment ${idx + 1}`;
 
-                            const bZoom = b.masse_zoom || project?.masse_zoom || captures?.masse_zoom || 18;
+                            const bZoom = (viewNumber === 2 ? (b.masse_zoom_2 || project?.masse_zoom_2 || captures?.masse_zoom_2) : null) || b.masse_zoom || project?.masse_zoom || captures?.masse_zoom || 18;
 
                             return (
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                         <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                            PC2 — Plan de Masse : {bDisplayName} (OpenStreetMap Zoom {bZoom})
+                                            PC2 — Plan de Masse{viewNumber === 2 ? ' (Vue 2)' : ''} : {bDisplayName} (OpenStreetMap Zoom {bZoom})
                                         </span>
                                         <span style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 1.5mm', borderRadius: '2mm' }}>
                                             {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
@@ -303,7 +308,7 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                     </div>
                 ) : (() => {
                     const b = rawBuildings[0];
-                    const bPhoto = b?.masse_capture || captures?.masse_projet || captures?.satellite;
+                    const bPhoto = (viewNumber === 2 ? (b?.masse_capture_2 || captures?.masse_projet_2) : null) || b?.masse_capture || captures?.masse_projet || captures?.satellite;
                     let bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
                     let bW = Number(b?.totalWidth || b?.width || project?.largeur || 20);
                     if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
@@ -318,13 +323,13 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                     bDisplayName = bDisplayName.replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '').trim();
                     if (!bDisplayName) bDisplayName = 'Bâtiment 1';
 
-                    const bZoom = b?.masse_zoom || project?.masse_zoom || captures?.masse_zoom || 18;
+                    const bZoom = (viewNumber === 2 ? (b?.masse_zoom_2 || project?.masse_zoom_2 || captures?.masse_zoom_2) : null) || b?.masse_zoom || project?.masse_zoom || captures?.masse_zoom || 18;
 
                     return (
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                 <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                    PC2 — Plan de Masse : {bDisplayName} (OpenStreetMap Zoom {bZoom})
+                                    PC2 — Plan de Masse{viewNumber === 2 ? ' (Vue 2)' : ''} : {bDisplayName} (OpenStreetMap Zoom {bZoom})
                                 </span>
                                 <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 2mm', borderRadius: '2mm' }}>
                                     {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)

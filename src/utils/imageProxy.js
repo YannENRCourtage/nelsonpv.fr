@@ -310,10 +310,14 @@ export async function preloadProjectImages(project) {
                             })
                         );
                     }
-                    // Masse capture spécifique
+                    // Masse capture spécifique (Vue 1 et Vue 2)
                     if (b.masse_capture && typeof b.masse_capture === 'string' && !b.masse_capture.startsWith('data:')) {
                         const dataUrl = await fetchImageAsDataUrl(b.masse_capture);
                         if (dataUrl) b.masse_capture = dataUrl;
+                    }
+                    if (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && !b.masse_capture_2.startsWith('data:')) {
+                        const dataUrl = await fetchImageAsDataUrl(b.masse_capture_2);
+                        if (dataUrl) b.masse_capture_2 = dataUrl;
                     }
                 }
             })

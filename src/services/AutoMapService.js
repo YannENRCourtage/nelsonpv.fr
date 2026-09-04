@@ -15,6 +15,36 @@ function latLngToTile(lat, lng, zoom) {
   return { x, y, z: zoom };
 }
 
+function getBuildingCorners(centerLat, centerLng, lengthMeters, widthMeters, rotationDeg) {
+  const lat = Number(centerLat) || 43.43571;
+  const lng = Number(centerLng) || -1.17644;
+  const len = Number(lengthMeters) || 30;
+  const wid = Number(widthMeters) || 15;
+  const rotRad = ((Number(rotationDeg) || 0) * Math.PI) / 180;
+
+  const dx = len / 2;
+  const dy = wid / 2;
+
+  const localCorners = [
+    { x: -dx, y: -dy },
+    { x: +dx, y: -dy },
+    { x: +dx, y: +dy },
+    { x: -dx, y: +dy }
+  ];
+
+  const mPerLat = 111139;
+  const mPerLng = 111139 * Math.cos((lat * Math.PI) / 180);
+
+  return localCorners.map(corner => {
+    const rx = corner.x * Math.cos(rotRad) - corner.y * Math.sin(rotRad);
+    const ry = corner.x * Math.sin(rotRad) + corner.y * Math.cos(rotRad);
+
+    const cLat = lat + (ry / mPerLat);
+    const cLng = lng + (rx / (mPerLng || 1));
+    return [cLat, cLng];
+  });
+}
+
 /**
  * Génère une image JPEG (dataURL) composée de 3x3 tuiles cartographiques autour des coordonnées GPS,
  * avec un repère visuel (marqueur rouge/bleu) au centre.
@@ -127,9 +157,17 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
               bPixelY = centerY + (bExactY - exactY) * tileSize;
             }
 
-            ctx.save();
-            ctx.translate(bPixelX, bPixelY);
-            ctx.rotate((bRot * Math.PI) / 180);
+            // Calcul des 4 coins exacts du polygone selon la projection GPS identique à Leaflet
+            const corners = getBuildingCorners(bLat, bLng, bLength, bWidth, bRot);
+            const pixelCorners = corners.map(([cLat, cLng]) => {
+              const cRad = (cLat * Math.PI) / 180;
+              const cExactX = ((cLng + 180) / 360) * n;
+              const cExactY = ((1 - Math.log(Math.tan(cRad) + 1 / Math.cos(cRad)) / Math.PI) / 2) * n;
+              return {
+                x: centerX + (cExactX - exactX) * tileSize,
+                y: centerY + (cExactY - exactY) * tileSize
+              };
+            });
 
             // Détection du type de structure pour un rendu fidèle à l'interface DP2 / PC2
             const isOmbriere = b.solutionKey === 'ombriere' || (b.buildingType || '').toLowerCase().includes('ombriere') || (b.name || '').toLowerCase().includes('ombrière');
@@ -138,22 +176,38 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
             const badgeBorder = isOmbriere ? '#a7f3d0' : '#bfdbfe';
             const badgeTextColor = isOmbriere ? '#065f46' : '#1e40af';
 
-            // Emprise au sol colorée avec pointillés
+            ctx.save();
+
+            // Rendu du polygone précis
+            ctx.beginPath();
+            ctx.moveTo(pixelCorners[0].x, pixelCorners[0].y);
+            ctx.lineTo(pixelCorners[1].x, pixelCorners[1].y);
+            ctx.lineTo(pixelCorners[2].x, pixelCorners[2].y);
+            ctx.lineTo(pixelCorners[3].x, pixelCorners[3].y);
+            ctx.closePath();
             ctx.fillStyle = fillColor;
-            ctx.fillRect(-rectW / 2, -rectH / 2, rectW, rectH);
+            ctx.fill();
             ctx.strokeStyle = strokeColor;
             ctx.lineWidth = 2.5;
             ctx.setLineDash([5, 4]);
-            ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
+            ctx.stroke();
             ctx.setLineDash([]);
 
             // Faîtage médian en pointillés discrets
+            const ridgeStart = {
+              x: (pixelCorners[0].x + pixelCorners[3].x) / 2,
+              y: (pixelCorners[0].y + pixelCorners[3].y) / 2
+            };
+            const ridgeEnd = {
+              x: (pixelCorners[1].x + pixelCorners[2].x) / 2,
+              y: (pixelCorners[1].y + pixelCorners[2].y) / 2
+            };
             ctx.beginPath();
             ctx.setLineDash([4, 3]);
             ctx.strokeStyle = isOmbriere ? '#10b981' : '#60a5fa';
             ctx.lineWidth = 1.5;
-            ctx.moveTo(-rectW / 2, 0);
-            ctx.lineTo(rectW / 2, 0);
+            ctx.moveTo(ridgeStart.x, ridgeStart.y);
+            ctx.lineTo(ridgeEnd.x, ridgeEnd.y);
             ctx.stroke();
             ctx.setLineDash([]);
 
@@ -169,9 +223,9 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
             ctx.lineWidth = 1;
             ctx.beginPath();
             if (ctx.roundRect) {
-              ctx.roundRect(-badgeW / 2, -badgeH / 2, badgeW, badgeH, 4);
+              ctx.roundRect(bPixelX - badgeW / 2, bPixelY - badgeH / 2, badgeW, badgeH, 4);
             } else {
-              ctx.rect(-badgeW / 2, -badgeH / 2, badgeW, badgeH);
+              ctx.rect(bPixelX - badgeW / 2, bPixelY - badgeH / 2, badgeW, badgeH);
             }
             ctx.fill();
             ctx.stroke();
@@ -179,7 +233,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
             ctx.fillStyle = badgeTextColor;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(badgeText, 0, 0);
+            ctx.fillText(badgeText, bPixelX, bPixelY);
 
             ctx.restore();
           });
