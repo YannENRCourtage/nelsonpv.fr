@@ -37,7 +37,7 @@ function LandscapeThreeBridge({ onReady, transform, sunAngle }) {
 
       <PerspectiveCamera
         makeDefault
-        position={[0, 6, 38]}
+        position={[0, 6, Math.max(38, transform.posZ + 8)]}
         fov={40}
         near={0.1}
         far={2000}
@@ -344,7 +344,7 @@ export default function LandscapeIntegrationModal({
                   <span className="text-blue-400 font-bold">{transform.posZ.toFixed(1)} m</span>
                 </div>
                 <input
-                  type="range" min="-60" max="30" step="0.5"
+                  type="range" min="-120" max="120" step="0.5"
                   value={transform.posZ}
                   onChange={e => setTransform(t => ({ ...t, posZ: parseFloat(e.target.value) }))}
                   className="w-full accent-blue-500 cursor-pointer"
