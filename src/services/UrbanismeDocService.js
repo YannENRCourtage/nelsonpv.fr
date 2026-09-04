@@ -128,24 +128,26 @@ async function drawCoverPage(doc, project, type, installationType) {
   page.drawRectangle({ x: 18, y: H - 90, width: 164, height: 1, color: rgb(1, 1, 1, 0.2) });
 
   // ── Informations du projet (colonne gauche) ───────────────────
-  const clientName = `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Demandeur';
-  const communeName = project?.city || project?.cadastre_commune || project?.commune || '—';
-  const sectionVal = (project?.cadastre_section || project?.section) ? `${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : '—';
+  const clientName = project?.demandeur || `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Demandeur';
+  const communeName = project?.commune || project?.city || project?.cadastre_commune || '—';
+  const sectionVal = (project?.cadastre_section || project?.section) ? `${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : (project?.cadastre || '—');
   const surfaceVal = (project?.cadastre_surface || project?.surface) ? `${project.cadastre_surface || project.surface} m²` : '—';
-  const rawKwcVal = project?.kwc || project?.projectSize || project?.puissance || '';
+  const rawKwcVal = project?.puissance || project?.kwc || project?.projectSize || '';
   const puissanceVal = rawKwcVal ? (String(rawKwcVal).includes('kWc') ? String(rawKwcVal) : `${rawKwcVal} kWc`) : '—';
   // Dynamic type label based on configured buildings
   const isDP = type === 'dp';
-  let installCode = isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière';
-  const projectBuildings = project?.buildings || [];
-  if (isDP) {
-    installCode = projectBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
-  } else if (projectBuildings.length > 1) {
-    installCode = 'Bâtiment et Ombrière';
-  } else if ((project?.type || '').toLowerCase().includes('ombriere') || (installationType || '').toLowerCase().includes('ombriere')) {
-    installCode = 'Ombrière photovoltaïque';
-  } else {
-    installCode = 'Bâtiment et Ombrière';
+  let installCode = project?.urbanismeType || project?.typeLabel || project?.installationType || (isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière');
+  if (!project?.urbanismeType && !project?.typeLabel && !project?.installationType) {
+    const projectBuildings = project?.buildings || [];
+    if (isDP) {
+      installCode = projectBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
+    } else if (projectBuildings.length > 1) {
+      installCode = 'Bâtiment et Ombrière';
+    } else if ((project?.type || '').toLowerCase().includes('ombriere') || (installationType || '').toLowerCase().includes('ombriere')) {
+      installCode = 'Ombrière photovoltaïque';
+    } else {
+      installCode = 'Bâtiment et Ombrière';
+    }
   }
   const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
   const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
@@ -188,10 +190,10 @@ async function drawCoverPage(doc, project, type, installationType) {
 
   // ── Tableau récapitulatif (avec wrap propre de l'adresse sur 2-3 lignes) ──
   const tableY = H - 200;
-  const fullAddress = `${project?.address || project?.adresse || '—'}, ${project?.zip || project?.zipCode || ''} ${project?.city || project?.commune || ''}`.trim().replace(/^,\s*/, '');
+  const fullAddress = project?.address || `${project?.adresse || '—'}, ${project?.zip || project?.zipCode || ''} ${project?.city || project?.commune || ''}`.trim().replace(/^,\s*/, '');
   const cols = [
     { label: 'Adresse du terrain', value: fullAddress, isAddress: true },
-    { label: 'Référence cadastrale', value: (project?.cadastre_section || project?.section) ? `Section ${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : '—' },
+    { label: 'Référence cadastrale', value: (project?.cadastre_section || project?.section) ? `Section ${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : (project?.cadastre || '—') },
     { label: 'Surface terrain', value: surfaceVal },
     { label: 'Puissance installée', value: puissanceVal },
   ];

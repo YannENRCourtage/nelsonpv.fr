@@ -497,37 +497,39 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
 
 export function buildCerfaDataSummary(project, installationType) {
   const names = resolveDemandeurNames(project);
-  const fullName = `${names.firstName} ${names.lastName}`.trim() || names.lastName || project?.demandeur || project?.name || '—';
+  const fullName = project?.demandeur || `${names.firstName} ${names.lastName}`.trim() || names.lastName || project?.name || '—';
   const email = (project?.cerfaEmailChoice === 'email2' && project?.email2)
     ? project.email2
     : (project?.email || project?.clientEmail || '—');
 
   const rawAddress = project?.address || project?.clientAddress || '';
   const rawZip = project?.zip || project?.postalCode || '';
-  const rawCity = project?.city || project?.commune || '';
+  const rawCity = project?.city || project?.commune || project?.cadastre_commune || '';
 
   const addressParts = [rawAddress, rawZip, rawCity].filter(Boolean);
   const fullAddress = addressParts.length > 0 ? addressParts.join(' ') : '—';
 
   // Détermination du type
   const isDP = (installationType === 'dp' || project?.type === 'dp' || project?.docType === 'dp' || project?.typeLabel === 'dp' || (project?.type || '').includes('Ombrière'));
-  let typeLabel = isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière';
-  const bList = project?.buildings || [];
-  if (isDP) {
-    typeLabel = bList.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
-  } else if (bList.length > 1) {
-    typeLabel = 'Bâtiment et Ombrière';
-  } else if (installationType === 'ombriere' || (project?.type || '').includes('ombriere')) {
-    typeLabel = 'Ombrière photovoltaïque';
-  } else if (installationType === 'toiture' || (project?.type || '').includes('toiture')) {
-    typeLabel = 'Panneaux en toiture existante';
-  } else if (installationType === 'batterie' || (project?.type || '').includes('batterie')) {
-    typeLabel = 'Système de stockage batterie';
-  } else {
-    typeLabel = 'Bâtiment et Ombrière';
+  let typeLabel = project?.urbanismeType || project?.typeLabel || (isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière');
+  if (!project?.urbanismeType && !project?.typeLabel) {
+    const bList = project?.buildings || [];
+    if (isDP) {
+      typeLabel = bList.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
+    } else if (bList.length > 1) {
+      typeLabel = 'Bâtiment et Ombrière';
+    } else if (installationType === 'ombriere' || (project?.type || '').includes('ombriere')) {
+      typeLabel = 'Ombrière photovoltaïque';
+    } else if (installationType === 'toiture' || (project?.type || '').includes('toiture')) {
+      typeLabel = 'Panneaux en toiture existante';
+    } else if (installationType === 'batterie' || (project?.type || '').includes('batterie')) {
+      typeLabel = 'Système de stockage batterie';
+    } else {
+      typeLabel = 'Bâtiment et Ombrière';
+    }
   }
 
-  const rawKwc = project?.kwc || project?.projectSize || project?.puissance || '';
+  const rawKwc = project?.puissance || project?.kwc || project?.projectSize || '';
   const displayKwc = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc) : `${rawKwc} kWc`) : '—';
 
   return {

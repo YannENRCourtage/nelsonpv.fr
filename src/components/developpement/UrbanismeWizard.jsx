@@ -6,7 +6,7 @@ import {
   Hash, Ruler, Info, RefreshCw, Mail, Phone, FileText,
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
   Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus,
-  Compass
+  Compass, User
 } from 'lucide-react';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
 import { cadastreService } from '@/services/CadastreService';
@@ -1906,7 +1906,12 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         leftWidth: b1?.leftWidth,
         rightWidth: b1?.rightWidth,
         bayCount: b1?.bayCount,
-        baySpacing: b1?.baySpacing,
+        cadastre_section: project.cadastre_section || '',
+        cadastre_numero: project.cadastre_numero || '',
+        cadastre_surface: project.cadastre_surface || '',
+        cadastre_commune: project.cadastre_commune || projCity,
+        commune: projCity,
+        urbanismeType: project.urbanismeType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'),
         pente_terrain: project.pente_terrain || '3',
         cotation_bati: project.cotation_bati || '12.50',
         cotation_voie: project.cotation_voie || '8.00',
@@ -2705,11 +2710,12 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     });
 
     const isMultiOrOmbriere = updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere'));
-    const finalTypeLabel = isBattery
+    const defaultTypeLabel = isBattery
       ? "Système de stockage par batterie Stand-Alone"
       : (isDP
         ? (updatedBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque')
         : (isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire')));
+    const finalTypeLabel = editedProject?.urbanismeType || defaultTypeLabel;
 
     // Régénérer les cartes DP1/PC1 et DP2/PC2 avec le dernier GPS et les structures orientées
     const siteCoords = resolveProjectCoordinates(editedProject, project);
@@ -2818,11 +2824,22 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       pc_photos: { ...(b.photos || {}), ...(b.pc_photos || {}) },
     }));
 
-    const preservedKwc = project?.kwc || editedProject?.kwc || project?.projectSize || editedProject?.projectSize || project?.puissance || editedProject?.puissance || '';
+    const preservedKwc = editedProject?.puissance || editedProject?.kwc || project?.kwc || project?.puissance || project?.projectSize || editedProject?.projectSize || '';
     const b1 = enrichedBuildings[0] || {};
     const finalProject = {
       ...editedProject,
       ...fieldValues,
+      demandeur: editedProject?.demandeur || summary.demandeur,
+      lastName: editedProject?.demandeur || editedProject?.lastName || summary.demandeur,
+      clientName: editedProject?.demandeur || editedProject?.clientName || summary.demandeur,
+      email: editedProject?.email || summary.email,
+      address: editedProject?.address || summary.adresse,
+      city: editedProject?.city || editedProject?.commune || summary.commune,
+      commune: editedProject?.commune || editedProject?.city || summary.commune,
+      cadastre_section: editedProject?.cadastre_section,
+      cadastre_numero: editedProject?.cadastre_numero,
+      cadastre_surface: editedProject?.cadastre_surface,
+      cadastre: editedProject?.cadastre || summary.cadastre,
       isAcama,
       isGreenInvest,
       cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
@@ -2831,6 +2848,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       type: editedProject?.type || project?.type || 'Construction',
       urbanismeType: finalTypeLabel,
       installationType: finalTypeLabel,
+      typeLabel: finalTypeLabel,
       largeur: String(b1.width || config.width || 16.4),
       longueur: String(b1.length || config.length || 37.5),
       hauteur_egout: String(b1.eaveHeight || (b1.buildingType === 'ombriere_pl' ? 5.08 : (b1.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)))),
@@ -2881,7 +2899,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
   if (!isOpen) return null;
 
-  const preservedKwc = project?.kwc || editedProject?.kwc || project?.projectSize || editedProject?.projectSize || project?.puissance || editedProject?.puissance || '';
+  const preservedKwc = editedProject?.puissance || editedProject?.kwc || project?.kwc || project?.puissance || project?.projectSize || editedProject?.projectSize || '';
   const summary = buildCerfaDataSummary(
     {
       ...editedProject,
@@ -2889,7 +2907,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       puissance: preservedKwc,
       kwc: preservedKwc,
       projectSize: preservedKwc,
-      type: isAcama ? 'batiment_solaire' : (isDP ? (buildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'),
+      type: isAcama ? 'batiment_solaire' : (editedProject?.urbanismeType || (isDP ? (buildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière')),
+      urbanismeType: editedProject?.urbanismeType,
+      typeLabel: editedProject?.urbanismeType,
       docType: type,
       buildings
     },
@@ -4716,14 +4736,179 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
                   {/* Synthèse et Objet des travaux (2 colonnes 50% / 50%) */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-                    {/* Colonne Gauche : Lignes Demandeur à Type */}
-                    <div className="bg-gray-50 rounded-2xl border border-gray-100 divide-y divide-gray-100 text-xs flex flex-col justify-between">
-                      {['demandeur', 'email', 'adresse', 'cadastre', 'commune', 'puissance', 'type'].map((k) => (
-                        <div key={k} className="flex items-start gap-3 px-4 py-2">
-                          <span className="text-gray-400 w-28 flex-shrink-0 pt-0.5 capitalize">{k}</span>
-                          <span className="font-semibold text-gray-800 flex-1">{summary[k] || '—'}</span>
+                    {/* Colonne Gauche : Paramètres Déclarant & Projet modifiables */}
+                    <div className="bg-gray-50 rounded-2xl border border-gray-100 p-3.5 text-xs flex flex-col shadow-2xs h-full">
+                      <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                        <label className="font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5 text-[11px]">
+                          <User className="w-3.5 h-3.5 text-blue-600" />
+                          Déclarant &amp; Projet (Page de garde &amp; CERFA)
+                        </label>
+                        <span className="text-[10px] text-gray-400 font-medium">Modifiable</span>
+                      </div>
+
+                      <div className="space-y-2 flex-1 flex flex-col justify-between">
+                        {/* 1. Demandeur */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-semibold w-24 flex-shrink-0">Demandeur</span>
+                          <input
+                            type="text"
+                            value={editedProject?.demandeur !== undefined ? editedProject.demandeur : (summary.demandeur !== '—' ? summary.demandeur : '')}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditedProject(prev => ({
+                                ...prev,
+                                demandeur: val,
+                                clientName: val,
+                                name: val,
+                                lastName: val
+                              }));
+                              handleFieldChange('demandeur', val);
+                              handleFieldChange('lastName', val);
+                            }}
+                            placeholder="Nom & prénom ou raison sociale"
+                            className="flex-1 px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
+                          />
                         </div>
-                      ))}
+
+                        {/* 2. Email */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-semibold w-24 flex-shrink-0">Email</span>
+                          <input
+                            type="email"
+                            value={editedProject?.email !== undefined ? editedProject.email : (summary.email !== '—' ? summary.email : '')}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditedProject(prev => ({ ...prev, email: val }));
+                              handleFieldChange('email', val);
+                            }}
+                            placeholder="contact@domaine.fr"
+                            className="flex-1 px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
+                          />
+                        </div>
+
+                        {/* 3. Adresse */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-semibold w-24 flex-shrink-0">Adresse</span>
+                          <input
+                            type="text"
+                            value={editedProject?.address !== undefined ? editedProject.address : (summary.adresse !== '—' ? summary.adresse : '')}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditedProject(prev => ({ ...prev, address: val, clientAddress: val }));
+                              handleFieldChange('address', val);
+                            }}
+                            placeholder="Adresse complète du projet"
+                            className="flex-1 px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
+                          />
+                        </div>
+
+                        {/* 4. Cadastre (Section, N°, Surface) */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-semibold w-24 flex-shrink-0">Cadastre</span>
+                          <div className="flex items-center gap-1.5 flex-1">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-gray-400 font-bold">Sec.</span>
+                              <input
+                                type="text"
+                                value={editedProject?.cadastre_section || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value.toUpperCase();
+                                  setEditedProject(prev => ({ ...prev, cadastre_section: val }));
+                                  handleFieldChange('cadastre_section', val);
+                                }}
+                                placeholder="ZI"
+                                className="w-14 px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-center uppercase"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-gray-400 font-bold">N°</span>
+                              <input
+                                type="text"
+                                value={editedProject?.cadastre_numero || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setEditedProject(prev => ({ ...prev, cadastre_numero: val }));
+                                  handleFieldChange('cadastre_numero', val);
+                                }}
+                                placeholder="0032"
+                                className="w-16 px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-center"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1 flex-1">
+                              <span className="text-[10px] text-gray-400 font-bold">Surf.</span>
+                              <div className="relative flex-1">
+                                <input
+                                  type="text"
+                                  value={editedProject?.cadastre_surface || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setEditedProject(prev => ({ ...prev, cadastre_surface: val }));
+                                    handleFieldChange('cadastre_surface', val);
+                                  }}
+                                  placeholder="1352"
+                                  className="w-full px-2 py-1.5 pr-6 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                                />
+                                <span className="absolute right-2 top-1.5 text-[10px] text-gray-400 font-medium pointer-events-none">m²</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 5. Commune */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-semibold w-24 flex-shrink-0">Commune</span>
+                          <input
+                            type="text"
+                            value={editedProject?.city !== undefined ? editedProject.city : (editedProject?.commune !== undefined ? editedProject.commune : (summary.commune !== '—' ? summary.commune : ''))}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditedProject(prev => ({ ...prev, city: val, commune: val, cadastre_commune: val }));
+                              handleFieldChange('city', val);
+                            }}
+                            placeholder="Commune du projet"
+                            className="flex-1 px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
+                          />
+                        </div>
+
+                        {/* 6. Puissance */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-semibold w-24 flex-shrink-0">Puissance</span>
+                          <input
+                            type="text"
+                            value={editedProject?.puissance !== undefined ? editedProject.puissance : (editedProject?.kwc !== undefined ? (String(editedProject.kwc).includes('kWc') ? editedProject.kwc : `${editedProject.kwc} kWc`) : (summary.puissance !== '—' ? summary.puissance : ''))}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const numOnly = val.replace(/[^\d\.]/g, '');
+                              setEditedProject(prev => ({
+                                ...prev,
+                                puissance: val,
+                                kwc: numOnly || val,
+                                projectSize: numOnly || val
+                              }));
+                              handleFieldChange('puissance', val);
+                              if (numOnly) handleFieldChange('kwc', numOnly);
+                            }}
+                            placeholder="Ex: 500 kWc"
+                            className="flex-1 px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
+                          />
+                        </div>
+
+                        {/* 7. Type */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-semibold w-24 flex-shrink-0">Type</span>
+                          <input
+                            type="text"
+                            value={editedProject?.urbanismeType !== undefined ? editedProject.urbanismeType : (editedProject?.typeLabel || summary.type)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditedProject(prev => ({ ...prev, urbanismeType: val, typeLabel: val, installationType: val }));
+                              handleFieldChange('urbanismeType', val);
+                            }}
+                            placeholder={isDP ? "Ombrière photovoltaïque" : "Bâtiment et Ombrière"}
+                            className="flex-1 px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Colonne Droite : Objet des travaux prenant toute la hauteur cumulée */}
