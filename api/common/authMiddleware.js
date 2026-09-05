@@ -1,17 +1,42 @@
 import { getAdminAuth } from '../../src/lib/firebase-admin.js'
 
+const ALLOWED_ORIGINS = [
+    'https://nelsonpv.fr',
+    'https://www.nelsonpv.fr',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173'
+];
+
+/**
+ * Configure des headers CORS stricts pour protéger les API contre les requêtes externes non autorisées
+ */
+export function setSecureCors(req, res, allowedMethods = 'GET,OPTIONS,PATCH,DELETE,POST,PUT') {
+    const origin = req.headers.origin;
+    const isVercelPreview = origin && /^https:\/\/nelsonpv-[a-z0-9]+-nelsonpvfrs-projects\.vercel\.app$/.test(origin);
+
+    if (origin && (ALLOWED_ORIGINS.includes(origin) || isVercelPreview)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', 'https://nelsonpv.fr');
+    }
+
+    res.setHeader('Access-Control-Allow-Methods', allowedMethods);
+    res.setHeader(
+        'Access-Control-Allow-Headers',
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+}
+
 /**
  * Middleware to verify Firebase ID Token
  * @param {Function} handler The API handler function
  * @returns {Function} Extended handler with authentication
  */
 export const withAuth = (handler) => async (req, res) => {
-    // EMERGENCY BACKDOOR - TO BE REMOVED IMMEDIATELY
-    if (req.headers['x-emergency-repair'] === 'TRUE') {
-        req.user = { email: 'y.barberis@enr-courtage.fr', role: 'admin' };
-        return handler(req, res);
-    }
-
     // 1. Get token from header
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

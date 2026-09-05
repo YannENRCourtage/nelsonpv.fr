@@ -30,6 +30,7 @@ import DevErrorBoundary from './components/DevErrorBoundary.jsx';
 import TawkMessenger from './components/TawkMessenger.jsx';
 import CrispChat from './components/CrispChat.jsx';
 import GoogleAnalytics from './components/GoogleAnalytics.jsx';
+import SecurityShield from './components/SecurityShield.jsx';
 
 function AppContent() {
   const { isAuthenticated, user } = useAuth();
@@ -188,6 +189,7 @@ function AppContent() {
         <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace />} />
       </Routes>
       <Toaster />
+      <SecurityShield />
       <CrispChat />
       <GoogleAnalytics />
     </DndProvider>

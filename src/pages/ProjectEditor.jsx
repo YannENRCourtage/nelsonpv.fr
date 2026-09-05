@@ -11,7 +11,6 @@ import SubstationProximityCards from "../components/editor/SubstationProximityCa
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
 import UrbanismeTab from "../components/editor/UrbanismeTab.jsx";
-import EntreprisesTab from "../components/editor/EntreprisesTab.jsx";
 
 import { PlateSituation, PlateMasse, PlateNotice } from '../components/editor/DPPlates';
 import { Button } from "@/components/ui/button";
@@ -1711,18 +1710,6 @@ export default function ProjectEditor() {
 
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('entreprises'); }}
-              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'entreprises'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              🏢 Entreprises
-            </button>
-
-            <button
-              type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('streetview'); }}
               className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'streetview'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
@@ -2072,30 +2059,6 @@ export default function ProjectEditor() {
                     Ouvrir direct
                   </Button>
                 </div>
-              </div>
-            )}
-
-            {/* Onglet Entreprises (style Sirélium) */}
-            {activeTab === 'entreprises' && (
-              <div className='w-full h-full relative'>
-                <EntreprisesTab 
-                  project={project} 
-                  onSelectClient={(clientData) => {
-                    if (clientData?.nom_raison_sociale) {
-                      setProject(prev => ({
-                        ...prev,
-                        demandeur: clientData.nom_raison_sociale,
-                        clientName: clientData.nom_raison_sociale,
-                        lastName: clientData.nom_raison_sociale,
-                        siren: clientData.siren || prev.siren,
-                        address: clientData.adresse_complete_ul || prev.address,
-                        city: clientData.commune || prev.city,
-                        commune: clientData.commune || prev.commune,
-                        postalCode: clientData.code_postal || prev.postalCode,
-                      }));
-                    }
-                  }} 
-                />
               </div>
             )}
 

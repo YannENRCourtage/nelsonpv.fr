@@ -109,10 +109,12 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    // Seul l'admin peut appeler cette route (header positionné par le frontend admin)
-    if (req.headers['x-emergency-repair'] !== 'TRUE') {
-        return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    // Vérification stricte du token d'authentification de l'administrateur
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
     }
+    const idToken = authHeader.split('Bearer ')[1];
 
     try {
         const projectId = process.env.FIREBASE_PROJECT_ID || 'nelsonpv-4722c';
@@ -120,7 +122,41 @@ export default async function handler(req, res) {
         // 1. Obtenir un token OAuth2 via JWT de compte de service
         const accessToken = await getGoogleAccessToken();
 
-        // 2. Appeler l'Identity Toolkit Admin API pour changer le mot de passe
+        // 2. Vérifier l'identité de l'appelant via l'API officielle Google Identity Toolkit
+        const lookupRes = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ idToken })
+        });
+
+        if (!lookupRes.ok) {
+            return res.status(401).json({ error: 'Unauthorized: Invalid or expired admin token' });
+        }
+
+        const lookupData = await lookupRes.json();
+        const caller = lookupData?.users?.[0];
+        const callerEmail = caller?.email?.toLowerCase();
+
+        const ADMIN_EMAILS = ['y.barberis@enr-courtage.fr', 'contact@nelsonpv.fr'];
+        let isAdmin = callerEmail && ADMIN_EMAILS.includes(callerEmail);
+
+        if (!isAdmin && caller?.customAttributes) {
+            try {
+                const parsedAttrs = JSON.parse(caller.customAttributes);
+                if (parsedAttrs.role === 'admin' || parsedAttrs.admin === true) {
+                    isAdmin = true;
+                }
+            } catch (e) { /* ignore parse error */ }
+        }
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Forbidden: Admin privileges required' });
+        }
+
+        // 3. Appeler l'Identity Toolkit Admin API pour changer le mot de passe
         const apiUrl = `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:update`;
 
         const updateRes = await fetch(apiUrl, {
@@ -142,7 +178,7 @@ export default async function handler(req, res) {
             throw new Error(`Identity Toolkit API error: ${errMsg}`);
         }
 
-        console.log(`[Admin] Password updated via REST API for UID: ${uid}`);
+        console.log(`[Admin] Password securely updated via REST API for UID: ${uid} by ${callerEmail}`);
         return res.status(200).json({ success: true, message: 'Mot de passe mis à jour avec succès.' });
 
     } catch (error) {

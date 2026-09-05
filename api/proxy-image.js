@@ -1,3 +1,18 @@
+function isSafeUrl(urlString) {
+    try {
+        const parsed = new URL(urlString);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+        const host = parsed.hostname.toLowerCase();
+        if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '0.0.0.0') return false;
+        if (host === '169.254.169.254' || host === 'metadata.google.internal') return false;
+        if (/^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host) || /^127\./.test(host)) return false;
+        if (host.endsWith('.internal') || host.endsWith('.local')) return false;
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 export default async function handler(request, response) {
     // 1. CORS Headers for all responses
     response.setHeader('Access-Control-Allow-Origin', '*');
@@ -34,6 +49,10 @@ export default async function handler(request, response) {
         return response.status(400).json({ error: 'Parameter "url" is required' });
     }
 
+    if (!isSafeUrl(targetUrl)) {
+        return response.status(400).json({ error: 'Target URL is forbidden or invalid' });
+    }
+
     try {
         // 4. Fetch image server-side (bypassing browser CORS)
         const fetchController = new AbortController();
@@ -55,9 +74,10 @@ export default async function handler(request, response) {
             });
         }
 
-        const arrayBuffer = await imageResponse.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
         const contentType = imageResponse.headers.get('content-type') || 'image/png';
+        if (!contentType.startsWith('image/')) {
+            return response.status(400).json({ error: 'Target URL did not return an image' });
+        }
 
         // 5. If JSON / Base64 requested, return dataUrl
         const wantsBase64 = request.query?.format === 'base64' || 

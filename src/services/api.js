@@ -78,8 +78,7 @@ class ApiService {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`,
-                    'X-Emergency-Repair': 'TRUE'
+                    'Authorization': `Bearer ${idToken}`
                 },
                 body: JSON.stringify({ uid, newPassword })
             });
@@ -577,8 +576,7 @@ class ApiService {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-                'X-Emergency-Repair': 'TRUE'
+                'Authorization': `Bearer ${idToken}`
             },
             body: JSON.stringify({ uid, newPassword })
         });

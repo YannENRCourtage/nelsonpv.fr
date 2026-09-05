@@ -8,6 +8,7 @@
 
 import axios from 'axios';
 import { getAdminDb } from '../../src/lib/firebase-admin.js';
+import { setSecureCors } from '../common/authMiddleware.js';
 
 
 // ─── URLs API Enedis Production v5 ───────────────────────────────────────────
@@ -305,6 +306,11 @@ async function handleSendConsent(req, res) {
 export default async function handler(req, res) {
     const { slug } = req.query;
     const route = slug && slug.length > 0 ? slug[0] : '';
+
+    if (route === 'fetch' || route === 'send-consent') {
+        setSecureCors(req, res, 'GET,POST,OPTIONS');
+        if (req.method === 'OPTIONS') return res.status(200).end();
+    }
 
     try {
         if (route === 'auth')         return await handleAuth(req, res);

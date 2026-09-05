@@ -277,46 +277,6 @@ export default defineConfig(({ command, mode }) => {
 				secure: true,
 				rewrite: (path) => path.replace(/^\/api\/proxies\/isochrone/, '')
 			},
-			'/api/sirelium': {
-				target: 'https://sirelium.fr',
-				changeOrigin: true,
-				secure: true,
-				headers: {
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-					'Referer': 'https://sirelium.fr/'
-				},
-				rewrite: (path) => {
-					const url = new URL(path, 'http://localhost');
-					const endpoint = url.searchParams.get('endpoint') || 'pins';
-					const siren = url.searchParams.get('siren');
-					url.searchParams.delete('endpoint');
-					url.searchParams.delete('siren');
-					if (endpoint === 'entreprise' && siren) {
-						return `/api/entreprise/${siren}`;
-					}
-					return `/${endpoint}${url.search}`;
-				}
-			},
-			'/api/proxies/sirelium': {
-				target: 'https://sirelium.fr',
-				changeOrigin: true,
-				secure: true,
-				headers: {
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-					'Referer': 'https://sirelium.fr/'
-				},
-				rewrite: (path) => {
-					const url = new URL(path, 'http://localhost');
-					const endpoint = url.searchParams.get('endpoint') || 'pins';
-					const siren = url.searchParams.get('siren');
-					url.searchParams.delete('endpoint');
-					url.searchParams.delete('siren');
-					if (endpoint === 'entreprise' && siren) {
-						return `/api/entreprise/${siren}`;
-					}
-					return `/${endpoint}${url.search}`;
-				}
-			},
 			'/api': {
 				target: 'https://nelsonpv.fr',
 				changeOrigin: true,

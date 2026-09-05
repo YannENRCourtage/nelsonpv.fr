@@ -1,16 +1,9 @@
 import { prisma } from '../../src/lib/prisma.js'
 import bcrypt from 'bcryptjs'
-import { withAdmin } from '../common/authMiddleware.js'
+import { withAdmin, setSecureCors } from '../common/authMiddleware.js'
 
 async function handler(req, res) {
-    // CORS headers
-    res.setHeader('Access-Control-Allow-Credentials', true)
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
-    res.setHeader(
-        'Access-Control-Allow-Headers',
-        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-    )
+    setSecureCors(req, res, 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
 
     if (req.method === 'OPTIONS') {
         res.status(200).end()
