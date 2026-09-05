@@ -33,8 +33,8 @@ async function callSireliumApi(endpoint, params = {}) {
     }
   }
 
-  // Tenter en priorité via /api/sirelium (ou /api/proxies/sirelium)
-  const proxyUrl = `/api/sirelium?${query.toString()}`;
+  // Appel via le proxy serverless multi-fonctions /api/proxies/sirelium
+  const proxyUrl = `/api/proxies/sirelium?${query.toString()}`;
   try {
     const res = await fetch(proxyUrl, {
       headers: { 'Accept': 'application/json' },
@@ -45,21 +45,7 @@ async function callSireliumApi(endpoint, params = {}) {
       return await res.json();
     }
   } catch (err) {
-    console.warn(`[SireliumService] /api/sirelium call failed:`, err.message);
-  }
-
-  // Deuxième tentative via /api/proxies/sirelium
-  try {
-    const altUrl = `/api/proxies/sirelium?${query.toString()}`;
-    const res2 = await fetch(altUrl, {
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(9000)
-    });
-    if (res2.ok) {
-      return await res2.json();
-    }
-  } catch (err2) {
-    console.warn(`[SireliumService] /api/proxies/sirelium call failed:`, err2.message);
+    console.warn(`[SireliumService] /api/proxies/sirelium call failed:`, err.message);
   }
 
   return null;
