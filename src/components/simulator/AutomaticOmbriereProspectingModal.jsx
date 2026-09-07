@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Sparkles, Zap, Search, Car, MapPin, FolderDown, FolderOpen,
+  Sparkles, Zap, Search, Car, Truck, MapPin, FolderDown, FolderOpen,
   FileText, CheckCircle2, AlertCircle, Loader2, Play, Square,
   RotateCcw, SlidersHorizontal, HardDrive, Compass, Euro,
   Download, Archive, X, ShieldCheck, Warehouse
@@ -462,12 +462,12 @@ export default function AutomaticOmbriereProspectingModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-md overflow-hidden">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 pt-16 sm:pt-20 pb-3 bg-slate-950/75 backdrop-blur-md overflow-hidden">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 15 }}
-        className="relative w-[98vw] max-w-[1550px] 2xl:max-w-[1860px] h-[95vh] max-h-[97vh] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
+        className="relative w-[98vw] max-w-[1550px] 2xl:max-w-[1860px] h-[85vh] max-h-[85vh] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
       >
         {/* ─── 1. EN-TÊTE SUPÉRIEUR COMPACT & ÉLÉGANT ────────────────────── */}
         <div className="bg-[#0e2b4d] text-white px-5 py-3 sm:py-3.5 border-b border-white/10 shrink-0 relative overflow-hidden">
@@ -699,46 +699,96 @@ export default function AutomaticOmbriereProspectingModal({
             </div>
 
             {/* CARTE 2 : TYPOLOGIE D'OMBRIÈRE */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
               <label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                 <Car className="w-3.5 h-3.5 text-amber-600" />
                 2. Typologie d'Ombrière à Déployer
               </label>
 
-              <div className="grid grid-cols-3 gap-1.5">
-                {[
-                  {
-                    id: 'ombriere_vl_auto',
-                    title: 'Mixte VL (Auto)',
-                    desc: 'Double centre (10m) + Simple bordure (5m)'
-                  },
-                  {
-                    id: 'ombriere_vl_double',
-                    title: '100% VL Double',
-                    desc: 'Larg. 10m • 4 pl./travée (vis-à-vis)'
-                  },
-                  {
-                    id: 'ombriere_vl_simple',
-                    title: '100% VL Simple',
-                    desc: 'Larg. 5m • 2 pl./travée (bordure)'
-                  }
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSelectedTypology(item.id)}
-                    className={`p-2 rounded-xl text-left transition-all border cursor-pointer ${
-                      selectedTypology === item.id
-                        ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-md ring-1 ring-amber-400'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="font-black text-xs">{item.title}</div>
-                    <div className={`text-[10px] mt-0.5 leading-tight ${selectedTypology === item.id ? 'text-amber-300 font-medium' : 'text-slate-500'}`}>
-                      {item.desc}
-                    </div>
-                  </button>
-                ))}
+              {/* LIGNE 1 : VÉHICULES LÉGERS (VL) */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                  <Car className="w-3 h-3 text-slate-400" />
+                  <span>Véhicules Légers (VL)</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    {
+                      id: 'ombriere_vl_auto',
+                      title: 'Mixte VL (Auto)',
+                      desc: 'Double centre (10m) + Simple bordure (5m)'
+                    },
+                    {
+                      id: 'ombriere_vl_double',
+                      title: '100% VL Double',
+                      desc: 'Larg. 10m • 4 pl./travée (vis-à-vis)'
+                    },
+                    {
+                      id: 'ombriere_vl_simple',
+                      title: '100% VL Simple',
+                      desc: 'Larg. 5m • 2 pl./travée (bordure)'
+                    }
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedTypology(item.id)}
+                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer ${
+                        selectedTypology === item.id
+                          ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-md ring-1 ring-amber-400'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="font-black text-xs">{item.title}</div>
+                      <div className={`text-[10px] mt-0.5 leading-tight ${selectedTypology === item.id ? 'text-amber-300 font-medium' : 'text-slate-500'}`}>
+                        {item.desc}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* LIGNE 2 : POIDS LOURDS (PL) */}
+              <div className="space-y-1 pt-1.5 border-t border-slate-100">
+                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                  <Truck className="w-3 h-3 text-amber-500" />
+                  <span>Ombrières Poids Lourds (PL)</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    {
+                      id: 'ombriere_pl_15_8',
+                      title: 'PL 15.8 m',
+                      desc: 'Porteurs & Camions • 1 pl./travée (4m)'
+                    },
+                    {
+                      id: 'ombriere_pl_20_2',
+                      title: 'PL 20.2 m',
+                      desc: 'Semi-remorques standard • 1 pl./travée (4m)'
+                    },
+                    {
+                      id: 'ombriere_pl_24_6',
+                      title: 'PL 24.6 m',
+                      desc: 'Grands ensembles • 1 pl./travée (4m)'
+                    }
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedTypology(item.id)}
+                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer ${
+                        selectedTypology === item.id
+                          ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-md ring-1 ring-amber-400'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="font-black text-xs">{item.title}</div>
+                      <div className={`text-[10px] mt-0.5 leading-tight ${selectedTypology === item.id ? 'text-amber-300 font-medium' : 'text-slate-500'}`}>
+                        {item.desc}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

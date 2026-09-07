@@ -303,7 +303,7 @@ export default function BuildingStructureBeforeAfterViewer({
           
           {/* CARTE DE GAUCHE : VUE AVANT (SATELLITE BRUT) OU VUE 3D SELON LE CHOIX */}
           {leftChoice === 'before' ? (
-            <div className="relative h-[360px] sm:h-[400px] rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-950">
+            <div className="relative h-[400px] sm:h-[440px] rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-950">
               <MapContainer
                 center={mapCenter}
                 zoom={19}
@@ -331,7 +331,7 @@ export default function BuildingStructureBeforeAfterViewer({
               </div>
             </div>
           ) : (
-            <div className="relative h-[360px] sm:h-[400px] rounded-3xl overflow-hidden border border-slate-300 shadow-md bg-slate-900 flex items-center justify-center">
+            <div className="relative h-[400px] sm:h-[440px] rounded-3xl overflow-hidden border border-slate-300 shadow-md bg-slate-900 flex items-center justify-center">
               {effective3dImg ? (
                 <img
                   src={effective3dImg}
@@ -355,7 +355,7 @@ export default function BuildingStructureBeforeAfterViewer({
           )}
 
           {/* CARTE DE DROITE : APRÈS (IMPLANTATION SATELLITE AU MÊME ZOOM ET MÊME CENTRE) */}
-          <div className="relative h-[360px] sm:h-[400px] rounded-3xl overflow-hidden border border-emerald-300 shadow-md bg-slate-950">
+          <div className="relative h-[400px] sm:h-[440px] rounded-3xl overflow-hidden border border-emerald-300 shadow-md bg-slate-950">
             <MapContainer
               center={mapCenter}
               zoom={19}
@@ -397,7 +397,7 @@ export default function BuildingStructureBeforeAfterViewer({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="relative w-full h-[420px] sm:h-[480px] rounded-3xl overflow-hidden shadow-lg border border-slate-200 select-none bg-slate-950 cursor-ew-resize touch-none"
+          className="relative w-full h-[460px] sm:h-[530px] rounded-3xl overflow-hidden shadow-lg border border-slate-200 select-none bg-slate-950 cursor-ew-resize touch-none"
         >
           {/* CARTE SATELLITE UNIQUE (Fond Avant & Après avec exact même zoom) */}
           <div className="absolute inset-0 w-full h-full">
@@ -460,7 +460,7 @@ export default function BuildingStructureBeforeAfterViewer({
 
       {/* ─── ZONE 3 : MODE VUE SEULE (GAUCHE OU DROITE) ───────────────────── */}
       {viewMode === 'left-only' && (
-        <div className="relative h-[420px] rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-950">
+        <div className="relative h-[460px] rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-950">
           {leftChoice === 'before' ? (
             <MapContainer
               center={mapCenter}
@@ -495,7 +495,7 @@ export default function BuildingStructureBeforeAfterViewer({
       )}
 
       {viewMode === 'right-only' && (
-        <div className="relative h-[420px] rounded-3xl overflow-hidden border border-emerald-300 shadow-md bg-slate-950">
+        <div className="relative h-[460px] rounded-3xl overflow-hidden border border-emerald-300 shadow-md bg-slate-950">
           <MapContainer
             center={mapCenter}
             zoom={19}

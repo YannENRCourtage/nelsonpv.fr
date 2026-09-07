@@ -8,6 +8,54 @@ import { drawSechoirChargesChart } from '@/components/simulator/sechoir/SechoirP
 const BORNE_7_4KW_IMG = '/images/borne_irve_7_4kw.jpg';
 const BORNE_DOUBLE_IMG = '/images/borne_irve_double.jpg';
 
+// ─── Helper Réglementaire Loi APER (Art. 40) pour Ombrières de Parking ────────
+export function getLoiAperNotice(parkingArea) {
+  const area = Number(parkingArea) || 0;
+  if (area < 1500) {
+    return {
+      status: 'volontaire',
+      badge: 'PROJET VOLONTAIRE',
+      badgeBg: '#10b981',
+      badgeColor: '#ffffff',
+      border: '#bbf7d0',
+      bg: '#f0fdf4',
+      titleColor: '#166534',
+      textColor: '#15803d',
+      icon: '🛡️',
+      title: 'Cadre Réglementaire APER',
+      text: "Projet d'ombrières volontaire : valorisation et confort sans contrainte réglementaire APER obligatoire."
+    };
+  } else if (area < 10000) {
+    return {
+      status: 'obligation_2028',
+      badge: 'CONFORMITÉ LOI APER 2028',
+      badgeBg: '#d97706',
+      badgeColor: '#ffffff',
+      border: '#fde68a',
+      bg: '#fffbeb',
+      titleColor: '#92400e',
+      textColor: '#92400e',
+      icon: '⚖️',
+      title: 'Conformité Loi APER (Art. 40)',
+      text: "Conformité Loi APER (Art. 40) : obligation d'équiper au moins 50 % de la superficie du parking en ombrières d'ici le 1er juillet 2028. Risque en cas de non-conformité : sanction financière pouvant atteindre jusqu'à 20 000 € par an jusqu'à régularisation."
+    };
+  } else {
+    return {
+      status: 'urgence_2026',
+      badge: 'URGENCE LÉGALE APER (≥10 000 m²)',
+      badgeBg: '#dc2626',
+      badgeColor: '#ffffff',
+      border: '#fecaca',
+      bg: '#fef2f2',
+      titleColor: '#991b1b',
+      textColor: '#991b1b',
+      icon: '⚠️',
+      title: 'Conformité Loi APER (Art. 40)',
+      text: "Conformité Loi APER (Art. 40) : obligation d'équiper au moins 50 % de la superficie du parking en ombrières (échéance au 1er juillet 2026 / 2028 selon gestion). Risque en cas de non-conformité : sanction financière pouvant atteindre jusqu'à 40 000 € par an jusqu'à régularisation."
+    };
+  }
+}
+
 // ─── Générateur de Graphique Financier Haute Résolution pour le PDF (30 ans) ──
 const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
   const canvas = document.createElement('canvas');
@@ -258,6 +306,30 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     bankDurationYears: 20,
     leasingDurationYears: 20
   });
+
+  // Cadre réglementaire Loi APER pour ombrières de parking
+  const parkingArea = Number(sim.parkingArea || sim.roofSurface || 0);
+  const aperNotice = getLoiAperNotice(parkingArea);
+
+  // Financement valorisé : Crédit Bancaire & Abonnement Solaire
+  const bankAnnualNet = Number(
+    financing?.bankLoan?.annualNetCashflow ??
+    financing?.bankLoan?.annualNetCashFlow ??
+    (annualRev - (financing?.bankLoan?.annualPaymentExact || 0))
+  );
+  const bankCumul20 = bankAnnualNet * 20;
+  const bankCumul30 = (bankAnnualNet * 20) + (annualRev * 10);
+
+  const selectedLeasing = financing?.selectedLeasing || financing?.leasing?.durations?.[2] || {};
+  const leasingMonthly = Number(selectedLeasing.monthlyPaymentHT || 0);
+  const leasingCoverage = Number(selectedLeasing.coveragePercent || 75);
+  const leasingNetPostIS = Number(selectedLeasing.annualNetCashflowPostIS || 0);
+  const leasingEffortMonthly = Math.round(Math.abs(leasingNetPostIS) / 12);
+  const leasingGains30 = Number(
+    selectedLeasing.totalNetGains30Years ||
+    ((selectedLeasing.postBuyoutGains || (annualRev * 10)) + (leasingNetPostIS * 20)) ||
+    0
+  );
 
   let cumul10 = sim.cumul10 !== undefined ? sim.cumul10 : (isSechoir ? 169145 : -totalInv);
   let cumul20 = sim.cumul20 !== undefined ? sim.cumul20 : (isSechoir ? 416000 : -totalInv);
@@ -689,7 +761,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         ` : (isStruct || isOmbriere) ? (
           wants3D ? `
             <!-- 4. GRILLE 2 COLONNES : VUE 3D (GAUCHE) + IMPLANTATION SATELLITE APRÈS (DROITE) -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; height: 285px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 5px; height: 313px;">
               <!-- 4a. VUE 3D DU BÂTIMENT OU DE L'OMBRIÈRE -->
               <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%;">
                 <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">
@@ -725,7 +797,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             </div>
           ` : `
             <!-- 4. VISUEL DUAL AVANT / APRÈS CÔTE À CÔTE AU MÊME ZOOM (100% VISIBLE) -->
-            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 6px; position: relative; height: 285px; display: flex; align-items: center; justify-content: center;">
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 5px; position: relative; height: 313px; display: flex; align-items: center; justify-content: center;">
               ${finalMapScreenshot ? `
                 <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Implantation Visuelle Avant / Après" />
               ` : `
@@ -741,7 +813,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           `
         ) : isIrve ? `
           <!-- 4. VISUELS IRVE : PHOTO DE LA BORNE (GAUCHE) + IMPLANTATION SATELLITE (DROITE) -->
-          <div style="display: grid; grid-template-columns: 1fr 1.35fr; gap: 8px; margin-bottom: 10px; height: 330px;">
+          <div style="display: grid; grid-template-columns: 1fr 1.35fr; gap: 8px; margin-bottom: 8px; height: 330px;">
             <!-- 4a. VISUEL PHOTO DE LA BORNE DE RECHARGE -->
             <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%;">
               <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 6px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">${borneTitle}</div>
@@ -765,7 +837,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         ` : `
           <!-- 4. VISUEL DUAL AVANT / APRÈS (TOITURE & AUTOCONSO) OU UNIQUE (AUTRES) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: ${isOmbriere ? '6px' : isToiture ? '8px' : '12px'}; position: relative; height: ${isOmbriere ? '285px' : isToiture ? '270px' : '260px'}; display: flex; align-items: center; justify-content: center;">
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: ${isOmbriere ? '5px' : isToiture ? '8px' : '12px'}; position: relative; height: ${isOmbriere ? '313px' : isToiture ? '270px' : '260px'}; display: flex; align-items: center; justify-content: center;">
             ${finalMapScreenshot ? `
               <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Implantation Visuelle du Projet" />
             ` : `
@@ -780,28 +852,43 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         `}
 
+        <!-- BANDEAU D'ALERTE RÉGLEMENTAIRE LOI APER (OMBRIÈRES DE PARKING) -->
+        ${isOmbriere ? `
+          <div style="background: ${aperNotice.bg}; border: 1.2px solid ${aperNotice.border}; border-radius: 7px; padding: 3.5px 8px; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; gap: 8px; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+              <span style="font-size: 8pt; line-height: 1;">${aperNotice.icon}</span>
+              <span style="font-size: 6.2pt; color: ${aperNotice.textColor}; line-height: 1.25;">
+                <strong style="color: ${aperNotice.titleColor};">${aperNotice.title} :</strong> ${aperNotice.text}
+              </span>
+            </div>
+            <span style="background: ${aperNotice.badgeBg}; color: ${aperNotice.badgeColor}; font-size: 5.2pt; font-weight: 900; padding: 2px 5px; border-radius: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px;">
+              ${aperNotice.badge}
+            </span>
+          </div>
+        ` : ''}
+
         <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT -->
-        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${(isOmbriere || isStruct) ? '5px 10px' : isToiture ? '7px 10px' : '9px 12px'}; margin-bottom: ${(isOmbriere || isStruct) ? '6px' : isToiture ? '8px' : '11px'};">
+        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${(isOmbriere || isStruct) ? '5px 10px' : isToiture ? '7px 10px' : '9px 12px'}; margin-bottom: ${(isOmbriere || isStruct) ? '5px' : isToiture ? '8px' : '11px'};">
           <div style="font-size: ${(isOmbriere || isStruct) ? '7.5pt' : isToiture ? '8pt' : '7.5pt'}; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
             ${isSechoir ? 'Projection Financière des Gains Cumulés (25 ans)' : 'Projection Financière des Gains Cumulés (30 ans)'}
           </div>
-          <div style="height: ${(isOmbriere || isStruct) ? '155px' : isToiture ? '175px' : '240px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="height: ${(isOmbriere || isStruct) ? '140px' : isToiture ? '175px' : '240px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
           </div>
 
           <!-- 3 CARTES DE CUMULS VERTICALEMENT CENTRÉES (10, 20, 30 ANS) -->
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 3px; text-align: center;">
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '36px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '33px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
               <span style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">sur 10 ans</span>
               <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : '9.5pt'}; font-weight: 900; color: #0f172a; line-height: 1;">+${dispCumul10.toLocaleString('fr-FR')} €</div>
             </div>
 
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '36px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '33px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
               <span style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">sur 20 ans</span>
               <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : '9.5pt'}; font-weight: 900; color: #0f172a; line-height: 1;">+${dispCumul20.toLocaleString('fr-FR')} €</div>
             </div>
 
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '36px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '33px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
               <span style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #166534; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">${isSechoir ? 'sur 20 ans (net)' : 'sur 30 ans'}</span>
               <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : '9.5pt'}; font-weight: 900; color: #16a34a; line-height: 1;">+${(isSechoir ? dispCumul20 : dispCumul30).toLocaleString('fr-FR')} €</div>
             </div>
@@ -810,102 +897,105 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
         <!-- 6. SECTION SOLUTIONS DE FINANCEMENT (2 SCÉNARIOS POUR OMBRIÈRES & STRUCTURE, OU 3 POUR TOITURE) -->
         ${(isOmbriere || isStruct) ? `
-        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 6px 10px; margin-bottom: 6px; box-sizing: border-box;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">
-            <span style="font-size: 7.5pt; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px;">
+        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 5px 9px; margin-bottom: 5px; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">
+            <span style="font-size: 7.2pt; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px;">
               ${isOmbriere ? '💡 Solutions de Financement Ombrière Comparées' : '💡 Solutions de Financement Bâtiment Solaire Comparées'}
             </span>
-            <span style="font-size: 6.2pt; color: #64748b; font-weight: bold;">
+            <span style="font-size: 6pt; color: #64748b; font-weight: bold;">
               Investissement : ${Number(capexHT || 0).toLocaleString('fr-FR')} € HT &bull; CA EDF OA : ~${Number(annualRev || 0).toLocaleString('fr-FR')} €/an
             </span>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 7px;">
             <!-- Cadre 1 : Crédit Bancaire -->
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 5px 8px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 7pt; font-weight: 900; color: #1e40af; text-transform: uppercase;">1. Crédit Bancaire</span>
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 4px 7px; box-sizing: border-box;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5px;">
+                <span style="font-size: 6.8pt; font-weight: 900; color: #1e40af; text-transform: uppercase;">1. Crédit Bancaire</span>
                 <span style="background: #2563eb; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">PROPRIÉTAIRE J1</span>
               </div>
-              <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Prêt pro 20 ans amortissable (4.48%)</div>
-              <table style="width: 100%; font-size: 6pt; border-collapse: collapse;">
-                <tr><td style="padding: 1.5px 0; color: #64748b;">Mensualité de prêt :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #1e40af;">~${Number(financing?.bankLoan?.monthlyPaymentExact || 0).toLocaleString('fr-FR')} €/m</td></tr>
-                <tr><td style="padding: 1.5px 0; color: #64748b;">Annuité de crédit :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #475569;">${Number(financing?.bankLoan?.annualPaymentExact || 0).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr><td style="padding: 1.5px 0; color: #64748b;">Amortissement actif :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #1e40af;">Déductible au bilan</td></tr>
-                <tr style="border-top: 1px solid #bfdbfe;"><td style="font-weight: bold; color: #1e40af; padding-top: 2px;">Cash-flow net annuel :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 7.2pt; padding-top: 2px;">${Number(financing?.bankLoan?.annualNetCashflow ?? financing?.bankLoan?.annualNetCashFlow ?? (annualRev - (financing?.bankLoan?.annualPaymentExact || 0))) >= 0 ? '+' : ''}${Number(financing?.bankLoan?.annualNetCashflow ?? financing?.bankLoan?.annualNetCashFlow ?? (annualRev - (financing?.bankLoan?.annualPaymentExact || 0))).toLocaleString('fr-FR')} €/an</td></tr>
+              <div style="font-size: 5.2pt; color: #475569; margin-bottom: 1.5px;">Prêt pro 20 ans amortissable (4.48%) &bull; Actif inscrit au bilan</div>
+              <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
+                <tr><td style="padding: 1px 0; color: #64748b;">Mensualité du prêt :</td><td style="padding: 1px 0; text-align: right; font-weight: bold; color: #1e40af;">~${Number(financing?.bankLoan?.monthlyPaymentExact || 0).toLocaleString('fr-FR')} €/m (${Number(financing?.bankLoan?.annualPaymentExact || 0).toLocaleString('fr-FR')} €/an)</td></tr>
+                <tr><td style="padding: 1px 0; color: #64748b;">Cash-flow net (An 1) :</td><td style="padding: 1px 0; text-align: right; font-weight: 900; color: ${bankAnnualNet >= 0 ? '#16a34a' : '#1e40af'};">${bankAnnualNet >= 0 ? '+' : ''}${bankAnnualNet.toLocaleString('fr-FR')} €/an net</td></tr>
+                <tr><td style="padding: 1px 0; color: #64748b;">Gain net cumulé (20 ans) :</td><td style="padding: 1px 0; text-align: right; font-weight: bold; color: #1e40af;">+${Math.max(0, bankCumul20).toLocaleString('fr-FR')} €</td></tr>
+                <tr style="border-top: 1px solid #bfdbfe;"><td style="font-weight: bold; color: #1e40af; padding-top: 1.5px;">Bénéfice net global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 6.8pt; padding-top: 1.5px;">+${Math.max(0, bankCumul30).toLocaleString('fr-FR')} €</td></tr>
               </table>
             </div>
 
             <!-- Cadre 2 : Abonnement Solaire (Leasing SunLib) -->
-            <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 5px 8px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 7pt; font-weight: 900; color: #6b21a8; text-transform: uppercase;">2. Abonnement Solaire</span>
-                <span style="background: #9333ea; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">100% HORS-BILAN</span>
+            <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 4px 7px; box-sizing: border-box;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5px;">
+                <span style="font-size: 6.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase;">2. Abonnement Solaire</span>
+                <span style="background: #9333ea; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">100% HORS-BILAN • 0 € DETTE</span>
               </div>
-              <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Leasing LOA 20 ans &bull; Option rachat 1 €</div>
-              <table style="width: 100%; font-size: 6pt; border-collapse: collapse;">
-                <tr><td style="padding: 1.5px 0; color: #64748b;">Loyer HT (~${financing?.selectedLeasing?.coveragePercent || financing?.leasing?.durations?.[2]?.coveragePercent || 88}% couvert) :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #6b21a8;">${Number(financing?.selectedLeasing?.monthlyPaymentHT || financing?.leasing?.durations?.[2]?.monthlyPaymentHT || 0).toLocaleString('fr-FR')} €/m</td></tr>
-                <tr><td style="padding: 1.5px 0; color: #64748b;">Impact capacité bancaire :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #6b21a8;">0 € dette (hors-bilan)</td></tr>
-                <tr><td style="padding: 1.5px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(financing?.selectedLeasing?.taxSavingsIS || financing?.leasing?.durations?.[2]?.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 2px;">Bilan net après IS :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 7.2pt; padding-top: 2px;">+${Number(financing?.selectedLeasing?.annualNetCashflowPostIS || financing?.leasing?.durations?.[2]?.annualNetCashflowPostIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
+              <div style="display: flex; justify-content: space-between; font-size: 5.2pt; color: #475569; margin-bottom: 1.5px;">
+                <span>Leasing LOA 20 ans &bull; Loyers déductibles IS</span>
+                <span style="color: #16a34a; font-weight: bold;">Rachat : 1 € au terme</span>
+              </div>
+              <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
+                <tr><td style="padding: 1px 0; color: #64748b;">Loyer mensuel HT :</td><td style="padding: 1px 0; text-align: right; font-weight: bold; color: #6b21a8;">${leasingMonthly.toLocaleString('fr-FR')} €/m <span style="font-size: 5pt; color: #16a34a;">(couvert à ~${leasingCoverage}%)</span></td></tr>
+                <tr><td style="padding: 1px 0; color: #64748b;">Effort net d'épargne (post-IS) :</td><td style="padding: 1px 0; text-align: right; font-weight: 900; color: #6b21a8;">${leasingNetPostIS >= 0 ? `Autofinancé (+${leasingNetPostIS.toLocaleString('fr-FR')} €/an)` : `~${leasingEffortMonthly.toLocaleString('fr-FR')} €/m seulement`}</td></tr>
+                <tr><td style="padding: 1px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1px 0; text-align: right; font-weight: bold; color: #16a34a;">+${Number(selectedLeasing.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an déductibles</td></tr>
+                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 1.5px;">Bénéfice net global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #16a34a; font-size: 6.8pt; padding-top: 1.5px;">+${Math.max(0, leasingGains30).toLocaleString('fr-FR')} €</td></tr>
               </table>
             </div>
           </div>
         </div>
         ` : isToiture ? `
-        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 7px 10px; margin-bottom: 8px; box-sizing: border-box;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px;">
-            <span style="font-size: 7.8pt; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px;">
+        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 6px 9px; margin-bottom: 6px; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">
+            <span style="font-size: 7.5pt; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px;">
               💡 Solutions de Financement Comparées
             </span>
-            <span style="font-size: 6.5pt; color: #64748b; font-weight: bold;">
+            <span style="font-size: 6.2pt; color: #64748b; font-weight: bold;">
               Investissement : ${Number(capexHT || 0).toLocaleString('fr-FR')} € HT &bull; CA EDF OA : ~${Number(annualRev || 0).toLocaleString('fr-FR')} €/an
             </span>
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
             <!-- Cadre 1 : Tiers-Financement -->
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 7px; padding: 5px 7px; box-sizing: border-box;">
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 7px; padding: 4px 6px; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 7pt; font-weight: 900; color: #166534; text-transform: uppercase;">1. Tiers-Investisseur</span>
-                <span style="background: #16a34a; color: #ffffff; font-size: 5.2pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">0 € APPORT</span>
+                <span style="font-size: 6.8pt; font-weight: 900; color: #166534; text-transform: uppercase;">1. Tiers-Investisseur</span>
+                <span style="background: #16a34a; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">0 € APPORT</span>
               </div>
-              <div style="font-size: 5.8pt; color: #475569; margin-bottom: 2.5px;">Bail emphytéotique 30 ans &bull; Zéro apport</div>
-              <table style="width: 100%; font-size: 6.2pt; border-collapse: collapse;">
-                <tr><td style="padding: 1.8px 0; color: #64748b;">Loyer garanti (ans 1-20) :</td><td style="padding: 1.8px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(financing?.thirdParty?.annualRentFixed || 0).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr><td style="padding: 1.8px 0; color: #64748b;">Intéressement (ans 21-30) :</td><td style="padding: 1.8px 0; text-align: right; font-weight: bold; color: #166534;">10 % du CA annuel</td></tr>
-                <tr><td style="padding: 1.8px 0; color: #64748b;">Investissement client :</td><td style="padding: 1.8px 0; text-align: right; font-weight: bold; color: #166534;">0 € (clé en main)</td></tr>
-                <tr style="border-top: 1px solid #bbf7d0;"><td style="font-weight: bold; color: #166534; padding-top: 2px;">Cumul garanti (20 ans) :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 7.2pt; padding-top: 2px;">+${Number(financing?.thirdParty?.cumulYears1To20 || 0).toLocaleString('fr-FR')} €</td></tr>
+              <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Bail 30 ans &bull; Toiture valorisée clé en main</div>
+              <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
+                <tr><td style="padding: 1.2px 0; color: #64748b;">Loyer garanti (ans 1-20) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(financing?.thirdParty?.annualRentFixed || 0).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr><td style="padding: 1.2px 0; color: #64748b;">Intéressement (ans 21-30) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">10 % du CA annuel</td></tr>
+                <tr><td style="padding: 1.2px 0; color: #64748b;">Investissement client :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">0 € (clé en main)</td></tr>
+                <tr style="border-top: 1px solid #bbf7d0;"><td style="font-weight: bold; color: #166534; padding-top: 1.5px;">Cumul garanti (20 ans) :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 6.8pt; padding-top: 1.5px;">+${Number(financing?.thirdParty?.cumulYears1To20 || 0).toLocaleString('fr-FR')} €</td></tr>
               </table>
             </div>
 
             <!-- Cadre 2 : Crédit Bancaire -->
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 5px 7px; box-sizing: border-box;">
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 4px 6px; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 7pt; font-weight: 900; color: #1e40af; text-transform: uppercase;">2. Crédit Bancaire</span>
-                <span style="background: #2563eb; color: #ffffff; font-size: 5.2pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">PROPRIÉTAIRE J1</span>
+                <span style="font-size: 6.8pt; font-weight: 900; color: #1e40af; text-transform: uppercase;">2. Crédit Bancaire</span>
+                <span style="background: #2563eb; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">PROPRIÉTAIRE J1</span>
               </div>
-              <div style="font-size: 5.8pt; color: #475569; margin-bottom: 2.5px;">Prêt pro 20 ans amortissable (4.48%)</div>
-              <table style="width: 100%; font-size: 6.2pt; border-collapse: collapse;">
-                <tr><td style="padding: 1.8px 0; color: #64748b;">Mensualité de prêt :</td><td style="padding: 1.8px 0; text-align: right; font-weight: bold; color: #1e40af;">~${Number(financing?.bankLoan?.monthlyPaymentExact || 0).toLocaleString('fr-FR')} €/m</td></tr>
-                <tr><td style="padding: 1.8px 0; color: #64748b;">Annuité de crédit :</td><td style="padding: 1.8px 0; text-align: right; font-weight: bold; color: #475569;">${Number(financing?.bankLoan?.annualPaymentExact || 0).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr><td style="padding: 1.8px 0; color: #64748b;">Amortissement actif :</td><td style="padding: 1.8px 0; text-align: right; font-weight: bold; color: #1e40af;">Déductible au bilan</td></tr>
-                <tr style="border-top: 1px solid #bfdbfe;"><td style="font-weight: bold; color: #1e40af; padding-top: 2px;">Cash-flow net annuel :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 7.2pt; padding-top: 2px;">${Number(financing?.bankLoan?.annualNetCashflow ?? financing?.bankLoan?.annualNetCashFlow ?? (annualRev - (financing?.bankLoan?.annualPaymentExact || 0))) >= 0 ? '+' : ''}${Number(financing?.bankLoan?.annualNetCashflow ?? financing?.bankLoan?.annualNetCashFlow ?? (annualRev - (financing?.bankLoan?.annualPaymentExact || 0))).toLocaleString('fr-FR')} €/an</td></tr>
+              <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Prêt pro 20 ans amortissable (4.48%)</div>
+              <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
+                <tr><td style="padding: 1.2px 0; color: #64748b;">Mensualité de prêt :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #1e40af;">~${Number(financing?.bankLoan?.monthlyPaymentExact || 0).toLocaleString('fr-FR')} €/m</td></tr>
+                <tr><td style="padding: 1.2px 0; color: #64748b;">Cash-flow net (An 1) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: 900; color: ${bankAnnualNet >= 0 ? '#16a34a' : '#1e40af'};">${bankAnnualNet >= 0 ? '+' : ''}${bankAnnualNet.toLocaleString('fr-FR')} €/an</td></tr>
+                <tr><td style="padding: 1.2px 0; color: #64748b;">Gain net cumulé (20 ans) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #1e40af;">+${Math.max(0, bankCumul20).toLocaleString('fr-FR')} €</td></tr>
+                <tr style="border-top: 1px solid #bfdbfe;"><td style="font-weight: bold; color: #1e40af; padding-top: 1.5px;">Bénéfice global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 6.8pt; padding-top: 1.5px;">+${Math.max(0, bankCumul30).toLocaleString('fr-FR')} €</td></tr>
               </table>
             </div>
 
             <!-- Cadre 3 : Abonnement Solaire (Leasing) -->
-            <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 5px 7px; box-sizing: border-box;">
+            <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 4px 6px; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 7pt; font-weight: 900; color: #6b21a8; text-transform: uppercase;">3. Abonnement Solaire</span>
-                <span style="background: #9333ea; color: #ffffff; font-size: 5.2pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">100% HORS-BILAN</span>
+                <span style="font-size: 6.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase;">3. Abonnement Solaire</span>
+                <span style="background: #9333ea; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">100% HORS-BILAN</span>
               </div>
-              <div style="font-size: 5.8pt; color: #475569; margin-bottom: 2.5px;">Leasing LOA 20 ans &bull; Option rachat 1 €</div>
-              <table style="width: 100%; font-size: 6.2pt; border-collapse: collapse;">
-                <tr><td style="padding: 1.8px 0; color: #64748b;">Loyer HT (~${financing?.selectedLeasing?.coveragePercent || 88}% couvert) :</td><td style="padding: 1.8px 0; text-align: right; font-weight: bold; color: #6b21a8;">${Number(financing?.selectedLeasing?.monthlyPaymentHT || 0).toLocaleString('fr-FR')} €/m</td></tr>
-                <tr><td style="padding: 1.8px 0; color: #64748b;">Impact capacité bancaire :</td><td style="padding: 1.8px 0; text-align: right; font-weight: bold; color: #6b21a8;">0 € dette (hors-bilan)</td></tr>
-                <tr><td style="padding: 1.8px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1.8px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(financing?.selectedLeasing?.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 2px;">Bilan net après IS :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 7.2pt; padding-top: 2px;">+${Number(financing?.selectedLeasing?.annualNetCashflowPostIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
+              <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Leasing 20 ans &bull; Rachat 1 € &bull; 0 € dette</div>
+              <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
+                <tr><td style="padding: 1.2px 0; color: #64748b;">Loyer HT (~${leasingCoverage}% couvert) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #6b21a8;">${leasingMonthly.toLocaleString('fr-FR')} €/m</td></tr>
+                <tr><td style="padding: 1.2px 0; color: #64748b;">Effort d'épargne (post-IS) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: 900; color: #6b21a8;">${leasingNetPostIS >= 0 ? `Autofinancé` : `~${leasingEffortMonthly.toLocaleString('fr-FR')} €/m`}</td></tr>
+                <tr><td style="padding: 1.2px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(selectedLeasing.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 1.5px;">Bénéfice global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #16a34a; font-size: 6.8pt; padding-top: 1.5px;">+${Math.max(0, leasingGains30).toLocaleString('fr-FR')} €</td></tr>
               </table>
             </div>
           </div>

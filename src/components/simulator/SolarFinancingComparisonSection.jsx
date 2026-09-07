@@ -277,15 +277,18 @@ export default function SolarFinancingComparisonSection({
                   {Number(bankLoan?.totalRepaid || 0).toLocaleString('fr-FR')} € (intérêts : +{Number(bankLoan?.totalInterest || 0).toLocaleString('fr-FR')} €)
                 </span>
               </div>
-              <div className="bg-blue-100/70 border border-blue-300 rounded-2xl p-3 text-center">
+              <div className="bg-blue-100/70 border border-blue-300 rounded-2xl p-3 text-center space-y-1">
                 <span className="text-[11px] font-bold text-blue-900 block uppercase tracking-wider">
-                  Cash-flow net annuel (Vente - Crédit)
+                  Cash-flow net annuel dès l'An 1 (Vente - Crédit)
                 </span>
-                <span className={`text-2xl font-black block mt-0.5 ${
+                <span className={`text-2xl font-black block ${
                   Number(bankLoan?.annualNetCashflow ?? bankLoan?.annualNetCashFlow ?? 0) >= 0 ? 'text-blue-950' : 'text-amber-700'
                 }`}>
                   {Number(bankLoan?.annualNetCashflow ?? bankLoan?.annualNetCashFlow ?? 0) >= 0 ? '+' : ''}{Number(bankLoan?.annualNetCashflow ?? bankLoan?.annualNetCashFlow ?? 0).toLocaleString('fr-FR')} € / an
                 </span>
+                <div className="text-[11px] text-blue-900 font-bold bg-white/70 py-1 px-2.5 rounded-xl border border-blue-200 inline-block">
+                  Bénéfice net global (30 ans) : +{Math.max(0, (Number(bankLoan?.annualNetCashflow ?? 0) * bankDuration) + (annualRevenue * (30 - bankDuration))).toLocaleString('fr-FR')} €
+                </div>
               </div>
             </div>
           </div>
@@ -385,15 +388,22 @@ export default function SolarFinancingComparisonSection({
                   1,00 € symbolique
                 </span>
               </div>
-              <div className="bg-purple-100/70 border border-purple-300 rounded-2xl p-3 text-center">
+              <div className="bg-purple-100/70 border border-purple-300 rounded-2xl p-3 text-center space-y-1">
                 <span className="text-[11px] font-bold text-purple-900 block uppercase tracking-wider">
-                  Bilan annuel net pour l'entreprise (après IS)
+                  {Number(activeLeasingOption?.annualNetCashflowPostIS || 0) >= 0
+                    ? "Excédent annuel net (Autofinancement 100%)"
+                    : "Effort net d'épargne patrimoniale (après IS)"}
                 </span>
-                <span className="text-2xl font-black block mt-0.5 text-purple-950">
-                  +{Number(activeLeasingOption?.annualNetCashflowPostIS || 0).toLocaleString('fr-FR')} € / an
+                <span className="text-2xl font-black block text-purple-950">
+                  {Number(activeLeasingOption?.annualNetCashflowPostIS || 0) >= 0
+                    ? `+${Number(activeLeasingOption?.annualNetCashflowPostIS || 0).toLocaleString('fr-FR')} € / an`
+                    : `~${Math.round(Math.abs(Number(activeLeasingOption?.annualNetCashflowPostIS || 0)) / 12).toLocaleString('fr-FR')} € / mois`}
                 </span>
-                <span className="text-[10px] text-purple-800 font-medium block mt-0.5">
-                  + {Number(activeLeasingOption?.postBuyoutGains || 0).toLocaleString('fr-FR')} € de recettes 100% acquises après rachat (années {activeLeasingOption?.durationYears + 1} à 30)
+                <div className="text-[11px] text-purple-900 font-bold bg-white/70 py-1 px-2.5 rounded-xl border border-purple-200 inline-block">
+                  Bénéfice net global (30 ans) : +{Number(activeLeasingOption?.totalNetGains30Years || 0).toLocaleString('fr-FR')} €
+                </div>
+                <span className="text-[10px] text-purple-700 font-medium block">
+                  Dont 10 ans de pleine propriété sans aucun loyer post-rachat 1 € (années {activeLeasingOption?.durationYears + 1} à 30)
                 </span>
               </div>
             </div>

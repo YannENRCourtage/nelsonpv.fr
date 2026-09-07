@@ -60,6 +60,49 @@ export const OMBRIERE_TYPOLOGIES = {
     minBays: 2,              // Minimum 2 travées (10m = 4 places)
     defaultPitchDeg: 10,
     minHeightClearance: 2.80
+  },
+  // Typologies Poids Lourds (PL) - Spécifications Barconnière / Nelson
+  'ombriere_pl_15_8': {
+    id: 'ombriere_pl_15_8',
+    label: 'Ombrière PL 15.8m (Porteurs & Camions)',
+    shortLabel: 'PL 15.8m',
+    desc: 'Larg. 15.8m • 1 place PL / travée (4.0m)',
+    widthMeters: 15.8,
+    bayLengthMeters: 4.0,
+    spotsPerBay: 1,
+    aisleWidthMeters: 10.0,
+    rowStepMeters: 25.8,
+    minBays: 2,
+    defaultPitchDeg: 10,
+    minHeightClearance: 4.80
+  },
+  'ombriere_pl_20_2': {
+    id: 'ombriere_pl_20_2',
+    label: 'Ombrière PL 20.2m (Semi-remorques standard)',
+    shortLabel: 'PL 20.2m',
+    desc: 'Larg. 20.2m • 1 place PL / travée (4.0m)',
+    widthMeters: 20.2,
+    bayLengthMeters: 4.0,
+    spotsPerBay: 1,
+    aisleWidthMeters: 12.0,
+    rowStepMeters: 32.2,
+    minBays: 2,
+    defaultPitchDeg: 10,
+    minHeightClearance: 4.80
+  },
+  'ombriere_pl_24_6': {
+    id: 'ombriere_pl_24_6',
+    label: 'Ombrière PL 24.6m (Grands ensembles articulés)',
+    shortLabel: 'PL 24.6m',
+    desc: 'Larg. 24.6m • 1 place PL / travée (4.0m)',
+    widthMeters: 24.6,
+    bayLengthMeters: 4.0,
+    spotsPerBay: 1,
+    aisleWidthMeters: 12.0,
+    rowStepMeters: 36.6,
+    minBays: 2,
+    defaultPitchDeg: 10,
+    minHeightClearance: 4.80
   }
 };
 
@@ -221,19 +264,46 @@ export function layoutOmbrieresOnParking({
   const { minX, maxX, minY, maxY } = bounds;
 
   // Paramètres normatifs du calepinage de parking
-  const AISLE_WIDTH = 6.0;      // Allée de circulation entre rangées (6.0m)
-  const CORRIDOR_GAP = 6.0;     // Couloir transversal de circulation / passage piéton (6.0m)
-  const MAX_BLOCK_BAYS = 8;     // Maximum 8 travées (40m) consécutives avant coupure transversale
-  const MIN_BLOCK_BAYS = 2;     // Minimum 2 travées (10m) pour stabilité structurelle
-  const BAY_LENGTH = 5.0;       // Entraxe longitudinal standard (5.0m = 2 places en simple, 4 en double)
+  const isPL = typologyKey.startsWith('ombriere_pl') || (selectedTypology.widthMeters && selectedTypology.widthMeters > 12.0);
+  const AISLE_WIDTH = selectedTypology.aisleWidthMeters || (isPL ? 10.0 : 6.0);      // Allée de circulation entre rangées
+  const CORRIDOR_GAP = isPL ? 8.0 : 6.0;     // Couloir transversal de circulation
+  const MAX_BLOCK_BAYS = isPL ? 6 : 8;     // Maximum de travées consécutives avant coupure transversale
+  const MIN_BLOCK_BAYS = 2;     // Minimum 2 travées pour stabilité structurelle
+  const BAY_LENGTH = selectedTypology.bayLengthMeters || (isPL ? 4.0 : 5.0);       // Entraxe longitudinal standard
   const MARGIN_Y = 1.5;         // Retrait de sécurité par rapport aux bordures
 
   // 1. Détermination des rangées candidates le long de l'axe transversal Y
-  // Classification intelligente VL Double (10m) au centre vs VL Simple (5m) en bordure
   const totalSpanY = maxY - minY - 2 * MARGIN_Y;
   const rows = [];
 
-  if (typologyKey === 'ombriere_vl_simple') {
+  if (isPL) {
+    // Mode Poids Lourds (PL) : gabarits 15.8m, 20.2m ou 24.6m
+    const plWidth = selectedTypology.widthMeters || 15.8;
+    const plAisle = selectedTypology.aisleWidthMeters || 10.0;
+    const plSpots = selectedTypology.spotsPerBay || 1;
+
+    let yPos = minY + MARGIN_Y + plWidth / 2;
+    while (yPos + plWidth / 2 <= maxY - MARGIN_Y) {
+      rows.push({
+        y: yPos,
+        width: plWidth,
+        type: selectedTypology.id,
+        spotsPerBay: plSpots,
+        label: selectedTypology.label
+      });
+      yPos += plWidth + plAisle;
+    }
+
+    if (rows.length === 0 && totalSpanY >= plWidth * 0.8) {
+      rows.push({
+        y: (minY + maxY) / 2,
+        width: plWidth,
+        type: selectedTypology.id,
+        spotsPerBay: plSpots,
+        label: selectedTypology.label
+      });
+    }
+  } else if (typologyKey === 'ombriere_vl_simple') {
     // Mode forcé 100% VL Simple
     let yPos = minY + MARGIN_Y + 2.5;
     while (yPos + 2.5 <= maxY - MARGIN_Y) {
