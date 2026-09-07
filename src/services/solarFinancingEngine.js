@@ -102,6 +102,7 @@ export function calculateLeasingSubscription({
   const safeCapex = Number(capexHT) || 0;
   const safePower = Number(powerKwc) || 0;
   const safeInitial = Number(initialPaymentHT) || 0;
+  const safeRevenue = Number(annualRevenue) || 0;
   const capital = Math.max(0, safeCapex - safeInitial);
   const durations = [10, 15, 20, 25];
 
@@ -111,14 +112,34 @@ export function calculateLeasingSubscription({
     const monthlyRate = rate / 12;
     const monthlyPaymentHT = capital > 0 ? capital * (monthlyRate / (1 - Math.pow(1 + monthlyRate, -months))) : 0;
     const annualPaymentHT = monthlyPaymentHT * 12;
-    const annualNetCashflow = Math.round(annualRevenue - annualPaymentHT);
+    
+    // Taux de couverture de la mensualité par les recettes EDF OA
+    const coveragePercent = annualPaymentHT > 0 ? Math.min(100, Math.round((safeRevenue / annualPaymentHT) * 100)) : 100;
+    
+    // Déductibilité fiscale intégrale des loyers (charge d'exploitation OPEX déductible de l'IS à 25%)
+    const taxSavingsIS = Math.round(annualPaymentHT * 0.25);
+    
+    // Cash-flow net : brut (vente - loyer) et net réel après économie d'impôt sur les sociétés
+    const annualNetCashflow = Math.round(safeRevenue - annualPaymentHT);
+    const annualNetCashflowPostIS = Math.round(safeRevenue - annualPaymentHT + taxSavingsIS);
+    
+    // Gains post-rachat à 1 € symbolique (années 21 à 30 = 100% des recettes pour le client)
+    const postBuyoutYears = Math.max(0, 30 - d);
+    const postBuyoutGains = Math.round(safeRevenue * postBuyoutYears);
+    const totalNetGains30Years = Math.round((annualNetCashflowPostIS * d) + postBuyoutGains);
 
     return {
       durationYears: d,
       annualRate: Math.round(rate * 1000) / 10,
       monthlyPaymentHT: Math.round(monthlyPaymentHT * 100) / 100,
       annualPaymentHT: Math.round(annualPaymentHT),
+      coveragePercent,
+      taxSavingsIS,
       annualNetCashflow,
+      annualNetCashflowPostIS,
+      postBuyoutYears,
+      postBuyoutGains,
+      totalNetGains30Years,
       buyoutOptionHT: 1
     };
   });

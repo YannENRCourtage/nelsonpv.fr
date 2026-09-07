@@ -55,7 +55,13 @@ export default function SolarFinancingComparisonSection({
       annualRate: 10.25,
       monthlyPaymentHT: 0,
       annualPaymentHT: 0,
-      annualNetCashflow: 0
+      coveragePercent: 88,
+      taxSavingsIS: 0,
+      annualNetCashflow: 0,
+      annualNetCashflowPostIS: 0,
+      postBuyoutGains: 0,
+      postBuyoutYears: 10,
+      totalNetGains30Years: 0
     };
   }, [leasing, leasingDuration]);
 
@@ -160,15 +166,20 @@ export default function SolarFinancingComparisonSection({
                 <span className="font-black text-slate-900 text-sm">+{Number(thirdParty?.cumulYears1To20 || 0).toLocaleString('fr-FR')} €</span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
-                <span className="text-slate-500 font-medium">Intéressement 10% (Ans 21 à 30)</span>
-                <span className="font-black text-emerald-700 text-sm">+{Number(thirdParty?.annualProfitSharing || 0).toLocaleString('fr-FR')} € / an</span>
+                <span className="text-slate-500 font-medium">Intéressement (Ans 21 à 30)</span>
+                <span className="font-bold text-emerald-700 text-xs bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  10 % du CA annuel
+                </span>
               </div>
               <div className="bg-emerald-100/70 border border-emerald-300 rounded-2xl p-3 text-center">
                 <span className="text-[11px] font-bold text-emerald-800 block uppercase tracking-wider">
-                  Gains cumulés sur 30 ans
+                  Loyers fixes garantis (20 ans)
                 </span>
                 <span className="text-2xl font-black text-emerald-800 block mt-0.5">
-                  +{Number(thirdParty?.totalGains30Years || 0).toLocaleString('fr-FR')} €
+                  +{Number(thirdParty?.cumulYears1To20 || 0).toLocaleString('fr-FR')} €
+                </span>
+                <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">
+                  + 10 % du CA annuel de revente (années 21 à 30)
                 </span>
               </div>
             </div>
@@ -268,8 +279,8 @@ export default function SolarFinancingComparisonSection({
 
         {/* ─── CADRE 3 : ABONNEMENT SOLAIRE (LEASING / SUNLIB) ──────────── */}
         <div className="flex flex-col justify-between rounded-3xl border-2 border-purple-200 bg-gradient-to-b from-purple-50/50 via-white to-white p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-          <div className="absolute top-0 right-0 bg-purple-600 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
-            Option rachat 1 €
+          <div className="absolute top-0 right-0 bg-purple-700 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider shadow-xs">
+            100% Hors-Bilan • Option 1 €
           </div>
 
           <div className="space-y-4">
@@ -284,8 +295,21 @@ export default function SolarFinancingComparisonSection({
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              <strong>Formule tout-en-un sans impacter votre trésorerie</strong>. Loyers déductibles du résultat fiscal, option d'achat à 1 € pour devenir propriétaire au terme.
+              <strong>Le choix stratégique des entreprises</strong> : 100% hors-bilan, sans alourdir l'endettement bancaire. Loyers déductibles de l'IS (25%) et rachat pour 1 € symbolique au terme.
             </p>
+
+            {/* Avantages Entreprise vs Crédit */}
+            <div className="bg-purple-50 border border-purple-200/70 rounded-2xl p-3 space-y-1.5 text-xs">
+              <div className="flex items-center gap-1.5 font-bold text-purple-900">
+                <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <span>Atouts clés vs Crédit Bancaire classique :</span>
+              </div>
+              <ul className="text-[11px] text-slate-600 space-y-1 pl-1">
+                <li>• <strong>Capacité bancaire intacte :</strong> 0 € de dette au bilan (charges OPEX).</li>
+                <li>• <strong>Économie d'impôt (IS 25%) :</strong> +{Number(activeLeasingOption?.taxSavingsIS || 0).toLocaleString('fr-FR')} € / an déductibles.</li>
+                <li>• <strong>Autofinancé à ~{activeLeasingOption?.coveragePercent || 88}%</strong> par les recettes EDF OA.</li>
+              </ul>
+            </div>
 
             {/* Sélecteur de durée de leasing */}
             <div className="bg-purple-50/80 border border-purple-200/80 rounded-2xl p-3.5 space-y-2">
@@ -316,7 +340,10 @@ export default function SolarFinancingComparisonSection({
             {/* Indicateurs clés */}
             <div className="space-y-2.5 pt-1">
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
-                <span className="text-slate-500 font-medium">Mensualité d'abonnement HT</span>
+                <div>
+                  <span className="text-slate-600 font-medium block">Mensualité d'abonnement HT</span>
+                  <span className="text-[10px] text-slate-400 font-normal">dont ~{activeLeasingOption?.coveragePercent || 88}% autofinancés par EDF OA</span>
+                </div>
                 <span className="font-black text-purple-700 text-sm">
                   {Number(activeLeasingOption?.monthlyPaymentHT || 0).toLocaleString('fr-FR')} € / mois HT
                 </span>
@@ -328,6 +355,12 @@ export default function SolarFinancingComparisonSection({
                 </span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
+                <span className="text-slate-500 font-medium">Économie fiscale annuelle (IS 25%)</span>
+                <span className="font-black text-emerald-700 text-xs bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  +{Number(activeLeasingOption?.taxSavingsIS || 0).toLocaleString('fr-FR')} € / an déductibles
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">Option de rachat au terme</span>
                 <span className="font-black text-emerald-600 text-xs bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                   1,00 € symbolique
@@ -335,12 +368,13 @@ export default function SolarFinancingComparisonSection({
               </div>
               <div className="bg-purple-100/70 border border-purple-300 rounded-2xl p-3 text-center">
                 <span className="text-[11px] font-bold text-purple-900 block uppercase tracking-wider">
-                  Bilan annuel (Vente EDF OA - Abonnement)
+                  Bilan annuel net pour l'entreprise (après IS)
                 </span>
-                <span className={`text-2xl font-black block mt-0.5 ${
-                  Number(activeLeasingOption?.annualNetCashflow || 0) >= 0 ? 'text-emerald-700' : 'text-purple-950'
-                }`}>
-                  {Number(activeLeasingOption?.annualNetCashflow || 0) >= 0 ? '+' : ''}{Number(activeLeasingOption?.annualNetCashflow || 0).toLocaleString('fr-FR')} € / an
+                <span className="text-2xl font-black block mt-0.5 text-purple-950">
+                  +{Number(activeLeasingOption?.annualNetCashflowPostIS || 0).toLocaleString('fr-FR')} € / an
+                </span>
+                <span className="text-[10px] text-purple-800 font-medium block mt-0.5">
+                  + {Number(activeLeasingOption?.postBuyoutGains || 0).toLocaleString('fr-FR')} € de recettes 100% acquises après rachat (années {activeLeasingOption?.durationYears + 1} à 30)
                 </span>
               </div>
             </div>
@@ -348,7 +382,7 @@ export default function SolarFinancingComparisonSection({
 
           <div className="mt-5 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-            <span>Traitement comptable hors-bilan, trésorerie préservée</span>
+            <span>Traitement comptable 100% hors-bilan, trésorerie et capacité d'emprunt intactes</span>
           </div>
         </div>
 
