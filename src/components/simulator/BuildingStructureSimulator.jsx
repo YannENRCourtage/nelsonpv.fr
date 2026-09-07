@@ -20,6 +20,7 @@ import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
 import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
 import AutomaticOmbriereProspectingModal from './AutomaticOmbriereProspectingModal';
+import SolarFinancingComparisonSection from './SolarFinancingComparisonSection';
 
 // ─── Contrôles de Zoom Flottants Leaflet ─────────────────────────────────────
 function CustomMapZoom() {
@@ -262,6 +263,9 @@ export default function BuildingStructureSimulator({
 
   // Modale Automate Ombrières Parking
   const [isAutoOmbriereOpen, setIsAutoOmbriereOpen] = useState(false);
+
+  // Scénarios de Financement (Crédit & Abonnement)
+  const [selectedFinancing, setSelectedFinancing] = useState(null);
 
   // Tunnel Faisabilité Solaire (Image 4 & 5) : 1. Adresse | 2. Emplacement & Orientation | 3. Rentabilité & Faisabilité
   const [studyStep, setStudyStep] = useState(1);
@@ -816,6 +820,8 @@ const crop3DCanvas = (sourceCanvas) => {
         ratioCostPerWc,
         ratioCostPerM2,
         annualBenefitYear1: annualNetRevenue,
+        annualRevenueReventeTotale: annualGrossRevenue,
+        financing: selectedFinancing,
         paybackYear: financialProjection30Years.paybackYears,
         totalGains30Years: financialProjection30Years.cumul30,
         cumul10: financialProjection30Years.cumul10,
@@ -832,7 +838,7 @@ const crop3DCanvas = (sourceCanvas) => {
   }, [
     buildingLength, buildingWidth, totalFloorArea, totalRoofArea, installedKwc,
     annualProductionKwh, totalBuildingCost, totalProjectInvestment,
-    ratioCostPerWc, ratioCostPerM2, annualNetRevenue,
+    ratioCostPerWc, ratioCostPerM2, annualNetRevenue, annualGrossRevenue, selectedFinancing,
     financialProjection30Years, clientNameInput, addressInput, cityName,
     departmentCode, mapCenter, building3dSnapshot, mapScreenshotDataUrl, simBuildings, activeBuildingIdx, onStateUpdate
   ]);
@@ -1660,6 +1666,17 @@ const crop3DCanvas = (sourceCanvas) => {
                     </div>
                   </div>
                 </div>
+
+                {/* ─── SECTION SOLUTIONS DE FINANCEMENT (2 SCÉNARIOS : CRÉDIT & ABONNEMENT) ─── */}
+                <SolarFinancingComparisonSection
+                  powerKwc={installedKwc}
+                  annualRevenue={annualGrossRevenue}
+                  capexHT={totalProjectInvestment}
+                  showThirdParty={false}
+                  title="Solutions de Financement Hangar &amp; Structure"
+                  subtitle="Comparez les 2 scénarios de financement pour valoriser votre bâtiment selon vos objectifs de trésorerie et de propriété."
+                  onFinancingChange={setSelectedFinancing}
+                />
 
                 {/* ─── SECTION IMPACT SUR L'ENVIRONNEMENT (IMAGE 5) ───────────── */}
                 <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-6 shadow-sm space-y-3">

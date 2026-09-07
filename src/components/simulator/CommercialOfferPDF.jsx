@@ -213,11 +213,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     }
   }
 
-  // Graphique financier 30 ans (compacté pour ombrière pour tenir sur 1 page A4)
+  // Graphique financier 30 ans (compacté pour ombrière et structure pour tenir sur 1 page A4)
   const financialChartImg = generateFinancialChartImage({
     sim,
     width: 800,
-    height: isOmbriere ? 260 : isToiture ? 360 : 374
+    height: (isOmbriere || isStruct) ? 260 : isToiture ? 360 : 374
   });
 
   // Calculs financiers pour les 3 cartes de cumuls 10 / 20 / 30 ans
@@ -524,6 +524,14 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     `;
   }
 
+  // Helper pour éviter le doublon "ans" dans l'amortissement
+  const formatPaybackDisplay = (val) => {
+    if (val === null || val === undefined || val === '') return '8 ans';
+    const str = String(val).trim();
+    if (str.toLowerCase().endsWith('ans')) return str;
+    return `${str} ans`;
+  };
+
   container.innerHTML = `
     <div style="display: flex; flex-direction: column; min-height: 283mm; justify-content: space-between;">
       
@@ -568,7 +576,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
           <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 8px; padding: ${isToiture ? '8px 6px' : '6px'}; text-align: center;">
             <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; font-weight: bold; color: #6b21a8; text-transform: uppercase;">Amortissement</div>
-            <div style="font-size: ${isToiture ? '14pt' : '13pt'}; font-weight: 900; color: #9333ea; margin: 1px 0;">${isSechoir ? `${Number(sim.paybackYear || sim.roi || 7.29).toFixed(2)} ans` : `${sim.paybackYear || 8} ans`}</div>
+            <div style="font-size: ${isToiture ? '14pt' : '13pt'}; font-weight: 900; color: #9333ea; margin: 1px 0;">${isSechoir ? `${Number(sim.paybackYear || sim.roi || 7.29).toFixed(2)} ans` : formatPaybackDisplay(sim.paybackYear || 8)}</div>
             <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; color: #6b21a8;">${isSechoir ? `Invest. : ${(sim.investissementNet || sim.totalInvestmentHT || 327053).toLocaleString('fr-FR')} € HT` : isIrve ? `Soit ${sim.paybackMonths || Math.round((Number(sim.paybackYear) || 0.4) * 12)} mois` : `Invest. : ${sim.totalInvestmentHT ? Number(sim.totalInvestmentHT).toLocaleString('fr-FR') : sim.resteACharge ? Number(sim.resteACharge).toLocaleString('fr-FR') : '-'} € HT`}</div>
           </div>
         </div>
@@ -656,7 +664,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             </div>
           </div>
         ` : isStruct ? `
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; ${sim.buildings && sim.buildings.length > 1 ? 'height: 310px;' : 'height: 290px;'}">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; ${sim.buildings && sim.buildings.length > 1 ? 'height: 225px;' : 'height: 215px;'}">
             <!-- 4a. VISUEL(S) 3D DU/DES BÂTIMENT(S) -->
             ${sim.buildings && sim.buildings.length > 1 ? `
               <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 6px; height: 100%;">
@@ -747,39 +755,39 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         `}
 
         <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT -->
-        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${isOmbriere ? '5px 10px' : isToiture ? '7px 10px' : '9px 12px'}; margin-bottom: ${isOmbriere ? '6px' : isToiture ? '8px' : '11px'};">
-          <div style="font-size: ${isOmbriere ? '7.5pt' : isToiture ? '8pt' : '7.5pt'}; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
+        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${(isOmbriere || isStruct) ? '5px 10px' : isToiture ? '7px 10px' : '9px 12px'}; margin-bottom: ${(isOmbriere || isStruct) ? '6px' : isToiture ? '8px' : '11px'};">
+          <div style="font-size: ${(isOmbriere || isStruct) ? '7.5pt' : isToiture ? '8pt' : '7.5pt'}; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
             ${isSechoir ? 'Projection Financière des Gains Cumulés (25 ans)' : 'Projection Financière des Gains Cumulés (30 ans)'}
           </div>
-          <div style="height: ${isOmbriere ? '135px' : isToiture ? '175px' : isStruct && sim.buildings && sim.buildings.length > 1 ? '210px' : '240px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="height: ${(isOmbriere || isStruct) ? '135px' : isToiture ? '175px' : '240px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
           </div>
 
           <!-- 3 CARTES DE CUMULS VERTICALEMENT CENTRÉES (10, 20, 30 ANS) -->
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 3px; text-align: center;">
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${isOmbriere ? '34px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <span style="font-size: ${isOmbriere ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">sur 10 ans</span>
-              <div style="font-size: ${isOmbriere ? '9pt' : '9.5pt'}; font-weight: 900; color: #0f172a; line-height: 1;">+${dispCumul10.toLocaleString('fr-FR')} €</div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <span style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">sur 10 ans</span>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : '9.5pt'}; font-weight: 900; color: #0f172a; line-height: 1;">+${dispCumul10.toLocaleString('fr-FR')} €</div>
             </div>
 
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${isOmbriere ? '34px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <span style="font-size: ${isOmbriere ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">sur 20 ans</span>
-              <div style="font-size: ${isOmbriere ? '9pt' : '9.5pt'}; font-weight: 900; color: #0f172a; line-height: 1;">+${dispCumul20.toLocaleString('fr-FR')} €</div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <span style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">sur 20 ans</span>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : '9.5pt'}; font-weight: 900; color: #0f172a; line-height: 1;">+${dispCumul20.toLocaleString('fr-FR')} €</div>
             </div>
 
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; height: ${isOmbriere ? '34px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <span style="font-size: ${isOmbriere ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #166534; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">${isSechoir ? 'sur 20 ans (net)' : 'sur 30 ans'}</span>
-              <div style="font-size: ${isOmbriere ? '9pt' : '9.5pt'}; font-weight: 900; color: #16a34a; line-height: 1;">+${(isSechoir ? dispCumul20 : dispCumul30).toLocaleString('fr-FR')} €</div>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <span style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #166534; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">${isSechoir ? 'sur 20 ans (net)' : 'sur 30 ans'}</span>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : '9.5pt'}; font-weight: 900; color: #16a34a; line-height: 1;">+${(isSechoir ? dispCumul20 : dispCumul30).toLocaleString('fr-FR')} €</div>
             </div>
           </div>
         </div>
 
-        <!-- 6. SECTION SOLUTIONS DE FINANCEMENT (2 SCÉNARIOS POUR OMBRIÈRES OU 3 POUR TOITURE) -->
-        ${isOmbriere ? `
+        <!-- 6. SECTION SOLUTIONS DE FINANCEMENT (2 SCÉNARIOS POUR OMBRIÈRES & STRUCTURE, OU 3 POUR TOITURE) -->
+        ${(isOmbriere || isStruct) ? `
         <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 6px 10px; margin-bottom: 6px; box-sizing: border-box;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">
             <span style="font-size: 7.5pt; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px;">
-              💡 Solutions de Financement Ombrière Comparées
+              ${isOmbriere ? '💡 Solutions de Financement Ombrière Comparées' : '💡 Solutions de Financement Bâtiment Solaire Comparées'}
             </span>
             <span style="font-size: 6.2pt; color: #64748b; font-weight: bold;">
               Investissement : ${Number(capexHT || 0).toLocaleString('fr-FR')} € HT &bull; CA EDF OA : ~${Number(annualRev || 0).toLocaleString('fr-FR')} €/an
@@ -810,10 +818,10 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
               <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Leasing LOA 20 ans &bull; Option rachat 1 €</div>
               <table style="width: 100%; font-size: 6pt; border-collapse: collapse;">
-                <tr><td style="padding: 1.5px 0; color: #64748b;">Loyer HT (~${financing?.selectedLeasing?.coveragePercent || 88}% couvert) :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #6b21a8;">${Number(financing?.selectedLeasing?.monthlyPaymentHT || 0).toLocaleString('fr-FR')} €/m</td></tr>
+                <tr><td style="padding: 1.5px 0; color: #64748b;">Loyer HT (~${financing?.selectedLeasing?.coveragePercent || financing?.leasing?.durations?.[2]?.coveragePercent || 88}% couvert) :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #6b21a8;">${Number(financing?.selectedLeasing?.monthlyPaymentHT || financing?.leasing?.durations?.[2]?.monthlyPaymentHT || 0).toLocaleString('fr-FR')} €/m</td></tr>
                 <tr><td style="padding: 1.5px 0; color: #64748b;">Impact capacité bancaire :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #6b21a8;">0 € dette (hors-bilan)</td></tr>
-                <tr><td style="padding: 1.5px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(financing?.selectedLeasing?.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 2px;">Bilan net après IS :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 7.2pt; padding-top: 2px;">+${Number(financing?.selectedLeasing?.annualNetCashflowPostIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr><td style="padding: 1.5px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(financing?.selectedLeasing?.taxSavingsIS || financing?.leasing?.durations?.[2]?.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 2px;">Bilan net après IS :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 7.2pt; padding-top: 2px;">+${Number(financing?.selectedLeasing?.annualNetCashflowPostIS || financing?.leasing?.durations?.[2]?.annualNetCashflowPostIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
               </table>
             </div>
           </div>
@@ -879,25 +887,25 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         ` : ''}
 
         <!-- 7. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT (PLACÉE TOUT EN BAS AVANT LE PIED DE PAGE) -->
-        <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: ${isOmbriere ? '6px 10px' : isToiture ? '8px 10px' : '8px 12px'}; margin-bottom: ${isOmbriere ? '4px' : isToiture ? '6px' : '6px'};">
-          <div style="font-size: ${isOmbriere ? '7.5pt' : isToiture ? '8pt' : '8pt'}; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 3px;">
+        <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: ${(isOmbriere || isStruct) ? '6px 10px' : isToiture ? '8px 10px' : '8px 12px'}; margin-bottom: ${(isOmbriere || isStruct) ? '4px' : isToiture ? '6px' : '6px'};">
+          <div style="font-size: ${(isOmbriere || isStruct) ? '7.5pt' : isToiture ? '8pt' : '8pt'}; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 3px;">
             🌱 Votre Impact sur l'Environnement
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center;">
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${isOmbriere ? '38px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <div style="font-size: ${isOmbriere ? '9.5pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 1.5px;">${co2Avoided} tonnes</div>
-              <div style="font-size: ${isOmbriere ? '5.8pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">de CO₂ évitées par an</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '38px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9.5pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 1.5px;">${co2Avoided} tonnes</div>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '5.8pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">de CO₂ évitées par an</div>
             </div>
 
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${isOmbriere ? '38px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <div style="font-size: ${isOmbriere ? '9.5pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 1.5px;">${treesPlanted}</div>
-              <div style="font-size: ${isOmbriere ? '5.8pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">arbres plantés par an</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '38px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9.5pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 1.5px;">${treesPlanted}</div>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '5.8pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">arbres plantés par an</div>
             </div>
 
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${isOmbriere ? '38px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <div style="font-size: ${isOmbriere ? '9.5pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #0d9488; line-height: 1; margin-bottom: 1.5px;">${householdsFed}</div>
-              <div style="font-size: ${isOmbriere ? '5.8pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">foyer(s) alimenté(s) en électricité</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '38px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9.5pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #0d9488; line-height: 1; margin-bottom: 1.5px;">${householdsFed}</div>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '5.8pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">foyer(s) alimenté(s) en électricité</div>
             </div>
           </div>
         </div>

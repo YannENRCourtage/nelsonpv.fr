@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ShieldCheck,
   Building2,
@@ -16,7 +16,11 @@ export default function SolarFinancingComparisonSection({
   powerKwc = 100,
   annualRevenue = 21985,
   capexHT = 92000,
-  rentMultiplierDefault = 14
+  rentMultiplierDefault = 14,
+  showThirdParty = true,
+  title = "Solutions de Financement",
+  subtitle = null,
+  onFinancingChange = null
 }) {
   const [rentMultiplier, setRentMultiplier] = useState(rentMultiplierDefault || 14);
   const [bankDuration, setBankDuration] = useState(20);
@@ -65,6 +69,17 @@ export default function SolarFinancingComparisonSection({
     };
   }, [leasing, leasingDuration]);
 
+  useEffect(() => {
+    if (onFinancingChange) {
+      onFinancingChange({
+        bankLoan,
+        leasing,
+        selectedLeasing: activeLeasingOption,
+        thirdParty: showThirdParty ? thirdParty : null
+      });
+    }
+  }, [bankLoan, leasing, activeLeasingOption, thirdParty, showThirdParty, onFinancingChange]);
+
   return (
     <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xl space-y-6">
       
@@ -76,10 +91,12 @@ export default function SolarFinancingComparisonSection({
             Ingénierie Financière Solaire
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Solutions de Financement
+            {title}
           </h3>
           <p className="text-sm text-slate-500 font-medium mt-1">
-            Comparez les 3 scénarios de financement pour valoriser votre toiture selon vos objectifs de trésorerie et de propriété.
+            {subtitle || (showThirdParty
+              ? "Comparez les 3 scénarios de financement pour valoriser votre toiture selon vos objectifs de trésorerie et de propriété."
+              : "Comparez les 2 scénarios de financement pour votre projet selon vos objectifs de trésorerie et de propriété.")}
           </p>
         </div>
 
@@ -101,10 +118,11 @@ export default function SolarFinancingComparisonSection({
         </div>
       </div>
 
-      {/* Les 3 Cadres Comparatifs */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Les Cadres Comparatifs (2 ou 3 colonnes) */}
+      <div className={`grid grid-cols-1 ${showThirdParty ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6`}>
 
-        {/* ─── CADRE 1 : TIERS-FINANCEMENT ──────────────────────────────── */}
+        {/* ─── CADRE 1 : TIERS-FINANCEMENT (OPTIONNEL) ──────────────────── */}
+        {showThirdParty && (
         <div className="flex flex-col justify-between rounded-3xl border-2 border-emerald-200 bg-gradient-to-b from-emerald-50/50 via-white to-white p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
           <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
             0 € d'apport
@@ -190,6 +208,7 @@ export default function SolarFinancingComparisonSection({
             <span>Zéro endettement, toiture valorisée clé en main</span>
           </div>
         </div>
+        )}
 
         {/* ─── CADRE 2 : CRÉDIT BANCAIRE PROFESSIONNEL ──────────────────── */}
         <div className="flex flex-col justify-between rounded-3xl border-2 border-blue-200 bg-gradient-to-b from-blue-50/50 via-white to-white p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
