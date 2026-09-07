@@ -67,8 +67,8 @@ export default function AutomaticOmbriereProspectingModal({
   // Rayon pour l'emprise carte (en mètres)
   const [mapRadius, setMapRadius] = useState(1000); // 500, 1000, 2000, 5000
 
-  // Typologie d'ombrière sélectionnée
-  const [selectedTypology, setSelectedTypology] = useState('ombriere_vl_double');
+  // Typologie d'ombrière sélectionnée (VL Auto par défaut)
+  const [selectedTypology, setSelectedTypology] = useState('ombriere_vl_auto');
 
   // Critères de filtrage et dimensionnement
   const [minArea, setMinArea] = useState(220);
@@ -138,16 +138,19 @@ export default function AutomaticOmbriereProspectingModal({
   useEffect(() => {
     if (isOpen) {
       refreshBridgeStatus();
-      if (!selectedCommune) {
-        if (defaultCommune === 'Bordeaux' || !defaultCommune) {
-          setSelectedCommune(DEFAULT_BORDEAUX);
-          setCommuneSearch('Bordeaux');
-        } else if (communeSearch) {
-          handleSearchCommunes(communeSearch);
-        }
+      if (defaultCommune && defaultCommune !== 'Bordeaux' && (!selectedCommune || selectedCommune.nom !== defaultCommune)) {
+        setCommuneSearch(defaultCommune);
+        searchCommunes(defaultCommune).then((results) => {
+          if (results && results.length > 0) {
+            setSelectedCommune(results[0]);
+          }
+        });
+      } else if (!selectedCommune) {
+        setSelectedCommune(DEFAULT_BORDEAUX);
+        setCommuneSearch('Bordeaux');
       }
     }
-  }, [isOpen, refreshBridgeStatus]);
+  }, [isOpen, defaultCommune, refreshBridgeStatus]);
 
   // Autoscroll des logs
   useEffect(() => {
@@ -172,8 +175,11 @@ export default function AutomaticOmbriereProspectingModal({
     const results = await searchCommunes(text);
     setCommuneSuggestions(results);
     setIsSearchingCommune(false);
-    if (results.length > 0 && !selectedCommune) {
-      setSelectedCommune(results[0]);
+    if (results.length > 0) {
+      // Synchroniser la commune sélectionnée si elle ne correspond plus
+      if (!selectedCommune || !selectedCommune.nom.toLowerCase().startsWith(text.trim().toLowerCase())) {
+        setSelectedCommune(results[0]);
+      }
     }
   };
 
@@ -702,19 +708,19 @@ export default function AutomaticOmbriereProspectingModal({
               <div className="grid grid-cols-3 gap-1.5">
                 {[
                   {
-                    id: 'ombriere_vl_simple',
-                    title: 'VL Simple',
-                    desc: 'Larg. 5m • 2 pl./travée'
+                    id: 'ombriere_vl_auto',
+                    title: 'Mixte VL (Auto)',
+                    desc: 'Double centre (10m) + Simple bordure (5m)'
                   },
                   {
                     id: 'ombriere_vl_double',
-                    title: 'VL Double',
-                    desc: 'Larg. 10m • 4 pl. vis-à-vis'
+                    title: '100% VL Double',
+                    desc: 'Larg. 10m • 4 pl./travée (vis-à-vis)'
                   },
                   {
-                    id: 'ombriere_pl',
-                    title: 'Poids Lourds',
-                    desc: 'Larg. 18m • 2 pl. PL/bus'
+                    id: 'ombriere_vl_simple',
+                    title: '100% VL Simple',
+                    desc: 'Larg. 5m • 2 pl./travée (bordure)'
                   }
                 ].map((item) => (
                   <button
@@ -837,7 +843,9 @@ export default function AutomaticOmbriereProspectingModal({
                   <Play className="w-4 h-4 fill-white" />
                   <span>
                     Lancer la Prospection Ombrières
-                    {geoMode === 'commune' && selectedCommune ? ` (${selectedCommune.nom} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} parkings`})` : ` (${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} parkings`})`}
+                    {geoMode === 'commune'
+                      ? ` (${selectedCommune?.nom || communeSearch || 'Commune'} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} parkings`})`
+                      : ` (Emprise Carte - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} parkings`})`}
                   </span>
                 </button>
               )}

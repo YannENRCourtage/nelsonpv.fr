@@ -26,7 +26,7 @@ export async function simulateParkingHeadless({
   cadastreInfo = null,
   customSettings = {}
 }) {
-  const typologyKey = customSettings.typology || 'ombriere_vl_double';
+  const typologyKey = customSettings.typology || 'ombriere_vl_auto';
   const costPerKwc = customSettings.costPerKwc || 1200; // 1 200 € / kWc (structure + génie civil + PV)
   const tarifEdfOaKwh = customSettings.tarifEdfOa || 0.085; // 0,085 €/kWh
 

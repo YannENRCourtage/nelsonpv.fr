@@ -135,16 +135,19 @@ export default function AutomaticProspectingModal({
   useEffect(() => {
     if (isOpen) {
       refreshBridgeStatus();
-      if (!selectedCommune) {
-        if (defaultCommune === 'Bordeaux' || !defaultCommune) {
-          setSelectedCommune(DEFAULT_BORDEAUX);
-          setCommuneSearch('Bordeaux');
-        } else if (communeSearch) {
-          handleSearchCommunes(communeSearch);
-        }
+      if (defaultCommune && defaultCommune !== 'Bordeaux' && (!selectedCommune || selectedCommune.nom !== defaultCommune)) {
+        setCommuneSearch(defaultCommune);
+        searchCommunes(defaultCommune).then((results) => {
+          if (results && results.length > 0) {
+            setSelectedCommune(results[0]);
+          }
+        });
+      } else if (!selectedCommune) {
+        setSelectedCommune(DEFAULT_BORDEAUX);
+        setCommuneSearch('Bordeaux');
       }
     }
-  }, [isOpen, refreshBridgeStatus]);
+  }, [isOpen, defaultCommune, refreshBridgeStatus]);
 
   // Autoscroll des logs
   useEffect(() => {
@@ -857,7 +860,9 @@ export default function AutomaticProspectingModal({
                   <Play className="w-4 h-4 fill-white" />
                   <span>
                     Lancer la Prospection Automatique
-                    {geoMode === 'commune' && selectedCommune ? ` (${selectedCommune.nom} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} toitures`})` : ` (${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} toitures`})`}
+                    {geoMode === 'commune'
+                      ? ` (${selectedCommune?.nom || communeSearch || 'Commune'} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} toitures`})`
+                      : ` (Emprise Carte - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} toitures`})`}
                   </span>
                 </button>
               )}

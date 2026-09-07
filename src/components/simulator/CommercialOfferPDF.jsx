@@ -217,7 +217,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   const financialChartImg = generateFinancialChartImage({
     sim,
     width: 800,
-    height: (isOmbriere || isStruct) ? 260 : isToiture ? 360 : 374
+    height: (isOmbriere || isStruct) ? 230 : isToiture ? 360 : 374
   });
 
   // Calculs financiers pour les 3 cartes de cumuls 10 / 20 / 30 ans
@@ -264,11 +264,13 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   const treesPlanted = Math.round(annualProd * 0.00143);
   const householdsFed = (Math.round((annualProd / 4500) * 10) / 10).toLocaleString('fr-FR');
 
-  // Format A4 Portrait
+  // Format A4 Portrait strict (210mm x 297mm)
   const container = document.createElement('div');
   container.style.width = '210mm';
+  container.style.height = '297mm';
+  container.style.maxHeight = '297mm';
   container.style.minHeight = '297mm';
-  container.style.padding = '7mm 11mm';
+  container.style.padding = '6.5mm 10.5mm';
   container.style.background = '#ffffff';
   container.style.fontFamily = 'Arial, sans-serif';
   container.style.position = 'fixed';
@@ -276,6 +278,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   container.style.top = '0';
   container.style.color = '#0f172a';
   container.style.boxSizing = 'border-box';
+  container.style.overflow = 'hidden';
 
   const autoconsoDisplay = sim.autoconsoRate
     ? (sim.autoconsoKwh && sim.autoconsoKwh > 0 ? `${sim.autoconsoRate} % (${sim.autoconsoKwh.toLocaleString('fr-FR')} kWh)` : `${sim.autoconsoRate} %`)
@@ -533,7 +536,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   };
 
   container.innerHTML = `
-    <div style="display: flex; flex-direction: column; min-height: 283mm; justify-content: space-between;">
+    <div style="display: flex; flex-direction: column; height: 100%; max-height: 284mm; min-height: 284mm; justify-content: space-between; box-sizing: border-box;">
       
       <div>
         <!-- 1. EN-TÊTE PROFESSIONNEL -->
@@ -739,7 +742,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         ` : `
           <!-- 4. VISUEL DUAL AVANT / APRÈS (TOITURE & AUTOCONSO) OU UNIQUE (AUTRES) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: ${isOmbriere ? '6px' : isToiture ? '8px' : '12px'}; position: relative; height: ${isOmbriere ? '220px' : isToiture ? '270px' : '248px'}; display: flex; align-items: center; justify-content: center;">
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: ${isOmbriere ? '5px' : isToiture ? '8px' : '12px'}; position: relative; height: ${isOmbriere ? '236px' : isToiture ? '270px' : '248px'}; display: flex; align-items: center; justify-content: center;">
             ${finalMapScreenshot ? `
               <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Implantation Visuelle du Projet" />
             ` : `
@@ -755,11 +758,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         `}
 
         <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT -->
-        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${(isOmbriere || isStruct) ? '5px 10px' : isToiture ? '7px 10px' : '9px 12px'}; margin-bottom: ${(isOmbriere || isStruct) ? '6px' : isToiture ? '8px' : '11px'};">
+        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${(isOmbriere || isStruct) ? '4.5px 10px' : isToiture ? '7px 10px' : '9px 12px'}; margin-bottom: ${(isOmbriere || isStruct) ? '5px' : isToiture ? '8px' : '11px'};">
           <div style="font-size: ${(isOmbriere || isStruct) ? '7.5pt' : isToiture ? '8pt' : '7.5pt'}; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
             ${isSechoir ? 'Projection Financière des Gains Cumulés (25 ans)' : 'Projection Financière des Gains Cumulés (30 ans)'}
           </div>
-          <div style="height: ${(isOmbriere || isStruct) ? '135px' : isToiture ? '175px' : '240px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="height: ${(isOmbriere || isStruct) ? '120px' : isToiture ? '175px' : '240px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
           </div>
 
@@ -885,35 +888,36 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         </div>
         ` : ''}
+      </div>
 
-        <!-- 7. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT (PLACÉE TOUT EN BAS AVANT LE PIED DE PAGE) -->
-        <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: ${(isOmbriere || isStruct) ? '6px 10px' : isToiture ? '8px 10px' : '8px 12px'}; margin-bottom: ${(isOmbriere || isStruct) ? '4px' : isToiture ? '6px' : '6px'};">
-          <div style="font-size: ${(isOmbriere || isStruct) ? '7.5pt' : isToiture ? '8pt' : '8pt'}; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 3px;">
+      <!-- 7. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT (COLLÉE JUSTE AU-DESSUS DU PIED DE PAGE) -->
+      <div style="margin-top: auto; margin-bottom: 2px;">
+        <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 9px; padding: ${(isOmbriere || isStruct) ? '5px 10px' : isToiture ? '7px 10px' : '8px 12px'}; margin-bottom: 0;">
+          <div style="font-size: ${(isOmbriere || isStruct) ? '7.2pt' : isToiture ? '8pt' : '8pt'}; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 2px;">
             🌱 Votre Impact sur l'Environnement
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center;">
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '38px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <div style="font-size: ${(isOmbriere || isStruct) ? '9.5pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 1.5px;">${co2Avoided} tonnes</div>
-              <div style="font-size: ${(isOmbriere || isStruct) ? '5.8pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">de CO₂ évitées par an</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 1px;">${co2Avoided} tonnes</div>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">de CO₂ évitées par an</div>
             </div>
 
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '38px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <div style="font-size: ${(isOmbriere || isStruct) ? '9.5pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 1.5px;">${treesPlanted}</div>
-              <div style="font-size: ${(isOmbriere || isStruct) ? '5.8pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">arbres plantés par an</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 1px;">${treesPlanted}</div>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">arbres plantés par an</div>
             </div>
 
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '38px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <div style="font-size: ${(isOmbriere || isStruct) ? '9.5pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #0d9488; line-height: 1; margin-bottom: 1.5px;">${householdsFed}</div>
-              <div style="font-size: ${(isOmbriere || isStruct) ? '5.8pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">foyer(s) alimenté(s) en électricité</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #0d9488; line-height: 1; margin-bottom: 1px;">${householdsFed}</div>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">foyer(s) alimenté(s) en électricité</div>
             </div>
           </div>
         </div>
       </div>
 
-
-      <!-- 7. PIED DE PAGE PROFESSIONNEL -->
-      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 4px; font-size: 7pt; color: #475569;">
+      <!-- 8. PIED DE PAGE PROFESSIONNEL -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 3.5px; font-size: 7pt; color: #475569; margin-top: 1px;">
         <span style="font-weight: bold; color: #00429d;">NELSON — nelsonpv.fr</span>
         <span>Courtage en Énergies Renouvelables &amp; Ingénierie Solaire</span>
         <span>contact@enr-courtage.fr</span>

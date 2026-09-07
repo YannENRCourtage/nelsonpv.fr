@@ -1,6 +1,61 @@
 // ─── Générateur de capture satellite haute résolution pour PDF ───────────────
 import { computeValidSolarSlots } from './solarCalepinage';
 
+/**
+ * Calcul dynamique de l'emprise (fitBounds) et du niveau de zoom Web Mercator optimal
+ * pour cadrer 100% d'un polygone ou d'un ensemble de points avec marge de sécurité.
+ */
+export const calculateFitBounds = ({
+  points = [],
+  width = 800,
+  height = 480,
+  paddingFactor = 0.16,
+  minZoom = 14,
+  maxZoom = 19
+}) => {
+  if (!points || points.length === 0) return null;
+
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  for (const p of points) {
+    if (p && !isNaN(p.lat) && !isNaN(p.lng)) {
+      minLat = Math.min(minLat, p.lat);
+      maxLat = Math.max(maxLat, p.lat);
+      minLng = Math.min(minLng, p.lng);
+      maxLng = Math.max(maxLng, p.lng);
+    }
+  }
+
+  if (minLat === Infinity || !isFinite(minLat)) return null;
+
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+
+  // Emprise cible avec padding proportionnel pour ne pas couper les bordures
+  const targetW = width * (1 - 2 * paddingFactor);
+  const targetH = height * (1 - 2 * paddingFactor);
+
+  // Zoom selon longitude
+  const deltaLng = Math.max(0.00005, maxLng - minLng);
+  const zLng = Math.log2((targetW * 360) / (256 * deltaLng));
+
+  // Zoom selon latitude (projection sphérique Web Mercator)
+  const latRadMin = (minLat * Math.PI) / 180;
+  const latRadMax = (maxLat * Math.PI) / 180;
+  const yNormMin = (1 - Math.log(Math.tan(Math.PI / 4 + latRadMax / 2)) / Math.PI) / 2;
+  const yNormMax = (1 - Math.log(Math.tan(Math.PI / 4 + latRadMin / 2)) / Math.PI) / 2;
+  const deltaYNorm = Math.max(0.000001, Math.abs(yNormMax - yNormMin));
+  const zLat = Math.log2(targetH / (256 * deltaYNorm));
+
+  const optimalZoom = Math.min(zLng, zLat);
+  const safeZoom = Math.min(maxZoom, Math.max(minZoom, Math.floor(optimalZoom)));
+
+  return {
+    center: [centerLat, centerLng],
+    zoom: safeZoom,
+    bounds: { minLat, maxLat, minLng, maxLng }
+  };
+};
+
 export const generateSatelliteSnapshot = async ({
   center,
   polygonPoints,
@@ -11,12 +66,52 @@ export const generateSatelliteSnapshot = async ({
   stationMarkers,
   width = 800,
   height = 480,
-  zoom = 19
+  zoom = 19,
+  fitBounds = true
 }) => {
   try {
-    const safeZoom = Math.min(19, Math.max(14, zoom || 18));
-    const lat = center ? center[0] : 43.6047;
-    const lng = center ? center[1] : 1.4442;
+    // Calcul dynamique de l'emprise totale si des points géométriques sont fournis
+    let actualCenter = center;
+    let actualZoom = zoom;
+
+    if (fitBounds) {
+      const allGeoPoints = [];
+      if (polygonPoints && Array.isArray(polygonPoints)) {
+        polygonPoints.forEach(p => {
+          if (p && p.lat !== undefined && p.lng !== undefined) allGeoPoints.push(p);
+        });
+      }
+      if (ombriereBlocks && Array.isArray(ombriereBlocks)) {
+        ombriereBlocks.forEach(b => {
+          if (b && b.polygonWgs84 && Array.isArray(b.polygonWgs84)) {
+            b.polygonWgs84.forEach(p => allGeoPoints.push(p));
+          }
+        });
+      }
+      if (stationMarkers && Array.isArray(stationMarkers)) {
+        stationMarkers.forEach(m => {
+          if (m && m.lat !== undefined && m.lng !== undefined) allGeoPoints.push(m);
+        });
+      }
+
+      const fitRes = calculateFitBounds({
+        points: allGeoPoints,
+        width,
+        height,
+        paddingFactor: (polygonStyle === 'parking' || (ombriereBlocks && ombriereBlocks.length > 0)) ? 0.16 : 0.12,
+        minZoom: 14,
+        maxZoom: 19
+      });
+
+      if (fitRes) {
+        actualCenter = fitRes.center;
+        actualZoom = fitRes.zoom;
+      }
+    }
+
+    const safeZoom = Math.min(19, Math.max(14, actualZoom || 18));
+    const lat = actualCenter ? actualCenter[0] : (center ? center[0] : 43.6047);
+    const lng = actualCenter ? actualCenter[1] : (center ? center[1] : 1.4442);
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
