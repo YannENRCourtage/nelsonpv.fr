@@ -353,14 +353,12 @@ export default function AutomaticProspectingModal({
           }
         } catch (e) {}
 
-        // C. Simulation Toiture Headless
+        // C. Simulation Toiture Headless avec Inférence Dynamique Toiture (Terrasse vs Inclinée)
         const sim = await simulateBuildingHeadless({
           building: b,
           addressInfo,
           cadastreInfo,
           customSettings: {
-            pitch: roofPitch,
-            roofType,
             costPerKwc: 920
           }
         });
@@ -370,6 +368,7 @@ export default function AutomaticProspectingModal({
           continue;
         }
 
+        addLog(`   🏠 Toiture : ${sim.orientationLabel}`);
         addLog(`   ⚡ Puissance : ${sim.installedKwc} kWc (${sim.panelCount} modules 465 Wc)`);
         addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • CA EDF OA : ~${sim.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an`);
 
@@ -806,7 +805,7 @@ export default function AutomaticProspectingModal({
                 </div>
                 <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
                   <span className="text-[9px] text-slate-400 font-bold uppercase block">Profil toiture</span>
-                  <strong className="text-slate-900 font-black text-[11px]">Mono-pente 15° (Sud)</strong>
+                  <strong className="text-emerald-700 font-black text-[11px]">Inférence IA / SIG auto</strong>
                 </div>
                 <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
                   <span className="text-[9px] text-slate-400 font-bold uppercase block">Tarif EDF OA</span>

@@ -423,9 +423,15 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
   // HTML conditionnel selon la solution
   const resolveOrientationName = (simObj) => {
+    if (simObj?.roofType === 'terrasse' || simObj?.isTerrasse || simObj?.pitch === 0) {
+      return simObj?.orientationLabel || 'Toiture terrasse (Toit plat 0°) • Pose sur bacs lestés';
+    }
+    if (simObj?.orientationLabel && simObj.orientationLabel.includes('• Pente')) {
+      return simObj.orientationLabel;
+    }
     let ori = '';
     if (simObj?.roofType === 'symetrique' && simObj?.pan1 && simObj?.pan2) {
-      ori = `Symétrique : ${simObj.pan1.rawLabel || 'Sud'} (${simObj.pan1.angle}°) / ${simObj.pan2.rawLabel || 'Nord'} (${simObj.pan2.angle}°)`;
+      ori = `Symétrique : ${simObj.pan1.rawLabel || simObj.pan1.label || 'Sud'} (${simObj.pan1.angle}°) / ${simObj.pan2.rawLabel || simObj.pan2.label || 'Nord'} (${simObj.pan2.angle}°)`;
     } else if (simObj?.orientationLabel) {
       ori = simObj.orientationLabel
         .replace(/\(2 pans\)/gi, '')

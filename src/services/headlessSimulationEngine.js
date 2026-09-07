@@ -17,6 +17,7 @@ import { calculateOrientationFromRidge } from '@/components/simulator/RoofMapPol
 import { computeValidSolarSlots } from '@/utils/solarCalepinage';
 import { generateBeforeAfterDualSnapshot } from '@/utils/satelliteSnapshot';
 import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
+import { inferRoofCharacteristics } from '@/services/roofGeometryInference';
 
 // Calcul de la distance géodésique entre deux points en mètres
 function calculateDistanceMeters(p1, p2) {
@@ -47,7 +48,7 @@ export function findLongestEdgeIndex(points) {
 }
 
 /**
- * Exécute la simulation complète d'un bâtiment en mode headless
+ * Exécute la simulation complète d'un bâtiment en mode headless avec inférence géométrique
  */
 export async function simulateBuildingHeadless({
   building,
@@ -57,30 +58,42 @@ export async function simulateBuildingHeadless({
 }) {
   const { polygon, area, center } = building;
 
-  const pitch = customSettings.pitch || 15; // 15° par défaut
-  const roofType = customSettings.roofType || 'asymetrique'; // Asymétrique par défaut
+  // 1. Inférence géospatiale dynamique de la toiture (OBB, faîtage, azimut, versants, terrasse vs inclinée)
+  const roofInference = inferRoofCharacteristics(polygon, building.tags || {});
+
+  const isTerrasse = customSettings.isTerrasse !== undefined
+    ? customSettings.isTerrasse
+    : roofInference.isTerrasse;
+
+  const pitch = customSettings.pitch !== undefined
+    ? customSettings.pitch
+    : roofInference.pitch;
+
+  const roofType = customSettings.roofType || roofInference.roofType;
   const costPerKwc = customSettings.costPerKwc || 920; // 920 €/kWc
 
-  // 1. Détection automatique du faîtage (arête sélectionnée orientée vers le Sud ou arête la plus longue)
-  const ridgeIndex = building.ridgeIndex !== undefined ? building.ridgeIndex : findLongestEdgeIndex(polygon);
-  const p1 = polygon[ridgeIndex];
-  const p2 = polygon[(ridgeIndex + 1) % polygon.length];
-
-  // 2. Calcul de l'orientation selon le faîtage
-  const orientationInfo = calculateOrientationFromRidge(p1, p2, polygon, roofType, ridgeIndex);
+  // 2. Détection / sélection de l'axe de faîtage (arête sélectionnée orientée vers le Sud ou arête la plus longue)
+  const ridgeIndex = building.ridgeIndex !== undefined
+    ? building.ridgeIndex
+    : findLongestEdgeIndex(polygon);
 
   // 3. Calepinage géométrique des panneaux solaires 465 Wc
   let maxPanels = 0;
-  try {
-    const res = computeValidSolarSlots(polygon, ridgeIndex, false);
-    maxPanels = res.maxPanels || 0;
-  } catch (e) {
-    console.warn(`Fallback calepinage géométrique pour bâtiment ${building.id}:`, e);
+  if (!isTerrasse) {
+    try {
+      const res = computeValidSolarSlots(polygon, ridgeIndex, false);
+      maxPanels = res.maxPanels || 0;
+    } catch (e) {
+      console.warn(`Fallback calepinage géométrique pour bâtiment ${building.id}:`, e);
+    }
   }
 
   if (!maxPanels || maxPanels < 1) {
-    // Règle de sécurité : 1 panneau par ~2.05 m² avec 10% de marge périphérique
-    maxPanels = Math.max(1, Math.round((area * 0.90) / 2.05));
+    // Règle de dimensionnement :
+    // - Toiture terrasse : pose sur bacs lestés avec espacement inter-rangs anti-ombrage (GCR ~60%)
+    // - Toiture inclinée : calepinage coplanaire plein pan (GCR ~90%)
+    const surfaceRatio = isTerrasse ? 0.60 : 0.90;
+    maxPanels = Math.max(1, Math.round((area * surfaceRatio) / 2.05));
   }
 
   // 4. Puissance crête installée (cible 100 à 500 kWc)
@@ -93,37 +106,33 @@ export async function simulateBuildingHeadless({
   const departmentCode = addressInfo?.departmentCode || (addressInfo?.postcode ? addressInfo.postcode.substring(0, 2) : '59');
   const regionalBaseYield = getProductionForDepartment(departmentCode) || 1100;
 
-  // Coefficient d'inclinaison pour 15° (ou 30°)
+  // Coefficient d'inclinaison (1.00 à 30°, 0.96 à 15°, 0.90 à 0° plat)
   const inclinationCoeff = pitch === 30 ? 1.00 : (pitch === 15 || pitch === 45) ? 0.96 : 0.90;
 
-  // 6. Répartition et productible selon le type de toiture (Asymétrique mono-pente vs Symétrique bi-pans)
-  const isSymetrique = roofType === 'symetrique' && orientationInfo.pan2;
-  const pan1 = orientationInfo.pan1 || { coeff: 1.00, orientationLabel: 'Plein Sud (0°)', angle: 0 };
-  const pan2 = orientationInfo.pan2 || null;
+  // 6. Répartition et productible selon la modélisation géométrique déduite (Terrasse vs Inclinée)
+  const share1 = roofInference.slopes.pan1?.share ?? (roofType === 'symetrique' ? 0.50 : 0.70);
+  const share2 = roofInference.slopes.pan2?.share ?? (isTerrasse ? 0 : (1 - share1));
 
-  const coeff1 = pan1.coeff || 1.00;
+  const pan1Kwc = Math.round(installedKwc * share1 * 10) / 10;
+  const pan2Kwc = Math.max(0, Math.round((installedKwc - pan1Kwc) * 10) / 10);
+
+  const coeff1 = roofInference.slopes.pan1?.coeff || 1.00;
   const yield1 = Math.round(regionalBaseYield * coeff1 * inclinationCoeff);
+  const prodKwh1 = Math.round(pan1Kwc * yield1);
 
-  let halfKwc = installedKwc;
-  let otherKwc = 0;
-  let prodKwh1 = Math.round(installedKwc * yield1);
-  let prodKwh2 = 0;
+  let coeff2 = 0.70;
   let yield2 = 0;
-  let annualProductionKwh = prodKwh1;
-  let effectiveOrientationCoeff = coeff1;
-
-  if (isSymetrique && pan2) {
-    const coeff2 = pan2.coeff || 0.75;
+  let prodKwh2 = 0;
+  if (share2 > 0 && roofInference.slopes.pan2) {
+    coeff2 = roofInference.slopes.pan2.coeff || 0.70;
     yield2 = Math.round(regionalBaseYield * coeff2 * inclinationCoeff);
-    halfKwc = Math.round((installedKwc / 2) * 10) / 10;
-    otherKwc = Math.max(0, Math.round((installedKwc - halfKwc) * 10) / 10);
-    prodKwh1 = Math.round(halfKwc * yield1);
-    prodKwh2 = Math.round(otherKwc * yield2);
-    annualProductionKwh = prodKwh1 + prodKwh2;
-    effectiveOrientationCoeff = installedKwc > 0
-      ? ((halfKwc * coeff1) + (otherKwc * coeff2)) / installedKwc
-      : coeff1;
+    prodKwh2 = Math.round(pan2Kwc * yield2);
   }
+
+  const annualProductionKwh = prodKwh1 + prodKwh2;
+  const effectiveOrientationCoeff = installedKwc > 0
+    ? ((pan1Kwc * coeff1) + (pan2Kwc * coeff2)) / installedKwc
+    : coeff1;
 
   // 7. Modèle économique & financier EDF Obligation d'Achat (OA)
   // Tarif réglementé : 0.085 €/kWh pour les centrales >= 100 kWc
@@ -202,7 +211,8 @@ export async function simulateBuildingHeadless({
     roofSurface: area,
     roofType,
     pitch,
-    orientationLabel: orientationInfo.orientationLabel,
+    isTerrasse,
+    orientationLabel: roofInference.displayLabel,
     effectiveOrientationCoeff,
     annualProductionKwh,
     tarifEdfOaKwh,
@@ -215,17 +225,20 @@ export async function simulateBuildingHeadless({
     cumul20,
     cumul30,
     mapScreenshot,
+    ridge: roofInference.ridge,
+    slopes: roofInference.slopes,
+    dimensions: roofInference.dimensions,
     pan1: {
-      label: pan1.orientationLabel,
-      angle: pan1.angle,
-      installedKwc: halfKwc,
+      label: roofInference.slopes.pan1?.label || 'Plein Sud',
+      angle: roofInference.slopes.pan1?.azimuthDeg || 180,
+      installedKwc: pan1Kwc,
       productionKwh: prodKwh1,
       specificYield: yield1
     },
-    pan2: isSymetrique && pan2 ? {
-      label: pan2.orientationLabel,
-      angle: pan2.angle,
-      installedKwc: otherKwc,
+    pan2: (share2 > 0 && roofInference.slopes.pan2) ? {
+      label: roofInference.slopes.pan2.label,
+      angle: roofInference.slopes.pan2.azimuthDeg,
+      installedKwc: pan2Kwc,
       productionKwh: prodKwh2,
       specificYield: yield2
     } : null
