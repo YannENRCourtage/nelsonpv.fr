@@ -57,14 +57,20 @@ export function calculateBankLoan({
   capexHT,
   durationYears = 20,
   apportHT = 0,
-  interestRate = 0.0448 // 4.48% (taux cible ~1600€/mois pour 251 370€ sur 20 ans)
+  interestRate = 0.0448, // 4.48% (taux cible ~1600€/mois pour 251 370€ sur 20 ans)
+  annualRevenue = 0
 }) {
-  const capital = Math.max(0, capexHT - apportHT);
+  const safeCapex = Number(capexHT) || 0;
+  const safeApport = Number(apportHT) || 0;
+  const capital = Math.max(0, safeCapex - safeApport);
   const months = durationYears * 12;
   const monthlyRate = interestRate / 12;
   
-  const monthlyPaymentExact = capital * (monthlyRate / (1 - Math.pow(1 + monthlyRate, -months)));
+  const monthlyPaymentExact = capital > 0 ? capital * (monthlyRate / (1 - Math.pow(1 + monthlyRate, -months))) : 0;
   const annualPaymentExact = monthlyPaymentExact * 12;
+  const safeRevenue = Number(annualRevenue) || 0;
+  const totalRepaid = Math.round(monthlyPaymentExact * months);
+  const totalInterest = Math.max(0, totalRepaid - capital);
 
   return {
     property: 'Client propriétaire dès le 1er jour',
@@ -74,7 +80,10 @@ export function calculateBankLoan({
     monthlyPaymentExact: Math.round(monthlyPaymentExact * 100) / 100,
     monthlyPaymentRounded: Math.round(monthlyPaymentExact / 50) * 50,
     annualPaymentExact: Math.round(annualPaymentExact),
-    totalRepaid: Math.round(monthlyPaymentExact * months)
+    annualNetCashflow,
+    annualNetCashFlow: annualNetCashflow, // alias camelCase
+    totalRepaid,
+    totalInterest
   };
 }
 

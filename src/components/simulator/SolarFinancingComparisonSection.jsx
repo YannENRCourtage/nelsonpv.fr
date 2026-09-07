@@ -226,19 +226,19 @@ export default function SolarFinancingComparisonSection({
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">Mensualité de crédit</span>
                 <span className="font-black text-blue-700 text-sm">
-                  ~{bankLoan.monthlyPaymentExact.toLocaleString('fr-FR')} € / mois
+                  ~{Number(bankLoan?.monthlyPaymentExact || 0).toLocaleString('fr-FR')} € / mois
                 </span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">Annuité de remboursement</span>
                 <span className="font-black text-slate-800 text-sm">
-                  {bankLoan.annualPaymentExact.toLocaleString('fr-FR')} € / an
+                  {Number(bankLoan?.annualPaymentExact || 0).toLocaleString('fr-FR')} € / an
                 </span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">Coût total du crédit</span>
                 <span className="font-bold text-slate-600 text-xs">
-                  {bankLoan.totalRepaid.toLocaleString('fr-FR')} € (intérêts : +{bankLoan.totalInterest.toLocaleString('fr-FR')} €)
+                  {Number(bankLoan?.totalRepaid || 0).toLocaleString('fr-FR')} € (intérêts : +{Number(bankLoan?.totalInterest || 0).toLocaleString('fr-FR')} €)
                 </span>
               </div>
               <div className="bg-blue-100/70 border border-blue-300 rounded-2xl p-3 text-center">
@@ -246,9 +246,9 @@ export default function SolarFinancingComparisonSection({
                   Cash-flow net annuel (Vente - Crédit)
                 </span>
                 <span className={`text-2xl font-black block mt-0.5 ${
-                  bankLoan.annualNetCashflow >= 0 ? 'text-blue-950' : 'text-amber-700'
+                  Number(bankLoan?.annualNetCashflow ?? bankLoan?.annualNetCashFlow ?? 0) >= 0 ? 'text-blue-950' : 'text-amber-700'
                 }`}>
-                  {bankLoan.annualNetCashflow >= 0 ? '+' : ''}{bankLoan.annualNetCashflow.toLocaleString('fr-FR')} € / an
+                  {Number(bankLoan?.annualNetCashflow ?? bankLoan?.annualNetCashFlow ?? 0) >= 0 ? '+' : ''}{Number(bankLoan?.annualNetCashflow ?? bankLoan?.annualNetCashFlow ?? 0).toLocaleString('fr-FR')} € / an
                 </span>
               </div>
             </div>

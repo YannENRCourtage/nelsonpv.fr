@@ -762,9 +762,9 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
               <div style="font-size: 5.2pt; color: #475569; margin-bottom: 2px;">Bail 30 ans &bull; Loyer 14€/kWc garanti</div>
               <table style="width: 100%; font-size: 5.4pt; border-collapse: collapse;">
-                <tr><td style="color: #64748b;">Loyer ans 1-20 :</td><td style="text-align: right; font-weight: bold; color: #166534;">+${financing.thirdParty.annualRentFixed.toLocaleString('fr-FR')} €/an</td></tr>
-                <tr><td style="color: #64748b;">Intéressement 10% :</td><td style="text-align: right; font-weight: bold; color: #166534;">+${financing.thirdParty.annualProfitSharing.toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="border-top: 1px solid #bbf7d0;"><td style="font-weight: bold; color: #166534; padding-top: 1px;">Gains 30 ans :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 6.5pt; padding-top: 1px;">+${financing.thirdParty.totalGains30Years.toLocaleString('fr-FR')} €</td></tr>
+                <tr><td style="color: #64748b;">Loyer ans 1-20 :</td><td style="text-align: right; font-weight: bold; color: #166534;">+${Number(financing?.thirdParty?.annualRentFixed || 0).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr><td style="color: #64748b;">Intéressement 10% :</td><td style="text-align: right; font-weight: bold; color: #166534;">+${Number(financing?.thirdParty?.annualProfitSharing || 0).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="border-top: 1px solid #bbf7d0;"><td style="font-weight: bold; color: #166534; padding-top: 1px;">Gains 30 ans :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 6.5pt; padding-top: 1px;">+${Number(financing?.thirdParty?.totalGains30Years || 0).toLocaleString('fr-FR')} €</td></tr>
               </table>
             </div>
 
@@ -776,9 +776,9 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
               <div style="font-size: 5.2pt; color: #475569; margin-bottom: 2px;">Prêt pro 20 ans amortissable (4.48%)</div>
               <table style="width: 100%; font-size: 5.4pt; border-collapse: collapse;">
-                <tr><td style="color: #64748b;">Mensualité :</td><td style="text-align: right; font-weight: bold; color: #1e40af;">~${financing.bankLoan.monthlyPaymentExact.toLocaleString('fr-FR')} €/m</td></tr>
-                <tr><td style="color: #64748b;">Annuité crédit :</td><td style="text-align: right; font-weight: bold; color: #475569;">${financing.bankLoan.annualPaymentExact.toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="border-top: 1px solid #bfdbfe;"><td style="font-weight: bold; color: #1e40af; padding-top: 1px;">Cash-flow net :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 6.5pt; padding-top: 1px;">+${financing.bankLoan.annualNetCashflow.toLocaleString('fr-FR')} €/an</td></tr>
+                <tr><td style="color: #64748b;">Mensualité :</td><td style="text-align: right; font-weight: bold; color: #1e40af;">~${Number(financing?.bankLoan?.monthlyPaymentExact || 0).toLocaleString('fr-FR')} €/m</td></tr>
+                <tr><td style="color: #64748b;">Annuité crédit :</td><td style="text-align: right; font-weight: bold; color: #475569;">${Number(financing?.bankLoan?.annualPaymentExact || 0).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="border-top: 1px solid #bfdbfe;"><td style="font-weight: bold; color: #1e40af; padding-top: 1px;">Cash-flow net :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 6.5pt; padding-top: 1px;">${Number(financing?.bankLoan?.annualNetCashflow ?? financing?.bankLoan?.annualNetCashFlow ?? (annualRev - (financing?.bankLoan?.annualPaymentExact || 0))) >= 0 ? '+' : ''}${Number(financing?.bankLoan?.annualNetCashflow ?? financing?.bankLoan?.annualNetCashFlow ?? (annualRev - (financing?.bankLoan?.annualPaymentExact || 0))).toLocaleString('fr-FR')} €/an</td></tr>
               </table>
             </div>
 
@@ -790,9 +790,9 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
               <div style="font-size: 5.2pt; color: #475569; margin-bottom: 2px;">Leasing LOA 20 ans &bull; SunLib</div>
               <table style="width: 100%; font-size: 5.4pt; border-collapse: collapse;">
-                <tr><td style="color: #64748b;">Loyer HT :</td><td style="text-align: right; font-weight: bold; color: #6b21a8;">${financing.selectedLeasing.monthlyPaymentHT.toLocaleString('fr-FR')} €/m</td></tr>
+                <tr><td style="color: #64748b;">Loyer HT :</td><td style="text-align: right; font-weight: bold; color: #6b21a8;">${Number(financing?.selectedLeasing?.monthlyPaymentHT || 0).toLocaleString('fr-FR')} €/m</td></tr>
                 <tr><td style="color: #64748b;">Option rachat :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">1,00 €</td></tr>
-                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 1px;">Bilan annuel :</td><td style="text-align: right; font-weight: 900; color: #6b21a8; font-size: 6.5pt; padding-top: 1px;">${financing.selectedLeasing.annualNetCashflow >= 0 ? '+' : ''}${financing.selectedLeasing.annualNetCashflow.toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 1px;">Bilan annuel :</td><td style="text-align: right; font-weight: 900; color: #6b21a8; font-size: 6.5pt; padding-top: 1px;">${Number(financing?.selectedLeasing?.annualNetCashflow || 0) >= 0 ? '+' : ''}${Number(financing?.selectedLeasing?.annualNetCashflow || 0).toLocaleString('fr-FR')} €/an</td></tr>
               </table>
             </div>
           </div>
