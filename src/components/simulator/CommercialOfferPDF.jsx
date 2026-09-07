@@ -749,7 +749,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               💡 Solutions de Financement Comparées
             </span>
             <span style="font-size: 6pt; color: #64748b; font-weight: bold;">
-              Investissement : ${capexHT.toLocaleString('fr-FR')} € HT &bull; CA EDF OA : ~${annualRev.toLocaleString('fr-FR')} €/an
+              Investissement : ${Number(capexHT || 0).toLocaleString('fr-FR')} € HT &bull; CA EDF OA : ~${Number(annualRev || 0).toLocaleString('fr-FR')} €/an
             </span>
           </div>
 

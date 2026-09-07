@@ -420,15 +420,20 @@ export default function SolarRoofSimulator({
   }, [annualProductionKwh]);
 
   const ensureMapSnapshot = async () => {
-    const snapshot = await generateSatelliteSnapshot({
-      center: mapCenter,
-      polygonPoints,
-      width: 800,
-      height: 480,
-      zoom: 19
-    });
-    if (snapshot) setMapScreenshotDataUrl(snapshot);
-    return snapshot;
+    try {
+      const snapshot = await generateSatelliteSnapshot({
+        center: mapCenter,
+        polygonPoints,
+        width: 800,
+        height: 480,
+        zoom: 19
+      });
+      if (snapshot) setMapScreenshotDataUrl(snapshot);
+      return snapshot;
+    } catch (e) {
+      console.warn('Satellite snapshot error:', e);
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -880,7 +885,11 @@ export default function SolarRoofSimulator({
                 <button
                   type="button"
                   onClick={async () => {
-                    await ensureMapSnapshot();
+                    try {
+                      await ensureMapSnapshot();
+                    } catch (e) {
+                      console.warn(e);
+                    }
                     setCurrentStep(6);
                   }}
                   className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
@@ -1021,16 +1030,16 @@ export default function SolarRoofSimulator({
                 </div>
                 <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">PRODUCTION ANNUELLE</span>
                 <div className="my-1.5">
-                  <span className="text-2xl font-black text-blue-600">{annualProductionKwh.toLocaleString('fr-FR')}</span>
+                  <span className="text-2xl font-black text-blue-600">{Number(annualProductionKwh || 0).toLocaleString('fr-FR')}</span>
                   <span className="text-sm font-bold text-slate-500 ml-1">kWh</span>
                 </div>
                 <div className="text-[10px] font-bold text-slate-500">
                   {roofType === 'symetrique' ? (
                     <span className="text-blue-700 font-extrabold">
-                      Rendement pondéré : {panBreakdown.weightedSpecificYield} kWh/kWc
+                      Rendement pondéré : {panBreakdown?.weightedSpecificYield || 0} kWh/kWc
                     </span>
                   ) : (
-                    <span>{orientationInfo.orientationLabel} ({panBreakdown.weightedSpecificYield} kWh/kWc)</span>
+                    <span>{orientationInfo?.orientationLabel || 'Sud'} ({panBreakdown?.weightedSpecificYield || 0} kWh/kWc)</span>
                   )}
                 </div>
               </div>
@@ -1042,7 +1051,7 @@ export default function SolarRoofSimulator({
                 </div>
                 <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider">REVENUS 1ÈRE ANNÉE</span>
                 <div className="my-1.5">
-                  <span className="text-2xl font-black text-amber-600">{annualRevenueReventeTotale.toLocaleString('fr-FR')}</span>
+                  <span className="text-2xl font-black text-amber-600">{Number(annualRevenueReventeTotale || 0).toLocaleString('fr-FR')}</span>
                   <span className="text-sm font-bold text-amber-700 ml-1">€</span>
                 </div>
                 <div className="text-[10px] text-amber-700 font-semibold">Tarif rachat EDF OA : {tarifEdfOaKwh} €/kWh</div>
@@ -1055,7 +1064,7 @@ export default function SolarRoofSimulator({
                 </div>
                 <span className="text-[10px] font-black uppercase text-purple-800 tracking-wider">COÛT (EST. HT)</span>
                 <div className="my-1.5">
-                  <span className="text-2xl font-black text-purple-700">{totalInvestmentHT.toLocaleString('fr-FR')}</span>
+                  <span className="text-2xl font-black text-purple-700">{Number(totalInvestmentHT || 0).toLocaleString('fr-FR')}</span>
                   <span className="text-sm font-bold text-purple-800 ml-1">€</span>
                 </div>
                 <div className="text-[10px] text-purple-600">Investissement clé en main</div>
@@ -1195,7 +1204,7 @@ export default function SolarRoofSimulator({
                       </div>
                       <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold pt-0.5">
                         <span>Production annuelle :</span>
-                        <span className="font-black text-slate-900">{panBreakdown.pan1.productionKwh.toLocaleString('fr-FR')} kWh/an</span>
+                        <span className="font-black text-slate-900">{Number(panBreakdown?.pan1?.productionKwh || 0).toLocaleString('fr-FR')} kWh/an</span>
                       </div>
                     </div>
 
@@ -1234,7 +1243,7 @@ export default function SolarRoofSimulator({
                       </div>
                       <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold pt-0.5">
                         <span>Production annuelle :</span>
-                        <span className="font-black text-slate-900">{panBreakdown.pan2.productionKwh.toLocaleString('fr-FR')} kWh/an</span>
+                        <span className="font-black text-slate-900">{Number(panBreakdown?.pan2?.productionKwh || 0).toLocaleString('fr-FR')} kWh/an</span>
                       </div>
                     </div>
                   </div>
@@ -1273,17 +1282,17 @@ export default function SolarRoofSimulator({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
                   <span className="text-xs font-bold text-slate-300 block">sur 10 ans</span>
-                  <span className="text-2xl font-black text-white block mt-0.5">{financialProjection30Years.cumul10.toLocaleString('fr-FR')} €</span>
+                  <span className="text-2xl font-black text-white block mt-0.5">{Number(financialProjection30Years?.cumul10 || 0).toLocaleString('fr-FR')} €</span>
                 </div>
 
                 <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
                   <span className="text-xs font-bold text-slate-300 block">sur 20 ans</span>
-                  <span className="text-2xl font-black text-white block mt-0.5">{financialProjection30Years.cumul20.toLocaleString('fr-FR')} €</span>
+                  <span className="text-2xl font-black text-white block mt-0.5">{Number(financialProjection30Years?.cumul20 || 0).toLocaleString('fr-FR')} €</span>
                 </div>
 
                 <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
                   <span className="text-xs font-bold text-slate-300 block">sur 30 ans</span>
-                  <span className="text-2xl font-black text-emerald-400 block mt-0.5">{financialProjection30Years.cumul30.toLocaleString('fr-FR')} €</span>
+                  <span className="text-2xl font-black text-emerald-400 block mt-0.5">{Number(financialProjection30Years?.cumul30 || 0).toLocaleString('fr-FR')} €</span>
                 </div>
               </div>
 

@@ -505,7 +505,7 @@ export default function SolarRoofBeforeAfterViewer({
 
         <div className="bg-blue-50 p-3 rounded-2xl border border-blue-200">
           <span className="text-blue-700 font-bold uppercase text-[10px] block">Production Estimée</span>
-          <strong className="text-blue-900 font-black text-sm">~{annualProductionKwh.toLocaleString('fr-FR')} kWh/an</strong>
+          <strong className="text-blue-900 font-black text-sm">~{Number(annualProductionKwh || 0).toLocaleString('fr-FR')} kWh/an</strong>
         </div>
 
         <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200">

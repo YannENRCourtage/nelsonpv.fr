@@ -50,7 +50,13 @@ export default function SolarFinancingComparisonSection({
   }, [capexHT, powerKwc, annualRevenue]);
 
   const activeLeasingOption = useMemo(() => {
-    return leasing.durations.find(d => d.durationYears === leasingDuration) || leasing.durations[2];
+    return leasing?.durations?.find(d => d.durationYears === leasingDuration) || leasing?.durations?.[2] || {
+      durationYears: leasingDuration,
+      annualRate: 10.25,
+      monthlyPaymentHT: 0,
+      annualPaymentHT: 0,
+      annualNetCashflow: 0
+    };
   }, [leasing, leasingDuration]);
 
   return (
@@ -79,12 +85,12 @@ export default function SolarFinancingComparisonSection({
           <div className="h-7 w-px bg-slate-200" />
           <div>
             <span className="text-slate-400 font-medium block text-[10px] uppercase tracking-wider">CA Vente EDF OA</span>
-            <span className="font-black text-emerald-600 text-sm">~{annualRevenue.toLocaleString('fr-FR')} €/an</span>
+            <span className="font-black text-emerald-600 text-sm">~{Number(annualRevenue || 0).toLocaleString('fr-FR')} €/an</span>
           </div>
           <div className="h-7 w-px bg-slate-200" />
           <div>
             <span className="text-slate-400 font-medium block text-[10px] uppercase tracking-wider">Investissement CAPEX</span>
-            <span className="font-black text-slate-800 text-sm">{capexHT.toLocaleString('fr-FR')} € HT</span>
+            <span className="font-black text-slate-800 text-sm">{Number(capexHT || 0).toLocaleString('fr-FR')} € HT</span>
           </div>
         </div>
       </div>
@@ -147,22 +153,22 @@ export default function SolarFinancingComparisonSection({
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">Loyer fixe garanti (Ans 1 à 20)</span>
-                <span className="font-black text-slate-800 text-sm">+{thirdParty.annualRentFixed.toLocaleString('fr-FR')} € / an</span>
+                <span className="font-black text-slate-800 text-sm">+{Number(thirdParty?.annualRentFixed || 0).toLocaleString('fr-FR')} € / an</span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">Cumul loyers sur 20 ans</span>
-                <span className="font-black text-slate-900 text-sm">+{thirdParty.cumulYears1To20.toLocaleString('fr-FR')} €</span>
+                <span className="font-black text-slate-900 text-sm">+{Number(thirdParty?.cumulYears1To20 || 0).toLocaleString('fr-FR')} €</span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">Intéressement 10% (Ans 21 à 30)</span>
-                <span className="font-black text-emerald-700 text-sm">+{thirdParty.annualProfitSharing.toLocaleString('fr-FR')} € / an</span>
+                <span className="font-black text-emerald-700 text-sm">+{Number(thirdParty?.annualProfitSharing || 0).toLocaleString('fr-FR')} € / an</span>
               </div>
               <div className="bg-emerald-100/70 border border-emerald-300 rounded-2xl p-3 text-center">
                 <span className="text-[11px] font-bold text-emerald-800 block uppercase tracking-wider">
                   Gains cumulés sur 30 ans
                 </span>
                 <span className="text-2xl font-black text-emerald-800 block mt-0.5">
-                  +{thirdParty.totalGains30Years.toLocaleString('fr-FR')} €
+                  +{Number(thirdParty?.totalGains30Years || 0).toLocaleString('fr-FR')} €
                 </span>
               </div>
             </div>
@@ -286,7 +292,7 @@ export default function SolarFinancingComparisonSection({
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-700">Durée du contrat leasing :</span>
                 <span className="font-black text-purple-800 bg-purple-200/60 px-2 py-0.5 rounded-md">
-                  {leasingDuration} ans ({activeLeasingOption.annualRate}% / an)
+                  {leasingDuration} ans ({activeLeasingOption?.annualRate ?? 10}% / an)
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -312,13 +318,13 @@ export default function SolarFinancingComparisonSection({
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">Mensualité d'abonnement HT</span>
                 <span className="font-black text-purple-700 text-sm">
-                  {activeLeasingOption.monthlyPaymentHT.toLocaleString('fr-FR')} € / mois HT
+                  {Number(activeLeasingOption?.monthlyPaymentHT || 0).toLocaleString('fr-FR')} € / mois HT
                 </span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">Annuité d'abonnement HT</span>
                 <span className="font-black text-slate-800 text-sm">
-                  {activeLeasingOption.annualPaymentHT.toLocaleString('fr-FR')} € / an HT
+                  {Number(activeLeasingOption?.annualPaymentHT || 0).toLocaleString('fr-FR')} € / an HT
                 </span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-100 text-xs">
@@ -332,9 +338,9 @@ export default function SolarFinancingComparisonSection({
                   Bilan annuel (Vente EDF OA - Abonnement)
                 </span>
                 <span className={`text-2xl font-black block mt-0.5 ${
-                  activeLeasingOption.annualNetCashflow >= 0 ? 'text-emerald-700' : 'text-purple-950'
+                  Number(activeLeasingOption?.annualNetCashflow || 0) >= 0 ? 'text-emerald-700' : 'text-purple-950'
                 }`}>
-                  {activeLeasingOption.annualNetCashflow >= 0 ? '+' : ''}{activeLeasingOption.annualNetCashflow.toLocaleString('fr-FR')} € / an
+                  {Number(activeLeasingOption?.annualNetCashflow || 0) >= 0 ? '+' : ''}{Number(activeLeasingOption?.annualNetCashflow || 0).toLocaleString('fr-FR')} € / an
                 </span>
               </div>
             </div>

@@ -32,11 +32,15 @@ export function calculateThirdPartyFinancing({
   annualRevenue = 21985,
   rentMultiplier = 14 // Configurable en €/kWc/an (ex: 9 ou 14)
 }) {
-  const annualRentFixed = Math.round(powerKwc * rentMultiplier * 100) / 100;
+  const safePower = Number(powerKwc) || 0;
+  const safeRevenue = Number(annualRevenue) || 0;
+  const safeMultiplier = Number(rentMultiplier) || 14;
+
+  const annualRentFixed = Math.round(safePower * safeMultiplier * 100) / 100;
   const cumulYears1To20 = Math.round(annualRentFixed * 20);
   
   // Intéressement : 10% du CA annuel de revente d'électricité de l'année 21 à 30
-  const annualProfitSharing = Math.round(annualRevenue * 0.10);
+  const annualProfitSharing = Math.round(safeRevenue * 0.10);
   const cumulYears21To30 = Math.round(annualProfitSharing * 10);
   const totalGains30Years = cumulYears1To20 + cumulYears21To30;
 
@@ -71,6 +75,7 @@ export function calculateBankLoan({
   const safeRevenue = Number(annualRevenue) || 0;
   const totalRepaid = Math.round(monthlyPaymentExact * months);
   const totalInterest = Math.max(0, totalRepaid - capital);
+  const annualNetCashflow = Math.round(safeRevenue - annualPaymentExact);
 
   return {
     property: 'Client propriétaire dès le 1er jour',
