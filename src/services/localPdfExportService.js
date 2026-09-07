@@ -1,12 +1,5 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * LOCAL PDF EXPORT SERVICE
- * Gestionnaire d'enregistrement local hybride à 3 niveaux :
- * Niveau 1 : Micro-daemon Node.js local (écriture directe silencieuse C:\Users\Utilisateur\PDF TOITURES)
- * Niveau 2 : File System Access API du navigateur (sélection unique du dossier C:\Users\Utilisateur\PDF TOITURES)
- * Niveau 3 : Téléchargement unitaire direct / ZIP
- * ═══════════════════════════════════════════════════════════════════════════
- */
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 const LOCAL_BRIDGE_URL = 'http://127.0.0.1:4199';
 
@@ -46,16 +39,35 @@ export async function savePdfToLocalDestination({
   directoryHandle = null,
   preferBridge = true
 }) {
-  // ─── NIVEAU 1 : Micro-Agent Local (Écriture 100% directe et silencieuse) ─────
+  // ─── NIVEAU 1 : File System Access API (Sélection préalable du dossier par l'utilisateur) ─────
+  // Prioritaire dans le navigateur car 100% direct sur le disque sans passer par le réseau local HTTP
+  if (directoryHandle) {
+    try {
+      const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
+      const writable = await fileHandle.createWritable();
+      const content = blob || new Blob([arrayBuffer], { type: 'application/pdf' });
+      await writable.write(content);
+      await writable.close();
+
+      return {
+        success: true,
+        method: 'file-system-access',
+        filename,
+        folderName: directoryHandle.name
+      };
+    } catch (err) {
+      console.warn('Échec écriture via File System Access API:', err.message);
+    }
+  }
+
+  // ─── NIVEAU 2 : Micro-Agent Local (Si daemon local actif sur localhost:4199) ─────
   if (preferBridge) {
     try {
-      // Conversion en base64 pour transmission HTTP rapide
       const buffer = arrayBuffer || (blob ? await blob.arrayBuffer() : null);
       if (buffer) {
         const uint8 = new Uint8Array(buffer);
         let binary = '';
         const len = uint8.byteLength;
-        // Découpage par blocs de 16 Ko pour éviter tout débordement de pile d'arguments
         const chunkSize = 16384;
         for (let i = 0; i < len; i += chunkSize) {
           const chunk = uint8.subarray(i, Math.min(i + chunkSize, len));
@@ -63,11 +75,15 @@ export async function savePdfToLocalDestination({
         }
         const base64 = btoa(binary);
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
         const res = await fetch(`${LOCAL_BRIDGE_URL}/api/save-pdf`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename, base64 })
+          body: JSON.stringify({ filename, base64 }),
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
 
         if (res.ok) {
           const json = await res.json();
@@ -80,31 +96,11 @@ export async function savePdfToLocalDestination({
         }
       }
     } catch (err) {
-      // Si l'agent local n'est pas joignable, basculer au niveau 2
-      console.warn('Agent local non disponible, basculement vers File System Access API:', err.message);
+      // Ignorer si daemon non actif
     }
   }
 
-  // ─── NIVEAU 2 : File System Access API (Sélection préalable du dossier) ──────
-  if (directoryHandle) {
-    try {
-      const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
-      const writable = await fileHandle.createWritable();
-      const content = blob || new Blob([arrayBuffer], { type: 'application/pdf' });
-      await writable.write(content);
-      await writable.close();
-
-      return {
-        success: true,
-        method: 'file-system-access-api',
-        filename
-      };
-    } catch (err) {
-      console.error('Erreur écriture File System Access API:', err);
-    }
-  }
-
-  // ─── NIVEAU 3 : Téléchargement classique par lien blob ───────────────────────
+  // ─── NIVEAU 3 : Téléchargement direct standard ─────────────────────────────
   try {
     const content = blob || new Blob([arrayBuffer], { type: 'application/pdf' });
     const url = URL.createObjectURL(content);
@@ -129,23 +125,102 @@ export async function savePdfToLocalDestination({
   }
 }
 
-// Demander à l'utilisateur de sélectionner le dossier C:\Users\Utilisateur\PDF TOITURES
+/**
+ * Demande à l'utilisateur de sélectionner un dossier local via l'API native du navigateur
+ * Compatible Chrome, Edge, Brave, Opera
+ */
 export async function requestDirectoryPicker() {
-  if (typeof window !== 'undefined' && window.showDirectoryPicker) {
-    try {
-      const handle = await window.showDirectoryPicker({
-        mode: 'readwrite',
-        id: 'nelson-pdf-toitures',
-        startIn: 'documents'
-      });
-      return handle;
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        return null; // Annulé par l'utilisateur
+  if (typeof window === 'undefined' || !window.showDirectoryPicker) {
+    return {
+      success: false,
+      supported: false,
+      error: "L'API de sélection de dossier local n'est pas supportée par ce navigateur. Utilisez Chrome ou Edge, ou téléchargez le fichier ZIP."
+    };
+  }
+
+  try {
+    // 1. Appel propre direct sans options id/startIn restrictives pour une compatibilité maximale
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    if (!handle) {
+      return { success: false, cancelled: true };
+    }
+
+    // 2. Vérification / demande des droits d'écriture
+    if (handle.queryPermission) {
+      let perm = await handle.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted' && handle.requestPermission) {
+        perm = await handle.requestPermission({ mode: 'readwrite' });
       }
-      console.warn('showDirectoryPicker non disponible ou refusé:', err);
-      return null;
+      if (perm !== 'granted') {
+        return {
+          success: false,
+          error: "Permission d'écriture refusée pour le dossier sélectionné."
+        };
+      }
+    }
+
+    return {
+      success: true,
+      supported: true,
+      handle,
+      folderName: handle.name
+    };
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      return { success: false, cancelled: true };
+    }
+    
+    // Essai de repli sans l'argument mode
+    try {
+      const handle = await window.showDirectoryPicker();
+      return {
+        success: true,
+        supported: true,
+        handle,
+        folderName: handle.name
+      };
+    } catch (err2) {
+      if (err2.name === 'AbortError') {
+        return { success: false, cancelled: true };
+      }
+      return {
+        success: false,
+        error: `Impossible d'ouvrir le sélecteur de dossier : ${err2.message}`
+      };
     }
   }
-  return null;
+}
+
+/**
+ * Exporte l'ensemble des résultats de simulation sous la forme d'une archive ZIP complète
+ */
+export async function exportResultsAsZip(results, zipName = 'Nelson_Prospection_Toitures.zip') {
+  if (!results || results.length === 0) {
+    throw new Error('Aucun fichier à exporter dans l’archive.');
+  }
+
+  const zip = new JSZip();
+  let count = 0;
+
+  for (const r of results) {
+    const filename = r.filename || `Offre_Toiture_${r.building?.osmId || count}.pdf`;
+    const content = r.blob || (r.arrayBuffer ? new Blob([r.arrayBuffer], { type: 'application/pdf' }) : null);
+    if (content) {
+      zip.file(filename, content);
+      count++;
+    }
+  }
+
+  if (count === 0) {
+    throw new Error('Aucun contenu PDF valide trouvé dans les résultats.');
+  }
+
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+  });
+
+  saveAs(blob, zipName);
+  return { success: true, count, blob };
 }

@@ -58,6 +58,21 @@ export default function SolarRoofSimulator({
   const [userSelectedKwc, setUserSelectedKwc] = useState(null);
   const [isAutoProspectingOpen, setIsAutoProspectingOpen] = useState(false);
 
+  // Emprise cartographique courante calculée autour de mapCenter
+  const currentMapBbox = useMemo(() => {
+    if (!mapCenter || !mapCenter[0] || !mapCenter[1]) return null;
+    const deltaLat = 0.009; // ~1km
+    const deltaLng = 0.013; // ~1km
+    return {
+      minLat: Number((mapCenter[0] - deltaLat).toFixed(5)),
+      minLng: Number((mapCenter[1] - deltaLng).toFixed(5)),
+      maxLat: Number((mapCenter[0] + deltaLat).toFixed(5)),
+      maxLng: Number((mapCenter[1] + deltaLng).toFixed(5)),
+      center: mapCenter,
+      cityName: cityName || 'Zone Carte'
+    };
+  }, [mapCenter, cityName]);
+
   const mapContainerRef = useRef(null);
   const [mapScreenshotDataUrl, setMapScreenshotDataUrl] = useState(null);
 
@@ -1357,6 +1372,8 @@ export default function SolarRoofSimulator({
         isOpen={isAutoProspectingOpen}
         onClose={() => setIsAutoProspectingOpen(false)}
         defaultCommune={cityName || 'Seclin'}
+        currentMapBbox={currentMapBbox}
+        simulatorMapCenter={mapCenter}
       />
 
     </div>

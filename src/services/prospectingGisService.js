@@ -84,11 +84,12 @@ export async function searchCommunes(query) {
   }
 }
 
-// 2. Extraction des polygones de bâtiments via Overpass API avec pool de miroirs
+// 2. Extraction des polygones de bâtiments via Overpass API avec pool de miroirs optimisé
 const OVERPASS_ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter', // Serveur dédié France (extrêmement rapide, < 700ms)
   'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.osm.ch/api/interpreter'
+  'https://overpass-api.de/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
 ];
 
 export async function fetchBuildingsInBbox({
@@ -103,7 +104,7 @@ export async function fetchBuildingsInBbox({
   const { minLat, minLng, maxLat, maxLng } = bbox;
 
   // Requête Overpass ciblée sur les bâtiments fermés
-  const overpassQuery = `[out:json][timeout:35];
+  const overpassQuery = `[out:json][timeout:25];
 (
   way["building"](${minLat},${minLng},${maxLat},${maxLng});
 );
@@ -114,22 +115,32 @@ out geom;`;
 
   for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
-      if (onProgress) onProgress(`Interrogation du serveur cartographique (${new URL(endpoint).hostname})...`);
+      const hostname = new URL(endpoint).hostname;
+      if (onProgress) onProgress(`Interrogation du serveur cartographique (${hostname})...`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000); // 9 secondes max par miroir
+
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'User-Agent': 'NelsonPV-SolarProspector/1.0 (contact@nelsonpv.fr)'
         },
-        body: 'data=' + encodeURIComponent(overpassQuery)
+        body: 'data=' + encodeURIComponent(overpassQuery),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         rawData = await res.json();
         break;
+      } else {
+        console.warn(`Serveur ${hostname} a retourné le code ${res.status}, essai du miroir suivant...`);
       }
     } catch (err) {
       lastError = err;
-      console.warn(`Serveur Overpass indisponible (${endpoint}):`, err.message);
+      console.warn(`Serveur Overpass indisponible ou trop lent (${endpoint}):`, err.message);
     }
   }
 
@@ -187,8 +198,11 @@ out geom;`;
 // 3. Géocodage inverse via la Base Adresse Nationale (BAN)
 export async function reverseGeocodeBAN(lat, lng) {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
     const url = `https://api-adresse.data.gouv.fr/reverse/?lon=${lng}&lat=${lat}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!res.ok) return null;
     const data = await res.json();
     const feat = data.features?.[0]?.properties;
@@ -203,7 +217,7 @@ export async function reverseGeocodeBAN(lat, lng) {
       departmentCode: feat.postcode ? feat.postcode.substring(0, 2) : '59'
     };
   } catch (err) {
-    console.warn('Erreur reverse geocoding BAN:', err);
+    console.warn('Erreur reverse geocoding BAN:', err.message);
     return null;
   }
 }
@@ -211,12 +225,15 @@ export async function reverseGeocodeBAN(lat, lng) {
 // 4. Qualification cadastrale IGN (Apicarto Parcelles)
 export async function getCadastreParcel(lat, lng) {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
     const geomParam = encodeURIComponent(JSON.stringify({
       type: 'Point',
       coordinates: [lng, lat]
     }));
     const url = `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${geomParam}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!res.ok) return null;
     const data = await res.json();
     const feat = data.features?.[0]?.properties;
@@ -230,7 +247,7 @@ export async function getCadastreParcel(lat, lng) {
       parcelleRef: feat.section ? `Section ${feat.section} N° ${feat.numero}` : null
     };
   } catch (err) {
-    console.warn('Erreur qualification parcelle cadastrale:', err);
+    console.warn('Erreur qualification parcelle cadastrale:', err.message);
     return null;
   }
 }
