@@ -9,18 +9,31 @@ import {
 
 import { computeMultiPanSolarSlots } from '@/utils/solarCalepinage';
 
-// Ajustement automatique de la vue sur le polygone
+// Ajustement automatique de la vue sur le polygone (calé sur le zoom 19 natif pour correspondre à la vue Après)
 function AutoFitPolygon({ polygonPoints, center }) {
   const map = useMap();
   useEffect(() => {
     if (!map) return;
-    map.invalidateSize();
-    if (polygonPoints && polygonPoints.length >= 3) {
-      const bounds = L.latLngBounds(polygonPoints.map(p => [p.lat, p.lng]));
-      map.fitBounds(bounds, { padding: [45, 45], maxZoom: 21, animate: false });
-    } else if (center && center[0] && center[1]) {
-      map.setView(center, 20, { animate: false });
-    }
+
+    const fit = () => {
+      map.invalidateSize();
+      if (polygonPoints && polygonPoints.length >= 3) {
+        const bounds = L.latLngBounds(polygonPoints.map(p => [p.lat, p.lng]));
+        const polyCenter = bounds.getCenter();
+        // Si le centre utilisateur est proche de la toiture (cadrage Step 2), on le conserve fidèlement au zoom 19
+        if (center && center[0] && center[1] && Math.abs(center[0] - polyCenter.lat) < 0.02 && Math.abs(center[1] - polyCenter.lng) < 0.02) {
+          map.setView(center, 19, { animate: false });
+        } else {
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 19, animate: false });
+        }
+      } else if (center && center[0] && center[1]) {
+        map.setView(center, 19, { animate: false });
+      }
+    };
+
+    fit();
+    const timer = setTimeout(fit, 100);
+    return () => clearTimeout(timer);
   }, [map, polygonPoints, center]);
   return null;
 }
@@ -257,7 +270,7 @@ export default function SolarRoofBeforeAfterViewer({
           <div className="absolute inset-0 w-full h-full">
             <MapContainer
               center={center}
-              zoom={20}
+              zoom={19}
               maxZoom={23}
               scrollWheelZoom={false}
               dragging={false}
@@ -346,7 +359,7 @@ export default function SolarRoofBeforeAfterViewer({
           <div className="relative h-[360px] sm:h-[400px] rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-950">
             <MapContainer
               center={center}
-              zoom={20}
+              zoom={19}
               maxZoom={23}
               scrollWheelZoom={false}
               dragging={false}
@@ -383,7 +396,7 @@ export default function SolarRoofBeforeAfterViewer({
           <div className="relative h-[360px] sm:h-[400px] rounded-3xl overflow-hidden border border-emerald-300 shadow-md bg-slate-950">
             <MapContainer
               center={center}
-              zoom={20}
+              zoom={19}
               maxZoom={23}
               scrollWheelZoom={false}
               dragging={false}
@@ -421,7 +434,7 @@ export default function SolarRoofBeforeAfterViewer({
         <div className="relative h-[420px] rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-950">
           <MapContainer
             center={center}
-            zoom={20}
+            zoom={19}
             maxZoom={23}
             scrollWheelZoom={false}
             dragging={false}
