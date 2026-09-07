@@ -235,8 +235,8 @@ export async function searchCommunes(query) {
         nom: c.nom,
         codeInsee: c.code,
         postalCode: c.codesPostaux?.[0] || '',
-        departmentCode: c.code ? c.code.substring(0, 2) : '59',
-        center: c.centre ? [c.centre.coordinates[1], c.centre.coordinates[0]] : [50.6292, 3.0573],
+        departmentCode: c.code ? c.code.substring(0, 2) : '33',
+        center: c.centre ? [c.centre.coordinates[1], c.centre.coordinates[0]] : [44.8412, -0.5805],
         bbox,
         population: c.population || 0
       };
@@ -398,7 +398,7 @@ export async function reverseGeocodeBAN(lat, lng) {
       housenumber: feat.housenumber || '',
       postcode: feat.postcode || '',
       city: feat.city || '',
-      departmentCode: feat.postcode ? feat.postcode.substring(0, 2) : '59'
+      departmentCode: feat.postcode ? feat.postcode.substring(0, 2) : '33'
     };
   } catch (err) {
     console.warn('Erreur reverse geocoding BAN:', err.message);

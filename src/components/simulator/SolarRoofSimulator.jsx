@@ -36,10 +36,10 @@ export default function SolarRoofSimulator({
   const [suggestions, setSuggestions] = useState([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [isAddressSelected, setIsAddressSelected] = useState(false);
-  const [departmentCode, setDepartmentCode] = useState('59');
-  const [cityName, setCityName] = useState('Lille');
+  const [departmentCode, setDepartmentCode] = useState('33');
+  const [cityName, setCityName] = useState('Bordeaux');
 
-  const [mapCenter, setMapCenter] = useState([50.6292, 3.0573]);
+  const [mapCenter, setMapCenter] = useState([44.8412, -0.5805]);
   const [mapZoom, setMapZoom] = useState(19);
   const [polygonPoints, setPolygonPoints] = useState([]);
   const [roofSurface, setRoofSurface] = useState(1179);
@@ -1380,7 +1380,7 @@ export default function SolarRoofSimulator({
       <AutomaticProspectingModal
         isOpen={isAutoProspectingOpen}
         onClose={() => setIsAutoProspectingOpen(false)}
-        defaultCommune={cityName || 'Seclin'}
+        defaultCommune={cityName || 'Bordeaux'}
         currentMapBbox={currentMapBbox}
         simulatorMapCenter={mapCenter}
       />

@@ -28,20 +28,37 @@ import {
   exportResultsAsZip
 } from '@/services/localPdfExportService';
 
+// Profil géométrique et cadastral par défaut : Bordeaux (33)
+const DEFAULT_BORDEAUX = {
+  id: '33063',
+  nom: 'Bordeaux',
+  codeInsee: '33063',
+  postalCode: '33000',
+  departmentCode: '33',
+  center: [44.8412, -0.5805],
+  bbox: {
+    minLat: 44.810741,
+    minLng: -0.638699,
+    maxLat: 44.916694,
+    maxLng: -0.533325
+  },
+  population: 267991
+};
+
 export default function AutomaticProspectingModal({
   isOpen,
   onClose,
   currentMapBbox = null,
   simulatorMapCenter = null,
-  defaultCommune = 'Seclin'
+  defaultCommune = 'Bordeaux'
 }) {
   // Mode de sélection géographique : 'commune' | 'bbox'
   const [geoMode, setGeoMode] = useState('commune');
 
-  // Recherche par commune
-  const [communeSearch, setCommuneSearch] = useState(defaultCommune || '');
+  // Recherche par commune (Bordeaux 33 par défaut)
+  const [communeSearch, setCommuneSearch] = useState(defaultCommune || 'Bordeaux');
   const [communeSuggestions, setCommuneSuggestions] = useState([]);
-  const [selectedCommune, setSelectedCommune] = useState(null);
+  const [selectedCommune, setSelectedCommune] = useState(DEFAULT_BORDEAUX);
   const [isSearchingCommune, setIsSearchingCommune] = useState(false);
 
   // Rayon pour l'emprise carte (en mètres)
@@ -50,15 +67,19 @@ export default function AutomaticProspectingModal({
   // Critères de filtrage et dimensionnement
   const [minArea, setMinArea] = useState(500);
   const [maxArea, setMaxArea] = useState(2500);
-  const [targetLimit, setTargetLimit] = useState(10);
+  const [targetLimit, setTargetLimit] = useState(10); // 10, 30, 50, 100, 'Tout'
   const [roofPitch, setRoofPitch] = useState(15);
   const [roofType, setRoofType] = useState('asymetrique');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Gestion du dossier local d'exportation
+  // Gestion du dossier local d'exportation (et mode Firefox natif)
+  const isFirefoxBrowser = typeof window !== 'undefined' && !window.showDirectoryPicker;
+  const [isFirefoxMode, setIsFirefoxMode] = useState(isFirefoxBrowser);
   const [bridgeStatus, setBridgeStatus] = useState({ online: false, checking: true });
   const [directoryHandle, setDirectoryHandle] = useState(null);
-  const [selectedFolderName, setSelectedFolderName] = useState('');
+  const [selectedFolderName, setSelectedFolderName] = useState(
+    isFirefoxBrowser ? 'Téléchargements (Dossier Firefox)' : ''
+  );
   const [isSelectingFolder, setIsSelectingFolder] = useState(false);
   const [folderFeedback, setFolderFeedback] = useState(null);
 
@@ -85,7 +106,7 @@ export default function AutomaticProspectingModal({
     if (currentMapBbox && currentMapBbox.center) {
       return currentMapBbox.center;
     }
-    return [50.6292, 3.0573]; // Par défaut : Lille / Métropole Européenne de Lille
+    return [44.8412, -0.5805]; // Par défaut : Bordeaux (33)
   }, [simulatorMapCenter, currentMapBbox]);
 
   // Bounding box calculée pour l'emprise carte
@@ -114,8 +135,13 @@ export default function AutomaticProspectingModal({
   useEffect(() => {
     if (isOpen) {
       refreshBridgeStatus();
-      if (!selectedCommune && communeSearch) {
-        handleSearchCommunes(communeSearch);
+      if (!selectedCommune) {
+        if (defaultCommune === 'Bordeaux' || !defaultCommune) {
+          setSelectedCommune(DEFAULT_BORDEAUX);
+          setCommuneSearch('Bordeaux');
+        } else if (communeSearch) {
+          handleSearchCommunes(communeSearch);
+        }
       }
     }
   }, [isOpen, refreshBridgeStatus]);
@@ -154,7 +180,7 @@ export default function AutomaticProspectingModal({
     setCommuneSuggestions([]);
   };
 
-  // Sélection du dossier local (File System Access API)
+  // Sélection du dossier local (File System Access API ou Mode Firefox)
   const handleSelectFolder = async () => {
     setIsSelectingFolder(true);
     setFolderFeedback(null);
@@ -163,11 +189,20 @@ export default function AutomaticProspectingModal({
       if (res.success && res.handle) {
         setDirectoryHandle(res.handle);
         setSelectedFolderName(res.folderName || 'Dossier Local');
+        setIsFirefoxMode(false);
         setFolderFeedback({
           type: 'success',
           message: `Dossier lié : "${res.folderName}". Les offres y seront enregistrées directement.`
         });
         addLog(`📁 Dossier local d'exportation sélectionné : "${res.folderName}"`);
+      } else if (res.success && res.isFirefoxMode) {
+        setIsFirefoxMode(true);
+        setSelectedFolderName(res.folderName || 'Téléchargements (Dossier Firefox)');
+        setFolderFeedback({
+          type: 'success',
+          message: 'Mode Firefox actif : Vos offres PDF seront enregistrées directement dans vos Téléchargements locaux.'
+        });
+        addLog(`🦊 Mode Firefox actif : Vos offres PDF seront enregistrées directement dans votre dossier Téléchargements.`);
       } else if (res.cancelled) {
         setFolderFeedback({
           type: 'info',
@@ -192,15 +227,16 @@ export default function AutomaticProspectingModal({
   };
 
   // Télécharger toutes les offres en archive ZIP
-  const handleDownloadZipBundle = async () => {
-    if (!processedResults || processedResults.length === 0) return;
+  const handleDownloadZipBundle = async (customResults = null) => {
+    const list = customResults || processedResults;
+    if (!list || list.length === 0) return;
     try {
       setIsExportingZip(true);
-      const zoneName = geoMode === 'commune' ? (selectedCommune?.nom || 'Commune') : 'Emprise_Carte';
+      const zoneName = geoMode === 'commune' ? (selectedCommune?.nom || 'Bordeaux') : 'Emprise_Carte';
       const dateStr = new Date().toISOString().slice(0, 10);
       const zipName = `Offres_Solaires_${zoneName}_${dateStr}.zip`;
-      addLog(`📦 Préparation de l'archive ZIP groupée (${processedResults.length} fichiers)...`);
-      await exportResultsAsZip(processedResults, zipName);
+      addLog(`📦 Préparation de l'archive ZIP groupée (${list.length} fichiers)...`);
+      await exportResultsAsZip(list, zipName);
       addLog(`✅ Archive ZIP "${zipName}" téléchargée avec succès.`);
     } catch (err) {
       addLog(`❌ Erreur export ZIP : ${err.message}`);
@@ -256,14 +292,16 @@ export default function AutomaticProspectingModal({
       }
 
       // 2. Sourcing géospatial rapide
-      setCurrentStepText('Interrogation cadastrale Overpass API...');
-      addLog(`🛰️ Recherche des bâtiments (Emprise : ${minArea} à ${maxArea} m²)...`);
+      const effectiveLimit = targetLimit === 'Tout' ? 500 : Number(targetLimit);
+      const limitLabel = targetLimit === 'Tout' ? 'toutes les toitures éligibles' : `${targetLimit} toitures cibles`;
+      setCurrentStepText(`Interrogation cadastrale Overpass API (${limitLabel})...`);
+      addLog(`🛰️ Recherche des bâtiments (Emprise : ${minArea} à ${maxArea} m² • Objectif : ${limitLabel})...`);
 
       const eligible = await fetchBuildingsInBbox({
         bbox: targetBbox,
         minArea,
         maxArea,
-        limit: targetLimit,
+        limit: effectiveLimit,
         onProgress: (msg) => setCurrentStepText(msg)
       });
 
@@ -380,6 +418,10 @@ export default function AutomaticProspectingModal({
 
         if (bridgeStatus.online) {
           openLocalFolderInExplorer();
+        } else if (!directoryHandle && results.length > 0) {
+          // Mode Firefox ou absence de dossier direct : téléchargement automatique de l'archive ZIP
+          addLog(`📦 Mode Firefox : Téléchargement automatique de l'archive ZIP (${results.length} offres)...`);
+          await handleDownloadZipBundle(results);
         }
       }
     } catch (err) {
@@ -413,7 +455,7 @@ export default function AutomaticProspectingModal({
         initial={{ opacity: 0, scale: 0.96, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 15 }}
-        className="relative w-[96vw] max-w-7xl 2xl:max-w-[1550px] h-[92vh] max-h-[94vh] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
+        className="relative w-[98vw] max-w-[1550px] 2xl:max-w-[1860px] h-[95vh] max-h-[97vh] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
       >
         {/* ─── 1. EN-TÊTE SUPÉRIEUR SPATIEUX ─────────────────────────────── */}
         <div className="bg-[#0e2b4d] text-white p-4 sm:p-5 border-b border-white/10 shrink-0 relative overflow-hidden">
@@ -459,6 +501,11 @@ export default function AutomaticProspectingModal({
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-black shadow-xs">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   <span>Dossier actif : <code>{selectedFolderName || directoryHandle.name}</code></span>
+                </div>
+              ) : isFirefoxMode ? (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-black shadow-xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Mode Firefox actif : <code>{selectedFolderName || 'Téléchargements (Dossier Firefox)'}</code></span>
                 </div>
               ) : bridgeStatus.online ? (
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-black shadow-xs">
@@ -667,7 +714,7 @@ export default function AutomaticProspectingModal({
                     type="button"
                     onClick={handleSelectFolder}
                     disabled={isSelectingFolder}
-                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs hover:scale-105 active:scale-95"
                   >
                     {isSelectingFolder ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -683,6 +730,17 @@ export default function AutomaticProspectingModal({
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span className="truncate">Dossier lié : <code>{selectedFolderName || directoryHandle.name}</code></span>
                   </div>
+                ) : isFirefoxMode ? (
+                  <div className="flex items-start gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 p-2.5 rounded-xl">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-black text-emerald-950">Mode Firefox activé : </span>
+                      <code>{selectedFolderName || 'Téléchargements (Dossier Firefox)'}</code>
+                      <p className="text-[11px] font-normal text-emerald-800 mt-1">
+                        Les offres PDF seront enregistrées directement dans votre dossier Téléchargements local. Un fichier groupé ZIP contenant l'intégralité des offres sera également généré automatiquement.
+                      </p>
+                    </div>
+                  </div>
                 ) : bridgeStatus.online ? (
                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 p-2.5 rounded-xl">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -690,17 +748,17 @@ export default function AutomaticProspectingModal({
                   </div>
                 ) : (
                   <p className="text-[11px] text-slate-500">
-                    Cliquez sur <strong>"Sélectionner le dossier"</strong> pour choisir un dossier de votre disque (ex: <code>C:\Users\Utilisateur\PDF TOITURES</code>). Tous les PDF générés y seront écrits automatiquement par le navigateur.
+                    Cliquez sur <strong>"Sélectionner le dossier"</strong> pour choisir un dossier de destination. Sur Firefox, les offres sont enregistrées directement dans vos Téléchargements locaux.
                   </p>
                 )}
 
                 {folderFeedback && (
-                  <div className={`p-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
-                    folderFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-800' :
-                    folderFeedback.type === 'error' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-800'
+                  <div className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                    folderFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' :
+                    folderFeedback.type === 'error' ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-slate-200 text-slate-800'
                   }`}>
-                    {folderFeedback.type === 'success' && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
-                    {folderFeedback.type === 'error' && <AlertCircle className="w-3.5 h-3.5 shrink-0" />}
+                    {folderFeedback.type === 'success' && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-700" />}
+                    {folderFeedback.type === 'error' && <AlertCircle className="w-4 h-4 shrink-0 text-rose-700" />}
                     <span>{folderFeedback.message}</span>
                   </div>
                 )}
@@ -718,10 +776,40 @@ export default function AutomaticProspectingModal({
                 <button
                   type="button"
                   onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="text-xs font-bold text-emerald-700 hover:text-emerald-900"
+                  className="text-xs font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
                 >
-                  {showAdvanced ? 'Masquer' : 'Ajuster les seuils'}
+                  {showAdvanced ? 'Masquer' : 'Ajuster les seuils m²'}
                 </button>
+              </div>
+
+              {/* SÉLECTEUR DU NOMBRE DE BÂTIMENTS CIBLES (10, 30, 50, 100, Tout) */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-emerald-600" />
+                    Nombre de toitures cibles à trouver :
+                  </span>
+                  <span className="text-xs font-black text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-lg border border-emerald-300">
+                    {targetLimit === 'Tout' ? 'Toutes les toitures' : `${targetLimit} toitures`}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-5 gap-1.5">
+                  {[10, 30, 50, 100, 'Tout'].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setTargetLimit(val)}
+                      className={`py-2 px-1 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
+                        targetLimit === val
+                          ? 'bg-[#0e2b4d] text-white shadow-md ring-2 ring-emerald-400 scale-[1.02]'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      {val === 'Tout' ? 'Tout' : `${val}`}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Grille des critères */}
@@ -736,7 +824,7 @@ export default function AutomaticProspectingModal({
                 </div>
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
                   <span className="text-[10px] text-slate-400 font-bold uppercase block">Profil toiture</span>
-                  <strong className="text-slate-900 font-black">Bipente 15° (Symétrique)</strong>
+                  <strong className="text-slate-900 font-black">Mono-pente 15° (Asymétrique Sud)</strong>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
                   <span className="text-[10px] text-slate-400 font-bold uppercase block">Tarif EDF OA</span>
@@ -745,39 +833,24 @@ export default function AutomaticProspectingModal({
               </div>
 
               {showAdvanced && (
-                <div className="pt-2 border-t border-slate-200 grid grid-cols-3 gap-2 text-xs">
+                <div className="pt-2 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">Nombre max :</label>
-                    <select
-                      value={targetLimit}
-                      onChange={(e) => setTargetLimit(Number(e.target.value))}
-                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold"
-                    >
-                      <option value={5}>5 bâtiments</option>
-                      <option value={10}>10 bâtiments</option>
-                      <option value={20}>20 bâtiments</option>
-                      <option value={50}>50 bâtiments</option>
-                      <option value={100}>100 bâtiments</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-500 font-bold mb-1">Min m² :</label>
+                    <label className="block text-slate-500 font-bold mb-1">Surface min (m²) :</label>
                     <input
                       type="number"
                       value={minArea}
                       onChange={(e) => setMinArea(Number(e.target.value))}
-                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold"
+                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">Max m² :</label>
+                    <label className="block text-slate-500 font-bold mb-1">Surface max (m²) :</label>
                     <input
                       type="number"
                       value={maxArea}
                       onChange={(e) => setMaxArea(Number(e.target.value))}
-                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold"
+                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800"
                     />
                   </div>
                 </div>
@@ -805,7 +878,7 @@ export default function AutomaticProspectingModal({
                   <Play className="w-5 h-5 fill-white" />
                   <span>
                     Lancer la Prospection Automatique
-                    {geoMode === 'commune' && selectedCommune ? ` (${selectedCommune.nom})` : ''}
+                    {geoMode === 'commune' && selectedCommune ? ` (${selectedCommune.nom} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} toitures`})` : ` (${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} toitures`})`}
                   </span>
                 </button>
               )}

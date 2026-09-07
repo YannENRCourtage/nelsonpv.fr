@@ -100,22 +100,16 @@ export async function savePdfToLocalDestination({
     }
   }
 
-  // ─── NIVEAU 3 : Téléchargement direct standard ─────────────────────────────
+  // ─── NIVEAU 3 : Téléchargement direct standard (Firefox, Safari, Mobile) ──
   try {
     const content = blob || new Blob([arrayBuffer], { type: 'application/pdf' });
-    const url = URL.createObjectURL(content);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    saveAs(content, filename);
 
     return {
       success: true,
       method: 'browser-download',
-      filename
+      filename,
+      folderName: 'Téléchargements (Firefox)'
     };
   } catch (err) {
     return {
@@ -130,11 +124,18 @@ export async function savePdfToLocalDestination({
  * Compatible Chrome, Edge, Brave, Opera
  */
 export async function requestDirectoryPicker() {
-  if (typeof window === 'undefined' || !window.showDirectoryPicker) {
+  if (typeof window === 'undefined') {
+    return { success: false, supported: false, error: 'Environnement non disponible.' };
+  }
+
+  // Prise en charge native de Mozilla Firefox (où showDirectoryPicker n'existe pas)
+  // Permet l'enregistrement local transparent dans le dossier Téléchargements de l'ordinateur
+  if (!window.showDirectoryPicker) {
     return {
-      success: false,
+      success: true,
       supported: false,
-      error: "L'API de sélection de dossier local n'est pas supportée par ce navigateur. Utilisez Chrome ou Edge, ou téléchargez le fichier ZIP."
+      isFirefoxMode: true,
+      folderName: 'Téléchargements (Dossier Firefox)'
     };
   }
 
