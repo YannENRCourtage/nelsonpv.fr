@@ -315,30 +315,30 @@ export default function Admin() {
   const tenantLabel = TENANT_OPTIONS.find(t => t.value === activeTenantId)?.label || activeTenantId;
 
   return (
-    <div className="p-8 space-y-6 bg-slate-50 min-h-screen">
-      <div className="flex justify-between items-center">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 bg-slate-50 min-h-screen w-full max-w-full overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-            <Shield className="w-8 h-8 text-blue-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-2">
+            <Shield className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0" />
             Administration
           </h1>
-          <p className="text-slate-500 mt-1">Gérez les utilisateurs et leurs accès</p>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">Gérez les utilisateurs et leurs accès</p>
         </div>
-        <div className="flex gap-2 flex-wrap justify-end">
-          <Button onClick={() => setIsMigratingOpen(true)} variant="outline" className="text-green-700 border-green-300 hover:bg-green-50">
-            <RefreshCw className="w-4 h-4 mr-2" />
+        <div className="flex gap-2 flex-wrap sm:justify-end w-full sm:w-auto">
+          <Button onClick={() => setIsMigratingOpen(true)} variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 text-xs sm:text-sm h-9 sm:h-10 flex-1 sm:flex-initial">
+            <RefreshCw className="w-4 h-4 mr-1.5 sm:mr-2 flex-shrink-0" />
             Migration Tenant
           </Button>
-          <Button onClick={handleInitOdooStages} variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50">
-            <FolderSync className="w-4 h-4 mr-2" />
+          <Button onClick={handleInitOdooStages} variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50 text-xs sm:text-sm h-9 sm:h-10 flex-1 sm:flex-initial">
+            <FolderSync className="w-4 h-4 mr-1.5 sm:mr-2 flex-shrink-0" />
             Réinit. ODOO
           </Button>
-          <Button onClick={() => setIsRepairModalOpen(true)} variant="outline" className="text-amber-600 border-amber-200 hover:bg-amber-50">
-            <Link className="w-4 h-4 mr-2" />
+          <Button onClick={() => setIsRepairModalOpen(true)} variant="outline" className="text-amber-600 border-amber-200 hover:bg-amber-50 text-xs sm:text-sm h-9 sm:h-10 flex-1 sm:flex-initial">
+            <Link className="w-4 h-4 mr-1.5 sm:mr-2 flex-shrink-0" />
             Lier UID Existant
           </Button>
-          <Button onClick={() => handleOpenModal(null)} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button onClick={() => handleOpenModal(null)} className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm h-9 sm:h-10 flex-1 sm:flex-initial">
+            <Plus className="w-4 h-4 mr-1.5 sm:mr-2 flex-shrink-0" />
             Nouvel utilisateur
           </Button>
         </div>
@@ -346,22 +346,22 @@ export default function Admin() {
 
       {/* TENANT SWITCHER (Admin only) */}
       <Card className="border-2 border-blue-100 bg-blue-50/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2 text-blue-800">
-            <Building2 className="w-5 h-5" />
-            Interface active : <span className="font-bold">{tenantLabel}</span>
+        <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-3">
+          <CardTitle className="text-sm sm:text-base flex items-center gap-2 text-blue-800">
+            <Building2 className="w-5 h-5 flex-shrink-0" />
+            <span>Interface active : <span className="font-bold">{tenantLabel}</span></span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-600 mb-3">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+          <p className="text-xs sm:text-sm text-slate-600 mb-3">
             En tant qu'administrateur, vous pouvez basculer entre les interfaces entreprise. Cette sélection s'applique à toute l'application.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             {TENANT_OPTIONS.map(t => (
               <button
                 key={t.value}
                 onClick={() => switchTenant(t.value)}
-                className={`px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${activeTenantId === t.value
+                className={`px-3 py-2 sm:px-4 rounded-lg border-2 text-xs sm:text-sm font-semibold transition-all ${activeTenantId === t.value
                   ? 'bg-blue-600 border-blue-600 text-white shadow-md'
                   : 'bg-white border-slate-300 text-slate-700 hover:border-blue-400'
                   }`}
@@ -374,110 +374,205 @@ export default function Admin() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Utilisateurs ({users.length})</CardTitle>
+        <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-3">
+          <CardTitle className="text-lg sm:text-xl">Utilisateurs ({users.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Utilisateur</TableHead>
-                <TableHead>Rôle</TableHead>
-                <TableHead>Entreprise</TableHead>
-                <TableHead>Accès</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-slate-900">
-                        {user.firstName ? `${user.firstName} ${user.lastName || ''}` : user.displayName}
-                      </span>
-                      <span className="text-sm text-slate-500">{user.email}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin'
-                      ? 'bg-purple-100 text-purple-800'
-                      : 'bg-green-100 text-green-800'
-                      }`}>
-                      {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.tenantId === 'acama' ? 'bg-blue-100 text-blue-800' :
-                      user.tenantId === 'green-invest' ? 'bg-green-100 text-green-800' :
-                        'bg-slate-100 text-slate-600'
-                      }`}>
-                      {TENANT_OPTIONS.find(t => t.value === user.tenantId)?.label || user.tenantId || 'GREEN INVEST (défaut)'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2 flex-wrap">
-                      {user.permissions?.canAccessCRM && (
-                        <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">CRM</span>
-                      )}
-                      {user.permissions?.canAccessEditor && (
-                        <span className="px-2 py-1 rounded bg-orange-50 text-orange-700 text-xs border border-orange-200">Éditeur</span>
-                      )}
-                      {user.permissions?.canAccessConfigurator && (
-                        <span className="px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs border border-indigo-200">Config</span>
-                      )}
-                      {user.permissions?.canAccessOdoo && (
-                        <span className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs border border-purple-200">Odoo</span>
-                      )}
-                      {user.permissions?.canAccessCDP && (
-                        <span className="px-2 py-1 rounded bg-yellow-50 text-yellow-700 text-xs border border-yellow-200">CDP</span>
-                      )}
-                      {user.permissions?.canAccessBP && (
-                        <span className="px-2 py-1 rounded bg-green-50 text-green-700 text-xs border border-green-200">BP</span>
-                      )}
-                      {user.permissions?.canAccessMonday && (
-                        <span className="px-2 py-1 rounded bg-pink-50 text-pink-700 text-xs border border-pink-200">Monday</span>
-                      )}
-                      {user.permissions?.canAccessEnedis && (
-                        <span className="px-2 py-1 rounded bg-cyan-50 text-cyan-700 text-xs border border-cyan-200">ENEDIS</span>
-                      )}
-                      {user.permissions?.canAccessDeveloppement && (
-                        <span className="px-2 py-1 rounded bg-violet-50 text-violet-700 text-xs border border-violet-200">Dév.</span>
-                      )}
-                      {user.permissions?.canAccessTracking && (
-                        <span className="px-2 py-1 rounded bg-amber-50 text-amber-700 text-xs border border-amber-200">Suivi</span>
-                      )}
-                      {user.permissions?.canAccessSimulator && (
-                        <span className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">Simulateur</span>
-                      )}
-                      {user.permissions?.canAccessFinance && (
-                        <span className="px-2 py-1 rounded bg-teal-50 text-teal-700 text-xs border border-teal-200">Finance</span>
-                      )}
-                      {user.permissions?.canViewAllProjects && (
-                        <span className="px-2 py-1 rounded bg-slate-100 text-slate-700 text-xs border border-slate-200">Tout voir</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenModal(user)}>
-                        <Edit className="w-4 h-4 text-slate-500" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(user.id)}
-                        disabled={user.email === 'y.barberis@enr-courtage.fr'}
-                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+          {/* Vue Desktop : Tableau complet */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Utilisateur</TableHead>
+                  <TableHead>Rôle</TableHead>
+                  <TableHead>Entreprise</TableHead>
+                  <TableHead>Accès</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-slate-900">
+                          {user.firstName ? `${user.firstName} ${user.lastName || ''}` : user.displayName}
+                        </span>
+                        <span className="text-sm text-slate-500">{user.email}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin'
+                        ? 'bg-purple-100 text-purple-800'
+                        : 'bg-green-100 text-green-800'
+                        }`}>
+                        {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.tenantId === 'acama' ? 'bg-blue-100 text-blue-800' :
+                        user.tenantId === 'green-invest' ? 'bg-green-100 text-green-800' :
+                          'bg-slate-100 text-slate-600'
+                        }`}>
+                        {TENANT_OPTIONS.find(t => t.value === user.tenantId)?.label || user.tenantId || 'GREEN INVEST (défaut)'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2 flex-wrap">
+                        {user.permissions?.canAccessCRM && (
+                          <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">CRM</span>
+                        )}
+                        {user.permissions?.canAccessEditor && (
+                          <span className="px-2 py-1 rounded bg-orange-50 text-orange-700 text-xs border border-orange-200">Éditeur</span>
+                        )}
+                        {user.permissions?.canAccessConfigurator && (
+                          <span className="px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs border border-indigo-200">Config</span>
+                        )}
+                        {user.permissions?.canAccessOdoo && (
+                          <span className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs border border-purple-200">Odoo</span>
+                        )}
+                        {user.permissions?.canAccessCDP && (
+                          <span className="px-2 py-1 rounded bg-yellow-50 text-yellow-700 text-xs border border-yellow-200">CDP</span>
+                        )}
+                        {user.permissions?.canAccessBP && (
+                          <span className="px-2 py-1 rounded bg-green-50 text-green-700 text-xs border border-green-200">BP</span>
+                        )}
+                        {user.permissions?.canAccessMonday && (
+                          <span className="px-2 py-1 rounded bg-pink-50 text-pink-700 text-xs border border-pink-200">Monday</span>
+                        )}
+                        {user.permissions?.canAccessEnedis && (
+                          <span className="px-2 py-1 rounded bg-cyan-50 text-cyan-700 text-xs border border-cyan-200">ENEDIS</span>
+                        )}
+                        {user.permissions?.canAccessDeveloppement && (
+                          <span className="px-2 py-1 rounded bg-violet-50 text-violet-700 text-xs border border-violet-200">Dév.</span>
+                        )}
+                        {user.permissions?.canAccessTracking && (
+                          <span className="px-2 py-1 rounded bg-amber-50 text-amber-700 text-xs border border-amber-200">Suivi</span>
+                        )}
+                        {user.permissions?.canAccessSimulator && (
+                          <span className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">Simulateur</span>
+                        )}
+                        {user.permissions?.canAccessFinance && (
+                          <span className="px-2 py-1 rounded bg-teal-50 text-teal-700 text-xs border border-teal-200">Finance</span>
+                        )}
+                        {user.permissions?.canViewAllProjects && (
+                          <span className="px-2 py-1 rounded bg-slate-100 text-slate-700 text-xs border border-slate-200">Tout voir</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenModal(user)}>
+                          <Edit className="w-4 h-4 text-slate-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(user.id)}
+                          disabled={user.email === 'y.barberis@enr-courtage.fr'}
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Vue Mobile UNIQUEMENT : Liste verticale 100% responsive, sans scroll horizontal */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {users.map((user) => (
+              <div key={user.id} className="py-4 space-y-2.5">
+                {/* Nom, email et boutons d'action */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-slate-900 text-sm truncate">
+                      {user.firstName ? `${user.firstName} ${user.lastName || ''}` : user.displayName}
+                    </div>
+                    <div className="text-xs text-slate-500 truncate">{user.email}</div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600 hover:bg-slate-100" onClick={() => handleOpenModal(user)} title="Modifier">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(user.id)}
+                      disabled={user.email === 'y.barberis@enr-courtage.fr'}
+                      className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Badges Rôle et Entreprise */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin'
+                    ? 'bg-purple-100 text-purple-800'
+                    : 'bg-green-100 text-green-800'
+                    }`}>
+                    {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
+                  </span>
+
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user.tenantId === 'acama' ? 'bg-blue-100 text-blue-800' :
+                    user.tenantId === 'green-invest' ? 'bg-green-100 text-green-800' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
+                    {TENANT_OPTIONS.find(t => t.value === user.tenantId)?.label || user.tenantId || 'GREEN INVEST (défaut)'}
+                  </span>
+                </div>
+
+                {/* Badges d'Accès / Permissions */}
+                <div className="flex gap-1.5 flex-wrap pt-0.5">
+                  {user.permissions?.canAccessCRM && (
+                    <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] border border-blue-200">CRM</span>
+                  )}
+                  {user.permissions?.canAccessEditor && (
+                    <span className="px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 text-[11px] border border-orange-200">Éditeur</span>
+                  )}
+                  {user.permissions?.canAccessConfigurator && (
+                    <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px] border border-indigo-200">Config</span>
+                  )}
+                  {user.permissions?.canAccessOdoo && (
+                    <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 text-[11px] border border-purple-200">Odoo</span>
+                  )}
+                  {user.permissions?.canAccessCDP && (
+                    <span className="px-1.5 py-0.5 rounded bg-yellow-50 text-yellow-700 text-[11px] border border-yellow-200">CDP</span>
+                  )}
+                  {user.permissions?.canAccessBP && (
+                    <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-700 text-[11px] border border-green-200">BP</span>
+                  )}
+                  {user.permissions?.canAccessMonday && (
+                    <span className="px-1.5 py-0.5 rounded bg-pink-50 text-pink-700 text-[11px] border border-pink-200">Monday</span>
+                  )}
+                  {user.permissions?.canAccessEnedis && (
+                    <span className="px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700 text-[11px] border border-cyan-200">ENEDIS</span>
+                  )}
+                  {user.permissions?.canAccessDeveloppement && (
+                    <span className="px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 text-[11px] border border-violet-200">Dév.</span>
+                  )}
+                  {user.permissions?.canAccessTracking && (
+                    <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[11px] border border-amber-200">Suivi</span>
+                  )}
+                  {user.permissions?.canAccessSimulator && (
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11px] border border-emerald-200">Simulateur</span>
+                  )}
+                  {user.permissions?.canAccessFinance && (
+                    <span className="px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 text-[11px] border border-teal-200">Finance</span>
+                  )}
+                  {user.permissions?.canViewAllProjects && (
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] border border-slate-200">Tout voir</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

@@ -1262,15 +1262,23 @@ export default function Crm() {
                           (contactCreator?.toLowerCase().trim().includes('jack') ? '/assets/avatars/jack.jpg' : null);
 
                         return (
-                          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(contactCreator)} w-fit pr-1 lg:pr-5 text-left`}>
-                            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
-                              {avatarSrc ?
-                                <img src={avatarSrc} className="w-full h-full object-cover" alt={contactCreator} /> :
-                                <span className="flex items-center justify-center w-full h-full text-xs font-bold">{contactCreator?.[0]}</span>
-                              }
+                          <>
+                            {/* Vue Desktop : badge complet avec nom */}
+                            <div className={`hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(contactCreator)} w-fit pr-5 text-left`}>
+                              <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
+                                {avatarSrc ?
+                                  <img src={avatarSrc} className="w-full h-full object-cover" alt={contactCreator} /> :
+                                  <span className="flex items-center justify-center w-full h-full text-xs font-bold">{contactCreator?.[0]}</span>
+                                }
+                              </div>
+                              <span className="text-sm font-semibold truncate max-w-[120px]">{contactCreator || 'Utilisateur'}</span>
                             </div>
-                            <span className="text-sm font-semibold truncate max-w-[120px] hidden lg:inline">{contactCreator || 'Utilisateur'}</span>
-                          </div>
+
+                            {/* Vue Mobile UNIQUEMENT : avatar seul sans bulle de couleur */}
+                            <div className="flex lg:hidden items-center w-fit">
+                              <UserAvatar name={contactCreator} photoURL={photoURL || avatarSrc} size="w-8 h-8" showName={false} />
+                            </div>
+                          </>
                         );
                       })()}
                     </td>
@@ -1791,22 +1799,38 @@ export default function Crm() {
                         }
                         if (!commercial) return <span className="text-slate-400 text-sm italic">-</span>;
                         return (
-                          <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full ${getUserColor(commercial)} w-fit pr-1 lg:pr-3 text-left`}>
-                            <div className="w-6 h-6 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
-                              <UserAvatar name={commercial} photoURL={photoURL} size="w-full h-full" showName={false} />
+                          <>
+                            {/* Vue Desktop : badge complet avec nom */}
+                            <div className={`hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-full ${getUserColor(commercial)} w-fit pr-3 text-left`}>
+                              <div className="w-6 h-6 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
+                                <UserAvatar name={commercial} photoURL={photoURL} size="w-full h-full" showName={false} />
+                              </div>
+                              <span className="text-sm font-bold truncate max-w-[100px]">{commercial}</span>
                             </div>
-                            <span className="text-sm font-bold truncate max-w-[100px] hidden lg:inline">{commercial}</span>
-                          </div>
+
+                            {/* Vue Mobile UNIQUEMENT : avatar seul sans bulle de couleur (comme Chef de projet) */}
+                            <div className="flex lg:hidden items-center w-fit">
+                              <UserAvatar name={commercial} photoURL={photoURL} size="w-6 h-6" showName={false} />
+                            </div>
+                          </>
                         );
                       })()}
                     </td>
                     <td className="px-2 py-3 w-min whitespace-nowrap">
                       {(() => {
                         const projectUser = project.assignedUser;
+                        let photoURL = null;
+                        if (users.length > 0 && projectUser) {
+                          const userByName = users.find(u =>
+                            (u.firstName && u.firstName.toLowerCase() === projectUser.toLowerCase()) ||
+                            (u.displayName && u.displayName.toLowerCase() === projectUser.toLowerCase())
+                          );
+                          if (userByName?.photoURL) photoURL = userByName.photoURL;
+                        }
                         if (!projectUser) return <span className="text-slate-400 text-sm italic">-</span>;
                         return (
                           <div className="flex items-center gap-2 w-fit pr-0 lg:pr-2 text-left">
-                            <UserAvatar name={projectUser} size="w-6 h-6" showName={false} />
+                            <UserAvatar name={projectUser} photoURL={photoURL} size="w-6 h-6" showName={false} />
                             <span className="text-sm font-bold truncate max-w-[100px] hidden lg:inline">{projectUser}</span>
                           </div>
                         );
