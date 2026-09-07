@@ -4,6 +4,8 @@ import { computeValidSolarSlots } from './solarCalepinage';
 export const generateSatelliteSnapshot = async ({
   center,
   polygonPoints,
+  polygonStyle = 'roof',
+  ombriereBlocks = null,
   building,
   buildings,
   stationMarkers,
@@ -184,43 +186,103 @@ export const generateSatelliteSnapshot = async ({
       });
     }
 
-    // 3. Dessin du polygone vert fluo et des coins 1, 2, 3, 4 (Toiture standard)
+    // 3. Dessin du polygone (Toiture ou Emprise de Parking)
     if (polygonPoints && polygonPoints.length >= 3) {
       const canvasPts = polygonPoints.map(p => latLngToCanvasPoint(p.lat, p.lng));
+      const isParkingLot = polygonStyle === 'parking' || (ombriereBlocks && ombriereBlocks.length > 0);
 
-      // Remplissage vert
+      // Remplissage
       ctx.beginPath();
       ctx.moveTo(canvasPts[0].x, canvasPts[0].y);
       for (let i = 1; i < canvasPts.length; i++) {
         ctx.lineTo(canvasPts[i].x, canvasPts[i].y);
       }
       ctx.closePath();
-      ctx.fillStyle = 'rgba(0, 184, 117, 0.40)';
+      ctx.fillStyle = isParkingLot ? 'rgba(14, 165, 233, 0.18)' : 'rgba(0, 184, 117, 0.40)';
       ctx.fill();
 
-      // Contour vert fluo
-      ctx.strokeStyle = '#00e699';
-      ctx.lineWidth = 4;
-      ctx.shadowColor = 'rgba(0, 230, 153, 0.8)';
-      ctx.shadowBlur = 10;
+      // Contour
+      ctx.strokeStyle = isParkingLot ? '#38bdf8' : '#00e699';
+      ctx.lineWidth = isParkingLot ? 3 : 4;
+      if (isParkingLot) {
+        ctx.setLineDash([8, 4]);
+      } else {
+        ctx.shadowColor = 'rgba(0, 230, 153, 0.8)';
+        ctx.shadowBlur = 10;
+      }
       ctx.stroke();
+      ctx.setLineDash([]);
       ctx.shadowBlur = 0; // reset
 
-      // Dessin des 4 coins numérotés
-      canvasPts.forEach((pt, idx) => {
+      // Dessin des 4 coins numérotés (si toiture standard)
+      if (!isParkingLot) {
+        canvasPts.forEach((pt, idx) => {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 14, 0, 2 * Math.PI);
+          ctx.fillStyle = '#00b875';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 13px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${idx + 1}`, pt.x, pt.y + 1);
+        });
+      }
+    }
+
+    // 3. bis. Dessin des blocs d'Ombrières Photovoltaïques sur le parking
+    if (ombriereBlocks && ombriereBlocks.length > 0) {
+      ombriereBlocks.forEach((block, bIdx) => {
+        if (!block.polygonWgs84 || block.polygonWgs84.length < 3) return;
+        const bCanvasPts = block.polygonWgs84.map(p => latLngToCanvasPoint(p.lat, p.lng));
+
+        ctx.save();
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 14, 0, 2 * Math.PI);
-        ctx.fillStyle = '#00b875';
+        ctx.moveTo(bCanvasPts[0].x, bCanvasPts[0].y);
+        for (let i = 1; i < bCanvasPts.length; i++) {
+          ctx.lineTo(bCanvasPts[i].x, bCanvasPts[i].y);
+        }
+        ctx.closePath();
+
+        // Remplissage bleu solaire semi-transparent
+        ctx.fillStyle = 'rgba(30, 64, 175, 0.75)';
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
+
+        // Bordure dorée / ambre vive
+        ctx.strokeStyle = '#f59e0b';
         ctx.lineWidth = 2.5;
         ctx.stroke();
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 13px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`${idx + 1}`, pt.x, pt.y + 1);
+        // Ligne médiane ou détails de travées
+        if (bCanvasPts.length === 4) {
+          ctx.beginPath();
+          ctx.setLineDash([4, 3]);
+          ctx.strokeStyle = '#93c5fd';
+          ctx.lineWidth = 1.2;
+          const mid1X = (bCanvasPts[0].x + bCanvasPts[1].x) / 2;
+          const mid1Y = (bCanvasPts[0].y + bCanvasPts[1].y) / 2;
+          const mid2X = (bCanvasPts[3].x + bCanvasPts[2].x) / 2;
+          const mid2Y = (bCanvasPts[3].y + bCanvasPts[2].y) / 2;
+          ctx.moveTo(mid1X, mid1Y);
+          ctx.lineTo(mid2X, mid2Y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Label du bloc au centre
+        if (block.center) {
+          const cPt = latLngToCanvasPoint(block.center.lat, block.center.lng);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9.5px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`⚡ ${block.spotsCount || block.bayCount * 2} pl.`, cPt.x, cPt.y);
+        }
+        ctx.restore();
       });
     }
 

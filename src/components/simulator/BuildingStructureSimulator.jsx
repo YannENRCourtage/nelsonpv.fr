@@ -8,7 +8,8 @@ import {
   Download, Maximize, X, Building2, MapPin, Search,
   ChevronRight, ChevronLeft, Sun, Zap, TrendingUp,
   ShieldCheck, RotateCcw, Compass, CheckCircle2, ArrowRight,
-  Sliders, Loader2, Leaf, Award, RotateCw, Plus, Minus, Trash2, Copy
+  Sliders, Loader2, Leaf, Award, RotateCw, Plus, Minus, Trash2, Copy,
+  Sparkles
 } from 'lucide-react';
 import BuildingScene from '../configurator/BuildingScene.jsx';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Cell } from 'recharts';
@@ -18,6 +19,7 @@ import 'leaflet/dist/leaflet.css';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
 import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
+import AutomaticOmbriereProspectingModal from './AutomaticOmbriereProspectingModal';
 
 // ─── Contrôles de Zoom Flottants Leaflet ─────────────────────────────────────
 function CustomMapZoom() {
@@ -257,6 +259,9 @@ export default function BuildingStructureSimulator({
 
   // Vue principale : 'configurator' | 'feasibility'
   const [activeView, setActiveView] = useState('configurator');
+
+  // Modale Automate Ombrières Parking
+  const [isAutoOmbriereOpen, setIsAutoOmbriereOpen] = useState(false);
 
   // Tunnel Faisabilité Solaire (Image 4 & 5) : 1. Adresse | 2. Emplacement & Orientation | 3. Rentabilité & Faisabilité
   const [studyStep, setStudyStep] = useState(1);
@@ -852,6 +857,17 @@ const crop3DCanvas = (sourceCanvas) => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+          {/* Bouton Automate ombrières parking */}
+          <button
+            type="button"
+            onClick={() => setIsAutoOmbriereOpen(true)}
+            className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer border border-amber-300/40"
+            title="Lancer l'automate de prospection d'ombrières de parking (OSM, calepinage & offres PDF)"
+          >
+            <Sparkles className="w-4 h-4 fill-slate-950" />
+            <span>Automate ombrières parking</span>
+          </button>
+
           <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/20">
             <span className="text-xs text-amber-300 font-bold">Client :</span>
             <input
@@ -1684,6 +1700,14 @@ const crop3DCanvas = (sourceCanvas) => {
           </AnimatePresence>
         </div>
       )}
+
+      {/* Modale d'automate de prospection d'ombrières de parking */}
+      <AutomaticOmbriereProspectingModal
+        isOpen={isAutoOmbriereOpen}
+        onClose={() => setIsAutoOmbriereOpen(false)}
+        defaultCommune={cityName || 'Bordeaux'}
+        simulatorMapCenter={mapCenter}
+      />
 
     </div>
   );
