@@ -311,7 +311,7 @@ export default function SolarFinancingComparisonSection({
                 <Zap className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="text-base font-black text-slate-900">Abonnement Solaire</h4>
+                <h4 className="text-base font-black text-slate-900">Abonnement</h4>
                 <span className="text-xs font-semibold text-purple-700 block">Leasing / LOA Professionnelle</span>
               </div>
             </div>

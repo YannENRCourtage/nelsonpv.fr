@@ -196,8 +196,21 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   const sim = simulation;
   const isAuto = sim.type === 'autoconsommation' || sim.projectType === 'solar';
   const isToiture = sim.type === 'toiture_pv';
-  const isOmbriere = sim.type === 'ombriere_parking' || sim.projectType === 'ombriere_parking' || sim.type === 'ombriere';
-  const isStruct = sim.type === 'structure_metallique' && !isOmbriere;
+  const isOmbriere = Boolean(
+    sim.type === 'ombriere_parking' ||
+    sim.projectType === 'ombriere_parking' ||
+    sim.type === 'ombriere' ||
+    sim.type === 'ombrieres' ||
+    sim.isOmbriere ||
+    (typeof sim.buildingType === 'string' && sim.buildingType.startsWith('ombriere')) ||
+    (Array.isArray(sim.buildings) && sim.buildings.some(b => typeof b?.buildingType === 'string' && b.buildingType.startsWith('ombriere'))) ||
+    (typeof sim.modelId === 'string' && sim.modelId.startsWith('ombriere')) ||
+    (typeof sim.title === 'string' && (sim.title.toLowerCase().includes('ombrière') || sim.title.toLowerCase().includes('ombriere'))) ||
+    (typeof sim.clientName === 'string' && (sim.clientName.toLowerCase().includes('ombrière') || sim.clientName.toLowerCase().includes('ombriere'))) ||
+    [15.8, 20.2, 24.6, 6.9, 9.1, 11.3].includes(Math.round(Number(sim.width || 0) * 10) / 10) ||
+    (Array.isArray(sim.buildings) && sim.buildings.some(b => [15.8, 20.2, 24.6, 6.9, 9.1, 11.3].includes(Math.round(Number(b?.width || 0) * 10) / 10)))
+  );
+  const isStruct = (sim.type === 'structure_metallique' || sim.type === 'structure') && !isOmbriere;
   const isSechoir = sim.type === 'sechoir_batitech' || sim.type === 'sechoir';
   const isIrve = sim.type === 'irve' || sim.projectType === 'irve';
 
@@ -308,7 +321,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   });
 
   // Cadre réglementaire Loi APER pour ombrières de parking
-  const parkingArea = Number(sim.parkingArea || sim.roofSurface || 0);
+  const baseOmbriereArea = Number(sim.parkingArea || sim.coveredArea || sim.roofSurface || sim.floorArea || (sim.length && sim.width ? sim.length * sim.width : 0) || 0);
+  const parkingArea = Number(sim.parkingArea) || (isOmbriere ? Math.max(1500, Math.round(baseOmbriereArea * 2)) : baseOmbriereArea);
   const aperNotice = getLoiAperNotice(parkingArea);
 
   // Financement valorisé : Crédit Bancaire & Abonnement Solaire
@@ -896,8 +910,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             <!-- Cadre 1 : Crédit Bancaire -->
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 4px 7px; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 8.8pt; font-weight: 900; color: #1e40af; text-transform: uppercase;">1. Crédit Bancaire</span>
-                <span style="background: #2563eb; color: #ffffff; font-size: 6.8pt; font-weight: 900; padding: 1.5px 4px; border-radius: 3px;">PROPRIÉTAIRE J1</span>
+                <span style="font-size: 8.8pt; font-weight: 900; color: #1e40af; text-transform: uppercase; white-space: nowrap;">1. Crédit Bancaire</span>
+                <span style="background: #2563eb; color: #ffffff; font-size: 6.2pt; font-weight: 900; padding: 2px 7px; border-radius: 4px; white-space: nowrap; letter-spacing: 0.2px;">PROPRIÉTAIRE J1</span>
               </div>
               <div style="font-size: 7.2pt; color: #475569; margin-bottom: 2px;">Prêt pro 20 ans amortissable (4.48%) &bull; Actif inscrit au bilan</div>
               <table style="width: 100%; font-size: 7.8pt; border-collapse: collapse;">
@@ -908,11 +922,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </table>
             </div>
 
-            <!-- Cadre 2 : Abonnement Solaire (Leasing SunLib) -->
+            <!-- Cadre 2 : Abonnement (Leasing SunLib) -->
             <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 4px 7px; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 8.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase;">2. Abonnement Solaire</span>
-                <span style="background: #9333ea; color: #ffffff; font-size: 6.8pt; font-weight: 900; padding: 1.5px 4px; border-radius: 3px;">100% HORS-BILAN • 0 € DETTE</span>
+                <span style="font-size: 8.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase; white-space: nowrap;">2. Abonnement</span>
+                <span style="background: #9333ea; color: #ffffff; font-size: 6.2pt; font-weight: 900; padding: 2px 8px; border-radius: 4px; white-space: nowrap; letter-spacing: 0.2px; text-align: center; display: inline-block;">100% HORS-BILAN &bull; 0 € DETTE</span>
               </div>
               <div style="display: flex; justify-content: space-between; font-size: 7.2pt; color: #475569; margin-bottom: 2px;">
                 <span>Leasing LOA 20 ans &bull; Loyers déductibles IS</span>
@@ -988,11 +1002,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </table>
             </div>
 
-            <!-- Cadre 3 : Abonnement Solaire (Leasing) -->
+            <!-- Cadre 3 : Abonnement (Leasing) -->
             <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 4px 6px; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 6.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase;">3. Abonnement Solaire</span>
-                <span style="background: #9333ea; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">100% HORS-BILAN</span>
+                <span style="font-size: 6.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase; white-space: nowrap;">3. Abonnement</span>
+                <span style="background: #9333ea; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 4px; border-radius: 3px; white-space: nowrap;">100% HORS-BILAN</span>
               </div>
               <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Leasing 20 ans &bull; Rachat 1 € &bull; 0 € dette</div>
               <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">

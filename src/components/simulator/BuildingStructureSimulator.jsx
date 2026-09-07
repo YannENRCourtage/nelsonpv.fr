@@ -823,9 +823,22 @@ const crop3DCanvas = (sourceCanvas) => {
   useEffect(() => {
     if (onStateUpdate) {
       const activeRot = simBuildings[activeBuildingIdx]?.rotation || 0;
+      const isOmbriereBuilding = Boolean(
+        (config.buildingType || '').startsWith('ombriere') ||
+        (simBuildings && simBuildings.some(b => (b.buildingType || '').startsWith('ombriere'))) ||
+        [15.8, 20.2, 24.6, 6.9, 9.1, 11.3].includes(Math.round(buildingWidth * 10) / 10)
+      );
+
       onStateUpdate({
         type: 'structure_metallique',
-        title: `Hangar Solaire ${simBuildings.length > 1 ? `${simBuildings.length} Bâtiments (${totalFloorArea} m²)` : `${buildingLength.toFixed(1)}m × ${buildingWidth.toFixed(1)}m (${totalFloorArea} m²)`} (${installedKwc} kWc) — ${clientNameInput || cityName || 'Projet'}`,
+        isOmbriere: isOmbriereBuilding,
+        buildingType: config.buildingType || (isOmbriereBuilding ? 'ombriere_pl' : 'symetrique'),
+        parkingArea: isOmbriereBuilding ? Math.max(1500, Math.round(totalFloorArea * 2)) : totalFloorArea,
+        coveredArea: totalFloorArea,
+        spotsCount: isOmbriereBuilding ? Math.round(totalFloorArea / 25) : null,
+        title: isOmbriereBuilding
+          ? `Ombrière de Parking ${simBuildings.length > 1 ? `${simBuildings.length} Ombrières (${totalFloorArea} m²)` : `${buildingLength.toFixed(1)}m × ${buildingWidth.toFixed(1)}m (${totalFloorArea} m²)`} (${installedKwc} kWc) — ${clientNameInput || cityName || 'Projet'}`
+          : `Hangar Solaire ${simBuildings.length > 1 ? `${simBuildings.length} Bâtiments (${totalFloorArea} m²)` : `${buildingLength.toFixed(1)}m × ${buildingWidth.toFixed(1)}m (${totalFloorArea} m²)`} (${installedKwc} kWc) — ${clientNameInput || cityName || 'Projet'}`,
         clientName: clientNameInput || cityName,
         address: addressInput,
         cityName,
@@ -849,7 +862,7 @@ const crop3DCanvas = (sourceCanvas) => {
         cumul20: financialProjection30Years.cumul20,
         cumul30: financialProjection30Years.cumul30,
         mapCenter,
-        building3dScreenshot: building3dSnapshot || (config.buildingType?.startsWith('ombriere') ? '/ombriere_vl_double.jpg' : null),
+        building3dScreenshot: building3dSnapshot || (isOmbriereBuilding ? '/ombriere_vl_double.jpg' : null),
         mapScreenshot: mapScreenshotDataUrl,
         mapScreenshotDataUrl: mapScreenshotDataUrl,
         visualChoice: leftVisualChoice === '3d' ? '3d_and_after' : 'before_after',
@@ -865,7 +878,8 @@ const crop3DCanvas = (sourceCanvas) => {
     annualProductionKwh, totalBuildingCost, totalProjectInvestment,
     ratioCostPerWc, ratioCostPerM2, annualNetRevenue, annualGrossRevenue, selectedFinancing,
     financialProjection30Years, clientNameInput, addressInput, cityName,
-    departmentCode, mapCenter, building3dSnapshot, mapScreenshotDataUrl, leftVisualChoice, simBuildings, activeBuildingIdx, onStateUpdate
+    departmentCode, mapCenter, building3dSnapshot, mapScreenshotDataUrl, leftVisualChoice, simBuildings, activeBuildingIdx, onStateUpdate,
+    config.buildingType
   ]);
 
   return (
