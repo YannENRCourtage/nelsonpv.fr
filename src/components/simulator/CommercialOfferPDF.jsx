@@ -22,8 +22,8 @@ export function getLoiAperNotice(parkingArea) {
       titleColor: '#166534',
       textColor: '#15803d',
       icon: '🛡️',
-      title: 'Cadre Réglementaire APER',
-      text: "Projet d'ombrières volontaire : valorisation et confort sans contrainte réglementaire APER obligatoire."
+      title: 'Cadre Réglementaire Loi APER',
+      text: "Projet d'ombrières volontaire : le parking étudié est sous le seuil d'assujettissement de 1 500 m² (aucune contrainte ni sanction réglementaire APER obligatoire). Valorisation foncière et confort usagers immédiats."
     };
   } else if (area < 10000) {
     return {
@@ -37,12 +37,12 @@ export function getLoiAperNotice(parkingArea) {
       textColor: '#92400e',
       icon: '⚖️',
       title: 'Conformité Loi APER (Art. 40)',
-      text: "Conformité Loi APER (Art. 40) : obligation d'équiper au moins 50 % de la superficie du parking en ombrières d'ici le 1er juillet 2028. Risque en cas de non-conformité : sanction financière pouvant atteindre jusqu'à 20 000 € par an jusqu'à régularisation."
+      text: "Obligation légale pour ce parking (1 500 à 10 000 m²) : équiper au minimum 50 % de la superficie en ombrières photovoltaïques d'ici le 1er juillet 2028. Sanctions encourues en cas de non-respect : pénalité administrative et financière annuelle pouvant atteindre jusqu'à 20 000 € par an jusqu'à régularisation effective."
     };
   } else {
     return {
       status: 'urgence_2026',
-      badge: 'URGENCE LÉGALE APER (≥10 000 m²)',
+      badge: 'URGENCE LÉGALE APER (≥ 10 000 m²)',
       badgeBg: '#dc2626',
       badgeColor: '#ffffff',
       border: '#fecaca',
@@ -50,8 +50,8 @@ export function getLoiAperNotice(parkingArea) {
       titleColor: '#991b1b',
       textColor: '#991b1b',
       icon: '⚠️',
-      title: 'Conformité Loi APER (Art. 40)',
-      text: "Conformité Loi APER (Art. 40) : obligation d'équiper au moins 50 % de la superficie du parking en ombrières (échéance au 1er juillet 2026 / 2028 selon gestion). Risque en cas de non-conformité : sanction financière pouvant atteindre jusqu'à 40 000 € par an jusqu'à régularisation."
+      title: 'Obligation d\'Urgence Loi APER (Art. 40)',
+      text: "Obligation légale prioritaire pour ce parking (≥ 10 000 m²) : obligation d'équiper au minimum 50 % de la superficie en ombrières d'ici le 1er juillet 2026 (ou 2028 selon type de gestion). Sanctions encourues en cas de non-respect : pénalité administrative et financière annuelle pouvant atteindre jusqu'à 40 000 € par an jusqu'à régularisation effective."
     };
   }
 }
@@ -852,21 +852,6 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         `}
 
-        <!-- BANDEAU D'ALERTE RÉGLEMENTAIRE LOI APER (OMBRIÈRES DE PARKING) -->
-        ${isOmbriere ? `
-          <div style="background: ${aperNotice.bg}; border: 1.2px solid ${aperNotice.border}; border-radius: 7px; padding: 3.5px 8px; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; gap: 8px; box-sizing: border-box;">
-            <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
-              <span style="font-size: 8pt; line-height: 1;">${aperNotice.icon}</span>
-              <span style="font-size: 6.2pt; color: ${aperNotice.textColor}; line-height: 1.25;">
-                <strong style="color: ${aperNotice.titleColor};">${aperNotice.title} :</strong> ${aperNotice.text}
-              </span>
-            </div>
-            <span style="background: ${aperNotice.badgeBg}; color: ${aperNotice.badgeColor}; font-size: 5.2pt; font-weight: 900; padding: 2px 5px; border-radius: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px;">
-              ${aperNotice.badge}
-            </span>
-          </div>
-        ` : ''}
-
         <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT -->
         <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${(isOmbriere || isStruct) ? '5px 10px' : isToiture ? '7px 10px' : '9px 12px'}; margin-bottom: ${(isOmbriere || isStruct) ? '5px' : isToiture ? '8px' : '11px'};">
           <div style="font-size: ${(isOmbriere || isStruct) ? '7.5pt' : isToiture ? '8pt' : '7.5pt'}; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
@@ -897,12 +882,12 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
         <!-- 6. SECTION SOLUTIONS DE FINANCEMENT (2 SCÉNARIOS POUR OMBRIÈRES & STRUCTURE, OU 3 POUR TOITURE) -->
         ${(isOmbriere || isStruct) ? `
-        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 5px 9px; margin-bottom: 5px; box-sizing: border-box;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">
-            <span style="font-size: 7.2pt; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px;">
+        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 5px 9px; margin-bottom: 4px; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">
+            <span style="font-size: 7.8pt; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px;">
               ${isOmbriere ? '💡 Solutions de Financement Ombrière Comparées' : '💡 Solutions de Financement Bâtiment Solaire Comparées'}
             </span>
-            <span style="font-size: 6pt; color: #64748b; font-weight: bold;">
+            <span style="font-size: 6.4pt; color: #64748b; font-weight: bold;">
               Investissement : ${Number(capexHT || 0).toLocaleString('fr-FR')} € HT &bull; CA EDF OA : ~${Number(annualRev || 0).toLocaleString('fr-FR')} €/an
             </span>
           </div>
@@ -910,38 +895,57 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 7px;">
             <!-- Cadre 1 : Crédit Bancaire -->
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 4px 7px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5px;">
-                <span style="font-size: 6.8pt; font-weight: 900; color: #1e40af; text-transform: uppercase;">1. Crédit Bancaire</span>
-                <span style="background: #2563eb; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">PROPRIÉTAIRE J1</span>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                <span style="font-size: 8.8pt; font-weight: 900; color: #1e40af; text-transform: uppercase;">1. Crédit Bancaire</span>
+                <span style="background: #2563eb; color: #ffffff; font-size: 6.8pt; font-weight: 900; padding: 1.5px 4px; border-radius: 3px;">PROPRIÉTAIRE J1</span>
               </div>
-              <div style="font-size: 5.2pt; color: #475569; margin-bottom: 1.5px;">Prêt pro 20 ans amortissable (4.48%) &bull; Actif inscrit au bilan</div>
-              <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
+              <div style="font-size: 7.2pt; color: #475569; margin-bottom: 2px;">Prêt pro 20 ans amortissable (4.48%) &bull; Actif inscrit au bilan</div>
+              <table style="width: 100%; font-size: 7.8pt; border-collapse: collapse;">
                 <tr><td style="padding: 1px 0; color: #64748b;">Mensualité du prêt :</td><td style="padding: 1px 0; text-align: right; font-weight: bold; color: #1e40af;">~${Number(financing?.bankLoan?.monthlyPaymentExact || 0).toLocaleString('fr-FR')} €/m (${Number(financing?.bankLoan?.annualPaymentExact || 0).toLocaleString('fr-FR')} €/an)</td></tr>
                 <tr><td style="padding: 1px 0; color: #64748b;">Cash-flow net (An 1) :</td><td style="padding: 1px 0; text-align: right; font-weight: 900; color: ${bankAnnualNet >= 0 ? '#16a34a' : '#1e40af'};">${bankAnnualNet >= 0 ? '+' : ''}${bankAnnualNet.toLocaleString('fr-FR')} €/an net</td></tr>
                 <tr><td style="padding: 1px 0; color: #64748b;">Gain net cumulé (20 ans) :</td><td style="padding: 1px 0; text-align: right; font-weight: bold; color: #1e40af;">+${Math.max(0, bankCumul20).toLocaleString('fr-FR')} €</td></tr>
-                <tr style="border-top: 1px solid #bfdbfe;"><td style="font-weight: bold; color: #1e40af; padding-top: 1.5px;">Bénéfice net global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 6.8pt; padding-top: 1.5px;">+${Math.max(0, bankCumul30).toLocaleString('fr-FR')} €</td></tr>
+                <tr style="border-top: 1px solid #bfdbfe;"><td style="font-weight: bold; color: #1e40af; padding-top: 1.5px;">Bénéfice net global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 8.8pt; padding-top: 1.5px;">+${Math.max(0, bankCumul30).toLocaleString('fr-FR')} €</td></tr>
               </table>
             </div>
 
             <!-- Cadre 2 : Abonnement Solaire (Leasing SunLib) -->
             <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 4px 7px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5px;">
-                <span style="font-size: 6.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase;">2. Abonnement Solaire</span>
-                <span style="background: #9333ea; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">100% HORS-BILAN • 0 € DETTE</span>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                <span style="font-size: 8.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase;">2. Abonnement Solaire</span>
+                <span style="background: #9333ea; color: #ffffff; font-size: 6.8pt; font-weight: 900; padding: 1.5px 4px; border-radius: 3px;">100% HORS-BILAN • 0 € DETTE</span>
               </div>
-              <div style="display: flex; justify-content: space-between; font-size: 5.2pt; color: #475569; margin-bottom: 1.5px;">
+              <div style="display: flex; justify-content: space-between; font-size: 7.2pt; color: #475569; margin-bottom: 2px;">
                 <span>Leasing LOA 20 ans &bull; Loyers déductibles IS</span>
                 <span style="color: #16a34a; font-weight: bold;">Rachat : 1 € au terme</span>
               </div>
-              <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
-                <tr><td style="padding: 1px 0; color: #64748b;">Loyer mensuel HT :</td><td style="padding: 1px 0; text-align: right; font-weight: bold; color: #6b21a8;">${leasingMonthly.toLocaleString('fr-FR')} €/m <span style="font-size: 5pt; color: #16a34a;">(couvert à ~${leasingCoverage}%)</span></td></tr>
-                <tr><td style="padding: 1px 0; color: #64748b;">Effort net d'épargne (post-IS) :</td><td style="padding: 1px 0; text-align: right; font-weight: 900; color: #6b21a8;">${leasingNetPostIS >= 0 ? `Autofinancé (+${leasingNetPostIS.toLocaleString('fr-FR')} €/an)` : `~${leasingEffortMonthly.toLocaleString('fr-FR')} €/m seulement`}</td></tr>
-                <tr><td style="padding: 1px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1px 0; text-align: right; font-weight: bold; color: #16a34a;">+${Number(selectedLeasing.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an déductibles</td></tr>
-                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 1.5px;">Bénéfice net global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #16a34a; font-size: 6.8pt; padding-top: 1.5px;">+${Math.max(0, leasingGains30).toLocaleString('fr-FR')} €</td></tr>
+              <table style="width: 100%; font-size: 7.8pt; border-collapse: collapse;">
+                <tr><td style="padding: 1.5px 0; color: #64748b;">Loyer mensuel HT :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #6b21a8;">${leasingMonthly.toLocaleString('fr-FR')} €/m</td></tr>
+                <tr><td style="padding: 1.5px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #16a34a;">+${Number(selectedLeasing.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an déductibles</td></tr>
+                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 1.5px;">Bénéfice net global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #16a34a; font-size: 8.8pt; padding-top: 1.5px;">+${Math.max(0, leasingGains30).toLocaleString('fr-FR')} €</td></tr>
               </table>
             </div>
           </div>
         </div>
+
+        ${isOmbriere ? `
+        <!-- CADRE OBLIGATION & SANCTIONS LOI APER (OMBRIÈRES DE PARKING UNIQUEMENT) -->
+        <div style="background: ${aperNotice.bg}; border: 1.3px solid ${aperNotice.border}; border-radius: 8px; padding: 4.5px 9px; margin-top: 4px; margin-bottom: 3px; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+              <span style="font-size: 9pt; line-height: 1;">${aperNotice.icon}</span>
+              <span style="font-size: 7.2pt; font-weight: 900; color: ${aperNotice.titleColor}; text-transform: uppercase; letter-spacing: 0.3px;">
+                ${aperNotice.title} &bull; Emprise Parking Étudié : ${parkingArea.toLocaleString('fr-FR')} m²
+              </span>
+            </div>
+            <span style="background: ${aperNotice.badgeBg}; color: ${aperNotice.badgeColor}; font-size: 5.5pt; font-weight: 900; padding: 2px 6px; border-radius: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px;">
+              ${aperNotice.badge}
+            </span>
+          </div>
+          <div style="font-size: 6.4pt; color: ${aperNotice.textColor}; line-height: 1.3;">
+            ${aperNotice.text}
+          </div>
+        </div>
+        ` : ''}
         ` : isToiture ? `
         <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 6px 9px; margin-bottom: 6px; box-sizing: border-box;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">

@@ -76,16 +76,40 @@ export const generateSatelliteSnapshot = async ({
 
     if (fitBounds) {
       const allGeoPoints = [];
-      if (polygonPoints && Array.isArray(polygonPoints)) {
-        polygonPoints.forEach(p => {
-          if (p && p.lat !== undefined && p.lng !== undefined) allGeoPoints.push(p);
-        });
-      }
-      if (ombriereBlocks && Array.isArray(ombriereBlocks)) {
+
+      // Si des ombrières sont implantées, cadrage prioritaire sur les ombrières + marge de contexte parking
+      if (ombriereBlocks && Array.isArray(ombriereBlocks) && ombriereBlocks.length > 0) {
+        const ombPoints = [];
         ombriereBlocks.forEach(b => {
           if (b && b.polygonWgs84 && Array.isArray(b.polygonWgs84)) {
-            b.polygonWgs84.forEach(p => allGeoPoints.push(p));
+            b.polygonWgs84.forEach(p => {
+              if (p && !isNaN(p.lat) && !isNaN(p.lng)) ombPoints.push(p);
+            });
           }
+        });
+        if (ombPoints.length > 0) {
+          let minLatO = Infinity, maxLatO = -Infinity, minLngO = Infinity, maxLngO = -Infinity;
+          ombPoints.forEach(p => {
+            minLatO = Math.min(minLatO, p.lat);
+            maxLatO = Math.max(maxLatO, p.lat);
+            minLngO = Math.min(minLngO, p.lng);
+            maxLngO = Math.max(maxLngO, p.lng);
+          });
+          const cLat = (minLatO + maxLatO) / 2;
+          const spanLatM = (maxLatO - minLatO) * 111320;
+          const spanLngM = (maxLngO - minLngO) * 111320 * Math.cos((cLat * Math.PI) / 180);
+          const maxSpan = Math.max(spanLatM, spanLngM);
+          const contextMarginMeters = Math.max(16, Math.min(30, maxSpan * 0.25));
+          const dLat = contextMarginMeters / 111320;
+          const dLng = contextMarginMeters / (111320 * Math.cos((cLat * Math.PI) / 180));
+          allGeoPoints.push(
+            { lat: minLatO - dLat, lng: minLngO - dLng },
+            { lat: maxLatO + dLat, lng: maxLngO + dLng }
+          );
+        }
+      } else if (polygonPoints && Array.isArray(polygonPoints)) {
+        polygonPoints.forEach(p => {
+          if (p && p.lat !== undefined && p.lng !== undefined) allGeoPoints.push(p);
         });
       }
       if (stationMarkers && Array.isArray(stationMarkers)) {
@@ -98,9 +122,9 @@ export const generateSatelliteSnapshot = async ({
         points: allGeoPoints,
         width,
         height,
-        paddingFactor: (polygonStyle === 'parking' || (ombriereBlocks && ombriereBlocks.length > 0)) ? 0.16 : 0.12,
+        paddingFactor: (polygonStyle === 'parking' || (ombriereBlocks && ombriereBlocks.length > 0)) ? 0.08 : 0.12,
         minZoom: 14,
-        maxZoom: 19
+        maxZoom: 20
       });
 
       if (fitRes) {
@@ -109,7 +133,7 @@ export const generateSatelliteSnapshot = async ({
       }
     }
 
-    const safeZoom = Math.min(19, Math.max(14, actualZoom || 18));
+    const safeZoom = Math.min(20, Math.max(14, actualZoom || 19));
     const lat = actualCenter ? actualCenter[0] : (center ? center[0] : 43.6047);
     const lng = actualCenter ? actualCenter[1] : (center ? center[1] : 1.4442);
 
@@ -520,18 +544,41 @@ export const generateBeforeAfterDualSnapshot = async ({
 
     // Rassemblement de tous les points géométriques pour le calcul d'emprise (fitBounds)
     const allGeoPoints = [];
-    if (polygonPoints && Array.isArray(polygonPoints)) {
-      polygonPoints.forEach(p => {
-        if (p && !isNaN(p.lat) && !isNaN(p.lng)) allGeoPoints.push(p);
-      });
-    }
-    if (ombriereBlocks && Array.isArray(ombriereBlocks)) {
+
+    // Priorité absolue : Si des ombrières sont implantées, on cadre spécifiquement sur elles avec une marge de parking autour
+    if (ombriereBlocks && Array.isArray(ombriereBlocks) && ombriereBlocks.length > 0) {
+      const ombPoints = [];
       ombriereBlocks.forEach(b => {
         if (b && b.polygonWgs84 && Array.isArray(b.polygonWgs84)) {
           b.polygonWgs84.forEach(p => {
-            if (p && !isNaN(p.lat) && !isNaN(p.lng)) allGeoPoints.push(p);
+            if (p && !isNaN(p.lat) && !isNaN(p.lng)) ombPoints.push(p);
           });
         }
+      });
+      if (ombPoints.length > 0) {
+        let minLatO = Infinity, maxLatO = -Infinity, minLngO = Infinity, maxLngO = -Infinity;
+        ombPoints.forEach(p => {
+          minLatO = Math.min(minLatO, p.lat);
+          maxLatO = Math.max(maxLatO, p.lat);
+          minLngO = Math.min(minLngO, p.lng);
+          maxLngO = Math.max(maxLngO, p.lng);
+        });
+        const cLat = (minLatO + maxLatO) / 2;
+        const spanLatM = (maxLatO - minLatO) * 111320;
+        const spanLngM = (maxLngO - minLngO) * 111320 * Math.cos((cLat * Math.PI) / 180);
+        const maxSpan = Math.max(spanLatM, spanLngM);
+        // Marge de contexte équilibrée pour voir le parking autour des ombrières tout en restant très bien zoomé
+        const contextMarginMeters = Math.max(16, Math.min(30, maxSpan * 0.25));
+        const dLat = contextMarginMeters / 111320;
+        const dLng = contextMarginMeters / (111320 * Math.cos((cLat * Math.PI) / 180));
+        allGeoPoints.push(
+          { lat: minLatO - dLat, lng: minLngO - dLng },
+          { lat: maxLatO + dLat, lng: maxLngO + dLng }
+        );
+      }
+    } else if (polygonPoints && Array.isArray(polygonPoints) && polygonPoints.length > 0) {
+      polygonPoints.forEach(p => {
+        if (p && !isNaN(p.lat) && !isNaN(p.lng)) allGeoPoints.push(p);
       });
     }
 
@@ -558,9 +605,9 @@ export const generateBeforeAfterDualSnapshot = async ({
         points: allGeoPoints,
         width: halfW,
         height,
-        paddingFactor: isParking ? 0.18 : 0.14,
-        minZoom: 14,
-        maxZoom: 19
+        paddingFactor: isParking ? 0.08 : 0.12,
+        minZoom: 15,
+        maxZoom: 20
       });
       if (fitRes) {
         lat = fitRes.center[0];
