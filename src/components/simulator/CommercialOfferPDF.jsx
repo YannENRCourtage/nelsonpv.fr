@@ -164,19 +164,30 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   const clientName = customClientName || sim.clientName || selectedProject?.name || selectedProject?.lastName || sim.cityName || 'Client NELSON';
   const clientAddress = sim.address || selectedProject?.address || (sim.cityName ? `${sim.cityName} (${sim.departmentCode || 'France'})` : 'Adresse du site');
 
-  // Vue satellite ou Visuel Avant / Après (Côte à côte pour Toiture et Autoconso)
-  let finalMapScreenshot = sim.mapScreenshotDataUrl || null;
-  if (!finalMapScreenshot && (isAuto || isToiture)) {
+  // Détection du choix utilisateur pour le visuel de gauche (Vue 3D ou Vue Avant par défaut)
+  const wants3D = sim.visualChoice === '3d_and_after' || sim.leftVisualChoice === '3d' || sim.pdfVisualChoice === '3d_and_after';
+
+  // Vue satellite ou Visuel Avant / Après (Côte à côte pour Toiture, Ombrière et Structure)
+  let finalMapScreenshot = sim.mapScreenshotDataUrl || sim.beforeAfterSnapshot || null;
+  let singleMapScreenshot = sim.singleMapScreenshot || sim.mapScreenshot || null;
+
+  // Si l'utilisateur a choisi la vue Avant / Après (par défaut), on génère la vue duale Avant/Après
+  if (!wants3D && !finalMapScreenshot && (isAuto || isToiture || isOmbriere || isStruct)) {
     try {
       finalMapScreenshot = await generateBeforeAfterDualSnapshot({
         center: sim.mapCenter || [43.6047, 1.4442],
         polygonPoints: sim.polygonPoints || [],
-        customKwc: sim.kwc || sim.installedKwc || sim.power || 6,
-        roofSurface: sim.roofSurface || 83,
+        polygonStyle: isOmbriere ? 'parking' : 'roof',
+        ombriereBlocks: sim.placedOmbrieres || sim.ombriereBlocks || null,
+        buildings: (sim.buildings && sim.buildings.length > 0) ? sim.buildings : (sim.length ? [{ length: sim.length, width: sim.width, rotation: sim.rotation }] : null),
+        customKwc: sim.kwc || sim.installedKwc || sim.power || 100,
+        roofSurface: sim.roofSurface || sim.floorArea || sim.parkingArea || 83,
+        parkingArea: sim.parkingArea || sim.floorArea || null,
+        spotsCount: sim.spotsCount || null,
         ridgeIndex: sim.ridgeIndex || 0,
         isLandscape: sim.isLandscape ?? false,
         width: 950,
-        height: isToiture ? 520 : 480,
+        height: (isOmbriere || isStruct) ? 480 : isToiture ? 520 : 480,
         zoom: 19
       });
     } catch (e) {
@@ -184,7 +195,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     }
   }
 
-  if (!finalMapScreenshot) {
+  // Si la vue 3D + Satellite simple est nécessaire
+  if (!singleMapScreenshot) {
     try {
       const bLen = isSechoir
         ? Number(sim.length || (sim.modelId === 'BT-8.3.15' ? 48 : sim.modelId === 'BT-6.2.15' ? 36 : 18))
@@ -192,9 +204,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       const bWid = Number(sim.width || 20);
       const bRot = Number(sim.rotation !== undefined ? sim.rotation : 0);
 
-      finalMapScreenshot = sim.mapScreenshot || await generateSatelliteSnapshot({
+      singleMapScreenshot = sim.mapScreenshot || await generateSatelliteSnapshot({
         center: sim.mapCenter || [43.6047, 1.4442],
         polygonPoints: sim.polygonPoints || [],
+        polygonStyle: isOmbriere ? 'parking' : 'roof',
+        ombriereBlocks: sim.placedOmbrieres || sim.ombriereBlocks || null,
         buildings: (sim.buildings && sim.buildings.length > 0)
           ? sim.buildings.map(b => ({
               ...b,
@@ -202,16 +216,22 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               width: Number(b.width || bWid),
               rotation: Number(b.rotation !== undefined ? b.rotation : bRot)
             }))
-          : [{ length: bLen, width: bWid, rotation: bRot, name: `Séchoir ${sim.modelName || 'BatiTech'}` }],
+          : [{ length: bLen, width: bWid, rotation: bRot, name: `Bâtiment 1` }],
         building: { length: bLen, width: bWid, rotation: bRot },
-        width: 800,
-        height: 650,
+        width: 850,
+        height: 480,
         zoom: 19
       });
     } catch (e) {
-      console.warn('Génération satellite de secours:', e);
+      console.warn('Génération satellite simple de secours:', e);
     }
   }
+
+  if (!finalMapScreenshot) {
+    finalMapScreenshot = singleMapScreenshot;
+  }
+
+  const img3D = sim.building3dScreenshot || sim.screenshot3d || (isOmbriere ? '/ombriere_vl_double.jpg' : null);
 
   // Graphique financier 30 ans (compacté pour ombrière et structure pour tenir sur 1 page A4)
   const financialChartImg = generateFinancialChartImage({
@@ -666,57 +686,60 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               <div style="position: absolute; bottom: 6px; right: 6px; background: transparent; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.9); padding: 2px 4px; font-size: 6.8pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">Orientation : ${sim.orientationLabel || 'Sud'}</div>
             </div>
           </div>
-        ` : isStruct ? `
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; ${sim.buildings && sim.buildings.length > 1 ? 'height: 270px;' : 'height: 260px;'}">
-            <!-- 4a. VISUEL(S) 3D DU/DES BÂTIMENT(S) -->
-            ${sim.buildings && sim.buildings.length > 1 ? `
-              <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 6px; height: 100%;">
-                ${sim.buildings.slice(0, 2).map((b, bIdx) => {
-                  const bImg = b.screenshot3d || (bIdx === 0 ? sim.building3dScreenshot : null);
-                  return `
-                  <div style="border: 2px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%;">
-                    <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 6px; border-bottom-right-radius: 4px; font-size: 6.5pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">Vue 3D — ${b.name || `Bâtiment ${bIdx + 1}`} (${Number(b.length || 30).toFixed(1)}m × ${Number(b.width || 20).toFixed(1)}m)</div>
-                    ${bImg ? `
-                      <img src="${bImg}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue 3D ${b.name || `Bâtiment ${bIdx + 1}`}" />
-                    ` : `
-                      <div style="color: #64748b; font-size: 7.5pt; text-align: center; margin: auto; padding: 6px;">
-                        <strong style="color: #0f172a; display: block;">${b.name || `Bâtiment ${bIdx + 1}`}</strong>
-                        ${Number(b.length || 30).toFixed(1)}m × ${Number(b.width || 20).toFixed(1)}m (${Math.round((b.length || 30) * (b.width || 20))} m²)
-                      </div>
-                    `}
-                  </div>
-                  `;
-                }).join('')}
-              </div>
-            ` : `
+        ` : (isStruct || isOmbriere) ? (
+          wants3D ? `
+            <!-- 4. GRILLE 2 COLONNES : VUE 3D (GAUCHE) + IMPLANTATION SATELLITE APRÈS (DROITE) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; height: 285px;">
+              <!-- 4a. VUE 3D DU BÂTIMENT OU DE L'OMBRIÈRE -->
               <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%;">
-                <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">Vue 3D — Bâtiment ${sim.length ? Number(sim.length).toFixed(1) : '30.0'}m × ${sim.width ? Number(sim.width).toFixed(1) : '20.0'}m</div>
-                ${sim.building3dScreenshot ? `
-                  <img src="${sim.building3dScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue 3D du Bâtiment" />
+                <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">
+                  ${isOmbriere ? 'Vue 3D — Ombrière Photovoltaïque' : `Vue 3D — Bâtiment ${sim.length ? Number(sim.length).toFixed(1) : '30.0'}m × ${sim.width ? Number(sim.width).toFixed(1) : '20.0'}m`}
+                </div>
+                ${img3D ? `
+                  <img src="${img3D}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue 3D" />
                 ` : `
                   <div style="color: #64748b; font-size: 8.5pt; text-align: center; margin: auto; padding: 15px;">
-                    <strong style="color: #0f172a; display: block; margin-bottom: 3px;">Hangar Solaire 3D</strong>
-                    ${sim.length ? Number(sim.length).toFixed(1) : '30'}m × ${sim.width ? Number(sim.width).toFixed(1) : '20'}m (${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m²)
+                    <strong style="color: #0f172a; display: block; margin-bottom: 3px;">${isOmbriere ? 'Ombrière Photovoltaïque 3D' : 'Hangar Solaire 3D'}</strong>
+                    ${sim.kwc || 0} kWc
                   </div>
                 `}
               </div>
-            `}
 
-            <!-- 4b. IMPLANTATION SATELLITE SUR LE TERRAIN -->
-            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; display: flex; flex-direction: column; position: relative; height: 100%;">
-              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">Implantation Satellite sur la Parcelle</div>
+              <!-- 4b. IMPLANTATION SATELLITE SUR LE TERRAIN / PARKING -->
+              <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; display: flex; flex-direction: column; position: relative; height: 100%;">
+                <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">
+                  ${isOmbriere ? 'Implantation Satellite sur le Parking' : 'Implantation Satellite sur la Parcelle'}
+                </div>
+                ${singleMapScreenshot ? `
+                  <img src="${singleMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite du site" />
+                ` : `
+                  <div style="color: #94a3b8; font-size: 8.5pt; text-align: center; margin: auto; padding: 15px;">
+                    <strong style="color: #ffffff;">Repérage Satellite</strong>
+                    <div style="font-size: 7.5pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
+                  </div>
+                `}
+                <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">
+                  ${isOmbriere ? `Ombrières : ${sim.coveredArea || sim.roofSurface || 0} m² (${sim.spotsCount || 0} pl.)` : `Surface : ${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m²`}
+                </div>
+              </div>
+            </div>
+          ` : `
+            <!-- 4. VISUEL DUAL AVANT / APRÈS CÔTE À CÔTE AU MÊME ZOOM (100% VISIBLE) -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 6px; position: relative; height: 285px; display: flex; align-items: center; justify-content: center;">
               ${finalMapScreenshot ? `
-                <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite du site" />
+                <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Implantation Visuelle Avant / Après" />
               ` : `
-                <div style="color: #94a3b8; font-size: 8.5pt; text-align: center; margin: auto; padding: 15px;">
-                  <strong style="color: #ffffff;">Repérage Satellite</strong>
-                  <div style="font-size: 7.5pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
+                <div style="color: #94a3b8; font-size: 9pt; text-align: center; padding: 15px;">
+                  <strong style="color: #ffffff; display: block; font-size: 11pt; margin-bottom: 4px;">Plan d'Implantation Solaire</strong>
+                  <div style="font-size: 8pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
                 </div>
               `}
-              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">Surface : ${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m²</div>
+              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-top-left-radius: 6px; font-size: 7.5pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">
+                ${isOmbriere ? `Emprise Parking : ${sim.parkingArea || 0} m² &bull; Ombrières : ${sim.coveredArea || sim.roofSurface || 0} m² (${sim.spotsCount || 0} pl.)` : `Surface : ${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m² &bull; ${sim.kwc || 0} kWc`}
+              </div>
             </div>
-          </div>
-        ` : isIrve ? `
+          `
+        ) : isIrve ? `
           <!-- 4. VISUELS IRVE : PHOTO DE LA BORNE (GAUCHE) + IMPLANTATION SATELLITE (DROITE) -->
           <div style="display: grid; grid-template-columns: 1fr 1.35fr; gap: 8px; margin-bottom: 10px; height: 330px;">
             <!-- 4a. VISUEL PHOTO DE LA BORNE DE RECHARGE -->

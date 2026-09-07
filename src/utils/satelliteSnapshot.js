@@ -494,48 +494,85 @@ export function detectExistingSolarPanelsOnRoof(ctx, pts) {
 export const generateBeforeAfterDualSnapshot = async ({
   center,
   polygonPoints,
+  polygonStyle = 'roof',
+  ombriereBlocks = null,
+  buildings = null,
+  building = null,
   customKwc = 6,
   roofSurface = 83,
+  parkingArea = null,
+  spotsCount = null,
+  panelCount: propPanelCount = null,
   ridgeIndex = 0,
   isLandscape = false,
-  width = 900,
-  height = 420,
+  width = 950,
+  height = 480,
   zoom = 19,
   returnDetails = false
 }) => {
   try {
+    const halfW = Math.floor((width - 6) / 2);
     let lat = center ? center[0] : 43.6047;
     let lng = center ? center[1] : 1.4442;
-    if (polygonPoints && polygonPoints.length >= 3) {
+
+    const isParking = polygonStyle === 'parking' || (ombriereBlocks && ombriereBlocks.length > 0);
+    const isStructMode = Boolean((buildings && buildings.length > 0) || building);
+
+    // Rassemblement de tous les points géométriques pour le calcul d'emprise (fitBounds)
+    const allGeoPoints = [];
+    if (polygonPoints && Array.isArray(polygonPoints)) {
+      polygonPoints.forEach(p => {
+        if (p && !isNaN(p.lat) && !isNaN(p.lng)) allGeoPoints.push(p);
+      });
+    }
+    if (ombriereBlocks && Array.isArray(ombriereBlocks)) {
+      ombriereBlocks.forEach(b => {
+        if (b && b.polygonWgs84 && Array.isArray(b.polygonWgs84)) {
+          b.polygonWgs84.forEach(p => {
+            if (p && !isNaN(p.lat) && !isNaN(p.lng)) allGeoPoints.push(p);
+          });
+        }
+      });
+    }
+
+    // Si bâtiments et aucun polygone WGS84, extrapolation de l'emprise des bâtiments autour du centre
+    if (allGeoPoints.length === 0 && isStructMode) {
+      const bList = buildings || [building];
+      let maxDistMeters = 30;
+      bList.forEach(b => {
+        const l = Number(b.length || 30);
+        const w = Number(b.width || 20);
+        const diag = Math.sqrt(l * l + w * w);
+        maxDistMeters = Math.max(maxDistMeters, diag);
+      });
+      const deltaLat = (maxDistMeters * 1.5) / 111320;
+      const deltaLng = (maxDistMeters * 1.5) / (111320 * Math.cos((lat * Math.PI) / 180));
+      allGeoPoints.push({ lat: lat - deltaLat, lng: lng - deltaLng });
+      allGeoPoints.push({ lat: lat + deltaLat, lng: lng + deltaLng });
+    }
+
+    // Calcul optimal du zoom et du centre pour la demi-largeur (exactement identique pour Avant et Après)
+    let safeZoom = zoom || 19;
+    if (allGeoPoints.length > 0) {
+      const fitRes = calculateFitBounds({
+        points: allGeoPoints,
+        width: halfW,
+        height,
+        paddingFactor: isParking ? 0.18 : 0.14,
+        minZoom: 14,
+        maxZoom: 19
+      });
+      if (fitRes) {
+        lat = fitRes.center[0];
+        lng = fitRes.center[1];
+        safeZoom = fitRes.zoom;
+      }
+    } else if (polygonPoints && polygonPoints.length >= 3) {
       let sumLat = 0, sumLng = 0;
       polygonPoints.forEach(p => { sumLat += p.lat; sumLng += p.lng; });
       lat = sumLat / polygonPoints.length;
       lng = sumLng / polygonPoints.length;
     }
-
-    const halfW = (width - 6) / 2;
-
-    // Calcul automatique du niveau de zoom pour que la toiture entière tienne parfaitement dans la vue
-    let computedZoom = zoom || 19;
-    if (polygonPoints && polygonPoints.length >= 3) {
-      let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-      polygonPoints.forEach(p => {
-        minLat = Math.min(minLat, p.lat);
-        maxLat = Math.max(maxLat, p.lat);
-        minLng = Math.min(minLng, p.lng);
-        maxLng = Math.max(maxLng, p.lng);
-      });
-      
-      const latSpanM = (maxLat - minLat) * 111320;
-      const lngSpanM = (maxLng - minLng) * 111320 * Math.cos((lat * Math.PI) / 180);
-      const maxSpanM = Math.max(latSpanM, lngSpanM, 15);
-
-      const targetPx = Math.min(halfW * 0.70, height * 0.70);
-      const cosLat = Math.cos((lat * Math.PI) / 180);
-      const calculatedZ = Math.log2((targetPx * 156543 * cosLat) / maxSpanM);
-      computedZoom = Math.min(19, Math.max(14, Math.floor(calculatedZ)));
-    }
-    const safeZoom = computedZoom;
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -546,7 +583,7 @@ export const generateBeforeAfterDualSnapshot = async ({
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, 0, width, height);
 
-    // Calcul des tuiles pour le centre
+    // Calcul des tuiles pour le centre commun
     const n = Math.pow(2, safeZoom);
     const xExact = ((lng + 180) / 360) * n;
     const latRad = (lat * Math.PI) / 180;
@@ -600,13 +637,19 @@ export const generateBeforeAfterDualSnapshot = async ({
       ctx.restore();
     };
 
-    // 1. Dessin des 2 moitiés satellites
+    // 1. Dessin des 2 moitiés satellites avec exactement les mêmes tuiles et coordonnées
     drawSatelliteHalf(0);
     drawSatelliteHalf(halfW + 6);
 
-    // Ligne de séparation centrale
+    // Ligne de séparation centrale verticale
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(halfW, 0, 6, height);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(halfW + 3, 0);
+    ctx.lineTo(halfW + 3, height);
+    ctx.stroke();
 
     // Helper conversion pour une moitié donnée
     const getCanvasPoint = (ptLat, ptLng, offsetX) => {
@@ -624,13 +667,245 @@ export const generateBeforeAfterDualSnapshot = async ({
     let placedCount = 0;
     let hasExistingSolar = false;
 
-    // 2. Dessin du Polygone Délimité & des Panneaux
-    if (polygonPoints && polygonPoints.length >= 3) {
-      // ─── DÉTECTION SPECTRALE DES PANNEAUX SOLAIRES EXISTANTS (SUR LA CARTE BRUTE) ───
+    // ─── CAS 1 : OMBRIÈRES DE PARKING ─────────────────────────────────────────
+    if (isParking) {
+      // GAUCHE (AVANT : PARKING NU SANS OMBRIÈRES AVEC DÉLIMITATION BLEUE DISCRÈTE)
+      if (polygonPoints && polygonPoints.length >= 3) {
+        const ptsLeft = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, 0));
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, halfW, height);
+        ctx.clip();
+
+        ctx.beginPath();
+        ctx.moveTo(ptsLeft[0].x, ptsLeft[0].y);
+        for (let i = 1; i < ptsLeft.length; i++) ctx.lineTo(ptsLeft[i].x, ptsLeft[i].y);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.15)';
+        ctx.fill();
+
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([8, 4]);
+        ctx.stroke();
+        ctx.restore();
+
+        // DROITE (APRÈS : PARKING AVEC LES BLOCS D'OMBRIÈRES BLEUS ET BORDURE AMBRE)
+        const ptsRight = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, halfW + 6));
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(halfW + 6, 0, halfW, height);
+        ctx.clip();
+
+        // Emprise du parking
+        ctx.beginPath();
+        ctx.moveTo(ptsRight[0].x, ptsRight[0].y);
+        for (let i = 1; i < ptsRight.length; i++) ctx.lineTo(ptsRight[i].x, ptsRight[i].y);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.10)';
+        ctx.fill();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Dessin des rangées d'ombrières photovoltaïques
+        if (ombriereBlocks && ombriereBlocks.length > 0) {
+          ombriereBlocks.forEach(block => {
+            if (!block.polygonWgs84 || block.polygonWgs84.length < 3) return;
+            const bCanvasPts = block.polygonWgs84.map(p => getCanvasPoint(p.lat, p.lng, halfW + 6));
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(bCanvasPts[0].x, bCanvasPts[0].y);
+            for (let i = 1; i < bCanvasPts.length; i++) ctx.lineTo(bCanvasPts[i].x, bCanvasPts[i].y);
+            ctx.closePath();
+
+            // Remplissage bleu photovoltaïque anti-reflet
+            ctx.fillStyle = 'rgba(30, 64, 175, 0.88)';
+            ctx.fill();
+
+            // Bordure dorée / ambre vive
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // Ligne médiane de faîtage ou travées
+            if (bCanvasPts.length === 4) {
+              ctx.beginPath();
+              ctx.setLineDash([4, 3]);
+              ctx.strokeStyle = '#93c5fd';
+              ctx.lineWidth = 1.2;
+              const mid1X = (bCanvasPts[0].x + bCanvasPts[1].x) / 2;
+              const mid1Y = (bCanvasPts[0].y + bCanvasPts[1].y) / 2;
+              const mid2X = (bCanvasPts[3].x + bCanvasPts[2].x) / 2;
+              const mid2Y = (bCanvasPts[3].y + bCanvasPts[2].y) / 2;
+              ctx.moveTo(mid1X, mid1Y);
+              ctx.lineTo(mid2X, mid2Y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+
+            // Label du bloc
+            if (block.center) {
+              const cPt = getCanvasPoint(block.center.lat, block.center.lng, halfW + 6);
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 9.5px Arial';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(`⚡ ${block.spotsCount || block.bayCount * 2} pl.`, cPt.x, cPt.y);
+            }
+            ctx.restore();
+          });
+        }
+        ctx.restore();
+      }
+
+      // BADGES OMBRIÈRES
+      const displaySpots = spotsCount || (ombriereBlocks ? ombriereBlocks.reduce((acc, b) => acc + (b.spotsCount || b.bayCount * 2 || 0), 0) : 0);
+      const displayArea = parkingArea || roofSurface || 0;
+
+      // Badge Gauche (AVANT)
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.beginPath();
+      ctx.roundRect(14, 14, 250, 28, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`AVANT : Parking d'origine (${displayArea.toLocaleString('fr-FR')} m²)`, 24, 32);
+
+      // Badge Droit (APRÈS)
+      ctx.fillStyle = 'rgba(6, 78, 59, 0.92)';
+      ctx.beginPath();
+      ctx.roundRect(halfW + 20, 14, 280, 28, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.fillStyle = '#6ee7b7';
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`APRÈS : ${customKwc} kWc (${displaySpots} places abritées)`, halfW + 30, 32);
+
+    // ─── CAS 2 : STRUCTURE MÉTALLIQUE / HANGARS ──────────────────────────────
+    } else if (isStructMode) {
+      const buildingList = buildings || (building ? [building] : []);
+      const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, safeZoom + 8);
+      const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 4.6;
+
+      // DROITE (APRÈS : IMPLANTATION DES BÂTIMENTS)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(halfW + 6, 0, halfW, height);
+      ctx.clip();
+
+      const canvasCenterXRight = halfW + 6 + halfW / 2;
+      const canvasCenterYRight = height / 2;
+
+      buildingList.forEach((b, bIdx) => {
+        const bLength = Number(b.length || 30);
+        const bWidth = Number(b.width || 20);
+        const rectW = Math.max(30, bLength * pxPerMeter);
+        const rectH = Math.max(20, bWidth * pxPerMeter);
+        const rotRad = ((Number(b.rotation) || 0) * Math.PI) / 180;
+
+        let posX = canvasCenterXRight;
+        let posY = canvasCenterYRight;
+
+        if (b.lat && b.lng && !isNaN(b.lat) && !isNaN(b.lng)) {
+          const pt = getCanvasPoint(b.lat, b.lng, halfW + 6);
+          posX = pt.x;
+          posY = pt.y;
+        } else if (b.offsetX !== undefined || b.offsetY !== undefined) {
+          posX = canvasCenterXRight + Number(b.offsetX || 0);
+          posY = canvasCenterYRight + Number(b.offsetY || 0);
+        } else if (buildingList.length > 1) {
+          posX = canvasCenterXRight + (bIdx * (rectW + 40) - ((buildingList.length - 1) * (rectW + 40) / 2));
+        }
+
+        ctx.save();
+        ctx.translate(posX, posY);
+        ctx.rotate(rotRad);
+
+        // Emprise au sol avec bordure orange fidèle à Nelson
+        ctx.fillStyle = 'rgba(37, 99, 235, 0.45)';
+        ctx.fillRect(-rectW / 2, -rectH / 2, rectW, rectH);
+
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 3.5;
+        ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
+
+        // Faîtage en pointillés
+        const isAsym = (b.buildingType || '').startsWith('asym') || b.buildingType === 'epona';
+        const ridgeY = isAsym ? (-rectH / 2 + rectH * 0.25) : 0;
+        ctx.beginPath();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2.5;
+        ctx.moveTo(-rectW / 2, ridgeY);
+        ctx.lineTo(rectW / 2, ridgeY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Pastille numérotée
+        const circleR = 14;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, circleR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(bIdx + 1), 0, 1);
+
+        ctx.restore();
+      });
+      ctx.restore();
+
+      // BADGES STRUCTURE
+      // Badge Gauche (AVANT)
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.beginPath();
+      ctx.roundRect(14, 14, 250, 28, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`AVANT : Terrain d'accueil (${roofSurface || 0} m²)`, 24, 32);
+
+      // Badge Droit (APRÈS)
+      ctx.fillStyle = 'rgba(6, 78, 59, 0.92)';
+      ctx.beginPath();
+      ctx.roundRect(halfW + 20, 14, 280, 28, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.fillStyle = '#6ee7b7';
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`APRÈS : ${customKwc} kWc (${buildingList.length > 1 ? `${buildingList.length} Bâtiments` : `${roofSurface || 0} m²`})`, halfW + 30, 32);
+
+    // ─── CAS 3 : TOITURE SOLAIRE STANDARD (AUTOCONSO & VENTE) ────────────────
+    } else if (polygonPoints && polygonPoints.length >= 3) {
+      // Détection spectrale des panneaux solaires existants sur la toiture brute
       const ptsLeft = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, 0));
       hasExistingSolar = detectExistingSolarPanelsOnRoof(ctx, ptsLeft);
 
-      // ─── MOITIÉ GAUCHE (AVANT : TOITURE BRUTE AVEC CADRE POINTILLÉ BLANC) ───
+      // GAUCHE (AVANT : TOITURE BRUTE AVEC CADRE POINTILLÉ BLANC)
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, 0, halfW, height);
@@ -648,7 +923,7 @@ export const generateBeforeAfterDualSnapshot = async ({
       ctx.stroke();
       ctx.restore();
 
-      // ─── MOITIÉ DROITE (APRÈS : PANNEAUX SOLAIRES EN PORTRAIT STRICTEMENT DANS LA ZONE) ───
+      // DROITE (APRÈS : PANNEAUX SOLAIRES EN PORTRAIT DANS LA ZONE)
       const ptsRight = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, halfW + 6));
       ctx.save();
       ctx.beginPath();
@@ -667,9 +942,8 @@ export const generateBeforeAfterDualSnapshot = async ({
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Calcul des emplacements géométriquement valides (Ligne par ligne le long de la sablière)
       const { slots, maxPanels } = computeValidSolarSlots(polygonPoints, ridgeIndex, isLandscape);
-      const targetPanels = Math.max(1, Math.round((customKwc * 1000) / 465));
+      const targetPanels = propPanelCount || Math.max(1, Math.round((customKwc * 1000) / 465));
       const countToPlace = Math.min(targetPanels, maxPanels);
       placedCount = countToPlace;
 
@@ -685,7 +959,6 @@ export const generateBeforeAfterDualSnapshot = async ({
         for (let k = 1; k < corners.length; k++) ctx.lineTo(corners[k].x, corners[k].y);
         ctx.closePath();
 
-        // Panneau Solaire Réaliste (Bleu Nuit Sombre #0c192c / #0a192f + bordure bleu sombre)
         ctx.fillStyle = '#0c192c';
         ctx.fill();
         ctx.strokeStyle = '#1e3a8a';
@@ -694,38 +967,36 @@ export const generateBeforeAfterDualSnapshot = async ({
         ctx.restore();
       }
       ctx.restore();
+
+      // BADGES TOITURE
+      const panelCount = placedCount || Math.max(1, Math.round((customKwc * 1000) / 465));
+
+      // Badge Gauche (AVANT)
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.beginPath();
+      ctx.roundRect(14, 14, 230, 28, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`AVANT : Toiture d'origine (${roofSurface} m²)`, 24, 32);
+
+      // Badge Droit (APRÈS)
+      ctx.fillStyle = 'rgba(6, 78, 59, 0.92)';
+      ctx.beginPath();
+      ctx.roundRect(halfW + 20, 14, 260, 28, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.fillStyle = '#6ee7b7';
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`APRÈS : ${customKwc} kWc (${panelCount} panneaux)`, halfW + 30, 32);
     }
-
-    // ─── BADGES EN HAUT DE CHAQUE MOITIÉ ───
-    const panelCount = placedCount || Math.max(1, Math.round((customKwc * 1000) / 465));
-
-    // Badge Gauche (AVANT)
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-    ctx.beginPath();
-    ctx.roundRect(14, 14, 230, 28, 6);
-    ctx.fill();
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 11px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(`AVANT : Toiture d'origine (${roofSurface} m²)`, 24, 32);
-
-    // Badge Droit (APRÈS)
-    ctx.fillStyle = 'rgba(6, 78, 59, 0.92)';
-    ctx.beginPath();
-    ctx.roundRect(halfW + 20, 14, 260, 28, 6);
-    ctx.fill();
-    ctx.strokeStyle = '#10b981';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    ctx.fillStyle = '#6ee7b7';
-    ctx.font = 'bold 11px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(`APRÈS : ${customKwc} kWc (${panelCount} panneaux)`, halfW + 30, 32);
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
     if (returnDetails) {

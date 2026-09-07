@@ -16,11 +16,12 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
+import { generateSatelliteSnapshot, generateBeforeAfterDualSnapshot } from '@/utils/satelliteSnapshot';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
 import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
 import AutomaticOmbriereProspectingModal from './AutomaticOmbriereProspectingModal';
 import SolarFinancingComparisonSection from './SolarFinancingComparisonSection';
+import BuildingStructureBeforeAfterViewer from './BuildingStructureBeforeAfterViewer';
 
 // ─── Contrôles de Zoom Flottants Leaflet ─────────────────────────────────────
 function CustomMapZoom() {
@@ -269,6 +270,9 @@ export default function BuildingStructureSimulator({
 
   // Tunnel Faisabilité Solaire (Image 4 & 5) : 1. Adresse | 2. Emplacement & Orientation | 3. Rentabilité & Faisabilité
   const [studyStep, setStudyStep] = useState(1);
+
+  // Choix du visuel de comparaison : 'before' (Vue Avant) ou '3d' (Vue 3D)
+  const [leftVisualChoice, setLeftVisualChoice] = useState('before');
 
   // État 3D Visualizer
   const [viewMode, setViewMode] = useState('3D'); // '3D', '2D_FRONT'
@@ -775,16 +779,33 @@ const crop3DCanvas = (sourceCanvas) => {
   }, [activeBuildingIdx]);
 
   const ensureMapSnapshot = async () => {
-    const snapshot = await generateSatelliteSnapshot({
-      center: mapCenter,
-      polygonPoints: [],
-      buildings: simBuildings,
-      width: 600,
-      height: 600,
-      zoom: 19
-    });
-    if (snapshot) setMapScreenshotDataUrl(snapshot);
-    return snapshot;
+    try {
+      const dualSnapshot = await generateBeforeAfterDualSnapshot({
+        center: mapCenter,
+        polygonPoints: [],
+        buildings: simBuildings,
+        customKwc: installedKwc,
+        roofSurface: totalRoofArea || totalFloorArea,
+        parkingArea: totalFloorArea,
+        width: 950,
+        height: 480,
+        zoom: 19
+      });
+      const singleSnapshot = await generateSatelliteSnapshot({
+        center: mapCenter,
+        polygonPoints: [],
+        buildings: simBuildings,
+        width: 850,
+        height: 480,
+        zoom: 19
+      });
+      const chosenSnapshot = dualSnapshot || singleSnapshot;
+      if (chosenSnapshot) setMapScreenshotDataUrl(chosenSnapshot);
+      return chosenSnapshot;
+    } catch (e) {
+      console.warn('Erreur ensureMapSnapshot:', e);
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -828,8 +849,12 @@ const crop3DCanvas = (sourceCanvas) => {
         cumul20: financialProjection30Years.cumul20,
         cumul30: financialProjection30Years.cumul30,
         mapCenter,
-        building3dScreenshot: building3dSnapshot,
+        building3dScreenshot: building3dSnapshot || (config.buildingType?.startsWith('ombriere') ? '/ombriere_vl_double.jpg' : null),
         mapScreenshot: mapScreenshotDataUrl,
+        mapScreenshotDataUrl: mapScreenshotDataUrl,
+        visualChoice: leftVisualChoice === '3d' ? '3d_and_after' : 'before_after',
+        leftVisualChoice: leftVisualChoice,
+        pdfVisualChoice: leftVisualChoice === '3d' ? '3d_and_after' : 'before_after',
         buildings: simBuildings,
         orientationLabel: getOrientationLabel(activeRot),
         pitch: config.roofPitch || 15
@@ -840,7 +865,7 @@ const crop3DCanvas = (sourceCanvas) => {
     annualProductionKwh, totalBuildingCost, totalProjectInvestment,
     ratioCostPerWc, ratioCostPerM2, annualNetRevenue, annualGrossRevenue, selectedFinancing,
     financialProjection30Years, clientNameInput, addressInput, cityName,
-    departmentCode, mapCenter, building3dSnapshot, mapScreenshotDataUrl, simBuildings, activeBuildingIdx, onStateUpdate
+    departmentCode, mapCenter, building3dSnapshot, mapScreenshotDataUrl, leftVisualChoice, simBuildings, activeBuildingIdx, onStateUpdate
   ]);
 
   return (
@@ -1586,6 +1611,25 @@ const crop3DCanvas = (sourceCanvas) => {
                   </div>
                 </div>
 
+                {/* ─── SECTION VISUEL AVANT / APRÈS & CHOIX 3D (CÔTE À CÔTE) ───────── */}
+                <BuildingStructureBeforeAfterViewer
+                  mapCenter={mapCenter}
+                  simBuildings={simBuildings}
+                  buildingLength={buildingLength}
+                  buildingWidth={buildingWidth}
+                  totalFloorArea={totalFloorArea}
+                  installedKwc={installedKwc}
+                  building3dSnapshot={building3dSnapshot}
+                  isOmbriere={(config.buildingType || '').startsWith('ombriere')}
+                  spotsCount={config.buildingType?.startsWith('ombriere') ? Math.round(totalFloorArea / 25) : null}
+                  cityName={cityName}
+                  address={addressInput}
+                  initialLeftChoice={leftVisualChoice}
+                  onVisualChoiceChange={({ leftVisualChoice: lChoice }) => {
+                    setLeftVisualChoice(lChoice);
+                  }}
+                />
+
                 {/* ─── SECTION REVENUS CUMULÉS SUR 30 ANS (IMAGE 5) ───────────── */}
                 <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-xl space-y-6">
                   <div>
@@ -1700,16 +1744,28 @@ const crop3DCanvas = (sourceCanvas) => {
                   </div>
                 </div>
 
-                {/* Bouton retour 3D */}
-                <div className="flex justify-start">
+                {/* Bouton retour 3D et Export PDF */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setActiveView('configurator')}
-                    className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5"
+                    className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Revenir au configurateur 3D
                   </button>
+
+                  {onExportPDF && (
+                    <button
+                      type="button"
+                      onClick={() => onExportPDF()}
+                      className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-black transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20 hover:scale-105 cursor-pointer"
+                      title="Générer et télécharger l'offre commerciale PDF A4"
+                    >
+                      <Download className="w-4 h-4" />
+                      Télécharger l'Offre PDF
+                    </button>
+                  )}
                 </div>
               </motion.div>
             )}

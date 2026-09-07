@@ -14,7 +14,7 @@
 import { getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
 import { layoutOmbrieresOnParking, OMBRIERE_TYPOLOGIES } from '@/services/parkingCalepinageEngine';
 import { calculateBankLoan, calculateLeasingSubscription } from '@/services/solarFinancingEngine';
-import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
+import { generateSatelliteSnapshot, generateBeforeAfterDualSnapshot } from '@/utils/satelliteSnapshot';
 import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
 
 /**
@@ -100,10 +100,29 @@ export async function simulateParkingHeadless({
   const cumul20 = financialProjection30Years[19]?.cumul || Math.round(annualNetYear1To20 * 20);
   const cumul30 = financialProjection30Years[29]?.cumul || (cumul20 + Math.round(annualNetYear21To30 * 10));
 
-  // 6. Snapshot satellite haute résolution avec emprise parking + blocs d'ombrières
+  // 6. Snapshot satellite haute résolution : Vue Côte à Côte AVANT / APRÈS à zoom et cadrage identiques
   let mapScreenshotDataUrl = null;
+  let singleMapScreenshot = null;
   try {
-    mapScreenshotDataUrl = await generateSatelliteSnapshot({
+    mapScreenshotDataUrl = await generateBeforeAfterDualSnapshot({
+      center: parking.center,
+      polygonPoints: parking.polygon,
+      polygonStyle: 'parking',
+      ombriereBlocks: placedOmbrieres,
+      customKwc: installedKwc,
+      roofSurface: parking.area,
+      parkingArea: parking.area,
+      spotsCount: totalShelteredSpots,
+      width: 950,
+      height: 480
+    });
+  } catch (err) {
+    console.warn(`Snapshot dual satellite avant-après impossible pour parking ${parking.id}:`, err);
+  }
+
+  // Snapshot satellite Après seul (en réserve si l'utilisateur choisit l'option Vue 3D + Satellite)
+  try {
+    singleMapScreenshot = await generateSatelliteSnapshot({
       center: parking.center,
       polygonPoints: parking.polygon,
       polygonStyle: 'parking',
@@ -113,7 +132,7 @@ export async function simulateParkingHeadless({
       zoom: 19
     });
   } catch (err) {
-    console.warn(`Snapshot satellite impossible pour parking ${parking.id}:`, err);
+    console.warn(`Snapshot satellite simple impossible pour parking ${parking.id}:`, err);
   }
 
   // 7. Objet de simulation consolidé compatible avec le moteur PDF
@@ -168,7 +187,10 @@ export async function simulateParkingHeadless({
 
     mapCenter: parking.center,
     polygonPoints: parking.polygon,
-    mapScreenshotDataUrl
+    mapScreenshotDataUrl: mapScreenshotDataUrl || singleMapScreenshot,
+    beforeAfterSnapshot: mapScreenshotDataUrl,
+    singleMapScreenshot: singleMapScreenshot || mapScreenshotDataUrl,
+    building3dScreenshot: '/ombriere_vl_double.jpg'
   };
 
   return simulationData;
