@@ -9,7 +9,9 @@
     "preview": "vite preview --host :: --port 3000",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "local-bridge": "node scripts/nelson-local-bridge.cjs",
+    "prospect": "node scripts/prospect-cli.cjs"
   },
   "dependencies": {
     "@chatkitty/react": "^1.1.0",

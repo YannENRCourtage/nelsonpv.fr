@@ -141,8 +141,8 @@ const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
   return canvas.toDataURL('image/jpeg', 0.92);
 };
 
-export const generateCommercialOfferPDF = async ({ simulation, selectedProject, customClientName = null }) => {
-  if (!simulation) return;
+export const generateCommercialOfferPDF = async ({ simulation, selectedProject, customClientName = null, returnBlob = false }) => {
+  if (!simulation) return null;
 
   const sim = simulation;
   const isAuto = sim.type === 'autoconsommation' || sim.projectType === 'solar';
@@ -935,10 +935,20 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     }
 
     const safeTitle = (sim.title || 'Offre_Commerciale_NELSON').replace(/[^a-zA-Z0-9_-]/g, '_');
-    pdf.save(`${safeTitle}_${new Date().toISOString().split('T')[0]}.pdf`);
+    const filename = `${safeTitle}_${new Date().toISOString().split('T')[0]}.pdf`;
+    if (returnBlob) {
+      const blob = pdf.output('blob');
+      const arrayBuffer = pdf.output('arraybuffer');
+      return { blob, arrayBuffer, filename, pdf };
+    }
+    pdf.save(filename);
+    return { success: true, filename };
   } catch (err) {
     console.error('Erreur export PDF Commercial Offer:', err);
+    return null;
   } finally {
-    document.body.removeChild(container);
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
   }
 };

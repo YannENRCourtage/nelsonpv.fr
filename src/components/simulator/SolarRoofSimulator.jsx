@@ -10,6 +10,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
 import RoofMapPolygonSelector from './RoofMapPolygonSelector';
 import SolarRoofBeforeAfterViewer from './SolarRoofBeforeAfterViewer';
+import AutomaticProspectingModal from './AutomaticProspectingModal';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 import { computeValidSolarSlots } from '@/utils/solarCalepinage';
 
@@ -55,6 +56,7 @@ export default function SolarRoofSimulator({
   const [selectedPitch, setSelectedPitch] = useState(30);
 
   const [userSelectedKwc, setUserSelectedKwc] = useState(null);
+  const [isAutoProspectingOpen, setIsAutoProspectingOpen] = useState(false);
 
   const mapContainerRef = useRef(null);
   const [mapScreenshotDataUrl, setMapScreenshotDataUrl] = useState(null);
@@ -477,6 +479,17 @@ export default function SolarRoofSimulator({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-end md:self-auto">
+            {/* Bouton Mode Prospection Automatique */}
+            <button
+              type="button"
+              onClick={() => setIsAutoProspectingOpen(true)}
+              className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer border border-amber-300/40"
+              title="Lancer la recherche automatique de bâtiments (500 à 2 500 m²) et générer les offres PDF"
+            >
+              <Sparkles className="w-4 h-4 fill-slate-950" />
+              <span>Recherche automatique</span>
+            </button>
+
             <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/20">
               <span className="text-xs text-amber-300 font-bold">Client :</span>
               <input
@@ -1338,6 +1351,13 @@ export default function SolarRoofSimulator({
         )}
 
       </AnimatePresence>
+
+      {/* Modal de prospection & détection automatique de toitures solaires */}
+      <AutomaticProspectingModal
+        isOpen={isAutoProspectingOpen}
+        onClose={() => setIsAutoProspectingOpen(false)}
+        defaultCommune={cityName || 'Seclin'}
+      />
 
     </div>
   );
