@@ -52,7 +52,7 @@ export default function AutomaticProspectingModal({
   const [maxArea, setMaxArea] = useState(2500);
   const [targetLimit, setTargetLimit] = useState(10);
   const [roofPitch, setRoofPitch] = useState(15);
-  const [roofType, setRoofType] = useState('symetrique');
+  const [roofType, setRoofType] = useState('asymetrique');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Gestion du dossier local d'exportation
@@ -324,8 +324,14 @@ export default function AutomaticProspectingModal({
           }
         });
 
+        if (!sim) {
+          addLog(`   ⚠️ Bâtiment ignoré : toiture déjà équipée de panneaux solaires existants.`);
+          continue;
+        }
+
         addLog(`   ⚡ Puissance : ${sim.installedKwc} kWc (${sim.panelCount} modules 465 Wc)`);
         addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • CA EDF OA : ~${sim.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an`);
+
 
         // D. Génération de l'Offre Commerciale PDF
         setCurrentStepText(`Génération de l'offre PDF ${stepNum}/${total}...`);

@@ -58,11 +58,11 @@ export async function simulateBuildingHeadless({
   const { polygon, area, center } = building;
 
   const pitch = customSettings.pitch || 15; // 15° par défaut
-  const roofType = customSettings.roofType || 'symetrique'; // Symétrique par défaut
+  const roofType = customSettings.roofType || 'asymetrique'; // Asymétrique par défaut
   const costPerKwc = customSettings.costPerKwc || 920; // 920 €/kWc
 
-  // 1. Détection automatique du faîtage (arête la plus longue)
-  const ridgeIndex = findLongestEdgeIndex(polygon);
+  // 1. Détection automatique du faîtage (arête sélectionnée orientée vers le Sud ou arête la plus longue)
+  const ridgeIndex = building.ridgeIndex !== undefined ? building.ridgeIndex : findLongestEdgeIndex(polygon);
   const p1 = polygon[ridgeIndex];
   const p2 = polygon[(ridgeIndex + 1) % polygon.length];
 
@@ -96,27 +96,34 @@ export async function simulateBuildingHeadless({
   // Coefficient d'inclinaison pour 15° (ou 30°)
   const inclinationCoeff = pitch === 30 ? 1.00 : (pitch === 15 || pitch === 45) ? 0.96 : 0.90;
 
-  // 6. Répartition des 2 pans symétriques
-  const pan1 = orientationInfo.pan1 || { coeff: 1.00, orientationLabel: 'Versant 1', angle: 0 };
-  const pan2 = orientationInfo.pan2 || { coeff: 0.75, orientationLabel: 'Versant 2', angle: 180 };
+  // 6. Répartition et productible selon le type de toiture (Asymétrique mono-pente vs Symétrique bi-pans)
+  const isSymetrique = roofType === 'symetrique' && orientationInfo.pan2;
+  const pan1 = orientationInfo.pan1 || { coeff: 1.00, orientationLabel: 'Plein Sud (0°)', angle: 0 };
+  const pan2 = orientationInfo.pan2 || null;
 
   const coeff1 = pan1.coeff || 1.00;
-  const coeff2 = pan2.coeff || 0.75;
-
   const yield1 = Math.round(regionalBaseYield * coeff1 * inclinationCoeff);
-  const yield2 = Math.round(regionalBaseYield * coeff2 * inclinationCoeff);
 
-  // Capacité par pan (50% de la toiture sur chaque pan en mode symétrique)
-  const halfKwc = Math.round((installedKwc / 2) * 10) / 10;
-  const otherKwc = Math.max(0, Math.round((installedKwc - halfKwc) * 10) / 10);
+  let halfKwc = installedKwc;
+  let otherKwc = 0;
+  let prodKwh1 = Math.round(installedKwc * yield1);
+  let prodKwh2 = 0;
+  let yield2 = 0;
+  let annualProductionKwh = prodKwh1;
+  let effectiveOrientationCoeff = coeff1;
 
-  const prodKwh1 = Math.round(halfKwc * yield1);
-  const prodKwh2 = Math.round(otherKwc * yield2);
-  const annualProductionKwh = prodKwh1 + prodKwh2;
-
-  const effectiveOrientationCoeff = installedKwc > 0
-    ? ((halfKwc * coeff1) + (otherKwc * coeff2)) / installedKwc
-    : coeff1;
+  if (isSymetrique && pan2) {
+    const coeff2 = pan2.coeff || 0.75;
+    yield2 = Math.round(regionalBaseYield * coeff2 * inclinationCoeff);
+    halfKwc = Math.round((installedKwc / 2) * 10) / 10;
+    otherKwc = Math.max(0, Math.round((installedKwc - halfKwc) * 10) / 10);
+    prodKwh1 = Math.round(halfKwc * yield1);
+    prodKwh2 = Math.round(otherKwc * yield2);
+    annualProductionKwh = prodKwh1 + prodKwh2;
+    effectiveOrientationCoeff = installedKwc > 0
+      ? ((halfKwc * coeff1) + (otherKwc * coeff2)) / installedKwc
+      : coeff1;
+  }
 
   // 7. Modèle économique & financier EDF Obligation d'Achat (OA)
   // Tarif réglementé : 0.085 €/kWh pour les centrales >= 100 kWc
@@ -138,10 +145,10 @@ export async function simulateBuildingHeadless({
     if (yr <= 30) cumul30 += yrRevenue;
   }
 
-  // 8. Snapshot satellite Avant / Après en mémoire (Canvas)
+  // 8. Snapshot satellite Avant / Après en mémoire (Canvas) et détection panneaux existants
   let mapScreenshot = null;
   try {
-    mapScreenshot = await generateBeforeAfterDualSnapshot({
+    const snapshotResult = await generateBeforeAfterDualSnapshot({
       center,
       polygonPoints: polygon,
       customKwc: installedKwc,
@@ -150,8 +157,19 @@ export async function simulateBuildingHeadless({
       isLandscape: false,
       width: 950,
       height: 480,
-      zoom: 19
+      zoom: 19,
+      returnDetails: true
     });
+
+    // VÉRIFICATION STRICTE : Rejet si la toiture dispose déjà de panneaux solaires existants (ex: Image 3)
+    if (snapshotResult && typeof snapshotResult === 'object' && snapshotResult.hasExistingSolar) {
+      console.warn(`[Ignoré] Toiture déjà équipée de panneaux solaires : bâtiment ${building.id}`);
+      return null;
+    }
+
+    mapScreenshot = snapshotResult && typeof snapshotResult === 'object' && snapshotResult.dataUrl
+      ? snapshotResult.dataUrl
+      : snapshotResult;
   } catch (e) {
     console.warn(`Snapshot satellite impossible pour bâtiment ${building.id}:`, e);
   }
@@ -182,7 +200,7 @@ export async function simulateBuildingHeadless({
     power: installedKwc,
     panelCount,
     roofSurface: area,
-    roofType: 'symetrique',
+    roofType,
     pitch,
     orientationLabel: orientationInfo.orientationLabel,
     effectiveOrientationCoeff,
@@ -204,13 +222,13 @@ export async function simulateBuildingHeadless({
       productionKwh: prodKwh1,
       specificYield: yield1
     },
-    pan2: {
+    pan2: isSymetrique && pan2 ? {
       label: pan2.orientationLabel,
       angle: pan2.angle,
       installedKwc: otherKwc,
       productionKwh: prodKwh2,
       specificYield: yield2
-    }
+    } : null
   };
 
   return simulation;

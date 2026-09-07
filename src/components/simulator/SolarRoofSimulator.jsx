@@ -13,6 +13,7 @@ import SolarRoofBeforeAfterViewer from './SolarRoofBeforeAfterViewer';
 import AutomaticProspectingModal from './AutomaticProspectingModal';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 import { computeValidSolarSlots } from '@/utils/solarCalepinage';
+import SolarFinancingComparisonSection from './SolarFinancingComparisonSection';
 
 export default function SolarRoofSimulator({
   selectedProject,
@@ -1336,6 +1337,14 @@ export default function SolarRoofSimulator({
                 </div>
               </div>
             </div>
+
+            {/* ─── SECTION SOLUTIONS DE FINANCEMENT (3 SCÉNARIOS) ─ */}
+            <SolarFinancingComparisonSection
+              powerKwc={installedKwc}
+              annualRevenue={annualRevenueReventeTotale}
+              capexHT={totalInvestmentHT}
+              rentMultiplierDefault={14}
+            />
 
             {/* ─── SECTION IMPACT SUR L'ENVIRONNEMENT ───────────── */}
             <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-6 shadow-sm space-y-4">

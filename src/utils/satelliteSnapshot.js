@@ -261,7 +261,79 @@ export const generateSatelliteSnapshot = async ({
   }
 };
 
+// ─── Analyse spectrale pour détecter des panneaux solaires déjà installés ─────
+export function detectExistingSolarPanelsOnRoof(ctx, pts) {
+  if (!pts || pts.length < 3) return false;
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  pts.forEach(p => {
+    minX = Math.min(minX, p.x);
+    maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y);
+    maxY = Math.max(maxY, p.y);
+  });
+
+  minX = Math.max(0, Math.floor(minX));
+  minY = Math.max(0, Math.floor(minY));
+  maxX = Math.min(ctx.canvas.width, Math.ceil(maxX));
+  maxY = Math.min(ctx.canvas.height, Math.ceil(maxY));
+
+  const w = maxX - minX;
+  const h = maxY - minY;
+  if (w <= 8 || h <= 8) return false;
+
+  // Test géométrique d'inclusion du point dans le polygone
+  function isInside(x, y) {
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const xi = pts[i].x, yi = pts[i].y;
+      const xj = pts[j].x, yj = pts[j].y;
+      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  try {
+    const imgData = ctx.getImageData(minX, minY, w, h);
+    const data = imgData.data;
+
+    let totalInsidePixels = 0;
+    let solarPixels = 0;
+
+    for (let py = 0; py < h; py += 2) {
+      for (let px = 0; px < w; px += 2) {
+        const cx = minX + px;
+        const cy = minY + py;
+        if (isInside(cx, cy)) {
+          totalInsidePixels++;
+          const idx = (py * w + px) * 4;
+          const r = data[idx];
+          const g = data[idx + 1];
+          const b = data[idx + 2];
+
+          // Profil spectral d'un panneau solaire sur image satellite (bleu sombre / noir)
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          const isSolar = (lum < 75 && b >= r - 6 && b >= g - 6) || (lum < 95 && b > r + 8 && b > g);
+          if (isSolar) {
+            solarPixels++;
+          }
+        }
+      }
+    }
+
+    if (totalInsidePixels >= 50) {
+      const solarRatio = solarPixels / totalInsidePixels;
+      return solarRatio >= 0.08;
+    }
+  } catch (err) {
+    console.warn('Erreur analyse spectrale toiture existante:', err);
+  }
+  return false;
+}
+
 // ─── Générateur de capture AVANT / APRÈS CÔTE À CÔTE pour PDF ─────────────────
+
 export const generateBeforeAfterDualSnapshot = async ({
   center,
   polygonPoints,
@@ -271,7 +343,8 @@ export const generateBeforeAfterDualSnapshot = async ({
   isLandscape = false,
   width = 900,
   height = 420,
-  zoom = 19
+  zoom = 19,
+  returnDetails = false
 }) => {
   try {
     let lat = center ? center[0] : 43.6047;
@@ -392,11 +465,15 @@ export const generateBeforeAfterDualSnapshot = async ({
     };
 
     let placedCount = 0;
+    let hasExistingSolar = false;
 
     // 2. Dessin du Polygone Délimité & des Panneaux
     if (polygonPoints && polygonPoints.length >= 3) {
-      // ─── MOITIÉ GAUCHE (AVANT : TOITURE BRUTE AVEC CADRE POINTILLÉ BLANC) ───
+      // ─── DÉTECTION SPECTRALE DES PANNEAUX SOLAIRES EXISTANTS (SUR LA CARTE BRUTE) ───
       const ptsLeft = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, 0));
+      hasExistingSolar = detectExistingSolarPanelsOnRoof(ctx, ptsLeft);
+
+      // ─── MOITIÉ GAUCHE (AVANT : TOITURE BRUTE AVEC CADRE POINTILLÉ BLANC) ───
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, 0, halfW, height);
@@ -407,6 +484,7 @@ export const generateBeforeAfterDualSnapshot = async ({
       ctx.closePath();
       ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
       ctx.fill();
+
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
@@ -492,7 +570,15 @@ export const generateBeforeAfterDualSnapshot = async ({
     ctx.textAlign = 'left';
     ctx.fillText(`APRÈS : ${customKwc} kWc (${panelCount} panneaux)`, halfW + 30, 32);
 
-    return canvas.toDataURL('image/jpeg', 0.92);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    if (returnDetails) {
+      return {
+        dataUrl,
+        hasExistingSolar,
+        placedCount
+      };
+    }
+    return dataUrl;
   } catch (err) {
     console.warn('Erreur génération dual snapshot avant-après:', err);
     return null;

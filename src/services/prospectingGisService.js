@@ -41,6 +41,169 @@ export function calculateCentroid(points) {
   return [sumLat / points.length, sumLng / points.length];
 }
 
+// Distance géodésique projetée en mètres entre deux coordonnées WGS84
+export function calculateDistanceMeters(p1, p2) {
+  const midLat = ((p1.lat + p2.lat) / 2 * Math.PI) / 180;
+  const dLat = (p2.lat - p1.lat) * 110574;
+  const dLng = (p2.lng - p1.lng) * 111320 * Math.cos(midLat);
+  return Math.sqrt(dLat * dLat + dLng * dLng);
+}
+
+// Calcul de l'angle intérieur (en degrés) entre trois sommets
+export function calculateCornerAngleDeg(pPrev, pCurr, pNext) {
+  const midLat = (pCurr.lat * Math.PI) / 180;
+  const cosLat = Math.cos(midLat);
+
+  const v1x = (pPrev.lng - pCurr.lng) * cosLat * 111320;
+  const v1y = (pPrev.lat - pCurr.lat) * 110574;
+  const v2x = (pNext.lng - pCurr.lng) * cosLat * 111320;
+  const v2y = (pNext.lat - pCurr.lat) * 110574;
+
+  const dot = v1x * v2x + v1y * v2y;
+  const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+  const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+  if (mag1 < 1e-4 || mag2 < 1e-4) return 180;
+
+  const cosTheta = Math.max(-1, Math.min(1, dot / (mag1 * mag2)));
+  return (Math.acos(cosTheta) * 180) / Math.PI;
+}
+
+// Simplifie un polygone en supprimant les points colinéaires intermédiaires (sur les murs droits)
+export function simplifyColinearVertices(pts, angleToleranceDeg = 15) {
+  if (!pts || pts.length <= 4) return pts;
+  let simplified = [...pts];
+  let changed = true;
+
+  while (changed && simplified.length > 4) {
+    changed = false;
+    const n = simplified.length;
+    for (let i = 0; i < n; i++) {
+      const prev = simplified[(i - 1 + n) % n];
+      const curr = simplified[i];
+      const next = simplified[(i + 1) % n];
+
+      const angle = calculateCornerAngleDeg(prev, curr, next);
+      // Si l'angle est proche de 180°, ce sommet est un point de découpe cadastrale sur un mur droit
+      if (Math.abs(angle - 180) <= angleToleranceDeg) {
+        simplified.splice(i, 1);
+        changed = true;
+        break;
+      }
+    }
+  }
+  return simplified;
+}
+
+// Vérifie si le polygone forme strictement un rectangle d'un seul bloc (Images 1, 2, 4 rejetées, Image 5 acceptée)
+export function isStrictRectangle(rawPolygon) {
+  if (!rawPolygon || rawPolygon.length < 4) return false;
+
+  const pts = [...rawPolygon];
+  if (pts.length > 3) {
+    const first = pts[0];
+    const last = pts[pts.length - 1];
+    if (Math.abs(first.lat - last.lat) < 1e-7 && Math.abs(first.lng - last.lng) < 1e-7) {
+      pts.pop();
+    }
+  }
+
+  const simplified = simplifyColinearVertices(pts);
+  if (simplified.length !== 4) {
+    return false; // Pas 4 sommets (ex: forme en L, découpes irrégulières)
+  }
+
+  // Vérifier que les 4 angles sont quasiment droits (72° à 108°)
+  for (let i = 0; i < 4; i++) {
+    const prev = simplified[(i - 1 + 4) % 4];
+    const curr = simplified[i];
+    const next = simplified[(i + 1) % 4];
+    const angle = calculateCornerAngleDeg(prev, curr, next);
+    if (angle < 72 || angle > 108) {
+      return false; // Angles non orthogonaux (trapèze ou parallélogramme oblique)
+    }
+  }
+
+  // Vérifier le parallélisme et la symétrie des côtés opposés (tolérance 18%)
+  const d0 = calculateDistanceMeters(simplified[0], simplified[1]);
+  const d1 = calculateDistanceMeters(simplified[1], simplified[2]);
+  const d2 = calculateDistanceMeters(simplified[2], simplified[3]);
+  const d3 = calculateDistanceMeters(simplified[3], simplified[0]);
+
+  const diffOpp1 = Math.abs(d0 - d2) / Math.max(d0, d2);
+  const diffOpp2 = Math.abs(d1 - d3) / Math.max(d1, d3);
+
+  if (diffOpp1 > 0.18 || diffOpp2 > 0.18) {
+    return false; // Côtés inégaux (trapèze difforme)
+  }
+
+  return true;
+}
+
+// Détermine l'exposition Sud de la toiture asymétrique et sélectionne l'arête de faîtage optimale
+// Exposition demandée : entre -45° et +45° (passant par 0° Plein Sud)
+export function getRoofSouthOrientation(polygon) {
+  if (!polygon || polygon.length < 3) return { isSouthFacing: false, southAngle: 0, ridgeIndex: 0 };
+
+  const n = polygon.length;
+  // Calcul du barycentre
+  let cLat = 0, cLng = 0;
+  polygon.forEach(p => { cLat += p.lat; cLng += p.lng; });
+  cLat /= n;
+  cLng /= n;
+
+  // Calculer les caractéristiques de chaque arête
+  const edges = [];
+  for (let i = 0; i < n; i++) {
+    const p1 = polygon[i];
+    const p2 = polygon[(i + 1) % n];
+    const length = calculateDistanceMeters(p1, p2);
+    
+    // Milieu de l'arête
+    const midLat = (p1.lat + p2.lat) / 2;
+    const midLng = (p1.lng + p2.lng) / 2;
+    
+    // Direction depuis le faîtage vers le barycentre du bâtiment (direction de la pente vers le bas)
+    const midLatRad = (midLat * Math.PI) / 180;
+    const dLng = (cLng - midLng) * Math.cos(midLatRad) * 111320;
+    const dLat = (cLat - midLat) * 110574;
+
+    // Angle boussole vers le Sud : Sud = 0°, Ouest = +90°, Est = -90°, Nord = 180° / -180°
+    let southSlopeAngle = Math.round((Math.atan2(-dLng, -dLat) * 180) / Math.PI);
+    if (southSlopeAngle === -180) southSlopeAngle = 180;
+
+    edges.push({
+      index: i,
+      length,
+      southSlopeAngle,
+      absDeviationFromSouth: Math.abs(southSlopeAngle)
+    });
+  }
+
+  // Filtrer les arêtes les plus longues (le faîtage est l'un des côtés longs du rectangle)
+  const maxLength = Math.max(...edges.map(e => e.length));
+  // Prendre les arêtes dont la longueur est à au moins 80% du max (les deux côtés longs du rectangle)
+  const longEdges = edges.filter(e => e.length >= maxLength * 0.80);
+
+  // Trier les arêtes longues selon leur proximité au Plein Sud (0°)
+  longEdges.sort((a, b) => a.absDeviationFromSouth - b.absDeviationFromSouth);
+
+  const bestEdge = longEdges[0];
+  if (!bestEdge) {
+    return { isSouthFacing: false, southAngle: 0, ridgeIndex: 0 };
+  }
+
+  // Condition stricte demandée par l'utilisateur : toiture exposée entre -45° et +45° (par rapport au Sud)
+  const isSouthFacing = bestEdge.absDeviationFromSouth <= 45;
+
+  return {
+    isSouthFacing,
+    southAngle: bestEdge.southSlopeAngle,
+    ridgeIndex: bestEdge.index,
+    ridgeLength: bestEdge.length
+  };
+}
+
+
 // 1. Recherche et géométrie de commune via geo.api.gouv.fr
 export async function searchCommunes(query) {
   if (!query || query.trim().length < 2) return [];
@@ -156,6 +319,14 @@ out geom;`;
   for (const el of elements) {
     if (!el.geometry || el.geometry.length < 3) continue;
 
+    // A. Exclusion immédiate si OpenStreetMap indique déjà une centrale solaire
+    const hasOsmSolar = el.tags && (
+      el.tags['generator:source'] === 'solar' ||
+      el.tags['power'] === 'generator' ||
+      el.tags['solar'] === 'yes'
+    );
+    if (hasOsmSolar) continue;
+
     // Conversion en tableau [{ lat, lng }]
     const polygon = el.geometry.map(g => ({ lat: g.lat, lng: g.lon }));
 
@@ -170,24 +341,37 @@ out geom;`;
 
     const area = calculatePolygonArea(polygon);
 
-    // FILTRE STRICT : STRICTEMENT COMPRIS ENTRE minArea ET maxArea (ex: 500 m² à 2500 m²)
-    if (area > minArea && area < maxArea) {
-      const center = calculateCentroid(polygon);
-      eligibleBuildings.push({
-        id: `osm_${el.id}`,
-        osmId: el.id,
-        area,
-        polygon,
-        center,
-        buildingType: el.tags?.building || 'yes',
-        name: el.tags?.name || null
-      });
+    // B. FILTRE SURFACE : STRICTEMENT COMPRIS ENTRE minArea ET maxArea (ex: 500 m² à 2500 m²)
+    if (area <= minArea || area >= maxArea) continue;
 
-      if (eligibleBuildings.length >= limit) {
-        break;
-      }
+    // C. FILTRE GÉOMÉTRIQUE STRICT : BÂTIMENT D'UN SEUL BLOC RECTANGULAIRE
+    // Rejette les formes en L (Image 1), polygones découpés (Image 2) et trapèzes difformes (Image 4)
+    if (!isStrictRectangle(polygon)) continue;
+
+    // D. FILTRE EXPOSITION STRICT : TOITURE ORIENTÉE SUD ENTRE -45° ET +45°
+    // Ne retient que les toitures dont l'arête principale / sablière a une pente dirigée vers le Sud
+    const southOri = getRoofSouthOrientation(polygon);
+    if (!southOri.isSouthFacing) continue;
+
+    const center = calculateCentroid(polygon);
+    eligibleBuildings.push({
+      id: `osm_${el.id}`,
+      osmId: el.id,
+      area,
+      polygon,
+      center,
+      buildingType: el.tags?.building || 'yes',
+      name: el.tags?.name || null,
+      ridgeIndex: southOri.ridgeIndex,
+      southAngle: southOri.southAngle,
+      isSouthFacing: true
+    });
+
+    if (eligibleBuildings.length >= limit) {
+      break;
     }
   }
+
 
   // Trier par surface décroissante (bâtiments les plus capacitaires en priorité)
   eligibleBuildings.sort((a, b) => b.area - a.area);
