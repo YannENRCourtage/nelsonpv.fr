@@ -270,6 +270,19 @@ export default function Developpement() {
     }
   };
 
+  const handleUpdateProjectData = async (projectId, updatedData) => {
+    if (!projectId) return;
+    try {
+      setSelectedProject(prev => (prev && prev.id === projectId ? { ...prev, ...updatedData } : prev));
+      setProjects(prev => prev.map(p => (p.id === projectId ? { ...p, ...updatedData } : p)));
+      if (apiService?.updateProject) {
+        await apiService.updateProject(projectId, updatedData);
+      }
+    } catch (err) {
+      console.warn('Update Firestore project error:', err);
+    }
+  };
+
   // ── Handlers Génération Document Urbanisme (PDF CERFA) ──────────
   const handleUrbanismeGenerate = async (docType, chosenType, finalProject, selectedPages) => {
     if (!selectedProject) return;
@@ -581,6 +594,7 @@ export default function Developpement() {
         isOpen={raccordementModal}
         onClose={() => setRaccordementModal(false)}
         project={selectedProject}
+        onSave={(data) => handleUpdateProjectData(selectedProject?.id, data)}
       />
 
       {/* 4. Modal AOS / AO */}
@@ -595,11 +609,7 @@ export default function Developpement() {
         isOpen={consuelModal}
         onClose={() => setConsuelModal(false)}
         project={selectedProject}
-        onSave={(data) => {
-          if (selectedProject) {
-            setSelectedProject({ ...selectedProject, ...data });
-          }
-        }}
+        onSave={(data) => handleUpdateProjectData(selectedProject?.id, data)}
       />
 
       {/* ═══ ZONE DE RENDU HTML2CANVAS POUR LE PDF CERFA ════════════ */}
