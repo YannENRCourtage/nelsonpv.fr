@@ -217,7 +217,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   const financialChartImg = generateFinancialChartImage({
     sim,
     width: 800,
-    height: (isOmbriere || isStruct) ? 230 : isToiture ? 360 : 374
+    height: (isOmbriere || isStruct) ? 280 : isToiture ? 360 : 374
   });
 
   // Calculs financiers pour les 3 cartes de cumuls 10 / 20 / 30 ans
@@ -667,7 +667,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             </div>
           </div>
         ` : isStruct ? `
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; ${sim.buildings && sim.buildings.length > 1 ? 'height: 225px;' : 'height: 215px;'}">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; ${sim.buildings && sim.buildings.length > 1 ? 'height: 270px;' : 'height: 260px;'}">
             <!-- 4a. VISUEL(S) 3D DU/DES BÂTIMENT(S) -->
             ${sim.buildings && sim.buildings.length > 1 ? `
               <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 6px; height: 100%;">
@@ -742,7 +742,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         ` : `
           <!-- 4. VISUEL DUAL AVANT / APRÈS (TOITURE & AUTOCONSO) OU UNIQUE (AUTRES) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: ${isOmbriere ? '5px' : isToiture ? '8px' : '12px'}; position: relative; height: ${isOmbriere ? '236px' : isToiture ? '270px' : '248px'}; display: flex; align-items: center; justify-content: center;">
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: ${isOmbriere ? '6px' : isToiture ? '8px' : '12px'}; position: relative; height: ${isOmbriere ? '285px' : isToiture ? '270px' : '260px'}; display: flex; align-items: center; justify-content: center;">
             ${finalMapScreenshot ? `
               <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Implantation Visuelle du Projet" />
             ` : `
@@ -758,27 +758,27 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         `}
 
         <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT -->
-        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${(isOmbriere || isStruct) ? '4.5px 10px' : isToiture ? '7px 10px' : '9px 12px'}; margin-bottom: ${(isOmbriere || isStruct) ? '5px' : isToiture ? '8px' : '11px'};">
+        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${(isOmbriere || isStruct) ? '5px 10px' : isToiture ? '7px 10px' : '9px 12px'}; margin-bottom: ${(isOmbriere || isStruct) ? '6px' : isToiture ? '8px' : '11px'};">
           <div style="font-size: ${(isOmbriere || isStruct) ? '7.5pt' : isToiture ? '8pt' : '7.5pt'}; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
             ${isSechoir ? 'Projection Financière des Gains Cumulés (25 ans)' : 'Projection Financière des Gains Cumulés (30 ans)'}
           </div>
-          <div style="height: ${(isOmbriere || isStruct) ? '120px' : isToiture ? '175px' : '240px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="height: ${(isOmbriere || isStruct) ? '155px' : isToiture ? '175px' : '240px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
           </div>
 
           <!-- 3 CARTES DE CUMULS VERTICALEMENT CENTRÉES (10, 20, 30 ANS) -->
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 3px; text-align: center;">
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '36px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
               <span style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">sur 10 ans</span>
               <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : '9.5pt'}; font-weight: 900; color: #0f172a; line-height: 1;">+${dispCumul10.toLocaleString('fr-FR')} €</div>
             </div>
 
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '36px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
               <span style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #64748b; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">sur 20 ans</span>
               <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : '9.5pt'}; font-weight: 900; color: #0f172a; line-height: 1;">+${dispCumul20.toLocaleString('fr-FR')} €</div>
             </div>
 
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '36px' : isToiture ? '40px' : '38px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
               <span style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6pt' : '5.5pt'}; color: #166534; font-weight: bold; text-transform: uppercase; line-height: 1; margin-bottom: 1.5px;">${isSechoir ? 'sur 20 ans (net)' : 'sur 30 ans'}</span>
               <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : '9.5pt'}; font-weight: 900; color: #16a34a; line-height: 1;">+${(isSechoir ? dispCumul20 : dispCumul30).toLocaleString('fr-FR')} €</div>
             </div>
