@@ -590,12 +590,14 @@ export default function Developpement() {
       />
 
       {/* 3. Modal Raccordement Enedis */}
-      <RaccordementModal
-        isOpen={raccordementModal}
-        onClose={() => setRaccordementModal(false)}
-        project={selectedProject}
-        onSave={(data) => handleUpdateProjectData(selectedProject?.id, data)}
-      />
+      {raccordementModal && (
+        <RaccordementModal
+          isOpen={raccordementModal}
+          onClose={() => setRaccordementModal(false)}
+          project={selectedProject}
+          onSave={(data) => handleUpdateProjectData(selectedProject?.id, data)}
+        />
+      )}
 
       {/* 4. Modal AOS / AO */}
       <AosAoModal

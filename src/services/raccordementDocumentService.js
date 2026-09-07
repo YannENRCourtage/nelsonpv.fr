@@ -122,22 +122,23 @@ export function calculatePtfCountdown(dateReception) {
 /**
  * Initialise ou normalise l'objet raccordement d'un projet
  */
-export function getInitialRaccordementData(project = {}) {
-  const existing = project.raccordement || {};
-  const powerKwc = parseFloat(project.kwc || project.projectSize || 0) || 0;
+export function getInitialRaccordementData(project) {
+  const p = project || {};
+  const existing = p.raccordement || {};
+  const powerKwc = parseFloat(p.kwc || p.projectSize || 0) || 0;
   const isHTA = powerKwc >= 250;
-  const isBess = Boolean(project.isBattery || existing.natureInstallation === 'bess_standalone' || existing.natureInstallation === 'hybride_pv_bess');
+  const isBess = Boolean(p.isBattery || existing.natureInstallation === 'bess_standalone' || existing.natureInstallation === 'hybride_pv_bess');
 
   return {
     // 1. Général & Identifiants
-    natureInstallation: existing.natureInstallation || (isBess ? 'hybride_pv_bess' : (project.type === 'ombriere' || project.type === 'ombriere_parking' ? 'ombriere_vl' : 'pv_toiture')),
+    natureInstallation: existing.natureInstallation || (isBess ? 'hybride_pv_bess' : (p.type === 'ombriere' || p.type === 'ombriere_parking' ? 'ombriere_vl' : 'pv_toiture')),
     puissanceInjectionKva: existing.puissanceInjectionKva ?? (powerKwc || 100),
     puissanceSoutirageKva: existing.puissanceSoutirageKva ?? (isBess ? Math.round(powerKwc * 0.8) || 100 : 0),
     tension: existing.tension || (isHTA ? 'HTA' : 'BT'),
     typeInjection: existing.typeInjection || (isBess ? 'card_is' : 'injection_totale'),
-    prmPdr: existing.prmPdr || project.prm || '',
-    siretProducteur: existing.siretProducteur || project.siret || '',
-    cadastreParcelles: existing.cadastreParcelles || project.cadastre || project.cadastralReference || 'Section A - Parcelle(s) à confirmer',
+    prmPdr: existing.prmPdr || p.prm || '',
+    siretProducteur: existing.siretProducteur || p.siret || '',
+    cadastreParcelles: existing.cadastreParcelles || p.cadastre || p.cadastralReference || 'Section A - Parcelle(s) à confirmer',
     
     // Étape 1 : Demande Initiale Connect
     demandeStatus: existing.demandeStatus || 'a_preparer', // 'a_preparer' | 'deposee' | 'recevable' | 'rejetee'
@@ -174,7 +175,7 @@ export function getInitialRaccordementData(project = {}) {
     travauxEnedisStatus: existing.travauxEnedisStatus || 'non_demarres',
     travauxClientStatus: existing.travauxClientStatus || 'non_demarres',
     consuelType: existing.consuelType || (isBess ? 'dossier_violet_bess' : 'sc144b_pv'),
-    consuelNumero: existing.consuelNumero || project.consuel_number || '',
+    consuelNumero: existing.consuelNumero || p.consuel_number || '',
     consuelStatus: existing.consuelStatus || 'non_depose', // 'non_depose' | 'depose' | 'en_cours' | 'vise' | 'non_conforme'
     consuelDateDepot: existing.consuelDateDepot || '',
     consuelDateVisite: existing.consuelDateVisite || '',
@@ -199,18 +200,20 @@ export function getInitialRaccordementData(project = {}) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export async function generateEnedisMandatPdf(project, racData, options = {}) {
+  const p = project || {};
+  const rac = racData || {};
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
   const H = 297;
   const m = 18;
   const usableWidth = W - (2 * m);
 
-  const clientName = (project.clientName || project.company || `${project.firstName || ''} ${project.lastName || project.name || ''}`).trim() || 'Porteur de Projet';
-  const clientSiret = racData.siretProducteur || project.siret || 'En cours d\'immatriculation';
-  const siteAddress = (project.address || 'Adresse à préciser') + (project.city ? `, ${project.zip || ''} ${project.city}` : '');
-  const pInj = racData.puissanceInjectionKva || project.kwc || 0;
-  const pSout = racData.puissanceSoutirageKva || 0;
-  const isBess = racData.natureInstallation === 'bess_standalone' || racData.natureInstallation === 'hybride_pv_bess';
+  const clientName = (p.clientName || p.company || `${p.firstName || ''} ${p.lastName || p.name || ''}`).trim() || 'Porteur de Projet';
+  const clientSiret = rac.siretProducteur || p.siret || 'En cours d\'immatriculation';
+  const siteAddress = (p.address || 'Adresse à préciser') + (p.city ? `, ${p.zip || ''} ${p.city}` : '');
+  const pInj = rac.puissanceInjectionKva || p.kwc || 0;
+  const pSout = rac.puissanceSoutirageKva || 0;
+  const isBess = rac.natureInstallation === 'bess_standalone' || rac.natureInstallation === 'hybride_pv_bess';
 
   // ─── PAGE 1 : MANDAT OFFICIEL DE REPRÉSENTATION ────────────────────────────
   
@@ -302,18 +305,18 @@ export async function generateEnedisMandatPdf(project, racData, options = {}) {
   doc.setFont('helvetica', 'bold');
   doc.text('Parcelle(s) Cadastre :', gridLeft, y + 10);
   doc.setFont('helvetica', 'normal');
-  doc.text(String(racData.cadastreParcelles || 'À renseigner'), gridLeft + 35, y + 10);
+  doc.text(String(rac.cadastreParcelles || 'À renseigner'), gridLeft + 35, y + 10);
 
   doc.setFont('helvetica', 'bold');
   doc.text('Technologie :', gridLeft, y + 18);
   doc.setFont('helvetica', 'normal');
-  const typeObj = INSTALLATION_TYPES.find(t => t.id === racData.natureInstallation);
+  const typeObj = INSTALLATION_TYPES.find(t => t.id === rac.natureInstallation);
   doc.text(typeObj ? typeObj.label : 'Photovoltaïque', gridLeft + 35, y + 18, { maxWidth: 50 });
 
   doc.setFont('helvetica', 'bold');
   doc.text('Tension Raccordement :', gridRight, y + 2);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${racData.tension} (${racData.tension === 'HTA' ? '20 000 V' : '400 V'})`, gridRight + 40, y + 2);
+  doc.text(`${rac.tension} (${rac.tension === 'HTA' ? '20 000 V' : '400 V'})`, gridRight + 40, y + 2);
 
   doc.setFont('helvetica', 'bold');
   doc.text('Puissance Injection Pinj :', gridRight, y + 10);
@@ -330,7 +333,7 @@ export async function generateEnedisMandatPdf(project, racData, options = {}) {
   doc.setFont('helvetica', 'bold');
   doc.text('Point Référence (PRM/PDR) :', gridRight, y + 26);
   doc.setFont('helvetica', 'normal');
-  doc.text(racData.prmPdr ? `${racData.prmPdr} (Existant)` : 'Création nouveau point de livraison', gridRight + 40, y + 26);
+  doc.text(rac.prmPdr ? `${rac.prmPdr} (Existant)` : 'Création nouveau point de livraison', gridRight + 40, y + 26);
 
   y += 36;
 
@@ -363,7 +366,7 @@ export async function generateEnedisMandatPdf(project, racData, options = {}) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(`Fait à ${project.city || 'Bordeaux'}, le ${todayStr}, en deux (2) exemplaires originaux faisant foi.`, m + 4, y + 2);
+  doc.text(`Fait à ${p.city || 'Bordeaux'}, le ${todayStr}, en deux (2) exemplaires originaux faisant foi.`, m + 4, y + 2);
   doc.text('Le présent mandat prend effet à compter de sa signature et demeure valable jusqu\'à la mise en service industrielle définitive.', m + 4, y + 6);
 
   // Boîtes de signature
@@ -406,7 +409,7 @@ export async function generateEnedisMandatPdf(project, racData, options = {}) {
   doc.text('Document officiel généré par Nelson PV (nelsonpv.fr) — Plateforme d\'ingénierie SAS ENR COURTAGE — Raccordement Enedis & RTE', m, H - 5);
   doc.text('Page 1 / 1', W - m - 12, H - 5);
 
-  const filename = `Mandat_Representation_Enedis_${(project.name || project.lastName || 'Projet').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filename = `Mandat_Representation_Enedis_${(p.name || p.lastName || 'Projet').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
 
   if (options.download !== false) {
     doc.save(filename);
@@ -425,18 +428,20 @@ export async function generateEnedisMandatPdf(project, racData, options = {}) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export async function generateConsuelCerfaPdf(project, racData, options = {}) {
+  const p = project || {};
+  const rac = racData || {};
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
   const H = 297;
   const m = 16;
   const usableWidth = W - (2 * m);
 
-  const clientName = (project.clientName || project.company || `${project.firstName || ''} ${project.lastName || project.name || ''}`).trim() || 'Porteur de Projet';
-  const siteAddress = (project.address || 'Adresse à préciser') + (project.city ? `, ${project.zip || ''} ${project.city}` : '');
-  const pInj = racData.puissanceInjectionKva || project.kwc || 0;
-  const pSout = racData.puissanceSoutirageKva || 0;
-  const isBess = racData.natureInstallation === 'bess_standalone' || racData.natureInstallation === 'hybride_pv_bess';
-  const isHTA = racData.tension === 'HTA';
+  const clientName = (p.clientName || p.company || `${p.firstName || ''} ${p.lastName || p.name || ''}`).trim() || 'Porteur de Projet';
+  const siteAddress = (p.address || 'Adresse à préciser') + (p.city ? `, ${p.zip || ''} ${p.city}` : '');
+  const pInj = rac.puissanceInjectionKva || p.kwc || 0;
+  const pSout = rac.puissanceSoutirageKva || 0;
+  const isBess = rac.natureInstallation === 'bess_standalone' || rac.natureInstallation === 'hybride_pv_bess';
+  const isHTA = rac.tension === 'HTA';
 
   const themeColor = isBess ? [109, 40, 217] : [2, 132, 199]; // Violet si BESS, Bleu Ciel si PV
   const headerSub = isBess
@@ -485,13 +490,13 @@ export async function generateConsuelCerfaPdf(project, racData, options = {}) {
   doc.setFont('helvetica', 'bold'); doc.text('Titulaire / Demandeur :', m + 4, y);
   doc.setFont('helvetica', 'normal'); doc.text(clientName, m + 40, y);
   doc.setFont('helvetica', 'bold'); doc.text('SIRET :', m + 110, y);
-  doc.setFont('helvetica', 'normal'); doc.text(String(racData.siretProducteur || 'En cours'), m + 130, y);
+  doc.setFont('helvetica', 'normal'); doc.text(String(rac.siretProducteur || 'En cours'), m + 130, y);
   y += 6;
 
   doc.setFont('helvetica', 'bold'); doc.text('Adresse du site :', m + 4, y);
   doc.setFont('helvetica', 'normal'); doc.text(siteAddress, m + 40, y, { maxWidth: 65 });
   doc.setFont('helvetica', 'bold'); doc.text('PRM / PDR Enedis :', m + 110, y);
-  doc.setFont('helvetica', 'normal'); doc.text(racData.prmPdr || 'Nouveau raccordement', m + 145, y);
+  doc.setFont('helvetica', 'normal'); doc.text(rac.prmPdr || 'Nouveau raccordement', m + 145, y);
   y += 7;
 
   doc.setFont('helvetica', 'bold'); doc.text('Installateur / Concepteur :', m + 4, y);
@@ -499,9 +504,9 @@ export async function generateConsuelCerfaPdf(project, racData, options = {}) {
   y += 6;
 
   doc.setFont('helvetica', 'bold'); doc.text('Dossier Consuel N° :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(racData.consuelNumero || 'Demande en cours d\'attribution', m + 40, y);
+  doc.setFont('helvetica', 'normal'); doc.text(rac.consuelNumero || 'Demande en cours d\'attribution', m + 40, y);
   doc.setFont('helvetica', 'bold'); doc.text('Régime de raccordement :', m + 110, y);
-  doc.setFont('helvetica', 'normal'); doc.text(`${racData.tension} (${isHTA ? '20 kV' : '400 V'})`, m + 145, y);
+  doc.setFont('helvetica', 'normal'); doc.text(`${rac.tension} (${isHTA ? '20 kV' : '400 V'})`, m + 145, y);
 
   y += 14;
 
@@ -509,7 +514,7 @@ export async function generateConsuelCerfaPdf(project, racData, options = {}) {
   renderConsuelSection('2. CARACTÉRISTIQUES DE PRODUCTION ET DE STOCKAGE (BESS)', 44);
 
   doc.setFont('helvetica', 'bold'); doc.text('Puissance Crête PV (Pcrête) :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(`${project.kwc || pInj} kWc`, m + 48, y);
+  doc.setFont('helvetica', 'normal'); doc.text(`${p.kwc || pInj} kWc`, m + 48, y);
   doc.setFont('helvetica', 'bold'); doc.text('Puissance Maximale d\'Injection (Pinj) :', m + 105, y);
   doc.setFont('helvetica', 'normal'); doc.text(`${pInj} kVA`, m + 160, y);
   y += 6;
@@ -523,13 +528,13 @@ export async function generateConsuelCerfaPdf(project, racData, options = {}) {
   }
 
   doc.setFont('helvetica', 'bold'); doc.text('Type d\'injection :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(racData.typeInjection, m + 48, y);
+  doc.setFont('helvetica', 'normal'); doc.text(String(rac.typeInjection || 'Injection totale'), m + 48, y);
   doc.setFont('helvetica', 'bold'); doc.text('Régime de Neutre :', m + 105, y);
   doc.setFont('helvetica', 'normal'); doc.text(isHTA ? 'IT / TN-S côté BT poste HTA' : 'TT (Réseau public BT)', m + 140, y);
   y += 6;
 
   doc.setFont('helvetica', 'bold'); doc.text('Parcelles Cadastrales :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(String(racData.cadastreParcelles || 'A renseigner'), m + 48, y);
+  doc.setFont('helvetica', 'normal'); doc.text(String(rac.cadastreParcelles || 'À renseigner'), m + 48, y);
 
   y += 18;
 
@@ -537,7 +542,7 @@ export async function generateConsuelCerfaPdf(project, racData, options = {}) {
   renderConsuelSection('3. MATÉRIEL DE CONVERSION & DISPOSITIF DE DÉCOUPLAGE RÉSEAU', 44);
 
   doc.setFont('helvetica', 'bold'); doc.text('Onduleur(s) Réseau :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(`Marque / Modèle : ${racData.onduleurMarque} ${racData.onduleurModele}`, m + 40, y);
+  doc.setFont('helvetica', 'normal'); doc.text(`Marque / Modèle : ${rac.onduleurMarque || 'Sungrow'} ${rac.onduleurModele || 'SG125HX'}`, m + 40, y);
   y += 6;
 
   doc.setFont('helvetica', 'bold'); doc.text('Système de Découplage :', m + 4, y);
@@ -602,7 +607,7 @@ export async function generateConsuelCerfaPdf(project, racData, options = {}) {
   doc.text('Dossier Technique Pré-Rempli Nelson PV — À joindre lors de la commande de l\'attestation sur consuel.com', m, H - 4);
   doc.text('Page 1 / 1', W - m - 12, H - 4);
 
-  const filename = `Dossier_Technique_Consuel_${(project.name || project.lastName || 'Projet').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filename = `Dossier_Technique_Consuel_${(p.name || p.lastName || 'Projet').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
 
   if (options.download !== false) {
     doc.save(filename);
@@ -621,16 +626,18 @@ export async function generateConsuelCerfaPdf(project, racData, options = {}) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export async function generateEnedisGlobalZip(project, racData) {
+  const p = project || {};
+  const rac = racData || {};
   const zip = new JSZip();
-  const projSlug = (project.name || project.lastName || 'Projet').replace(/[^a-zA-Z0-9]/g, '_');
+  const projSlug = (p.name || p.lastName || 'Projet').replace(/[^a-zA-Z0-9]/g, '_');
   const dateStr = new Date().toISOString().slice(0, 10);
 
   // 1. Génération du Mandat PDF en mémoire
-  const mandatRes = await generateEnedisMandatPdf(project, racData, { download: false });
+  const mandatRes = await generateEnedisMandatPdf(p, rac, { download: false });
   zip.file(`01_Mandat_de_representation_ENEDIS_signe.pdf`, mandatRes.arrayBuffer);
 
   // 2. Génération du Dossier Consuel PDF en mémoire
-  const consuelRes = await generateConsuelCerfaPdf(project, racData, { download: false });
+  const consuelRes = await generateConsuelCerfaPdf(p, rac, { download: false });
   zip.file(`02_Dossier_Technique_Consuel_pre_rempli.pdf`, consuelRes.arrayBuffer);
 
   // 3. Fichier JSON de métadonnées Enedis Connect
@@ -638,31 +645,31 @@ export async function generateEnedisGlobalZip(project, racData) {
     plateforme: 'Nelson PV (nelsonpv.fr)',
     dateGeneration: new Date().toISOString(),
     projet: {
-      id: project.id || null,
-      nom: project.name || project.lastName || 'Sans titre',
-      client: project.clientName || project.company || `${project.firstName || ''} ${project.lastName || ''}`.trim(),
-      siretProducteur: racData.siretProducteur || project.siret || null,
-      adresseSite: project.address || '',
-      ville: project.city || '',
-      codePostal: project.zip || '',
-      coordonneesGps: project.lat && project.lng ? { latitude: project.lat, longitude: project.lng } : null,
-      parcellesCadastre: racData.cadastreParcelles || project.cadastre || null,
+      id: p.id || null,
+      nom: p.name || p.lastName || 'Sans titre',
+      client: p.clientName || p.company || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+      siretProducteur: rac.siretProducteur || p.siret || null,
+      adresseSite: p.address || '',
+      ville: p.city || '',
+      codePostal: p.zip || '',
+      coordonneesGps: p.lat && p.lng ? { latitude: p.lat, longitude: p.lng } : null,
+      parcellesCadastre: rac.cadastreParcelles || p.cadastre || null,
     },
     caracteristiquesRaccordement: {
-      natureInstallation: racData.natureInstallation,
-      puissanceInjectionKva: racData.puissanceInjectionKva,
-      puissanceSoutirageKva: racData.puissanceSoutirageKva,
-      tensionRaccordement: racData.tension,
-      typeInjection: racData.typeInjection,
-      prmPdrExistant: racData.prmPdr || null,
-      numeroAffaireEnedisConnect: racData.enedisAffaireId || null,
+      natureInstallation: rac.natureInstallation,
+      puissanceInjectionKva: rac.puissanceInjectionKva,
+      puissanceSoutirageKva: rac.puissanceSoutirageKva,
+      tensionRaccordement: rac.tension,
+      typeInjection: rac.typeInjection,
+      prmPdrExistant: rac.prmPdr || null,
+      numeroAffaireEnedisConnect: rac.enedisAffaireId || null,
     },
     materiel: {
-      onduleurs: `${racData.onduleurMarque} ${racData.onduleurModele}`,
-      decouplage: racData.onduleurProtectionDecouplage,
+      onduleurs: `${rac.onduleurMarque} ${rac.onduleurModele}`,
+      decouplage: rac.onduleurProtectionDecouplage,
     },
     mandataire: MANDATAIRE_INFO,
-    piecesJointesIncluses: racData.piecesJointes || {},
+    piecesJointesIncluses: rac.piecesJointes || {},
   };
 
   zip.file(`03_Metadonnees_Depot_Enedis_Connect.json`, JSON.stringify(metadata, null, 2));
@@ -679,13 +686,13 @@ BORDEREAU DE DÉPÔT ENEDIS CONNECT — RÉCAPITULATIF DE LA DEMANDE
 • Parcelles Cadastrales : ${metadata.projet.parcellesCadastre || 'Non spécifié'}
 
 2. CARACTÉRISTIQUES ÉLECTRIQUES :
-• Nature de l'installation : ${racData.natureInstallation}
-• Puissance Maximale d'Injection (Pinj) : ${racData.puissanceInjectionKva} kVA
-• Puissance Maximale de Soutirage (Psout) : ${racData.puissanceSoutirageKva} kVA
-• Domaine de Tension : ${racData.tension} (${racData.tension === 'HTA' ? '20 000 V' : '400 V Triphasé'})
-• Type de Contrat / Injection : ${racData.typeInjection}
-• PRM / PDR Existant : ${racData.prmPdr || 'Création d\'un nouveau PDR'}
-• N° Affaire Enedis Connect : ${racData.enedisAffaireId || 'À créer lors du dépôt'}
+• Nature de l'installation : ${rac.natureInstallation}
+• Puissance Maximale d'Injection (Pinj) : ${rac.puissanceInjectionKva} kVA
+• Puissance Maximale de Soutirage (Psout) : ${rac.puissanceSoutirageKva} kVA
+• Domaine de Tension : ${rac.tension} (${rac.tension === 'HTA' ? '20 000 V' : '400 V Triphasé'})
+• Type de Contrat / Injection : ${rac.typeInjection}
+• PRM / PDR Existant : ${rac.prmPdr || 'Création d\'un nouveau PDR'}
+• N° Affaire Enedis Connect : ${rac.enedisAffaireId || 'À créer lors du dépôt'}
 
 3. MANDATAIRE HABILITÉ :
 • Société : ${MANDATAIRE_INFO.raisonSociale} (${MANDATAIRE_INFO.rcs})
@@ -712,9 +719,9 @@ Généré le ${new Date().toLocaleDateString('fr-FR')} par la plateforme Nelson 
 2. Connectez-vous avec vos identifiants partenaires / mandataire ou créez votre compte.
 3. Cliquez sur "Nouvelle demande de raccordement" > Choisissez "Producteur d'électricité".
 4. Saisissez les données techniques issues du fichier "03_Metadonnees_Depot_Enedis_Connect.json" :
-   - Puissance d'injection : ${racData.puissanceInjectionKva} kVA
-   - Si stockage BESS : indiquer également la puissance de soutirage ${racData.puissanceSoutirageKva} kVA
-   - Niveau de tension : ${racData.tension}
+   - Puissance d'injection : ${rac.puissanceInjectionKva} kVA
+   - Si stockage BESS : indiquer également la puissance de soutirage ${rac.puissanceSoutirageKva} kVA
+   - Niveau de tension : ${rac.tension}
 5. Téléversez les documents :
    - Mandat de représentation : joindre le fichier "01_Mandat_de_representation_ENEDIS_signe.pdf"
    - Ajoutez le Plan de situation, Plan de masse et Schéma unifilaire depuis le dossier Urbanisme Nelson PV.
