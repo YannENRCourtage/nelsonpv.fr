@@ -109,8 +109,10 @@ export async function simulateParkingHeadless({
 }) {
   const typologyKey = customSettings.typology || 'ombriere_vl_auto';
   const costPerKwc = customSettings.costPerKwc || 1200; // 1 200 € / kWc (structure + génie civil + PV)
-  const tarifEdfOaKwh = customSettings.tarifEdfOa || 0.085; // 0,085 €/kWh
-  const economicModel = customSettings.economicModel || 'vente_totale'; // 'vente_totale' | 'autoconsommation'
+  const tarifEdfOaKwh = customSettings.tarifEdfOa !== undefined ? Number(customSettings.tarifEdfOa) : 0.085; // 0,085 €/kWh
+  const minKwc = customSettings.minKwc !== undefined ? Number(customSettings.minKwc) : 100;
+  const maxKwc = customSettings.maxKwc !== undefined ? Number(customSettings.maxKwc) : 500;
+  const economicModel = customSettings.economicModel || 'vente_totale'; // 'vente_totale' | 'autoconsommation' | 'autoconsommation_stockage'
   const includeCoverLetter = customSettings.includeCoverLetter ?? false;
 
   // Détection des propriétaires personnes morales pour le champ Client
@@ -124,12 +126,12 @@ export async function simulateParkingHeadless({
   const primaryOwnerName = ownerInfo?.primaryOwnerName || null;
   const clientName = primaryOwnerName || parking.name || addressInfo?.label || 'Client Parking';
 
-  // 1. Calepinage géométrique des ombrières selon l'orientation naturelle du parking (plafonné à 500 kWc)
+  // 1. Calepinage géométrique des ombrières selon l'orientation naturelle du parking (plafonné à maxKwc)
   const layout = layoutOmbrieresOnParking({
     polygonWgs84: parking.polygon,
     parkingArea: parking.area,
     typologyKey,
-    maxKwc: 500
+    maxKwc
   });
 
   const {
@@ -166,8 +168,15 @@ export async function simulateParkingHeadless({
     autoconsoKwh = Math.round(annualProductionKwh * 0.65);
     surplusKwh = Math.round(annualProductionKwh * 0.35);
     annualSavingsAutoconso = Math.round(autoconsoKwh * 0.26); // 0,26 €/kWh économisé
-    annualRevenueSurplus = Math.round(surplusKwh * 0.13);     // 0,13 €/kWh surplus
+    annualRevenueSurplus = Math.round(surplusKwh * (customSettings.tarifEdfOa || 0.13));     // surplus
     annualBenefitYear1 = annualSavingsAutoconso + annualRevenueSurplus;
+  } else if (economicModel === 'autoconsommation_stockage') {
+    autoconsoRate = 100;
+    autoconsoKwh = annualProductionKwh;
+    surplusKwh = 0;
+    annualSavingsAutoconso = Math.round(annualProductionKwh * 0.26); // 100% autoconsommé
+    annualRevenueSurplus = 0;
+    annualBenefitYear1 = annualSavingsAutoconso;
   }
 
   const annualIncomeForFinancing = economicModel === 'vente_totale' ? annualRevenueReventeTotale : annualBenefitYear1;

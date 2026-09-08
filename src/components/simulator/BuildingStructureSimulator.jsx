@@ -271,6 +271,10 @@ export default function BuildingStructureSimulator({
   // Tunnel Faisabilité Solaire (Image 4 & 5) : 1. Adresse | 2. Emplacement & Orientation | 3. Rentabilité & Faisabilité
   const [studyStep, setStudyStep] = useState(1);
 
+  // Plage de puissance photovoltaïque cible (Min et Max kWc)
+  const [minTargetKwc, setMinTargetKwc] = useState(100);
+  const [maxTargetKwc, setMaxTargetKwc] = useState(500);
+
   // Choix du visuel de comparaison : 'before' (Vue Avant) ou '3d' (Vue 3D)
   const [leftVisualChoice, setLeftVisualChoice] = useState('before');
 
@@ -643,8 +647,9 @@ const crop3DCanvas = (sourceCanvas) => {
   const roofArea = totalRoofArea;
 
   const installedKwc = useMemo(() => {
-    return Math.round((roofArea * 0.20) * 100) / 100;
-  }, [roofArea]);
+    const raw = Math.round((roofArea * 0.20) * 100) / 100;
+    return Math.max(minTargetKwc, Math.min(maxTargetKwc, raw));
+  }, [roofArea, minTargetKwc, maxTargetKwc]);
 
   const regionalBaseYield = useMemo(() => {
     return getProductionForDepartment(departmentCode);
@@ -720,6 +725,58 @@ const crop3DCanvas = (sourceCanvas) => {
   // Données environnementales
   const co2AvoidedTonsPerYear = Math.round((annualProductionKwh * 0.065) / 1000);
   const equivalentHouseholds = Math.round(annualProductionKwh / 4500);
+
+  // Construction dynamique du payload de simulation pour l'export PDF et la sauvegarde
+  const buildCurrentSimulationPayload = useCallback(() => {
+    return {
+      type: 'structure_metallique',
+      title: `Structure Métallique & Hangar Solaire ${installedKwc} kWc — ${cityName}`,
+      cityName,
+      address: addressInput || `${cityName} (${departmentCode})`,
+      departmentCode,
+      mapCenter,
+      zoom: 19,
+      dimensions: `${buildingLength.toFixed(1)}m × ${buildingWidth.toFixed(1)}m`,
+      length: buildingLength,
+      width: buildingWidth,
+      roofSurface: roofArea,
+      floorArea: totalFloorArea,
+      kwc: installedKwc,
+      installedKwc,
+      power: installedKwc,
+      minTargetKwc,
+      maxTargetKwc,
+      panelCount: Math.max(1, Math.round((installedKwc * 1000) / 465)),
+      rotation: simBuildings[0]?.rotation || 0,
+      buildings: simBuildings,
+      annualProductionKwh,
+      tarifEdfOaKwh: tarifAchatKwh,
+      annualRevenueReventeTotale: annualGrossRevenue,
+      annualBenefitYear1: annualNetRevenue,
+      annualRevenue: annualNetRevenue,
+      totalInvestmentHT: totalProjectInvestment,
+      paybackYear: financialProjection30Years.paybackYears,
+      financing: selectedFinancing,
+      totalGains30Years: financialProjection30Years.cumul30,
+      cumul10: financialProjection30Years.cumul10,
+      cumul20: financialProjection30Years.cumul20,
+      cumul30: financialProjection30Years.cumul30,
+      leftVisualChoice,
+      building3dSnapshot
+    };
+  }, [
+    installedKwc, minTargetKwc, maxTargetKwc, cityName, addressInput, departmentCode,
+    mapCenter, buildingLength, buildingWidth, roofArea, totalFloorArea, simBuildings,
+    annualProductionKwh, tarifAchatKwh, annualGrossRevenue, annualNetRevenue,
+    totalProjectInvestment, financialProjection30Years, selectedFinancing,
+    leftVisualChoice, building3dSnapshot
+  ]);
+
+  useEffect(() => {
+    if (onStateUpdate) {
+      onStateUpdate(buildCurrentSimulationPayload());
+    }
+  }, [buildCurrentSimulationPayload, onStateUpdate]);
 
   // Recherche BAN
   useEffect(() => {
@@ -1494,6 +1551,39 @@ const crop3DCanvas = (sourceCanvas) => {
                         <span className="text-slate-600 font-medium">Puissance Solaire Globale :</span>
                         <strong className="text-blue-600 font-black text-base">{installedKwc} kWc</strong>
                       </div>
+
+                      {/* Réglage Puissance Cible Min & Max */}
+                      <div className="border-t border-slate-200 pt-2 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
+                            <Zap className="w-3.5 h-3.5 text-amber-500" />
+                            Puissance cible PV :
+                          </span>
+                          <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                            {minTargetKwc} à {maxTargetKwc} kWc
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-slate-500 font-bold text-[9px]">Min (kWc)</label>
+                            <input
+                              type="number"
+                              value={minTargetKwc}
+                              onChange={(e) => setMinTargetKwc(Math.max(10, Number(e.target.value)))}
+                              className="w-full p-1.5 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center shadow-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 font-bold text-[9px]">Max (kWc)</label>
+                            <input
+                              type="number"
+                              value={maxTargetKwc}
+                              onChange={(e) => setMaxTargetKwc(Math.max(minTargetKwc, Number(e.target.value)))}
+                              className="w-full p-1.5 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center shadow-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Actions de navigation */}
@@ -1590,6 +1680,47 @@ const crop3DCanvas = (sourceCanvas) => {
                 exit={{ opacity: 0, y: -15 }}
                 className="space-y-6"
               >
+                {/* Bandeau de contrôle de la Puissance Photovoltaïque Cible (Min & Max) */}
+                <div className="bg-slate-50 border border-slate-200 rounded-3xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-amber-500/10 text-amber-600 rounded-2xl">
+                      <Zap className="w-5 h-5 fill-amber-500" />
+                    </div>
+                    <div>
+                      <div className="font-black text-slate-900 text-sm">Puissance Photovoltaïque Cible</div>
+                      <div className="text-xs text-slate-500">Ajustez la fourchette de dimensionnement souhaitée (ex: 100 à 250 kWc)</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-600">Min :</span>
+                      <input
+                        type="number"
+                        value={minTargetKwc}
+                        onChange={(e) => setMinTargetKwc(Math.max(10, Number(e.target.value)))}
+                        className="w-20 p-1.5 bg-white border border-slate-300 rounded-xl font-black text-slate-900 text-xs text-center shadow-xs"
+                      />
+                      <span className="text-xs font-bold text-slate-500">kWc</span>
+                    </div>
+                    <span className="text-slate-400 font-black">—</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-600">Max :</span>
+                      <input
+                        type="number"
+                        value={maxTargetKwc}
+                        onChange={(e) => setMaxTargetKwc(Math.max(minTargetKwc, Number(e.target.value)))}
+                        className="w-20 p-1.5 bg-white border border-slate-300 rounded-xl font-black text-slate-900 text-xs text-center shadow-xs"
+                      />
+                      <span className="text-xs font-bold text-slate-500">kWc</span>
+                    </div>
+                    <div className="px-3.5 py-1.5 bg-blue-50 text-blue-700 font-black text-xs rounded-xl border border-blue-200 flex items-center gap-1">
+                      <span>Centrale :</span>
+                      <strong>{installedKwc} kWc</strong>
+                    </div>
+                  </div>
+                </div>
+
                 {/* 3 Cartes Principales (Image 5) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-md flex flex-col justify-between">
@@ -1772,7 +1903,7 @@ const crop3DCanvas = (sourceCanvas) => {
                   {onExportPDF && (
                     <button
                       type="button"
-                      onClick={() => onExportPDF()}
+                      onClick={() => onExportPDF(buildCurrentSimulationPayload())}
                       className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-black transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20 hover:scale-105 cursor-pointer"
                       title="Générer et télécharger l'offre commerciale PDF A4"
                     >

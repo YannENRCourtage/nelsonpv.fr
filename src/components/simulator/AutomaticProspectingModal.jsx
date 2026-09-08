@@ -64,9 +64,13 @@ export default function AutomaticProspectingModal({
   // Rayon pour l'emprise carte (en mètres)
   const [mapRadius, setMapRadius] = useState(1000); // 500, 1000, 2000, 5000
 
-  // Critères de filtrage et dimensionnement
+  // Critères de filtrage, puissance et modèle économique
   const [minArea, setMinArea] = useState(500);
   const [maxArea, setMaxArea] = useState(2500);
+  const [minTargetKwc, setMinTargetKwc] = useState(100);
+  const [maxTargetKwc, setMaxTargetKwc] = useState(500);
+  const [economicModel, setEconomicModel] = useState('vente_totale'); // 'vente_totale' | 'autoconsommation' | 'autoconsommation_stockage'
+  const [tarifEdfOa, setTarifEdfOa] = useState(0.085);
   const [targetLimit, setTargetLimit] = useState(10); // 10, 30, 50, 100, 'Tout'
   const [roofPitch, setRoofPitch] = useState(15);
   const [roofType, setRoofType] = useState('asymetrique');
@@ -298,7 +302,7 @@ export default function AutomaticProspectingModal({
       const effectiveLimit = targetLimit === 'Tout' ? 500 : Number(targetLimit);
       const limitLabel = targetLimit === 'Tout' ? 'toutes les toitures éligibles' : `${targetLimit} toitures cibles`;
       setCurrentStepText(`Interrogation cadastrale Overpass API (${limitLabel})...`);
-      addLog(`🛰️ Recherche des bâtiments (Emprise : ${minArea} à ${maxArea} m² • Objectif : ${limitLabel})...`);
+      addLog(`🛰️ Recherche des bâtiments (Emprise : ${minArea} à ${maxArea} m² • Cible : ${minTargetKwc} à ${maxTargetKwc} kWc • Objectif : ${limitLabel})...`);
 
       const eligible = await fetchBuildingsInBbox({
         bbox: targetBbox,
@@ -309,7 +313,7 @@ export default function AutomaticProspectingModal({
       });
 
       setDetectedBuildings(eligible);
-      addLog(`✅ ${eligible.length} bâtiments éligibles identifiés (100 - 500 kWc).`);
+      addLog(`✅ ${eligible.length} bâtiments éligibles identifiés (${minTargetKwc} - ${maxTargetKwc} kWc).`);
 
       if (eligible.length === 0) {
         setStatus('completed');
@@ -359,18 +363,28 @@ export default function AutomaticProspectingModal({
           addressInfo,
           cadastreInfo,
           customSettings: {
-            costPerKwc: 920
+            costPerKwc: 920,
+            minKwc: minTargetKwc,
+            maxKwc: maxTargetKwc,
+            economicModel,
+            tarifEdfOa
           }
         });
 
         if (!sim) {
-          addLog(`   ⚠️ Bâtiment ignoré : toiture déjà équipée de panneaux solaires existants.`);
+          addLog(`   ⚠️ Bâtiment ignoré : toiture déjà équipée de panneaux ou puissance hors plage (${minTargetKwc}-${maxTargetKwc} kWc).`);
           continue;
         }
 
         addLog(`   🏠 Toiture : ${sim.orientationLabel}`);
         addLog(`   ⚡ Puissance : ${sim.installedKwc} kWc (${sim.panelCount} modules 465 Wc)`);
-        addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • CA EDF OA : ~${sim.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an`);
+        if (economicModel === 'vente_totale') {
+          addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • CA EDF OA (${tarifEdfOa} €/kWh) : ~${sim.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an`);
+        } else if (economicModel === 'autoconsommation_stockage') {
+          addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • Gains Autoconso 100% + Stockage : ~${sim.annualBenefitYear1?.toLocaleString('fr-FR')} €/an`);
+        } else {
+          addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • Gains Autoconso + Surplus : ~${sim.annualBenefitYear1?.toLocaleString('fr-FR')} €/an`);
+        }
 
 
         // D. Génération de l'Offre Commerciale PDF
@@ -565,7 +579,7 @@ export default function AutomaticProspectingModal({
         <div className="p-3 sm:p-4 overflow-hidden flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3.5 min-h-0 bg-slate-100/70">
 
           {/* ═══ COLONNE GAUCHE (5 cols) : TOUT VISIBLE SANS SCROLL VERTICAL ════ */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-2.5 overflow-y-auto pr-0.5">
+          <div className="lg:col-span-5 flex flex-col justify-between space-y-2.5 overflow-y-auto overflow-x-hidden pr-0.5 min-w-0">
 
             {/* CARTE 1 : ZONE GÉOGRAPHIQUE */}
             <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
@@ -746,31 +760,162 @@ export default function AutomaticProspectingModal({
               )}
             </div>
 
-            {/* CARTE 3 : PARAMÈTRES TECHNIQUES & DIMENSIONNEMENT */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+            {/* CARTE 3 : PARAMÈTRES TECHNIQUES & MODÈLE ÉCONOMIQUE */}
+            <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
-                  3. Critères &amp; Dimensionnement Solaire
+                  3. Objectifs &amp; Modèle Économique
                 </label>
 
                 <button
                   type="button"
                   onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                  className="text-[10.5px] font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
                 >
-                  {showAdvanced ? 'Masquer' : 'Ajuster m²'}
+                  {showAdvanced ? 'Masquer m²' : 'Ajuster m²'}
                 </button>
               </div>
 
-              {/* SÉLECTEUR DU NOMBRE DE BÂTIMENTS CIBLES (10, 30, 50, 100, Tout) */}
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+              {/* SÉLECTEUR DU MODÈLE ÉCONOMIQUE (3 BOUTONS) */}
+              <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
-                    <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-[10.5px] font-black text-slate-800 flex items-center gap-1">
+                    <Euro className="w-3.5 h-3.5 text-blue-600" />
+                    Valorisation de l'électricité :
+                  </span>
+                  <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-md border ${
+                    economicModel === 'vente_totale'
+                      ? 'text-blue-700 bg-blue-100/80 border-blue-300'
+                      : economicModel === 'autoconsommation_stockage'
+                      ? 'text-purple-700 bg-purple-100/80 border-purple-300'
+                      : 'text-emerald-700 bg-emerald-100/80 border-emerald-300'
+                  }`}>
+                    {economicModel === 'vente_totale' ? 'Vente Totale 100%' : economicModel === 'autoconsommation_stockage' ? 'Autoconso + Stockage' : 'Autoconso + Surplus'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setEconomicModel('vente_totale')}
+                    className={`p-1.5 rounded-xl text-left transition-all border cursor-pointer ${
+                      economicModel === 'vente_totale'
+                        ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-sm ring-1 ring-blue-400'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-black text-[10px]">Revente totale</div>
+                      {economicModel === 'vente_totale' && <CheckCircle2 className="w-3 h-3 text-blue-400 shrink-0" />}
+                    </div>
+                    <div className={`text-[8.5px] mt-0.5 leading-tight ${economicModel === 'vente_totale' ? 'text-blue-200 font-medium' : 'text-slate-500'}`}>
+                      100% à {tarifEdfOa} €/kWh
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEconomicModel('autoconsommation')}
+                    className={`p-1.5 rounded-xl text-left transition-all border cursor-pointer ${
+                      economicModel === 'autoconsommation'
+                        ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-sm ring-1 ring-emerald-400'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-black text-[10px]">Autoconso + Surplus</div>
+                      {economicModel === 'autoconsommation' && <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />}
+                    </div>
+                    <div className={`text-[8.5px] mt-0.5 leading-tight ${economicModel === 'autoconsommation' ? 'text-emerald-200 font-medium' : 'text-slate-500'}`}>
+                      Écon. + surplus
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEconomicModel('autoconsommation_stockage')}
+                    className={`p-1.5 rounded-xl text-left transition-all border cursor-pointer ${
+                      economicModel === 'autoconsommation_stockage'
+                        ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-sm ring-1 ring-purple-400'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-black text-[10px]">Autoconso + Stockage</div>
+                      {economicModel === 'autoconsommation_stockage' && <CheckCircle2 className="w-3 h-3 text-purple-400 shrink-0" />}
+                    </div>
+                    <div className={`text-[8.5px] mt-0.5 leading-tight ${economicModel === 'autoconsommation_stockage' ? 'text-purple-200 font-medium' : 'text-slate-500'}`}>
+                      100% autoconsommé
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* PUISSANCE CIBLE MIN & MAX + TARIF EDF OA */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] font-black text-slate-800 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    Puissance cible (kWc) :
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <label className="block text-slate-500 font-bold text-[8.5px]">Min (kWc)</label>
+                      <input
+                        type="number"
+                        value={minTargetKwc}
+                        onChange={(e) => {
+                          const val = Math.max(10, Number(e.target.value));
+                          setMinTargetKwc(val);
+                          setMinArea(Math.max(100, Math.round((val * 1000 / 465) * 2.05 * 0.75)));
+                        }}
+                        className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-500 font-bold text-[8.5px]">Max (kWc)</label>
+                      <input
+                        type="number"
+                        value={maxTargetKwc}
+                        onChange={(e) => {
+                          const val = Math.max(minTargetKwc, Number(e.target.value));
+                          setMaxTargetKwc(val);
+                          setMaxArea(Math.round((val * 1000 / 465) * 2.05 * 1.6));
+                        }}
+                        className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] font-black text-slate-800 flex items-center gap-1">
+                    <Euro className="w-3 h-3 text-blue-600" />
+                    Tarif EDF OA (€/kWh) :
+                  </span>
+                  <div>
+                    <label className="block text-slate-500 font-bold text-[8.5px]">Achat EDF OA libre</label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={tarifEdfOa}
+                      onChange={(e) => setTarifEdfOa(parseFloat(e.target.value) || 0)}
+                      className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-blue-700 text-xs text-center"
+                      placeholder="0.085"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SÉLECTEUR DU NOMBRE DE BÂTIMENTS CIBLES (10, 30, 50, 100, Tout) */}
+              <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-slate-800 flex items-center gap-1">
+                    <Building2 className="w-3 h-3 text-emerald-600" />
                     Nombre de toitures cibles à trouver :
                   </span>
-                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-300">
+                  <span className="text-[9.5px] font-black text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-md border border-emerald-300">
                     {targetLimit === 'Tout' ? 'Toutes les toitures' : `${targetLimit} toitures`}
                   </span>
                 </div>
@@ -781,7 +926,7 @@ export default function AutomaticProspectingModal({
                       key={val}
                       type="button"
                       onClick={() => setTargetLimit(val)}
-                      className={`py-1.5 px-1 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
+                      className={`py-1 px-1 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
                         targetLimit === val
                           ? 'bg-[#0e2b4d] text-white shadow-xs ring-1 ring-emerald-400 scale-[1.02]'
                           : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
@@ -793,23 +938,25 @@ export default function AutomaticProspectingModal({
                 </div>
               </div>
 
-              {/* Grille des critères */}
-              <div className="grid grid-cols-2 gap-1.5 text-xs">
-                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Surface toiture</span>
-                  <strong className="text-slate-900 font-black text-[11px]">{minArea} à {maxArea} m²</strong>
+              {/* Grille des critères récapitulatifs */}
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Surface toiture</span>
+                  <strong className="text-slate-900 font-black text-[10.5px]">{minArea} à {maxArea} m²</strong>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Puissance installable</span>
-                  <strong className="text-emerald-700 font-black text-[11px]">100 à 500 kWc</strong>
+                <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Puissance installable</span>
+                  <strong className="text-emerald-700 font-black text-[10.5px]">{minTargetKwc} à {maxTargetKwc} kWc</strong>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Profil toiture</span>
-                  <strong className="text-emerald-700 font-black text-[11px]">Inférence IA / SIG auto</strong>
+                <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Profil toiture</span>
+                  <strong className="text-emerald-700 font-black text-[10.5px]">Inférence IA / SIG auto</strong>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Tarif EDF OA</span>
-                  <strong className="text-blue-700 font-black text-[11px]">0,085 €/kWh (S21)</strong>
+                <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Modèle de valorisation</span>
+                  <strong className="text-blue-700 font-black text-[10.5px]">
+                    {economicModel === 'vente_totale' ? `${tarifEdfOa} €/kWh OA` : economicModel === 'autoconsommation_stockage' ? 'Autoconso + Stockage' : 'Autoconso + Surplus'}
+                  </strong>
                 </div>
               </div>
 
@@ -821,7 +968,7 @@ export default function AutomaticProspectingModal({
                       type="number"
                       value={minArea}
                       onChange={(e) => setMinArea(Number(e.target.value))}
-                      className="w-full p-1.5 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-800 text-xs"
+                      className="w-full p-1 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-800 text-xs"
                     />
                   </div>
 
@@ -831,33 +978,33 @@ export default function AutomaticProspectingModal({
                       type="number"
                       value={maxArea}
                       onChange={(e) => setMaxArea(Number(e.target.value))}
-                      className="w-full p-1.5 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-800 text-xs"
+                      className="w-full p-1 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-800 text-xs"
                     />
                   </div>
                 </div>
               )}
             </div>
 
-            {/* GRAND BOUTON D'ACTION PRINCIPAL */}
-            <div className="pt-0.5">
+            {/* GRAND BOUTON D'ACTION PRINCIPAL - ANTI SCROLL LATÉRAL */}
+            <div className="pt-0.5 shrink-0 w-full min-w-0">
               {status === 'running' || status === 'sourcing' ? (
                 <button
                   type="button"
                   onClick={handleStop}
-                  className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer"
+                  className="w-full min-w-0 py-3.5 px-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer overflow-hidden"
                 >
-                  <Square className="w-4 h-4 fill-white" />
-                  <span>Interrompre la Prospection Automatique</span>
+                  <Square className="w-4 h-4 fill-white shrink-0" />
+                  <span className="truncate">Interrompre la Prospection Automatique</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleStartProspecting}
                   disabled={geoMode === 'commune' && !selectedCommune}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                  className="w-full min-w-0 py-3.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer overflow-hidden"
                 >
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>
+                  <Play className="w-4 h-4 fill-white shrink-0" />
+                  <span className="truncate">
                     Lancer la Prospection Automatique
                     {geoMode === 'commune'
                       ? ` (${selectedCommune?.nom || communeSearch || 'Commune'} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} toitures`})`

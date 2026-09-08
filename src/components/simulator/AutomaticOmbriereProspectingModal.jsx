@@ -70,10 +70,13 @@ export default function AutomaticOmbriereProspectingModal({
   // Typologie d'ombrière sélectionnée (VL Auto par défaut)
   const [selectedTypology, setSelectedTypology] = useState('ombriere_vl_auto');
 
-  // Critères de filtrage et dimensionnement
+  // Critères de filtrage, puissance et dimensionnement
   const [minArea, setMinArea] = useState(220);
   const [targetLimit, setTargetLimit] = useState(10); // 10, 30, 50, 100, 'Tout'
-  const [economicModel, setEconomicModel] = useState('vente_totale'); // 'vente_totale' | 'autoconsommation'
+  const [economicModel, setEconomicModel] = useState('vente_totale'); // 'vente_totale' | 'autoconsommation' | 'autoconsommation_stockage'
+  const [minTargetKwc, setMinTargetKwc] = useState(100);
+  const [maxTargetKwc, setMaxTargetKwc] = useState(500);
+  const [tarifEdfOa, setTarifEdfOa] = useState(0.085);
   const [includeCoverLetter, setIncludeCoverLetter] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -375,7 +378,9 @@ export default function AutomaticOmbriereProspectingModal({
           customSettings: {
             typology: selectedTypology,
             costPerKwc: 1200,
-            tarifEdfOa: 0.085,
+            tarifEdfOa,
+            minKwc: minTargetKwc,
+            maxKwc: maxTargetKwc,
             economicModel,
             includeCoverLetter
           }
@@ -387,14 +392,14 @@ export default function AutomaticOmbriereProspectingModal({
           continue;
         }
 
-        // FILTRE 3 : Implantation géométrique valide et puissance strictement comprise entre 100 et 500 kWc
+        // FILTRE 3 : Implantation géométrique valide et puissance strictement comprise entre minTargetKwc et maxTargetKwc
         if (!sim || !sim.placedOmbrieres || sim.placedOmbrieres.length === 0) {
           addLog(`   ⚠️ Parking ignoré : géométrie non optimisable pour des rangées d'ombrières continues.`);
           continue;
         }
 
-        if (sim.installedKwc < 100 || sim.installedKwc > 500) {
-          addLog(`   ⚠️ Parking ignoré : puissance hors fourchette cible 100-500 kWc (${sim.installedKwc} kWc).`);
+        if (sim.installedKwc < minTargetKwc || sim.installedKwc > maxTargetKwc) {
+          addLog(`   ⚠️ Parking ignoré : puissance hors fourchette cible ${minTargetKwc}-${maxTargetKwc} kWc (${sim.installedKwc} kWc).`);
           continue;
         }
 
@@ -404,7 +409,9 @@ export default function AutomaticOmbriereProspectingModal({
         addLog(`   🚗 Implantation : ${sim.totalShelteredSpots} places abritées (${sim.placedOmbrieres.length} rangée(s))`);
         addLog(`   ⚡ Puissance : ${sim.installedKwc} kWc (${sim.panelCount} modules 465 Wc)`);
         if (economicModel === 'vente_totale') {
-          addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • CA Vente Totale (0,085 €/kWh) : ~${sim.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an`);
+          addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • CA Vente Totale (${tarifEdfOa} €/kWh) : ~${sim.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an`);
+        } else if (economicModel === 'autoconsommation_stockage') {
+          addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • Gains Autoconso 100% + Stockage : ~${sim.annualBenefitYear1?.toLocaleString('fr-FR')} €/an`);
         } else {
           addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • Gains Autoconso + Surplus : ~${sim.annualBenefitYear1?.toLocaleString('fr-FR')} €/an`);
         }
@@ -838,7 +845,7 @@ export default function AutomaticOmbriereProspectingModal({
                 </button>
               </div>
 
-              {/* SÉLECTEUR DU MODÈLE ÉCONOMIQUE */}
+              {/* SÉLECTEUR DU MODÈLE ÉCONOMIQUE (3 BOUTONS) */}
               <div className="bg-slate-50 p-1.5 sm:p-2 rounded-xl border border-slate-200 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[10.5px] font-black text-slate-800 flex items-center gap-1">
@@ -848,13 +855,15 @@ export default function AutomaticOmbriereProspectingModal({
                   <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-md border ${
                     economicModel === 'vente_totale'
                       ? 'text-blue-700 bg-blue-100/80 border-blue-300'
+                      : economicModel === 'autoconsommation_stockage'
+                      ? 'text-purple-700 bg-purple-100/80 border-purple-300'
                       : 'text-emerald-700 bg-emerald-100/80 border-emerald-300'
                   }`}>
-                    {economicModel === 'vente_totale' ? 'Vente Totale 100%' : 'Autoconso + Surplus'}
+                    {economicModel === 'vente_totale' ? 'Vente Totale 100%' : economicModel === 'autoconsommation_stockage' ? 'Autoconso + Stockage' : 'Autoconso + Surplus'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid grid-cols-3 gap-1">
                   <button
                     type="button"
                     onClick={() => setEconomicModel('vente_totale')}
@@ -865,11 +874,11 @@ export default function AutomaticOmbriereProspectingModal({
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="font-black text-[11px]">Vente Totale</div>
-                      {economicModel === 'vente_totale' && <CheckCircle2 className="w-3 h-3 text-blue-400" />}
+                      <div className="font-black text-[10px]">Vente Totale</div>
+                      {economicModel === 'vente_totale' && <CheckCircle2 className="w-3 h-3 text-blue-400 shrink-0" />}
                     </div>
-                    <div className={`text-[9.5px] mt-0.5 leading-tight ${economicModel === 'vente_totale' ? 'text-blue-200 font-medium' : 'text-slate-500'}`}>
-                      100% à <strong>0,085 €/kWh</strong>
+                    <div className={`text-[8.5px] mt-0.5 leading-tight ${economicModel === 'vente_totale' ? 'text-blue-200 font-medium' : 'text-slate-500'}`}>
+                      100% à {tarifEdfOa} €/kWh
                     </div>
                   </button>
 
@@ -883,13 +892,79 @@ export default function AutomaticOmbriereProspectingModal({
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="font-black text-[11px]">Autoconso + Surplus</div>
-                      {economicModel === 'autoconsommation' && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                      <div className="font-black text-[10px]">Autoconso + Surplus</div>
+                      {economicModel === 'autoconsommation' && <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />}
                     </div>
-                    <div className={`text-[9.5px] mt-0.5 leading-tight ${economicModel === 'autoconsommation' ? 'text-emerald-200 font-medium' : 'text-slate-500'}`}>
-                      Économies + rachat surplus
+                    <div className={`text-[8.5px] mt-0.5 leading-tight ${economicModel === 'autoconsommation' ? 'text-emerald-200 font-medium' : 'text-slate-500'}`}>
+                      Écon. + rachat surplus
                     </div>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEconomicModel('autoconsommation_stockage')}
+                    className={`p-1.5 rounded-xl text-left transition-all border cursor-pointer ${
+                      economicModel === 'autoconsommation_stockage'
+                        ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-sm ring-1 ring-purple-400'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-black text-[10px]">Autoconso + Stockage</div>
+                      {economicModel === 'autoconsommation_stockage' && <CheckCircle2 className="w-3 h-3 text-purple-400 shrink-0" />}
+                    </div>
+                    <div className={`text-[8.5px] mt-0.5 leading-tight ${economicModel === 'autoconsommation_stockage' ? 'text-purple-200 font-medium' : 'text-slate-500'}`}>
+                      100% autoconsommé
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* PUISSANCE CIBLE MIN & MAX + TARIF EDF OA */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] font-black text-slate-800 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    Puissance cible (kWc) :
+                  </span>
+                  <div className="grid grid-cols-2 gap-1">
+                    <div>
+                      <label className="block text-slate-500 font-bold text-[8px]">Min (kWc)</label>
+                      <input
+                        type="number"
+                        value={minTargetKwc}
+                        onChange={(e) => setMinTargetKwc(Math.max(10, Number(e.target.value)))}
+                        className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-500 font-bold text-[8px]">Max (kWc)</label>
+                      <input
+                        type="number"
+                        value={maxTargetKwc}
+                        onChange={(e) => setMaxTargetKwc(Math.max(minTargetKwc, Number(e.target.value)))}
+                        className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] font-black text-slate-800 flex items-center gap-1">
+                    <Euro className="w-3 h-3 text-blue-600" />
+                    Tarif EDF OA (€/kWh) :
+                  </span>
+                  <div>
+                    <label className="block text-slate-500 font-bold text-[8px]">Achat EDF OA libre</label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={tarifEdfOa}
+                      onChange={(e) => setTarifEdfOa(parseFloat(e.target.value) || 0)}
+                      className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-blue-700 text-xs text-center"
+                      placeholder="0.085"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -946,7 +1021,7 @@ export default function AutomaticOmbriereProspectingModal({
               <div className="grid grid-cols-2 gap-1 text-xs">
                 <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
                   <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Puissance ciblée</span>
-                  <strong className="text-emerald-700 font-black text-[10.5px]">100 à 500 kWc</strong>
+                  <strong className="text-emerald-700 font-black text-[10.5px]">{minTargetKwc} à {maxTargetKwc} kWc</strong>
                 </div>
                 <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
                   <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Surface parking min</span>
@@ -955,7 +1030,7 @@ export default function AutomaticOmbriereProspectingModal({
                 <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
                   <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Tarif &amp; Modèle</span>
                   <strong className="text-blue-700 font-black text-[10.5px]">
-                    {economicModel === 'vente_totale' ? '0,085 €/kWh' : 'Autoconso'}
+                    {economicModel === 'vente_totale' ? `${tarifEdfOa} €/kWh` : economicModel === 'autoconsommation_stockage' ? 'Autoconso + Stockage' : 'Autoconso + Surplus'}
                   </strong>
                 </div>
                 <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
@@ -1207,7 +1282,7 @@ export default function AutomaticOmbriereProspectingModal({
         <div className="px-5 py-2.5 sm:py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
           <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Offres dimensionnées aux modules bi-verre 465 Wc • Puissances ciblées 100 à 500 kWc • {economicModel === 'vente_totale' ? 'Vente Totale EDF OA (0,085 €/kWh)' : 'Autoconsommation + Vente Surplus'}.</span>
+            <span>Offres dimensionnées aux modules bi-verre 465 Wc • Puissances ciblées {minTargetKwc} à {maxTargetKwc} kWc • {economicModel === 'vente_totale' ? `Vente Totale EDF OA (${tarifEdfOa} €/kWh)` : economicModel === 'autoconsommation_stockage' ? 'Autoconsommation 100% + Stockage' : 'Autoconsommation + Vente Surplus'}.</span>
           </div>
 
           <div className="flex items-center gap-3">

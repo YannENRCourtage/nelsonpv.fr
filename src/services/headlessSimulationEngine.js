@@ -96,10 +96,21 @@ export async function simulateBuildingHeadless({
     maxPanels = Math.max(1, Math.round((area * surfaceRatio) / 2.05));
   }
 
-  // 4. Puissance crête installée (cible 100 à 500 kWc)
+  // 4. Puissance crête installée (cible minKwc à maxKwc)
+  const minKwc = customSettings.minKwc !== undefined ? Number(customSettings.minKwc) : 100;
+  const maxKwc = customSettings.maxKwc !== undefined ? Number(customSettings.maxKwc) : 500;
+  const economicModel = customSettings.economicModel || 'vente_totale'; // 'vente_totale' | 'autoconsommation' | 'autoconsommation_stockage'
+  const tarifEdfOaKwh = customSettings.tarifEdfOa !== undefined ? Number(customSettings.tarifEdfOa) : (minKwc >= 100 ? 0.085 : 0.011);
+
   let rawKwc = Math.round(maxPanels * 0.465 * 10) / 10;
-  // Cadrage entre 100 kWc et 500 kWc
-  let installedKwc = Math.max(100, Math.min(500, rawKwc));
+  
+  // Filtrage strict : rejeter si la puissance installable est hors plage [minKwc, maxKwc]
+  if (rawKwc < minKwc || rawKwc > maxKwc) {
+    console.warn(`[Ignoré] Toiture ${building.id} : puissance ${rawKwc} kWc hors plage cible [${minKwc} - ${maxKwc} kWc]`);
+    return null;
+  }
+
+  let installedKwc = rawKwc;
   const panelCount = Math.max(1, Math.round((installedKwc * 1000) / 465));
 
   // 5. Productible énergétique départemental et inclinaison
@@ -134,11 +145,32 @@ export async function simulateBuildingHeadless({
     ? ((pan1Kwc * coeff1) + (pan2Kwc * coeff2)) / installedKwc
     : coeff1;
 
-  // 7. Modèle économique & financier EDF Obligation d'Achat (OA)
-  // Tarif réglementé : 0.085 €/kWh pour les centrales >= 100 kWc
-  const tarifEdfOaKwh = installedKwc >= 100 ? 0.085 : 0.011;
-  const annualRevenue = Math.round(annualProductionKwh * tarifEdfOaKwh);
+  // 7. Modèle économique & financier selon le mode de valorisation
+  const annualRevenueReventeTotale = Math.round(annualProductionKwh * tarifEdfOaKwh);
+  let annualBenefitYear1 = annualRevenueReventeTotale;
+  let annualSavingsAutoconso = 0;
+  let annualRevenueSurplus = 0;
+  let autoconsoKwh = 0;
+  let surplusKwh = annualProductionKwh;
+  let autoconsoRate = 0;
 
+  if (economicModel === 'autoconsommation') {
+    autoconsoRate = 65;
+    autoconsoKwh = Math.round(annualProductionKwh * 0.65);
+    surplusKwh = Math.round(annualProductionKwh * 0.35);
+    annualSavingsAutoconso = Math.round(autoconsoKwh * 0.26); // 0,26 €/kWh économisé
+    annualRevenueSurplus = Math.round(surplusKwh * (customSettings.tarifEdfOa || 0.13)); // surplus
+    annualBenefitYear1 = annualSavingsAutoconso + annualRevenueSurplus;
+  } else if (economicModel === 'autoconsommation_stockage') {
+    autoconsoRate = 100;
+    autoconsoKwh = annualProductionKwh;
+    surplusKwh = 0;
+    annualSavingsAutoconso = Math.round(annualProductionKwh * 0.26); // 100% de la production valorisée en autoconsommation
+    annualRevenueSurplus = 0;
+    annualBenefitYear1 = annualSavingsAutoconso;
+  }
+
+  const annualRevenue = annualBenefitYear1;
   const totalInvestmentHT = Math.round(installedKwc * costPerKwc);
   const paybackYear = annualRevenue > 0 ? (totalInvestmentHT / annualRevenue).toFixed(1) : '10.5';
 
@@ -148,7 +180,7 @@ export async function simulateBuildingHeadless({
   let cumul30 = 0;
   for (let yr = 1; yr <= 30; yr++) {
     const degradation = Math.pow(0.995, yr - 1);
-    const yrRevenue = Math.round(annualRevenue * degradation);
+    const yrRevenue = Math.round(annualBenefitYear1 * degradation);
     if (yr <= 10) cumul10 += yrRevenue;
     if (yr <= 20) cumul20 += yrRevenue;
     if (yr <= 30) cumul30 += yrRevenue;
@@ -215,9 +247,16 @@ export async function simulateBuildingHeadless({
     orientationLabel: roofInference.displayLabel,
     effectiveOrientationCoeff,
     annualProductionKwh,
+    economicModel,
+    autoconsoRate,
+    autoconsoKwh,
+    surplusKwh,
+    annualSavingsAutoconso,
+    annualRevenueSurplus,
     tarifEdfOaKwh,
-    annualRevenueReventeTotale: annualRevenue,
-    annualBenefitYear1: annualRevenue,
+    annualRevenueReventeTotale,
+    annualBenefitYear1,
+    annualRevenue,
     totalInvestmentHT,
     paybackYear,
     totalGains30Years: cumul30,

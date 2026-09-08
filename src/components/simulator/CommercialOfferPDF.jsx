@@ -575,33 +575,53 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <tr>
             <td style="padding: 2px 0; color: #64748b;">Productible attendu :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #0284c7;">${sim.annualProductionKwh ? `${Number(sim.annualProductionKwh).toLocaleString('fr-FR')} kWh / an` : '-'}</td>
-            <td style="padding: 2px 0 2px 12px; color: #64748b;">${sim.economicModel === 'autoconsommation' ? 'Mode de valorisation :' : 'Tarif achat EDF OA :'}</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #16a34a;">${sim.economicModel === 'autoconsommation' ? 'Autoconso + Vente Surplus' : `${sim.tarifEdfOaKwh || '0.085'} € / kWh (Revente 100%)`}</td>
+            <td style="padding: 2px 0 2px 12px; color: #64748b;">${sim.economicModel === 'autoconsommation' || sim.economicModel === 'autoconsommation_stockage' ? 'Mode de valorisation :' : 'Tarif achat EDF OA :'}</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #16a34a;">${sim.economicModel === 'autoconsommation_stockage' ? 'Autoconso 100% + Stockage' : sim.economicModel === 'autoconsommation' ? 'Autoconso + Vente Surplus' : `${sim.tarifEdfOaKwh || '0.085'} € / kWh (Revente 100%)`}</td>
           </tr>
         </table>
       </div>
     `;
   } else if (isToiture || isStruct) {
-    // Cadre Toiture / Structure SANS "Taux d'autoconsommation" ni "Gisement régional", avec Puissance installée
+    // Cadre Toiture / Structure à 2 lignes strictes avec colonnes totalement dissociées
     technicalHypothesesHtml = `
-      <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${isToiture ? '8px 12px' : '7px 12px'}; margin-top: ${isToiture ? '6px' : '10px'}; margin-bottom: ${isToiture ? '8px' : '10px'};">
-        <div style="font-size: ${isToiture ? '8.5pt' : '8pt'}; font-weight: 800; color: #00429d; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
+      <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: ${isToiture ? '6px 12px 5px 12px' : '6px 12px 5px 12px'}; margin-top: ${isToiture ? '6px' : '8px'}; margin-bottom: ${isToiture ? '6px' : '8px'}; box-sizing: border-box;">
+        <div style="font-size: ${isToiture ? '8pt' : '7.5pt'}; font-weight: 800; color: #00429d; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 2.5px;">
           Hypothèses Techniques de Dimensionnement
         </div>
-        <table style="width: 100%; font-size: ${isToiture ? '8pt' : '7.5pt'}; border-collapse: collapse;">
-          <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: ${isToiture ? '3.5px 0' : '2px 0'}; color: #64748b;">Adresse du site :</td>
-            <td style="padding: ${isToiture ? '3.5px 0' : '2px 0'}; text-align: right; font-weight: bold;">${clientAddress}</td>
-            <td style="padding: ${isToiture ? '3.5px 0 3.5px 15px' : '2px 0 2px 15px'}; color: #64748b;">Puissance installée :</td>
-            <td style="padding: ${isToiture ? '3.5px 0' : '2px 0'}; text-align: right; font-weight: bold; color: #00429d;">${calculatedPower}</td>
-          </tr>
+        
+        <!-- Ligne 1 : Adresse du site (élargie 72%) & Puissance installée (réduite 28%) -->
+        <table style="width: 100%; font-size: ${isToiture ? '7.6pt' : '7.2pt'}; border-collapse: collapse; table-layout: fixed; border-bottom: 1px solid #e2e8f0;">
+          <colgroup>
+            <col style="width: 72%;">
+            <col style="width: 28%;">
+          </colgroup>
           <tr>
-            <td style="padding: ${isToiture ? '3.5px 0' : '2px 0'}; color: #64748b;">Production estimée :</td>
-            <td style="padding: ${isToiture ? '3.5px 0' : '2px 0'}; text-align: right; font-weight: bold; color: #0284c7;">
-              ${sim.annualProductionKwh ? `${Number(sim.annualProductionKwh).toLocaleString('fr-FR')} kWh / an` : '7 125 kWh / an'}
+            <td style="padding: 2.5px 8px 2.5px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <span style="color: #64748b;">Adresse du site : </span>
+              <strong style="color: #0f172a;">${clientAddress}</strong>
             </td>
-            <td style="padding: ${isToiture ? '3.5px 0 3.5px 15px' : '2px 0 2px 15px'}; color: #64748b;">Orientation / Pente :</td>
-            <td style="padding: ${isToiture ? '3.5px 0' : '2px 0'}; text-align: right; font-weight: bold;">${resolveOrientationName(sim)}</td>
+            <td style="padding: 2.5px 0; text-align: right; white-space: nowrap;">
+              <span style="color: #64748b;">Puissance installée : </span>
+              <strong style="color: #00429d;">${calculatedPower}</strong>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Ligne 2 : Production estimée (réduite 32%) & Orientation / Pente (élargie 68%) -->
+        <table style="width: 100%; font-size: ${isToiture ? '7.6pt' : '7.2pt'}; border-collapse: collapse; table-layout: fixed;">
+          <colgroup>
+            <col style="width: 32%;">
+            <col style="width: 68%;">
+          </colgroup>
+          <tr>
+            <td style="padding: 2.5px 8px 2.5px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <span style="color: #64748b;">Production estimée : </span>
+              <strong style="color: #0284c7;">${sim.annualProductionKwh ? `${Number(sim.annualProductionKwh).toLocaleString('fr-FR')} kWh / an` : '7 125 kWh / an'}</strong>
+            </td>
+            <td style="padding: 2.5px 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <span style="color: #64748b;">Orientation / Pente : </span>
+              <strong style="color: #0f172a;">${resolveOrientationName(sim)}</strong>
+            </td>
           </tr>
         </table>
       </div>
@@ -686,7 +706,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: ${isToiture ? '8px 6px' : '6px'}; text-align: center;">
             <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; font-weight: bold; color: #166534; text-transform: uppercase;">${isSechoir ? 'Prime CEE (AGRI-EQ-110)' : isIrve ? 'Investissement net' : 'Gains / an (An 1)'}</div>
             <div style="font-size: ${isToiture ? '14pt' : '13pt'}; font-weight: 900; color: #16a34a; margin: 1px 0;">${isSechoir ? `-${(sim.primeCEE || 38790).toLocaleString('fr-FR')} €` : isIrve ? `${(sim.totalInvestmentHT || sim.resteACharge || 3960).toLocaleString('fr-FR')} € HT` : annualGainFormatted}</div>
-            <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; color: #166534;">${isSechoir ? 'Cogen\'Air® Certifiée' : isIrve ? `Coût ${sim.quantity || 1} borne(s)` : (sim.economicModel === 'vente_totale' || (isOmbriere && sim.economicModel !== 'autoconsommation')) ? `100% Vente Totale (${sim.tarifEdfOaKwh || '0.085'} €/kWh)` : isStruct ? edfOaTarifLabel : isToiture ? `Tarif EDF OA : ${sim.tarifEdfOaKwh || '0.082'} €/kWh` : `${Math.round(sim.annualSavingsAutoconso || ((sim.annualBenefitYear1 || 1462) * 0.88)).toLocaleString('fr-FR')} € écon. + ${Math.round(sim.annualRevenueSurplus || ((sim.annualBenefitYear1 || 1462) * 0.12)).toLocaleString('fr-FR')} € surplus`}</div>
+            <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; color: #166534;">${isSechoir ? 'Cogen\'Air® Certifiée' : isIrve ? `Coût ${sim.quantity || 1} borne(s)` : sim.economicModel === 'autoconsommation_stockage' ? '100% Autoconso + Stockage' : (sim.economicModel === 'vente_totale' || (isOmbriere && sim.economicModel !== 'autoconsommation')) ? `100% Vente Totale (${sim.tarifEdfOaKwh || '0.085'} €/kWh)` : isStruct ? edfOaTarifLabel : isToiture ? (sim.economicModel === 'autoconsommation' ? `${Math.round(sim.annualSavingsAutoconso || ((sim.annualBenefitYear1 || 1462) * 0.88)).toLocaleString('fr-FR')} € écon. + ${Math.round(sim.annualRevenueSurplus || ((sim.annualBenefitYear1 || 1462) * 0.12)).toLocaleString('fr-FR')} € surplus` : `Tarif EDF OA : ${sim.tarifEdfOaKwh || '0.085'} €/kWh`) : `${Math.round(sim.annualSavingsAutoconso || ((sim.annualBenefitYear1 || 1462) * 0.88)).toLocaleString('fr-FR')} € écon. + ${Math.round(sim.annualRevenueSurplus || ((sim.annualBenefitYear1 || 1462) * 0.12)).toLocaleString('fr-FR')} € surplus`}</div>
           </div>
 
           <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 8px; padding: ${isToiture ? '8px 6px' : '6px'}; text-align: center;">
