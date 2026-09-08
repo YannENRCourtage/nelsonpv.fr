@@ -424,44 +424,48 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
   // HTML conditionnel selon la solution
   const resolveOrientationName = (simObj) => {
+    let result = '';
     if (simObj?.roofType === 'terrasse' || simObj?.isTerrasse || simObj?.pitch === 0) {
-      return simObj?.orientationLabel || 'Toiture terrasse (Toit plat 0°) • Pose sur bacs lestés';
-    }
-    if (simObj?.orientationLabel && simObj.orientationLabel.includes('• Pente')) {
-      return simObj.orientationLabel;
-    }
-    let ori = '';
-    if (simObj?.roofType === 'symetrique' && simObj?.pan1 && simObj?.pan2) {
-      ori = `Symétrique : ${simObj.pan1.rawLabel || simObj.pan1.label || 'Sud'} (${simObj.pan1.angle}°) / ${simObj.pan2.rawLabel || simObj.pan2.label || 'Nord'} (${simObj.pan2.angle}°)`;
-    } else if (simObj?.orientationLabel) {
-      ori = simObj.orientationLabel
-        .replace(/\(2 pans\)/gi, '')
-        .replace(/\(1 pan\)/gi, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+      result = simObj?.orientationLabel || 'Toiture terrasse (Toit plat 0°) • Pose sur bacs lestés';
+    } else if (simObj?.orientationLabel && simObj.orientationLabel.includes('• Pente')) {
+      result = simObj.orientationLabel;
     } else {
-      const r = Number(simObj?.rotation !== undefined ? simObj.rotation : (simObj?.buildings && simObj.buildings[0] && simObj.buildings[0].rotation !== undefined ? simObj.buildings[0].rotation : 0));
-      const norm = ((((Number(r) + 180) % 360) + 360) % 360) - 180;
-      if (norm === 0) ori = 'Plein Sud (0°)';
-      else if (Math.abs(norm) >= 135) ori = `Nord (${r > 0 ? `+${r}` : r}°)`;
-      else if (norm > 45) ori = `Ouest (+${r}°)`;
-      else if (norm > 0 && norm <= 45) ori = `Sud-Ouest (+${r}°)`;
-      else if (norm < -45) ori = `Est (${r}°)`;
-      else if (norm < 0 && norm >= -45) ori = `Sud-Est (${r}°)`;
-      else ori = 'Plein Sud (0°)';
+      let ori = '';
+      if (simObj?.roofType === 'symetrique' && simObj?.pan1 && simObj?.pan2) {
+        ori = `Symétrique : ${simObj.pan1.rawLabel || simObj.pan1.label || 'Sud'} (${simObj.pan1.angle}°) / ${simObj.pan2.rawLabel || simObj.pan2.label || 'Nord'} (${simObj.pan2.angle}°)`;
+      } else if (simObj?.orientationLabel) {
+        ori = simObj.orientationLabel
+          .replace(/\(2 pans\)/gi, '')
+          .replace(/\(1 pan\)/gi, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+      } else {
+        const r = Number(simObj?.rotation !== undefined ? simObj.rotation : (simObj?.buildings && simObj.buildings[0] && simObj.buildings[0].rotation !== undefined ? simObj.buildings[0].rotation : 0));
+        const norm = ((((Number(r) + 180) % 360) + 360) % 360) - 180;
+        if (norm === 0) ori = 'Plein Sud (0°)';
+        else if (Math.abs(norm) >= 135) ori = `Nord (${r > 0 ? `+${r}` : r}°)`;
+        else if (norm > 45) ori = `Ouest (+${r}°)`;
+        else if (norm > 0 && norm <= 45) ori = `Sud-Ouest (+${r}°)`;
+        else if (norm < -45) ori = `Est (${r}°)`;
+        else if (norm < 0 && norm >= -45) ori = `Sud-Est (${r}°)`;
+        else ori = 'Plein Sud (0°)';
+      }
+
+      // Détermination de l'inclinaison de la toiture
+      const tiltVal = Number(
+        simObj?.tilt !== undefined ? simObj.tilt :
+        simObj?.roofPitch !== undefined ? simObj.roofPitch :
+        simObj?.pitch !== undefined ? simObj.pitch :
+        simObj?.slope !== undefined ? simObj.slope :
+        (simObj?.buildings && simObj.buildings[0] && (simObj.buildings[0].tilt || simObj.buildings[0].roofPitch || simObj.buildings[0].pitch)) ||
+        30
+      );
+
+      result = `${ori} • Pente ${Math.round(tiltVal)}°`;
     }
 
-    // Détermination de l'inclinaison de la toiture
-    const tiltVal = Number(
-      simObj?.tilt !== undefined ? simObj.tilt :
-      simObj?.roofPitch !== undefined ? simObj.roofPitch :
-      simObj?.pitch !== undefined ? simObj.pitch :
-      simObj?.slope !== undefined ? simObj.slope :
-      (simObj?.buildings && simObj.buildings[0] && (simObj.buildings[0].tilt || simObj.buildings[0].roofPitch || simObj.buildings[0].pitch)) ||
-      30
-    );
-
-    return `${ori} • Pente ${Math.round(tiltVal)}°`;
+    // Retirer systématiquement toute indication de pondération de surface (ex: "(70%)", "(30%)")
+    return result.replace(/\s*\(\d+%\)/g, '').replace(/\s+/g, ' ').trim();
   };
 
   let technicalHypothesesHtml = '';
@@ -1268,8 +1272,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       }
     }
 
-    // Si c'est une ombrière avec option courrier de prospection, ajouter la page 2 : Courrier d'accompagnement
-    if (isOmbriere && sim.includeCoverLetter) {
+    // Si c'est une ombrière ou une toiture avec option courrier de prospection, ajouter la page 2 : Courrier d'accompagnement
+    if ((isOmbriere || isToiture) && sim.includeCoverLetter) {
       const pageCoverContainer = document.createElement('div');
       pageCoverContainer.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#ffffff;color:#0f172a;font-family:Arial,sans-serif;';
       
@@ -1277,41 +1281,54 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       const targetAddress = sim.address || clientAddress;
       const formattedDate = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-      pageCoverContainer.innerHTML = `
-        <div style="width: 210mm; min-height: 297mm; max-height: 297mm; height: 297mm; padding: 14mm 20mm 12mm 20mm; box-sizing: border-box; background-color: #ffffff; color: #0f172a; font-family: Arial, sans-serif; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;">
-          
-          <div>
-            <!-- EN-TÊTE EXPÉDITEUR / DESTINATAIRE -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; border-bottom: 2px solid #00429d; padding-bottom: 12px;">
-              <div>
-                <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR COURTAGE" style="height: 38px; width: auto; object-fit: contain; margin-bottom: 4px; display: block;" />
-                <div style="font-size: 8.5pt; color: #64748b; margin-top: 3px; line-height: 1.4;">
-                  7 Rue Gutenberg &bull; 33700 MÉRIGNAC<br/>
-                  contact@enr-courtage.fr &bull; 07 63 87 71 40
+      const letterSubject = isToiture
+        ? 'Objet : Valorisation photovoltaïque et optimisation énergétique de votre toiture — Étude d’opportunité ci-jointe'
+        : 'Objet : Mise en conformité Loi APER et valorisation de votre parking — Étude d’opportunité ci-jointe';
+
+      const letterBodyHtml = isToiture ? `
+              <p style="margin: 0 0 14px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
+
+              <p style="margin: 0 0 14px 0;">
+                Dans le cadre de l'optimisation des charges d'exploitation et de la transition énergétique, les toitures de bâtiments professionnels et tertiaires représentent un <strong>gisement énergétique et financier majeur</strong>, particulièrement adapté à la production d'énergie solaire.
+              </p>
+
+              <p style="margin: 0 0 14px 0;">
+                Plutôt que de laisser votre surface de toiture inerte, ce projet constitue un <strong>levier direct de création de valeur et de valorisation patrimoniale</strong> pour votre site situé au <strong>${targetAddress}</strong>.
+              </p>
+
+              <p style="margin: 0 0 14px 0;">
+                Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre toiture, jointe à ce courrier.
+              </p>
+
+              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
+                <div style="font-size: 10.2pt; font-weight: 800; color: #00429d; margin-bottom: 8px; text-transform: uppercase;">
+                  L'implantation d'une centrale solaire sur votre toiture vous apporte plusieurs bénéfices stratégiques :
                 </div>
+                <ul style="margin: 0; padding-left: 20px; font-size: 9.8pt; line-height: 1.55; color: #334155;">
+                  <li style="margin-bottom: 8px;">
+                    <strong>Revenus garantis sur 20 ans :</strong> valorisation directe de vos surfaces de toiture par la revente de l'électricité produite avec un tarif garanti par l'État (EDF OA) ou économies substantielles sur votre facture électrique.
+                  </li>
+                  <li style="margin-bottom: 8px;">
+                    <strong>Valorisation de votre patrimoine :</strong> préservation du clos-couvert, renforcement de la valeur vénale de l'actif immobilier et amélioration concrète du bilan carbone de votre entreprise.
+                  </li>
+                  <li style="margin-bottom: 0;">
+                    <strong>Préservation de votre trésorerie :</strong> nos solutions de financement s'adaptent à vos choix comptables, par un crédit professionnel amortissable générateur d'excédent net ou par une formule d'abonnement 100 % hors-bilan sans dette inscrite, avec rachat pour 1 € en fin de contrat.
+                  </li>
+                </ul>
               </div>
 
-              <div style="text-align: right; max-width: 58%; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px 14px;">
-                <div style="font-size: 8pt; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">À l'attention de la Direction Générale / Direction Immobilière</div>
-                <div style="font-size: 12pt; font-weight: 900; color: #0f172a; margin-top: 3px; line-height: 1.25;">${targetCompany}</div>
-                <div style="font-size: 9.5pt; color: #475569; margin-top: 3px; line-height: 1.35;">${targetAddress}</div>
-              </div>
-            </div>
+              <p style="margin: 14px 0;">
+                Le document ci-joint vous présente le calepinage sur mesure appliqué à votre toiture, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
+              </p>
 
-            <!-- DATE & LIEU -->
-            <div style="text-align: right; font-size: 10pt; color: #475569; margin-bottom: 16px;">
-              Mérignac, le ${formattedDate}
-            </div>
+              <p style="margin: 14px 0;">
+                Je vous propose un bref échange de 15 minutes dans les prochains jours afin de faire le point sur vos objectifs et d’ajuster ces paramètres à vos priorités d'exploitation.
+              </p>
 
-            <!-- OBJET DU COURRIER -->
-            <div style="background: #eff6ff; border-left: 4px solid #00429d; padding: 10px 16px; border-radius: 0 6px 6px 0; margin-bottom: 18px;">
-              <div style="font-size: 10.8pt; font-weight: 900; color: #00429d; line-height: 1.35;">
-                Objet : Mise en conformité Loi APER et valorisation de votre parking — Étude d’opportunité ci-jointe
-              </div>
-            </div>
-
-            <!-- CORPS DU COURRIER -->
-            <div style="font-size: 10.2pt; line-height: 1.6; color: #1e293b; text-align: justify;">
+              <p style="margin: 14px 0 16px 0;">
+                Je vous prie d'agréer, Madame, Monsieur, l’expression de mes salutations distinguées.
+              </p>
+      ` : `
               <p style="margin: 0 0 14px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
 
               <p style="margin: 0 0 14px 0;">
@@ -1354,12 +1371,50 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               <p style="margin: 14px 0 16px 0;">
                 Je vous prie d'agréer, Madame, Monsieur, l’expression de mes salutations distinguées.
               </p>
+      `;
+
+      pageCoverContainer.innerHTML = `
+        <div style="width: 210mm; min-height: 297mm; max-height: 297mm; height: 297mm; padding: 14mm 20mm 12mm 20mm; box-sizing: border-box; background-color: #ffffff; color: #0f172a; font-family: Arial, sans-serif; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;">
+          
+          <div>
+            <!-- EN-TÊTE EXPÉDITEUR / DESTINATAIRE -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; border-bottom: 2px solid #00429d; padding-bottom: 12px;">
+              <div>
+                <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR COURTAGE" style="height: 38px; width: auto; object-fit: contain; margin-bottom: 4px; display: block;" />
+                <div style="font-size: 8.5pt; color: #64748b; margin-top: 3px; line-height: 1.4;">
+                  7 Rue Gutenberg &bull; 33700 MÉRIGNAC<br/>
+                  contact@enr-courtage.fr &bull; 07 63 87 71 40
+                </div>
+              </div>
+
+              <div style="text-align: right; max-width: 58%; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px 14px;">
+                <div style="font-size: 8pt; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">À l'attention de la Direction Générale / Direction Immobilière</div>
+                <div style="font-size: 12pt; font-weight: 900; color: #0f172a; margin-top: 3px; line-height: 1.25;">${targetCompany}</div>
+                <div style="font-size: 9.5pt; color: #475569; margin-top: 3px; line-height: 1.35;">${targetAddress}</div>
+              </div>
+            </div>
+
+            <!-- DATE & LIEU -->
+            <div style="text-align: right; font-size: 10pt; color: #475569; margin-bottom: 16px;">
+              Mérignac, le ${formattedDate}
+            </div>
+
+            <!-- OBJET DU COURRIER -->
+            <div style="background: #eff6ff; border-left: 4px solid #00429d; padding: 10px 16px; border-radius: 0 6px 6px 0; margin-bottom: 18px;">
+              <div style="font-size: 10.8pt; font-weight: 900; color: #00429d; line-height: 1.35;">
+                ${letterSubject}
+              </div>
+            </div>
+
+            <!-- CORPS DU COURRIER -->
+            <div style="font-size: 10.2pt; line-height: 1.6; color: #1e293b; text-align: justify;">
+              ${letterBodyHtml}
             </div>
 
             <!-- SIGNATURE & PJ -->
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px; padding-top: 8px;">
               <div style="font-size: 8.5pt; color: #64748b; font-style: italic;">
-                <strong>P.J. :</strong> Étude de faisabilité &amp; offre commerciale — Ombrière de parking photovoltaïque
+                <strong>P.J. :</strong> ${isToiture ? 'Étude de faisabilité & offre commerciale — Centrale toiture photovoltaïque' : 'Étude de faisabilité & offre commerciale — Ombrière de parking photovoltaïque'}
               </div>
 
               <div style="text-align: right; border-top: 1.5px solid #00429d; padding-top: 6px; min-width: 220px;">

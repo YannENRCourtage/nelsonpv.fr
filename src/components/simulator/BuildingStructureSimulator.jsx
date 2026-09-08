@@ -281,6 +281,10 @@ export default function BuildingStructureSimulator({
   // État 3D Visualizer
   const [viewMode, setViewMode] = useState('3D'); // '3D', '2D_FRONT'
   const [isCapturing, setIsCapturing] = useState(false);
+  const [building3dSnapshot, setBuilding3dSnapshot] = useState(null);
+  const [clientNameInput, setClientNameInput] = useState(
+    selectedProject?.name || selectedProject?.lastName || ''
+  );
   const canvasRef = useRef(null);
 
   // Étape 1 : Adresse
@@ -772,12 +776,6 @@ const crop3DCanvas = (sourceCanvas) => {
     leftVisualChoice, building3dSnapshot
   ]);
 
-  useEffect(() => {
-    if (onStateUpdate) {
-      onStateUpdate(buildCurrentSimulationPayload());
-    }
-  }, [buildCurrentSimulationPayload, onStateUpdate]);
-
   // Recherche BAN
   useEffect(() => {
     if (isAddressSelected || !addressInput || addressInput.length < 3) {
@@ -813,8 +811,6 @@ const crop3DCanvas = (sourceCanvas) => {
     if (city) setCityName(city);
     setSuggestions([]);
   };
-
-  const [building3dSnapshot, setBuilding3dSnapshot] = useState(null);
 
   const capture3dSnapshot = useCallback(async () => {
     if (!canvasRef.current) return null;
@@ -870,11 +866,6 @@ const crop3DCanvas = (sourceCanvas) => {
       ensureMapSnapshot();
     }
   }, [mapCenter, simBuildings, config.buildingType]);
-
-  // Nom du client dynamique
-  const [clientNameInput, setClientNameInput] = useState(
-    selectedProject?.name || selectedProject?.lastName || ''
-  );
 
   // Synchronisation avec l'état global parent
   useEffect(() => {

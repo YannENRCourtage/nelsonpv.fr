@@ -5,7 +5,7 @@ import {
   FileText, CheckCircle2, AlertCircle, Loader2, Play, Square,
   RotateCcw, SlidersHorizontal, ExternalLink, ShieldCheck, X,
   Check, HardDrive, Compass, Euro, TrendingUp, Info, Download,
-  Archive, Eye, Layers, ArrowRight, Sliders, Pencil, Banknote
+  Archive, Eye, Layers, ArrowRight, Sliders, Pencil, Banknote, Mail
 } from 'lucide-react';
 
 import {
@@ -75,6 +75,7 @@ export default function AutomaticProspectingModal({
   const [roofPitch, setRoofPitch] = useState(15);
   const [roofType, setRoofType] = useState('asymetrique');
   const [excludeThirdParty, setExcludeThirdParty] = useState(false);
+  const [includeCoverLetter, setIncludeCoverLetter] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Gestion de la révision / édition individuelle des paramètres par ligne
@@ -376,7 +377,8 @@ export default function AutomaticProspectingModal({
             maxKwc: maxTargetKwc,
             economicModel,
             tarifEdfOa,
-            excludeThirdParty
+            excludeThirdParty,
+            includeCoverLetter
           }
         });
 
@@ -385,6 +387,9 @@ export default function AutomaticProspectingModal({
           continue;
         }
 
+        if (sim.ownerName) {
+          addLog(`   🏢 Propriétaire identifié : ${sim.ownerName}`);
+        }
         addLog(`   🏠 Toiture : ${sim.orientationLabel}`);
         addLog(`   ⚡ Puissance : ${sim.installedKwc} kWc (${sim.panelCount} modules 465 Wc)`);
         if (economicModel === 'vente_totale') {
@@ -509,7 +514,8 @@ export default function AutomaticProspectingModal({
           roofType: isZeroPitch ? 'terrasse' : item.simulation?.roofType,
           economicModel: editingEconomicModel,
           tarifEdfOa: editingTarifEdfOa,
-          excludeThirdParty
+          excludeThirdParty,
+          includeCoverLetter
         }
       });
 
@@ -1066,6 +1072,29 @@ export default function AutomaticProspectingModal({
                 </label>
               </div>
 
+              {/* OPTION COURRIER DE PROSPECTION (PAGE 2) */}
+              <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                <label className="flex items-center justify-between cursor-pointer select-none">
+                  <div className="flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-black text-slate-800 leading-tight">
+                        Courrier de prospection personnalisé (Page 2)
+                      </div>
+                      <div className="text-[8.5px] text-slate-500 leading-tight">
+                        {includeCoverLetter ? 'Lettre personnalisée avec coordonnées du propriétaire foncier' : 'Offre commerciale 1 page seule'}
+                      </div>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={includeCoverLetter}
+                    onChange={(e) => setIncludeCoverLetter(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                  />
+                </label>
+              </div>
+
               {/* Grille des critères récapitulatifs */}
               <div className="grid grid-cols-2 gap-1 text-xs">
                 <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
@@ -1083,9 +1112,9 @@ export default function AutomaticProspectingModal({
                   </strong>
                 </div>
                 <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Solutions PDF</span>
-                  <strong className="text-slate-900 font-black text-[10.5px]">
-                    {excludeThirdParty ? 'Crédit & Abonnement' : '3 Solutions'}
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Courrier joint</span>
+                  <strong className={`font-black text-[10.5px] ${includeCoverLetter ? 'text-emerald-700' : 'text-slate-500'}`}>
+                    {includeCoverLetter ? 'Oui (Page 2)' : 'Non (1 Page)'}
                   </strong>
                 </div>
               </div>

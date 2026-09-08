@@ -344,7 +344,7 @@ export function inferRoofCharacteristics(coords, osmTags = {}) {
     pitch = 15;
     isTerrasse = false;
     surfaceShare = { pan1: 0.70, pan2: 0.30 };
-    displayLabel = `Asymétrique : ${pan1.label} (70%) / ${pan2.label} (30%) • Pente 15°`;
+    displayLabel = `Asymétrique : ${pan1.label} / ${pan2.label} • Pente 15°`;
   }
   // RÈGLE 3 : Toiture Inclinée Bipente Symétrique Standard (50% / 50%)
   else {

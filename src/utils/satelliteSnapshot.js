@@ -609,6 +609,7 @@ export function detectExistingSolarPanelsOnRoof(ctx, pts) {
           const idx = (py * w + px) * 4;
           const r = data[idx];
           const g = data[idx + 1];
+          const b = data[idx + 2];
           // Profil spectral d'un panneau solaire sur image satellite (bleu nuit, noir anthracite antireflet)
           const lum = 0.299 * r + 0.587 * g + 0.114 * b;
           // 1. Cellules PV bleutées classiques (reflets antireflet)

@@ -48,6 +48,97 @@ export function findLongestEdgeIndex(points) {
 }
 
 /**
+ * Recherche les parcelles cadastrales et les propriétaires personnes morales d'une toiture
+ * via API Apicarto IGN + Koumoul (DGFiP Open Data MAJIC)
+ */
+export async function fetchCadastralOwnersForBuilding(building) {
+  try {
+    let parcelCodes = [];
+
+    // 1. Polygone du bâtiment en coordonnées GeoJSON [lon, lat]
+    if (Array.isArray(building?.polygon) && building.polygon.length >= 3) {
+      const ring = building.polygon.map(p => {
+        if (p.lng !== undefined && p.lat !== undefined) return [p.lng, p.lat];
+        if (Array.isArray(p)) return [p[1], p[0]];
+        return null;
+      }).filter(Boolean);
+
+      if (ring.length >= 3) {
+        if (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1]) {
+          ring.push([...ring[0]]);
+        }
+        const geojsonPolygon = {
+          type: 'Polygon',
+          coordinates: [ring]
+        };
+
+        const ignUrl = `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify(geojsonPolygon))}&source_ign=PCI`;
+        const res = await fetch(ignUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.features && data.features.length > 0) {
+            parcelCodes = data.features.map(f => f.properties?.idu || f.properties?.id || f.properties?.code_parc).filter(Boolean);
+          }
+        }
+      }
+    }
+
+    // 2. Repli sur le point central
+    if (parcelCodes.length === 0 && building?.center) {
+      const lat = Array.isArray(building.center) ? building.center[0] : building.center.lat;
+      const lon = Array.isArray(building.center) ? building.center[1] : (building.center.lng !== undefined ? building.center.lng : building.center.lon);
+      if (lat !== undefined && lon !== undefined) {
+        const ignUrl = `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({ type: 'Point', coordinates: [lon, lat] }))}&source_ign=PCI`;
+        const res = await fetch(ignUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.features && data.features.length > 0) {
+            parcelCodes = data.features.map(f => f.properties?.idu || f.properties?.id || f.properties?.code_parc).filter(Boolean);
+          }
+        }
+      }
+    }
+
+    if (parcelCodes.length === 0) return null;
+
+    // Déduplication des codes de parcelles
+    parcelCodes = [...new Set(parcelCodes)];
+
+    // 3. Requête Koumoul pour obtenir les personnes morales propriétaires (MAJIC DGFiP)
+    const qs = `code_parcelle:(${parcelCodes.map(c => `"${c}"`).join(' OR ')})`;
+    const koumoulUrl = `https://opendata.koumoul.com/data-fair/api/v1/datasets/parcelles-des-personnes-morales/lines?qs=${encodeURIComponent(qs)}&size=25`;
+    const kRes = await fetch(koumoulUrl);
+    if (kRes.ok) {
+      const kData = await kRes.json();
+      if (kData.results && kData.results.length > 0) {
+        const owners = kData.results.map(r => ({
+          name: (r.denomination || '').trim().replace(/\s+/g, ' '),
+          siren: r.numero_siren,
+          nature: r.forme_juridique_abregee,
+          address: (r.adresse || '').trim(),
+          postalCode: r.code_commune || r['_infos_commune.code_commune'],
+          city: r.nom_commune || r['_infos_commune.nom_commune'],
+          parcel: r.code_parcelle
+        })).filter(o => o.name);
+
+        if (owners.length > 0) {
+          return {
+            parcelCodes,
+            owners,
+            primaryOwnerName: owners[0].name
+          };
+        }
+      }
+    }
+
+    return { parcelCodes, owners: [], primaryOwnerName: null };
+  } catch (err) {
+    console.warn('Erreur détection propriétaires fonciers toiture:', err);
+    return null;
+  }
+}
+
+/**
  * Exécute la simulation complète d'un bâtiment en mode headless avec inférence géométrique
  */
 export async function simulateBuildingHeadless({
@@ -222,22 +313,40 @@ export async function simulateBuildingHeadless({
     console.warn(`Snapshot satellite impossible pour bâtiment ${building.id}:`, e);
   }
 
-  // 9. Données d'identité du site et du client
+  // 9. Données d'identité du site et du client (croisement bases de données propriétaires fonciers)
+  let ownerInfo = null;
+  try {
+    ownerInfo = await fetchCadastralOwnersForBuilding(building);
+  } catch (err) {
+    console.warn(`Recherche propriétaire toiture ${building.id} impossible:`, err);
+  }
+
+  const primaryOwnerName = ownerInfo?.primaryOwnerName || null;
   const cityName = addressInfo?.city || 'Zone d’activités';
   const fullAddress = addressInfo?.label || `${cityName} (${departmentCode})`;
-  const clientName = addressInfo?.street
+  const clientName = primaryOwnerName || (addressInfo?.street
     ? `Bâtiment ${addressInfo.street}`
-    : (cadastreInfo?.parcelleRef ? `Parcelle ${cadastreInfo.parcelleRef}` : `Toiture Solaire ${cityName}`);
+    : (cadastreInfo?.parcelleRef ? `Parcelle ${cadastreInfo.parcelleRef}` : `Toiture Solaire ${cityName}`));
+
+  const cadastreRef = (ownerInfo?.parcelCodes && ownerInfo.parcelCodes.length > 0)
+    ? ownerInfo.parcelCodes.join(', ')
+    : (cadastreInfo?.parcelleRef || null);
+
+  const includeCoverLetter = customSettings.includeCoverLetter ?? true;
 
   // 10. Assemblage de l'objet de simulation normalisé NELSON
   const simulation = {
     type: 'toiture_pv',
     title: `Offre Commerciale Toiture Solaire ${installedKwc} kWc — ${cityName}`,
     clientName,
+    ownerName: primaryOwnerName,
+    ownersList: ownerInfo?.owners || [],
+    cadastreParcels: ownerInfo?.parcelCodes || (cadastreInfo?.parcelleRef ? [cadastreInfo.parcelleRef] : []),
+    includeCoverLetter,
     address: fullAddress,
     cityName,
     departmentCode,
-    cadastreRef: cadastreInfo?.parcelleRef || null,
+    cadastreRef,
     mapCenter: center,
     mapZoom: 19,
     polygonPoints: polygon,
