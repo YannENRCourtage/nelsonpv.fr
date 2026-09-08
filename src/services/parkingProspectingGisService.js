@@ -90,12 +90,26 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.openstreetmap.fr/api/interpreter'
 ];
 
+// Test géométrique d'inclusion d'un point WGS84 dans un polygone WGS84
+export function isPointInPolygonWgs84(pt, poly) {
+  if (!pt || !poly || poly.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].lng, yi = poly[i].lat;
+    const xj = poly[j].lng, yj = poly[j].lat;
+    const intersect = ((yi > pt.lat) !== (yj > pt.lat)) &&
+      (pt.lng < ((xj - xi) * (pt.lat - yi)) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
 /**
  * 2. Extraction des polygones de parkings via Overpass API
  * Filtres obligatoires :
  * - Surface >= 220 m² strictement
  * - Parking à l'air libre (exclut underground, multi-storey, covered=yes, building=roof)
- * - Exclut les parkings ayant déjà une centrale solaire
+ * - Exclut les parkings ayant déjà une centrale solaire ou ombrières existantes
  */
 export async function fetchParkingsInBbox({
   bbox,
@@ -108,10 +122,14 @@ export async function fetchParkingsInBbox({
 
   const { minLat, minLng, maxLat, maxLng } = bbox;
 
-  // Requête Overpass ciblée sur les parkings en surface
+  // Requête Overpass ciblée sur les parkings en surface ET les centrales / ombrières solaires existantes
   const overpassQuery = `[out:json][timeout:30];
 (
   way["amenity"="parking"](${minLat},${minLng},${maxLat},${maxLng});
+  way["power"="generator"](${minLat},${minLng},${maxLat},${maxLng});
+  way["generator:source"="solar"](${minLat},${minLng},${maxLat},${maxLng});
+  way["building"="roof"](${minLat},${minLng},${maxLat},${maxLng});
+  node["power"="generator"](${minLat},${minLng},${maxLat},${maxLng});
 );
 out geom;`;
 
@@ -154,12 +172,32 @@ out geom;`;
   }
 
   const elements = rawData.elements;
-  if (onProgress) onProgress(`Analyse géométrique de ${elements.length} emprises de parkings détectées...`);
+  if (onProgress) onProgress(`Analyse géométrique de ${elements.length} entités cartographiques détectées...`);
+
+  const parkingWays = [];
+  const solarFeatures = [];
+
+  for (const el of elements) {
+    const tags = el.tags || {};
+    if (tags.amenity === 'parking' && el.geometry && el.geometry.length >= 3) {
+      parkingWays.push(el);
+    } else if (
+      tags.power === 'generator' ||
+      tags['generator:source'] === 'solar' ||
+      tags['solar'] === 'yes' ||
+      (tags.building === 'roof' && (tags.layer || tags['generator:method'] || tags.power))
+    ) {
+      if (el.geometry && el.geometry.length > 0) {
+        solarFeatures.push(el.geometry.map(g => ({ lat: g.lat, lng: g.lon })));
+      } else if (el.lat !== undefined && el.lon !== undefined) {
+        solarFeatures.push([{ lat: el.lat, lng: el.lon }]);
+      }
+    }
+  }
 
   const eligibleParkings = [];
 
-  for (const el of elements) {
-    if (!el.geometry || el.geometry.length < 3) continue;
+  for (const el of parkingWays) {
     const tags = el.tags || {};
 
     // ─── FILTRE 2 : PARKING DOIT ÊTRE À L'AIR LIBRE ─────────────────────────
@@ -170,20 +208,13 @@ out geom;`;
       tags.parking === 'shed' ||
       tags.parking === 'garage' ||
       tags.parking === 'carports' ||
+      tags.parking === 'canopy' ||
       tags.location === 'underground' ||
       tags.covered === 'yes' ||
       tags.building === 'roof' ||
       tags.building === 'yes';
 
     if (isUndergroundOrCovered) continue;
-
-    // Exclure les parkings disposant déjà d'ombrières solaires
-    const hasExistingSolar =
-      tags['generator:source'] === 'solar' ||
-      tags['power'] === 'generator' ||
-      tags['solar'] === 'yes';
-
-    if (hasExistingSolar) continue;
 
     // Conversion en tableau [{ lat, lng }]
     const polygon = el.geometry.map(g => ({ lat: g.lat, lng: g.lon }));
@@ -202,6 +233,24 @@ out geom;`;
     // ─── FILTRE 1 : SURFACE STRICTEMENT >= 220 m² ────────────────────────────
     if (area < minArea || area > maxArea) continue;
 
+    // ─── FILTRE 3 : DÉTECTION OMBRIÈRES SOLAIRES EXISTANTES ──────────────────
+    let hasExistingSolar =
+      tags['generator:source'] === 'solar' ||
+      tags['power'] === 'generator' ||
+      tags['solar'] === 'yes' ||
+      tags.carport === 'yes' ||
+      tags.covered === 'partial';
+
+    if (!hasExistingSolar && solarFeatures.length > 0) {
+      for (const feat of solarFeatures) {
+        const testPt = feat[0];
+        if (isPointInPolygonWgs84(testPt, polygon)) {
+          hasExistingSolar = true;
+          break;
+        }
+      }
+    }
+
     const center = calculateCentroid(polygon);
 
     eligibleParkings.push({
@@ -211,6 +260,7 @@ out geom;`;
       polygon,
       center,
       tags,
+      hasExistingSolar,
       parkingType: tags.parking || 'surface',
       name: tags.name || tags.operator || (tags.access === 'customers' ? 'Parking Clientèle' : 'Parking en plein air')
     });

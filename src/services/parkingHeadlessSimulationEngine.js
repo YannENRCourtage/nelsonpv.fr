@@ -29,12 +29,14 @@ export async function simulateParkingHeadless({
   const typologyKey = customSettings.typology || 'ombriere_vl_auto';
   const costPerKwc = customSettings.costPerKwc || 1200; // 1 200 € / kWc (structure + génie civil + PV)
   const tarifEdfOaKwh = customSettings.tarifEdfOa || 0.085; // 0,085 €/kWh
+  const economicModel = customSettings.economicModel || 'vente_totale'; // 'vente_totale' | 'autoconsommation'
 
-  // 1. Calepinage géométrique des ombrières selon l'orientation naturelle du parking
+  // 1. Calepinage géométrique des ombrières selon l'orientation naturelle du parking (plafonné à 500 kWc)
   const layout = layoutOmbrieresOnParking({
     polygonWgs84: parking.polygon,
     parkingArea: parking.area,
-    typologyKey
+    typologyKey,
+    maxKwc: 500
   });
 
   const {
@@ -44,7 +46,9 @@ export async function simulateParkingHeadless({
     coverageRatio,
     panelCount,
     installedKwc,
-    typology
+    typology,
+    isCurved,
+    curvedDetails
   } = layout;
 
   // 2. Productible solaire selon le département
@@ -54,32 +58,51 @@ export async function simulateParkingHeadless({
   // Coefficient d'inclinaison (pente ombrière 10° = ~0.95 de captation)
   const tiltCoeff = 0.95;
   const annualProductionKwh = Math.round(installedKwc * regionalBaseYield * tiltCoeff);
-  const annualRevenueReventeTotale = Math.round(annualProductionKwh * tarifEdfOaKwh);
 
-  // 3. CAPEX total HT
+  // 3. Calcul des gains selon le modèle économique sélectionné
+  const annualRevenueReventeTotale = Math.round(annualProductionKwh * tarifEdfOaKwh);
+  let annualBenefitYear1 = annualRevenueReventeTotale;
+  let annualSavingsAutoconso = 0;
+  let annualRevenueSurplus = 0;
+  let autoconsoKwh = 0;
+  let surplusKwh = annualProductionKwh;
+  let autoconsoRate = 0;
+
+  if (economicModel === 'autoconsommation') {
+    autoconsoRate = 65;
+    autoconsoKwh = Math.round(annualProductionKwh * 0.65);
+    surplusKwh = Math.round(annualProductionKwh * 0.35);
+    annualSavingsAutoconso = Math.round(autoconsoKwh * 0.26); // 0,26 €/kWh économisé
+    annualRevenueSurplus = Math.round(surplusKwh * 0.13);     // 0,13 €/kWh surplus
+    annualBenefitYear1 = annualSavingsAutoconso + annualRevenueSurplus;
+  }
+
+  const annualIncomeForFinancing = economicModel === 'vente_totale' ? annualRevenueReventeTotale : annualBenefitYear1;
+
+  // 4. CAPEX total HT
   const capexHT = Math.round(installedKwc * costPerKwc);
 
-  // 4. Ingénierie financière : 2 Solutions de Financement (Crédit & Abonnement)
+  // 5. Ingénierie financière : 2 Solutions de Financement (Crédit & Abonnement)
   // Solution A : Crédit Bancaire (20 ans, amortissable, 4.48%)
   const bankLoan = calculateBankLoan({
     capexHT,
     durationYears: 20,
-    annualRevenue: annualRevenueReventeTotale
+    annualRevenue: annualIncomeForFinancing
   });
 
   // Solution B : Abonnement Solaire (Leasing LOA SunLib, option rachat 1 €)
   const leasing = calculateLeasingSubscription({
     capexHT,
     powerKwc: installedKwc,
-    annualRevenue: annualRevenueReventeTotale
+    annualRevenue: annualIncomeForFinancing
   });
 
   const selectedLeasing = leasing.durations.find(d => d.durationYears === 20) || leasing.durations[2];
 
-  // 5. Projection financière des gains cumulés sur 30 ans (pour le graphique PDF)
+  // 6. Projection financière des gains cumulés sur 30 ans (pour le graphique PDF)
   let cumul = -capexHT;
   const annualNetYear1To20 = bankLoan.annualNetCashflow; // Gain net après remboursement du crédit
-  const annualNetYear21To30 = annualRevenueReventeTotale; // Pleine propriété, 100% des recettes nettes
+  const annualNetYear21To30 = annualIncomeForFinancing;   // Pleine propriété, 100% des recettes nettes
 
   const financialProjection30Years = [];
   let currentCumul = 0;
@@ -92,7 +115,7 @@ export async function simulateParkingHeadless({
     financialProjection30Years.push({
       year,
       cumul: currentCumul,
-      cumulWithInitialInvestment: cumul + (year <= 20 ? (annualRevenueReventeTotale * year) : (annualRevenueReventeTotale * year))
+      cumulWithInitialInvestment: cumul + (year <= 20 ? (annualIncomeForFinancing * year) : (annualIncomeForFinancing * year))
     });
   }
 
@@ -160,12 +183,21 @@ export async function simulateParkingHeadless({
     installedKwc,
     kwc: installedKwc,
     placedOmbrieres,
+    isCurved,
+    curvedDetails,
 
-    // Production & Recettes
+    // Production & Modèle Économique
+    economicModel,
+    autoconsoRate,
+    autoconsoKwh,
+    surplusKwh,
+    annualSavingsAutoconso,
+    annualRevenueSurplus,
     annualProduction: annualProductionKwh,
     annualProductionKwh,
+    annualRevenue: annualIncomeForFinancing,
     annualRevenueReventeTotale,
-    annualBenefitYear1: annualRevenueReventeTotale,
+    annualBenefitYear1,
     totalInvestmentHT: capexHT,
     capexHT,
     tarifEdfOaKwh,

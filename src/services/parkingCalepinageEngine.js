@@ -121,6 +121,126 @@ export function isPointIn2DPolygon(x, y, polyPts) {
 }
 
 /**
+ * Détection géométrique des tracés de parking courbés / curvilignes (ex: amphithéâtres, allées en arc de cercle)
+ * Identifie les suites d'angles de rotation progressifs consécutifs où les ombrières linéaires ne conviennent pas.
+ */
+export function isCurvedParking(polygonWgs84) {
+  if (!polygonWgs84 || polygonWgs84.length < 5) return { isCurved: false, reason: null };
+
+  let cLat = 0, cLng = 0;
+  polygonWgs84.forEach(p => { cLat += p.lat; cLng += p.lng; });
+  cLat /= polygonWgs84.length;
+  cLng /= polygonWgs84.length;
+
+  const latRad = (cLat * Math.PI) / 180;
+  const metersPerDegLat = 111139;
+  const metersPerDegLng = 111139 * Math.cos(latRad);
+
+  const pts = polygonWgs84.map(p => ({
+    x: (p.lng - cLng) * metersPerDegLng,
+    y: (p.lat - cLat) * metersPerDegLat
+  }));
+
+  const n = pts.length;
+  if (n < 5) return { isCurved: false, reason: null };
+
+  // Filtrer les micro-segments
+  const cleanPts = [];
+  for (let i = 0; i < n; i++) {
+    const next = pts[(i + 1) % n];
+    const dist = Math.hypot(next.x - pts[i].x, next.y - pts[i].y);
+    if (dist >= 1.0) {
+      cleanPts.push(pts[i]);
+    }
+  }
+
+  const m = cleanPts.length;
+  if (m < 5) return { isCurved: false, reason: null };
+
+  const edges = [];
+  let totalPerimeter = 0;
+  for (let i = 0; i < m; i++) {
+    const p1 = cleanPts[i];
+    const p2 = cleanPts[(i + 1) % m];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
+    edges.push({ len, angle, dx, dy });
+    totalPerimeter += len;
+  }
+
+  let consecutiveCurveTurns = 0;
+  let maxConsecutiveCurveTurns = 0;
+  let cumulativeArcAngle = 0;
+  let maxCumulativeArcAngle = 0;
+  let curvedLength = 0;
+
+  for (let i = 0; i < m; i++) {
+    const e1 = edges[i];
+    const e2 = edges[(i + 1) % m];
+
+    let dAngle = e2.angle - e1.angle;
+    while (dAngle > Math.PI) dAngle -= 2 * Math.PI;
+    while (dAngle < -Math.PI) dAngle += 2 * Math.PI;
+
+    const dDeg = (dAngle * 180) / Math.PI;
+
+    // Virage d'arc progressif entre 4° et 50°
+    if (Math.abs(dDeg) >= 4 && Math.abs(dDeg) <= 50) {
+      if (consecutiveCurveTurns === 0 || (dAngle > 0) === (cumulativeArcAngle > 0)) {
+        consecutiveCurveTurns++;
+        cumulativeArcAngle += dDeg;
+        curvedLength += e1.len;
+      } else {
+        consecutiveCurveTurns = 1;
+        cumulativeArcAngle = dDeg;
+      }
+    } else {
+      consecutiveCurveTurns = 0;
+      cumulativeArcAngle = 0;
+    }
+
+    if (consecutiveCurveTurns > maxConsecutiveCurveTurns) {
+      maxConsecutiveCurveTurns = consecutiveCurveTurns;
+    }
+    if (Math.abs(cumulativeArcAngle) > Math.abs(maxCumulativeArcAngle)) {
+      maxCumulativeArcAngle = cumulativeArcAngle;
+    }
+  }
+
+  // Vérification de l'orthogonalité globale
+  let bestScore = -1;
+  for (let deg = 0; deg < 180; deg += 1) {
+    const rad = (deg * Math.PI) / 180;
+    let score = 0;
+    for (const e of edges) {
+      const diff = Math.abs((e.angle % Math.PI + Math.PI) % Math.PI - rad);
+      const cos4 = Math.pow(Math.cos(diff), 4);
+      const sin4 = Math.pow(Math.sin(diff), 4);
+      score += e.len * Math.max(cos4, sin4);
+    }
+    if (score > bestScore) bestScore = score;
+  }
+  const orthogonalityRatio = totalPerimeter > 0 ? bestScore / totalPerimeter : 1;
+
+  // Critères de courbure :
+  // 1. Suite d'au moins 3 virages d'arc consécutifs totalisant au moins 25° de rotation
+  // 2. Ou plus de 25% du périmètre en segments courbes avec faible orthogonalité (< 0.68)
+  const hasArc = maxConsecutiveCurveTurns >= 3 && Math.abs(maxCumulativeArcAngle) >= 25;
+  const isHighCurvature = (curvedLength / totalPerimeter > 0.25) && (orthogonalityRatio < 0.68);
+  const isCurved = hasArc || isHighCurvature;
+
+  return {
+    isCurved,
+    maxConsecutiveCurveTurns,
+    maxCumulativeArcAngle: Math.round(maxCumulativeArcAngle),
+    curvedRatio: Math.round((curvedLength / totalPerimeter) * 100),
+    orthogonalityRatio: Math.round(orthogonalityRatio * 100) / 100
+  };
+}
+
+/**
  * Calcule l'Axe Dominant des Allées et le Repère Métrique Local d'un polygone de parking
  * Combine une analyse spectrale de l'orientation des segments pondérée par leur longueur
  * et la boîte englobante minimale (MABB - Minimum Area Bounding Box).
@@ -243,9 +363,11 @@ export function computePrincipalLocalFrame(polygonWgs84) {
 export function layoutOmbrieresOnParking({
   polygonWgs84,
   parkingArea,
-  typologyKey = 'ombriere_vl_auto'
+  typologyKey = 'ombriere_vl_auto',
+  maxKwc = 500
 }) {
   const selectedTypology = OMBRIERE_TYPOLOGIES[typologyKey] || OMBRIERE_TYPOLOGIES['ombriere_vl_auto'];
+  const curvature = isCurvedParking(polygonWgs84);
   const frame = computePrincipalLocalFrame(polygonWgs84);
 
   if (!frame || !frame.bounds) {
@@ -256,7 +378,9 @@ export function layoutOmbrieresOnParking({
       coverageRatio: 0,
       panelCount: 0,
       installedKwc: 0,
-      typology: selectedTypology
+      typology: selectedTypology,
+      isCurved: curvature.isCurved,
+      curvedDetails: curvature
     };
   }
 
@@ -415,17 +539,47 @@ export function layoutOmbrieresOnParking({
   const cosRev = Math.cos(angleRad);
   const sinRev = Math.sin(angleRad);
 
+  const MAX_TARGET_KWC = maxKwc || 500;
+
   rows.forEach((row, rowIndex) => {
+    // Si la puissance maximale est déjà atteinte, interrompre le placement
+    const currentTotalArea = placedOmbrieres.reduce((sum, o) => sum + o.area, 0);
+    const currentPanels = Math.floor((currentTotalArea * 0.90) / 2.05);
+    if (Math.round(currentPanels * 0.465 * 10) / 10 >= MAX_TARGET_KWC) return;
+
     let currentBlockBays = [];
 
     const flushCurrentBlock = () => {
       if (currentBlockBays.length >= MIN_BLOCK_BAYS) {
-        const bayCount = currentBlockBays.length;
-        const blockLength = bayCount * BAY_LENGTH;
-        const blockWidth = row.width;
-        const blockArea = Math.round(blockLength * blockWidth);
-        const spotsCount = bayCount * row.spotsPerBay;
+        let bayCount = currentBlockBays.length;
+        let blockLength = bayCount * BAY_LENGTH;
+        let blockWidth = row.width;
+        let blockArea = Math.round(blockLength * blockWidth);
 
+        // Plafonnement strict à 500 kWc
+        const placedArea = placedOmbrieres.reduce((sum, o) => sum + o.area, 0);
+        const placedPanels = Math.floor((placedArea * 0.90) / 2.05);
+        const placedKwc = Math.round(placedPanels * 0.465 * 10) / 10;
+
+        if (placedKwc >= MAX_TARGET_KWC) {
+          currentBlockBays = [];
+          return;
+        }
+
+        const maxAdditionalArea = Math.max(0, (MAX_TARGET_KWC / 0.465 * 2.05 / 0.90) - placedArea);
+        if (blockArea > maxAdditionalArea) {
+          const maxBaysPossible = Math.floor(maxAdditionalArea / (BAY_LENGTH * blockWidth));
+          if (maxBaysPossible >= MIN_BLOCK_BAYS) {
+            bayCount = maxBaysPossible;
+            blockLength = bayCount * BAY_LENGTH;
+            blockArea = Math.round(blockLength * blockWidth);
+          } else {
+            currentBlockBays = [];
+            return;
+          }
+        }
+
+        const spotsCount = bayCount * row.spotsPerBay;
         const xMinBlock = currentBlockBays[0].x;
         const xMaxBlock = xMinBlock + blockLength;
         const yMinBlock = row.y - blockWidth / 2;
@@ -517,7 +671,7 @@ export function layoutOmbrieresOnParking({
 
   // 1 panneau bi-verre 465 Wc (2.05 m²) avec foisonnement structurel de 0.90
   const panelCount = Math.max(0, Math.floor((totalCoveredArea * 0.90) / 2.05));
-  const installedKwc = Math.round(panelCount * 0.465 * 10) / 10;
+  const installedKwc = Math.min(MAX_TARGET_KWC, Math.round(panelCount * 0.465 * 10) / 10);
 
   return {
     placedOmbrieres,
@@ -527,6 +681,8 @@ export function layoutOmbrieresOnParking({
     panelCount,
     installedKwc,
     principalAngleDeg: frame.angleDeg,
-    typology: selectedTypology
+    typology: selectedTypology,
+    isCurved: curvature.isCurved,
+    curvedDetails: curvature
   };
 }

@@ -575,8 +575,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <tr>
             <td style="padding: 2px 0; color: #64748b;">Productible attendu :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #0284c7;">${sim.annualProductionKwh ? `${Number(sim.annualProductionKwh).toLocaleString('fr-FR')} kWh / an` : '-'}</td>
-            <td style="padding: 2px 0 2px 12px; color: #64748b;">Tarif achat EDF OA :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #16a34a;">${sim.tarifEdfOaKwh || '0.085'} € / kWh (Revente 100%)</td>
+            <td style="padding: 2px 0 2px 12px; color: #64748b;">${sim.economicModel === 'autoconsommation' ? 'Mode de valorisation :' : 'Tarif achat EDF OA :'}</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #16a34a;">${sim.economicModel === 'autoconsommation' ? 'Autoconso + Vente Surplus' : `${sim.tarifEdfOaKwh || '0.085'} € / kWh (Revente 100%)`}</td>
           </tr>
         </table>
       </div>
@@ -674,7 +674,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: ${isToiture ? '8px 6px' : '6px'}; text-align: center;">
             <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; font-weight: bold; color: #64748b; text-transform: uppercase;">Puissance</div>
             <div style="font-size: ${isToiture ? '14pt' : '13pt'}; font-weight: 900; color: #00429d; margin: 1px 0;">${calculatedPower}</div>
-            <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; color: #64748b;">${isSechoir ? `${sim.nbModules || 90} panneaux Cogen'Air` : (sim.roofSurface ? `${sim.roofSurface} m² toiture` : sim.quantity ? `${sim.quantity} borne(s)` : '')}</div>
+            <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; color: #64748b;">${isSechoir ? `${sim.nbModules || 90} panneaux Cogen'Air` : (sim.roofSurface ? `${sim.roofSurface} m² ${(isOmbriere || isStruct || sim.type === 'ombriere_parking') ? 'surface au sol' : 'toiture'}` : sim.quantity ? `${sim.quantity} borne(s)` : '')}</div>
           </div>
 
           <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: ${isToiture ? '8px 6px' : '6px'}; text-align: center;">
@@ -686,7 +686,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: ${isToiture ? '8px 6px' : '6px'}; text-align: center;">
             <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; font-weight: bold; color: #166534; text-transform: uppercase;">${isSechoir ? 'Prime CEE (AGRI-EQ-110)' : isIrve ? 'Investissement net' : 'Gains / an (An 1)'}</div>
             <div style="font-size: ${isToiture ? '14pt' : '13pt'}; font-weight: 900; color: #16a34a; margin: 1px 0;">${isSechoir ? `-${(sim.primeCEE || 38790).toLocaleString('fr-FR')} €` : isIrve ? `${(sim.totalInvestmentHT || sim.resteACharge || 3960).toLocaleString('fr-FR')} € HT` : annualGainFormatted}</div>
-            <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; color: #166534;">${isSechoir ? 'Cogen\'Air® Certifiée' : isIrve ? `Coût ${sim.quantity || 1} borne(s)` : isStruct ? edfOaTarifLabel : isToiture ? `Tarif EDF OA : ${sim.tarifEdfOaKwh || '0.082'} €/kWh` : `${Math.round(sim.annualSavingsAutoconso || ((sim.annualBenefitYear1 || 1462) * 0.88)).toLocaleString('fr-FR')} € écon. + ${Math.round(sim.annualRevenueSurplus || ((sim.annualBenefitYear1 || 1462) * 0.12)).toLocaleString('fr-FR')} € surplus`}</div>
+            <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; color: #166534;">${isSechoir ? 'Cogen\'Air® Certifiée' : isIrve ? `Coût ${sim.quantity || 1} borne(s)` : (sim.economicModel === 'vente_totale' || (isOmbriere && sim.economicModel !== 'autoconsommation')) ? `100% Vente Totale (${sim.tarifEdfOaKwh || '0.085'} €/kWh)` : isStruct ? edfOaTarifLabel : isToiture ? `Tarif EDF OA : ${sim.tarifEdfOaKwh || '0.082'} €/kWh` : `${Math.round(sim.annualSavingsAutoconso || ((sim.annualBenefitYear1 || 1462) * 0.88)).toLocaleString('fr-FR')} € écon. + ${Math.round(sim.annualRevenueSurplus || ((sim.annualBenefitYear1 || 1462) * 0.12)).toLocaleString('fr-FR')} € surplus`}</div>
           </div>
 
           <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 8px; padding: ${isToiture ? '8px 6px' : '6px'}; text-align: center;">
@@ -902,8 +902,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
         <!-- 6. SECTION SOLUTIONS DE FINANCEMENT (2 SCÉNARIOS POUR OMBRIÈRES & STRUCTURE, OU 3 POUR TOITURE) -->
         ${(isOmbriere || isStruct) ? `
-        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 5px 9px; margin-bottom: 4px; box-sizing: border-box;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">
+        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 3px 8px; margin-bottom: 2px; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; border-bottom: 1px solid #e2e8f0; padding-bottom: 1.5px;">
             <span style="font-size: 7.8pt; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px;">
               ${isOmbriere ? '💡 Solutions de Financement Ombrière Comparées' : '💡 Solutions de Financement Bâtiment Solaire Comparées'}
             </span>
@@ -914,10 +914,10 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 7px;">
             <!-- Cadre 1 : Crédit Bancaire -->
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 4px 7px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 2px 7px 3px 7px; box-sizing: border-box;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1px;">
                 <span style="font-size: 8.8pt; font-weight: 900; color: #1e40af; text-transform: uppercase; white-space: nowrap;">1. Crédit Bancaire</span>
-                <span style="background: #2563eb; color: #ffffff; font-size: 6.2pt; font-weight: 900; padding: 2px 7px; border-radius: 4px; white-space: nowrap; letter-spacing: 0.2px;">PROPRIÉTAIRE J1</span>
+                <span style="background: #2563eb; color: #ffffff; font-size: 6.2pt; font-weight: 900; padding: 1.5px 6px; border-radius: 4px; white-space: nowrap; letter-spacing: 0.2px;">PROPRIÉTAIRE J1</span>
               </div>
               <div style="font-size: 7.2pt; color: #475569; margin-bottom: 2px;">Prêt pro 20 ans amortissable (4.48%) &bull; Actif inscrit au bilan</div>
               <table style="width: 100%; font-size: 7.8pt; border-collapse: collapse;">
@@ -929,10 +929,10 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             </div>
 
             <!-- Cadre 2 : Abonnement (Leasing SunLib) -->
-            <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 4px 7px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+            <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 2px 7px 3px 7px; box-sizing: border-box;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1px;">
                 <span style="font-size: 8.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase; white-space: nowrap;">2. Abonnement</span>
-                <span style="background: #9333ea; color: #ffffff; font-size: 6.2pt; font-weight: 900; padding: 2px 8px; border-radius: 4px; white-space: nowrap; letter-spacing: 0.2px; text-align: center; display: inline-block;">100% HORS-BILAN &bull; 0 € DETTE</span>
+                <span style="background: #9333ea; color: #ffffff; font-size: 6.2pt; font-weight: 900; padding: 1.5px 7px; border-radius: 4px; white-space: nowrap; letter-spacing: 0.2px; text-align: center; display: inline-block;">100% HORS-BILAN &bull; 0 € DETTE</span>
               </div>
               <div style="display: flex; justify-content: space-between; font-size: 7.2pt; color: #475569; margin-bottom: 2px;">
                 <span>Leasing LOA 20 ans &bull; Loyers déductibles IS</span>
@@ -949,19 +949,19 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
         ${isOmbriere ? `
         <!-- CADRE OBLIGATION & SANCTIONS LOI APER (OMBRIÈRES DE PARKING UNIQUEMENT) -->
-        <div style="background: ${aperNotice.bg}; border: 1.3px solid ${aperNotice.border}; border-radius: 8px; padding: 4.5px 9px; margin-top: 4px; margin-bottom: 3px; box-sizing: border-box;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+        <div style="background: ${aperNotice.bg}; border: 1.3px solid ${aperNotice.border}; border-radius: 8px; padding: 3px 8px; margin-top: 0px; margin-bottom: 2px; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5px;">
             <div style="display: flex; align-items: center; gap: 5px;">
               <span style="font-size: 9pt; line-height: 1;">${aperNotice.icon}</span>
               <span style="font-size: 7.2pt; font-weight: 900; color: ${aperNotice.titleColor}; text-transform: uppercase; letter-spacing: 0.3px;">
                 ${aperNotice.title} &bull; Emprise Parking Étudié : ${parkingArea.toLocaleString('fr-FR')} m²
               </span>
             </div>
-            <span style="background: ${aperNotice.badgeBg}; color: ${aperNotice.badgeColor}; font-size: 5.5pt; font-weight: 900; padding: 2px 6px; border-radius: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px;">
+            <span style="background: ${aperNotice.badgeBg}; color: ${aperNotice.badgeColor}; font-size: 5.5pt; font-weight: 900; padding: 1.5px 6px; border-radius: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px;">
               ${aperNotice.badge}
             </span>
           </div>
-          <div style="font-size: 6.4pt; color: ${aperNotice.textColor}; line-height: 1.3;">
+          <div style="font-size: 6.4pt; color: ${aperNotice.textColor}; line-height: 1.25;">
             ${aperNotice.text}
           </div>
         </div>
