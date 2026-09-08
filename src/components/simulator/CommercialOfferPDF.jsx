@@ -23,7 +23,7 @@ export function getLoiAperNotice(parkingArea) {
       textColor: '#15803d',
       icon: '🛡️',
       title: 'Cadre Réglementaire Loi APER',
-      text: "Projet d'ombrières volontaire : le parking étudié est sous le seuil d'assujettissement de 1 500 m² (aucune contrainte ni sanction réglementaire APER obligatoire). Valorisation foncière et confort usagers immédiats."
+      text: "Projet d'ombrières volontaire : le parking étudié est sous le seuil d'assujettissement de 1 500 m² (aucune contrainte ni sanction réglementaire APER obligatoire).<br/>Valorisation foncière et confort usagers immédiats."
     };
   } else if (area < 10000) {
     return {
@@ -37,7 +37,7 @@ export function getLoiAperNotice(parkingArea) {
       textColor: '#92400e',
       icon: '⚖️',
       title: 'Conformité Loi APER (Art. 40)',
-      text: "Obligation légale pour ce parking (1 500 à 10 000 m²) : équiper au minimum 50 % de la superficie en ombrières photovoltaïques d'ici le 1er juillet 2028. Sanctions encourues en cas de non-respect : pénalité administrative et financière annuelle pouvant atteindre jusqu'à 20 000 € par an jusqu'à régularisation effective."
+      text: "Obligation légale pour ce parking (1 500 à 10 000 m²) : équiper au minimum 50 % de la superficie en ombrières photovoltaïques d'ici le 1er juillet 2028.<br/>Sanctions encourues en cas de non-respect : pénalité administrative et financière annuelle pouvant atteindre jusqu'à 20 000 € par an jusqu'à régularisation effective."
     };
   } else {
     return {
@@ -51,7 +51,7 @@ export function getLoiAperNotice(parkingArea) {
       textColor: '#991b1b',
       icon: '⚠️',
       title: 'Obligation d\'Urgence Loi APER (Art. 40)',
-      text: "Obligation légale prioritaire pour ce parking (≥ 10 000 m²) : obligation d'équiper au minimum 50 % de la superficie en ombrières d'ici le 1er juillet 2026 (ou 2028 selon type de gestion). Sanctions encourues en cas de non-respect : pénalité administrative et financière annuelle pouvant atteindre jusqu'à 40 000 € par an jusqu'à régularisation effective."
+      text: "Obligation légale prioritaire pour ce parking (≥ 10 000 m²) : obligation d'équiper au minimum 50 % de la superficie en ombrières d'ici le 1er juillet 2026 (ou 2028 selon type de gestion).<br/>Sanctions encourues en cas de non-respect : pénalité administrative et financière annuelle pouvant atteindre jusqu'à 40 000 € par an jusqu'à régularisation effective."
     };
   }
 }
@@ -924,7 +924,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 <tr><td style="padding: 1px 0; color: #64748b;">Mensualité du prêt :</td><td style="padding: 1px 0; text-align: right; font-weight: bold; color: #1e40af;">~${Number(financing?.bankLoan?.monthlyPaymentExact || 0).toLocaleString('fr-FR')} €/m (${Number(financing?.bankLoan?.annualPaymentExact || 0).toLocaleString('fr-FR')} €/an)</td></tr>
                 <tr><td style="padding: 1px 0; color: #64748b;">Cash-flow net (An 1) :</td><td style="padding: 1px 0; text-align: right; font-weight: 900; color: ${bankAnnualNet >= 0 ? '#16a34a' : '#1e40af'};">${bankAnnualNet >= 0 ? '+' : ''}${bankAnnualNet.toLocaleString('fr-FR')} €/an net</td></tr>
                 <tr><td style="padding: 1px 0; color: #64748b;">Gain net cumulé (20 ans) :</td><td style="padding: 1px 0; text-align: right; font-weight: bold; color: #1e40af;">+${Math.max(0, bankCumul20).toLocaleString('fr-FR')} €</td></tr>
-                <tr style="border-top: 1px solid #bfdbfe;"><td style="font-weight: bold; color: #1e40af; padding-top: 1.5px;">Bénéfice net global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 8.8pt; padding-top: 1.5px;">+${Math.max(0, bankCumul30).toLocaleString('fr-FR')} €</td></tr>
+                <tr><td style="font-weight: bold; color: #1e40af; padding-top: 1.5px;">Bénéfice net global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 8.8pt; padding-top: 1.5px;">+${Math.max(0, bankCumul30).toLocaleString('fr-FR')} €</td></tr>
               </table>
             </div>
 
@@ -941,7 +941,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               <table style="width: 100%; font-size: 7.8pt; border-collapse: collapse;">
                 <tr><td style="padding: 1.5px 0; color: #64748b;">Loyer mensuel HT :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #6b21a8;">${leasingMonthly.toLocaleString('fr-FR')} €/m</td></tr>
                 <tr><td style="padding: 1.5px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1.5px 0; text-align: right; font-weight: bold; color: #16a34a;">+${Number(selectedLeasing.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an déductibles</td></tr>
-                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 1.5px;">Bénéfice net global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #16a34a; font-size: 8.8pt; padding-top: 1.5px;">+${Math.max(0, leasingGains30).toLocaleString('fr-FR')} €</td></tr>
+                <tr><td style="font-weight: bold; color: #6b21a8; padding-top: 1.5px;">Bénéfice net global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #16a34a; font-size: 8.8pt; padding-top: 1.5px;">+${Math.max(0, leasingGains30).toLocaleString('fr-FR')} €</td></tr>
               </table>
             </div>
           </div>
@@ -1035,19 +1035,19 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center;">
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 1px;">${co2Avoided} tonnes</div>
-              <div style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">de CO₂ évitées par an</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box; padding: 0; margin: 0;">
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1.15; margin: 0; padding: 0;">${co2Avoided} tonnes</div>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1.15; margin: 0; padding: 0;">de CO₂ évitées par an</div>
             </div>
 
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 1px;">${treesPlanted}</div>
-              <div style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">arbres plantés par an</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box; padding: 0; margin: 0;">
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #16a34a; line-height: 1.15; margin: 0; padding: 0;">${treesPlanted}</div>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1.15; margin: 0; padding: 0;">arbres plantés par an</div>
             </div>
 
-            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
-              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #0d9488; line-height: 1; margin-bottom: 1px;">${householdsFed}</div>
-              <div style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1;">foyer(s) alimenté(s) en électricité</div>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; height: ${(isOmbriere || isStruct) ? '34px' : isToiture ? '46px' : '44px'}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box; padding: 0; margin: 0;">
+              <div style="font-size: ${(isOmbriere || isStruct) ? '9pt' : isToiture ? '10.5pt' : '10pt'}; font-weight: 900; color: #0d9488; line-height: 1.15; margin: 0; padding: 0;">${householdsFed}</div>
+              <div style="font-size: ${(isOmbriere || isStruct) ? '5.5pt' : isToiture ? '6.2pt' : '6.5pt'}; color: #64748b; line-height: 1.15; margin: 0; padding: 0;">foyer(s) alimenté(s) en électricité</div>
             </div>
           </div>
         </div>
@@ -1237,6 +1237,138 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         pdf.addImage(page2ImgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       } finally {
         document.body.removeChild(page2Container);
+      }
+    }
+
+    // Si c'est une ombrière avec option courrier de prospection, ajouter la page 2 : Courrier d'accompagnement
+    if (isOmbriere && sim.includeCoverLetter) {
+      const pageCoverContainer = document.createElement('div');
+      pageCoverContainer.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#ffffff;color:#0f172a;font-family:Arial,sans-serif;';
+      
+      const targetCompany = sim.ownerName || sim.clientName || 'Direction de l\'établissement';
+      const targetAddress = sim.address || clientAddress;
+      const formattedDate = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      pageCoverContainer.innerHTML = `
+        <div style="width: 210mm; min-height: 297mm; max-height: 297mm; height: 297mm; padding: 12mm 18mm 10mm 18mm; box-sizing: border-box; background-color: #ffffff; color: #0f172a; font-family: Arial, sans-serif; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;">
+          
+          <div>
+            <!-- EN-TÊTE EXPÉDITEUR / DESTINATAIRE -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 2px solid #00429d; padding-bottom: 10px;">
+              <div>
+                <div style="font-size: 18pt; font-weight: 900; color: #00429d; letter-spacing: 0.5px;">NELSON</div>
+                <div style="font-size: 7.5pt; color: #00429d; font-weight: 800; text-transform: uppercase; margin-top: 1px;">ENR COURTAGE</div>
+                <div style="font-size: 7.5pt; color: #64748b; margin-top: 2px; line-height: 1.35;">
+                  7 Rue Gutenberg &bull; 33700 MERIGNAC<br/>
+                  nelsonpv.fr &bull; contact@enr-courtage.fr &bull; 07 63 87 71 40
+                </div>
+              </div>
+
+              <div style="text-align: right; max-width: 58%; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
+                <div style="font-size: 7pt; font-weight: bold; color: #64748b; text-transform: uppercase;">À l'attention de la Direction Générale / Direction Immobilière</div>
+                <div style="font-size: 10.5pt; font-weight: 900; color: #0f172a; margin-top: 2px; line-height: 1.25;">${targetCompany}</div>
+                <div style="font-size: 8pt; color: #475569; margin-top: 2px; line-height: 1.3;">${targetAddress}</div>
+              </div>
+            </div>
+
+            <!-- DATE & LIEU -->
+            <div style="text-align: right; font-size: 8.5pt; color: #475569; margin-bottom: 10px;">
+              Mérignac, le ${formattedDate}
+            </div>
+
+            <!-- OBJET DU COURRIER -->
+            <div style="background: #eff6ff; border-left: 4px solid #00429d; padding: 6px 12px; border-radius: 0 6px 6px 0; margin-bottom: 12px;">
+              <div style="font-size: 8.8pt; font-weight: 900; color: #00429d; line-height: 1.3;">
+                Objet : Mise en conformité Loi APER et valorisation de votre parking — Étude d’opportunité ci-jointe
+              </div>
+            </div>
+
+            <!-- CORPS DU COURRIER -->
+            <div style="font-size: 8.2pt; line-height: 1.45; color: #1e293b; text-align: justify;">
+              <p style="margin: 0 0 7px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
+
+              <p style="margin: 0 0 7px 0;">
+                La loi relative à l’accélération de la production d’énergies renouvelables <strong>(loi APER, article 40)</strong> impose désormais à tous les parcs de stationnement extérieurs de plus de 1 500 m² d’équiper au moins <strong>50 % de leur superficie en ombrières photovoltaïques</strong>. Les échéances de mise en conformité (2026 à 2028 selon la taille et le mode de gestion) approchent, et la réglementation prévoit des sanctions financières administratives pouvant atteindre <strong>20 000 € à 40 000 € par an</strong> jusqu’à régularisation.
+              </p>
+
+              <p style="margin: 0 0 7px 0;">
+                Plutôt que de subir cette contrainte légale comme une charge, ce projet constitue un <strong>levier direct de valorisation financière et patrimoniale</strong> pour votre site situé au <strong>${targetAddress}</strong>.
+              </p>
+
+              <p style="margin: 0 0 7px 0;">
+                Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre parking, jointe à ce courrier.
+              </p>
+
+              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 7px 12px; margin: 7px 0;">
+                <div style="font-size: 8.2pt; font-weight: 800; color: #00429d; margin-bottom: 4px; text-transform: uppercase;">
+                  L'implantation d'ombrières solaires sur votre site vous apporte plusieurs bénéfices stratégiques :
+                </div>
+                <ul style="margin: 0; padding-left: 15px; font-size: 7.8pt; line-height: 1.4; color: #334155;">
+                  <li style="margin-bottom: 4px;">
+                    <strong>Confort et attractivité :</strong> protection des véhicules de vos collaborateurs et clients contre les intempéries et la chaleur, tout en affichant un engagement environnemental concret.
+                  </li>
+                  <li style="margin-bottom: 4px;">
+                    <strong>Revenus garantis sur 20 ans :</strong> valorisation de vos surfaces foncières existantes via la vente totale de l'électricité produite avec un tarif garanti par l'État (EDF OA).
+                  </li>
+                  <li style="margin-bottom: 0;">
+                    <strong>Préservation de votre trésorerie :</strong> nos solutions s'adaptent à vos impératifs comptables, soit via un crédit bancaire amortissable générant un excédent net dès la première année, soit par une formule d'abonnement 100 % hors-bilan (les loyers sont largement compensés par la production solaire et vous rachetez l'infrastructure pour 1 € symbolique en fin de contrat).
+                  </li>
+                </ul>
+              </div>
+
+              <p style="margin: 7px 0;">
+                Le document ci-joint vous présente le calepinage sur mesure appliqué à vos allées de stationnement, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
+              </p>
+
+              <p style="margin: 7px 0;">
+                Je vous propose un bref échange de 15 minutes dans les prochains jours afin de faire le point sur vos obligations réglementaires et d’ajuster ces paramètres à vos priorités d'exploitation.
+              </p>
+
+              <p style="margin: 7px 0 10px 0;">
+                Je vous prie d'agréer, Madame, Monsieur, l’expression de mes salutations distinguées.
+              </p>
+            </div>
+
+            <!-- SIGNATURE & PJ -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px; padding-top: 4px;">
+              <div style="font-size: 7.2pt; color: #64748b; font-style: italic;">
+                <strong>P.J. :</strong> Étude de faisabilité &amp; offre commerciale — Ombrière de parking photovoltaïque
+              </div>
+
+              <div style="text-align: right; border-top: 1.5px solid #00429d; padding-top: 4px; min-width: 180px;">
+                <div style="font-size: 9.5pt; font-weight: 900; color: #00429d;">Yann BARBERIS</div>
+                <div style="font-size: 7.8pt; color: #475569; font-weight: bold;">Conseiller solutions énergies</div>
+                <div style="font-size: 7.5pt; color: #0284c7; font-weight: bold;">07 63 87 71 40</div>
+                <div style="font-size: 7.2pt; color: #64748b;">y.barberis@enr-courtage.fr</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PIED DE PAGE -->
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 3.5px; font-size: 7pt; color: #475569; margin-top: auto;">
+            <span style="font-weight: bold; color: #00429d;">NELSON — nelsonpv.fr</span>
+            <span>Courtage en Énergies Renouvelables &amp; Ingénierie Solaire</span>
+            <span>contact@enr-courtage.fr</span>
+          </div>
+
+        </div>
+      `;
+
+      document.body.appendChild(pageCoverContainer);
+      try {
+        const coverCanvas = await html2canvas(pageCoverContainer, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          width: 794,
+          windowWidth: 794,
+        });
+        pdf.addPage();
+        const coverImgData = coverCanvas.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(coverImgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      } finally {
+        document.body.removeChild(pageCoverContainer);
       }
     }
 

@@ -18,6 +18,87 @@ import { generateSatelliteSnapshot, generateBeforeAfterDualSnapshot } from '@/ut
 import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
 
 /**
+ * Recherche les parcelles cadastrales et les propriétaires personnes morales
+ * via API Apicarto IGN + Koumoul (DGFiP Open Data MAJIC)
+ */
+export async function fetchCadastralOwnersForParking(parking) {
+  try {
+    let parcelCodes = [];
+
+    // 1. Essai avec le polygone du parking (coordonnées GeoJSON [lon, lat])
+    if (Array.isArray(parking?.polygon) && parking.polygon.length >= 3) {
+      const ring = parking.polygon.map(p => [p[1], p[0]]); // [lat, lon] -> [lon, lat]
+      if (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1]) {
+        ring.push([...ring[0]]);
+      }
+      const geojsonPolygon = {
+        type: 'Polygon',
+        coordinates: [ring]
+      };
+
+      const ignUrl = `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify(geojsonPolygon))}&source_ign=PCI`;
+      const res = await fetch(ignUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.features && data.features.length > 0) {
+          parcelCodes = data.features.map(f => f.properties?.idu || f.properties?.id || f.properties?.code_parc).filter(Boolean);
+        }
+      }
+    }
+
+    // 2. Repli sur le point central si le polygone n'a pas retourné de parcelle
+    if (parcelCodes.length === 0 && Array.isArray(parking?.center) && parking.center.length >= 2) {
+      const [lat, lon] = parking.center;
+      const ignUrl = `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({ type: 'Point', coordinates: [lon, lat] }))}&source_ign=PCI`;
+      const res = await fetch(ignUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.features && data.features.length > 0) {
+          parcelCodes = data.features.map(f => f.properties?.idu || f.properties?.id || f.properties?.code_parc).filter(Boolean);
+        }
+      }
+    }
+
+    if (parcelCodes.length === 0) return null;
+
+    // Déduplication des codes de parcelles
+    parcelCodes = [...new Set(parcelCodes)];
+
+    // 3. Requête Koumoul pour obtenir les personnes morales propriétaires (MAJIC DGFiP)
+    const qs = `code_parcelle:(${parcelCodes.map(c => `"${c}"`).join(' OR ')})`;
+    const koumoulUrl = `https://opendata.koumoul.com/data-fair/api/v1/datasets/parcelles-des-personnes-morales/lines?qs=${encodeURIComponent(qs)}&size=25`;
+    const kRes = await fetch(koumoulUrl);
+    if (kRes.ok) {
+      const kData = await kRes.json();
+      if (kData.results && kData.results.length > 0) {
+        const owners = kData.results.map(r => ({
+          name: (r.denomination || '').trim().replace(/\s+/g, ' '),
+          siren: r.numero_siren,
+          nature: r.forme_juridique_abregee,
+          address: (r.adresse || '').trim(),
+          postalCode: r.code_commune || r['_infos_commune.code_commune'],
+          city: r.nom_commune || r['_infos_commune.nom_commune'],
+          parcel: r.code_parcelle
+        })).filter(o => o.name);
+
+        if (owners.length > 0) {
+          return {
+            parcelCodes,
+            owners,
+            primaryOwnerName: owners[0].name
+          };
+        }
+      }
+    }
+
+    return { parcelCodes, owners: [], primaryOwnerName: null };
+  } catch (err) {
+    console.warn('Erreur détection propriétaires fonciers:', err);
+    return null;
+  }
+}
+
+/**
  * Simule un parking de manière autonome (Headless)
  */
 export async function simulateParkingHeadless({
@@ -30,6 +111,18 @@ export async function simulateParkingHeadless({
   const costPerKwc = customSettings.costPerKwc || 1200; // 1 200 € / kWc (structure + génie civil + PV)
   const tarifEdfOaKwh = customSettings.tarifEdfOa || 0.085; // 0,085 €/kWh
   const economicModel = customSettings.economicModel || 'vente_totale'; // 'vente_totale' | 'autoconsommation'
+  const includeCoverLetter = customSettings.includeCoverLetter ?? false;
+
+  // Détection des propriétaires personnes morales pour le champ Client
+  let ownerInfo = null;
+  try {
+    ownerInfo = await fetchCadastralOwnersForParking(parking);
+  } catch (err) {
+    console.warn(`Recherche propriétaire parking ${parking.id} impossible:`, err);
+  }
+
+  const primaryOwnerName = ownerInfo?.primaryOwnerName || null;
+  const clientName = primaryOwnerName || parking.name || addressInfo?.label || 'Client Parking';
 
   // 1. Calepinage géométrique des ombrières selon l'orientation naturelle du parking (plafonné à 500 kWc)
   const layout = layoutOmbrieresOnParking({
@@ -164,11 +257,15 @@ export async function simulateParkingHeadless({
     projectType: 'ombriere_parking',
     id: parking.id,
     osmId: parking.osmId,
-    clientName: parking.name || addressInfo?.label || 'Projet Ombrières Photovoltaïques',
+    clientName: clientName || parking.name || addressInfo?.label || 'Client Parking',
+    ownerName: primaryOwnerName,
+    ownersList: ownerInfo?.owners || [],
+    cadastreParcels: ownerInfo?.parcelCodes || (cadastreInfo?.parcelleRef ? [cadastreInfo.parcelleRef] : []),
+    includeCoverLetter,
     address: addressInfo?.label || `${addressInfo?.street || ''} ${addressInfo?.postcode || ''} ${addressInfo?.city || ''}`.trim(),
     cityName: addressInfo?.city || 'Bordeaux',
     departmentCode,
-    cadastreRef: cadastreInfo?.parcelleRef || '',
+    cadastreRef: (ownerInfo?.parcelCodes && ownerInfo.parcelCodes.length > 0) ? ownerInfo.parcelCodes.join(', ') : (cadastreInfo?.parcelleRef || ''),
 
     // Données techniques ombrières
     typology,

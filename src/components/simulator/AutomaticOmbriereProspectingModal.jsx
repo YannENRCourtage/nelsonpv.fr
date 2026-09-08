@@ -74,6 +74,7 @@ export default function AutomaticOmbriereProspectingModal({
   const [minArea, setMinArea] = useState(220);
   const [targetLimit, setTargetLimit] = useState(10); // 10, 30, 50, 100, 'Tout'
   const [economicModel, setEconomicModel] = useState('vente_totale'); // 'vente_totale' | 'autoconsommation'
+  const [includeCoverLetter, setIncludeCoverLetter] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Gestion du dossier local d'exportation (et mode Firefox natif)
@@ -375,7 +376,8 @@ export default function AutomaticOmbriereProspectingModal({
             typology: selectedTypology,
             costPerKwc: 1200,
             tarifEdfOa: 0.085,
-            economicModel
+            economicModel,
+            includeCoverLetter
           }
         });
 
@@ -396,6 +398,9 @@ export default function AutomaticOmbriereProspectingModal({
           continue;
         }
 
+        if (sim.ownerName) {
+          addLog(`   🏢 Propriétaire foncier identifié : ${sim.ownerName}`);
+        }
         addLog(`   🚗 Implantation : ${sim.totalShelteredSpots} places abritées (${sim.placedOmbrieres.length} rangée(s))`);
         addLog(`   ⚡ Puissance : ${sim.installedKwc} kWc (${sim.panelCount} modules 465 Wc)`);
         if (economicModel === 'vente_totale') {
@@ -404,7 +409,7 @@ export default function AutomaticOmbriereProspectingModal({
           addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • Gains Autoconso + Surplus : ~${sim.annualBenefitYear1?.toLocaleString('fr-FR')} €/an`);
         }
 
-        // D. Génération de l'Offre Commerciale PDF (1 page stricte)
+        // D. Génération de l'Offre Commerciale PDF (1 page + courrier optionnel)
         setCurrentStepText(`Génération de l'offre PDF ${stepNum}/${total}...`);
         const pdfResult = await generateParkingProspectingPdfBlob(sim);
 
@@ -916,6 +921,25 @@ export default function AutomaticOmbriereProspectingModal({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* OPTION COURRIER DE PROSPECTION (PAGE 2) */}
+              <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                <label className="flex items-center justify-between cursor-pointer select-none">
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-black text-slate-800 leading-tight">Courrier de prospection (Page 2)</div>
+                      <div className="text-[8.5px] text-slate-500 leading-tight">Lettre personnalisée Loi APER &amp; proposition d'échange</div>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={includeCoverLetter}
+                    onChange={(e) => setIncludeCoverLetter(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                  />
+                </label>
               </div>
 
               {/* Grille des critères */}
