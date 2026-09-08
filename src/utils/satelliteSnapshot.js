@@ -56,6 +56,132 @@ export const calculateFitBounds = ({
   };
 };
 
+/**
+ * Analyse spectrale ultra-rapide d'une tuile pour intercepter l'image d'indisponibilité
+ * filigranée "Map data not yet available" renvoyée en HTTP 200 par ArcGIS World Imagery.
+ */
+function isArcGisWatermarkTile(img) {
+  try {
+    const testCanvas = document.createElement('canvas');
+    testCanvas.width = 32;
+    testCanvas.height = 32;
+    const tCtx = testCanvas.getContext('2d', { willReadFrequently: true });
+    tCtx.drawImage(img, 0, 0, 32, 32);
+    const data = tCtx.getImageData(0, 0, 32, 32).data;
+
+    let grayMatches = 0;
+    const totalPixels = 32 * 32;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const isNeutralGray = Math.abs(r - g) < 6 && Math.abs(g - b) < 6 && r > 180 && r < 235;
+      if (isNeutralGray) grayMatches++;
+    }
+
+    return (grayMatches / totalPixels) > 0.75;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Chargeur de tuile de secours : découpe et agrandit la tuile parente (zoom - 1)
+ */
+function loadParentTileFallback(tx, ty, zoom) {
+  return new Promise((resolve) => {
+    if (zoom <= 12) return resolve({ success: false });
+
+    const parentZoom = zoom - 1;
+    const parentTx = Math.floor(tx / 2);
+    const parentTy = Math.floor(ty / 2);
+    const subX = (tx % 2) * 128;
+    const subY = (ty % 2) * 128;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 256;
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, subX, subY, 128, 128, 0, 0, 256, 256);
+        resolve({ img: c, tx, ty, zoom, success: true, isUpscaled: true });
+      } catch (e) {
+        resolve({ success: false });
+      }
+    };
+    img.onerror = () => resolve({ success: false });
+    const serverIdx = Math.abs(parentTx + parentTy) % 4;
+    img.src = `https://mt${serverIdx}.google.com/vt/lyrs=s&x=${parentTx}&y=${parentTy}&z=${parentZoom}`;
+  });
+}
+
+/**
+ * Chargeur de tuiles satellite ultra-robuste avec cascade intelligente :
+ * 1. Google Satellite (mt0 à mt3) jusqu'au zoom 20 sans coupure
+ * 2. IGN Ortho WMTS Géoplateforme
+ * 3. ArcGIS World Imagery (bridé à zoom <= 18)
+ * 4. Fallback vers tuile parente zoom n-1 upscalée
+ */
+export function loadRobustSatelliteTile(tx, ty, zoom) {
+  return new Promise((resolve) => {
+    const serverIdx = Math.abs(tx + ty) % 4;
+    const safeZoom = Math.min(20, Math.max(12, zoom));
+
+    const providers = [
+      // 1. Google Satellite HD (couverture intégrale et continue en France)
+      `https://mt${serverIdx}.google.com/vt/lyrs=s&x=${tx}&y=${ty}&z=${safeZoom}`,
+      // 2. IGN Ortho Géoplateforme WMTS officiel
+      `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX=${safeZoom}&TILEROW=${ty}&TILECOL=${tx}`,
+      // 3. ArcGIS World Imagery (uniquement si zoom <= 18)
+      safeZoom <= 18
+        ? `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${safeZoom}/${ty}/${tx}`
+        : null
+    ].filter(Boolean);
+
+    let currentProviderIdx = 0;
+
+    const tryNext = () => {
+      if (currentProviderIdx >= providers.length) {
+        loadParentTileFallback(tx, ty, safeZoom).then(resolve);
+        return;
+      }
+
+      const url = providers[currentProviderIdx++];
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      const timer = setTimeout(() => {
+        img.src = '';
+        tryNext();
+      }, 4000);
+
+      img.onload = () => {
+        clearTimeout(timer);
+        if (isArcGisWatermarkTile(img)) {
+          tryNext();
+        } else {
+          resolve({ img, tx, ty, zoom: safeZoom, success: true });
+        }
+      };
+
+      img.onerror = () => {
+        clearTimeout(timer);
+        tryNext();
+      };
+
+      img.src = url;
+    };
+
+    tryNext();
+  });
+}
+
 export const generateSatelliteSnapshot = async ({
   center,
   polygonPoints,
@@ -166,15 +292,7 @@ export const generateSatelliteSnapshot = async ({
 
     for (let tx = minTileX; tx <= maxTileX; tx++) {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
-        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${safeZoom}/${ty}/${tx}`;
-        const p = new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => resolve({ img, tx, ty, success: true });
-          img.onerror = () => resolve({ success: false });
-          img.src = url;
-        });
-        tilePromises.push(p);
+        tilePromises.push(loadRobustSatelliteTile(tx, ty, safeZoom));
       }
     }
 
@@ -491,21 +609,25 @@ export function detectExistingSolarPanelsOnRoof(ctx, pts) {
           const idx = (py * w + px) * 4;
           const r = data[idx];
           const g = data[idx + 1];
-          const b = data[idx + 2];
-
-          // Profil spectral d'un panneau solaire sur image satellite (bleu sombre / noir)
+          // Profil spectral d'un panneau solaire sur image satellite (bleu nuit, noir anthracite antireflet)
           const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          const isSolar = (lum < 75 && b >= r - 6 && b >= g - 6) || (lum < 95 && b > r + 8 && b > g);
-          if (isSolar) {
+          // 1. Cellules PV bleutées classiques (reflets antireflet)
+          const isBlueSolar = (lum >= 20 && lum <= 95 && b > r + 5 && b >= g - 2);
+          // 2. Modules monocristallins full-black très sombres
+          const isDarkMono = (lum >= 15 && lum <= 68 && Math.abs(r - g) < 14 && Math.abs(g - b) < 14 && b >= r - 3);
+          // 3. Ratio spectral bleu dominant
+          const isDeepSolar = (b > 45 && b < 130 && r < 80 && g < 90 && (b / Math.max(1, r)) >= 1.12);
+
+          if (isBlueSolar || isDarkMono || isDeepSolar) {
             solarPixels++;
           }
         }
       }
     }
 
-    if (totalInsidePixels >= 50) {
+    if (totalInsidePixels >= 35) {
       const solarRatio = solarPixels / totalInsidePixels;
-      return solarRatio >= 0.08;
+      return solarRatio >= 0.10;
     }
   } catch (err) {
     console.warn('Erreur analyse spectrale toiture existante:', err);
@@ -650,15 +772,7 @@ export const generateBeforeAfterDualSnapshot = async ({
 
     for (let tx = minTileX; tx <= maxTileX; tx++) {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
-        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${safeZoom}/${ty}/${tx}`;
-        const p = new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => resolve({ img, tx, ty, success: true });
-          img.onerror = () => resolve({ success: false });
-          img.src = url;
-        });
-        tilePromises.push(p);
+        tilePromises.push(loadRobustSatelliteTile(tx, ty, safeZoom));
       }
     }
 

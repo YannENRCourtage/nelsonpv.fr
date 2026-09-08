@@ -486,12 +486,12 @@ export default function AutomaticOmbriereProspectingModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 pt-16 sm:pt-20 pb-3 bg-slate-950/75 backdrop-blur-md overflow-hidden">
+    <div className="fixed inset-x-0 top-[65px] bottom-0 z-[9990] flex items-center justify-center p-2 sm:p-3 bg-slate-950/80 backdrop-blur-md overflow-hidden">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 15 }}
-        className="relative w-[98vw] max-w-[1550px] 2xl:max-w-[1860px] h-[85vh] max-h-[85vh] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
+        className="relative w-[98vw] max-w-[1550px] 2xl:max-w-[1860px] h-[calc(100vh-85px)] max-h-[calc(100vh-85px)] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
       >
         {/* ─── 1. EN-TÊTE SUPÉRIEUR COMPACT & ÉLÉGANT ────────────────────── */}
         <div className="bg-[#0e2b4d] text-white px-5 py-3 sm:py-3.5 border-b border-white/10 shrink-0 relative overflow-hidden">
@@ -596,15 +596,15 @@ export default function AutomaticOmbriereProspectingModal({
         </div>
 
         {/* ─── 2. CORPS PRINCIPAL EN 2 COLONNES (SANS SCROLL GAUCHE NÉCESSAIRE) ─── */}
-        <div className="p-3 sm:p-4 overflow-hidden flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3.5 min-h-0 bg-slate-100/70">
+        <div className="p-2.5 sm:p-3.5 overflow-hidden flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0 bg-slate-100/70">
 
           {/* ═══ COLONNE GAUCHE (5 cols) : PARAMÈTRES ET CONFIGURATION ════ */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-2.5 overflow-y-auto pr-0.5">
+          <div className="lg:col-span-5 flex flex-col justify-between space-y-2 overflow-y-auto pr-0.5">
 
             {/* CARTE 1 : ZONE GÉOGRAPHIQUE */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+            <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-xs space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <label className="text-[10.5px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                   1. Zone Géographique
                 </label>
@@ -614,7 +614,7 @@ export default function AutomaticOmbriereProspectingModal({
                   <button
                     type="button"
                     onClick={() => setGeoMode('commune')}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                    className={`px-2 py-0.5 rounded-lg text-[11px] transition-all ${
                       geoMode === 'commune'
                         ? 'bg-[#0e2b4d] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -625,7 +625,7 @@ export default function AutomaticOmbriereProspectingModal({
                   <button
                     type="button"
                     onClick={() => setGeoMode('bbox')}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                    className={`px-2 py-0.5 rounded-lg text-[11px] transition-all ${
                       geoMode === 'bbox'
                         ? 'bg-[#0e2b4d] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -638,15 +638,15 @@ export default function AutomaticOmbriereProspectingModal({
 
               {/* CONTENU MODE COMMUNE */}
               {geoMode === 'commune' && (
-                <div className="relative space-y-1.5">
+                <div className="relative space-y-1">
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       value={communeSearch}
                       onChange={(e) => handleSearchCommunes(e.target.value)}
-                      placeholder="Nom de la commune ou code postal (ex: Bordeaux, Mérignac...)"
-                      className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white shadow-xs"
+                      placeholder="Nom de la commune ou code postal (ex: Bordeaux, Auch...)"
+                      className="w-full pl-8 pr-8 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white shadow-xs"
                       disabled={status === 'running' || status === 'sourcing'}
                     />
                     {isSearchingCommune && (
@@ -661,7 +661,7 @@ export default function AutomaticOmbriereProspectingModal({
                           key={c.id}
                           type="button"
                           onClick={() => handleSelectCommune(c)}
-                          className="w-full text-left px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors flex items-center justify-between"
+                          className="w-full text-left px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors flex items-center justify-between"
                         >
                           <span>{c.nom} ({c.postalCode})</span>
                           <span className="text-[10px] text-slate-400 font-semibold">{c.departmentCode} • pop: {c.population.toLocaleString('fr-FR')}</span>
@@ -671,7 +671,7 @@ export default function AutomaticOmbriereProspectingModal({
                   )}
 
                   {selectedCommune && (
-                    <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                    <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span className="truncate">
                         Commune : <strong>{selectedCommune.nom}</strong> ({selectedCommune.postalCode})
@@ -684,12 +684,12 @@ export default function AutomaticOmbriereProspectingModal({
 
               {/* CONTENU MODE EMPRISE CARTE */}
               {geoMode === 'bbox' && (
-                <div className="space-y-1.5">
-                  <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-1.5">
+                <div className="space-y-1">
+                  <div className="p-1.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold flex items-center gap-1.5 text-slate-900 text-[11px]">
+                      <span className="font-bold flex items-center gap-1 text-slate-900 text-[10.5px]">
                         <Compass className="w-3.5 h-3.5 text-blue-600" />
-                        Position simulateur :
+                        Position :
                       </span>
                       <code className="text-[10px] bg-white px-1.5 py-0.5 rounded border border-slate-200 font-mono text-slate-800">
                         {activeCenter[0].toFixed(4)}°N, {activeCenter[1].toFixed(4)}°E
@@ -707,7 +707,7 @@ export default function AutomaticOmbriereProspectingModal({
                           key={r.radius}
                           type="button"
                           onClick={() => setMapRadius(r.radius)}
-                          className={`py-1 px-1 rounded-lg text-center text-xs font-black transition-all ${
+                          className={`py-0.5 px-1 rounded-lg text-center text-[11px] font-black transition-all ${
                             mapRadius === r.radius
                               ? 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-300'
                               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
@@ -723,48 +723,48 @@ export default function AutomaticOmbriereProspectingModal({
             </div>
 
             {/* CARTE 2 : TYPOLOGIE D'OMBRIÈRE */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
-              <label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+            <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-xs space-y-1.5">
+              <label className="text-[10.5px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                 <Car className="w-3.5 h-3.5 text-amber-600" />
                 2. Typologie d'Ombrière à Déployer
               </label>
 
               {/* LIGNE 1 : VÉHICULES LÉGERS (VL) */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1 text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
                   <Car className="w-3 h-3 text-slate-400" />
                   <span>Véhicules Légers (VL)</span>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-3 gap-1">
                   {[
                     {
                       id: 'ombriere_vl_auto',
                       title: 'Mixte VL (Auto)',
-                      desc: 'Double centre (10m) + Simple bordure (5m)'
+                      desc: 'Double (10m) + Simple (5m)'
                     },
                     {
                       id: 'ombriere_vl_double',
                       title: '100% VL Double',
-                      desc: 'Larg. 10m • 4 pl./travée (vis-à-vis)'
+                      desc: 'Larg. 10m • 4 pl./travée'
                     },
                     {
                       id: 'ombriere_vl_simple',
                       title: '100% VL Simple',
-                      desc: 'Larg. 5m • 2 pl./travée (bordure)'
+                      desc: 'Larg. 5m • 2 pl./travée'
                     }
                   ].map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setSelectedTypology(item.id)}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer ${
+                      className={`p-1.5 rounded-xl text-left transition-all border cursor-pointer ${
                         selectedTypology === item.id
                           ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-md ring-1 ring-amber-400'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      <div className="font-black text-xs">{item.title}</div>
-                      <div className={`text-[10px] mt-0.5 leading-tight ${selectedTypology === item.id ? 'text-amber-300 font-medium' : 'text-slate-500'}`}>
+                      <div className="font-black text-[11px] leading-snug">{item.title}</div>
+                      <div className={`text-[9px] mt-0.5 leading-tight ${selectedTypology === item.id ? 'text-amber-300 font-medium' : 'text-slate-500'}`}>
                         {item.desc}
                       </div>
                     </button>
@@ -773,41 +773,41 @@ export default function AutomaticOmbriereProspectingModal({
               </div>
 
               {/* LIGNE 2 : POIDS LOURDS (PL) */}
-              <div className="space-y-1 pt-1.5 border-t border-slate-100">
-                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+              <div className="space-y-0.5 pt-1 border-t border-slate-100">
+                <div className="flex items-center gap-1 text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
                   <Truck className="w-3 h-3 text-amber-500" />
                   <span>Ombrières Poids Lourds (PL)</span>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-3 gap-1">
                   {[
                     {
                       id: 'ombriere_pl_15_8',
                       title: 'PL 15.8 m',
-                      desc: 'Porteurs & Camions • 1 pl./travée (4m)'
+                      desc: 'Porteurs • 1 pl./travée'
                     },
                     {
                       id: 'ombriere_pl_20_2',
                       title: 'PL 20.2 m',
-                      desc: 'Semi-remorques standard • 1 pl./travée (4m)'
+                      desc: 'Semi-remorques • 1 pl./travée'
                     },
                     {
                       id: 'ombriere_pl_24_6',
                       title: 'PL 24.6 m',
-                      desc: 'Grands ensembles • 1 pl./travée (4m)'
+                      desc: 'Grands ensembles • 1 pl.'
                     }
                   ].map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setSelectedTypology(item.id)}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer ${
+                      className={`p-1.5 rounded-xl text-left transition-all border cursor-pointer ${
                         selectedTypology === item.id
                           ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-md ring-1 ring-amber-400'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      <div className="font-black text-xs">{item.title}</div>
-                      <div className={`text-[10px] mt-0.5 leading-tight ${selectedTypology === item.id ? 'text-amber-300 font-medium' : 'text-slate-500'}`}>
+                      <div className="font-black text-[11px] leading-snug">{item.title}</div>
+                      <div className={`text-[9px] mt-0.5 leading-tight ${selectedTypology === item.id ? 'text-amber-300 font-medium' : 'text-slate-500'}`}>
                         {item.desc}
                       </div>
                     </button>
@@ -817,9 +817,9 @@ export default function AutomaticOmbriereProspectingModal({
             </div>
 
             {/* CARTE 3 : PARAMÈTRES TECHNIQUES & OBJECTIFS */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
+            <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-xs space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <label className="text-[10.5px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
                   3. Objectifs &amp; Modèle Économique
                 </label>
@@ -827,75 +827,75 @@ export default function AutomaticOmbriereProspectingModal({
                 <button
                   type="button"
                   onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                  className="text-[10.5px] font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
                 >
                   {showAdvanced ? 'Masquer' : 'Ajuster m²'}
                 </button>
               </div>
 
               {/* SÉLECTEUR DU MODÈLE ÉCONOMIQUE */}
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-xl border border-slate-200 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
-                    <Euro className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="text-[10.5px] font-black text-slate-800 flex items-center gap-1">
+                    <Euro className="w-3 h-3 text-blue-600" />
                     Valorisation de l'électricité :
                   </span>
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
+                  <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-md border ${
                     economicModel === 'vente_totale'
                       ? 'text-blue-700 bg-blue-100/80 border-blue-300'
                       : 'text-emerald-700 bg-emerald-100/80 border-emerald-300'
                   }`}>
-                    {economicModel === 'vente_totale' ? 'Vente Totale 100%' : 'Autoconsommation + Surplus'}
+                    {economicModel === 'vente_totale' ? 'Vente Totale 100%' : 'Autoconso + Surplus'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 gap-1">
                   <button
                     type="button"
                     onClick={() => setEconomicModel('vente_totale')}
-                    className={`p-2 rounded-xl text-left transition-all border cursor-pointer ${
+                    className={`p-1.5 rounded-xl text-left transition-all border cursor-pointer ${
                       economicModel === 'vente_totale'
                         ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-sm ring-1 ring-blue-400'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="font-black text-xs">Vente Totale</div>
-                      {economicModel === 'vente_totale' && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />}
+                      <div className="font-black text-[11px]">Vente Totale</div>
+                      {economicModel === 'vente_totale' && <CheckCircle2 className="w-3 h-3 text-blue-400" />}
                     </div>
-                    <div className={`text-[10px] mt-0.5 leading-tight ${economicModel === 'vente_totale' ? 'text-blue-200 font-medium' : 'text-slate-500'}`}>
-                      100% de la production à <strong>0,085 €/kWh</strong>
+                    <div className={`text-[9.5px] mt-0.5 leading-tight ${economicModel === 'vente_totale' ? 'text-blue-200 font-medium' : 'text-slate-500'}`}>
+                      100% à <strong>0,085 €/kWh</strong>
                     </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setEconomicModel('autoconsommation')}
-                    className={`p-2 rounded-xl text-left transition-all border cursor-pointer ${
+                    className={`p-1.5 rounded-xl text-left transition-all border cursor-pointer ${
                       economicModel === 'autoconsommation'
                         ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-sm ring-1 ring-emerald-400'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="font-black text-xs">Autoconso + Surplus</div>
-                      {economicModel === 'autoconsommation' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+                      <div className="font-black text-[11px]">Autoconso + Surplus</div>
+                      {economicModel === 'autoconsommation' && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
                     </div>
-                    <div className={`text-[10px] mt-0.5 leading-tight ${economicModel === 'autoconsommation' ? 'text-emerald-200 font-medium' : 'text-slate-500'}`}>
-                      Économies d’électricité + rachat surplus
+                    <div className={`text-[9.5px] mt-0.5 leading-tight ${economicModel === 'autoconsommation' ? 'text-emerald-200 font-medium' : 'text-slate-500'}`}>
+                      Économies + rachat surplus
                     </div>
                   </button>
                 </div>
               </div>
 
               {/* SÉLECTEUR DU NOMBRE DE PARKINGS CIBLES (10, 30, 50, 100, Tout) */}
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+              <div className="bg-slate-50 p-1.5 sm:p-2 rounded-xl border border-slate-200 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
-                    <Warehouse className="w-3.5 h-3.5 text-emerald-600" />
-                    Nombre de parkings cibles à trouver :
+                  <span className="text-[10.5px] font-black text-slate-800 flex items-center gap-1">
+                    <Warehouse className="w-3 h-3 text-emerald-600" />
+                    Parkings cibles :
                   </span>
-                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-300">
+                  <span className="text-[9.5px] font-black text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-md border border-emerald-300">
                     {targetLimit === 'Tout' ? 'Tous les parkings' : `${targetLimit} parkings`}
                   </span>
                 </div>
@@ -906,7 +906,7 @@ export default function AutomaticOmbriereProspectingModal({
                       key={val}
                       type="button"
                       onClick={() => setTargetLimit(val)}
-                      className={`py-1.5 px-1 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
+                      className={`py-1 px-1 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
                         targetLimit === val
                           ? 'bg-[#0e2b4d] text-white shadow-xs ring-1 ring-emerald-400 scale-[1.02]'
                           : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
@@ -919,35 +919,35 @@ export default function AutomaticOmbriereProspectingModal({
               </div>
 
               {/* Grille des critères */}
-              <div className="grid grid-cols-2 gap-1.5 text-xs">
-                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Puissance ciblée</span>
-                  <strong className="text-emerald-700 font-black text-[11px]">100 à 500 kWc</strong>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Puissance ciblée</span>
+                  <strong className="text-emerald-700 font-black text-[10.5px]">100 à 500 kWc</strong>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Surface parking min</span>
-                  <strong className="text-slate-900 font-black text-[11px]">≥ {minArea} m² (Air libre)</strong>
+                <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Surface parking min</span>
+                  <strong className="text-slate-900 font-black text-[10.5px]">≥ {minArea} m²</strong>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Tarif &amp; Modèle</span>
-                  <strong className="text-blue-700 font-black text-[11px]">
-                    {economicModel === 'vente_totale' ? '0,085 €/kWh (100%)' : 'Autoconso + Surplus'}
+                <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Tarif &amp; Modèle</span>
+                  <strong className="text-blue-700 font-black text-[10.5px]">
+                    {economicModel === 'vente_totale' ? '0,085 €/kWh' : 'Autoconso'}
                   </strong>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Financement</span>
-                  <strong className="text-slate-900 font-black text-[11px]">Crédit &amp; SunLib</strong>
+                <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Financement</span>
+                  <strong className="text-slate-900 font-black text-[10.5px]">Crédit &amp; SunLib</strong>
                 </div>
               </div>
 
               {showAdvanced && (
-                <div className="pt-1.5 border-t border-slate-200 text-xs">
-                  <label className="block text-slate-500 font-bold mb-0.5 text-[10px]">Surface minimale requise (m²) :</label>
+                <div className="pt-1 border-t border-slate-200 text-xs">
+                  <label className="block text-slate-500 font-bold mb-0.5 text-[9.5px]">Surface minimale requise (m²) :</label>
                   <input
                     type="number"
                     value={minArea}
                     onChange={(e) => setMinArea(Math.max(100, Number(e.target.value)))}
-                    className="w-full p-1.5 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-800 text-xs"
+                    className="w-full p-1 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-800 text-xs"
                   />
                 </div>
               )}
@@ -959,9 +959,9 @@ export default function AutomaticOmbriereProspectingModal({
                 <button
                   type="button"
                   onClick={handleStop}
-                  className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer"
+                  className="w-full py-2.5 sm:py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer"
                 >
-                  <Square className="w-4 h-4 fill-white" />
+                  <Square className="w-3.5 h-3.5 fill-white" />
                   <span>Interrompre la Prospection</span>
                 </button>
               ) : (
@@ -969,9 +969,9 @@ export default function AutomaticOmbriereProspectingModal({
                   type="button"
                   onClick={handleStartProspecting}
                   disabled={geoMode === 'commune' && !selectedCommune}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                  className="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                 >
-                  <Play className="w-4 h-4 fill-white" />
+                  <Play className="w-3.5 h-3.5 fill-white" />
                   <span>
                     Lancer la Prospection Ombrières
                     {geoMode === 'commune'

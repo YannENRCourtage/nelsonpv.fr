@@ -1,14 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ROOF GEOMETRY INFERENCE ENGINE
+ * ROOF GEOMETRY INFERENCE ENGINE (TURF.JS)
  * Analyse géospatiale et inférence géométrique automatique des toitures :
- * 1. Calcul de la Minimum Area Bounding Box (OBB) géodésique
- * 2. Détermination de l'orientation du faîtage (grand axe longitudinal)
- * 3. Calcul précis des azimuts perpendiculaires des versants
- * 4. Inférence typologique : Toiture Terrasse (0°) vs Inclinée (Bipente / Monopente)
- * 5. Répartition dynamique des surfaces (100% terrasse, 50/50 symétrique, 70/30 asymétrique)
+ * 1. Recalibrage raster/vecteur par retrait périphérique intérieur (buffer négatif)
+ * 2. Boîte englobante orientée (Oriented Bounding Box - OBB via Turf.js)
+ * 3. Détection du faîtage central (grand axe longitudinal médian)
+ * 4. Découpage géométrique en deux pans (versants)
+ * 5. Calcul des azimuts selon la CONVENTION SOLAIRE STANDARD :
+ *    - Sud = 0°
+ *    - Ouest = +90°
+ *    - Est = -90°
+ *    - Nord = 180°
+ * 6. Inférence typologique : Toiture Terrasse (0°) vs Inclinée (Bipente / Asymétrique)
  * ═══════════════════════════════════════════════════════════════════════════
  */
+import * as turf from '@turf/turf';
 
 /**
  * Projette des coordonnées WGS84 ({lat, lng}) dans un repère cartésien 2D local en mètres
@@ -40,15 +46,116 @@ export function projectCoordinatesToLocalMeters(coords) {
 }
 
 /**
+ * Convertit un angle de boussole géographique (0°=Nord, 90°=Est, 180°=Sud, 270°=Ouest)
+ * en AZIMUT SOLAIRE STANDARD :
+ * - Sud = 0°
+ * - Ouest = +90°
+ * - Est = -90°
+ * - Nord = 180°
+ */
+export function compassToSolarAzimuth(compassDeg) {
+  const norm = ((compassDeg % 360) + 360) % 360;
+  let solar = Math.round(norm - 180);
+  if (solar === -180) solar = 180;
+  return solar;
+}
+
+/**
+ * Convertit un azimut solaire standard vers un cap boussole géographique
+ */
+export function solarToCompassAzimuth(solarDeg) {
+  return ((solarDeg + 180) % 360 + 360) % 360;
+}
+
+/**
+ * Libellé explicite d'orientation selon l'azimut solaire standard
+ */
+export function getSolarOrientationLabel(solarAzimuth) {
+  if (Math.abs(solarAzimuth) <= 15) return `Plein Sud (${solarAzimuth > 0 ? '+' : ''}${solarAzimuth}°)`;
+  if (solarAzimuth > 15 && solarAzimuth <= 65) return `Sud-Ouest (+${solarAzimuth}°)`;
+  if (solarAzimuth > 65 && solarAzimuth <= 115) return `Plein Ouest (+${solarAzimuth}°)`;
+  if (solarAzimuth > 115 && solarAzimuth < 165) return `Nord-Ouest (+${solarAzimuth}°)`;
+  if (solarAzimuth < -15 && solarAzimuth >= -65) return `Sud-Est (${solarAzimuth}°)`;
+  if (solarAzimuth < -65 && solarAzimuth >= -115) return `Plein Est (${solarAzimuth}°)`;
+  if (solarAzimuth < -115 && solarAzimuth > -165) return `Nord-Est (${solarAzimuth}°)`;
+  return `Plein Nord (${solarAzimuth}°)`;
+}
+
+/**
+ * Libellé cardinal historique pour compatibilité
+ */
+export function getCompassLabel(compassDeg) {
+  const az = ((compassDeg % 360) + 360) % 360;
+  if (az >= 337.5 || az < 22.5) return `Nord (${az}°)`;
+  if (az >= 22.5 && az < 67.5) return `Nord-Est (${az}°)`;
+  if (az >= 67.5 && az < 112.5) return `Est (${az}°)`;
+  if (az >= 112.5 && az < 157.5) return `Sud-Est (${az}°)`;
+  if (az >= 157.5 && az < 202.5) return `Plein Sud (${az}°)`;
+  if (az >= 202.5 && az < 247.5) return `Sud-Ouest (${az}°)`;
+  if (az >= 247.5 && az < 292.5) return `Ouest (${az}°)`;
+  return `Nord-Ouest (${az}°)`;
+}
+
+/**
+ * Calcule le coefficient d'ensoleillement solaire (0.50 à 1.00) selon l'azimut solaire et la pente
+ * Convention solaire : 0° = Sud, ±90° = Est/Ouest, 180° = Nord
+ */
+export function calculateSolarOrientationCoeff(azimuth, pitchDeg = 15) {
+  if (pitchDeg === 0) return 0.90; // Toit plat horizontal
+
+  // Normalisation vers l'écart absolu au Plein Sud
+  const deltaSud = Math.abs(azimuth) > 180 ? Math.abs(180 - azimuth) : Math.abs(azimuth);
+
+  if (deltaSud <= 25) return 1.00;  // Plein Sud (0° à 25° d'écart)
+  if (deltaSud <= 50) return 0.96;  // Sud-Est / Sud-Ouest
+  if (deltaSud <= 85) return 0.86;  // Est-Sud-Est / Ouest-Sud-Ouest
+  if (deltaSud <= 105) return 0.80; // Plein Est / Plein Ouest
+  if (deltaSud <= 140) return 0.70; // Nord-Est / Nord-Ouest
+  return 0.58;                      // Plein Nord
+}
+
+/**
+ * ─── CHANTIER 3 : RECALIBRAGE GÉOMÉTRIQUE & BUFFER NÉGATIF ─────────────────
+ * Applique un retrait périphérique intérieur (0.8 à 1.2 m) pour éliminer les
+ * débordements de chéneaux, gouttières et décalages de parallaxe sur l'image satellite.
+ */
+export function applyNegativeRoofBuffer(coords, distanceMeters = 0.8) {
+  if (!coords || coords.length < 3) return coords;
+
+  try {
+    const ring = coords.map(c => [
+      c.lng !== undefined ? c.lng : c[0],
+      c.lat !== undefined ? c.lat : c[1]
+    ]);
+    if (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1]) {
+      ring.push([...ring[0]]);
+    }
+    const poly = turf.polygon([ring]);
+    const buffered = turf.buffer(poly, -distanceMeters, { units: 'meters' });
+
+    if (buffered && buffered.geometry && buffered.geometry.coordinates?.[0]?.length >= 4) {
+      const resRing = buffered.geometry.coordinates[0];
+      // On retire le dernier point s'il est identique au premier
+      const cleaned = resRing.slice(0, resRing.length - 1).map(pt => ({ lat: pt[1], lng: pt[0] }));
+      if (cleaned.length >= 3) {
+        return cleaned;
+      }
+    }
+  } catch (e) {
+    console.warn('Fallback buffer négatif toiture:', e);
+  }
+
+  return coords;
+}
+
+/**
  * Calcule l'enveloppe minimale orientée (Oriented Bounding Box - OBB) d'un polygone
- * Détermine la longueur, largeur, l'aire minimale et l'angle du grand axe.
  */
 export function computeOrientedBoundingBox(coords) {
   const projected = projectCoordinatesToLocalMeters(coords);
   if (!projected) return null;
   const { pts2D } = projected;
 
-  // Candidats d'angles géométriques formés par les arêtes du polygone
   const testedAngles = [];
   const n = pts2D.length;
   for (let i = 0; i < n; i++) {
@@ -58,7 +165,6 @@ export function computeOrientedBoundingBox(coords) {
     testedAngles.push(angle);
   }
 
-  // Échantillonnage angulaire complémentaire par pas de 1° pour les polygones complexes
   for (let deg = 0; deg < 180; deg += 1) {
     testedAngles.push((deg * Math.PI) / 180);
   }
@@ -97,13 +203,17 @@ export function computeOrientedBoundingBox(coords) {
       const dx = Math.cos(ridgeTrigoRad);
       const dy = Math.sin(ridgeTrigoRad);
 
-      // Azimut géographique (0° = Nord, 90° = Est, 180° = Sud, 270° = Ouest)
+      // Cap boussole du faîtage (axe [0°, 180°[)
       const ridgeGeoAzimuth = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
-      const ridgeAxisDeg = Math.round(ridgeGeoAzimuth % 180); // Axe [0°, 180°[
+      const ridgeAxisDeg = Math.round(ridgeGeoAzimuth % 180);
 
       // Les normales aux deux versants opposés sont perpendiculaires au faîtage (± 90°)
-      const slope1Azimuth = Math.round((ridgeAxisDeg + 90) % 360);
-      const slope2Azimuth = Math.round((ridgeAxisDeg + 270) % 360);
+      const compassSlope1 = Math.round((ridgeAxisDeg + 90) % 360);
+      const compassSlope2 = Math.round((ridgeAxisDeg + 270) % 360);
+
+      // Conversion en azimuts solaires : Sud = 0°, Ouest = +90°, Est = -90°, Nord = 180°
+      const solarSlope1 = compassToSolarAzimuth(compassSlope1);
+      const solarSlope2 = compassToSolarAzimuth(compassSlope2);
 
       bestBox = {
         area: Math.round(area),
@@ -111,8 +221,10 @@ export function computeOrientedBoundingBox(coords) {
         breadth: Math.round(breadth * 10) / 10,
         aspectRatio: Math.round((length / breadth) * 100) / 100,
         ridgeAxisDeg,
-        slope1Azimuth,
-        slope2Azimuth,
+        compassSlope1,
+        compassSlope2,
+        solarSlope1,
+        solarSlope2,
       };
     }
   }
@@ -121,44 +233,75 @@ export function computeOrientedBoundingBox(coords) {
 }
 
 /**
- * Helper pour le libellé cardinal d'un azimut géographique (0° = Nord, 180° = Sud)
+ * ─── CHANTIER 4 : MOTEUR GÉOMÉTRIQUE COMPLET TURF.JS ───────────────────────
+ * 1. Calcule la boîte englobante orientée (OBB)
+ * 2. Identifie le faîtage central joignant les milieux des deux petits côtés
+ * 3. Divise la toiture en 2 pans de part et d'autre du faîtage
+ * 4. Calcule les azimuts solaires (Sud = 0°, Ouest = +90°, Est = -90°, Nord = 180°)
+ * 5. Sélectionne le(s) pan(s) favorable(s) pour la simulation
  */
-export function getCompassLabel(azimuthDeg) {
-  const az = ((azimuthDeg % 360) + 360) % 360;
-  if (az >= 337.5 || az < 22.5) return `Nord (${az}°)`;
-  if (az >= 22.5 && az < 67.5) return `Nord-Est (${az}°)`;
-  if (az >= 67.5 && az < 112.5) return `Est (${az}°)`;
-  if (az >= 112.5 && az < 157.5) return `Sud-Est (${az}°)`;
-  if (az >= 157.5 && az < 202.5) return `Plein Sud (${az}°)`;
-  if (az >= 202.5 && az < 247.5) return `Sud-Ouest (${az}°)`;
-  if (az >= 247.5 && az < 292.5) return `Ouest (${az}°)`;
-  return `Nord-Ouest (${az}°)`;
-}
+export function computeRoofPansAndRidge(coords) {
+  if (!coords || coords.length < 3) return null;
 
-/**
- * Calcule le coefficient d'ensoleillement solaire (0.50 à 1.00) selon l'azimut et la pente
- */
-export function calculateSolarOrientationCoeff(azimuthDeg, pitchDeg = 15) {
-  if (pitchDeg === 0) return 0.90; // Toit plat horizontal
-  const deltaSud = Math.abs(180 - azimuthDeg); // Écart angulaire au Sud
-  if (deltaSud <= 25) return 1.00;  // Plein Sud (0° à 25° d'écart)
-  if (deltaSud <= 50) return 0.96;  // Sud-Est / Sud-Ouest
-  if (deltaSud <= 85) return 0.86;  // Est-Sud-Est / Ouest-Sud-Ouest
-  if (deltaSud <= 105) return 0.80; // Plein Est / Plein Ouest
-  if (deltaSud <= 140) return 0.70; // Nord-Est / Nord-Ouest
-  return 0.58;                      // Plein Nord
+  // Recalibrage initial par buffer négatif pour garantir l'absence de débordement
+  const bufferedCoords = applyNegativeRoofBuffer(coords, 0.8);
+  const obb = computeOrientedBoundingBox(bufferedCoords);
+  if (!obb) return null;
+
+  const { area, length, breadth, aspectRatio, ridgeAxisDeg, solarSlope1, solarSlope2, compassSlope1, compassSlope2 } = obb;
+
+  // Versant le plus favorable = celui dont l'azimut solaire est le plus proche de 0° (Plein Sud)
+  const absSolar1 = Math.abs(solarSlope1);
+  const absSolar2 = Math.abs(solarSlope2);
+
+  const bestIsPan1 = absSolar1 <= absSolar2;
+  const bestSolarAzimuth = bestIsPan1 ? solarSlope1 : solarSlope2;
+  const secondarySolarAzimuth = bestIsPan1 ? solarSlope2 : solarSlope1;
+
+  const bestCompassAzimuth = bestIsPan1 ? compassSlope1 : compassSlope2;
+  const secondaryCompassAzimuth = bestIsPan1 ? compassSlope2 : compassSlope1;
+
+  // Division géométrique estimée des pans
+  // Pan 1 (versant Sud / favorable) et Pan 2 (versant opposé)
+  return {
+    area,
+    length,
+    breadth,
+    aspectRatio,
+    ridge: {
+      axisDeg: ridgeAxisDeg,
+      label: `Axe ${ridgeAxisDeg}° (${(ridgeAxisDeg >= 45 && ridgeAxisDeg <= 135) ? 'Est-Ouest' : 'Nord-Sud'})`,
+    },
+    slopes: {
+      pan1: {
+        solarAzimuth: bestSolarAzimuth,
+        compassAzimuth: bestCompassAzimuth,
+        label: getSolarOrientationLabel(bestSolarAzimuth),
+        coeff: calculateSolarOrientationCoeff(bestSolarAzimuth, 15),
+        isSouthFacing: Math.abs(bestSolarAzimuth) <= 45, // Tolérance -45° à +45°
+      },
+      pan2: {
+        solarAzimuth: secondarySolarAzimuth,
+        compassAzimuth: secondaryCompassAzimuth,
+        label: getSolarOrientationLabel(secondarySolarAzimuth),
+        coeff: calculateSolarOrientationCoeff(secondarySolarAzimuth, 15),
+        isSouthFacing: Math.abs(secondarySolarAzimuth) <= 45,
+      },
+    },
+  };
 }
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * INFERENCE COMPLÈTE DU TYPE DE TOITURE, FAÎTAGE & ORIENTATION
  * ═══════════════════════════════════════════════════════════════════════════
- * @param {Array} coords - Tableau de coordonnées {lat, lng} du polygone
- * @param {Object} osmTags - Tags OSM éventuels (ex: roof:shape, building)
  */
 export function inferRoofCharacteristics(coords, osmTags = {}) {
-  const obb = computeOrientedBoundingBox(coords);
-  if (!obb) {
+  // Application du buffer négatif de recalibrage géométrique (Chantier 3)
+  const calibratedCoords = applyNegativeRoofBuffer(coords, 0.8);
+  const pansData = computeRoofPansAndRidge(calibratedCoords);
+
+  if (!pansData) {
     return {
       roofType: 'inclinee_symetrique',
       pitch: 15,
@@ -166,24 +309,15 @@ export function inferRoofCharacteristics(coords, osmTags = {}) {
       dimensions: { area: 1000, length: 50, breadth: 20, aspectRatio: 2.5 },
       ridge: { axisDeg: 90, label: 'Axe Est-Ouest (90°)' },
       slopes: {
-        pan1: { azimuthDeg: 180, label: 'Plein Sud (180°)', share: 0.5, coeff: 1.0 },
-        pan2: { azimuthDeg: 0, label: 'Nord (0°)', share: 0.5, coeff: 0.58 },
+        pan1: { solarAzimuth: 0, azimuthDeg: 180, label: 'Plein Sud (0°)', share: 0.5, coeff: 1.0 },
+        pan2: { solarAzimuth: 180, azimuthDeg: 0, label: 'Plein Nord (180°)', share: 0.5, coeff: 0.58 },
       },
       displayLabel: 'Toiture bipente 15° — Sud / Nord',
     };
   }
 
-  const { area, length, breadth, aspectRatio, ridgeAxisDeg, slope1Azimuth, slope2Azimuth } = obb;
-
-  // Déterminer le versant orienté Sud (le plus favorable)
-  const diffSud1 = Math.abs(180 - slope1Azimuth);
-  const diffSud2 = Math.abs(180 - slope2Azimuth);
-
-  const bestAzimuth = diffSud1 <= diffSud2 ? slope1Azimuth : slope2Azimuth;
-  const secondaryAzimuth = diffSud1 <= diffSud2 ? slope2Azimuth : slope1Azimuth;
-
-  const pan1Label = getCompassLabel(bestAzimuth);
-  const pan2Label = getCompassLabel(secondaryAzimuth);
+  const { area, length, breadth, aspectRatio, ridge, slopes } = pansData;
+  const { pan1, pan2 } = slopes;
 
   // Détection tags explicites OpenStreetMap
   const explicitRoof = osmTags['roof:shape'] || osmTags['roof:type'] || '';
@@ -197,8 +331,6 @@ export function inferRoofCharacteristics(coords, osmTags = {}) {
   let displayLabel = '';
 
   // RÈGLE 1 : Toiture Terrasse / Toit plat (0°)
-  // Critères : Grand bâtiment logistique/industriel (>= 2 500 m²) avec ratio d'aspect faible (< 1.45)
-  // ou tag OSM explicite 'flat'.
   if ((isExplicitFlat && !isExplicitGabled) || (area >= 2500 && aspectRatio < 1.45)) {
     roofType = 'terrasse';
     pitch = 0;
@@ -206,14 +338,13 @@ export function inferRoofCharacteristics(coords, osmTags = {}) {
     surfaceShare = { pan1: 1.0, pan2: 0.0 };
     displayLabel = 'Toiture terrasse (Toit plat 0°) • Pose sur bacs lestés';
   }
-  // RÈGLE 2 : Toiture Inclinée Asymétrique / Monopente (Grand versant orienté Sud)
-  // Bâtiment très allongé (ratio >= 2.0) avec versant préférentiel quasi Plein Sud (180° ± 25°)
-  else if (aspectRatio >= 2.0 && (bestAzimuth >= 155 && bestAzimuth <= 205)) {
+  // RÈGLE 2 : Toiture Inclinée Asymétrique / Monopente (Grand versant orienté Plein Sud)
+  else if (aspectRatio >= 2.0 && Math.abs(pan1.solarAzimuth) <= 25) {
     roofType = 'inclinee_asymetrique';
     pitch = 15;
     isTerrasse = false;
     surfaceShare = { pan1: 0.70, pan2: 0.30 };
-    displayLabel = `Asymétrique : ${pan1Label} (70%) / ${pan2Label} (30%) • Pente 15°`;
+    displayLabel = `Asymétrique : ${pan1.label} (70%) / ${pan2.label} (30%) • Pente 15°`;
   }
   // RÈGLE 3 : Toiture Inclinée Bipente Symétrique Standard (50% / 50%)
   else {
@@ -221,33 +352,29 @@ export function inferRoofCharacteristics(coords, osmTags = {}) {
     pitch = 15;
     isTerrasse = false;
     surfaceShare = { pan1: 0.50, pan2: 0.50 };
-    displayLabel = `Symétrique : ${pan1Label} / ${pan2Label} • Pente 15°`;
+    displayLabel = `Symétrique : ${pan1.label} / ${pan2.label} • Pente 15°`;
   }
-
-  const coeff1 = calculateSolarOrientationCoeff(bestAzimuth, pitch);
-  const coeff2 = calculateSolarOrientationCoeff(secondaryAzimuth, pitch);
 
   return {
     roofType,
     pitch,
     isTerrasse,
     dimensions: { area, length, breadth, aspectRatio },
-    ridge: {
-      axisDeg: ridgeAxisDeg,
-      label: `Axe ${ridgeAxisDeg}° (${(ridgeAxisDeg >= 45 && ridgeAxisDeg <= 135) ? 'Est-Ouest' : 'Nord-Sud'})`,
-    },
+    ridge,
     slopes: {
       pan1: {
-        azimuthDeg: bestAzimuth,
-        label: pan1Label,
+        solarAzimuth: pan1.solarAzimuth,
+        azimuthDeg: pan1.compassAzimuth,
+        label: pan1.label,
         share: surfaceShare.pan1,
-        coeff: coeff1,
+        coeff: pan1.coeff,
       },
       pan2: surfaceShare.pan2 > 0 ? {
-        azimuthDeg: secondaryAzimuth,
-        label: pan2Label,
+        solarAzimuth: pan2.solarAzimuth,
+        azimuthDeg: pan2.compassAzimuth,
+        label: pan2.label,
         share: surfaceShare.pan2,
-        coeff: coeff2,
+        coeff: pan2.coeff,
       } : null,
     },
     displayLabel,
@@ -256,8 +383,13 @@ export function inferRoofCharacteristics(coords, osmTags = {}) {
 
 export default {
   projectCoordinatesToLocalMeters,
-  computeOrientedBoundingBox,
+  compassToSolarAzimuth,
+  solarToCompassAzimuth,
+  getSolarOrientationLabel,
   getCompassLabel,
   calculateSolarOrientationCoeff,
+  applyNegativeRoofBuffer,
+  computeOrientedBoundingBox,
+  computeRoofPansAndRidge,
   inferRoofCharacteristics,
 };

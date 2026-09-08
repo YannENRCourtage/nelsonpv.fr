@@ -323,7 +323,10 @@ out geom;`;
     const hasOsmSolar = el.tags && (
       el.tags['generator:source'] === 'solar' ||
       el.tags['power'] === 'generator' ||
-      el.tags['solar'] === 'yes'
+      el.tags['solar'] === 'yes' ||
+      el.tags['generator:method'] === 'photovoltaic' ||
+      el.tags['generator:type'] === 'solar_photovoltaic_panel' ||
+      el.tags['roof:solar'] === 'yes'
     );
     if (hasOsmSolar) continue;
 

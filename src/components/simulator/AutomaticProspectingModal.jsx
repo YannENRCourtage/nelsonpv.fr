@@ -452,12 +452,12 @@ export default function AutomaticProspectingModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-md overflow-hidden">
+    <div className="fixed inset-x-0 top-[65px] bottom-0 z-[9990] flex items-center justify-center p-2 sm:p-3 bg-slate-950/80 backdrop-blur-md overflow-hidden">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 15 }}
-        className="relative w-[98vw] max-w-[1550px] 2xl:max-w-[1860px] h-[95vh] max-h-[97vh] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
+        className="relative w-[98vw] max-w-[1550px] 2xl:max-w-[1860px] h-[calc(100vh-85px)] max-h-[calc(100vh-85px)] bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
       >
         {/* ─── 1. EN-TÊTE SUPÉRIEUR COMPACT & ÉLÉGANT ────────────────────── */}
         <div className="bg-[#0e2b4d] text-white px-5 py-3 sm:py-3.5 border-b border-white/10 shrink-0 relative overflow-hidden">
