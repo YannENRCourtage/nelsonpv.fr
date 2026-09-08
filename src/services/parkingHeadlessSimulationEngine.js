@@ -115,17 +115,6 @@ export async function simulateParkingHeadless({
   const economicModel = customSettings.economicModel || 'vente_totale'; // 'vente_totale' | 'autoconsommation' | 'autoconsommation_stockage'
   const includeCoverLetter = customSettings.includeCoverLetter ?? false;
 
-  // Détection des propriétaires personnes morales pour le champ Client
-  let ownerInfo = null;
-  try {
-    ownerInfo = await fetchCadastralOwnersForParking(parking);
-  } catch (err) {
-    console.warn(`Recherche propriétaire parking ${parking.id} impossible:`, err);
-  }
-
-  const primaryOwnerName = ownerInfo?.primaryOwnerName || null;
-  const clientName = primaryOwnerName || parking.name || addressInfo?.label || 'Client Parking';
-
   // 1. Calepinage géométrique des ombrières selon l'orientation naturelle du parking (plafonné à maxKwc)
   const layout = layoutOmbrieresOnParking({
     polygonWgs84: parking.polygon,
@@ -145,6 +134,27 @@ export async function simulateParkingHeadless({
     isCurved,
     curvedDetails
   } = layout;
+
+  // Filtre d'exclusion rapide avant appels réseaux coûteux (Cadastre, Koumoul, Snapshots satellite)
+  if (isCurved || !placedOmbrieres || placedOmbrieres.length === 0 || installedKwc < minKwc || installedKwc > maxKwc) {
+    return {
+      isCurved,
+      curvedDetails,
+      placedOmbrieres,
+      installedKwc: installedKwc || 0
+    };
+  }
+
+  // Détection des propriétaires personnes morales pour le champ Client
+  let ownerInfo = null;
+  try {
+    ownerInfo = await fetchCadastralOwnersForParking(parking);
+  } catch (err) {
+    console.warn(`Recherche propriétaire parking ${parking.id} impossible:`, err);
+  }
+
+  const primaryOwnerName = ownerInfo?.primaryOwnerName || null;
+  const clientName = primaryOwnerName || parking.name || addressInfo?.label || 'Client Parking';
 
   // 2. Productible solaire selon le département
   const departmentCode = addressInfo?.departmentCode || (addressInfo?.postcode ? addressInfo.postcode.substring(0, 2) : '33');

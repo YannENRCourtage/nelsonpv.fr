@@ -26,7 +26,7 @@ export function isPointInPolygon(lat, lng, polygon) {
  * Les lignes de panneaux sont toujours strictement parallèles au trait de la sablière (arête opposée au faîtage).
  * Remplissage strict ligne par ligne du bas (sablière) vers le haut (faîtage).
  */
-export function computeValidSolarSlots(polygonPoints, ridgeIndex = 0, isLandscape = false) {
+export function computeValidSolarSlots(polygonPoints, ridgeIndex = 0, isLandscape = false, options = {}) {
   if (!polygonPoints || polygonPoints.length < 3) {
     return { slots: [], maxPanels: 0, maxKwc: 0 };
   }
@@ -166,16 +166,28 @@ export function computeValidSolarSlots(polygonPoints, ridgeIndex = 0, isLandscap
     }
   }
 
-  // 5. Aplatissement ordonné : Ligne 1 complète d'abord, puis Ligne 2, puis Ligne 3...
+  // 5. Retrait d'une ligne et d'une colonne de panneaux de chaque côté du rectangle généré
+  const removeBorders = options?.removeBorders !== false;
+  let effectiveRows = rows;
+  if (removeBorders && rows.length > 2) {
+    effectiveRows = rows.slice(1, rows.length - 1).map(rSlots => {
+      if (rSlots.length > 2) {
+        return rSlots.slice(1, rSlots.length - 1);
+      }
+      return rSlots;
+    }).filter(rSlots => rSlots.length > 0);
+  }
+
+  // 6. Aplatissement ordonné : Ligne 1 complète d'abord, puis Ligne 2, puis Ligne 3...
   const slots = [];
-  rows.forEach(rSlots => {
+  effectiveRows.forEach(rSlots => {
     rSlots.forEach(slot => slots.push(slot));
   });
 
   const maxPanels = slots.length;
   const maxKwc = Math.round((maxPanels * PANEL_POWER_W) / 100) / 10;
 
-  return { slots, maxPanels, maxKwc, rowsCount: rows.length };
+  return { slots, maxPanels, maxKwc, rowsCount: effectiveRows.length };
 }
 
 /**
@@ -218,7 +230,7 @@ export function splitPolygonByRidge(polygonPoints, ridgeIndex = 0) {
 /**
  * Calcule l'implantation complète des panneaux pour une toiture monopente ou bi-pans symétrique
  */
-export function computeMultiPanSolarSlots(polygonPoints, roofType = 'asymetrique', ridgeIndex = 0, isLandscape = false, panBreakdown = null, totalTargetPanels = 14) {
+export function computeMultiPanSolarSlots(polygonPoints, roofType = 'asymetrique', ridgeIndex = 0, isLandscape = false, panBreakdown = null, totalTargetPanels = 14, options = {}) {
   if (!polygonPoints || polygonPoints.length < 3) {
     return { slots: [], maxPanels: 0, maxKwc: 0 };
   }
@@ -226,8 +238,8 @@ export function computeMultiPanSolarSlots(polygonPoints, roofType = 'asymetrique
   if (roofType === 'symetrique' && polygonPoints.length >= 4) {
     const { polyWest, polyEast } = splitPolygonByRidge(polygonPoints, ridgeIndex);
 
-    const resWest = computeValidSolarSlots(polyWest, 0, isLandscape);
-    const resEast = computeValidSolarSlots(polyEast, 0, isLandscape);
+    const resWest = computeValidSolarSlots(polyWest, 0, isLandscape, options);
+    const resEast = computeValidSolarSlots(polyEast, 0, isLandscape, options);
 
     // Détermination du nombre de panneaux à placer sur chaque versant
     let targetPanelsWest = 0; // Versant 1 (Ouest)
@@ -268,5 +280,5 @@ export function computeMultiPanSolarSlots(polygonPoints, roofType = 'asymetrique
   }
 
   // Toiture monopente / asymétrique
-  return computeValidSolarSlots(polygonPoints, ridgeIndex, isLandscape);
+  return computeValidSolarSlots(polygonPoints, ridgeIndex, isLandscape, options);
 }

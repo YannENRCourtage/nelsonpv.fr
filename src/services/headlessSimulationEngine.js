@@ -61,15 +61,18 @@ export async function simulateBuildingHeadless({
   // 1. Inférence géospatiale dynamique de la toiture (OBB, faîtage, azimut, versants, terrasse vs inclinée)
   const roofInference = inferRoofCharacteristics(polygon, building.tags || {});
 
-  const isTerrasse = customSettings.isTerrasse !== undefined
-    ? customSettings.isTerrasse
-    : roofInference.isTerrasse;
+  const requestedPitch = customSettings.pitch !== undefined ? Number(customSettings.pitch) : undefined;
+  const isTerrasse = requestedPitch === 0
+    ? true
+    : (customSettings.isTerrasse !== undefined ? customSettings.isTerrasse : roofInference.isTerrasse);
 
-  const pitch = customSettings.pitch !== undefined
-    ? customSettings.pitch
-    : roofInference.pitch;
+  const pitch = requestedPitch !== undefined
+    ? requestedPitch
+    : (isTerrasse ? 0 : roofInference.pitch);
 
-  const roofType = customSettings.roofType || roofInference.roofType;
+  const roofType = (pitch === 0 || isTerrasse)
+    ? 'terrasse'
+    : (customSettings.roofType || roofInference.roofType);
   const costPerKwc = customSettings.costPerKwc || 920; // 920 €/kWc
 
   // 2. Détection / sélection de l'axe de faîtage (arête sélectionnée orientée vers le Sud ou arête la plus longue)
@@ -117,33 +120,37 @@ export async function simulateBuildingHeadless({
   const departmentCode = addressInfo?.departmentCode || (addressInfo?.postcode ? addressInfo.postcode.substring(0, 2) : '59');
   const regionalBaseYield = getProductionForDepartment(departmentCode) || 1100;
 
-  // Coefficient d'inclinaison (1.00 à 30°, 0.96 à 15°, 0.90 à 0° plat)
-  const inclinationCoeff = pitch === 30 ? 1.00 : (pitch === 15 || pitch === 45) ? 0.96 : 0.90;
+  // Coefficient d'inclinaison (1.00 à 30°, 0.96 à 15°, 0.95 à 0° terrasse plein Sud, 0.90 standard)
+  const inclinationCoeff = (pitch === 0 || isTerrasse) ? 0.95 : (pitch === 30 ? 1.00 : (pitch === 15 || pitch === 45) ? 0.96 : 0.90);
 
   // 6. Répartition et productible selon la modélisation géométrique déduite (Terrasse vs Inclinée)
-  const share1 = roofInference.slopes.pan1?.share ?? (roofType === 'symetrique' ? 0.50 : 0.70);
-  const share2 = roofInference.slopes.pan2?.share ?? (isTerrasse ? 0 : (1 - share1));
+  const share1 = (pitch === 0 || isTerrasse) ? 1.00 : (roofInference.slopes.pan1?.share ?? (roofType === 'symetrique' ? 0.50 : 0.70));
+  const share2 = (pitch === 0 || isTerrasse) ? 0 : (roofInference.slopes.pan2?.share ?? (1 - share1));
 
   const pan1Kwc = Math.round(installedKwc * share1 * 10) / 10;
   const pan2Kwc = Math.max(0, Math.round((installedKwc - pan1Kwc) * 10) / 10);
 
-  const coeff1 = roofInference.slopes.pan1?.coeff || 1.00;
+  const coeff1 = (pitch === 0 || isTerrasse) ? 1.00 : (roofInference.slopes.pan1?.coeff || 1.00);
   const yield1 = Math.round(regionalBaseYield * coeff1 * inclinationCoeff);
   const prodKwh1 = Math.round(pan1Kwc * yield1);
 
   let coeff2 = 0.70;
   let yield2 = 0;
   let prodKwh2 = 0;
-  if (share2 > 0 && roofInference.slopes.pan2) {
+  if (share2 > 0 && roofInference.slopes.pan2 && !isTerrasse) {
     coeff2 = roofInference.slopes.pan2.coeff || 0.70;
     yield2 = Math.round(regionalBaseYield * coeff2 * inclinationCoeff);
     prodKwh2 = Math.round(pan2Kwc * yield2);
   }
 
   const annualProductionKwh = prodKwh1 + prodKwh2;
-  const effectiveOrientationCoeff = installedKwc > 0
-    ? ((pan1Kwc * coeff1) + (pan2Kwc * coeff2)) / installedKwc
-    : coeff1;
+  const effectiveOrientationCoeff = (pitch === 0 || isTerrasse)
+    ? 1.00
+    : (installedKwc > 0 ? ((pan1Kwc * coeff1) + (pan2Kwc * coeff2)) / installedKwc : coeff1);
+
+  const orientationLabel = (pitch === 0 || isTerrasse)
+    ? 'Toiture terrasse (Plein Sud 0°)'
+    : roofInference.displayLabel;
 
   // 7. Modèle économique & financier selon le mode de valorisation
   const annualRevenueReventeTotale = Math.round(annualProductionKwh * tarifEdfOaKwh);
@@ -244,7 +251,8 @@ export async function simulateBuildingHeadless({
     roofType,
     pitch,
     isTerrasse,
-    orientationLabel: roofInference.displayLabel,
+    excludeThirdParty: customSettings.excludeThirdParty === true,
+    orientationLabel,
     effectiveOrientationCoeff,
     annualProductionKwh,
     economicModel,
@@ -268,13 +276,13 @@ export async function simulateBuildingHeadless({
     slopes: roofInference.slopes,
     dimensions: roofInference.dimensions,
     pan1: {
-      label: roofInference.slopes.pan1?.label || 'Plein Sud',
-      angle: roofInference.slopes.pan1?.azimuthDeg || 180,
+      label: (pitch === 0 || isTerrasse) ? 'Plein Sud (0°)' : (roofInference.slopes.pan1?.label || 'Plein Sud'),
+      angle: (pitch === 0 || isTerrasse) ? 180 : (roofInference.slopes.pan1?.azimuthDeg || 180),
       installedKwc: pan1Kwc,
       productionKwh: prodKwh1,
       specificYield: yield1
     },
-    pan2: (share2 > 0 && roofInference.slopes.pan2) ? {
+    pan2: (share2 > 0 && roofInference.slopes.pan2 && !isTerrasse) ? {
       label: roofInference.slopes.pan2.label,
       angle: roofInference.slopes.pan2.azimuthDeg,
       installedKwc: pan2Kwc,

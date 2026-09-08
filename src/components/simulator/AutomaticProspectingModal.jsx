@@ -5,7 +5,7 @@ import {
   FileText, CheckCircle2, AlertCircle, Loader2, Play, Square,
   RotateCcw, SlidersHorizontal, ExternalLink, ShieldCheck, X,
   Check, HardDrive, Compass, Euro, TrendingUp, Info, Download,
-  Archive, Eye, Layers, ArrowRight
+  Archive, Eye, Layers, ArrowRight, Sliders, Pencil, Banknote
 } from 'lucide-react';
 
 import {
@@ -74,7 +74,15 @@ export default function AutomaticProspectingModal({
   const [targetLimit, setTargetLimit] = useState(10); // 10, 30, 50, 100, 'Tout'
   const [roofPitch, setRoofPitch] = useState(15);
   const [roofType, setRoofType] = useState('asymetrique');
+  const [excludeThirdParty, setExcludeThirdParty] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Gestion de la révision / édition individuelle des paramètres par ligne
+  const [editingRowIndex, setEditingRowIndex] = useState(null);
+  const [editingPitch, setEditingPitch] = useState(15);
+  const [editingEconomicModel, setEditingEconomicModel] = useState('vente_totale');
+  const [editingTarifEdfOa, setEditingTarifEdfOa] = useState(0.085);
+  const [isRecalculatingRow, setIsRecalculatingRow] = useState(false);
 
   // Gestion du dossier local d'exportation (et mode Firefox natif)
   const isFirefoxBrowser = typeof window !== 'undefined' && !window.showDirectoryPicker;
@@ -367,7 +375,8 @@ export default function AutomaticProspectingModal({
             minKwc: minTargetKwc,
             maxKwc: maxTargetKwc,
             economicModel,
-            tarifEdfOa
+            tarifEdfOa,
+            excludeThirdParty
           }
         });
 
@@ -452,6 +461,102 @@ export default function AutomaticProspectingModal({
     isAbortedRef.current = true;
     setStatus('aborted');
     addLog('🛑 Demande d’arrêt prise en compte.');
+  };
+
+  // Ouverture du panneau de révision des paramètres d'une ligne
+  const handleOpenEditRow = (idx, item) => {
+    if (editingRowIndex === idx) {
+      setEditingRowIndex(null);
+      return;
+    }
+    setEditingRowIndex(idx);
+    setEditingPitch(item.simulation?.pitch ?? 15);
+    setEditingEconomicModel(item.simulation?.economicModel || economicModel || 'vente_totale');
+    setEditingTarifEdfOa(item.simulation?.tarifEdfOaKwh ?? tarifEdfOa ?? 0.085);
+  };
+
+  // Recalcul d'une ligne de résultat avec de nouveaux paramètres (ex: pente = 0° terrasse plein Sud)
+  const handleRecalculateRow = async (idx) => {
+    setIsRecalculatingRow(true);
+    try {
+      const item = processedResults[idx];
+      const newPitch = Number(editingPitch);
+      const isZeroPitch = newPitch === 0;
+
+      addLog(`⚙️ Recalcul de la toiture #${idx + 1} (${item.addressLabel}) avec pente ${newPitch}°...`);
+
+      const newSim = await simulateBuildingHeadless({
+        building: {
+          ...item.building,
+          tags: {
+            ...item.building.tags,
+            'roof:shape': isZeroPitch ? 'flat' : item.building.tags?.['roof:shape']
+          }
+        },
+        addressInfo: {
+          label: item.addressLabel,
+          departmentCode: item.simulation?.departmentCode
+        },
+        cadastreInfo: {
+          parcelleRef: item.cadastreRef
+        },
+        customSettings: {
+          costPerKwc: 920,
+          minKwc: 10,
+          maxKwc: 5000,
+          pitch: newPitch,
+          isTerrasse: isZeroPitch,
+          roofType: isZeroPitch ? 'terrasse' : item.simulation?.roofType,
+          economicModel: editingEconomicModel,
+          tarifEdfOa: editingTarifEdfOa,
+          excludeThirdParty
+        }
+      });
+
+      if (!newSim) {
+        alert('Impossible de recalculer cette toiture avec les paramètres indiqués.');
+        return;
+      }
+
+      // Régénération du PDF avec les nouveaux paramètres
+      const pdfResult = await generateProspectingPdfBlob(newSim);
+
+      if (!pdfResult || (!pdfResult.blob && !pdfResult.arrayBuffer)) {
+        alert('Erreur lors de la génération du nouveau PDF.');
+        return;
+      }
+
+      // Sauvegarde dans le dossier sélectionné si actif
+      let saveRes = item.saveResult;
+      if (directoryHandle || bridgeStatus.online) {
+        saveRes = await savePdfToLocalDestination({
+          filename: pdfResult.filename,
+          blob: pdfResult.blob,
+          arrayBuffer: pdfResult.arrayBuffer,
+          directoryHandle,
+          preferBridge: true
+        });
+      }
+
+      const updated = [...processedResults];
+      updated[idx] = {
+        ...item,
+        simulation: newSim,
+        filename: pdfResult.filename,
+        blob: pdfResult.blob,
+        arrayBuffer: pdfResult.arrayBuffer,
+        saveResult: saveRes
+      };
+
+      setProcessedResults(updated);
+      setEditingRowIndex(null);
+      addLog(`✨ Bâtiment #${idx + 1} recalculé avec succès : Pente ${newPitch}° (${isZeroPitch ? 'Toiture terrasse Plein Sud 0°' : newSim.orientationLabel}) • ${newSim.installedKwc} kWc.`);
+    } catch (err) {
+      console.error('Erreur lors du recalcul de la ligne :', err);
+      alert('Une erreur est survenue lors du recalcul.');
+    } finally {
+      setIsRecalculatingRow(false);
+    }
   };
 
   // Calculs récapitulatifs pour le header/KPI
@@ -938,6 +1043,29 @@ export default function AutomaticProspectingModal({
                 </div>
               </div>
 
+              {/* OPTION EXCLUSION TIERS-FINANCEMENT */}
+              <div className="bg-slate-50 p-2 rounded-xl border border-slate-200">
+                <label className="flex items-center justify-between cursor-pointer select-none">
+                  <div className="flex items-center gap-1.5">
+                    <Banknote className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <div>
+                      <div className="text-[10px] font-black text-slate-800 leading-tight">
+                        Financement : Crédit &amp; Abonnement uniquement
+                      </div>
+                      <div className="text-[8.5px] text-slate-500 leading-tight">
+                        {excludeThirdParty ? 'Tiers-investisseur exclu (2 colonnes dans le PDF)' : '3 solutions incluses (Tiers, Crédit, Abonnement)'}
+                      </div>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={excludeThirdParty}
+                    onChange={(e) => setExcludeThirdParty(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                  />
+                </label>
+              </div>
+
               {/* Grille des critères récapitulatifs */}
               <div className="grid grid-cols-2 gap-1 text-xs">
                 <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
@@ -949,13 +1077,15 @@ export default function AutomaticProspectingModal({
                   <strong className="text-emerald-700 font-black text-[10.5px]">{minTargetKwc} à {maxTargetKwc} kWc</strong>
                 </div>
                 <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Profil toiture</span>
-                  <strong className="text-emerald-700 font-black text-[10.5px]">Inférence IA / SIG auto</strong>
-                </div>
-                <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Modèle de valorisation</span>
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Modèle valorisation</span>
                   <strong className="text-blue-700 font-black text-[10.5px]">
                     {economicModel === 'vente_totale' ? `${tarifEdfOa} €/kWh OA` : economicModel === 'autoconsommation_stockage' ? 'Autoconso + Stockage' : 'Autoconso + Surplus'}
+                  </strong>
+                </div>
+                <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                  <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Solutions PDF</span>
+                  <strong className="text-slate-900 font-black text-[10.5px]">
+                    {excludeThirdParty ? 'Crédit & Abonnement' : '3 Solutions'}
                   </strong>
                 </div>
               </div>
@@ -1145,43 +1275,197 @@ export default function AutomaticProspectingModal({
                     processedResults.map((item, idx) => (
                       <div
                         key={idx}
-                        className="p-3 hover:bg-slate-900/60 rounded-xl transition-colors flex items-center justify-between gap-3 text-xs"
+                        className="p-3 hover:bg-slate-900/60 rounded-xl transition-colors text-xs"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black text-xs shrink-0">
-                            #{idx + 1}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black text-xs shrink-0">
+                              #{idx + 1}
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="font-bold text-white truncate max-w-xs sm:max-w-md">
+                                {item.addressLabel}
+                              </div>
+                              <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
+                                <span>📐 {item.cadastreRef}</span>
+                                <span>•</span>
+                                <span>Toiture : <strong>{item.building.area} m²</strong></span>
+                                <span>•</span>
+                                <span className="text-amber-400 font-bold">⚡ {item.simulation?.installedKwc} kWc</span>
+                                <span>•</span>
+                                <span className="text-teal-300 font-medium">
+                                  📐 {Number(item.simulation?.pitch) === 0 ? 'Plein Sud (0°)' : `${item.simulation?.pitch ?? 15}°`}
+                                </span>
+                                <span>•</span>
+                                <span className="text-emerald-400 font-bold">💶 {item.simulation?.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an</span>
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="min-w-0">
-                            <div className="font-bold text-white truncate max-w-xs sm:max-w-md">
-                              {item.addressLabel}
-                            </div>
-                            <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
-                              <span>📐 {item.cadastreRef}</span>
-                              <span>•</span>
-                              <span>Toiture : <strong>{item.building.area} m²</strong></span>
-                              <span>•</span>
-                              <span className="text-amber-400 font-bold">⚡ {item.simulation?.installedKwc} kWc</span>
-                              <span>•</span>
-                              <span className="text-emerald-400 font-bold">💶 {item.simulation?.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an</span>
-                            </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditRow(idx, item)}
+                              className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                                editingRowIndex === idx
+                                  ? 'bg-amber-500 text-slate-950 ring-2 ring-amber-400'
+                                  : 'bg-white/10 hover:bg-white/20 text-white hover:text-amber-300'
+                              }`}
+                              title="Modifier la pente et les paramètres de cette toiture"
+                            >
+                              <Sliders className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline text-[11px]">Paramètres</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadSinglePdf(item)}
+                              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white hover:text-amber-300 transition-colors cursor-pointer"
+                              title={`Télécharger le PDF : ${item.filename}`}
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                            Prêt
-                          </span>
+                        {/* TIROIR D'ÉDITION INLINE DES PARAMÈTRES DE LA LIGNE */}
+                        {editingRowIndex === idx && (
+                          <div className="mt-3 p-3.5 bg-slate-900/90 border border-emerald-500/40 rounded-2xl space-y-3 shadow-xl">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                              <div className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
+                                <Sliders className="w-4 h-4 text-emerald-400" />
+                                <span>Révision des paramètres — Toiture #{idx + 1}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setEditingRowIndex(null)}
+                                className="text-slate-400 hover:text-white text-xs cursor-pointer px-2 py-0.5 rounded-lg hover:bg-slate-800"
+                              >
+                                ✕ Fermer
+                              </button>
+                            </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadSinglePdf(item)}
-                            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white hover:text-amber-300 transition-colors cursor-pointer"
-                            title={`Télécharger le PDF : ${item.filename}`}
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                        </div>
+                            {/* Section 1 : Pente de toiture & Règle Plein Sud 0° */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[11px] font-bold text-slate-200 flex items-center gap-1">
+                                  <span>📐 Pente de toiture :</span>
+                                  <span className="text-amber-400 font-black">
+                                    {Number(editingPitch) === 0 ? '0° (Terrasse - Plein Sud)' : `${editingPitch}°`}
+                                  </span>
+                                </label>
+                                <span className="text-[10px] text-slate-400">
+                                  {Number(editingPitch) === 0 ? 'Toiture terrasse' : 'Toiture inclinée'}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-5 gap-1">
+                                {[
+                                  { pitch: 0, label: '0° Terrasse (Sud)' },
+                                  { pitch: 10, label: '10°' },
+                                  { pitch: 15, label: '15°' },
+                                  { pitch: 20, label: '20°' },
+                                  { pitch: 30, label: '30°' }
+                                ].map((p) => (
+                                  <button
+                                    key={p.pitch}
+                                    type="button"
+                                    onClick={() => setEditingPitch(p.pitch)}
+                                    className={`py-1.5 px-1 rounded-xl text-[10px] font-black transition-all cursor-pointer text-center ${
+                                      Number(editingPitch) === p.pitch
+                                        ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400'
+                                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                                    }`}
+                                  >
+                                    {p.label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Saisie libre de la pente */}
+                              <div className="flex items-center gap-2 pt-0.5">
+                                <span className="text-[10.5px] text-slate-400 font-medium">Autre pente :</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="60"
+                                  value={editingPitch}
+                                  onChange={(e) => setEditingPitch(Math.max(0, Math.min(60, Number(e.target.value))))}
+                                  className="w-16 p-1 bg-slate-800 border border-slate-700 rounded-lg text-center text-xs font-black text-emerald-400"
+                                />
+                                <span className="text-xs text-slate-400">degrés (°)</span>
+                              </div>
+
+                              {Number(editingPitch) === 0 && (
+                                <div className="p-2 bg-blue-950/70 border border-blue-500/40 rounded-xl text-[10.5px] text-blue-200 flex items-center gap-2 leading-relaxed">
+                                  <Info className="w-4 h-4 text-blue-400 shrink-0" />
+                                  <span>
+                                    <strong>Règle toiture terrasse (0°) :</strong> l'orientation est automatiquement fixée à <strong>Plein Sud (0°)</strong> avec calepinage sur bacs lestés inclinés pour un productible optimal.
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Section 2 : Modèle économique & Tarif EDF OA */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-[10.5px]">
+                              <div>
+                                <label className="block text-slate-400 font-bold mb-1">Modèle de valorisation :</label>
+                                <select
+                                  value={editingEconomicModel}
+                                  onChange={(e) => setEditingEconomicModel(e.target.value)}
+                                  className="w-full p-1.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs font-bold"
+                                >
+                                  <option value="vente_totale">Revente totale (EDF OA)</option>
+                                  <option value="autoconsommation">Autoconsommation + Vente surplus</option>
+                                  <option value="autoconsommation_stockage">Autoconsommation + Stockage (100%)</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-slate-400 font-bold mb-1">Tarif EDF OA (€/kWh) :</label>
+                                <input
+                                  type="number"
+                                  step="0.001"
+                                  value={editingTarifEdfOa}
+                                  onChange={(e) => setEditingTarifEdfOa(parseFloat(e.target.value) || 0)}
+                                  className="w-full p-1.5 bg-slate-800 border border-slate-700 rounded-xl text-blue-400 text-xs font-black text-center"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Section 3 : Actions de recalcul & sauvegarde */}
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                              <button
+                                type="button"
+                                onClick={() => setEditingRowIndex(null)}
+                                disabled={isRecalculatingRow}
+                                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 cursor-pointer"
+                              >
+                                Annuler
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRecalculateRow(idx)}
+                                disabled={isRecalculatingRow}
+                                className="px-4 py-1.5 rounded-xl text-xs font-black text-slate-950 bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                              >
+                                {isRecalculatingRow ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Recalcul de l'offre en cours...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>Recalculer &amp; Mettre à jour l'Offre PDF</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}

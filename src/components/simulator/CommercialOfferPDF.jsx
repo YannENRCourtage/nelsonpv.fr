@@ -4,6 +4,7 @@ import html2canvas from 'html2canvas';
 import { generateSatelliteSnapshot, generateBeforeAfterDualSnapshot } from '@/utils/satelliteSnapshot';
 import { calculateAllFinancingScenarios } from '@/services/solarFinancingEngine';
 import { drawSechoirChargesChart } from '@/components/simulator/sechoir/SechoirPDFGenerator.jsx';
+import { ENR_COURTAGE_LOGO_BASE64 } from '@/assets/logoBase64';
 
 const BORNE_7_4KW_IMG = '/images/borne_irve_7_4kw.jpg';
 const BORNE_DOUBLE_IMG = '/images/borne_irve_double.jpg';
@@ -997,52 +998,59 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             </span>
           </div>
 
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
-            <!-- Cadre 1 : Tiers-Financement -->
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 7px; padding: 4px 6px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 6.8pt; font-weight: 900; color: #166534; text-transform: uppercase;">1. Tiers-Investisseur</span>
-                <span style="background: #16a34a; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">0 € APPORT</span>
+          ${(() => {
+            const excludeThirdParty = sim.excludeThirdParty === true || sim.showThirdParty === false;
+            return `
+            <div style="display: grid; grid-template-columns: repeat(${excludeThirdParty ? 2 : 3}, 1fr); gap: 6px;">
+              ${!excludeThirdParty ? `
+              <!-- Cadre 1 : Tiers-Financement -->
+              <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 7px; padding: 4px 6px; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                  <span style="font-size: 6.8pt; font-weight: 900; color: #166534; text-transform: uppercase;">1. Tiers-Investisseur</span>
+                  <span style="background: #16a34a; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">0 € APPORT</span>
+                </div>
+                <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Bail 30 ans &bull; Toiture valorisée clé en main</div>
+                <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
+                  <tr><td style="padding: 1.2px 0; color: #64748b;">Loyer garanti (ans 1-20) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(financing?.thirdParty?.annualRentFixed || 0).toLocaleString('fr-FR')} €/an</td></tr>
+                  <tr><td style="padding: 1.2px 0; color: #64748b;">Intéressement (ans 21-30) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">10 % du CA annuel</td></tr>
+                  <tr><td style="padding: 1.2px 0; color: #64748b;">Investissement client :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">0 € (clé en main)</td></tr>
+                  <tr style="border-top: 1px solid #bbf7d0;"><td style="font-weight: bold; color: #166534; padding-top: 1.5px;">Cumul garanti (20 ans) :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 6.8pt; padding-top: 1.5px;">+${Number(financing?.thirdParty?.cumulYears1To20 || 0).toLocaleString('fr-FR')} €</td></tr>
+                </table>
               </div>
-              <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Bail 30 ans &bull; Toiture valorisée clé en main</div>
-              <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
-                <tr><td style="padding: 1.2px 0; color: #64748b;">Loyer garanti (ans 1-20) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(financing?.thirdParty?.annualRentFixed || 0).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr><td style="padding: 1.2px 0; color: #64748b;">Intéressement (ans 21-30) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">10 % du CA annuel</td></tr>
-                <tr><td style="padding: 1.2px 0; color: #64748b;">Investissement client :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">0 € (clé en main)</td></tr>
-                <tr style="border-top: 1px solid #bbf7d0;"><td style="font-weight: bold; color: #166534; padding-top: 1.5px;">Cumul garanti (20 ans) :</td><td style="text-align: right; font-weight: 900; color: #166534; font-size: 6.8pt; padding-top: 1.5px;">+${Number(financing?.thirdParty?.cumulYears1To20 || 0).toLocaleString('fr-FR')} €</td></tr>
-              </table>
-            </div>
+              ` : ''}
 
-            <!-- Cadre 2 : Crédit Bancaire -->
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 4px 6px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 6.8pt; font-weight: 900; color: #1e40af; text-transform: uppercase;">2. Crédit Bancaire</span>
-                <span style="background: #2563eb; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">PROPRIÉTAIRE J1</span>
+              <!-- Cadre ${excludeThirdParty ? '1' : '2'} : Crédit Bancaire -->
+              <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 4px 6px; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                  <span style="font-size: 6.8pt; font-weight: 900; color: #1e40af; text-transform: uppercase;">${excludeThirdParty ? '1' : '2'}. Crédit Bancaire</span>
+                  <span style="background: #2563eb; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 3.5px; border-radius: 3px;">PROPRIÉTAIRE J1</span>
+                </div>
+                <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Prêt pro 20 ans amortissable (4.48%)</div>
+                <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
+                  <tr><td style="padding: 1.2px 0; color: #64748b;">Mensualité de prêt :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #1e40af;">~${Number(financing?.bankLoan?.monthlyPaymentExact || 0).toLocaleString('fr-FR')} €/m</td></tr>
+                  <tr><td style="padding: 1.2px 0; color: #64748b;">Cash-flow net (An 1) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: 900; color: ${bankAnnualNet >= 0 ? '#16a34a' : '#1e40af'};">${bankAnnualNet >= 0 ? '+' : ''}${bankAnnualNet.toLocaleString('fr-FR')} €/an</td></tr>
+                  <tr><td style="padding: 1.2px 0; color: #64748b;">Gain net cumulé (20 ans) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #1e40af;">+${Math.max(0, bankCumul20).toLocaleString('fr-FR')} €</td></tr>
+                  <tr><td style="font-weight: bold; color: #1e40af; padding-top: 1.5px;">Bénéfice global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 6.8pt; padding-top: 1.5px;">+${Math.max(0, bankCumul30).toLocaleString('fr-FR')} €</td></tr>
+                </table>
               </div>
-              <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Prêt pro 20 ans amortissable (4.48%)</div>
-              <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
-                <tr><td style="padding: 1.2px 0; color: #64748b;">Mensualité de prêt :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #1e40af;">~${Number(financing?.bankLoan?.monthlyPaymentExact || 0).toLocaleString('fr-FR')} €/m</td></tr>
-                <tr><td style="padding: 1.2px 0; color: #64748b;">Cash-flow net (An 1) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: 900; color: ${bankAnnualNet >= 0 ? '#16a34a' : '#1e40af'};">${bankAnnualNet >= 0 ? '+' : ''}${bankAnnualNet.toLocaleString('fr-FR')} €/an</td></tr>
-                <tr><td style="padding: 1.2px 0; color: #64748b;">Gain net cumulé (20 ans) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #1e40af;">+${Math.max(0, bankCumul20).toLocaleString('fr-FR')} €</td></tr>
-                <tr style="border-top: 1px solid #bfdbfe;"><td style="font-weight: bold; color: #1e40af; padding-top: 1.5px;">Bénéfice global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #1e40af; font-size: 6.8pt; padding-top: 1.5px;">+${Math.max(0, bankCumul30).toLocaleString('fr-FR')} €</td></tr>
-              </table>
-            </div>
 
-            <!-- Cadre 3 : Abonnement (Leasing) -->
-            <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 4px 6px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <span style="font-size: 6.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase; white-space: nowrap;">3. Abonnement</span>
-                <span style="background: #9333ea; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 4px; border-radius: 3px; white-space: nowrap;">100% HORS-BILAN</span>
+              <!-- Cadre ${excludeThirdParty ? '2' : '3'} : Abonnement (Leasing) -->
+              <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 7px; padding: 4px 6px; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                  <span style="font-size: 6.8pt; font-weight: 900; color: #6b21a8; text-transform: uppercase; white-space: nowrap;">${excludeThirdParty ? '2' : '3'}. Abonnement</span>
+                  <span style="background: #9333ea; color: #ffffff; font-size: 5pt; font-weight: 900; padding: 1.5px 4px; border-radius: 3px; white-space: nowrap;">100% HORS-BILAN</span>
+                </div>
+                <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Leasing 20 ans &bull; Rachat 1 € &bull; 0 € dette</div>
+                <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
+                  <tr><td style="padding: 1.2px 0; color: #64748b;">Loyer HT (~${leasingCoverage}% couvert) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #6b21a8;">${leasingMonthly.toLocaleString('fr-FR')} €/m</td></tr>
+                  <tr><td style="padding: 1.2px 0; color: #64748b;">Effort d'épargne (post-IS) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: 900; color: #6b21a8;">${leasingNetPostIS >= 0 ? `Autofinancé` : `~${leasingEffortMonthly.toLocaleString('fr-FR')} €/m`}</td></tr>
+                  <tr><td style="padding: 1.2px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(selectedLeasing.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
+                  <tr><td style="font-weight: bold; color: #6b21a8; padding-top: 1.5px;">Bénéfice global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #16a34a; font-size: 6.8pt; padding-top: 1.5px;">+${Math.max(0, leasingGains30).toLocaleString('fr-FR')} €</td></tr>
+                </table>
               </div>
-              <div style="font-size: 5.5pt; color: #475569; margin-bottom: 2px;">Leasing 20 ans &bull; Rachat 1 € &bull; 0 € dette</div>
-              <table style="width: 100%; font-size: 5.8pt; border-collapse: collapse;">
-                <tr><td style="padding: 1.2px 0; color: #64748b;">Loyer HT (~${leasingCoverage}% couvert) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #6b21a8;">${leasingMonthly.toLocaleString('fr-FR')} €/m</td></tr>
-                <tr><td style="padding: 1.2px 0; color: #64748b;">Effort d'épargne (post-IS) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: 900; color: #6b21a8;">${leasingNetPostIS >= 0 ? `Autofinancé` : `~${leasingEffortMonthly.toLocaleString('fr-FR')} €/m`}</td></tr>
-                <tr><td style="padding: 1.2px 0; color: #64748b;">Économie d'impôt (IS 25%) :</td><td style="padding: 1.2px 0; text-align: right; font-weight: bold; color: #166534;">+${Number(selectedLeasing.taxSavingsIS || 0).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="border-top: 1px solid #e9d5ff;"><td style="font-weight: bold; color: #6b21a8; padding-top: 1.5px;">Bénéfice global (30 ans) :</td><td style="text-align: right; font-weight: 900; color: #16a34a; font-size: 6.8pt; padding-top: 1.5px;">+${Math.max(0, leasingGains30).toLocaleString('fr-FR')} €</td></tr>
-              </table>
             </div>
-          </div>
+            `;
+          })()}
         </div>
         ` : ''}
       </div>
@@ -1075,8 +1083,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
       <!-- 8. PIED DE PAGE PROFESSIONNEL -->
       <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 3.5px; font-size: 7pt; color: #475569; margin-top: 1px;">
-        <span style="font-weight: bold; color: #00429d;">NELSON — nelsonpv.fr</span>
-        <span>Courtage en Énergies Renouvelables &amp; Ingénierie Solaire</span>
+        <span style="font-weight: bold; color: #00429d;">enr-courtage.fr</span>
+        <span>Energies Renouvelables &amp; Ingénierie Solaire</span>
         <span>contact@enr-courtage.fr</span>
       </div>
 
@@ -1234,8 +1242,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
           <!-- Pied de page identique à la page 1 -->
           <div style="position: absolute; bottom: 10mm; left: 15mm; right: 15mm; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 4px; font-size: 7pt; color: #475569; font-family: Montserrat, Arial, sans-serif;">
-            <span style="font-weight: bold; color: #00429d;">NELSON — nelsonpv.fr</span>
-            <span>Courtage en Énergies Renouvelables &amp; Ingénierie Solaire</span>
+            <span style="font-weight: bold; color: #00429d;">enr-courtage.fr</span>
+            <span>Energies Renouvelables &amp; Ingénierie Solaire</span>
             <span>contact@enr-courtage.fr</span>
           </div>
 
@@ -1270,64 +1278,63 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       const formattedDate = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
       pageCoverContainer.innerHTML = `
-        <div style="width: 210mm; min-height: 297mm; max-height: 297mm; height: 297mm; padding: 12mm 18mm 10mm 18mm; box-sizing: border-box; background-color: #ffffff; color: #0f172a; font-family: Arial, sans-serif; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;">
+        <div style="width: 210mm; min-height: 297mm; max-height: 297mm; height: 297mm; padding: 14mm 20mm 12mm 20mm; box-sizing: border-box; background-color: #ffffff; color: #0f172a; font-family: Arial, sans-serif; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;">
           
           <div>
             <!-- EN-TÊTE EXPÉDITEUR / DESTINATAIRE -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 2px solid #00429d; padding-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; border-bottom: 2px solid #00429d; padding-bottom: 12px;">
               <div>
-                <div style="font-size: 18pt; font-weight: 900; color: #00429d; letter-spacing: 0.5px;">NELSON</div>
-                <div style="font-size: 7.5pt; color: #00429d; font-weight: 800; text-transform: uppercase; margin-top: 1px;">ENR COURTAGE</div>
-                <div style="font-size: 7.5pt; color: #64748b; margin-top: 2px; line-height: 1.35;">
-                  7 Rue Gutenberg &bull; 33700 MERIGNAC<br/>
-                  nelsonpv.fr &bull; contact@enr-courtage.fr &bull; 07 63 87 71 40
+                <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR COURTAGE" style="height: 38px; width: auto; object-fit: contain; margin-bottom: 4px; display: block;" />
+                <div style="font-size: 8.5pt; color: #64748b; margin-top: 3px; line-height: 1.4;">
+                  7 Rue Gutenberg &bull; 33700 MÉRIGNAC<br/>
+                  contact@enr-courtage.fr &bull; 07 63 87 71 40
                 </div>
               </div>
 
-              <div style="text-align: right; max-width: 58%; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
-                <div style="font-size: 7pt; font-weight: bold; color: #64748b; text-transform: uppercase;">À l'attention de la Direction Générale / Direction Immobilière</div>
-                <div style="font-size: 10.5pt; font-weight: 900; color: #0f172a; margin-top: 2px; line-height: 1.25;">${targetCompany}</div>
-                <div style="font-size: 8pt; color: #475569; margin-top: 2px; line-height: 1.3;">${targetAddress}</div>
+              <div style="text-align: right; max-width: 58%; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px 14px;">
+                <div style="font-size: 8pt; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">À l'attention de la Direction Générale / Direction Immobilière</div>
+                <div style="font-size: 12pt; font-weight: 900; color: #0f172a; margin-top: 3px; line-height: 1.25;">${targetCompany}</div>
+                <div style="font-size: 9.5pt; color: #475569; margin-top: 3px; line-height: 1.35;">${targetAddress}</div>
               </div>
             </div>
 
             <!-- DATE & LIEU -->
-            <div style="text-align: right; font-size: 8.5pt; color: #475569; margin-bottom: 10px;">
+            <div style="text-align: right; font-size: 10pt; color: #475569; margin-bottom: 16px;">
               Mérignac, le ${formattedDate}
             </div>
 
             <!-- OBJET DU COURRIER -->
-            <div style="background: #eff6ff; border-left: 4px solid #00429d; padding: 6px 12px; border-radius: 0 6px 6px 0; margin-bottom: 12px;">
-              <div style="font-size: 8.8pt; font-weight: 900; color: #00429d; line-height: 1.3;">
+            <div style="background: #eff6ff; border-left: 4px solid #00429d; padding: 10px 16px; border-radius: 0 6px 6px 0; margin-bottom: 18px;">
+              <div style="font-size: 10.8pt; font-weight: 900; color: #00429d; line-height: 1.35;">
                 Objet : Mise en conformité Loi APER et valorisation de votre parking — Étude d’opportunité ci-jointe
               </div>
             </div>
 
             <!-- CORPS DU COURRIER -->
-            <div style="font-size: 8.2pt; line-height: 1.45; color: #1e293b; text-align: justify;">
-              <p style="margin: 0 0 7px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
+            <div style="font-size: 10.2pt; line-height: 1.6; color: #1e293b; text-align: justify;">
+              <p style="margin: 0 0 14px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
 
-              <p style="margin: 0 0 7px 0;">
+              <p style="margin: 0 0 14px 0;">
                 La loi relative à l’accélération de la production d’énergies renouvelables <strong>(loi APER, article 40)</strong> impose désormais à tous les parcs de stationnement extérieurs de plus de 1 500 m² d’équiper au moins <strong>50 % de leur superficie en ombrières photovoltaïques</strong>. Les échéances de mise en conformité (2026 à 2028 selon la taille et le mode de gestion) approchent, et la réglementation prévoit des sanctions financières administratives pouvant atteindre <strong>20 000 € à 40 000 € par an</strong> jusqu’à régularisation.
               </p>
 
-              <p style="margin: 0 0 7px 0;">
+              <p style="margin: 0 0 14px 0;">
                 Plutôt que de subir cette contrainte légale comme une charge, ce projet constitue un <strong>levier direct de valorisation financière et patrimoniale</strong> pour votre site situé au <strong>${targetAddress}</strong>.
               </p>
 
-              <p style="margin: 0 0 7px 0;">
+              <p style="margin: 0 0 14px 0;">
                 Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre parking, jointe à ce courrier.
               </p>
 
-              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 7px 12px; margin: 7px 0;">
-                <div style="font-size: 8.2pt; font-weight: 800; color: #00429d; margin-bottom: 4px; text-transform: uppercase;">
+              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
+                <div style="font-size: 10.2pt; font-weight: 800; color: #00429d; margin-bottom: 8px; text-transform: uppercase;">
                   L'implantation d'ombrières solaires sur votre site vous apporte plusieurs bénéfices stratégiques :
                 </div>
-                <ul style="margin: 0; padding-left: 15px; font-size: 7.8pt; line-height: 1.4; color: #334155;">
-                  <li style="margin-bottom: 4px;">
+                <ul style="margin: 0; padding-left: 20px; font-size: 9.8pt; line-height: 1.55; color: #334155;">
+                  <li style="margin-bottom: 8px;">
                     <strong>Confort et attractivité :</strong> protection des véhicules de vos collaborateurs et clients contre les intempéries et la chaleur, tout en affichant un engagement environnemental concret.
                   </li>
-                  <li style="margin-bottom: 4px;">
+                  <li style="margin-bottom: 8px;">
                     <strong>Revenus garantis sur 20 ans :</strong> valorisation de vos surfaces foncières existantes via la vente totale de l'électricité produite avec un tarif garanti par l'État (EDF OA).
                   </li>
                   <li style="margin-bottom: 0;">
@@ -1336,38 +1343,38 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 </ul>
               </div>
 
-              <p style="margin: 7px 0;">
+              <p style="margin: 14px 0;">
                 Le document ci-joint vous présente le calepinage sur mesure appliqué à vos allées de stationnement, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
               </p>
 
-              <p style="margin: 7px 0;">
+              <p style="margin: 14px 0;">
                 Je vous propose un bref échange de 15 minutes dans les prochains jours afin de faire le point sur vos obligations réglementaires et d’ajuster ces paramètres à vos priorités d'exploitation.
               </p>
 
-              <p style="margin: 7px 0 10px 0;">
+              <p style="margin: 14px 0 16px 0;">
                 Je vous prie d'agréer, Madame, Monsieur, l’expression de mes salutations distinguées.
               </p>
             </div>
 
             <!-- SIGNATURE & PJ -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px; padding-top: 4px;">
-              <div style="font-size: 7.2pt; color: #64748b; font-style: italic;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px; padding-top: 8px;">
+              <div style="font-size: 8.5pt; color: #64748b; font-style: italic;">
                 <strong>P.J. :</strong> Étude de faisabilité &amp; offre commerciale — Ombrière de parking photovoltaïque
               </div>
 
-              <div style="text-align: right; border-top: 1.5px solid #00429d; padding-top: 4px; min-width: 180px;">
-                <div style="font-size: 9.5pt; font-weight: 900; color: #00429d;">Yann BARBERIS</div>
-                <div style="font-size: 7.8pt; color: #475569; font-weight: bold;">Conseiller solutions énergies</div>
-                <div style="font-size: 7.5pt; color: #0284c7; font-weight: bold;">07 63 87 71 40</div>
-                <div style="font-size: 7.2pt; color: #64748b;">y.barberis@enr-courtage.fr</div>
+              <div style="text-align: right; border-top: 1.5px solid #00429d; padding-top: 6px; min-width: 220px;">
+                <div style="font-size: 11.5pt; font-weight: 900; color: #00429d;">Yann BARBERIS</div>
+                <div style="font-size: 9.5pt; color: #475569; font-weight: bold; margin-top: 2px;">Conseiller solutions énergies</div>
+                <div style="font-size: 9pt; color: #0284c7; font-weight: bold; margin-top: 2px;">07 63 87 71 40</div>
+                <div style="font-size: 8.8pt; color: #64748b; margin-top: 1px;">y.barberis@enr-courtage.fr</div>
               </div>
             </div>
           </div>
 
           <!-- PIED DE PAGE -->
-          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 3.5px; font-size: 7pt; color: #475569; margin-top: auto;">
-            <span style="font-weight: bold; color: #00429d;">NELSON — nelsonpv.fr</span>
-            <span>Courtage en Énergies Renouvelables &amp; Ingénierie Solaire</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 5px; font-size: 8pt; color: #475569; margin-top: auto;">
+            <span style="font-weight: bold; color: #00429d;">enr-courtage.fr</span>
+            <span>Energies Renouvelables &amp; Ingénierie Solaire</span>
             <span>contact@enr-courtage.fr</span>
           </div>
 
