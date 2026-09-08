@@ -611,7 +611,7 @@ export default function AutomaticOmbriereProspectingModal({
         <div className="p-2.5 sm:p-3.5 overflow-hidden flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0 bg-slate-100/70">
 
           {/* ═══ COLONNE GAUCHE (5 cols) : PARAMÈTRES ET CONFIGURATION ════ */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-2 overflow-y-auto pr-0.5">
+          <div className="lg:col-span-5 flex flex-col justify-between space-y-2 overflow-y-auto overflow-x-hidden pr-1 min-w-0">
 
             {/* CARTE 1 : ZONE GÉOGRAPHIQUE */}
             <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-xs space-y-1.5">
@@ -1053,25 +1053,25 @@ export default function AutomaticOmbriereProspectingModal({
             </div>
 
             {/* GRAND BOUTON D'ACTION PRINCIPAL */}
-            <div className="pt-0.5">
+            <div className="pt-0.5 w-full flex justify-center">
               {status === 'running' || status === 'sourcing' ? (
                 <button
                   type="button"
                   onClick={handleStop}
-                  className="w-full py-2.5 sm:py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer"
+                  className="w-[96%] max-w-full min-w-0 py-2.5 sm:py-3 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer overflow-hidden"
                 >
-                  <Square className="w-3.5 h-3.5 fill-white" />
-                  <span>Interrompre la Prospection</span>
+                  <Square className="w-3.5 h-3.5 fill-white shrink-0" />
+                  <span className="truncate">Interrompre la Prospection</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleStartProspecting}
                   disabled={geoMode === 'commune' && !selectedCommune}
-                  className="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                  className="w-[96%] max-w-full min-w-0 py-2.5 sm:py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:brightness-105 active:scale-[0.99] cursor-pointer overflow-hidden"
                 >
-                  <Play className="w-3.5 h-3.5 fill-white" />
-                  <span>
+                  <Play className="w-3.5 h-3.5 fill-white shrink-0" />
+                  <span className="truncate">
                     Lancer la Prospection Ombrières
                     {geoMode === 'commune'
                       ? ` (${selectedCommune?.nom || communeSearch || 'Commune'} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} parkings`})`

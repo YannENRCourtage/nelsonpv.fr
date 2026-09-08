@@ -21,6 +21,8 @@ import * as XLSX from 'xlsx';
 import { useDrag, useDrop, DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import apiService from '../services/api';
+import MondayUpdatesDrawer from '@/components/MondayUpdatesDrawer.jsx';
+import { useAuth } from '@/contexts/AuthContext.jsx';
 
 // Helper for Tab Icons
 const formatExcelDate = (serial) => {
@@ -358,8 +360,53 @@ const SimpleResizableHeader = ({ label, width, onResize, isResizing, setIsResizi
     );
 };
 
+// --- Bulle de mise à jour (conforme à l'image 3) ---
+const UpdateBubble = ({ count = 0, onClick }) => {
+    const hasUpdates = count > 0;
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="group relative inline-flex items-center justify-center p-1 rounded-lg transition-transform active:scale-90 cursor-pointer"
+            title={hasUpdates ? `${count} mise(s) à jour - Cliquer pour ouvrir` : 'Ajouter une mise à jour'}
+        >
+            <div className={`relative flex items-center justify-center w-7 h-7 rounded-full transition-colors ${
+                hasUpdates 
+                    ? 'text-slate-700 hover:text-blue-600' 
+                    : 'text-slate-400 group-hover:text-blue-500'
+            }`}>
+                {/* Bulle SVG styled exactly like Monday */}
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-5 h-5 transition-transform group-hover:scale-110"
+                >
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                    {!hasUpdates && (
+                        <>
+                            <line x1="12" y1="8.5" x2="12" y2="14.5" strokeWidth="2" />
+                            <line x1="9" y1="11.5" x2="15" y2="11.5" strokeWidth="2" />
+                        </>
+                    )}
+                </svg>
+
+                {/* Badge de comptage en bas à droite (Image 3 : badge sombre avec chiffre blanc) */}
+                {hasUpdates && (
+                    <span className="absolute -bottom-1 -right-1 min-w-[17px] h-[17px] px-1 bg-[#475569] text-white text-[9.5px] font-black rounded-full flex items-center justify-center shadow-xs border border-white">
+                        {count > 99 ? '99+' : count}
+                    </span>
+                )}
+            </div>
+        </button>
+    );
+};
+
 // --- Draggable Row ---
-const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, isSelected, toggleSelection, deleteRow, onBlur, ttcColumn }) => {
+const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, isSelected, toggleSelection, deleteRow, onBlur, ttcColumn, onOpenUpdates }) => {
     const ref = useRef(null);
     const [editingCell, setEditingCell] = useState(null); // Track which cell is being edited (col name)
     const inputRefs = useRef({}); // Refs for each input to preserve cursor position
@@ -525,6 +572,13 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
     const checkboxWidth = 30; // ~8mm
     const rowNumberLeft = checkboxWidth;
 
+    const updates = Array.isArray(row.data?.__updates)
+        ? row.data.__updates
+        : Array.isArray(row.updates)
+        ? row.updates
+        : [];
+    const updateCount = updates.length;
+
     return (
         <tr
             ref={ref}
@@ -545,59 +599,82 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                 <span>{index + 1}</span>
             </td>
 
+            {columns.length === 0 && (
+                <td 
+                    className="px-2 py-1.5 border-r text-center bg-white group-hover:bg-slate-50 select-none" 
+                    style={{ width: 85, minWidth: 85, maxWidth: 85 }}
+                >
+                    <div className="flex items-center justify-center h-full min-h-[40px]">
+                        <UpdateBubble count={updateCount} onClick={() => onOpenUpdates && onOpenUpdates(row)} />
+                    </div>
+                </td>
+            )}
+
             {columns.map((col, cIdx) => {
                 const isEditing = editingCell === col;
                 const displayValue = isEditing ? getRawValue(col, row.data[col]) : getDisplayValue(col, row.data[col]);
 
                 return (
-                    <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative group" style={{ minWidth: columnWidths[col] || 150, width: 'auto' }}>
-                        <div className="relative flex items-center h-full min-h-[40px]">
-                            {/* Span invisible pour forcer la largeur sur mobile en fonction du contenu */}
-                            <span className="invisible whitespace-nowrap px-2 py-2 pr-8 text-sm lg:hidden">{displayValue}</span>
-                            <input
-                                    ref={(el) => inputRefs.current[col] = el}
-                                    className={`w-full h-full px-2 py-2 pr-8 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm lg:truncate cursor-text lg:static absolute inset-0 ${isEditing ? '' : 'pointer-events-auto'}`}
-                                    value={isEditing ? getRawValue(col, row.data[col]) : getDisplayValue(col, row.data[col])}
-                                    readOnly={!isEditing}
-                                    onChange={(e) => isEditing && updateCell(row.id, col, e.target.value)}
-                                    onFocus={() => {
-                                        setEditingCell(col);
-                                        const rawValue = getRawValue(col, row.data[col]) || '';
-                                        setCursorPosition({ col, position: rawValue.length, timestamp: Date.now() });
-                                    }}
-                                    onBlur={() => handleCellBlur(col)}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (!isEditing) {
+                    <React.Fragment key={`${row.id}-${cIdx}`}>
+                        <td className="px-0 py-0 border-r relative group" style={{ minWidth: columnWidths[col] || 150, width: 'auto' }}>
+                            <div className="relative flex items-center h-full min-h-[40px]">
+                                {/* Span invisible pour forcer la largeur sur mobile en fonction du contenu */}
+                                <span className="invisible whitespace-nowrap px-2 py-2 pr-8 text-sm lg:hidden">{displayValue}</span>
+                                <input
+                                        ref={(el) => inputRefs.current[col] = el}
+                                        className={`w-full h-full px-2 py-2 pr-8 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm lg:truncate cursor-text lg:static absolute inset-0 ${isEditing ? '' : 'pointer-events-auto'}`}
+                                        value={isEditing ? getRawValue(col, row.data[col]) : getDisplayValue(col, row.data[col])}
+                                        readOnly={!isEditing}
+                                        onChange={(e) => isEditing && updateCell(row.id, col, e.target.value)}
+                                        onFocus={() => {
                                             setEditingCell(col);
                                             const rawValue = getRawValue(col, row.data[col]) || '';
                                             setCursorPosition({ col, position: rawValue.length, timestamp: Date.now() });
-                                        }
-                                    }}
-                                    onDoubleClick={(e) => {
+                                        }}
+                                        onBlur={() => handleCellBlur(col)}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isEditing) {
+                                                setEditingCell(col);
+                                                const rawValue = getRawValue(col, row.data[col]) || '';
+                                                setCursorPosition({ col, position: rawValue.length, timestamp: Date.now() });
+                                            }
+                                        }}
+                                        onDoubleClick={(e) => {
+                                            e.stopPropagation();
+                                            e.target.select(); // Sélectionne tout le texte de la cellule
+                                        }}
+                                        title={row.data[col]}
+                                    />
+                                <button
+                                    onClick={(e) => {
                                         e.stopPropagation();
-                                        e.target.select(); // Sélectionne tout le texte de la cellule
+                                        const valueToCopy = row.data[col] || '';
+                                        navigator.clipboard.writeText(valueToCopy).then(() => {
+                                            console.log('Copié:', valueToCopy);
+                                        }).catch(err => {
+                                            console.error('Erreur de copie:', err);
+                                        });
                                     }}
-                                    title={row.data[col]}
-                                />
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const valueToCopy = row.data[col] || '';
-                                    navigator.clipboard.writeText(valueToCopy).then(() => {
-                                        console.log('Copié:', valueToCopy);
-                                    }).catch(err => {
-                                        console.error('Erreur de copie:', err);
-                                    });
-                                }}
-                                className="absolute right-1 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 rounded transition-all duration-200"
-                                title="Copier"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 rounded transition-all duration-200"
+                                    title="Copier"
+                                >
+                                    <Copy className="w-3.5 h-3.5 text-blue-600" />
+                                </button>
+                            </div>
+                        </td>
+                        {cIdx === 0 && (
+                            <td 
+                                className="px-2 py-1.5 border-r text-center bg-white group-hover:bg-slate-50 select-none" 
+                                style={{ width: 85, minWidth: 85, maxWidth: 85 }}
                             >
-                                <Copy className="w-3.5 h-3.5 text-blue-600" />
-                            </button>
-                        </div>
-                    </td>
+                                <div className="flex items-center justify-center h-full min-h-[40px]">
+                                    <UpdateBubble count={updateCount} onClick={() => onOpenUpdates && onOpenUpdates(row)} />
+                                </div>
+                            </td>
+                        )}
+                    </React.Fragment>
                 );
             })}
             <td className="px-2 py-2 text-center w-10">
@@ -615,10 +692,12 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
 
 // --- Composant Tableau Editable (Updated) ---
 const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
+    const { user } = useAuth();
     // Data State
     const [columns, setColumns] = useState(data.columns || []);
     const [rows, setRows] = useState([]);
     const [rowOrder, setRowOrder] = useState(data.rowOrder || []);
+    const [selectedRowForUpdates, setSelectedRowForUpdates] = useState(null);
 
     // Couleur de l'en-tête basée sur le nom de l'onglet
     const headerColor = getTabHeaderColor(tabName || data.name || 'default');
@@ -1055,6 +1134,122 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
         setRows(newRows);
     };
 
+    // Gestion des Mises à jour / Commentaires (conforme images 3 et 4)
+    const handleAddUpdate = async (rowId, text) => {
+        if (!text || !text.trim()) return;
+        const authorName = user?.displayName || user?.firstName || user?.name || 'Yann';
+        const authorAvatar = user?.photoURL || user?.avatar || '/avatars/yann.jpg';
+        const authorRole = user?.role || 'Responsable Equipe Commerciale';
+
+        const targetRow = rows.find(r => r.id === rowId) || selectedRowForUpdates;
+        if (!targetRow) return;
+
+        const existingUpdates = Array.isArray(targetRow.data?.__updates)
+            ? targetRow.data.__updates
+            : Array.isArray(targetRow.updates)
+            ? targetRow.updates
+            : [];
+
+        const newUpdateObj = {
+            id: `upd_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            author: authorName,
+            avatar: authorAvatar,
+            role: authorRole,
+            text: text.trim(),
+            timestamp: new Date().toISOString(),
+            likes: 0,
+            liked: false
+        };
+
+        const newUpdates = [newUpdateObj, ...existingUpdates];
+        const updatedRow = {
+            ...targetRow,
+            data: {
+                ...targetRow.data,
+                __updates: newUpdates
+            }
+        };
+
+        setRows(prev => prev.map(r => r.id === rowId ? updatedRow : r));
+        setSelectedRowForUpdates(updatedRow);
+
+        try {
+            await apiService.updateMondayRow(data.id, rowId, { data: updatedRow.data });
+        } catch (err) {
+            console.error("Erreur enregistrement mise à jour :", err);
+        }
+    };
+
+    const handleToggleLike = async (rowId, updateId) => {
+        const targetRow = rows.find(r => r.id === rowId) || selectedRowForUpdates;
+        if (!targetRow) return;
+
+        const existingUpdates = Array.isArray(targetRow.data?.__updates)
+            ? targetRow.data.__updates
+            : Array.isArray(targetRow.updates)
+            ? targetRow.updates
+            : [];
+
+        const newUpdates = existingUpdates.map(u => {
+            if (u.id === updateId) {
+                const nextLiked = !u.liked;
+                return {
+                    ...u,
+                    liked: nextLiked,
+                    likes: nextLiked ? (Number(u.likes || 0) + 1) : Math.max(0, Number(u.likes || 1) - 1)
+                };
+            }
+            return u;
+        });
+
+        const updatedRow = {
+            ...targetRow,
+            data: {
+                ...targetRow.data,
+                __updates: newUpdates
+            }
+        };
+
+        setRows(prev => prev.map(r => r.id === rowId ? updatedRow : r));
+        setSelectedRowForUpdates(updatedRow);
+
+        try {
+            await apiService.updateMondayRow(data.id, rowId, { data: updatedRow.data });
+        } catch (err) {
+            console.error("Erreur toggle like :", err);
+        }
+    };
+
+    const handleDeleteUpdate = async (rowId, updateId) => {
+        const targetRow = rows.find(r => r.id === rowId) || selectedRowForUpdates;
+        if (!targetRow) return;
+
+        const existingUpdates = Array.isArray(targetRow.data?.__updates)
+            ? targetRow.data.__updates
+            : Array.isArray(targetRow.updates)
+            ? targetRow.updates
+            : [];
+
+        const newUpdates = existingUpdates.filter(u => u.id !== updateId);
+
+        const updatedRow = {
+            ...targetRow,
+            data: {
+                ...targetRow.data,
+                __updates: newUpdates
+            }
+        };
+
+        setRows(prev => prev.map(r => r.id === rowId ? updatedRow : r));
+        setSelectedRowForUpdates(updatedRow);
+
+        try {
+            await apiService.updateMondayRow(data.id, rowId, { data: updatedRow.data });
+        } catch (err) {
+            console.error("Erreur suppression mise à jour :", err);
+        }
+    };
+
     // Selection
     const toggleSelection = (rowId) => {
         const newSet = new Set(selectedRowIds);
@@ -1390,24 +1585,41 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                 headerColor={headerColor}
                             />
                             {columns.map((col, idx) => (
-                                <ResizableHeaderWithColor
-                                    key={col}
-                                    col={col}
-                                    index={idx}
-                                    width={columnWidths[col] || 150}
-                                    onResize={handleResize}
-                                    style={{ minWidth: columnWidths[col] || 150 }}
-                                    moveColumn={moveColumn}
-                                    deleteColumn={deleteColumn}
-                                    isResizing={isResizing}
-                                    setIsResizing={setIsResizing}
-                                    headerColor={headerColor}
-                                    renameMap={tabName && tabName.toLowerCase().includes('lead') ? COLUMN_RENAMES['leads'] : null}
-                                    onSort={handleSort}
-                                    sortDirection={sortConfig.key === col ? sortConfig.direction : null}
-                                    onRename={renameColumn}
-                                />
+                                <React.Fragment key={col}>
+                                    <ResizableHeaderWithColor
+                                        col={col}
+                                        index={idx}
+                                        width={columnWidths[col] || 150}
+                                        onResize={handleResize}
+                                        style={{ minWidth: columnWidths[col] || 150 }}
+                                        moveColumn={moveColumn}
+                                        deleteColumn={deleteColumn}
+                                        isResizing={isResizing}
+                                        setIsResizing={setIsResizing}
+                                        headerColor={headerColor}
+                                        renameMap={tabName && tabName.toLowerCase().includes('lead') ? COLUMN_RENAMES['leads'] : null}
+                                        onSort={handleSort}
+                                        sortDirection={sortConfig.key === col ? sortConfig.direction : null}
+                                        onRename={renameColumn}
+                                    />
+                                    {idx === 0 && (
+                                        <th
+                                            style={{ width: 85, minWidth: 85, maxWidth: 85 }}
+                                            className="px-2 py-3 border-b border-r bg-slate-50 text-center select-none"
+                                        >
+                                            <span className="font-semibold text-slate-700 text-xs tracking-tight">Mises à jour</span>
+                                        </th>
+                                    )}
+                                </React.Fragment>
                             ))}
+                            {columns.length === 0 && (
+                                <th
+                                    style={{ width: 85, minWidth: 85, maxWidth: 85 }}
+                                    className="px-2 py-3 border-b border-r bg-slate-50 text-center select-none"
+                                >
+                                    <span className="font-semibold text-slate-700 text-xs tracking-tight">Mises à jour</span>
+                                </th>
+                            )}
                             {/* Suppression du titre de la colonne de suppression */}
                             <th className="px-2 py-3 w-10 border-b"></th>
                         </tr>
@@ -1432,6 +1644,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                         deleteRow={deleteRow}
                                         onBlur={() => persistRow(row.id, row)}
                                         ttcColumn={ttcColumn}
+                                        onOpenUpdates={(targetRow) => setSelectedRowForUpdates(targetRow)}
                                     />
                                 );
                             });
@@ -1465,17 +1678,26 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                         }
 
                                         return (
-                                            <td key={`total-${cIdx}`} className="px-0 py-0 border-r relative" style={{ minWidth: columnWidths[col] || 150, width: 'auto' }}>
-                                                <div className="relative flex items-center h-full min-h-[40px]">
-                                                    <span className="invisible whitespace-nowrap px-2 py-2 text-sm lg:hidden font-bold">{displayValue}</span>
-                                                    <input
-                                                        className="w-full h-full px-2 py-2 bg-slate-100 cursor-not-allowed font-bold text-sm lg:truncate lg:static absolute inset-0"
-                                                        value={displayValue}
-                                                        readOnly
-                                                        title={displayValue}
+                                            <React.Fragment key={`total-${cIdx}`}>
+                                                <td className="px-0 py-0 border-r relative" style={{ minWidth: columnWidths[col] || 150, width: 'auto' }}>
+                                                    <div className="relative flex items-center h-full min-h-[40px]">
+                                                        <span className="invisible whitespace-nowrap px-2 py-2 text-sm lg:hidden font-bold">{displayValue}</span>
+                                                        <input
+                                                            className="w-full h-full px-2 py-2 bg-slate-100 cursor-not-allowed font-bold text-sm lg:truncate lg:static absolute inset-0"
+                                                            value={displayValue}
+                                                            readOnly
+                                                            title={displayValue}
+                                                        />
+                                                    </div>
+                                                </td>
+                                                {cIdx === 0 && (
+                                                    <td 
+                                                        key="total-updates-col"
+                                                        className="px-2 py-2 border-r bg-slate-100 text-center" 
+                                                        style={{ width: 85, minWidth: 85, maxWidth: 85 }} 
                                                     />
-                                                </div>
-                                            </td>
+                                                )}
+                                            </React.Fragment>
                                         );
                                     })}
                                     <td className="px-2 py-2 text-center w-10 bg-slate-100"></td>
@@ -1484,7 +1706,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                         })()}
                         {paginatedRows.length === 0 && (
                             <tr>
-                                <td colSpan={columns.length + 3} className="px-6 py-10 text-center text-slate-500">
+                                <td colSpan={columns.length + 4} className="px-6 py-10 text-center text-slate-500">
                                     {rows.length === 0
                                         ? "Aucune donnée. Importer ou ajouter une ligne."
                                         : "Aucun résultat pour cette recherche."}
@@ -1547,6 +1769,20 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                         </Button>
                     </div>
                 </div>
+            )}
+
+            {/* Tiroir de discussion et mises à jour (Images 3 et 4) */}
+            {selectedRowForUpdates && (
+                <MondayUpdatesDrawer
+                    isOpen={!!selectedRowForUpdates}
+                    row={rows.find(r => r.id === selectedRowForUpdates.id) || selectedRowForUpdates}
+                    columns={columns}
+                    tabName={tabName || data.name || 'Tableau'}
+                    onClose={() => setSelectedRowForUpdates(null)}
+                    onAddUpdate={handleAddUpdate}
+                    onToggleLike={handleToggleLike}
+                    onDeleteUpdate={handleDeleteUpdate}
+                />
             )}
         </div>
     );

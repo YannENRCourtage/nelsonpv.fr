@@ -83,6 +83,7 @@ export default function AutomaticProspectingModal({
   const [editingPitch, setEditingPitch] = useState(15);
   const [editingEconomicModel, setEditingEconomicModel] = useState('vente_totale');
   const [editingTarifEdfOa, setEditingTarifEdfOa] = useState(0.085);
+  const [editingExcludeThirdParty, setEditingExcludeThirdParty] = useState(false);
   const [isRecalculatingRow, setIsRecalculatingRow] = useState(false);
 
   // Gestion du dossier local d'exportation (et mode Firefox natif)
@@ -478,6 +479,7 @@ export default function AutomaticProspectingModal({
     setEditingPitch(item.simulation?.pitch ?? 15);
     setEditingEconomicModel(item.simulation?.economicModel || economicModel || 'vente_totale');
     setEditingTarifEdfOa(item.simulation?.tarifEdfOaKwh ?? tarifEdfOa ?? 0.085);
+    setEditingExcludeThirdParty(item.simulation?.excludeThirdParty ?? excludeThirdParty ?? false);
   };
 
   // Recalcul d'une ligne de résultat avec de nouveaux paramètres (ex: pente = 0° terrasse plein Sud)
@@ -514,7 +516,7 @@ export default function AutomaticProspectingModal({
           roofType: isZeroPitch ? 'terrasse' : item.simulation?.roofType,
           economicModel: editingEconomicModel,
           tarifEdfOa: editingTarifEdfOa,
-          excludeThirdParty,
+          excludeThirdParty: editingExcludeThirdParty,
           includeCoverLetter
         }
       });
@@ -1145,12 +1147,12 @@ export default function AutomaticProspectingModal({
             </div>
 
             {/* GRAND BOUTON D'ACTION PRINCIPAL - ANTI SCROLL LATÉRAL */}
-            <div className="pt-0.5 shrink-0 w-full min-w-0">
+            <div className="pt-0.5 shrink-0 w-full min-w-0 flex justify-center">
               {status === 'running' || status === 'sourcing' ? (
                 <button
                   type="button"
                   onClick={handleStop}
-                  className="w-full min-w-0 py-3.5 px-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer overflow-hidden"
+                  className="w-[96%] max-w-full min-w-0 py-3 px-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition-all cursor-pointer overflow-hidden"
                 >
                   <Square className="w-4 h-4 fill-white shrink-0" />
                   <span className="truncate">Interrompre la Prospection Automatique</span>
@@ -1160,7 +1162,7 @@ export default function AutomaticProspectingModal({
                   type="button"
                   onClick={handleStartProspecting}
                   disabled={geoMode === 'commune' && !selectedCommune}
-                  className="w-full min-w-0 py-3.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer overflow-hidden"
+                  className="w-[96%] max-w-full min-w-0 py-3 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:brightness-105 active:scale-[0.99] cursor-pointer overflow-hidden"
                 >
                   <Play className="w-4 h-4 fill-white shrink-0" />
                   <span className="truncate">
@@ -1463,7 +1465,33 @@ export default function AutomaticProspectingModal({
                               </div>
                             </div>
 
-                            {/* Section 3 : Actions de recalcul & sauvegarde */}
+                            {/* Section 3 : Solutions de financement PDF (Option d'exclure le Tiers Financement) */}
+                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/90 border border-slate-700/80">
+                              <div className="space-y-0.5">
+                                <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                  <span>Financement PDF :</span>
+                                  <span className={editingExcludeThirdParty ? "text-purple-400 font-black" : "text-slate-300 font-semibold"}>
+                                    {editingExcludeThirdParty ? 'Crédit bancaire & Abonnement uniquement' : '3 solutions (Tiers, Crédit, Abonnement)'}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-400">
+                                  {editingExcludeThirdParty 
+                                    ? 'La solution Tiers Financement sera retirée de l\'offre PDF (affichage 2 colonnes).' 
+                                    : '3 solutions incluses : Tiers-investisseur, Crédit bancaire et Abonnement.'}
+                                </div>
+                              </div>
+                              <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+                                <input
+                                  type="checkbox"
+                                  checked={editingExcludeThirdParty}
+                                  onChange={(e) => setEditingExcludeThirdParty(e.target.checked)}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                              </label>
+                            </div>
+
+                            {/* Section 4 : Actions de recalcul & sauvegarde */}
                             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
                               <button
                                 type="button"
