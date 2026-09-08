@@ -6,7 +6,7 @@ import {
   Hash, Ruler, Info, RefreshCw, Mail, Phone, FileText,
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
   Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus,
-  Compass, User
+  Compass, User, Download
 } from 'lucide-react';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
 import { cadastreService } from '@/services/CadastreService';
@@ -577,6 +577,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [generatingMaps, setGeneratingMaps] = useState(false);
   const [fieldValues, setFieldValues] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [downloadingPieceId, setDownloadingPieceId] = useState(null);
   const [noticeText, setNoticeText] = useState('');
   const [isNoticeUserModified, setIsNoticeUserModified] = useState(false);
   const [selectedPages, setSelectedPages] = useState({
@@ -2710,10 +2711,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     setEditedProject(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleGenerate = async () => {
-    if (!onGenerate) return;
-    setIsGenerating(true);
-    
+  const prepareProjectPayload = async () => {
     const isBattery = !isNoBattery && (solutionType === 'battery' || batteryStorage.enabled || (editedProject.type || '').toLowerCase().includes('batterie'));
     
     // Objet synthétique pour Page 1
@@ -2792,7 +2790,6 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const siteCoords = resolveProjectCoordinates(editedProject, project);
     const lat = siteCoords.lat;
     const lng = siteCoords.lng;
-    const gps = `${lat},${lng}`;
     const ignMap = await generateStaticMapImage(lat, lng, 'map', 16);
     const satMap = await generateStaticMapImage(lat, lng, 'satellite', 17);
     
@@ -3004,11 +3001,33 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       });
     }
 
+    return { finalProject, finalTypeLabel };
+  };
+
+  const handleGenerate = async () => {
+    if (!onGenerate) return;
+    setIsGenerating(true);
     try {
+      const { finalProject, finalTypeLabel } = await prepareProjectPayload();
       await onGenerate(type, finalTypeLabel, finalProject, selectedPages);
     } finally {
       setIsGenerating(false);
       onClose();
+    }
+  };
+
+  const handleDownloadSinglePiece = async (item) => {
+    if (!onGenerate) return;
+    setDownloadingPieceId(item.id);
+    setIsGenerating(true);
+    try {
+      const { finalProject, finalTypeLabel } = await prepareProjectPayload();
+      await onGenerate(type, finalTypeLabel, finalProject, selectedPages, item);
+    } catch (err) {
+      console.error('[UrbanismeWizard] Erreur téléchargement pièce:', err);
+    } finally {
+      setDownloadingPieceId(null);
+      setIsGenerating(false);
     }
   };
 
@@ -4865,11 +4884,16 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           >
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
-                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                                  isChecked ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600'
-                                }`}>
-                                  {item.code}
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                                    isChecked ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600'
+                                  }`}>
+                                    {item.code}
+                                  </span>
+                                  <span className={`text-[9.5px] font-bold ${isChecked ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                    {isChecked ? '✓ Inclus' : '✕ Exclu'}
+                                  </span>
+                                </div>
                                 <input
                                   type="checkbox"
                                   checked={isChecked}
@@ -4901,11 +4925,30 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 </div>
                               )}
                             </div>
-                            <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-                              <span className="text-[9.5px] font-bold text-slate-400">{item.badge}</span>
-                              <span className={`text-[10px] font-extrabold ${isChecked ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                {isChecked ? '✓ Inclus' : '✕ Exclu'}
-                              </span>
+                            <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                              <span className="text-[9.5px] font-bold text-slate-400 truncate">{item.badge}</span>
+                              <button
+                                type="button"
+                                disabled={isGenerating}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownloadSinglePiece(item);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200/80 hover:border-blue-600 text-[10.5px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none shadow-2xs hover:shadow-xs"
+                                title={`Télécharger uniquement le document ${item.code} (${item.title})`}
+                              >
+                                {downloadingPieceId === item.id ? (
+                                  <>
+                                    <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+                                    <span>Export...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Download className="w-3 h-3" />
+                                    <span>Télécharger</span>
+                                  </>
+                                )}
+                              </button>
                             </div>
                           </div>
                         );
@@ -5392,7 +5435,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                 className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md disabled:opacity-60"
               >
                 {isGenerating ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Génération du PDF...</>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> {downloadingPieceId ? 'Téléchargement en cours...' : 'Génération du PDF...'}</>
                 ) : (
                   <><FileCheck className="w-4 h-4" /> Générer le dossier PDF</>
                 )}

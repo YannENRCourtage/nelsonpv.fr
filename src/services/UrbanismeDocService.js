@@ -392,7 +392,7 @@ async function captureplate(doc, elementId, landscape = true) {
 
 // ─── Génération complète du dossier ──────────────────────────────────────────
 
-export async function generateFullUrbanismePDF({ type, project, installationType, plateIds = [], includeCover = true, includeCerfa = true, onProgress }) {
+export async function generateFullUrbanismePDF({ type, project, installationType, plateIds = [], includeCover = true, includeCerfa = true, customFileName = null, onProgress }) {
   try {
     const finalDoc = await PDFDocument.create();
 
@@ -434,6 +434,10 @@ export async function generateFullUrbanismePDF({ type, project, installationType
       }
     }
 
+    if (finalDoc.getPageCount() === 0) {
+      throw new Error('Aucune page n\'a pu être générée pour ce document.');
+    }
+
     // 4. Finalisation
     if (onProgress) onProgress('Finalisation du PDF...');
     const finalPdfBytes = await finalDoc.save();
@@ -445,7 +449,7 @@ export async function generateFullUrbanismePDF({ type, project, installationType
     const typeUpper = (type || 'DOSSIER').toUpperCase();
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${typeUpper}_${clientName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    link.download = customFileName || `${typeUpper}_${clientName}_${new Date().toISOString().slice(0, 10)}.pdf`;
     link.click();
 
     // Removed secondary window.open to prevent duplicate files

@@ -284,7 +284,7 @@ export default function Developpement() {
   };
 
   // ── Handlers Génération Document Urbanisme (PDF CERFA) ──────────
-  const handleUrbanismeGenerate = async (docType, chosenType, finalProject, selectedPages) => {
+  const handleUrbanismeGenerate = async (docType, chosenType, finalProject, selectedPages, singlePiece = null) => {
     if (!selectedProject) return;
     setIsGenerating(true);
     setCaptureStep('Initialisation du dossier...');
@@ -293,6 +293,7 @@ export default function Developpement() {
       const initialProjectToUse = {
         ...selectedProject,
         ...(finalProject || {}),
+        selectedPages: selectedPages,
         type: chosenType || finalProject?.type || selectedProject.type || 'batiment_solaire',
         installationType: chosenType || finalProject?.installationType || selectedProject.installationType || 'batiment_solaire'
       };
@@ -314,54 +315,123 @@ export default function Developpement() {
       const bList = (projectToUse.buildings && projectToUse.buildings.length > 0) ? projectToUse.buildings : [projectToUse];
 
       let plateIds = [];
-      if (isPC) {
-        if (!selectedPages || selectedPages.situation) plateIds.push(`${prefix}plate-situation`);
-        
-        // Répéter PC2 (Plan de masse), PC3/PC4, PC5, PC6, PC7/PC8 pour chaque bâtiment configuré dans l'unique PDF
-        for (let bIdx = 0; bIdx < bList.length; bIdx++) {
-          const suffix = bIdx === 0 ? '' : `-${bIdx}`;
-          if (!selectedPages || selectedPages.masse) {
-            plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse` : `${prefix}plate-masse${suffix}`);
-            const hasMasse2 = Boolean(bList[bIdx]?.masse_capture_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.masse_capture_2);
-            if (hasMasse2) {
-              plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue2` : `${prefix}plate-masse-vue2${suffix}`);
-            }
-          }
-          if (!selectedPages || selectedPages.section_notice) plateIds.push(`${prefix}plate-section-notice${suffix}`);
-          if (!selectedPages || selectedPages.facades) plateIds.push(`${prefix}plate-facades${suffix}`);
-          if (!selectedPages || selectedPages.insertion) plateIds.push(`${prefix}plate-insertion${suffix}`);
-          
-          // PC7 (Environnement proche) & PC8 (Paysage lointain) dissociés sur 2 pages distinctes
-          const wantPC7 = !selectedPages || (selectedPages.env !== false && selectedPages.pc7 !== false && selectedPages.env_proche !== false);
-          const wantPC8 = !selectedPages || (selectedPages.env !== false && selectedPages.pc8 !== false && selectedPages.env_lointain !== false);
-          if (wantPC7) plateIds.push(`${prefix}plate-env-proche${suffix}`);
-          if (wantPC8) plateIds.push(`${prefix}plate-env-lointain${suffix}`);
-        }
-      } else if (isCU) {
-        if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
-        if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
-      } else {
-        if (!selectedPages || selectedPages.situation !== false) plateIds.push(`dev-plate-situation`);
+      let includeCover = false;
+      let includeCerfa = false;
 
-        for (let bIdx = 0; bIdx < bList.length; bIdx++) {
-          const suffix = bIdx === 0 ? '' : `-${bIdx}`;
-          if (!selectedPages || selectedPages.masse !== false) {
-            plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse` : `dev-plate-masse${suffix}`);
-            const hasMasse2 = Boolean(bList[bIdx]?.masse_capture_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.masse_capture_2);
-            if (hasMasse2) {
-              plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse-vue2` : `dev-plate-masse-vue2${suffix}`);
+      if (singlePiece) {
+        const pieceId = singlePiece.id;
+        if (pieceId === 'cover') {
+          includeCover = true;
+        } else if (pieceId === 'cerfa') {
+          includeCerfa = true;
+        } else if (pieceId === 'situation') {
+          plateIds.push(isPC ? `${prefix}plate-situation` : 'dev-plate-situation');
+        } else if (pieceId === 'masse') {
+          if (isCU) {
+            plateIds.push('dev-plate-masse');
+            const hasMasse2 = Boolean(projectToUse.masse_capture_2 || projectToUse.urbanisme_captures?.masse_projet_2);
+            if (hasMasse2) plateIds.push('dev-plate-masse-vue2');
+          } else {
+            for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+              const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+              plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse` : `${prefix}plate-masse${suffix}`);
+              const hasMasse2 = Boolean(bList[bIdx]?.masse_capture_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.masse_capture_2);
+              if (hasMasse2) {
+                plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue2` : `${prefix}plate-masse-vue2${suffix}`);
+              }
             }
           }
-          if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
-          if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
-          if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
-          
-          // DP7 (Environnement proche) & DP8 (Paysage lointain) dissociés sur 2 pages distinctes
-          const wantDP7 = !selectedPages || (selectedPages.env !== false && selectedPages.dp7 !== false && selectedPages.env_proche !== false);
-          const wantDP8 = !selectedPages || (selectedPages.env !== false && selectedPages.dp8 !== false && selectedPages.env_lointain !== false);
-          if (wantDP7) plateIds.push(`dev-plate-env-proche${suffix}`);
-          if (wantDP8) plateIds.push(`dev-plate-env-lointain${suffix}`);
+        } else if (pieceId === 'section_notice') {
+          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            plateIds.push(`${prefix}plate-section-notice${suffix}`);
+          }
+        } else if (pieceId === 'section') {
+          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            plateIds.push(`dev-plate-section${suffix}`);
+          }
+        } else if (pieceId === 'facades') {
+          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            plateIds.push(isPC ? `${prefix}plate-facades${suffix}` : `dev-plate-facades${suffix}`);
+          }
+        } else if (pieceId === 'insertion') {
+          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            plateIds.push(isPC ? `${prefix}plate-insertion${suffix}` : `dev-plate-insertion${suffix}`);
+          }
+        } else if (pieceId === 'env_proche') {
+          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            plateIds.push(isPC ? `${prefix}plate-env-proche${suffix}` : `dev-plate-env-proche${suffix}`);
+          }
+        } else if (pieceId === 'env_lointain') {
+          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            plateIds.push(isPC ? `${prefix}plate-env-lointain${suffix}` : `dev-plate-env-lointain${suffix}`);
+          }
         }
+      } else {
+        includeCover = selectedPages ? !!selectedPages.cover : true;
+        includeCerfa = selectedPages ? !!selectedPages.cerfa : true;
+        if (isPC) {
+          if (!selectedPages || selectedPages.situation) plateIds.push(`${prefix}plate-situation`);
+          
+          // Répéter PC2 (Plan de masse), PC3/PC4, PC5, PC6, PC7/PC8 pour chaque bâtiment configuré dans l'unique PDF
+          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            if (!selectedPages || selectedPages.masse) {
+              plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse` : `${prefix}plate-masse${suffix}`);
+              const hasMasse2 = Boolean(bList[bIdx]?.masse_capture_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.masse_capture_2);
+              if (hasMasse2) {
+                plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue2` : `${prefix}plate-masse-vue2${suffix}`);
+              }
+            }
+            if (!selectedPages || selectedPages.section_notice) plateIds.push(`${prefix}plate-section-notice${suffix}`);
+            if (!selectedPages || selectedPages.facades) plateIds.push(`${prefix}plate-facades${suffix}`);
+            if (!selectedPages || selectedPages.insertion) plateIds.push(`${prefix}plate-insertion${suffix}`);
+            
+            // PC7 (Environnement proche) & PC8 (Paysage lointain) dissociés sur 2 pages distinctes
+            const wantPC7 = !selectedPages || (selectedPages.env !== false && selectedPages.pc7 !== false && selectedPages.env_proche !== false);
+            const wantPC8 = !selectedPages || (selectedPages.env !== false && selectedPages.pc8 !== false && selectedPages.env_lointain !== false);
+            if (wantPC7) plateIds.push(`${prefix}plate-env-proche${suffix}`);
+            if (wantPC8) plateIds.push(`${prefix}plate-env-lointain${suffix}`);
+          }
+        } else if (isCU) {
+          if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
+          if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
+        } else {
+          if (!selectedPages || selectedPages.situation !== false) plateIds.push(`dev-plate-situation`);
+
+          for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            if (!selectedPages || selectedPages.masse !== false) {
+              plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse` : `dev-plate-masse${suffix}`);
+              const hasMasse2 = Boolean(bList[bIdx]?.masse_capture_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.masse_capture_2);
+              if (hasMasse2) {
+                plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse-vue2` : `dev-plate-masse-vue2${suffix}`);
+              }
+            }
+            if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
+            if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
+            if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
+            
+            // DP7 (Environnement proche) & DP8 (Paysage lointain) dissociés sur 2 pages distinctes
+            const wantDP7 = !selectedPages || (selectedPages.env !== false && selectedPages.dp7 !== false && selectedPages.env_proche !== false);
+            const wantDP8 = !selectedPages || (selectedPages.env !== false && selectedPages.dp8 !== false && selectedPages.env_lointain !== false);
+            if (wantDP7) plateIds.push(`dev-plate-env-proche${suffix}`);
+            if (wantDP8) plateIds.push(`dev-plate-env-lointain${suffix}`);
+          }
+        }
+      }
+
+      const clientName = `${projectToUse?.name || projectToUse?.lastName || ''}_${projectToUse?.firstName || ''}`.trim().replace(/\s+/g, '_') || 'Client';
+      const dateStr = new Date().toISOString().slice(0, 10);
+      let customFileName = null;
+      if (singlePiece) {
+        const cleanCode = (singlePiece.code || singlePiece.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+        customFileName = `${docType.toUpperCase()}_${cleanCode}_${clientName}_${dateStr}.pdf`;
       }
 
       await generateFullUrbanismePDF({
@@ -369,15 +439,23 @@ export default function Developpement() {
         project: projectToUse,
         installationType: chosenType || projectToUse.type || 'batiment_solaire',
         plateIds: plateIds,
-        includeCover: selectedPages ? !!selectedPages.cover : true,
-        includeCerfa: selectedPages ? !!selectedPages.cerfa : true,
+        includeCover: includeCover,
+        includeCerfa: includeCerfa,
+        customFileName: customFileName,
         onProgress: (msg) => setCaptureStep(msg)
       });
 
-      toast({
-        title: 'Dossier généré avec succès !',
-        description: `Le dossier ${docType.toUpperCase()} interactif a été téléchargé.`,
-      });
+      if (singlePiece) {
+        toast({
+          title: `Pièce ${singlePiece.code} téléchargée !`,
+          description: `Le document relatif à la pièce ${singlePiece.code} (${singlePiece.title}) a été téléchargé avec succès.`,
+        });
+      } else {
+        toast({
+          title: 'Dossier généré avec succès !',
+          description: `Le dossier ${docType.toUpperCase()} interactif a été téléchargé.`,
+        });
+      }
     } catch (err) {
       console.error('Erreur génération PDF urbanisme:', err);
       toast({
@@ -757,6 +835,7 @@ export default function Developpement() {
 
             {/* PC Plates — Multi-Bâtiments */}
             <div id="dev-pc-plate-cover"><PCPlateCover project={activeProj} installationType={activeProj.type || 'batiment_solaire'} /></div>
+            <div id="dev-pc-plate-situation"><PCPlateSituation project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
               const bRawZoom = Number(b.masse_zoom || activeProj.masse_zoom || 18);
