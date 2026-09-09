@@ -63,6 +63,24 @@ export const getRowTitle = (row, columns = []) => {
 };
 
 /**
+ * Rendu d'un texte avec @mentions surlignées
+ */
+const renderTextWithMentions = (text) => {
+  if (!text) return null;
+  const parts = text.split(/(@\w+)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('@')) {
+      return (
+        <span key={i} className="font-bold text-blue-400 bg-blue-500/15 rounded px-1.5 py-0.5 border border-blue-500/30 inline-block my-0.5">
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+};
+
+/**
  * Tiroir de discussion et mises à jour Monday (conforme aux images 3 et 4)
  */
 export default function MondayUpdatesDrawer({
@@ -77,12 +95,12 @@ export default function MondayUpdatesDrawer({
 }) {
   const { user } = useAuth();
   const [newText, setNewText] = useState('');
-  const [isComposing, setIsComposing] = useState(false);
+  const [isComposing, setIsComposing] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('updates'); // 'columns', 'emails', 'updates'
   const [menuOpenId, setMenuOpenId] = useState(null);
   const textareaRef = useRef(null);
-  const updatesEndRef = useRef(null);
+  const drawerContentRef = useRef(null);
 
   // Auteur courant
   const currentAuthor = user?.displayName || user?.firstName || user?.name || 'Yann';
@@ -114,7 +132,7 @@ export default function MondayUpdatesDrawer({
     try {
       await onAddUpdate(row.id, newText.trim());
       setNewText('');
-      setIsComposing(false);
+      drawerContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       console.error('Erreur lors de la publication de la mise à jour :', err);
     } finally {
@@ -132,11 +150,12 @@ export default function MondayUpdatesDrawer({
   const handleReply = (authorName) => {
     setIsComposing(true);
     setNewText(prev => (prev ? `${prev} @${authorName} ` : `@${authorName} `));
+    drawerContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden flex justify-end bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[50000] overflow-hidden flex justify-end bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
       {/* Click outside to close */}
       <div className="absolute inset-0" onClick={onClose} />
 
@@ -227,32 +246,91 @@ export default function MondayUpdatesDrawer({
           </div>
         </div>
 
-        {/* ═══ CONTENU PRINCIPAL : LISTE DES MISES À JOUR ═══ */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {activeTab === 'updates' && (
-            <>
-              {updates.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-3">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400">
-                    <MessageSquare className="w-7 h-7" />
+        {/* ═══ COMPOSITEUR DE MISE À JOUR (EN HAUT, JUSTE EN DESSOUS DES 3 ONGLETS) ═══ */}
+        {activeTab === 'updates' && (
+          <div className="p-3 sm:p-4 bg-[#1e232b] border-b border-slate-800 shrink-0 relative z-20">
+            {!isComposing ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsComposing(true);
+                  setTimeout(() => textareaRef.current?.focus(), 50);
+                }}
+                className="w-full py-2.5 px-3.5 rounded-2xl bg-[#22272e] hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold flex items-center gap-2.5 shadow-md transition-all hover:border-slate-600 cursor-pointer active:scale-[0.99]"
+              >
+                <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-white">
+                  <Plus className="w-3 h-3" />
+                </div>
+                <span>Rédiger une mise à jour...</span>
+              </button>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-2.5 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={currentAvatar}
+                      alt={currentAuthor}
+                      className="w-5 h-5 rounded-full object-cover"
+                      onError={(e) => { e.target.onerror = null; e.target.src = '/avatars/yann.jpg'; }}
+                    />
+                    <span>Posté par <strong className="text-white">{currentAuthor}</strong></span>
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="text-base font-bold text-slate-200">Aucune mise à jour pour le moment</h3>
-                    <p className="text-xs text-slate-400 max-w-xs">
-                      Partagez des informations, comptes-rendus d'appels ou pièces avec votre équipe sur ce dossier.
-                    </p>
-                  </div>
+                  <span className="text-[10px] text-slate-500">Ctrl + Entrée pour publier</span>
+                </div>
+
+                <MentionTextarea
+                  textareaRef={textareaRef}
+                  value={newText}
+                  onChange={(val) => setNewText(val)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Rédiger une mise à jour... Tapez @ ou # pour mentionner un utilisateur."
+                  rows={3}
+                  className="w-full p-3 bg-[#22272e] border border-slate-700 focus:border-blue-500 rounded-2xl text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none transition-all shadow-inner"
+                  darkMode={true}
+                />
+
+                <div className="flex items-center justify-between pt-1">
                   <button
                     type="button"
                     onClick={() => {
-                      setIsComposing(true);
-                      setTimeout(() => textareaRef.current?.focus(), 50);
+                      setIsComposing(false);
+                      setNewText('');
                     }}
-                    className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-600/20 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                    disabled={isSubmitting}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />
-                    <span>Rédiger la première mise à jour</span>
+                    Annuler
                   </button>
+
+                  <button
+                    type="submit"
+                    disabled={!newText.trim() || isSubmitting}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-black rounded-xl shadow-lg shadow-blue-600/30 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{isSubmitting ? 'Publication...' : 'Mettre à jour'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* ═══ CONTENU PRINCIPAL : LISTE DES MISES À JOUR (DU PLUS RÉCENT AU PLUS ANCIEN) ═══ */}
+        <div ref={drawerContentRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          {activeTab === 'updates' && (
+            <>
+              {updates.length === 0 ? (
+                <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-center p-6 space-y-2 text-slate-500">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <h3 className="text-sm font-bold text-slate-200">Aucune mise à jour pour le moment</h3>
+                    <p className="text-xs text-slate-400 max-w-xs">
+                      Rédigez votre première mise à jour ci-dessus pour la partager avec votre équipe sur ce dossier.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -322,9 +400,9 @@ export default function MondayUpdatesDrawer({
                           </div>
                         </div>
 
-                        {/* Corps du message */}
+                        {/* Corps du message avec support des mentions */}
                         <div className="text-sm text-slate-100 whitespace-pre-wrap leading-relaxed select-text pt-0.5 font-normal">
-                          {upd.text}
+                          {renderTextWithMentions(upd.text)}
                         </div>
 
                         {/* Statistique de vue (Image 4 : 👁️ 1) */}
@@ -360,7 +438,6 @@ export default function MondayUpdatesDrawer({
                       </div>
                     );
                   })}
-                  <div ref={updatesEndRef} />
                 </div>
               )}
             </>
@@ -386,76 +463,6 @@ export default function MondayUpdatesDrawer({
             </div>
           )}
         </div>
-
-        {/* ═══ FOOTER / COMPOSITEUR DE MISE À JOUR (Image 4) ═══ */}
-        {activeTab === 'updates' && (
-          <div className="p-3 sm:p-4 bg-[#181b20] border-t border-slate-800/80 shrink-0">
-            {!isComposing ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsComposing(true);
-                  setTimeout(() => textareaRef.current?.focus(), 50);
-                }}
-                className="w-full py-3 px-4 rounded-2xl bg-[#22272e] hover:bg-slate-800 border border-slate-700 text-slate-300 text-sm font-bold flex items-center gap-2.5 shadow-xl transition-all hover:border-slate-600 cursor-pointer active:scale-[0.99]"
-              >
-                <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-white">
-                  <Plus className="w-3.5 h-3.5" />
-                </div>
-                <span>Rédiger une mise à jour</span>
-              </button>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-2.5 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={currentAvatar}
-                      alt={currentAuthor}
-                      className="w-5 h-5 rounded-full object-cover"
-                      onError={(e) => { e.target.onerror = null; e.target.src = '/avatars/yann.jpg'; }}
-                    />
-                    <span>Posté par <strong className="text-white">{currentAuthor}</strong></span>
-                  </div>
-                  <span className="text-[10px] text-slate-500">Ctrl + Entrée pour publier</span>
-                </div>
-
-                <MentionTextarea
-                  textareaRef={textareaRef}
-                  value={newText}
-                  onChange={(val) => setNewText(val)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Rédiger une mise à jour... Tapez @ ou # pour mentionner un utilisateur."
-                  rows={4}
-                  className="w-full p-3 bg-[#22272e] border border-slate-700 focus:border-blue-500 rounded-2xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none transition-all shadow-inner"
-                  darkMode={true}
-                />
-
-                <div className="flex items-center justify-between pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsComposing(false);
-                      setNewText('');
-                    }}
-                    disabled={isSubmitting}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-                  >
-                    Annuler
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={!newText.trim() || isSubmitting}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-black rounded-xl shadow-lg shadow-blue-600/30 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>{isSubmitting ? 'Publication...' : 'Mettre à jour'}</span>
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

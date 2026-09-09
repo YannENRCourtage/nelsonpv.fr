@@ -1175,6 +1175,15 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
 
         try {
             await apiService.updateMondayRow(data.id, rowId, { data: updatedRow.data });
+
+            // Notification des collaborateurs mentionnés (@ ou #)
+            try {
+                const { createComment } = await import('@/services/firebase/comments.service');
+                const uid = user?.uid || user?.id || 'unknown';
+                await createComment(rowId, uid, authorName, text.trim(), null, user?.email);
+            } catch (notifyErr) {
+                console.warn("Notification mention non envoyée:", notifyErr);
+            }
         } catch (err) {
             console.error("Erreur enregistrement mise à jour :", err);
         }

@@ -1,20 +1,22 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getUsersForMentions } from '@/services/firebase/comments.service.js';
 
+// Liste de secours des collaborateurs connus de l'équipe ENR Courtage / Nelson
+const FALLBACK_TEAM = [
+  { id: 'team_nico_d', displayName: 'Nicolas DESAINT', email: 'n.desaint@enr-courtage.fr', role: 'Direction' },
+  { id: 'team_nico', displayName: 'Nicolas', email: 'nicolas@enr-courtage.fr', role: 'Commercial' },
+  { id: 'team_nmd', displayName: 'NicolasNMD', email: 'nmd@enr-courtage.fr', role: 'Développement' },
+  { id: 'team_yann', displayName: 'Yann', email: 'y.barberis@enr-courtage.fr', role: 'Conseiller' },
+  { id: 'team_vero', displayName: 'Véronique', email: 'v.dutard@enr-courtage.fr', role: 'Comptabilité' },
+  { id: 'team_elodie', displayName: 'Elodie', email: 'elodie@enr-courtage.fr', role: 'Gestion' },
+  { id: 'team_jack', displayName: 'Jack', email: 'jack@enr-courtage.fr', role: 'Technique' },
+  { id: 'team_laurent', displayName: 'Laurent', email: 'laurent@enr-courtage.fr', role: 'Technique' },
+  { id: 'team_philippe', displayName: 'Philippe', email: 'philippe@enr-courtage.fr', role: 'Partenaire' }
+];
+
 /**
- * Composant Textarea avec autocomplétion de mentions (@utilisateur ou #utilisateur).
- * Lorsque l'utilisateur tape @ ou #, un popup apparaît avec la liste des utilisateurs
- * filtrée par le texte tapé après le déclencheur.
- * 
- * Props:
- *  - value: string - contenu du textarea
- *  - onChange: (newValue: string) => void
- *  - onKeyDown: (e) => void - handler externe pour les raccourcis (ex: Ctrl+Enter)
- *  - placeholder: string
- *  - rows: number
- *  - className: string - classes CSS du textarea
- *  - textareaRef: React.Ref - ref externe pour le textarea
- *  - darkMode: boolean - mode sombre (Monday) ou clair (CRM)
+ * Composant Textarea avec autocomplétion intelligente de mentions (@utilisateur ou #utilisateur).
+ * Garantit que la liste déroulante reste 100% visible à l'écran sur Desktop et Mobile.
  */
 export default function MentionTextarea({
   value = '',
@@ -30,27 +32,39 @@ export default function MentionTextarea({
   const ref = externalRef || internalRef;
   const popupRef = useRef(null);
 
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState(FALLBACK_TEAM);
   const [showMentionPopup, setShowMentionPopup] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionTriggerIndex, setMentionTriggerIndex] = useState(-1);
   const [selectedMentionIdx, setSelectedMentionIdx] = useState(0);
-  const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
+  const [popupStyle, setPopupStyle] = useState({});
 
-  // Charger les utilisateurs pour les mentions au premier affichage
+  // Charger les utilisateurs depuis Firebase et fusionner avec l'équipe de référence
   useEffect(() => {
+    let isMounted = true;
     const loadUsers = async () => {
       try {
-        const data = await getUsersForMentions();
-        setUsers(data || []);
+        const firestoreUsers = await getUsersForMentions();
+        if (isMounted && Array.isArray(firestoreUsers) && firestoreUsers.length > 0) {
+          const map = new Map();
+          // 1. Ajouter l'équipe de fallback
+          FALLBACK_TEAM.forEach(u => map.set(u.displayName.toLowerCase(), u));
+          // 2. Fusionner avec les utilisateurs Firestore récents
+          firestoreUsers.forEach(u => {
+            const name = u.displayName || u.email?.split('@')[0];
+            if (name) map.set(name.toLowerCase(), { ...u, displayName: name });
+          });
+          setUsers(Array.from(map.values()));
+        }
       } catch (err) {
-        console.warn('Impossible de charger les utilisateurs pour les mentions:', err);
+        console.warn('Utilisation de la liste de secours pour les mentions:', err);
       }
     };
     loadUsers();
+    return () => { isMounted = false; };
   }, []);
 
-  // Filtrer les utilisateurs selon la requête
+  // Filtrer les utilisateurs selon la recherche
   const filteredUsers = users.filter(u => {
     if (!mentionQuery) return true;
     const q = mentionQuery.toLowerCase();
@@ -60,49 +74,100 @@ export default function MentionTextarea({
     );
   }).slice(0, 8);
 
-  // Calculer la position du popup relativement au textarea
+  // Calcul dynamique et adaptatif de la position du popup (Viewport-aware, anti-clipping)
   const updatePopupPosition = useCallback(() => {
     const textarea = ref.current;
     if (!textarea) return;
-    
+
     const rect = textarea.getBoundingClientRect();
-    // Position simplifiée: en dessous du textarea
-    setPopupPosition({
-      top: rect.height + 4,
-      left: 0
-    });
+    const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const viewportWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    const visualTop = window.visualViewport ? window.visualViewport.offsetTop : 0;
+    const visualLeft = window.visualViewport ? window.visualViewport.offsetLeft : 0;
+
+    // Espace visible disponible au-dessus et en-dessous (en tenant compte du clavier virtuel mobile)
+    const spaceBelow = viewportHeight - (rect.bottom - visualTop);
+    const spaceAbove = rect.top - visualTop;
+
+    // Si l'espace en bas est restreint (< 190px) et qu'il y a plus de place en haut, ouvrir vers le haut
+    const openUpwards = spaceBelow < 190 && spaceAbove > spaceBelow;
+
+    const availableSpace = openUpwards ? spaceAbove - 12 : spaceBelow - 12;
+    const dynamicMaxHeight = Math.max(120, Math.min(220, availableSpace));
+    const width = Math.min(290, viewportWidth - 24);
+    const left = Math.max(12, Math.min(rect.left, viewportWidth - width - 12));
+
+    if (openUpwards) {
+      setPopupStyle({
+        position: 'fixed',
+        bottom: `${viewportHeight - (rect.top - visualTop) + 6}px`,
+        left: `${left}px`,
+        width: `${width}px`,
+        maxHeight: `${dynamicMaxHeight}px`,
+        zIndex: 100000
+      });
+    } else {
+      setPopupStyle({
+        position: 'fixed',
+        top: `${rect.bottom + 6}px`,
+        left: `${left}px`,
+        width: `${width}px`,
+        maxHeight: `${dynamicMaxHeight}px`,
+        zIndex: 100000
+      });
+    }
   }, [ref]);
 
-  // Détecter le caractère @ ou # et déclencher le popup
+  // Recalculer la position quand le popup s'affiche ou lors du redimensionnement / clavier mobile
+  useEffect(() => {
+    if (!showMentionPopup) return;
+    updatePopupPosition();
+
+    const handleResizeOrScroll = () => updatePopupPosition();
+    window.addEventListener('resize', handleResizeOrScroll);
+    window.addEventListener('scroll', handleResizeOrScroll, true);
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResizeOrScroll);
+      window.visualViewport.addEventListener('scroll', handleResizeOrScroll);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResizeOrScroll);
+      window.removeEventListener('scroll', handleResizeOrScroll, true);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResizeOrScroll);
+        window.visualViewport.removeEventListener('scroll', handleResizeOrScroll);
+      }
+    };
+  }, [showMentionPopup, updatePopupPosition]);
+
+  // Détection du caractère @ ou #
   const handleChange = useCallback((e) => {
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
-    
+
     onChange(newValue);
 
-    // Chercher si le caractère avant le curseur est @ ou # (ou s'il y a un @ ou # non fermé)
     const textBeforeCursor = newValue.substring(0, cursorPos);
     const lastAtIndex = Math.max(textBeforeCursor.lastIndexOf('@'), textBeforeCursor.lastIndexOf('#'));
 
     if (lastAtIndex >= 0) {
-      // Vérifier que le caractère avant @ est un espace, début de ligne, ou le tout début
       const charBefore = lastAtIndex > 0 ? textBeforeCursor[lastAtIndex - 1] : ' ';
       if (charBefore === ' ' || charBefore === '\n' || lastAtIndex === 0) {
         const query = textBeforeCursor.substring(lastAtIndex + 1);
-        // Pas de mention si la requête contient un espace (l'utilisateur a fini)
         if (!query.includes(' ') && query.length < 30) {
           setMentionQuery(query);
           setMentionTriggerIndex(lastAtIndex);
           setShowMentionPopup(true);
           setSelectedMentionIdx(0);
-          updatePopupPosition();
           return;
         }
       }
     }
 
     setShowMentionPopup(false);
-  }, [onChange, updatePopupPosition]);
+  }, [onChange]);
 
   // Insérer la mention sélectionnée
   const insertMention = useCallback((user) => {
@@ -119,7 +184,6 @@ export default function MentionTextarea({
     setMentionQuery('');
     setMentionTriggerIndex(-1);
 
-    // Replacer le curseur après la mention
     const newCursorPos = mentionTriggerIndex + name.length + 2;
     setTimeout(() => {
       textarea.focus();
@@ -127,7 +191,7 @@ export default function MentionTextarea({
     }, 10);
   }, [ref, value, mentionTriggerIndex, mentionQuery, onChange]);
 
-  // Gestion du clavier dans le popup
+  // Navigation clavier
   const handleKeyDownInternal = useCallback((e) => {
     if (showMentionPopup && filteredUsers.length > 0) {
       if (e.key === 'ArrowDown') {
@@ -152,32 +216,35 @@ export default function MentionTextarea({
       }
     }
 
-    // Passer au handler externe
     if (onKeyDown) onKeyDown(e);
   }, [showMentionPopup, filteredUsers, selectedMentionIdx, insertMention, onKeyDown]);
 
   // Fermer le popup au clic extérieur
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (popupRef.current && !popupRef.current.contains(e.target)) {
+      if (popupRef.current && !popupRef.current.contains(e.target) && !ref.current?.contains(e.target)) {
         setShowMentionPopup(false);
       }
     };
     if (showMentionPopup) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showMentionPopup]);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showMentionPopup, ref]);
 
-  const bgPopup = darkMode ? 'bg-[#2c3038]' : 'bg-white';
-  const borderPopup = darkMode ? 'border-slate-600' : 'border-slate-200';
+  const bgPopup = darkMode ? 'bg-[#1f242c]' : 'bg-white';
+  const borderPopup = darkMode ? 'border-slate-600/90' : 'border-slate-300';
   const textPopup = darkMode ? 'text-white' : 'text-slate-900';
-  const hoverPopup = darkMode ? 'hover:bg-slate-700' : 'hover:bg-blue-50';
-  const selectedPopup = darkMode ? 'bg-blue-600/30' : 'bg-blue-100';
+  const hoverPopup = darkMode ? 'hover:bg-slate-700/70' : 'hover:bg-blue-50';
+  const selectedPopup = darkMode ? 'bg-blue-600/35 ring-1 ring-blue-500/50' : 'bg-blue-100 ring-1 ring-blue-400';
   const subtextPopup = darkMode ? 'text-slate-400' : 'text-slate-500';
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <textarea
         ref={ref}
         value={value}
@@ -188,37 +255,52 @@ export default function MentionTextarea({
         className={className}
       />
 
-      {/* Popup d'autocomplétion des mentions */}
+      {/* Popup flottant intelligent d'autocomplétion des mentions (Fixed, VisualViewport-aware) */}
       {showMentionPopup && filteredUsers.length > 0 && (
         <div
           ref={popupRef}
-          className={`absolute z-[60000] ${bgPopup} border ${borderPopup} rounded-xl shadow-2xl py-1 max-h-52 overflow-y-auto w-64 animate-in fade-in slide-in-from-bottom-2 duration-150`}
-          style={{ top: popupPosition.top, left: popupPosition.left }}
+          style={popupStyle}
+          className={`${bgPopup} border ${borderPopup} rounded-2xl shadow-2xl overflow-y-auto animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md`}
         >
-          <div className={`px-3 py-1.5 text-[10px] font-bold ${subtextPopup} uppercase border-b ${borderPopup}`}>
-            Mentionner un utilisateur
+          <div className={`px-3 py-1.5 text-[10px] font-black ${subtextPopup} uppercase border-b ${borderPopup} sticky top-0 ${bgPopup} flex items-center justify-between`}>
+            <span>Mentionner un membre</span>
+            <span className="text-[9px] font-normal lowercase">@ ou #</span>
           </div>
-          {filteredUsers.map((u, idx) => (
-            <button
-              key={u.id || idx}
-              type="button"
-              onClick={() => insertMention(u)}
-              onMouseEnter={() => setSelectedMentionIdx(idx)}
-              className={`w-full px-3 py-2 flex items-center gap-2.5 text-left text-sm ${textPopup} ${hoverPopup} transition-colors cursor-pointer ${
-                idx === selectedMentionIdx ? selectedPopup : ''
-              }`}
-            >
-              <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-black shrink-0">
-                {(u.displayName || '?')[0].toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <div className="font-bold text-xs truncate">{u.displayName || 'Utilisateur'}</div>
-                {u.email && (
-                  <div className={`text-[10px] ${subtextPopup} truncate`}>{u.email}</div>
-                )}
-              </div>
-            </button>
-          ))}
+          <div className="p-1 space-y-0.5">
+            {filteredUsers.map((u, idx) => (
+              <button
+                key={u.id || idx}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  insertMention(u);
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  insertMention(u);
+                }}
+                onMouseEnter={() => setSelectedMentionIdx(idx)}
+                className={`w-full px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 text-left text-xs ${textPopup} ${hoverPopup} transition-all cursor-pointer ${
+                  idx === selectedMentionIdx ? selectedPopup : ''
+                }`}
+              >
+                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-[11px] font-black shrink-0 shadow-xs">
+                  {(u.displayName || '?')[0].toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold truncate text-xs flex items-center justify-between">
+                    <span>{u.displayName || 'Utilisateur'}</span>
+                    {u.role && (
+                      <span className={`text-[9px] font-medium ${subtextPopup} shrink-0`}>{u.role}</span>
+                    )}
+                  </div>
+                  {u.email && (
+                    <div className={`text-[10px] ${subtextPopup} truncate`}>{u.email}</div>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
