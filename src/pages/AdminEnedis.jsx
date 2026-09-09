@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import enedisService from '@/services/enedis';
 import ConsumptionChart from '@/components/enedis/ConsumptionChart';
 import EnedisPrintLayout from '@/components/enedis/EnedisPrintLayout';
+import MandatSignatureModal from '@/components/enedis/MandatSignatureModal';
 
 export default function AdminEnedis() {
   const [prm, setPrm] = useState('');
@@ -19,6 +20,12 @@ export default function AdminEnedis() {
   const [activeTab, setActiveTab] = useState('interrogation');
   const [jsonOpen, setJsonOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+
+  // État de l'environnement API (production vs sandbox)
+  const [env, setEnv] = useState('production');
+
+  // État du modal de signature omnicanal (Email, SMS, WhatsApp, Tablette)
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
 
   // État du modal de consentement (email uniquement)
   const [consentModal, setConsentModal] = useState(false);
@@ -89,7 +96,8 @@ export default function AdminEnedis() {
     try {
       const result = await enedisService.fetchData({ 
         prm: targetPrm, 
-        projectId: targetProjectId 
+        projectId: targetProjectId,
+        env
       });
       
       // On vérifie que les données récupérées ne sont pas toutes en erreur
@@ -390,6 +398,22 @@ export default function AdminEnedis() {
                         </div>
                       </button>
 
+                      {/* ===== NOUVEAU BOUTON OMNICANAL : Faire Signer le Mandat Enedis ===== */}
+                      <button
+                        type="button"
+                        onClick={() => setSignatureModalOpen(true)}
+                        disabled={prm.length !== 14}
+                        className="w-full disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
+                      >
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg shadow-orange-500/20 group-hover:scale-[1.02] active:scale-[0.98] h-14 flex items-center justify-center gap-3 text-slate-950 px-4">
+                          <span className="text-xl">✍️</span>
+                          <div className="text-left leading-tight">
+                            <div className="font-black text-sm text-slate-950">Faire Signer le Mandat Enedis</div>
+                            <div className="text-[10px] text-slate-900 font-bold">Email • SMS • WhatsApp • Tablette (eIDAS)</div>
+                          </div>
+                        </div>
+                      </button>
+
                       {/* ===== NOUVEAU BOUTON : Envoyer le consentement ===== */}
                       <button
                         onClick={() => openConsentModal()}
@@ -432,8 +456,27 @@ export default function AdminEnedis() {
                   </CardHeader>
                   <CardContent className="text-sm space-y-4 p-6">
                     <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <span className="text-slate-400">Environnement</span>
+                        <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-700">
+                          <button
+                            type="button"
+                            onClick={() => setEnv('production')}
+                            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${env === 'production' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            Production
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEnv('sandbox')}
+                            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${env === 'sandbox' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            Sandbox
+                          </button>
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
                         <span className="text-slate-400">Endpoint API</span>
-                        <span className="font-bold">Production v5.0</span>
+                        <span className="font-bold">{env === 'production' ? 'Prod gw.ext.prod' : 'Bac à sable (Sandbox)'}</span>
                     </div>
                     <div className="flex justify-between items-center border-b border-white/5 pb-2">
                         <span className="text-slate-400">Authentification</span>
@@ -743,6 +786,17 @@ export default function AdminEnedis() {
           </div>
         </div>
       )}
+
+      {/* Modal de signature omnicanale eIDAS (Email, SMS, WhatsApp, Tablette) */}
+      <MandatSignatureModal
+        isOpen={signatureModalOpen}
+        onClose={() => setSignatureModalOpen(false)}
+        initialPrm={prm}
+        onSignatureSuccess={(res) => {
+          loadConsents();
+          if (res?.prm) handleFetch(res.prm);
+        }}
+      />
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }

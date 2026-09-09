@@ -28,13 +28,13 @@ const enedisService = {
   },
 
   /**
-   * Récupère les données de consommation d'un PRM (après consentement)
-   * @param {Object} params { projectId, prm, startDate?, endDate?, forceRefresh? }
+   * Récupère les données de consommation d'un PRM (après consentement ou mandat)
+   * @param {Object} params { projectId, prm, startDate?, endDate?, forceRefresh?, env? }
    */
-  async fetchData({ projectId, prm, startDate, endDate, forceRefresh }) {
+  async fetchData({ projectId, prm, startDate, endDate, forceRefresh, env }) {
     try {
       const response = await axios.get('/api/enedis/fetch', {
-        params: { projectId, prm, startDate, endDate, forceRefresh }
+        params: { projectId, prm, startDate, endDate, forceRefresh, env }
       });
       return response.data;
     } catch (error) {
@@ -44,10 +44,51 @@ const enedisService = {
       } else if (error.response?.status === 401) {
         throw new Error('Session expirée. Veuillez vous reconnecter à votre Espace Client Enedis.');
       } else if (error.response?.status === 403) {
-        throw new Error('Accès refusé ou scope insuffisant. Renouvelez le consentement.');
+        throw new Error('Accès refusé ou scope insuffisant. Renouvelez le consentement ou le mandat.');
       } else {
         throw new Error(error.response?.data?.error || error.message || 'Erreur lors de la récupération des données.');
       }
+    }
+  },
+
+  /**
+   * Déclare un mandat tiers signé (sans obliger le client à se connecter à Enedis)
+   */
+  async declareMandate(payload) {
+    try {
+      const response = await axios.post('/api/enedis/declare-mandate', payload);
+      return response.data;
+    } catch (error) {
+      console.error('[Enedis Service] Error declaring mandate:', error);
+      throw new Error(error.response?.data?.error || error.message || 'Échec de la déclaration du mandat');
+    }
+  },
+
+  /**
+   * Récupère la courbe de charge (au pas de 10 ou 30 minutes) sur une période
+   */
+  async getLoadCurve({ prm, start, end, env = 'production' }) {
+    try {
+      const response = await axios.get('/api/enedis/load-curve', {
+        params: { prm, start, end, env }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('[Enedis Service] Error fetching load curve:', error);
+      throw new Error(error.response?.data?.error || error.message || 'Échec de la récupération de la courbe de charge');
+    }
+  },
+
+  /**
+   * Initie une demande de signature de mandat via l'un des 4 canaux (email, sms, whatsapp, tablet)
+   */
+  async initiateSignature(payload) {
+    try {
+      const response = await axios.post('/api/signature/initiate', payload);
+      return response.data;
+    } catch (error) {
+      console.error('[Enedis Service] Error initiating signature:', error);
+      throw new Error(error.response?.data?.error || error.message || 'Échec de l\'initiation de la signature');
     }
   }
 };

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import ConsumptionChart from './ConsumptionChart';
+import MandatSignatureModal from './MandatSignatureModal';
 
 /**
  * Composant conforme au contrat Data Connect Enedis (§3.2.4 et §3.2.5)
@@ -25,6 +26,7 @@ const EnedisDataConnect = ({
   enedisService,
   toast,
 }) => {
+  const [signatureModalOpen, setSignatureModalOpen] = React.useState(false);
 
   const handleInterrogate = async () => {
     if (!enedisPrm || enedisPrm.length !== 14) {
@@ -140,8 +142,8 @@ const EnedisDataConnect = ({
             </div>
           </div>
 
-          {/* ─── BOUTON DATA CONNECT OFFICIEL (§3.2.4) ─── */}
-          <div className="flex gap-2 w-full md:w-auto">
+          {/* ─── BOUTON DATA CONNECT OFFICIEL (§3.2.4) & MANDAT EIDAS ─── */}
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
             <button
               type="button"
               onClick={handleInterrogate}
@@ -170,6 +172,17 @@ const EnedisDataConnect = ({
                 />
               )}
             </button>
+
+            {/* Bouton signature mandat eIDAS sans compte Enedis */}
+            <Button
+              type="button"
+              onClick={() => setSignatureModalOpen(true)}
+              className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs px-3 shadow-sm flex items-center gap-1.5 transition-all"
+              title="Faire signer le mandat Tiers au client par SMS, Email ou Tablette"
+            >
+              <span>✍️</span>
+              <span>Mandat Tiers</span>
+            </Button>
 
             {enedisStatus === 'connected' && (
               <button
@@ -221,6 +234,25 @@ const EnedisDataConnect = ({
               <ConsumptionChart data={enedisData} loading={isEnedisLoading} />
             </div>
           </div>
+        {/* ─── MODAL SIGNATURE MANDAT eIDAS ─── */}
+        {signatureModalOpen && (
+          <MandatSignatureModal
+            isOpen={signatureModalOpen}
+            onClose={() => setSignatureModalOpen(false)}
+            initialPrm={enedisPrm}
+            projectId={projectId}
+            onSignatureSuccess={(data) => {
+              setSignatureModalOpen(false);
+              if (data?.prm) {
+                setEnedisPrm(data.prm);
+              }
+              toast({
+                title: "🎉 Mandat Enedis Signé !",
+                description: "Le mandat a été validé et les données Enedis sont en cours d'ingestion.",
+              });
+              handleInterrogate();
+            }}
+          />
         )}
       </div>
     </div>

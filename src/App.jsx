@@ -22,6 +22,7 @@ import IrveSimulator from './pages/IrveSimulator.jsx';
 
 import MentionsLegales from './pages/Legal/MentionsLegales.jsx';
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy.jsx';
+import SignerMandat from './pages/SignerMandat.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
@@ -181,8 +182,8 @@ function AppContent() {
           />
         </Route>
 
-        {/* Routes Légales (Accessibles sans login) */}
-
+        {/* Routes Légales et Signature Dématérialisée (Accessibles sans login) */}
+        <Route path="/signer-mandat" element={<SignerMandat />} />
         <Route path="/mentions-legales" element={<MentionsLegales />} />
         <Route path="/politique-confidentialite" element={<PrivacyPolicy />} />
 
