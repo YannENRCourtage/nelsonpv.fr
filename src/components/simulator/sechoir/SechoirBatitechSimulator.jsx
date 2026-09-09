@@ -65,18 +65,21 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
   // Callback d'injection d'un prospect qualifié dans le simulateur
   const handleSelectProspect = useCallback((prospect) => {
     if (!prospect) return;
+    const targetCoords = prospect.coords || (prospect.latitude && prospect.longitude ? [prospect.latitude, prospect.longitude] : null);
     store.setClientName(prospect.clientName || `Exploitation PACAGE ${prospect.pacage}`);
     store.setAddress({
       address: prospect.address,
       label: prospect.addressLabel,
-      latitude: prospect.latitude,
-      longitude: prospect.longitude,
+      latitude: targetCoords ? targetCoords[0] : prospect.latitude,
+      longitude: targetCoords ? targetCoords[1] : prospect.longitude,
       departement: prospect.departement,
       commune: prospect.commune,
       codePostal: prospect.codePostal,
     });
     store.setModel(prospect.bestModelId);
-    store.setMapCenter(prospect.coords);
+    if (targetCoords) {
+      store.setMapCenter(targetCoords);
+    }
 
     if (Array.isArray(prospect.materials)) {
       prospect.materials.forEach((mat) => {
@@ -270,6 +273,10 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         customClientName: options.customClientName || store.clientName || selectedProject?.name,
         includeBenefitsPage: options.includeBenefitsPage !== undefined ? options.includeBenefitsPage : true,
         includeCashFlowPage: options.includeCashFlowPage !== undefined ? options.includeCashFlowPage : true,
+        mapCenter: store.mapCenter,
+        coords: store.mapCenter,
+        latitude: store.latitude,
+        longitude: store.longitude,
       });
     } catch (err) {
       console.error('Erreur génération PDF:', err);

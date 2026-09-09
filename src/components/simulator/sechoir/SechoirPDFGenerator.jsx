@@ -288,6 +288,10 @@ export async function generateSechoirPDF({
   projectName,
   customClientName,
   returnBlobOnly = false,
+  mapCenter = null,
+  coords = null,
+  latitude = null,
+  longitude = null,
 }) {
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;left:-9999px;top:0;width:297mm;background:#ffffff;color:#333333;font-family:Montserrat,Arial,sans-serif;';
@@ -345,8 +349,9 @@ export async function generateSechoirPDF({
 
   const orientationDisplay = r.orientationLabel || getOrientationDisplayLabel(rotVal);
 
-  // Position satellite exacte
-  const exactMapCenter = sechoirState.mapCenter || r.mapCenter || (
+  // Position satellite exacte (priorité aux coordonnées de l'exploitation transmises)
+  const explicitCoords = mapCenter || coords || (latitude && longitude ? [Number(latitude), Number(longitude)] : null);
+  const exactMapCenter = explicitCoords || sechoirState.mapCenter || r.mapCenter || (
     sechoirState.latitude && sechoirState.longitude ? [Number(sechoirState.latitude), Number(sechoirState.longitude)] : [43.6047, 1.4442]
   );
 

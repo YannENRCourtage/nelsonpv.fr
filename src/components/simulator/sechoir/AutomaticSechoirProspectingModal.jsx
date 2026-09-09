@@ -83,6 +83,7 @@ export default function AutomaticSechoirProspectingModal({
   const [targetLimit, setTargetLimit] = useState(10); // 10, 25, 50, 'Tout'
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedBuildingModel, setSelectedBuildingModel] = useState('auto'); // 'auto' | 'BT-3.1.15' | 'BT-6.2.15' | 'BT-8.3.15'
+  const [includeBenefitsPage, setIncludeBenefitsPage] = useState(false); // false = 1 page (par défaut), true = 2 pages (Synthèse bénéfices)
 
   // Dossier local d'exportation
   const isFirefoxBrowser = typeof window !== 'undefined' && !window.showDirectoryPicker;
@@ -446,6 +447,11 @@ export default function AutomaticSechoirProspectingModal({
         farm.addressLabel = banAddress.addressLabel;
         farm.city = banAddress.city;
         farm.postalCode = banAddress.postalCode;
+        if (banAddress.coordinates) {
+          farm.addressCoords = banAddress.coordinates;
+          farm.latitude = banAddress.latitude;
+          farm.longitude = banAddress.longitude;
+        }
 
         // Simulation headless multi-modèles (BT-3.1.15, BT-6.2.15, BT-8.3.15)
         const prospect = simulateFarmHeadless({
@@ -478,7 +484,7 @@ export default function AutomaticSechoirProspectingModal({
         // Sauvegarde automatique directe si un dossier local est lié
         if (directoryHandle) {
           try {
-            const { blob } = await generateSechoirProspectingPdfBlob(prospect);
+            const { blob } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage });
             await savePdfToLocalDestination({
               filename: prospect.filename,
               blob,
@@ -506,11 +512,11 @@ export default function AutomaticSechoirProspectingModal({
     }
   };
 
-  // ═══ TÉLÉCHARGEMENT D'UN PDF UNIQUE ═══════════════════════════════════════════
+  // ═══ TÉLÉCHARGEMENT D'UN PDF UNIQUE (OFFRE 1 PAGE PAR DÉFAUT / 2 PAGES) ═══════
   const handleDownloadSinglePdf = async (prospect) => {
     try {
-      appendLog(`📄 Génération du dossier d'étude pour PACAGE ${prospect.pacage}...`);
-      const { blob, filename } = await generateSechoirProspectingPdfBlob(prospect);
+      appendLog(`📄 Génération de l'offre commerciale (${includeBenefitsPage ? '2 pages' : '1 page'}) pour PACAGE ${prospect.pacage}...`);
+      const { blob, filename } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage });
 
       if (directoryHandle) {
         await savePdfToLocalDestination({ filename, blob, directoryHandle });
@@ -535,14 +541,14 @@ export default function AutomaticSechoirProspectingModal({
   const handleDownloadZipBundle = async () => {
     if (processedResults.length === 0) return;
     setIsExportingZip(true);
-    appendLog(`📦 Préparation de l’archive ZIP pour ${processedResults.length} offres BatiTech...`);
+    appendLog(`📦 Préparation de l’archive ZIP (${includeBenefitsPage ? '2 pages' : '1 page'} par offre) pour ${processedResults.length} offres BatiTech...`);
 
     try {
       const zipItems = [];
       for (let i = 0; i < processedResults.length; i++) {
         const prospect = processedResults[i];
         setCurrentStepText(`Génération PDF ${i + 1}/${processedResults.length} : PACAGE ${prospect.pacage}...`);
-        const { blob, filename } = await generateSechoirProspectingPdfBlob(prospect);
+        const { blob, filename } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage });
         zipItems.push({ filename, blob });
       }
 
@@ -561,9 +567,17 @@ export default function AutomaticSechoirProspectingModal({
   const handleInjectIntoSimulator = (prospect) => {
     appendLog(`⚡ Injection du prospect PACAGE ${prospect.pacage} dans le simulateur Séchoir BatiTech...`);
 
+    const targetCoords = prospect.coords || (prospect.latitude && prospect.longitude ? [prospect.latitude, prospect.longitude] : null);
+
     // Callback externe prioritaire
     if (onSelectProspect) {
-      onSelectProspect(prospect);
+      onSelectProspect({
+        ...prospect,
+        coords: targetCoords,
+        mapCenter: targetCoords,
+        latitude: targetCoords ? targetCoords[0] : prospect.latitude,
+        longitude: targetCoords ? targetCoords[1] : prospect.longitude,
+      });
       onClose();
       return;
     }
@@ -574,14 +588,16 @@ export default function AutomaticSechoirProspectingModal({
     store.setAddress({
       address: prospect.address,
       label: prospect.addressLabel,
-      latitude: prospect.latitude,
-      longitude: prospect.longitude,
+      latitude: targetCoords ? targetCoords[0] : prospect.latitude,
+      longitude: targetCoords ? targetCoords[1] : prospect.longitude,
       departement: prospect.departement,
       commune: prospect.commune,
       codePostal: prospect.codePostal,
     });
     store.setModel(prospect.bestModelId);
-    store.setMapCenter(prospect.coords);
+    if (targetCoords) {
+      store.setMapCenter(targetCoords);
+    }
 
     // Mettre à jour les matières configurées
     if (Array.isArray(prospect.materials)) {
@@ -928,7 +944,50 @@ export default function AutomaticSechoirProspectingModal({
               </div>
             </div>
 
-            {/* 4. Export Local & Dossier de destination */}
+            {/* 4. Format de l'Offre PDF & Option Page 2 */}
+            <div className="space-y-1.5 p-3 rounded-2xl bg-slate-950/80 border border-slate-800">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-amber-400" />
+                  Format de l'Offre PDF
+                </label>
+                <span className={`text-[9.5px] font-black px-2 py-0.5 rounded-full border transition-colors ${
+                  includeBenefitsPage
+                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                }`}>
+                  {includeBenefitsPage ? '2 Pages' : '1 Page (Par défaut)'}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIncludeBenefitsPage(!includeBenefitsPage)}
+                className={`w-full p-2.5 rounded-xl border transition-all text-left flex items-start justify-between gap-2 cursor-pointer ${
+                  includeBenefitsPage
+                    ? 'bg-blue-500/15 border-blue-500/50 text-blue-200'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                }`}
+              >
+                <div className="space-y-0.5">
+                  <div className="font-bold text-[11px] text-white flex items-center gap-1.5">
+                    <span>Ajouter la 2nde page (Bénéfices d'exploitation)</span>
+                  </div>
+                  <p className="text-[9.5px] text-slate-400 leading-tight">
+                    {includeBenefitsPage
+                      ? 'La 2nde page (avantages financiers & opérationnels, graphique de baisse des charges) sera incluse.'
+                      : 'Par défaut, seule la 1ère page (Offre & Dimensionnement) est générée.'}
+                  </p>
+                </div>
+                <div className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] shrink-0 mt-0.5 transition-colors ${
+                  includeBenefitsPage ? 'bg-blue-500 text-white font-black' : 'border border-slate-700'
+                }`}>
+                  {includeBenefitsPage && <Check className="w-3 h-3 stroke-[3]" />}
+                </div>
+              </button>
+            </div>
+
+            {/* 5. Export Local & Dossier de destination */}
             <div className="space-y-2 pt-1 border-t border-slate-800/80">
               <label className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
@@ -1095,22 +1154,53 @@ export default function AutomaticSechoirProspectingModal({
                 </button>
               </div>
 
-              {processedResults.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleDownloadZipBundle}
-                  disabled={isExportingZip}
-                  className="px-3.5 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-50"
-                  title="Télécharger l'ensemble des études au format ZIP"
-                >
-                  {isExportingZip ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Archive className="w-3.5 h-3.5" />
-                  )}
-                  <span>Télécharger tout en ZIP (.zip)</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Sélecteur rapide format PDF (1 page ou 2 pages) */}
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <span className="text-[10px] text-slate-400 font-bold px-1.5 hidden sm:inline">Format PDF :</span>
+                  <button
+                    type="button"
+                    onClick={() => setIncludeBenefitsPage(false)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                      !includeBenefitsPage
+                        ? 'bg-amber-500 text-black shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Offre Commerciale Essentielle (1 page)"
+                  >
+                    📄 1 Page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIncludeBenefitsPage(true)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                      includeBenefitsPage
+                        ? 'bg-amber-500 text-black shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Offre Commerciale + Page 2 Synthèse Bénéfices (2 pages)"
+                  >
+                    📑 + Page 2 (Bénéfices)
+                  </button>
+                </div>
+
+                {processedResults.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadZipBundle}
+                    disabled={isExportingZip}
+                    className="px-3.5 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-50"
+                    title={`Télécharger l'ensemble des études au format ZIP (${includeBenefitsPage ? '2 pages' : '1 page'})`}
+                  >
+                    {isExportingZip ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Archive className="w-3.5 h-3.5" />
+                    )}
+                    <span>Télécharger tout en ZIP (.zip)</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* BARRE DE CHANGEMENT RAPIDE DE TYPE DE BÂTIMENT */}
@@ -1247,7 +1337,7 @@ export default function AutomaticSechoirProspectingModal({
                             type="button"
                             onClick={() => handleDownloadSinglePdf(item)}
                             className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white hover:text-amber-300 transition-colors cursor-pointer"
-                            title={`Télécharger l'offre : ${item.filename}`}
+                            title={`Télécharger l'offre commerciale (${includeBenefitsPage ? '2 pages avec bénéfices' : '1 page essentielle'}) : ${item.filename}`}
                           >
                             <Download className="w-4 h-4" />
                           </button>

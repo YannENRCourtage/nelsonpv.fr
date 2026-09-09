@@ -22,6 +22,10 @@ import {
 } from '@/components/simulator/sechoir/sechoirCalculations.js';
 
 import {
+  generateCommercialOfferPDF
+} from '@/components/simulator/CommercialOfferPDF.jsx';
+
+import {
   generateSechoirPDF
 } from '@/components/simulator/sechoir/SechoirPDFGenerator.jsx';
 
@@ -154,6 +158,16 @@ export function simulateFarmHeadless({
   const communeName = farm.city || farm.commune || '';
   const postalCode = farm.postalCode || '';
 
+  // Coordonnées exactes issues de l'adresse BAN ou du barycentre de l'exploitation
+  const exactCoords = farm.addressCoords || (farm.latitude && farm.longitude ? [farm.latitude, farm.longitude] : farm.centroid) || [44.8412, -0.5805];
+  const exactLat = exactCoords[0];
+  const exactLng = exactCoords[1];
+
+  const activeMats = (best.materials || []).filter(m => m.enabled && m.volume > 0);
+  const activeMaterialsText = activeMats.length > 0
+    ? activeMats.map(m => `${m.shortLabel || m.label} (${m.volume} t)`).join(', ')
+    : 'Fourrage vrac, Bottes, Céréales';
+
   return {
     id: `sechoir_prospect_${farm.pacage}_${Math.random().toString(36).substring(2, 7)}`,
     pacage: farm.pacage,
@@ -163,9 +177,10 @@ export function simulateFarmHeadless({
     commune: communeName,
     codePostal: postalCode,
     departement: departement || '33',
-    coords: farm.centroid || [44.8412, -0.5805],
-    latitude: farm.centroid?.[0] || 44.8412,
-    longitude: farm.centroid?.[1] || -0.5805,
+    coords: exactCoords,
+    mapCenter: exactCoords,
+    latitude: exactLat,
+    longitude: exactLng,
     totalAreaHa: farm.totalAreaHa || 0,
     cropsSummary: farm.cropsSummary || {},
     streamsAreaHa: farm.streamsAreaHa || {},
@@ -175,6 +190,7 @@ export function simulateFarmHeadless({
     bestModelId: best.modelId,
     model: best.model,
     materials: best.materials,
+    activeMaterialsText,
     simulation: best.sim,
     candidateMap,
     allCandidates: candidateResults.map(c => ({
@@ -186,31 +202,100 @@ export function simulateFarmHeadless({
       gainNetAnnuel: c.gainNetAnnuel,
       totalDryingVolume: c.totalDryingVolume
     })),
-    filename: `Offre_Etude_Sechoir_BatiTech_${best.modelId}_PACAGE_${farm.pacage}.pdf`
+    filename: `Sechoir_Multi-Matieres_BatiTech_${best.modelId.replace(/[^a-zA-Z0-9]/g, '_')}_PACAGE_${farm.pacage}.pdf`
   };
 }
 
 /**
  * Génère le Blob PDF pour un prospect qualifié
+ * Produit l'offre commerciale A4 portrait (1 page par défaut, 2 pages si demandée)
  *
  * @param {object} prospect - Prospect retourné par simulateFarmHeadless
- * @returns {Promise<{ blob: Blob, filename: string }>}
+ * @param {object} [options={}] - Options d'export PDF
+ * @param {boolean} [options.includeBenefitsPage=false] - Inclure la page 2 (Synthèse des bénéfices d'exploitation)
+ * @returns {Promise<{ blob: Blob, filename: string, pdf: any }>}
  */
-export async function generateSechoirProspectingPdfBlob(prospect) {
+export async function generateSechoirProspectingPdfBlob(prospect, options = {}) {
   if (!prospect) throw new Error('Prospect manquant pour la génération PDF');
 
-  const { simulation, model, materials, departement, commune, addressLabel, clientName, coords } = prospect;
+  const { simulation, model, materials, departement, commune, addressLabel, clientName, coords, latitude, longitude, activeMaterialsText } = prospect;
 
-  return await generateSechoirPDF({
-    results: simulation,
-    address: addressLabel,
-    commune: commune || 'Commune',
+  const farmCoords = coords || (latitude && longitude ? [latitude, longitude] : [43.6047, 1.4442]);
+
+  const simPayload = {
+    type: 'sechoir_batitech',
+    title: `Séchoir Multi-Matières BatiTech® — ${model?.name || 'BatiTech'}`,
+    clientName: clientName || `Exploitation Agricole (PACAGE ${prospect.pacage})`,
+    address: addressLabel || prospect.address || 'Adresse du site',
+    cityName: commune || '',
+    departmentCode: departement || '33',
     departement: departement || '33',
+    modelId: prospect.bestModelId || model?.id || 'BT-3.1.15',
+    modelName: model?.name || 'BatiTech 3.1.15',
+    dimensions: model?.dimensions || `${model?.length || 18}m × ${model?.width || 20}m`,
+    length: model?.length || 18,
+    width: model?.width || 20,
+    roofSurface: model?.surfaceToiture || 360,
+    floorArea: model?.surfaceToiture || 360,
+    kwc: model?.puissanceKwc || 30.15,
+    installedKwc: model?.puissanceKwc || 30.15,
+    nbModules: model?.nbModules || 90,
+    annualProductionKwh: simulation?.productionPV || 35000,
+    activeMaterialsText: activeMaterialsText || ((materials || []).filter(m => m.enabled && m.volume > 0).map(m => `${m.shortLabel || m.label} (${m.volume} t)`).join(', ')) || 'Fourrage vrac (50 t), Bottes carrées (150 t)',
+    deltaProduits: simulation?.produits?.deltaProduits || 25720,
+    deltaCharges: simulation?.charges?.deltaCharges || 0,
+    annualBenefitYear1: simulation?.deltaEBE || 0,
+    deltaEBE: simulation?.deltaEBE || 0,
+    totalInvestmentHT: model?.investissementBrut || 327053,
+    primeCEE: simulation?.cee?.primeTotal || 38790,
+    subventionsEligibles: simulation?.subventionsEligibles || {},
+    subventionRegionaleNom: simulation?.subventionsEligibles?.subventionRegionale?.nom || 'PCAE / PME',
+    subventionDescription: simulation?.subventionsEligibles?.description || 'Plan de Modernisation des Exploitations.',
+    subventionTauxTexte: simulation?.subventionsEligibles?.tauxTexte || '30% (+10% JA)',
+    subventionRegionaleMontant: simulation?.subventionsEligibles?.montantEstime || 0,
+    subventionPlafond: simulation?.subventionsEligibles?.subventionRegionale?.montantMax || 100000,
+    roiBonifie: simulation?.roiBonifie,
+    regionName: simulation?.subventionsEligibles?.region || 'France',
+    investissementNet: simulation?.financing?.investissementNet || (model?.investissementBrut - (simulation?.cee?.primeTotal || 0)),
+    emprunt: simulation?.financing?.emprunt || (model?.investissementBrut - (simulation?.cee?.primeTotal || 0)),
+    annuite: simulation?.annuite || 17386,
+    gainNetAnnuel: simulation?.gainNetAnnuel || 12921,
+    paybackYear: simulation?.roi || 10.09,
+    roi: simulation?.roi || 10.09,
+    van: simulation?.van || 0,
+    triPercent: simulation?.triPercent || '7.06',
+    mapCenter: farmCoords,
+    latitude: farmCoords[0],
+    longitude: farmCoords[1],
+    rotation: 0,
     orientation: 'sud',
-    materials: materials || [],
-    financialParams: simulation?.financing || {},
-    projectName: `Séchoir BatiTech® ${model?.name || ''}`,
-    customClientName: clientName || `Exploitation PACAGE ${prospect.pacage}`,
-    returnBlobOnly: true,
+    orientationLabel: 'Sud (0°) • Pente 30°',
+    buildings: [{
+      name: `Séchoir ${model?.name || 'BatiTech'}`,
+      length: model?.length || 18,
+      width: model?.width || 20,
+      rotation: 0,
+      lat: farmCoords[0],
+      lng: farmCoords[1],
+    }],
+    cashFlows: simulation?.treasury?.cashFlows || [],
+    includeBenefitsPage: Boolean(options.includeBenefitsPage), // Par défaut false = 1 page !
+  };
+
+  const result = await generateCommercialOfferPDF({
+    simulation: simPayload,
+    selectedProject: null,
+    customClientName: simPayload.clientName,
+    returnBlob: true,
   });
+
+  const pacageCode = prospect.pacage ? String(prospect.pacage).replace(/^PAC_/, '') : 'Agricole';
+  const cleanModel = (model?.id || prospect.bestModelId || 'BT-3.1.15').replace(/[^a-zA-Z0-9]/g, '_');
+  const customFilename = `Sechoir_Multi-Matieres_BatiTech_${cleanModel}_PACAGE_${pacageCode}.pdf`;
+
+  return {
+    blob: result.blob,
+    filename: result.filename || customFilename,
+    pdf: result.pdf
+  };
 }

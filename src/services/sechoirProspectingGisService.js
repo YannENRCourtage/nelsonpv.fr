@@ -308,12 +308,18 @@ export async function reverseGeocodeBAN(lat, lng) {
 
     if (feature && feature.properties) {
       const p = feature.properties;
+      const banLon = feature.geometry?.coordinates?.[0];
+      const banLat = feature.geometry?.coordinates?.[1];
+      const hasValidCoords = typeof banLat === 'number' && typeof banLon === 'number' && !isNaN(banLat) && !isNaN(banLon);
       return {
         addressLabel: p.label || `${p.name || ''}, ${p.postcode || ''} ${p.city || ''}`.trim(),
         street: p.name || '',
         postalCode: p.postcode || '',
         city: p.city || '',
-        context: p.context || ''
+        context: p.context || '',
+        latitude: hasValidCoords ? banLat : lat,
+        longitude: hasValidCoords ? banLon : lng,
+        coordinates: hasValidCoords ? [banLat, banLon] : [lat, lng]
       };
     }
   } catch (err) {
@@ -325,7 +331,10 @@ export async function reverseGeocodeBAN(lat, lng) {
     street: '',
     postalCode: '',
     city: '',
-    context: ''
+    context: '',
+    latitude: lat,
+    longitude: lng,
+    coordinates: [lat, lng]
   };
 }
 

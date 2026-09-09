@@ -5,6 +5,17 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import useSechoirStore from '@/stores/useSechoirStore.js';
 import { BATITECH_MODELS, ORIENTATION_COEFFICIENTS } from '@/data/sechoirBatitechModels.js';
 
+// ─── RECENTRAGE AUTOMATIQUE DE LA CARTE ─────────────────────────────────────────
+function MapRecenter({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center && Array.isArray(center) && center.length === 2 && !isNaN(Number(center[0])) && !isNaN(Number(center[1]))) {
+      map.setView(center, map.getZoom() || 19);
+    }
+  }, [center, map]);
+  return null;
+}
+
 // ─── OVERLAY BÂTIMENT MIS À L'ÉCHELLE SUR LA CARTE ───────────────────────────
 function ScaledBuildingMapOverlay({ length = 18, width = 20, rotation = 0, modelName = 'BatiTech', onCenterChange }) {
   const map = useMap();
@@ -347,6 +358,7 @@ export default function Step3Orientation() {
               zoomControl={false}
               className="w-full h-full"
             >
+              <MapRecenter center={mapCenter} />
               <CustomMapControls />
               <ZoomLevelIndicator />
               <ScaledBuildingMapOverlay

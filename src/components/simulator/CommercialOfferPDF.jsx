@@ -1173,8 +1173,9 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       }
     }
 
-    // Si c'est un séchoir BatiTech, ajouter la page 2 : Synthèse Globale des Bénéfices d'Exploitation
-    if (isSechoir) {
+    // Si c'est un séchoir BatiTech et que l'option d'inclure la page 2 est demandée (désactivée par défaut pour 1 page unique)
+    const shouldIncludeSechoirPage2 = isSechoir && Boolean(sim.includeBenefitsPage || sim.includePage2);
+    if (shouldIncludeSechoirPage2) {
       const chargesCanvas = document.createElement('canvas');
       drawSechoirChargesChart(chargesCanvas);
       const chargesChartImg = chargesCanvas.toDataURL('image/png');

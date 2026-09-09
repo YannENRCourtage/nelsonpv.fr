@@ -45,16 +45,21 @@ const useSechoirStore = create(
       zoneClimatique: '',
       zoneSechage: '',
 
-      setAddress: (data) => set({
-        address: data.address || '',
-        addressLabel: data.label || data.address || '',
-        latitude: data.latitude || null,
-        longitude: data.longitude || null,
-        departement: data.departement || '',
-        commune: data.commune || '',
-        codePostal: data.codePostal || '',
-        zoneClimatique: data.zoneClimatique || '',
-        zoneSechage: data.zoneSechage || '',
+      setAddress: (data) => set((state) => {
+        const hasCoords = data.latitude && data.longitude && !isNaN(Number(data.latitude)) && !isNaN(Number(data.longitude));
+        const newCoords = hasCoords ? [Number(data.latitude), Number(data.longitude)] : state.mapCenter;
+        return {
+          address: data.address || '',
+          addressLabel: data.label || data.address || '',
+          latitude: data.latitude || null,
+          longitude: data.longitude || null,
+          departement: data.departement || '',
+          commune: data.commune || '',
+          codePostal: data.codePostal || '',
+          zoneClimatique: data.zoneClimatique || '',
+          zoneSechage: data.zoneSechage || '',
+          mapCenter: newCoords,
+        };
       }),
 
       selectedModelId: 'BT-3.1.15',
