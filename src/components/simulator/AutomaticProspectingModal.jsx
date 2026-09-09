@@ -28,6 +28,9 @@ import {
   exportResultsAsZip
 } from '@/services/localPdfExportService';
 
+import ServicePostalModal from '@/components/simulator/ServicePostalModal';
+
+
 // Profil géométrique et cadastral par défaut : Bordeaux (33)
 const DEFAULT_BORDEAUX = {
   id: '33063',
@@ -78,6 +81,10 @@ export default function AutomaticProspectingModal({
   const [excludeThirdParty, setExcludeThirdParty] = useState(false);
   const [includeCoverLetter, setIncludeCoverLetter] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Modal d'envoi postal via ServicePostal
+  const [postalModalItem, setPostalModalItem] = useState(null);
+  const [isPostalModalOpen, setIsPostalModalOpen] = useState(false);
 
   // Gestion de la révision / édition individuelle des paramètres par ligne
   const [editingRowIndex, setEditingRowIndex] = useState(null);
@@ -1140,10 +1147,10 @@ export default function AutomaticProspectingModal({
                     <Mail className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <div>
                       <div className="text-[10px] font-black text-slate-800 leading-tight">
-                        Courrier de prospection personnalisé (Page 2)
+                        Courrier de prospection nominatif AFNOR (Page 1)
                       </div>
                       <div className="text-[8.5px] text-slate-500 leading-tight">
-                        {includeCoverLetter ? 'Lettre personnalisée avec coordonnées du propriétaire foncier' : 'Offre commerciale 1 page seule'}
+                        {includeCoverLetter ? 'Page 1 Lettre AFNOR + Page 2 Fiche technique' : 'Offre commerciale 1 page seule'}
                       </div>
                     </div>
                   </div>
@@ -1175,7 +1182,7 @@ export default function AutomaticProspectingModal({
                 <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
                   <span className="text-[8.5px] text-slate-400 font-bold uppercase block">Courrier joint</span>
                   <strong className={`font-black text-[10.5px] ${includeCoverLetter ? 'text-emerald-700' : 'text-slate-500'}`}>
-                    {includeCoverLetter ? 'Oui (Page 2)' : 'Non (1 Page)'}
+                    {includeCoverLetter ? 'Oui (Page 1)' : 'Non (1 Page)'}
                   </strong>
                 </div>
               </div>
@@ -1415,6 +1422,18 @@ export default function AutomaticProspectingModal({
                               title={`Télécharger le PDF : ${item.filename}`}
                             >
                               <Download className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPostalModalItem(item.simulation || item);
+                                setIsPostalModalOpen(true);
+                              }}
+                              className="p-2 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 text-blue-200 hover:text-white transition-colors cursor-pointer"
+                              title="Expédier ce courrier par La Poste (ServicePostal)"
+                            >
+                              <Mail className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
@@ -1661,6 +1680,20 @@ export default function AutomaticProspectingModal({
             </button>
           </div>
         </div>
+
+        {/* Modal d'envoi postal La Poste via ServicePostal */}
+        <ServicePostalModal
+          isOpen={isPostalModalOpen}
+          onClose={() => setIsPostalModalOpen(false)}
+          prospect={postalModalItem}
+          generatePdfFn={async (item) => {
+            const simData = item.simulation || item;
+            return await generateProspectingPdfBlob({
+              ...simData,
+              includeCoverLetter: true
+            });
+          }}
+        />
 
       </motion.div>
     </div>

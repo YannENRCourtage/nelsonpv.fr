@@ -4,7 +4,7 @@ import {
   Sparkles, Zap, Search, Car, Truck, MapPin, FolderDown, FolderOpen,
   FileText, CheckCircle2, AlertCircle, Loader2, Play, Square,
   RotateCcw, SlidersHorizontal, HardDrive, Compass, Euro,
-  Download, Archive, X, ShieldCheck, Warehouse
+  Download, Archive, X, ShieldCheck, Warehouse, Mail
 } from 'lucide-react';
 
 import {
@@ -30,6 +30,9 @@ import {
   requestDirectoryPicker,
   exportResultsAsZip
 } from '@/services/localPdfExportService';
+
+import ServicePostalModal from '@/components/simulator/ServicePostalModal';
+
 
 // Profil géographique par défaut : Bordeaux (33)
 const DEFAULT_BORDEAUX = {
@@ -80,6 +83,10 @@ export default function AutomaticOmbriereProspectingModal({
   const [tarifEdfOa, setTarifEdfOa] = useState(0.085);
   const [includeCoverLetter, setIncludeCoverLetter] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Modal d'envoi postal La Poste via ServicePostal
+  const [postalModalItem, setPostalModalItem] = useState(null);
+  const [isPostalModalOpen, setIsPostalModalOpen] = useState(false);
 
   // Gestion du dossier local d'exportation (et mode Firefox natif)
   const isFirefoxBrowser = typeof window !== 'undefined' && !window.showDirectoryPicker;
@@ -1068,8 +1075,8 @@ export default function AutomaticOmbriereProspectingModal({
                   <div className="flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     <div>
-                      <div className="text-[10px] font-black text-slate-800 leading-tight">Courrier de prospection (Page 2)</div>
-                      <div className="text-[8.5px] text-slate-500 leading-tight">Lettre personnalisée Loi APER &amp; proposition d'échange</div>
+                      <div className="text-[10px] font-black text-slate-800 leading-tight">Courrier nominatif AFNOR (Page 1)</div>
+                      <div className="text-[8.5px] text-slate-500 leading-tight">Page 1 Lettre AFNOR + Page 2 Fiche technique &amp; calepinage</div>
                     </div>
                   </div>
                   <input
@@ -1328,6 +1335,18 @@ export default function AutomaticOmbriereProspectingModal({
                           >
                             <Download className="w-4 h-4" />
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPostalModalItem(item.simulation || item);
+                              setIsPostalModalOpen(true);
+                            }}
+                            className="p-2 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 text-blue-200 hover:text-white transition-colors cursor-pointer"
+                            title="Expédier ce dossier par La Poste (ServicePostal)"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     ))
@@ -1373,6 +1392,20 @@ export default function AutomaticOmbriereProspectingModal({
             </button>
           </div>
         </div>
+
+        {/* Modal d'envoi postal La Poste via ServicePostal */}
+        <ServicePostalModal
+          isOpen={isPostalModalOpen}
+          onClose={() => setIsPostalModalOpen(false)}
+          prospect={postalModalItem}
+          generatePdfFn={async (item) => {
+            const simData = item.simulation || item;
+            return await generateParkingProspectingPdfBlob({
+              ...simData,
+              includeCoverLetter: true
+            });
+          }}
+        />
 
       </motion.div>
     </div>

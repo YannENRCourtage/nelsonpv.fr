@@ -32,6 +32,7 @@ import {
 } from '@/services/localPdfExportService';
 
 import useSechoirStore from '@/stores/useSechoirStore';
+import ServicePostalModal from '@/components/simulator/ServicePostalModal';
 
 // Profil géographique par défaut : Samatan / Gers (32) ou Mont-de-Marsan (40)
 const DEFAULT_COMMUNE = {
@@ -86,6 +87,10 @@ export default function AutomaticSechoirProspectingModal({
   const [selectedBuildingModel, setSelectedBuildingModel] = useState('auto'); // 'auto' | 'BT-3.1.15' | 'BT-6.2.15' | 'BT-8.3.15'
   const [includeBenefitsPage, setIncludeBenefitsPage] = useState(false); // false = 1 page (par défaut), true = 2 pages (Synthèse bénéfices)
   const [includeCoverLetter, setIncludeCoverLetter] = useState(true); // true = Courrier d'accompagnement nominatif personnalisé (Page 1)
+
+  // Modal d'envoi postal La Poste via ServicePostal
+  const [postalModalItem, setPostalModalItem] = useState(null);
+  const [isPostalModalOpen, setIsPostalModalOpen] = useState(false);
 
   // Dossier local d'exportation
   const isFirefoxBrowser = typeof window !== 'undefined' && !window.showDirectoryPicker;
@@ -1440,6 +1445,19 @@ export default function AutomaticSechoirProspectingModal({
                           >
                             <Download className="w-4 h-4" />
                           </button>
+
+                          {/* Bouton Envoi Postal La Poste */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPostalModalItem(item);
+                              setIsPostalModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 text-blue-200 hover:text-white transition-colors cursor-pointer"
+                            title="Expédier ce dossier par La Poste (ServicePostal)"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     ))
@@ -1487,6 +1505,19 @@ export default function AutomaticSechoirProspectingModal({
             </button>
           </div>
         </div>
+
+        {/* Modal d'envoi postal La Poste via ServicePostal */}
+        <ServicePostalModal
+          isOpen={isPostalModalOpen}
+          onClose={() => setIsPostalModalOpen(false)}
+          prospect={postalModalItem}
+          generatePdfFn={async (item) => {
+            return await generateSechoirProspectingPdfBlob(item, {
+              includeBenefitsPage,
+              includeCoverLetter: true
+            });
+          }}
+        />
 
       </motion.div>
     </div>

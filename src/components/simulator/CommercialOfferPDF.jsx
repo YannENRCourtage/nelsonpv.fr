@@ -1277,15 +1277,45 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     }
 
     // Si c'est une ombrière, une toiture ou un séchoir avec option courrier de prospection, ajouter le Courrier d'accompagnement
+    // Si c'est une ombrière, une toiture ou un séchoir avec option courrier de prospection, ajouter le Courrier d'accompagnement
     if ((isOmbriere || isToiture || isSechoir) && sim.includeCoverLetter) {
       const pageCoverContainer = document.createElement('div');
-      pageCoverContainer.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#ffffff;color:#0f172a;font-family:Arial,sans-serif;';
+      pageCoverContainer.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;max-height:297mm;background:#ffffff;color:#0f172a;font-family:Arial,sans-serif;overflow:hidden;box-sizing:border-box;';
       
       const targetCompany = isSechoir
         ? (sim.ownerName || sim.clientName || (sim.pacage ? `Exploitation Agricole (PACAGE ${sim.pacage})` : 'Direction de l\'exploitation'))
-        : (sim.ownerName || sim.clientName || 'Direction de l\'établissement');
-      const targetAddress = sim.address || clientAddress;
+        : (sim.ownerName || sim.company || sim.clientName || 'Direction de l\'établissement');
+      const targetAddress = sim.address || clientAddress || '';
       const formattedDate = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      // Formatage strict de l'adresse destinataire aux normes AFNOR NF Z 10-011 (Fenêtre DL / C5)
+      // Emplacement standard : haut droit, top 45mm, right 20mm, max 85mm x 45mm, max 6 lignes
+      let streetLine = targetAddress.trim();
+      let postalCityLine = '';
+
+      const cpMatch = streetLine.match(/\b(\d{5})\b\s*(.*)$/);
+      if (cpMatch) {
+        const foundCp = cpMatch[1];
+        const foundCity = (cpMatch[2] || sim.cityName || '').replace(/[,\.]/g, '').trim().toUpperCase();
+        postalCityLine = `${foundCp} ${foundCity}`;
+        streetLine = streetLine.replace(cpMatch[0], '').replace(/[,\s]+$/, '').trim();
+      } else {
+        const cp = sim.postalCode || sim.codePostal || (sim.departmentCode ? `${sim.departmentCode}000` : '33000');
+        const city = (sim.cityName || sim.ville || 'FRANCE').replace(/[,\.]/g, '').trim().toUpperCase();
+        postalCityLine = `${cp} ${city}`;
+      }
+
+      const afnorQuality = isSechoir
+        ? 'À l\'attention de la Direction d\'Exploitation'
+        : 'À l\'attention de la Direction Générale';
+
+      const afnorLines = [
+        afnorQuality,
+        targetCompany.toUpperCase(),
+        streetLine ? streetLine : null,
+        postalCityLine,
+        'FRANCE'
+      ].filter(Boolean).slice(0, 6);
 
       const letterSubject = isToiture
         ? 'Objet : Valorisation photovoltaïque et optimisation énergétique de votre toiture — Étude d’opportunité ci-jointe'
@@ -1294,29 +1324,29 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         : `Objet : Projet d’installation d’un Séchoir Solaire Thermovoltaïque BatiTech® (${sim.modelName || 'BatiTech'}) — PACAGE ${sim.pacage || ''} — Étude d’opportunité ci-jointe`;
 
       const letterBodyHtml = isToiture ? `
-              <p style="margin: 0 0 14px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
+              <p style="margin: 0 0 9px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
 
-              <p style="margin: 0 0 14px 0;">
+              <p style="margin: 0 0 9px 0;">
                 Dans le cadre de l'optimisation des charges d'exploitation et de la transition énergétique, les toitures de bâtiments professionnels et tertiaires représentent un <strong>gisement énergétique et financier majeur</strong>, particulièrement adapté à la production d'énergie solaire.
               </p>
 
-              <p style="margin: 0 0 14px 0;">
+              <p style="margin: 0 0 9px 0;">
                 Plutôt que de laisser votre surface de toiture inerte, ce projet constitue un <strong>levier direct de création de valeur et de valorisation patrimoniale</strong> pour votre site situé au <strong>${targetAddress}</strong>.
               </p>
 
-              <p style="margin: 0 0 14px 0;">
-                Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre toiture, jointe à ce courrier.
+              <p style="margin: 0 0 9px 0;">
+                Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre toiture, jointe à ce courrier en Page 2.
               </p>
 
-              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
-                <div style="font-size: 10.2pt; font-weight: 800; color: #00429d; margin-bottom: 8px; text-transform: uppercase;">
+              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 13px; margin: 9px 0;">
+                <div style="font-size: 9.5pt; font-weight: 800; color: #00429d; margin-bottom: 6px; text-transform: uppercase;">
                   L'implantation d'une centrale solaire sur votre toiture vous apporte plusieurs bénéfices stratégiques :
                 </div>
-                <ul style="margin: 0; padding-left: 20px; font-size: 9.8pt; line-height: 1.55; color: #334155;">
-                  <li style="margin-bottom: 8px;">
+                <ul style="margin: 0; padding-left: 18px; font-size: 8.9pt; line-height: 1.45; color: #334155;">
+                  <li style="margin-bottom: 6px;">
                     <strong>Revenus garantis sur 20 ans :</strong> valorisation directe de vos surfaces de toiture par la revente de l'électricité produite avec un tarif garanti par l'État (EDF OA) ou économies substantielles sur votre facture électrique.
                   </li>
-                  <li style="margin-bottom: 8px;">
+                  <li style="margin-bottom: 6px;">
                     <strong>Valorisation de votre patrimoine :</strong> préservation du clos-couvert, renforcement de la valeur vénale de l'actif immobilier et amélioration concrète du bilan carbone de votre entreprise.
                   </li>
                   <li style="margin-bottom: 0;">
@@ -1325,41 +1355,41 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 </ul>
               </div>
 
-              <p style="margin: 14px 0;">
-                Le document ci-joint vous présente le calepinage sur mesure appliqué à votre toiture, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
+              <p style="margin: 9px 0;">
+                Le document ci-joint en Page 2 vous présente le calepinage sur mesure appliqué à votre toiture, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
               </p>
 
-              <p style="margin: 14px 0;">
+              <p style="margin: 9px 0;">
                 Je vous propose un bref échange dans les prochains jours afin de faire le point sur vos objectifs et d’ajuster ces paramètres à vos priorités d'exploitation.
               </p>
 
-              <p style="margin: 14px 0 16px 0;">
+              <p style="margin: 9px 0 11px 0;">
                 Je vous prie d'agréer, Madame, Monsieur, l’expression de mes salutations distinguées.
               </p>
       ` : isOmbriere ? `
-              <p style="margin: 0 0 14px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
+              <p style="margin: 0 0 9px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
 
-              <p style="margin: 0 0 14px 0;">
+              <p style="margin: 0 0 9px 0;">
                 La loi relative à l’accélération de la production d’énergies renouvelables <strong>(loi APER, article 40)</strong> impose désormais à tous les parcs de stationnement extérieurs de plus de 1 500 m² d’équiper au moins <strong>50 % de leur superficie en ombrières photovoltaïques</strong>. Les échéances de mise en conformité (2026 à 2028 selon la taille et le mode de gestion) approchent, et la réglementation prévoit des sanctions financières administratives pouvant atteindre <strong>20 000 € à 40 000 € par an</strong> jusqu’à régularisation.
               </p>
 
-              <p style="margin: 0 0 14px 0;">
+              <p style="margin: 0 0 9px 0;">
                 Plutôt que de subir cette contrainte légale comme une charge, ce projet constitue un <strong>levier direct de valorisation financière et patrimoniale</strong> pour votre site situé au <strong>${targetAddress}</strong>.
               </p>
 
-              <p style="margin: 0 0 14px 0;">
-                Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre parking, jointe à ce courrier.
+              <p style="margin: 0 0 9px 0;">
+                Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre parking, jointe à ce courrier en Page 2.
               </p>
 
-              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
-                <div style="font-size: 10.2pt; font-weight: 800; color: #00429d; margin-bottom: 8px; text-transform: uppercase;">
+              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 13px; margin: 9px 0;">
+                <div style="font-size: 9.5pt; font-weight: 800; color: #00429d; margin-bottom: 6px; text-transform: uppercase;">
                   L'implantation d'ombrières solaires sur votre site vous apporte plusieurs bénéfices stratégiques :
                 </div>
-                <ul style="margin: 0; padding-left: 20px; font-size: 9.8pt; line-height: 1.55; color: #334155;">
-                  <li style="margin-bottom: 8px;">
+                <ul style="margin: 0; padding-left: 18px; font-size: 8.9pt; line-height: 1.45; color: #334155;">
+                  <li style="margin-bottom: 6px;">
                     <strong>Confort et attractivité :</strong> protection des véhicules de vos collaborateurs et clients contre les intempéries et la chaleur, tout en affichant un engagement environnemental concret.
                   </li>
-                  <li style="margin-bottom: 8px;">
+                  <li style="margin-bottom: 6px;">
                     <strong>Revenus garantis sur 20 ans :</strong> valorisation de vos surfaces foncières existantes via la vente totale de l'électricité produite avec un tarif garanti par l'État (EDF OA).
                   </li>
                   <li style="margin-bottom: 0;">
@@ -1368,44 +1398,44 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 </ul>
               </div>
 
-              <p style="margin: 14px 0;">
-                Le document ci-joint vous présente le calepinage sur mesure appliqué à vos allées de stationnement, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
+              <p style="margin: 9px 0;">
+                Le document ci-joint en Page 2 vous présente le calepinage sur mesure appliqué à vos allées de stationnement, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
               </p>
 
-              <p style="margin: 14px 0;">
+              <p style="margin: 9px 0;">
                 Je vous propose un bref échange dans les prochains jours afin de faire le point sur vos obligations réglementaires et d’ajuster ces paramètres à vos priorités d'exploitation.
               </p>
 
-              <p style="margin: 14px 0 16px 0;">
+              <p style="margin: 9px 0 11px 0;">
                 Je vous prie d'agréer, Madame, Monsieur, l’expression de mes salutations distinguées.
               </p>
       ` : `
-              <p style="margin: 0 0 14px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
+              <p style="margin: 0 0 9px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
 
-              <p style="margin: 0 0 14px 0;">
+              <p style="margin: 0 0 9px 0;">
                 Dans le cadre de la transition agro-écologique, de la hausse continue des coûts de l’énergie et de la recherche d'autonomie fourragère, les exploitations agricoles disposent d'un levier d'optimisation décisif : le <strong>séchage solaire thermovoltaïque innovant</strong>.
               </p>
 
-              <p style="margin: 0 0 14px 0;">
+              <p style="margin: 0 0 9px 0;">
                 Plutôt qu’un simple hangar de stockage inerte, l’implantation d’un séchoir solaire actif <strong>${sim.modelName || 'BatiTech'}</strong> (${sim.dimensions || '18m × 20m'}) sur votre exploitation située au <strong>${targetAddress}</strong> constitue un véritable <strong>outil de création de valeur agronomique et de rentabilité financière</strong>.
               </p>
 
-              <p style="margin: 0 0 14px 0;">
-                Grâce à notre plateforme d'ingénierie et d’analyse territoriale, nous avons établi une première <strong>étude de faisabilité technique et économique personnalisée</strong> pour votre exploitation${sim.pacage ? ` (PACAGE n° ${sim.pacage})` : ''}, jointe à ce courrier.
+              <p style="margin: 0 0 9px 0;">
+                Grâce à notre plateforme d'ingénierie et d’analyse territoriale, nous avons établi une première <strong>étude de faisabilité technique et économique personnalisée</strong> pour votre exploitation${sim.pacage ? ` (PACAGE n° ${sim.pacage})` : ''}, jointe à ce courrier en Page 2.
               </p>
 
-              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
-                <div style="font-size: 10.2pt; font-weight: 800; color: #00429d; margin-bottom: 8px; text-transform: uppercase;">
+              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 13px; margin: 9px 0;">
+                <div style="font-size: 9.5pt; font-weight: 800; color: #00429d; margin-bottom: 6px; text-transform: uppercase;">
                   L'implantation d'un Séchoir Thermovoltaïque BatiTech® vous apporte des atouts majeurs :
                 </div>
-                <ul style="margin: 0; padding-left: 20px; font-size: 9.8pt; line-height: 1.55; color: #334155;">
-                  <li style="margin-bottom: 8px;">
+                <ul style="margin: 0; padding-left: 18px; font-size: 8.9pt; line-height: 1.45; color: #334155;">
+                  <li style="margin-bottom: 6px;">
                     <strong>Valorisation agronomique &amp; gains de séchage :</strong> préservation optimale de la valeur nutritive (protéines, appétence), réduction drastique des pertes au champ et valorisation directe estimée à <strong>+${(sim.deltaProduits || 0).toLocaleString('fr-FR')} €/an</strong>${sim.activeMaterialsText ? ` (${sim.activeMaterialsText})` : ''}.
                   </li>
-                  <li style="margin-bottom: 8px;">
+                  <li style="margin-bottom: 6px;">
                     <strong>Production d'énergie solaire décarbonée :</strong> toiture solaire thermovoltaïque Cogen’Air® de <strong>${sim.kwc || 30.15} kWc</strong> (${sim.nbModules || 90} modules) générant un productible attendu de <strong>${(sim.annualProductionKwh || 0).toLocaleString('fr-FR')} kWh/an</strong> tout en insufflant l'air chaud nécessaire au séchage.
                   </li>
-                  <li style="margin-bottom: 8px;">
+                  <li style="margin-bottom: 6px;">
                     <strong>Subventions bonifiées &amp; Prime CEE AGRI-EQ-110 :</strong> déduction immédiate d'une prime CEE de <strong>${(sim.primeCEE || 0).toLocaleString('fr-FR')} €</strong> sur l'investissement brut${(sim.subventionRegionaleMontant || 0) > 0 ? `, complétée par des aides régionales estimées jusqu'à ${sim.subventionRegionaleMontant.toLocaleString('fr-FR')} € (${sim.subventionRegionaleNom || 'PCAE'})` : ''}.
                   </li>
                   <li style="margin-bottom: 0;">
@@ -1414,76 +1444,87 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 </ul>
               </div>
 
-              <p style="margin: 14px 0;">
-                Le dossier ci-joint détaille le dimensionnement technique sur mesure du bâtiment, les filières valorisées ainsi que le plan de financement prévisionnel sur 25 ans.
+              <p style="margin: 9px 0;">
+                Le dossier ci-joint en Page 2 détaille le dimensionnement technique sur mesure du bâtiment, les filières valorisées ainsi que le plan de financement prévisionnel sur 25 ans.
               </p>
 
-              <p style="margin: 14px 0;">
+              <p style="margin: 9px 0;">
                 Je me tiens à votre entière disposition pour échanger dans les prochains jours, affiner ces simulations selon vos volumes précis et vérifier l'éligibilité de votre exploitation aux dispositifs de subvention en vigueur.
               </p>
 
-              <p style="margin: 14px 0 16px 0;">
+              <p style="margin: 9px 0 11px 0;">
                 Je vous prie d'agréer, Madame, Monsieur, l’expression de mes salutations distinguées.
               </p>
       `;
 
       pageCoverContainer.innerHTML = `
-        <div style="width: 210mm; min-height: 297mm; max-height: 297mm; height: 297mm; padding: 14mm 20mm 12mm 20mm; box-sizing: border-box; background-color: #ffffff; color: #0f172a; font-family: Arial, sans-serif; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;">
+        <div style="width: 210mm; min-height: 297mm; max-height: 297mm; height: 297mm; box-sizing: border-box; background-color: #ffffff; color: #0f172a; font-family: Arial, sans-serif; position: relative; overflow: hidden;">
           
-          <div>
-            <!-- EN-TÊTE EXPÉDITEUR / DESTINATAIRE -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; border-bottom: 2px solid #00429d; padding-bottom: 12px;">
-              <div>
-                <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR COURTAGE" style="height: 38px; width: auto; object-fit: contain; margin-bottom: 4px; display: block;" />
-                <div style="font-size: 8.5pt; color: #64748b; margin-top: 3px; line-height: 1.4;">
-                  7 Rue Gutenberg &bull; 33700 MÉRIGNAC<br/>
-                  contact@enr-courtage.fr &bull; 07 63 87 71 40
+          <!-- BLOC EXPÉDITEUR ENR COURTAGE (HAUT GAUCHE, HORS ZONE AFNOR) -->
+          <div style="position: absolute; top: 15mm; left: 20mm; width: 85mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+            <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR COURTAGE" style="height: 38px; width: auto; object-fit: contain; margin-bottom: 5px; display: block;" />
+            <div style="font-size: 8.2pt; color: #475569; line-height: 1.4;">
+              <strong style="color: #00429d; font-size: 8.8pt;">ENR COURTAGE</strong><br/>
+              7 Rue Gutenberg &bull; 33700 MÉRIGNAC<br/>
+              contact@enr-courtage.fr &bull; 07 63 87 71 40<br/>
+              <span style="color: #0284c7; font-weight: bold;">www.enr-courtage.fr</span>
+            </div>
+          </div>
+
+          <!-- BLOC DESTINATAIRE STRICTEMENT CALIBRÉ AUX NORMES AFNOR NF Z 10-011 (HAUT DROIT, FENÊTRE ENVELOPPE DL / C5) -->
+          <!-- Position géométrique standard : top 45mm, right 20mm, largeur max 85mm, hauteur max 45mm -->
+          <div style="position: absolute; top: 45mm; right: 20mm; width: 85mm; height: 45mm; max-height: 45mm; box-sizing: border-box; overflow: hidden; font-family: Arial, sans-serif; text-align: left; padding: 2mm 0 0 2mm;">
+            ${afnorLines.map((line, idx) => {
+              if (idx === 0) {
+                return `<div style="font-size: 7.8pt; font-weight: bold; color: #475569; text-transform: uppercase; letter-spacing: 0.2px; margin-bottom: 2px; line-height: 1.2;">${line}</div>`;
+              }
+              if (idx === 1) {
+                return `<div style="font-size: 10pt; font-weight: 900; color: #0f172a; margin-bottom: 2px; line-height: 1.2; text-transform: uppercase;">${line}</div>`;
+              }
+              return `<div style="font-size: 9.2pt; color: #334155; line-height: 1.35;">${line}</div>`;
+            }).join('')}
+          </div>
+
+          <!-- DATE & LIEU (CALÉ EN DESSOUS DU BLOC AFNOR) -->
+          <div style="position: absolute; top: 93mm; right: 20mm; font-size: 9.5pt; color: #475569; text-align: right;">
+            Mérignac, le ${formattedDate}
+          </div>
+
+          <!-- CORPS DU COURRIER (OCCUPE L'ESPACE DE TOP 99MM JUSQU'À BOTTOM 16MM) -->
+          <div style="position: absolute; top: 99mm; left: 20mm; right: 20mm; bottom: 16mm; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+            <div>
+              <!-- OBJET DU COURRIER -->
+              <div style="background: #eff6ff; border-left: 4px solid #00429d; padding: 6px 12px; border-radius: 0 6px 6px 0; margin-bottom: 9px;">
+                <div style="font-size: 9.6pt; font-weight: 900; color: #00429d; line-height: 1.3;">
+                  ${letterSubject}
                 </div>
               </div>
 
-              <div style="text-align: right; max-width: 58%; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px 14px;">
-                <div style="font-size: 8pt; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">${isSechoir ? 'À l\'attention du Responsable d\'Exploitation / Gérant' : 'À l\'attention de la Direction Générale / Direction Immobilière'}</div>
-                <div style="font-size: 12pt; font-weight: 900; color: #0f172a; margin-top: 3px; line-height: 1.25;">${targetCompany}</div>
-                <div style="font-size: 9.5pt; color: #475569; margin-top: 3px; line-height: 1.35;">${targetAddress}</div>
+              <!-- TEXTE PRINCIPAL -->
+              <div style="font-size: 9.1pt; line-height: 1.46; color: #1e293b; text-align: justify;">
+                ${letterBodyHtml}
               </div>
-            </div>
-
-            <!-- DATE & LIEU -->
-            <div style="text-align: right; font-size: 10pt; color: #475569; margin-bottom: 16px;">
-              Mérignac, le ${formattedDate}
-            </div>
-
-            <!-- OBJET DU COURRIER -->
-            <div style="background: #eff6ff; border-left: 4px solid #00429d; padding: 10px 16px; border-radius: 0 6px 6px 0; margin-bottom: 18px;">
-              <div style="font-size: 10.8pt; font-weight: 900; color: #00429d; line-height: 1.35;">
-                ${letterSubject}
-              </div>
-            </div>
-
-            <!-- CORPS DU COURRIER -->
-            <div style="font-size: 10.2pt; line-height: 1.6; color: #1e293b; text-align: justify;">
-              ${letterBodyHtml}
             </div>
 
             <!-- SIGNATURE & PJ -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px; padding-top: 8px;">
-              <div style="font-size: 8.5pt; color: #64748b; font-style: italic;">
-                <strong>P.J. :</strong> ${isToiture ? 'Étude de faisabilité & offre commerciale — Centrale toiture photovoltaïque' : isOmbriere ? 'Étude de faisabilité & offre commerciale — Ombrière de parking photovoltaïque' : 'Étude de faisabilité & offre commerciale — Séchoir Thermovoltaïque BatiTech®'}
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 5px; border-top: 1px solid #f1f5f9;">
+              <div style="font-size: 8pt; color: #64748b; font-style: italic; max-width: 58%;">
+                <strong>P.J. :</strong> ${isToiture ? 'Étude de faisabilité & offre commerciale — Centrale toiture photovoltaïque (Page 2)' : isOmbriere ? 'Étude de faisabilité & offre commerciale — Ombrière de parking photovoltaïque (Page 2)' : 'Étude de faisabilité & offre commerciale — Séchoir Thermovoltaïque BatiTech® (Page 2)'}
               </div>
 
-              <div style="text-align: right; padding-top: 6px; min-width: 220px;">
-                <div style="font-size: 11.5pt; font-weight: 900; color: #00429d;">Yann BARBERIS</div>
-                <div style="font-size: 9.5pt; color: #475569; font-weight: bold; margin-top: 2px;">${isSechoir ? 'Conseiller solutions énergies & agro-solaire' : 'Conseiller solutions énergies'}</div>
-                <div style="font-size: 9pt; color: #0284c7; font-weight: bold; margin-top: 2px;">07 63 87 71 40</div>
-                <div style="font-size: 8.8pt; color: #64748b; margin-top: 1px;">y.barberis@enr-courtage.fr</div>
+              <div style="text-align: right; min-width: 210px;">
+                <div style="font-size: 11pt; font-weight: 900; color: #00429d;">Yann BARBERIS</div>
+                <div style="font-size: 9pt; color: #475569; font-weight: bold; margin-top: 1px;">${isSechoir ? 'Conseiller solutions énergies & agro-solaire' : 'Conseiller solutions énergies'}</div>
+                <div style="font-size: 8.8pt; color: #0284c7; font-weight: bold; margin-top: 1px;">07 63 87 71 40</div>
+                <div style="font-size: 8.4pt; color: #64748b;">y.barberis@enr-courtage.fr</div>
               </div>
             </div>
           </div>
 
-          <!-- PIED DE PAGE -->
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 5px; font-size: 8pt; color: #475569; margin-top: auto;">
+          <!-- PIED DE PAGE STRICT (FIXÉ À 7MM DU BAS) -->
+          <div style="position: absolute; bottom: 7mm; left: 20mm; right: 20mm; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 3px; font-size: 7.5pt; color: #64748b;">
             <span style="font-weight: bold; color: #00429d;">enr-courtage.fr</span>
-            <span>Energies Renouvelables &amp; Ingénierie Solaire</span>
+            <span>Energies Renouvelables &amp; Ingénierie Solaire &bull; SAS au capital de 10 000 €</span>
             <span>contact@enr-courtage.fr</span>
           </div>
 
@@ -1501,16 +1542,13 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           windowWidth: 794,
         });
         const coverImgData = coverCanvas.toDataURL('image/jpeg', 0.95);
-        if (isSechoir) {
-          // Pour Séchoir : la lettre personnalisée s'ouvre en première page !
-          pdf.insertPage(1);
-          pdf.setPage(1);
-          pdf.addImage(coverImgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-        } else {
-          // Pour Toiture et Ombrière : page 2
-          pdf.addPage();
-          pdf.addImage(coverImgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-        }
+        
+        // ── INVERSION DE L'ORDRE DES PAGES (UNIVERSEL TOITURE, OMBRIÈRE, SÉCHOIR) ──
+        // La Lettre de prospection nominative et personnalisée devient systématiquement la PAGE 1
+        // L'Étude de faisabilité commerciale et le calepinage glissent en PAGE 2
+        pdf.insertPage(1);
+        pdf.setPage(1);
+        pdf.addImage(coverImgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       } finally {
         document.body.removeChild(pageCoverContainer);
       }
