@@ -682,7 +682,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         <!-- 1. EN-TÊTE PROFESSIONNEL -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #00429d; padding-bottom: 5px; margin-bottom: 7px;">
           <div>
-            <div style="font-size: 18pt; font-weight: 900; color: #00429d; letter-spacing: 0.5px;">NELSON</div>
+            <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR COURTAGE" style="height: 28px; width: auto; object-fit: contain; margin-bottom: 2px; display: block;" />
             <div style="font-size: 7.5pt; color: #64748b; font-weight: bold; text-transform: uppercase; margin-top: 1px;">Étude de Faisabilité &amp; Offre Commerciale</div>
           </div>
           <div style="text-align: right;">
@@ -1188,7 +1188,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <!-- Header Générique Nelson -->
           <div style="display:table;width:100%;border-bottom:3px solid #0D3660;padding-bottom:8px;margin-bottom:15px;">
             <div style="display:table-cell;vertical-align:bottom;width:35%;">
-              <h1 style="font-size:28pt;font-weight:800;color:#0D3660;margin:0;letter-spacing:1px;line-height:1;font-family:Montserrat,Arial,sans-serif;">NELSON</h1>
+              <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR COURTAGE" style="height:32px;width:auto;object-fit:contain;display:block;margin-bottom:2px;" />
             </div>
             <div style="display:table-cell;vertical-align:bottom;text-align:right;width:65%;">
               <p style="font-size:14pt;font-weight:700;color:#0D3660;margin:0 0 4px 0;text-transform:uppercase;font-family:Montserrat,Arial,sans-serif;">

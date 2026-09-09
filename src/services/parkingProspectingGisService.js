@@ -83,11 +83,12 @@ export async function searchCommunes(query) {
   }
 }
 
-// Pool de miroirs Overpass API pour haute résilience et vitesse (serveur français en priorité)
+// Pool de miroirs Overpass API pour haute résilience et vitesse
 const OVERPASS_ENDPOINTS = [
-  'https://overpass.openstreetmap.fr/api/interpreter',
   'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter'
+  'https://lz4.overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
 ];
 
 // Test géométrique d'inclusion d'un point WGS84 dans un polygone WGS84

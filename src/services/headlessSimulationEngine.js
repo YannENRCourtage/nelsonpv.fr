@@ -197,14 +197,19 @@ export async function simulateBuildingHeadless({
 
   let rawKwc = Math.round(maxPanels * 0.465 * 10) / 10;
   
-  // Support targetMaxKwc pour la révision post-génération (cap la puissance sans rejeter)
-  let installedKwc = rawKwc;
-  if (customSettings.targetMaxKwc && Number(customSettings.targetMaxKwc) > 0) {
-    installedKwc = Math.min(rawKwc, Math.round(Number(customSettings.targetMaxKwc) * 10) / 10);
-  } else if (rawKwc < minKwc || rawKwc > maxKwc) {
-    // Filtrage strict : rejeter si la puissance installable est hors plage [minKwc, maxKwc]
-    console.warn(`[Ignoré] Toiture ${building.id} : puissance ${rawKwc} kWc hors plage cible [${minKwc} - ${maxKwc} kWc]`);
+  // Filtrage : rejeter uniquement si la toiture est sous le seuil minimum requis
+  if (rawKwc < minKwc) {
+    console.warn(`[Ignoré] Toiture ${building.id} : puissance ${rawKwc} kWc inférieure au seuil cible [${minKwc} kWc]`);
     return null;
+  }
+
+  // Si la puissance calculée dépasse le plafond demandé, on plafonne l'installation à maxKwc sans rejeter le bâtiment
+  let installedKwc = rawKwc;
+  if (maxKwc > 0 && rawKwc > maxKwc) {
+    installedKwc = maxKwc;
+  }
+  if (customSettings.targetMaxKwc && Number(customSettings.targetMaxKwc) > 0) {
+    installedKwc = Math.min(installedKwc, Math.round(Number(customSettings.targetMaxKwc) * 10) / 10);
   }
 
   // Tarif EDF OA : 0.078€/kWh pour >500 kWc, 0.085€/kWh pour 100-500 kWc, 0.011€/kWh pour <100 kWc
@@ -306,11 +311,7 @@ export async function simulateBuildingHeadless({
       returnDetails: true
     });
 
-    // VÉRIFICATION STRICTE : Rejet si la toiture dispose déjà de panneaux solaires existants (ex: Image 3)
-    if (snapshotResult && typeof snapshotResult === 'object' && snapshotResult.hasExistingSolar) {
-      console.warn(`[Ignoré] Toiture déjà équipée de panneaux solaires : bâtiment ${building.id}`);
-      return null;
-    }
+    // Note : Les puits de lumière ou verrières ne disqualifient pas la toiture (ils peuvent être recouverts ou intégrés)
 
     mapScreenshot = snapshotResult && typeof snapshotResult === 'object' && snapshotResult.dataUrl
       ? snapshotResult.dataUrl

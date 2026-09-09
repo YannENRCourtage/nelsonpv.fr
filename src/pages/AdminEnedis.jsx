@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, X, Send, User, Link2, Check } from 'lucide-react';
+import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, X, Send, User, Link2, Check, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -100,11 +100,13 @@ export default function AdminEnedis() {
         env
       });
       
-      // On vérifie que les données récupérées ne sont pas toutes en erreur
+      // On vérifie que les données récupérées ne sont pas toutes en erreur ou proviennent d'un mandat actif
       const hasValidData = result?.data && (
-        !result.data.daily?.error ||
-        !result.data.loadCurve?.error ||
-        !result.data.maxPower?.error
+        (!result.data.daily?.error && result.data.daily?.meter_reading?.interval_reading?.length > 0) ||
+        (!result.data.loadCurve?.error && result.data.loadCurve?.meter_reading?.interval_reading?.length > 0) ||
+        (!result.data.maxPower?.error && result.data.maxPower?.meter_reading?.interval_reading?.length > 0) ||
+        Boolean(result.data.isMandateActive) ||
+        Boolean(result.data.mandate?.isMandateActive)
       );
       
       if (hasValidData) {
@@ -507,6 +509,42 @@ export default function AdminEnedis() {
                   </div>
                 ) : (
                   <div className="flex-1 animate-in fade-in slide-in-from-right-8 duration-700 flex flex-col gap-4">
+                    {/* Bandeau d'Attestation Mandat Tiers eIDAS */}
+                    {(data.isMandateActive || data.mandate) && (
+                      <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white rounded-3xl p-6 shadow-xl shadow-emerald-900/10 border border-emerald-600/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in zoom-in duration-300">
+                        <div className="flex items-center gap-4">
+                          <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm shrink-0">
+                            <ShieldCheck size={28} className="text-white" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-extrabold text-base tracking-wide text-white">MANDAT TIERS CERTIFIÉ eIDAS ACTIF</span>
+                              <span className="bg-emerald-400/30 text-emerald-100 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-300/30">
+                                {data.mandate?.certifiedStatus || 'CERTIFIÉ & SCELLÉ eIDAS'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-emerald-100 mt-1">
+                              Titulaire : <strong className="text-white font-bold">{data.mandate?.titulaire || consents.find(c => c.prm === prm)?.titulaire || 'Client'}</strong>
+                              {data.mandate?.signedAt && ` • Signé le ${new Date(data.mandate.signedAt).toLocaleDateString('fr-FR')}`}
+                              {data.mandate?.channel === 'tablet' && ' sur Tablette'}
+                              {data.mandate?.mandateRef && ` • Réf: ${data.mandate.mandateRef}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                          <a
+                            href={`/api/signature/download-pdf?prm=${prm}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-2 bg-white text-emerald-900 hover:bg-emerald-50 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-md active:scale-95 w-full md:w-auto"
+                          >
+                            <FileText size={16} />
+                            Voir le Mandat PDF Signé
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex-1 bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden transition-all hover:shadow-blue-100/50">
                       <ConsumptionChart data={data} loading={loading} />
                     </div>
@@ -584,7 +622,15 @@ export default function AdminEnedis() {
                                   <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
                                     <Database size={18} />
                                   </div>
-                                  <span className="font-mono text-lg font-bold text-slate-700">{item.prm}</span>
+                                  <div className="flex flex-col">
+                                    <span className="font-mono text-lg font-bold text-slate-700">{item.prm}</span>
+                                    {item.mandateType === 'TIERS_MANDATE' && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full w-fit mt-0.5">
+                                        <ShieldCheck size={11} className="text-emerald-700" />
+                                        Mandat Tiers {item.channel === 'tablet' ? 'Tablette' : 'eIDAS'}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 {item.projectId && item.projectId !== 'admin_test' && (
                                   <a 
@@ -634,6 +680,17 @@ export default function AdminEnedis() {
                             </td>
                             <td className="px-8 py-6 text-right">
                               <div className="flex items-center justify-end gap-2">
+                                {item.mandateType === 'TIERS_MANDATE' && (
+                                  <a
+                                    href={`/api/signature/download-pdf?prm=${item.prm}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-2 text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-sm flex items-center justify-center h-9 w-9"
+                                    title="Télécharger le Mandat Signé (PDF)"
+                                  >
+                                    <FileText size={16} />
+                                  </a>
+                                )}
                                 {/* Bouton Renvoyer le consentement depuis l'historique */}
                                 <Button
                                   variant="outline"

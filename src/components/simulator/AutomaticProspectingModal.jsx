@@ -66,10 +66,10 @@ export default function AutomaticProspectingModal({
   const [mapRadius, setMapRadius] = useState(1000); // 500, 1000, 2000, 5000
 
   // Critères de filtrage, puissance et modèle économique
-  const [minArea, setMinArea] = useState(500);
-  const [maxArea, setMaxArea] = useState(2500);
+  const [minArea, setMinArea] = useState(400);
+  const [maxArea, setMaxArea] = useState(50000);
   const [minTargetKwc, setMinTargetKwc] = useState(100);
-  const [maxTargetKwc, setMaxTargetKwc] = useState(500);
+  const [maxTargetKwc, setMaxTargetKwc] = useState(3000);
   const [economicModel, setEconomicModel] = useState('vente_totale'); // 'vente_totale' | 'autoconsommation' | 'autoconsommation_stockage'
   const [tarifEdfOa, setTarifEdfOa] = useState(0.085);
   const [targetLimit, setTargetLimit] = useState(10); // 10, 30, 50, 100, 'Tout'
@@ -615,11 +615,11 @@ export default function AutomaticProspectingModal({
                     Mode Headless
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                    100 à 500 kWc
+                    100 à 3 000 kWc+
                   </span>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5">
-                  Détection cadastrale IGN &amp; OSM (toitures de 500 à 2 500 m²), calepinage 465 Wc, tarification EDF OA et export PDF.
+                  Détection cadastrale IGN &amp; OSM (toitures de 400 à 50 000 m²), calepinage 465 Wc, tarification EDF OA et export PDF.
                 </p>
               </div>
             </div>
@@ -1051,8 +1051,8 @@ export default function AutomaticProspectingModal({
                         }}
                         onBlur={() => {
                           if (maxTargetKwc === '' || isNaN(Number(maxTargetKwc)) || Number(maxTargetKwc) < 1) {
-                            setMaxTargetKwc(500);
-                            setMaxArea(Math.round((500 * 1000 / 465) * 2.05 * 1.6));
+                            setMaxTargetKwc(3000);
+                            setMaxArea(50000);
                           }
                         }}
                         className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center"

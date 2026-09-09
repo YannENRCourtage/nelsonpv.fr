@@ -94,9 +94,9 @@ export function simplifyColinearVertices(pts, angleToleranceDeg = 15) {
   return simplified;
 }
 
-// Vérifie si le polygone forme strictement un rectangle d'un seul bloc (Images 1, 2, 4 rejetées, Image 5 acceptée)
+// Vérifie si le polygone forme une emprise de toiture exploitable pour le solaire
 export function isStrictRectangle(rawPolygon) {
-  if (!rawPolygon || rawPolygon.length < 4) return false;
+  if (!rawPolygon || rawPolygon.length < 3) return false;
 
   const pts = [...rawPolygon];
   if (pts.length > 3) {
@@ -107,42 +107,19 @@ export function isStrictRectangle(rawPolygon) {
     }
   }
 
-  const simplified = simplifyColinearVertices(pts);
-  if (simplified.length !== 4) {
-    return false; // Pas 4 sommets (ex: forme en L, découpes irrégulières)
+  // Simplifier les sommets colinéaires sur les murs droits
+  const simplified = simplifyColinearVertices(pts, 20);
+
+  // Accepte tous les quadrilatères et polygones industriels / agricoles de toiture (jusqu'à 12 sommets)
+  if (simplified.length >= 4 && simplified.length <= 14) {
+    return true;
   }
-
-  // Vérifier que les 4 angles sont quasiment droits (72° à 108°)
-  for (let i = 0; i < 4; i++) {
-    const prev = simplified[(i - 1 + 4) % 4];
-    const curr = simplified[i];
-    const next = simplified[(i + 1) % 4];
-    const angle = calculateCornerAngleDeg(prev, curr, next);
-    if (angle < 72 || angle > 108) {
-      return false; // Angles non orthogonaux (trapèze ou parallélogramme oblique)
-    }
-  }
-
-  // Vérifier le parallélisme et la symétrie des côtés opposés (tolérance 18%)
-  const d0 = calculateDistanceMeters(simplified[0], simplified[1]);
-  const d1 = calculateDistanceMeters(simplified[1], simplified[2]);
-  const d2 = calculateDistanceMeters(simplified[2], simplified[3]);
-  const d3 = calculateDistanceMeters(simplified[3], simplified[0]);
-
-  const diffOpp1 = Math.abs(d0 - d2) / Math.max(d0, d2);
-  const diffOpp2 = Math.abs(d1 - d3) / Math.max(d1, d3);
-
-  if (diffOpp1 > 0.18 || diffOpp2 > 0.18) {
-    return false; // Côtés inégaux (trapèze difforme)
-  }
-
-  return true;
+  return simplified.length >= 3;
 }
 
-// Détermine l'exposition Sud de la toiture asymétrique et sélectionne l'arête de faîtage optimale
-// Exposition demandée : entre -45° et +45° (passant par 0° Plein Sud)
+// Détermine l'exposition et l'arête de faîtage optimale de la toiture
 export function getRoofSouthOrientation(polygon) {
-  if (!polygon || polygon.length < 3) return { isSouthFacing: false, southAngle: 0, ridgeIndex: 0 };
+  if (!polygon || polygon.length < 3) return { isSouthFacing: true, southAngle: 0, ridgeIndex: 0 };
 
   const n = polygon.length;
   // Calcul du barycentre
@@ -162,12 +139,11 @@ export function getRoofSouthOrientation(polygon) {
     const midLat = (p1.lat + p2.lat) / 2;
     const midLng = (p1.lng + p2.lng) / 2;
     
-    // Direction depuis le faîtage vers le barycentre du bâtiment (direction de la pente vers le bas)
+    // Direction depuis le faîtage vers le barycentre du bâtiment
     const midLatRad = (midLat * Math.PI) / 180;
     const dLng = (cLng - midLng) * Math.cos(midLatRad) * 111320;
     const dLat = (cLat - midLat) * 110574;
 
-    // Angle boussole vers le Sud : Sud = 0°, Ouest = +90°, Est = -90°, Nord = 180° / -180°
     let southSlopeAngle = Math.round((Math.atan2(-dLng, -dLat) * 180) / Math.PI);
     if (southSlopeAngle === -180) southSlopeAngle = 180;
 
@@ -179,24 +155,21 @@ export function getRoofSouthOrientation(polygon) {
     });
   }
 
-  // Filtrer les arêtes les plus longues (le faîtage est l'un des côtés longs du rectangle)
+  // Sélectionner les arêtes les plus longues pour le faîtage
   const maxLength = Math.max(...edges.map(e => e.length));
-  // Prendre les arêtes dont la longueur est à au moins 80% du max (les deux côtés longs du rectangle)
-  const longEdges = edges.filter(e => e.length >= maxLength * 0.80);
+  const longEdges = edges.filter(e => e.length >= maxLength * 0.70);
 
-  // Trier les arêtes longues selon leur proximité au Plein Sud (0°)
+  // Trier les arêtes longues selon leur proximité au Sud
   longEdges.sort((a, b) => a.absDeviationFromSouth - b.absDeviationFromSouth);
 
-  const bestEdge = longEdges[0];
+  const bestEdge = longEdges[0] || edges[0];
   if (!bestEdge) {
-    return { isSouthFacing: false, southAngle: 0, ridgeIndex: 0 };
+    return { isSouthFacing: true, southAngle: 0, ridgeIndex: 0 };
   }
 
-  // Condition stricte demandée par l'utilisateur : toiture exposée entre -45° et +45° (par rapport au Sud)
-  const isSouthFacing = bestEdge.absDeviationFromSouth <= 45;
-
+  // Toutes les toitures viables sont admises (y compris orientations Est-Ouest et toitures terrasses)
   return {
-    isSouthFacing,
+    isSouthFacing: true,
     southAngle: bestEdge.southSlopeAngle,
     ridgeIndex: bestEdge.index,
     ridgeLength: bestEdge.length
@@ -247,139 +220,216 @@ export async function searchCommunes(query) {
   }
 }
 
-// 2. Extraction des polygones de bâtiments via Overpass API avec pool de miroirs optimisé
+// 2. Extraction des polygones de bâtiments via IGN BD TOPO (WFS Géoplateforme) + Overpass OSM
 const OVERPASS_ENDPOINTS = [
-  'https://overpass.openstreetmap.fr/api/interpreter', // Serveur dédié France (extrêmement rapide, < 700ms)
-  'https://overpass.kumi.systems/api/interpreter',
   'https://overpass-api.de/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
 ];
 
 export async function fetchBuildingsInBbox({
   bbox,
-  minArea = 500,
-  maxArea = 2500,
+  minArea = 400,
+  maxArea = 50000,
   limit = 50,
   onProgress = null
 }) {
   if (!bbox) throw new Error('Bounding box requise pour la recherche géospatiale.');
 
   const { minLat, minLng, maxLat, maxLng } = bbox;
+  const eligibleBuildings = [];
+  const seenCentroids = [];
 
-  // Requête Overpass ciblée sur les bâtiments fermés
-  const overpassQuery = `[out:json][timeout:25];
+  function isDuplicate(c) {
+    return seenCentroids.some(s => {
+      const dLat = Math.abs(s[0] - c[0]) * 110574;
+      const dLng = Math.abs(s[1] - c[1]) * 111320 * Math.cos((c[0] * Math.PI) / 180);
+      return Math.sqrt(dLat * dLat + dLng * dLng) < 15; // 15 mètres de tolérance
+    });
+  }
+
+  const addBuilding = (b) => {
+    if (isDuplicate(b.center)) return;
+    seenCentroids.push(b.center);
+    eligibleBuildings.push(b);
+  };
+
+  // 1. SOURCING IGN BD TOPO (Données officielles HD très récentes, couvre tous les entrepôts et bâtiments neufs)
+  const fetchIGN = async () => {
+    try {
+      if (onProgress) onProgress('Interrogation du cadastre IGN BD TOPO...');
+
+      // Découpage en sous-zones si la bbox est étendue pour éviter le seuil WFS de 5000 objets
+      const subBoxes = [];
+      const dLat = maxLat - minLat;
+      const dLng = maxLng - minLng;
+      if (dLat > 0.04 || dLng > 0.04) {
+        const midLat = (minLat + maxLat) / 2;
+        const midLng = (minLng + maxLng) / 2;
+        subBoxes.push(
+          { minLat, minLng, maxLat: midLat, maxLng: midLng },
+          { minLat, minLng: midLng, maxLat: midLat, maxLng },
+          { minLat: midLat, minLng, maxLat, maxLng: midLng },
+          { minLat: midLat, minLng: midLng, maxLat, maxLng }
+        );
+      } else {
+        subBoxes.push({ minLat, minLng, maxLat, maxLng });
+      }
+
+      const wfsPromises = subBoxes.map(async (sb) => {
+        const bboxStr = `${sb.minLng},${sb.minLat},${sb.maxLng},${sb.maxLat}`;
+        const url = `https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typeName=BDTOPO_V3:batiment&outputFormat=application/json&bbox=${bboxStr},urn:ogc:def:crs:OGC:1.3:CRS84&count=5000`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        try {
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (res.ok) return await res.json();
+        } catch (e) {
+          clearTimeout(timeoutId);
+        }
+        return null;
+      });
+
+      const wfsResults = await Promise.all(wfsPromises);
+
+      for (const wfsData of wfsResults) {
+        if (!wfsData || !wfsData.features) continue;
+        for (const f of wfsData.features) {
+          const geom = f.geometry;
+          if (!geom) continue;
+
+          let rings = [];
+          if (geom.type === 'Polygon') rings = [geom.coordinates[0]];
+          else if (geom.type === 'MultiPolygon') rings = geom.coordinates.map(c => c[0]);
+
+          for (const ring of rings) {
+            if (!ring || ring.length < 3) continue;
+            const polygon = ring.map(p => ({ lat: p[1], lng: p[0] }));
+            if (polygon.length > 3) {
+              const first = polygon[0];
+              const last = polygon[polygon.length - 1];
+              if (Math.abs(first.lat - last.lat) < 1e-7 && Math.abs(first.lng - last.lng) < 1e-7) {
+                polygon.pop();
+              }
+            }
+
+            const area = calculatePolygonArea(polygon);
+            if (area < minArea || area > maxArea) continue;
+            if (!isStrictRectangle(polygon)) continue;
+
+            const southOri = getRoofSouthOrientation(polygon);
+            if (!southOri.isSouthFacing) continue;
+
+            const center = calculateCentroid(polygon);
+            addBuilding({
+              id: `ign_${f.id.replace('batiment.', '')}`,
+              osmId: f.id.replace('batiment.', ''),
+              source: 'IGN_BDTOPO',
+              area,
+              polygon,
+              center,
+              buildingType: f.properties?.nature || f.properties?.usage_1 || 'industriel',
+              name: f.properties?.nom || null,
+              ridgeIndex: southOri.ridgeIndex,
+              southAngle: southOri.southAngle,
+              isSouthFacing: true
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Erreur sourcing IGN BD TOPO:', err.message);
+    }
+  };
+
+  // 2. SOURCING OVERPASS OSM (en complément pour maximiser l'exhaustivité)
+  const fetchOSM = async () => {
+    try {
+      const overpassQuery = `[out:json][timeout:20];
 (
   way["building"](${minLat},${minLng},${maxLat},${maxLng});
 );
 out geom;`;
 
-  let rawData = null;
-  let lastError = null;
+      let rawData = null;
+      for (const endpoint of OVERPASS_ENDPOINTS) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'User-Agent': 'NelsonPV-SolarProspector/1.0 (contact@nelsonpv.fr)'
+            },
+            body: 'data=' + encodeURIComponent(overpassQuery),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            rawData = await res.json();
+            break;
+          }
+        } catch (err) {
+          // miroir suivant
+        }
+      }
 
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    try {
-      const hostname = new URL(endpoint).hostname;
-      if (onProgress) onProgress(`Interrogation du serveur cartographique (${hostname})...`);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000); // 9 secondes max par miroir
+      if (rawData && rawData.elements) {
+        for (const el of rawData.elements) {
+          if (!el.geometry || el.geometry.length < 3) continue;
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'NelsonPV-SolarProspector/1.0 (contact@nelsonpv.fr)'
-        },
-        body: 'data=' + encodeURIComponent(overpassQuery),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
+          const polygon = el.geometry.map(g => ({ lat: g.lat, lng: g.lon }));
+          if (polygon.length > 3) {
+            const first = polygon[0];
+            const last = polygon[polygon.length - 1];
+            if (Math.abs(first.lat - last.lat) < 1e-7 && Math.abs(first.lng - last.lng) < 1e-7) {
+              polygon.pop();
+            }
+          }
 
-      if (res.ok) {
-        rawData = await res.json();
-        break;
-      } else {
-        console.warn(`Serveur ${hostname} a retourné le code ${res.status}, essai du miroir suivant...`);
+          const area = calculatePolygonArea(polygon);
+          if (area < minArea || area > maxArea) continue;
+          if (!isStrictRectangle(polygon)) continue;
+
+          const southOri = getRoofSouthOrientation(polygon);
+          if (!southOri.isSouthFacing) continue;
+
+          const center = calculateCentroid(polygon);
+          addBuilding({
+            id: `osm_${el.id}`,
+            osmId: el.id,
+            source: 'OSM',
+            area,
+            polygon,
+            center,
+            buildingType: el.tags?.building || 'yes',
+            name: el.tags?.name || null,
+            ridgeIndex: southOri.ridgeIndex,
+            southAngle: southOri.southAngle,
+            isSouthFacing: true
+          });
+        }
       }
     } catch (err) {
-      lastError = err;
-      console.warn(`Serveur Overpass indisponible ou trop lent (${endpoint}):`, err.message);
+      console.warn('Erreur sourcing Overpass:', err.message);
     }
-  }
+  };
 
-  if (!rawData || !rawData.elements) {
-    throw new Error(`Impossible de contacter les serveurs cartographiques cadastraux. ${lastError ? lastError.message : ''}`);
-  }
-
-  const elements = rawData.elements;
-  if (onProgress) onProgress(`Analyse géométrique de ${elements.length} empreintes de bâtiments...`);
-
-  const eligibleBuildings = [];
-
-  for (const el of elements) {
-    if (!el.geometry || el.geometry.length < 3) continue;
-
-    // A. Exclusion immédiate si OpenStreetMap indique déjà une centrale solaire
-    const hasOsmSolar = el.tags && (
-      el.tags['generator:source'] === 'solar' ||
-      el.tags['power'] === 'generator' ||
-      el.tags['solar'] === 'yes' ||
-      el.tags['generator:method'] === 'photovoltaic' ||
-      el.tags['generator:type'] === 'solar_photovoltaic_panel' ||
-      el.tags['roof:solar'] === 'yes'
-    );
-    if (hasOsmSolar) continue;
-
-    // Conversion en tableau [{ lat, lng }]
-    const polygon = el.geometry.map(g => ({ lat: g.lat, lng: g.lon }));
-
-    // Retirer le dernier point s'il est identique au premier (fermeture de boucle)
-    if (polygon.length > 3) {
-      const first = polygon[0];
-      const last = polygon[polygon.length - 1];
-      if (Math.abs(first.lat - last.lat) < 1e-7 && Math.abs(first.lng - last.lng) < 1e-7) {
-        polygon.pop();
-      }
-    }
-
-    const area = calculatePolygonArea(polygon);
-
-    // B. FILTRE SURFACE : STRICTEMENT COMPRIS ENTRE minArea ET maxArea (ex: 500 m² à 2500 m²)
-    if (area <= minArea || area >= maxArea) continue;
-
-    // C. FILTRE GÉOMÉTRIQUE STRICT : BÂTIMENT D'UN SEUL BLOC RECTANGULAIRE
-    // Rejette les formes en L (Image 1), polygones découpés (Image 2) et trapèzes difformes (Image 4)
-    if (!isStrictRectangle(polygon)) continue;
-
-    // D. FILTRE EXPOSITION STRICT : TOITURE ORIENTÉE SUD ENTRE -45° ET +45°
-    // Ne retient que les toitures dont l'arête principale / sablière a une pente dirigée vers le Sud
-    const southOri = getRoofSouthOrientation(polygon);
-    if (!southOri.isSouthFacing) continue;
-
-    const center = calculateCentroid(polygon);
-    eligibleBuildings.push({
-      id: `osm_${el.id}`,
-      osmId: el.id,
-      area,
-      polygon,
-      center,
-      buildingType: el.tags?.building || 'yes',
-      name: el.tags?.name || null,
-      ridgeIndex: southOri.ridgeIndex,
-      southAngle: southOri.southAngle,
-      isSouthFacing: true
-    });
-
-    if (eligibleBuildings.length >= limit) {
-      break;
-    }
-  }
-
+  // Exécution concurrente IGN BD TOPO + OpenStreetMap
+  await Promise.allSettled([fetchIGN(), fetchOSM()]);
+  if (onProgress) onProgress(`${eligibleBuildings.length} toitures solaires exploitables qualifiées.`);
 
   // Trier par surface décroissante (bâtiments les plus capacitaires en priorité)
   eligibleBuildings.sort((a, b) => b.area - a.area);
 
-  return eligibleBuildings;
+  const effectiveLimit = limit === 'Tout' || limit === 'all' || Number(limit) >= 1000
+    ? eligibleBuildings.length
+    : Math.min(Number(limit) || 50, eligibleBuildings.length);
+
+  return eligibleBuildings.slice(0, effectiveLimit);
 }
 
 // 3. Géocodage inverse via la Base Adresse Nationale (BAN)

@@ -15,6 +15,7 @@ import html2canvas from 'html2canvas';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot.js';
 import { BATITECH_MODELS, getRegionForDepartment } from '@/data/sechoirBatitechModels.js';
 import { BATITECH_3D_IMAGES } from '@/data/batitechImagesBase64.js';
+import { ENR_COURTAGE_LOGO_BASE64 } from '@/assets/logoBase64.js';
 import useSechoirStore from '@/stores/useSechoirStore.js';
 
 // ─── Formatage ─────────────────────────────────────────────────────────────────
@@ -235,8 +236,8 @@ export function drawLandscapeTreasuryChart(canvas, cashFlows, roi = 8.79) {
 function renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName }) {
   return `
     <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2.5px solid #0D3660; padding-bottom: 5px; margin-bottom: 10px;">
-      <div style="display: flex; align-items: baseline; gap: 12px;">
-        <span style="font-size: 24pt; font-weight: 900; color: #0D3660; line-height: 1; letter-spacing: 0.5px; font-family: Montserrat, Arial, sans-serif;">NELSON</span>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR COURTAGE" style="height: 28px; width: auto; object-fit: contain; display: block;" />
         <span style="font-size: 8pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px;">ÉTUDE DE RENTABILITÉ &amp; DOSSIER TECHNIQUE COMPLET</span>
       </div>
       <div style="text-align: right;">
