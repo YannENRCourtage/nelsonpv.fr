@@ -5,7 +5,7 @@ import {
   FileText, CheckCircle2, AlertCircle, Loader2, Play, Square,
   RotateCcw, SlidersHorizontal, HardDrive, Compass, Euro,
   Download, Archive, X, ShieldCheck, Warehouse, ExternalLink,
-  ChevronRight, Wheat, Check, Filter
+  ChevronRight, Wheat, Check, Filter, Building2
 } from 'lucide-react';
 
 import {
@@ -82,6 +82,7 @@ export default function AutomaticSechoirProspectingModal({
   const [targetRoi, setTargetRoi] = useState(15.0); // ROI STRICTEMENT < 15 ans
   const [targetLimit, setTargetLimit] = useState(10); // 10, 25, 50, 'Tout'
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selectedBuildingModel, setSelectedBuildingModel] = useState('auto'); // 'auto' | 'BT-3.1.15' | 'BT-6.2.15' | 'BT-8.3.15'
 
   // Dossier local d'exportation
   const isFirefoxBrowser = typeof window !== 'undefined' && !window.showDirectoryPicker;
@@ -219,6 +220,121 @@ export default function AutomaticSechoirProspectingModal({
     setLogs([]);
   };
 
+  // ═══ RECALCUL INSTANTANÉ PAR MODIFICATION DU TYPE DE BÂTIMENT ═══════════════
+  const recalculateSimulations = useCallback((modelId) => {
+    const sourceFarms = detectedFarms.length > 0
+      ? detectedFarms
+      : processedResults.map((p) => ({
+          pacage: p.pacage,
+          addressLabel: p.addressLabel,
+          city: p.commune,
+          postalCode: p.codePostal,
+          centroid: p.coords,
+          totalAreaHa: p.totalAreaHa,
+          cropsSummary: p.cropsSummary,
+          streamsAreaHa: p.streamsAreaHa,
+          streamTonnages: p.streamTonnages,
+          totalDryTonnage: p.totalDryTonnage,
+        }));
+
+    if (sourceFarms.length === 0) return;
+
+    const deptCode = geoMode === 'commune'
+      ? selectedCommune?.departmentCode || '40'
+      : selectedDeptCode;
+
+    appendLog(`🔄 Recalcul instantané avec le type de bâtiment : ${modelId === 'auto' ? 'Auto (Optimal)' : modelId}...`);
+
+    const updated = [];
+    const effectiveLimit = targetLimit === 'Tout' ? sourceFarms.length : Number(targetLimit);
+
+    for (let idx = 0; idx < sourceFarms.length; idx++) {
+      if (updated.length >= effectiveLimit) break;
+      const farm = sourceFarms[idx];
+
+      // Vérifier si le prospect avait déjà un candidateMap pour bascule immédiate en 0ms
+      const existing = processedResults.find((p) => p.pacage === farm.pacage);
+      if (existing?.candidateMap && modelId !== 'auto' && existing.candidateMap[modelId]) {
+        const cand = existing.candidateMap[modelId];
+        if (cand.roi < targetRoi) {
+          updated.push({
+            ...existing,
+            bestModelId: cand.modelId,
+            model: cand.model,
+            materials: cand.materials,
+            simulation: cand.sim,
+            totalDryingVolumeUsed: cand.totalDryingVolume,
+            filename: `Offre_Etude_Sechoir_BatiTech_${cand.modelId}_PACAGE_${farm.pacage}.pdf`
+          });
+          continue;
+        }
+      }
+
+      // Simulation headless avec le modèle forcé
+      const prospect = simulateFarmHeadless({
+        farm,
+        departement: deptCode,
+        targetRoi: Number(targetRoi),
+        priorityStreams: selectedStreams,
+        customFinancialParams: {},
+        forcedModelId: modelId
+      });
+
+      if (prospect) {
+        updated.push(prospect);
+      }
+    }
+
+    setProcessedResults(updated);
+    setCurrentStepText(`Modèle appliqué : ${modelId === 'auto' ? 'Auto (Optimal)' : modelId} — ${updated.length} exploitations rentables (ROI < ${targetRoi} ans).`);
+    appendLog(`✅ Recalcul terminé : ${updated.length} exploitations rentables pour ce type de bâtiment.`);
+  }, [detectedFarms, processedResults, geoMode, selectedCommune, selectedDeptCode, targetLimit, targetRoi, selectedStreams, appendLog]);
+
+  // Gestionnaire de changement global du modèle de bâtiment
+  const handleBuildingModelChange = (modelId) => {
+    setSelectedBuildingModel(modelId);
+    if (detectedFarms.length > 0 || processedResults.length > 0) {
+      recalculateSimulations(modelId);
+    }
+  };
+
+  // Gestionnaire de changement du modèle pour une exploitation individuelle
+  const handleSwitchFarmModel = (pacage, modelId) => {
+    setProcessedResults((prev) =>
+      prev.map((item) => {
+        if (item.pacage !== pacage) return item;
+        if (modelId === 'auto') {
+          const bestCand = item.allCandidates?.[0];
+          if (!bestCand || !item.candidateMap?.[bestCand.modelId]) return item;
+          const c = item.candidateMap[bestCand.modelId];
+          return {
+            ...item,
+            bestModelId: c.modelId,
+            model: c.model,
+            materials: c.materials,
+            simulation: c.sim,
+            totalDryingVolumeUsed: c.totalDryingVolume,
+            filename: `Offre_Etude_Sechoir_BatiTech_${c.modelId}_PACAGE_${item.pacage}.pdf`
+          };
+        }
+        if (item.candidateMap?.[modelId]) {
+          const c = item.candidateMap[modelId];
+          return {
+            ...item,
+            bestModelId: c.modelId,
+            model: c.model,
+            materials: c.materials,
+            simulation: c.sim,
+            totalDryingVolumeUsed: c.totalDryingVolume,
+            filename: `Offre_Etude_Sechoir_BatiTech_${c.modelId}_PACAGE_${item.pacage}.pdf`
+          };
+        }
+        return item;
+      })
+    );
+    appendLog(`🔄 Exploitation PACAGE ${pacage} : modèle basculé sur ${modelId}`);
+  };
+
   // ═══ ALGORITHME PRINCIPAL DE PROSPECTION SÉCHOIRS BATITECH ═══════════════════
   const handleStartProspecting = async () => {
     abortControllerRef.current = false;
@@ -337,7 +453,8 @@ export default function AutomaticSechoirProspectingModal({
           departement: deptCode,
           targetRoi: Number(targetRoi),
           priorityStreams: selectedStreams,
-          customFinancialParams: {}
+          customFinancialParams: {},
+          forcedModelId: selectedBuildingModel
         });
 
         // Contrôle strict du critère éliminatoire (ROI < 15 ans)
@@ -501,13 +618,13 @@ export default function AutomaticSechoirProspectingModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-x-0 top-[50px] bottom-0 z-[9990] flex items-center justify-center p-2 sm:p-3.5 bg-black/85 backdrop-blur-md overflow-hidden">
       <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.96 }}
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 10 }}
         transition={{ duration: 0.2 }}
-        className="w-full max-w-7xl h-[92vh] max-h-[920px] bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-100"
+        className="relative w-[98vw] max-w-[1720px] 2xl:max-w-[2050px] h-[calc(100vh-70px)] max-h-[calc(100vh-70px)] bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-100"
       >
         {/* ═══ 1. EN-TÊTE MODALE ════════════════════════════════════════════════ */}
         <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/40 border-b border-slate-800 flex items-center justify-between shrink-0">
@@ -670,7 +787,56 @@ export default function AutomaticSechoirProspectingModal({
               )}
             </div>
 
-            {/* 2. Filières de Séchage Valorisables */}
+            {/* 2. SÉLECTEUR DE TYPE DE BÂTIMENT BATITECH */}
+            <div className="space-y-1.5 p-3 rounded-2xl bg-slate-950/80 border border-slate-800">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Warehouse className="w-3.5 h-3.5 text-amber-400" />
+                  Type de Bâtiment BatiTech®
+                </label>
+                {(detectedFarms.length > 0 || processedResults.length > 0) && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Recalcul immédiat
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { id: 'auto', label: '🌟 Auto (Optimal)', sub: 'Meilleur ROI / VAN' },
+                  { id: 'BT-3.1.15', label: 'BT-3.1.15 (30 kWc)', sub: '90 mod. • 18×20m' },
+                  { id: 'BT-6.2.15', label: 'BT-6.2.15 (63 kWc)', sub: '189 mod. • 36×20m' },
+                  { id: 'BT-8.3.15', label: 'BT-8.3.15 (94 kWc)', sub: '280 mod. • 48×20m' },
+                ].map((bld) => {
+                  const isSelected = selectedBuildingModel === bld.id;
+                  return (
+                    <button
+                      key={bld.id}
+                      type="button"
+                      onClick={() => handleBuildingModelChange(bld.id)}
+                      className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-amber-500/25 to-orange-500/25 border-amber-500/60 text-amber-200 shadow-sm'
+                          : 'bg-slate-900/80 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="font-bold text-[11px] truncate flex items-center justify-between">
+                        <span>{bld.label}</span>
+                        {isSelected && <CheckCircle2 className="w-3 h-3 text-amber-400 shrink-0" />}
+                      </div>
+                      <div className={`text-[9px] mt-0.5 truncate ${isSelected ? 'text-amber-300 font-medium' : 'text-slate-500'}`}>
+                        {bld.sub}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[9.5px] text-slate-500 leading-tight">
+                Changez le type de bâtiment à tout moment pour recalculer instantanément les résultats.
+              </p>
+            </div>
+
+            {/* 3. Filières de Séchage Valorisables */}
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
@@ -947,6 +1113,42 @@ export default function AutomaticSechoirProspectingModal({
               )}
             </div>
 
+            {/* BARRE DE CHANGEMENT RAPIDE DE TYPE DE BÂTIMENT */}
+            {processedResults.length > 0 && rightPanelTab === 'results' && (
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-slate-950/90 rounded-2xl border border-slate-800 shrink-0">
+                <div className="flex items-center gap-2 text-xs flex-wrap">
+                  <span className="font-bold text-slate-300 flex items-center gap-1 shrink-0">
+                    <Building2 className="w-3.5 h-3.5 text-amber-400" />
+                    Type de Bâtiment :
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { id: 'auto', label: 'Auto (Optimal)' },
+                      { id: 'BT-3.1.15', label: 'BT-3.1.15 (30 kWc)' },
+                      { id: 'BT-6.2.15', label: 'BT-6.2.15 (63 kWc)' },
+                      { id: 'BT-8.3.15', label: 'BT-8.3.15 (94 kWc)' },
+                    ].map((bld) => (
+                      <button
+                        key={bld.id}
+                        type="button"
+                        onClick={() => handleBuildingModelChange(bld.id)}
+                        className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
+                          selectedBuildingModel === bld.id
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-sm scale-105'
+                            : 'bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-white hover:bg-slate-800'
+                        }`}
+                      >
+                        {bld.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <span className="text-[10px] text-amber-400/90 font-semibold hidden md:inline">
+                  ⚡ Recalcul instantané de toutes les exploitations
+                </span>
+              </div>
+            )}
+
             {/* 4. CONTENU DE L'ONGLET SÉLECTIONNÉ */}
             <div className="flex-1 min-h-0 bg-slate-950 rounded-2xl border border-slate-800/80 overflow-hidden flex flex-col">
 
@@ -983,10 +1185,31 @@ export default function AutomaticSechoirProspectingModal({
                             </div>
 
                             <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
-                              {/* Badge modèle */}
-                              <span className="px-1.5 py-0.5 text-[9.5px] font-black rounded border bg-amber-500/20 text-amber-300 border-amber-500/40">
-                                🏗️ {item.bestModelId} ({item.model?.puissanceKwc} kWc)
-                              </span>
+                              {/* Sélecteur direct de modèle sur la carte */}
+                              <div className="flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded-lg border border-slate-700/80">
+                                <span className="text-[9px] font-bold text-slate-400">Modèle :</span>
+                                {['BT-3.1.15', 'BT-6.2.15', 'BT-8.3.15'].map((mId) => (
+                                  <button
+                                    key={mId}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSwitchFarmModel(item.pacage, mId);
+                                    }}
+                                    className={`px-1.5 py-0.5 rounded text-[8.5px] font-black transition-all cursor-pointer ${
+                                      item.bestModelId === mId
+                                        ? 'bg-amber-500 text-black shadow-xs scale-105'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                    }`}
+                                    title={`Simuler avec le modèle ${mId}`}
+                                  >
+                                    {mId.replace('BT-', '')}
+                                  </button>
+                                ))}
+                                <span className="text-[9px] font-bold text-amber-300 ml-0.5">
+                                  ({item.model?.puissanceKwc} kWc)
+                                </span>
+                              </div>
 
                               {/* Badge ROI strict */}
                               <span className="px-1.5 py-0.5 text-[9.5px] font-black rounded border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">

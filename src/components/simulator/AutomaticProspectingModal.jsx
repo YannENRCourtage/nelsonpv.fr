@@ -902,33 +902,63 @@ export default function AutomaticProspectingModal({
                   </span>
                   <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-md border ${
                     economicModel === 'vente_totale'
-                      ? 'text-blue-700 bg-blue-100/80 border-blue-300'
+                      ? ((Number(maxTargetKwc) > 0 && Number(maxTargetKwc) <= 100) || (Number(minTargetKwc) < 100 && (!maxTargetKwc || Number(maxTargetKwc) <= 100)))
+                        ? 'text-red-700 bg-red-100 border-red-300'
+                        : 'text-blue-700 bg-blue-100/80 border-blue-300'
                       : economicModel === 'autoconsommation_stockage'
                       ? 'text-purple-700 bg-purple-100/80 border-purple-300'
                       : 'text-emerald-700 bg-emerald-100/80 border-emerald-300'
                   }`}>
-                    {economicModel === 'vente_totale' ? 'Vente Totale 100%' : economicModel === 'autoconsommation_stockage' ? 'Autoconso + Stockage' : 'Autoconso + Surplus'}
+                    {economicModel === 'vente_totale'
+                      ? ((Number(maxTargetKwc) > 0 && Number(maxTargetKwc) <= 100) || (Number(minTargetKwc) < 100 && (!maxTargetKwc || Number(maxTargetKwc) <= 100)))
+                        ? 'Vente Totale (Déconseillé < 100 kWc)'
+                        : 'Vente Totale 100%'
+                      : economicModel === 'autoconsommation_stockage'
+                      ? 'Autoconso + Stockage'
+                      : 'Autoconso + Surplus'}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setEconomicModel('vente_totale')}
-                    className={`p-1.5 rounded-xl text-left transition-all border cursor-pointer ${
-                      economicModel === 'vente_totale'
-                        ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-sm ring-1 ring-blue-400'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="font-black text-[10px]">Revente totale</div>
-                      {economicModel === 'vente_totale' && <CheckCircle2 className="w-3 h-3 text-blue-400 shrink-0" />}
-                    </div>
-                    <div className={`text-[8.5px] mt-0.5 leading-tight ${economicModel === 'vente_totale' ? 'text-blue-200 font-medium' : 'text-slate-500'}`}>
-                      100% à {tarifEdfOa} €/kWh
-                    </div>
-                  </button>
+                  {(() => {
+                    const isUnder100Kwc = (Number(maxTargetKwc) > 0 && Number(maxTargetKwc) <= 100) ||
+                                          (Number(minTargetKwc) < 100 && (!maxTargetKwc || Number(maxTargetKwc) <= 100));
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setEconomicModel('vente_totale')}
+                        className={`p-1.5 rounded-xl text-left transition-all border cursor-pointer ${
+                          isUnder100Kwc
+                            ? economicModel === 'vente_totale'
+                              ? 'bg-red-600 text-white border-red-700 shadow-md ring-2 ring-red-400'
+                              : 'bg-red-500/15 text-red-900 border-red-300 hover:bg-red-500/25 ring-1 ring-red-200'
+                            : economicModel === 'vente_totale'
+                            ? 'bg-[#0e2b4d] text-white border-slate-900 shadow-sm ring-1 ring-blue-400'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="font-black text-[10px]">Revente totale</div>
+                          {isUnder100Kwc ? (
+                            <span className={`text-[7.5px] font-black uppercase px-1 py-0.5 rounded ${
+                              economicModel === 'vente_totale' ? 'bg-white text-red-700' : 'bg-red-600 text-white'
+                            }`}>
+                              Déconseillé
+                            </span>
+                          ) : (
+                            economicModel === 'vente_totale' && <CheckCircle2 className="w-3 h-3 text-blue-400 shrink-0" />
+                          )}
+                        </div>
+                        <div className={`text-[8.5px] mt-0.5 leading-tight ${
+                          economicModel === 'vente_totale'
+                            ? isUnder100Kwc ? 'text-red-100 font-bold' : 'text-blue-200 font-medium'
+                            : isUnder100Kwc ? 'text-red-700 font-bold' : 'text-slate-500'
+                        }`}>
+                          {isUnder100Kwc ? '⚠️ Déconseillé (< 100 kWc)' : `100% à ${tarifEdfOa} €/kWh`}
+                        </div>
+                      </button>
+                    );
+                  })()}
 
                   <button
                     type="button"

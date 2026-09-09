@@ -49,7 +49,8 @@ export function simulateFarmHeadless({
   departement = '33',
   targetRoi = 15.0,
   priorityStreams = null,
-  customFinancialParams = {}
+  customFinancialParams = {},
+  forcedModelId = 'auto'
 }) {
   if (!farm || !farm.streamTonnages) return null;
 
@@ -65,6 +66,7 @@ export function simulateFarmHeadless({
   };
 
   const candidateResults = [];
+  const candidateMap = {};
 
   for (const modelId of CANDIDATE_MODEL_IDS) {
     const model = BATITECH_MODELS[modelId];
@@ -112,7 +114,7 @@ export function simulateFarmHeadless({
 
     // CRITÈRE STRICT : ROI < targetRoi (ex: strictement < 15.0 ans)
     if (sim.roi < targetRoi) {
-      candidateResults.push({
+      const cand = {
         modelId,
         model,
         sim,
@@ -121,7 +123,9 @@ export function simulateFarmHeadless({
         roi: sim.roi,
         van: sim.van || 0,
         gainNetAnnuel: sim.gainNetAnnuel || 0
-      });
+      };
+      candidateResults.push(cand);
+      candidateMap[modelId] = cand;
     }
   }
 
@@ -130,18 +134,21 @@ export function simulateFarmHeadless({
     return null;
   }
 
-  // SÉLECTION DU MODÈLE OPTIMAL :
-  // On privilégie le modèle qui maximise la Valeur Actuelle Nette (VAN)
-  // tout en valorisant au maximum les volumes agricoles de l'exploitation.
-  candidateResults.sort((a, b) => {
-    // Si la VAN est proche, préférer le modèle avec le meilleur gain net annuel
-    if (Math.abs(b.van - a.van) < 5000) {
-      return b.gainNetAnnuel - a.gainNetAnnuel;
-    }
-    return b.van - a.van;
-  });
-
-  const best = candidateResults[0];
+  // SÉLECTION DU MODÈLE :
+  // Si un modèle spécifique est forcé par l'utilisateur (ex: BT-6.2.15) et qu'il est éligible, on le sélectionne
+  let best = null;
+  if (forcedModelId && forcedModelId !== 'auto' && candidateMap[forcedModelId]) {
+    best = candidateMap[forcedModelId];
+  } else {
+    // Sinon sélection optimale : modèle maximisant la Valeur Actuelle Nette (VAN)
+    candidateResults.sort((a, b) => {
+      if (Math.abs(b.van - a.van) < 5000) {
+        return b.gainNetAnnuel - a.gainNetAnnuel;
+      }
+      return b.van - a.van;
+    });
+    best = candidateResults[0];
+  }
 
   const addressLabel = farm.addressLabel || `Exploitation Agricole PACAGE ${farm.pacage}`;
   const communeName = farm.city || farm.commune || '';
@@ -169,13 +176,15 @@ export function simulateFarmHeadless({
     model: best.model,
     materials: best.materials,
     simulation: best.sim,
+    candidateMap,
     allCandidates: candidateResults.map(c => ({
       modelId: c.modelId,
       name: c.model.name,
       puissanceKwc: c.model.puissanceKwc,
       roi: c.roi,
       van: c.van,
-      gainNetAnnuel: c.gainNetAnnuel
+      gainNetAnnuel: c.gainNetAnnuel,
+      totalDryingVolume: c.totalDryingVolume
     })),
     filename: `Offre_Etude_Sechoir_BatiTech_${best.modelId}_PACAGE_${farm.pacage}.pdf`
   };
