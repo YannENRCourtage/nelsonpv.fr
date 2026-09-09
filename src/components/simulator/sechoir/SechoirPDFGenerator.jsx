@@ -541,13 +541,13 @@ export async function generateSechoirPDF({
                 <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #475569;">Charges d'exploitation &amp; ventilation :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.charges?.deltaCharges)} €/an</td></tr>
                 <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 2.5px 0 6px 0; color: #475569;">Annuité d'emprunt :</td><td style="padding: 2.5px 0 6px 0; text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.annuite)} €/an</td></tr>
                 <tr style="height: 6px;"><td colspan="2" style="padding: 0; border: none;"></td></tr>
-                <tr style="background: #f0fdf4; border-top: 1.5px solid #bbf7d0;">
+                <tr style="background: ${(r.gainNetAnnuel || 0) >= 0 ? '#f0fdf4' : '#fef2f2'}; border-top: 1.5px solid ${(r.gainNetAnnuel || 0) >= 0 ? '#bbf7d0' : '#fecaca'};">
                   <td style="padding: 4px 6px;">
-                    <div style="font-weight: 900; color: #166534; font-size: 10.5pt;">GAIN NET ANNUEL D'EXPLOITATION</div>
-                    <div style="font-size: 8.5pt; color: #15803d;">Après remboursement intégral de l'annuité</div>
+                    <div style="font-weight: 900; color: ${(r.gainNetAnnuel || 0) >= 0 ? '#166534' : '#991b1b'}; font-size: 10.5pt;">GAIN NET ANNUEL D'EXPLOITATION</div>
+                    <div style="font-size: 8.5pt; color: ${(r.gainNetAnnuel || 0) >= 0 ? '#15803d' : '#b91c1c'};">Après remboursement intégral de l'annuité</div>
                   </td>
-                  <td style="padding: 4px 6px; text-align: right; font-weight: 900; color: #166534; font-size: 15pt;">
-                    +${fmt(r.gainNetAnnuel)} €/an
+                  <td style="padding: 4px 6px; text-align: right; font-weight: 900; color: ${(r.gainNetAnnuel || 0) >= 0 ? '#166534' : '#dc2626'}; font-size: 15pt;">
+                    ${(r.gainNetAnnuel || 0) >= 0 ? '+' : ''}${fmt(r.gainNetAnnuel)} €/an
                   </td>
                 </tr>
               </table>

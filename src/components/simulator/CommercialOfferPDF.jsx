@@ -719,7 +719,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
           <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 8px; padding: ${isToiture ? '8px 6px' : '6px'}; text-align: center;">
             <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; font-weight: bold; color: #6b21a8; text-transform: uppercase;">Amortissement</div>
-            <div style="font-size: ${isToiture ? '14pt' : '13pt'}; font-weight: 900; color: #9333ea; margin: 1px 0;">${isSechoir ? `${Number(sim.paybackYear || sim.roi || 7.29).toFixed(2)} ans` : formatPaybackDisplay(sim.paybackYear || 8)}</div>
+            <div style="font-size: ${isToiture ? '14pt' : '13pt'}; font-weight: 900; color: #9333ea; margin: 1px 0;">${isSechoir ? ((sim.paybackYear || sim.roi) ? `${Number(sim.paybackYear || sim.roi).toFixed(2)} ans` : 'N/A') : formatPaybackDisplay(sim.paybackYear || 8)}</div>
             <div style="font-size: ${isToiture ? '7pt' : '6.5pt'}; color: #6b21a8;">${isSechoir ? `Invest. : ${(sim.investissementNet || sim.totalInvestmentHT || 327053).toLocaleString('fr-FR')} € HT` : isIrve ? `Soit ${sim.paybackMonths || Math.round((Number(sim.paybackYear) || 0.4) * 12)} mois` : `Invest. : ${sim.totalInvestmentHT ? Number(sim.totalInvestmentHT).toLocaleString('fr-FR') : sim.resteACharge ? Number(sim.resteACharge).toLocaleString('fr-FR') : '-'} € HT`}</div>
           </div>
         </div>
@@ -738,10 +738,10 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 1.2px 0; color: #16a34a;">Prime CEE Cogen'Air (AGRI-EQ-110) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">-${(sim.primeCEE || 38790).toLocaleString('fr-FR')} €</td></tr>
                 <tr style="border-bottom: 1px solid #cbd5e1; background: #fffbeb;"><td style="padding: 1px 0; font-weight: bold; color: #b45309;">Investissement Net à Financer :</td><td style="text-align: right; font-weight: 900; color: #b45309;">${(sim.investissementNet !== undefined ? sim.investissementNet : (sim.totalInvestmentHT ? Math.max(0, sim.totalInvestmentHT - (sim.primeCEE || 0)) : 288263)).toLocaleString('fr-FR')} € HT</td></tr>
                 <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.8px 0; color: #64748b;">Montant de l'emprunt (25 ans) :</td><td style="text-align: right; font-weight: bold;">${(sim.emprunt !== undefined ? sim.emprunt : (sim.investissementNet || 288263)).toLocaleString('fr-FR')} €</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.8px 0; color: #dc2626;">Montant moyen de l'annuité :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${(sim.annuite || 17386).toLocaleString('fr-FR')} €/an</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.8px 0; color: #16a34a;">Impact annuel sur l'EBE :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${(sim.deltaEBE || 24220).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.8px 0; color: #dc2626;">Montant moyen de l'annuité :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${(sim.annuite || 0).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 0.8px 0; color: #16a34a;">Impact annuel sur l'EBE :</td><td style="text-align: right; font-weight: bold; color: ${(sim.deltaEBE || 0) >= 0 ? '#16a34a' : '#dc2626'};">${(sim.deltaEBE || 0) >= 0 ? '+' : ''}${(sim.deltaEBE || 0).toLocaleString('fr-FR')} €/an</td></tr>
                 <tr><td colspan="2" style="height: 3px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
-                <tr style="background: #f0fdf4; border-top: 1px solid #bbf7d0; border-bottom: 1px solid #86efac;"><td style="padding: 1.5px 2px; font-weight: 900; color: #166534;">Gain Net Annuel d'Exploitation :</td><td style="padding: 1.5px 2px; text-align: right; font-weight: 900; color: #166534; font-size: 6.8pt;">+${(sim.gainNetAnnuel || 12921).toLocaleString('fr-FR')} €/an</td></tr>
+                <tr style="background: ${(sim.gainNetAnnuel || 0) >= 0 ? '#f0fdf4' : '#fef2f2'}; border-top: 1px solid ${(sim.gainNetAnnuel || 0) >= 0 ? '#bbf7d0' : '#fecaca'}; border-bottom: 1px solid ${(sim.gainNetAnnuel || 0) >= 0 ? '#86efac' : '#fca5a5'};"><td style="padding: 1.5px 2px; font-weight: 900; color: ${(sim.gainNetAnnuel || 0) >= 0 ? '#166534' : '#991b1b'};">Gain Net Annuel d'Exploitation :</td><td style="padding: 1.5px 2px; text-align: right; font-weight: 900; color: ${(sim.gainNetAnnuel || 0) >= 0 ? '#166534' : '#dc2626'}; font-size: 6.8pt;">${(sim.gainNetAnnuel || 0) >= 0 ? '+' : ''}${(sim.gainNetAnnuel || 0).toLocaleString('fr-FR')} €/an</td></tr>
               </table>
 
               <!-- Encart Subventions Régionales & Aides Éligibles -->
@@ -779,15 +779,15 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; border-top: 1px solid #e2e8f0; padding-top: 2px; text-align: center;">
                 <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 5px; height: 30px; min-height: 30px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
                   <span style="font-size: 5.2pt; color: #64748b; font-weight: 800; text-transform: uppercase; line-height: 1; margin-bottom: 1px;">VAN (20 ans)</span>
-                  <div style="font-size: 7.5pt; font-weight: 900; color: #16a34a; line-height: 1;">+${(sim.van || 127853).toLocaleString('fr-FR')} €</div>
+                  <div style="font-size: 7.5pt; font-weight: 900; color: ${(sim.van || 0) >= 0 ? '#16a34a' : '#dc2626'}; line-height: 1;">${(sim.van || 0) >= 0 ? '+' : ''}${(sim.van || 0).toLocaleString('fr-FR')} €</div>
                 </div>
                 <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 5px; height: 30px; min-height: 30px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
                   <span style="font-size: 5.2pt; color: #64748b; font-weight: 800; text-transform: uppercase; line-height: 1; margin-bottom: 1px;">TRI (20 ans)</span>
-                  <div style="font-size: 7.5pt; font-weight: 900; color: #d97706; line-height: 1;">${sim.triPercent || '7.06'} %</div>
+                  <div style="font-size: 7.5pt; font-weight: 900; color: #d97706; line-height: 1;">${sim.triPercent || 'N/A'} %</div>
                 </div>
                 <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 5px; height: 30px; min-height: 30px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;">
                   <span style="font-size: 5.2pt; color: #64748b; font-weight: 800; text-transform: uppercase; line-height: 1; margin-bottom: 1px;">ROI net</span>
-                  <div style="font-size: 7.5pt; font-weight: 900; color: #0284c7; line-height: 1;">${Number(sim.paybackYear || sim.roi || 7.29).toFixed(2)} ans</div>
+                  <div style="font-size: 7.5pt; font-weight: 900; color: #0284c7; line-height: 1;">${(sim.paybackYear || sim.roi) ? `${Number(sim.paybackYear || sim.roi).toFixed(2)} ans` : 'N/A'}</div>
                 </div>
               </div>
             </div>
@@ -1276,18 +1276,22 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       }
     }
 
-    // Si c'est une ombrière ou une toiture avec option courrier de prospection, ajouter la page 2 : Courrier d'accompagnement
-    if ((isOmbriere || isToiture) && sim.includeCoverLetter) {
+    // Si c'est une ombrière, une toiture ou un séchoir avec option courrier de prospection, ajouter le Courrier d'accompagnement
+    if ((isOmbriere || isToiture || isSechoir) && sim.includeCoverLetter) {
       const pageCoverContainer = document.createElement('div');
       pageCoverContainer.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#ffffff;color:#0f172a;font-family:Arial,sans-serif;';
       
-      const targetCompany = sim.ownerName || sim.clientName || 'Direction de l\'établissement';
+      const targetCompany = isSechoir
+        ? (sim.ownerName || sim.clientName || (sim.pacage ? `Exploitation Agricole (PACAGE ${sim.pacage})` : 'Direction de l\'exploitation'))
+        : (sim.ownerName || sim.clientName || 'Direction de l\'établissement');
       const targetAddress = sim.address || clientAddress;
       const formattedDate = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
       const letterSubject = isToiture
         ? 'Objet : Valorisation photovoltaïque et optimisation énergétique de votre toiture — Étude d’opportunité ci-jointe'
-        : 'Objet : Mise en conformité Loi APER et valorisation de votre parking — Étude d’opportunité ci-jointe';
+        : isOmbriere
+        ? 'Objet : Mise en conformité Loi APER et valorisation de votre parking — Étude d’opportunité ci-jointe'
+        : `Objet : Projet d’installation d’un Séchoir Solaire Thermovoltaïque BatiTech® (${sim.modelName || 'BatiTech'}) — PACAGE ${sim.pacage || ''} — Étude d’opportunité ci-jointe`;
 
       const letterBodyHtml = isToiture ? `
               <p style="margin: 0 0 14px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
@@ -1332,7 +1336,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               <p style="margin: 14px 0 16px 0;">
                 Je vous prie d'agréer, Madame, Monsieur, l’expression de mes salutations distinguées.
               </p>
-      ` : `
+      ` : isOmbriere ? `
               <p style="margin: 0 0 14px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
 
               <p style="margin: 0 0 14px 0;">
@@ -1375,6 +1379,52 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               <p style="margin: 14px 0 16px 0;">
                 Je vous prie d'agréer, Madame, Monsieur, l’expression de mes salutations distinguées.
               </p>
+      ` : `
+              <p style="margin: 0 0 14px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
+
+              <p style="margin: 0 0 14px 0;">
+                Dans le cadre de la transition agro-écologique, de la hausse continue des coûts de l’énergie et de la recherche d'autonomie fourragère, les exploitations agricoles disposent d'un levier d'optimisation décisif : le <strong>séchage solaire thermovoltaïque innovant</strong>.
+              </p>
+
+              <p style="margin: 0 0 14px 0;">
+                Plutôt qu’un simple hangar de stockage inerte, l’implantation d’un séchoir solaire actif <strong>${sim.modelName || 'BatiTech'}</strong> (${sim.dimensions || '18m × 20m'}) sur votre exploitation située au <strong>${targetAddress}</strong> constitue un véritable <strong>outil de création de valeur agronomique et de rentabilité financière</strong>.
+              </p>
+
+              <p style="margin: 0 0 14px 0;">
+                Grâce à notre plateforme d'ingénierie et d’analyse territoriale, nous avons établi une première <strong>étude de faisabilité technique et économique personnalisée</strong> pour votre exploitation${sim.pacage ? ` (PACAGE n° ${sim.pacage})` : ''}, jointe à ce courrier.
+              </p>
+
+              <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
+                <div style="font-size: 10.2pt; font-weight: 800; color: #00429d; margin-bottom: 8px; text-transform: uppercase;">
+                  L'implantation d'un Séchoir Thermovoltaïque BatiTech® vous apporte des atouts majeurs :
+                </div>
+                <ul style="margin: 0; padding-left: 20px; font-size: 9.8pt; line-height: 1.55; color: #334155;">
+                  <li style="margin-bottom: 8px;">
+                    <strong>Valorisation agronomique &amp; gains de séchage :</strong> préservation optimale de la valeur nutritive (protéines, appétence), réduction drastique des pertes au champ et valorisation directe estimée à <strong>+${(sim.deltaProduits || 0).toLocaleString('fr-FR')} €/an</strong>${sim.activeMaterialsText ? ` (${sim.activeMaterialsText})` : ''}.
+                  </li>
+                  <li style="margin-bottom: 8px;">
+                    <strong>Production d'énergie solaire décarbonée :</strong> toiture solaire thermovoltaïque Cogen’Air® de <strong>${sim.kwc || 30.15} kWc</strong> (${sim.nbModules || 90} modules) générant un productible attendu de <strong>${(sim.annualProductionKwh || 0).toLocaleString('fr-FR')} kWh/an</strong> tout en insufflant l'air chaud nécessaire au séchage.
+                  </li>
+                  <li style="margin-bottom: 8px;">
+                    <strong>Subventions bonifiées &amp; Prime CEE AGRI-EQ-110 :</strong> déduction immédiate d'une prime CEE de <strong>${(sim.primeCEE || 0).toLocaleString('fr-FR')} €</strong> sur l'investissement brut${(sim.subventionRegionaleMontant || 0) > 0 ? `, complétée par des aides régionales estimées jusqu'à ${sim.subventionRegionaleMontant.toLocaleString('fr-FR')} € (${sim.subventionRegionaleNom || 'PCAE'})` : ''}.
+                  </li>
+                  <li style="margin-bottom: 0;">
+                    <strong>Rentabilité financière pérenne :</strong> un <strong>Gain net d'exploitation de ${(sim.gainNetAnnuel || 0) >= 0 ? '+' : ''}${(sim.gainNetAnnuel || 0).toLocaleString('fr-FR')} €/an</strong> après remboursement intégral de l'annuité d'emprunt, pour un amortissement (ROI) estimé à <strong>${sim.roi ? Number(sim.roi).toFixed(1) : Number(sim.paybackYear || 0).toFixed(1)} ans</strong>.
+                  </li>
+                </ul>
+              </div>
+
+              <p style="margin: 14px 0;">
+                Le dossier ci-joint détaille le dimensionnement technique sur mesure du bâtiment, les filières valorisées ainsi que le plan de financement prévisionnel sur 25 ans.
+              </p>
+
+              <p style="margin: 14px 0;">
+                Je me tiens à votre entière disposition pour échanger dans les prochains jours, affiner ces simulations selon vos volumes précis et vérifier l'éligibilité de votre exploitation aux dispositifs de subvention en vigueur.
+              </p>
+
+              <p style="margin: 14px 0 16px 0;">
+                Je vous prie d'agréer, Madame, Monsieur, l’expression de mes salutations distinguées.
+              </p>
       `;
 
       pageCoverContainer.innerHTML = `
@@ -1392,7 +1442,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
 
               <div style="text-align: right; max-width: 58%; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px 14px;">
-                <div style="font-size: 8pt; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">À l'attention de la Direction Générale / Direction Immobilière</div>
+                <div style="font-size: 8pt; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">${isSechoir ? 'À l\'attention du Responsable d\'Exploitation / Gérant' : 'À l\'attention de la Direction Générale / Direction Immobilière'}</div>
                 <div style="font-size: 12pt; font-weight: 900; color: #0f172a; margin-top: 3px; line-height: 1.25;">${targetCompany}</div>
                 <div style="font-size: 9.5pt; color: #475569; margin-top: 3px; line-height: 1.35;">${targetAddress}</div>
               </div>
@@ -1418,12 +1468,12 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             <!-- SIGNATURE & PJ -->
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px; padding-top: 8px;">
               <div style="font-size: 8.5pt; color: #64748b; font-style: italic;">
-                <strong>P.J. :</strong> ${isToiture ? 'Étude de faisabilité & offre commerciale — Centrale toiture photovoltaïque' : 'Étude de faisabilité & offre commerciale — Ombrière de parking photovoltaïque'}
+                <strong>P.J. :</strong> ${isToiture ? 'Étude de faisabilité & offre commerciale — Centrale toiture photovoltaïque' : isOmbriere ? 'Étude de faisabilité & offre commerciale — Ombrière de parking photovoltaïque' : 'Étude de faisabilité & offre commerciale — Séchoir Thermovoltaïque BatiTech®'}
               </div>
 
               <div style="text-align: right; padding-top: 6px; min-width: 220px;">
                 <div style="font-size: 11.5pt; font-weight: 900; color: #00429d;">Yann BARBERIS</div>
-                <div style="font-size: 9.5pt; color: #475569; font-weight: bold; margin-top: 2px;">Conseiller solutions énergies</div>
+                <div style="font-size: 9.5pt; color: #475569; font-weight: bold; margin-top: 2px;">${isSechoir ? 'Conseiller solutions énergies & agro-solaire' : 'Conseiller solutions énergies'}</div>
                 <div style="font-size: 9pt; color: #0284c7; font-weight: bold; margin-top: 2px;">07 63 87 71 40</div>
                 <div style="font-size: 8.8pt; color: #64748b; margin-top: 1px;">y.barberis@enr-courtage.fr</div>
               </div>
@@ -1450,9 +1500,17 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           width: 794,
           windowWidth: 794,
         });
-        pdf.addPage();
         const coverImgData = coverCanvas.toDataURL('image/jpeg', 0.95);
-        pdf.addImage(coverImgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        if (isSechoir) {
+          // Pour Séchoir : la lettre personnalisée s'ouvre en première page !
+          pdf.insertPage(1);
+          pdf.setPage(1);
+          pdf.addImage(coverImgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        } else {
+          // Pour Toiture et Ombrière : page 2
+          pdf.addPage();
+          pdf.addImage(coverImgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        }
       } finally {
         document.body.removeChild(pageCoverContainer);
       }

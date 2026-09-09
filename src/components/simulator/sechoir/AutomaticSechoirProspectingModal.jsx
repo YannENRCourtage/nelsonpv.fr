@@ -5,7 +5,7 @@ import {
   FileText, CheckCircle2, AlertCircle, Loader2, Play, Square,
   RotateCcw, SlidersHorizontal, HardDrive, Compass, Euro,
   Download, Archive, X, ShieldCheck, Warehouse, ExternalLink,
-  ChevronRight, Wheat, Check, Filter, Building2
+  ChevronRight, Wheat, Check, Filter, Building2, Mail
 } from 'lucide-react';
 
 import {
@@ -85,6 +85,7 @@ export default function AutomaticSechoirProspectingModal({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedBuildingModel, setSelectedBuildingModel] = useState('auto'); // 'auto' | 'BT-3.1.15' | 'BT-6.2.15' | 'BT-8.3.15'
   const [includeBenefitsPage, setIncludeBenefitsPage] = useState(false); // false = 1 page (par défaut), true = 2 pages (Synthèse bénéfices)
+  const [includeCoverLetter, setIncludeCoverLetter] = useState(true); // true = Courrier d'accompagnement nominatif personnalisé (Page 1)
 
   // Dossier local d'exportation
   const isFirefoxBrowser = typeof window !== 'undefined' && !window.showDirectoryPicker;
@@ -260,9 +261,10 @@ export default function AutomaticSechoirProspectingModal({
       const existing = processedResults.find((p) => p.pacage === farm.pacage);
       if (existing?.candidateMap && modelId !== 'auto' && existing.candidateMap[modelId]) {
         const cand = existing.candidateMap[modelId];
-        if (cand.roi < targetRoi) {
+        if (cand.roi > 0 && cand.roi < targetRoi && (cand.gainNetAnnuel || 0) > 0) {
           updated.push({
             ...existing,
+            selectedModelMode: modelId,
             bestModelId: cand.modelId,
             model: cand.model,
             materials: cand.materials,
@@ -302,41 +304,81 @@ export default function AutomaticSechoirProspectingModal({
     }
   };
 
-  // Gestionnaire de changement du modèle pour une exploitation individuelle
-  const handleSwitchFarmModel = (pacage, modelId) => {
+  // Gestionnaire de changement du modèle pour une exploitation individuelle (Auto, 3.1.15, 6.2.15, 8.3.15)
+  const handleSwitchFarmModel = (pacage, modelChoice) => {
     setProcessedResults((prev) =>
       prev.map((item) => {
         if (item.pacage !== pacage) return item;
-        if (modelId === 'auto') {
+
+        let targetModelId = modelChoice;
+        if (modelChoice === 'auto') {
           const bestCand = item.allCandidates?.[0];
-          if (!bestCand || !item.candidateMap?.[bestCand.modelId]) return item;
-          const c = item.candidateMap[bestCand.modelId];
+          targetModelId = bestCand?.modelId || 'BT-3.1.15';
+        }
+
+        // 1. Chercher si déjà présent dans candidateMap
+        let cand = item.candidateMap?.[targetModelId];
+
+        // 2. Si pas encore présent dans candidateMap, recalculer à la volée avec l'engine headless
+        if (!cand) {
+          const farm = detectedFarms.find((f) => f.pacage === pacage) || {
+            pacage: item.pacage,
+            streamTonnages: item.streamTonnages || (item.materials || []).reduce((acc, m) => ({ ...acc, [m.id]: m.volume }), {}),
+            addressLabel: item.addressLabel,
+            city: item.commune,
+            postalCode: item.codePostal,
+            centroid: item.coords,
+            departmentCode: item.departement
+          };
+
+          const forcedProspect = simulateFarmHeadless({
+            farm,
+            departement: item.departement,
+            targetRoi: 999, // Pas de rejet pour évaluer le modèle demandé
+            priorityStreams: selectedStreams,
+            customFinancialParams: {},
+            forcedModelId: targetModelId
+          });
+
+          if (forcedProspect) {
+            cand = {
+              modelId: forcedProspect.bestModelId,
+              model: forcedProspect.model,
+              sim: forcedProspect.simulation,
+              materials: forcedProspect.materials,
+              totalDryingVolume: forcedProspect.totalDryingVolumeUsed,
+              roi: forcedProspect.simulation?.roi,
+              van: forcedProspect.simulation?.van,
+              gainNetAnnuel: forcedProspect.simulation?.gainNetAnnuel
+            };
+          }
+        }
+
+        if (cand) {
+          const cleanModel = cand.modelId.replace(/[^a-zA-Z0-9]/g, '_');
+          const pacageCode = item.pacage ? String(item.pacage).replace(/^PAC_/, '') : 'Agricole';
+          const newFilename = `Offre_Etude_Sechoir_BatiTech_${cleanModel}_PACAGE_${pacageCode}.pdf`;
+
           return {
             ...item,
-            bestModelId: c.modelId,
-            model: c.model,
-            materials: c.materials,
-            simulation: c.sim,
-            totalDryingVolumeUsed: c.totalDryingVolume,
-            filename: `Offre_Etude_Sechoir_BatiTech_${c.modelId}_PACAGE_${item.pacage}.pdf`
+            selectedModelMode: modelChoice,
+            bestModelId: cand.modelId,
+            model: cand.model,
+            materials: cand.materials,
+            simulation: cand.sim,
+            totalDryingVolumeUsed: cand.totalDryingVolume,
+            filename: newFilename,
+            candidateMap: {
+              ...(item.candidateMap || {}),
+              [cand.modelId]: cand
+            }
           };
         }
-        if (item.candidateMap?.[modelId]) {
-          const c = item.candidateMap[modelId];
-          return {
-            ...item,
-            bestModelId: c.modelId,
-            model: c.model,
-            materials: c.materials,
-            simulation: c.sim,
-            totalDryingVolumeUsed: c.totalDryingVolume,
-            filename: `Offre_Etude_Sechoir_BatiTech_${c.modelId}_PACAGE_${item.pacage}.pdf`
-          };
-        }
+
         return item;
       })
     );
-    appendLog(`🔄 Exploitation PACAGE ${pacage} : modèle basculé sur ${modelId}`);
+    appendLog(`🔄 Exploitation PACAGE ${pacage} : modèle basculé sur ${modelChoice === 'auto' ? 'Auto' : modelChoice}`);
   };
 
   // ═══ ALGORITHME PRINCIPAL DE PROSPECTION SÉCHOIRS BATITECH ═══════════════════
@@ -481,13 +523,13 @@ export default function AutomaticSechoirProspectingModal({
           `• Modèle : ${prospect.bestModelId} (${prospect.model.puissanceKwc} kWc) ` +
           `• Séchage : ${prospect.totalDryingVolumeUsed} t/an ` +
           `• ROI : ${prospect.simulation.roi} ans (Strictement < ${targetRoi} ans) ` +
-          `• Gain net : +${prospect.simulation.gainNetAnnuel?.toLocaleString('fr-FR')} €/an.`
+          `• Gain net : ${(prospect.simulation.gainNetAnnuel || 0) >= 0 ? '+' : ''}${prospect.simulation.gainNetAnnuel?.toLocaleString('fr-FR')} €/an.`
         );
 
         // Sauvegarde automatique directe si un dossier local est lié
         if (directoryHandle) {
           try {
-            const { blob } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage });
+            const { blob } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage, includeCoverLetter });
             await savePdfToLocalDestination({
               filename: prospect.filename,
               blob,
@@ -518,8 +560,8 @@ export default function AutomaticSechoirProspectingModal({
   // ═══ TÉLÉCHARGEMENT D'UN PDF UNIQUE (OFFRE 1 PAGE PAR DÉFAUT / 2 PAGES) ═══════
   const handleDownloadSinglePdf = async (prospect) => {
     try {
-      appendLog(`📄 Génération de l'offre commerciale (${includeBenefitsPage ? '2 pages' : '1 page'}) pour PACAGE ${prospect.pacage}...`);
-      const { blob, filename } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage });
+      appendLog(`📄 Génération de l'offre commerciale (${includeBenefitsPage ? '2 pages' : '1 page'}${includeCoverLetter ? ' + Courrier P1' : ''}) pour PACAGE ${prospect.pacage}...`);
+      const { blob, filename } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage, includeCoverLetter });
 
       if (directoryHandle) {
         await savePdfToLocalDestination({ filename, blob, directoryHandle });
@@ -544,14 +586,14 @@ export default function AutomaticSechoirProspectingModal({
   const handleDownloadZipBundle = async () => {
     if (processedResults.length === 0) return;
     setIsExportingZip(true);
-    appendLog(`📦 Préparation de l’archive ZIP (${includeBenefitsPage ? '2 pages' : '1 page'} par offre) pour ${processedResults.length} offres BatiTech...`);
+    appendLog(`📦 Préparation de l’archive ZIP (${includeBenefitsPage ? '2 pages' : '1 page'}${includeCoverLetter ? ' + Courrier P1' : ''} par offre) pour ${processedResults.length} offres BatiTech...`);
 
     try {
       const zipItems = [];
       for (let i = 0; i < processedResults.length; i++) {
         const prospect = processedResults[i];
         setCurrentStepText(`Génération PDF ${i + 1}/${processedResults.length} : PACAGE ${prospect.pacage}...`);
-        const { blob, filename } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage });
+        const { blob, filename } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage, includeCoverLetter });
         zipItems.push({ filename, blob });
       }
 
@@ -951,22 +993,48 @@ export default function AutomaticSechoirProspectingModal({
               </div>
             </div>
 
-            {/* 4. Format de l'Offre PDF & Option Page 2 */}
-            <div className="space-y-1.5 p-3 rounded-2xl bg-slate-950/80 border border-slate-800">
+            {/* 4. Format de l'Offre PDF & Options Documents */}
+            <div className="space-y-2 p-3 rounded-2xl bg-slate-950/80 border border-slate-800">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-amber-400" />
-                  Format de l'Offre PDF
+                  Format du Dossier &amp; Options PDF
                 </label>
                 <span className={`text-[9.5px] font-black px-2 py-0.5 rounded-full border transition-colors ${
-                  includeBenefitsPage
-                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  includeCoverLetter
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
                 }`}>
-                  {includeBenefitsPage ? '2 Pages' : '1 Page (Par défaut)'}
+                  {includeCoverLetter ? 'Courrier P1 Inclus' : 'Sans Courrier'}
                 </span>
               </div>
 
+              {/* Option Courrier de Prospection Personnalisé (Page 1) */}
+              <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors">
+                <label className="flex items-center justify-between cursor-pointer select-none">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <div>
+                      <div className="text-[11px] font-bold text-white leading-tight">
+                        Joindre le courrier de prospection personnalisé
+                      </div>
+                      <div className="text-[9px] text-slate-400 leading-tight mt-0.5">
+                        {includeCoverLetter
+                          ? 'Page 1 sous forme de lettre personnalisée (Nom, PACAGE, Adresse, Modèle, Gains, ROI)'
+                          : 'Étude technique & financière seule (sans lettre)'}
+                      </div>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={includeCoverLetter}
+                    onChange={(e) => setIncludeCoverLetter(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 border-slate-700 bg-slate-950 cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              {/* Option 2nde Page Bénéfices */}
               <button
                 type="button"
                 onClick={() => setIncludeBenefitsPage(!includeBenefitsPage)}
@@ -978,12 +1046,12 @@ export default function AutomaticSechoirProspectingModal({
               >
                 <div className="space-y-0.5">
                   <div className="font-bold text-[11px] text-white flex items-center gap-1.5">
-                    <span>Ajouter la 2nde page (Bénéfices d'exploitation)</span>
+                    <span>Ajouter la page annexe (Bénéfices d'exploitation)</span>
                   </div>
                   <p className="text-[9.5px] text-slate-400 leading-tight">
                     {includeBenefitsPage
-                      ? 'La 2nde page (avantages financiers & opérationnels, graphique de baisse des charges) sera incluse.'
-                      : 'Par défaut, seule la 1ère page (Offre & Dimensionnement) est générée.'}
+                      ? 'Page complémentaire (avantages financiers & opérationnels) incluse.'
+                      : 'Non cochée : offre synthétique optimisée.'}
                   </p>
                 </div>
                 <div className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] shrink-0 mt-0.5 transition-colors ${
@@ -1097,8 +1165,8 @@ export default function AutomaticSechoirProspectingModal({
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
                   <Euro className="w-3 h-3 text-cyan-400" /> Gain Net Annuel
                 </span>
-                <strong className="text-xl font-black text-cyan-400">
-                  +{totalGainAnnuelCumul.toLocaleString('fr-FR')} <span className="text-xs font-normal text-slate-400">€/an</span>
+                <strong className={`text-xl font-black ${totalGainAnnuelCumul >= 0 ? 'text-cyan-400' : 'text-rose-400'}`}>
+                  {totalGainAnnuelCumul >= 0 ? '+' : ''}{totalGainAnnuelCumul.toLocaleString('fr-FR')} <span className="text-xs font-normal text-slate-400">€/an</span>
                 </strong>
               </div>
             </div>
@@ -1162,9 +1230,22 @@ export default function AutomaticSechoirProspectingModal({
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Sélecteur rapide format PDF (1 page ou 2 pages) */}
+                {/* Sélecteur rapide format PDF (1 page ou 2 pages) + Courrier */}
                 <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold px-1.5 hidden sm:inline">Format PDF :</span>
+                  <button
+                    type="button"
+                    onClick={() => setIncludeCoverLetter(!includeCoverLetter)}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer flex items-center gap-1 ${
+                      includeCoverLetter
+                        ? 'bg-emerald-500 text-slate-950 shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title={includeCoverLetter ? 'Courrier personnalisé P1 activé' : 'Courrier P1 désactivé'}
+                  >
+                    <Mail className="w-3 h-3" />
+                    <span>Courrier P1</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setIncludeBenefitsPage(false)}
@@ -1282,27 +1363,38 @@ export default function AutomaticSechoirProspectingModal({
                             </div>
 
                             <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
-                              {/* Sélecteur direct de modèle sur la carte */}
+                              {/* Sélecteur direct de modèle sur la ligne : Auto, 3.1.15, 6.2.15, 8.3.15 */}
                               <div className="flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded-lg border border-slate-700/80">
                                 <span className="text-[9px] font-bold text-slate-400">Modèle :</span>
-                                {['BT-3.1.15', 'BT-6.2.15', 'BT-8.3.15'].map((mId) => (
-                                  <button
-                                    key={mId}
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleSwitchFarmModel(item.pacage, mId);
-                                    }}
-                                    className={`px-1.5 py-0.5 rounded text-[8.5px] font-black transition-all cursor-pointer ${
-                                      item.bestModelId === mId
-                                        ? 'bg-amber-500 text-black shadow-xs scale-105'
-                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                                    }`}
-                                    title={`Simuler avec le modèle ${mId}`}
-                                  >
-                                    {mId.replace('BT-', '')}
-                                  </button>
-                                ))}
+                                {[
+                                  { id: 'auto', label: 'Auto' },
+                                  { id: 'BT-3.1.15', label: '3.1.15' },
+                                  { id: 'BT-6.2.15', label: '6.2.15' },
+                                  { id: 'BT-8.3.15', label: '8.3.15' }
+                                ].map((opt) => {
+                                  const isSelected = opt.id === 'auto'
+                                    ? item.selectedModelMode === 'auto' || !item.selectedModelMode
+                                    : (item.selectedModelMode === opt.id) || (item.selectedModelMode !== 'auto' && item.bestModelId === opt.id);
+
+                                  return (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSwitchFarmModel(item.pacage, opt.id);
+                                      }}
+                                      className={`px-1.5 py-0.5 rounded text-[8.5px] font-black transition-all cursor-pointer ${
+                                        isSelected
+                                          ? 'bg-amber-500 text-black shadow-xs scale-105'
+                                          : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                      }`}
+                                      title={opt.id === 'auto' ? 'Sélection automatique optimale' : `Simuler avec le modèle ${opt.id}`}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  );
+                                })}
                                 <span className="text-[9px] font-bold text-amber-300 ml-0.5">
                                   ({item.model?.puissanceKwc} kWc)
                                 </span>
@@ -1310,18 +1402,18 @@ export default function AutomaticSechoirProspectingModal({
 
                               {/* Badge ROI strict */}
                               <span className="px-1.5 py-0.5 text-[9.5px] font-black rounded border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
-                                ⚡ ROI : {item.simulation?.roi} ans
+                                ⚡ ROI : {item.simulation?.roi ? `${Number(item.simulation.roi).toFixed(2)} ans` : 'N/A'}
                               </span>
 
                               <span>•</span>
                               <span>🌾 {item.totalAreaHa} ha déclarés</span>
                               <span>•</span>
                               <span className="text-emerald-400 font-bold">
-                                ⚖️ Séchage : {item.totalDryingVolumeUsed} t/an
+                                ⚖️ Séchage : {item.totalDryingVolumeUsed || 0} t/an
                               </span>
                               <span>•</span>
-                              <span className="text-cyan-400 font-bold">
-                                💶 Gain : +{item.simulation?.gainNetAnnuel?.toLocaleString('fr-FR')} €/an
+                              <span className={`font-bold ${(item.simulation?.gainNetAnnuel || 0) >= 0 ? 'text-cyan-400' : 'text-rose-400'}`}>
+                                💶 Gain : {(item.simulation?.gainNetAnnuel || 0) >= 0 ? '+' : ''}{item.simulation?.gainNetAnnuel?.toLocaleString('fr-FR')} €/an
                               </span>
                             </div>
                           </div>

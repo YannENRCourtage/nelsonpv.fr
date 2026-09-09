@@ -260,12 +260,12 @@ export function calculateCashFlowTable({
   }
 
   if (roi === null) {
-    roi = deltaEBE > 0 ? (montantFinance / deltaEBE) : 10.09;
+    roi = deltaEBE > 0 ? (montantFinance / deltaEBE) : null;
   }
 
   return {
     cashFlows,
-    roi: Math.round(roi * 100) / 100,
+    roi: roi !== null && !isNaN(roi) && isFinite(roi) ? Math.round(roi * 100) / 100 : null,
     cumulFinal: Math.round(cumulTresorerie),
   };
 }

@@ -116,35 +116,39 @@ export function simulateFarmHeadless({
 
     if (!sim || sim.roi === null || isNaN(sim.roi) || !isFinite(sim.roi)) continue;
 
-    // CRITÈRE STRICT : ROI < targetRoi (ex: strictement < 15.0 ans)
-    if (sim.roi < targetRoi) {
-      const cand = {
-        modelId,
-        model,
-        sim,
-        materials,
-        totalDryingVolume,
-        roi: sim.roi,
-        van: sim.van || 0,
-        gainNetAnnuel: sim.gainNetAnnuel || 0
-      };
+    const cand = {
+      modelId,
+      model,
+      sim,
+      materials,
+      totalDryingVolume,
+      roi: sim.roi,
+      van: sim.van || 0,
+      gainNetAnnuel: sim.gainNetAnnuel || 0
+    };
+    // On conserve systématiquement chaque modèle évalué dans candidateMap pour réactivité instantanée à la volée
+    candidateMap[modelId] = cand;
+
+    // CRITÈRE STRICT ET ÉLIMINATOIRE :
+    // 1. ROI réel recalculé strictement positif et < targetRoi (ex: strictement < 15.0 ans)
+    // 2. Gain net annuel d'exploitation strictement supérieur à 0 €/an
+    if (sim.roi > 0 && sim.roi < targetRoi && (sim.gainNetAnnuel || 0) > 0) {
       candidateResults.push(cand);
-      candidateMap[modelId] = cand;
     }
   }
 
-  // Si aucun modèle n'atteint un ROI < 15 ans, l'exploitation est rejetée
-  if (candidateResults.length === 0) {
+  // Si aucun modèle n'atteint un ROI < 15 ans ET un Gain Net Annuel > 0, l'exploitation est rejetée
+  // (sauf en cas de recalcul forcé unitaire avec targetRoi >= 900)
+  if (candidateResults.length === 0 && !(forcedModelId && forcedModelId !== 'auto' && targetRoi >= 900 && candidateMap[forcedModelId])) {
     return null;
   }
 
   // SÉLECTION DU MODÈLE :
-  // Si un modèle spécifique est forcé par l'utilisateur (ex: BT-6.2.15) et qu'il est éligible, on le sélectionne
   let best = null;
   if (forcedModelId && forcedModelId !== 'auto' && candidateMap[forcedModelId]) {
     best = candidateMap[forcedModelId];
-  } else {
-    // Sinon sélection optimale : modèle maximisant la Valeur Actuelle Nette (VAN)
+  } else if (candidateResults.length > 0) {
+    // Sélection optimale parmi les modèles éligibles : maximisant la Valeur Actuelle Nette (VAN)
     candidateResults.sort((a, b) => {
       if (Math.abs(b.van - a.van) < 5000) {
         return b.gainNetAnnuel - a.gainNetAnnuel;
@@ -152,6 +156,10 @@ export function simulateFarmHeadless({
       return b.van - a.van;
     });
     best = candidateResults[0];
+  }
+
+  if (!best) {
+    return null;
   }
 
   const addressLabel = farm.addressLabel || `Exploitation Agricole PACAGE ${farm.pacage}`;
@@ -226,6 +234,8 @@ export async function generateSechoirProspectingPdfBlob(prospect, options = {}) 
     type: 'sechoir_batitech',
     title: `Séchoir Multi-Matières BatiTech® — ${model?.name || 'BatiTech'}`,
     clientName: clientName || `Exploitation Agricole (PACAGE ${prospect.pacage})`,
+    pacage: prospect.pacage,
+    ownerName: prospect.ownerName || clientName || `Exploitation Agricole (PACAGE ${prospect.pacage})`,
     address: addressLabel || prospect.address || 'Adresse du site',
     cityName: commune || '',
     departmentCode: departement || '33',
@@ -241,13 +251,13 @@ export async function generateSechoirProspectingPdfBlob(prospect, options = {}) 
     installedKwc: model?.puissanceKwc || 30.15,
     nbModules: model?.nbModules || 90,
     annualProductionKwh: simulation?.productionPV || 35000,
-    activeMaterialsText: activeMaterialsText || ((materials || []).filter(m => m.enabled && m.volume > 0).map(m => `${m.shortLabel || m.label} (${m.volume} t)`).join(', ')) || 'Fourrage vrac (50 t), Bottes carrées (150 t)',
-    deltaProduits: simulation?.produits?.deltaProduits || 25720,
+    activeMaterialsText: ((materials || []).filter(m => m.enabled && m.volume > 0).map(m => `${m.shortLabel || m.label} (${m.volume} t)`).join(', ')) || activeMaterialsText || 'Fourrage vrac (50 t), Bottes carrées (150 t)',
+    deltaProduits: simulation?.produits?.deltaProduits || 0,
     deltaCharges: simulation?.charges?.deltaCharges || 0,
     annualBenefitYear1: simulation?.deltaEBE || 0,
     deltaEBE: simulation?.deltaEBE || 0,
     totalInvestmentHT: model?.investissementBrut || 327053,
-    primeCEE: simulation?.cee?.primeTotal || 38790,
+    primeCEE: simulation?.cee?.primeTotal || 0,
     subventionsEligibles: simulation?.subventionsEligibles || {},
     subventionRegionaleNom: simulation?.subventionsEligibles?.subventionRegionale?.nom || 'PCAE / PME',
     subventionDescription: simulation?.subventionsEligibles?.description || 'Plan de Modernisation des Exploitations.',
@@ -258,12 +268,12 @@ export async function generateSechoirProspectingPdfBlob(prospect, options = {}) 
     regionName: simulation?.subventionsEligibles?.region || 'France',
     investissementNet: simulation?.financing?.investissementNet || (model?.investissementBrut - (simulation?.cee?.primeTotal || 0)),
     emprunt: simulation?.financing?.emprunt || (model?.investissementBrut - (simulation?.cee?.primeTotal || 0)),
-    annuite: simulation?.annuite || 17386,
-    gainNetAnnuel: simulation?.gainNetAnnuel || 12921,
-    paybackYear: simulation?.roi || 10.09,
-    roi: simulation?.roi || 10.09,
+    annuite: simulation?.annuite || 0,
+    gainNetAnnuel: simulation?.gainNetAnnuel || 0,
+    paybackYear: simulation?.roi,
+    roi: simulation?.roi,
     van: simulation?.van || 0,
-    triPercent: simulation?.triPercent || '7.06',
+    triPercent: simulation?.triPercent || 'N/A',
     mapCenter: farmCoords,
     latitude: farmCoords[0],
     longitude: farmCoords[1],
@@ -280,6 +290,7 @@ export async function generateSechoirProspectingPdfBlob(prospect, options = {}) 
     }],
     cashFlows: simulation?.treasury?.cashFlows || [],
     includeBenefitsPage: Boolean(options.includeBenefitsPage), // Par défaut false = 1 page !
+    includeCoverLetter: options.includeCoverLetter !== undefined ? Boolean(options.includeCoverLetter) : true,
   };
 
   const result = await generateCommercialOfferPDF({
