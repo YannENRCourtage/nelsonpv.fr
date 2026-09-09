@@ -13,6 +13,10 @@
             "destination": "https://api.deci.sdis81.fr/$1"
         },
         {
+            "source": "/api/signature/(.*)",
+            "destination": "/api/enedis/signature-$1"
+        },
+        {
             "source": "/api/(.*)",
             "destination": "/api/$1"
         },

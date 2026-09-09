@@ -63,6 +63,7 @@ export default function AutomaticOmbriereProspectingModal({
   const [communeSuggestions, setCommuneSuggestions] = useState([]);
   const [selectedCommune, setSelectedCommune] = useState(DEFAULT_BORDEAUX);
   const [isSearchingCommune, setIsSearchingCommune] = useState(false);
+  const isTypingCommuneRef = useRef(false);
 
   // Rayon pour l'emprise carte (en mètres)
   const [mapRadius, setMapRadius] = useState(1000); // 500, 1000, 2000, 5000
@@ -171,24 +172,33 @@ export default function AutomaticOmbriereProspectingModal({
 
   // Autocomplétion commune
   const handleSearchCommunes = async (text) => {
+    isTypingCommuneRef.current = true;
     setCommuneSearch(text);
     if (!text || text.trim().length < 2) {
       setCommuneSuggestions([]);
       return;
     }
     setIsSearchingCommune(true);
-    const results = await searchCommunes(text);
-    setCommuneSuggestions(results);
-    setIsSearchingCommune(false);
-    if (results.length > 0) {
-      // Synchroniser la commune sélectionnée si elle ne correspond plus
-      if (!selectedCommune || !selectedCommune.nom.toLowerCase().startsWith(text.trim().toLowerCase())) {
-        setSelectedCommune(results[0]);
+    try {
+      const results = await searchCommunes(text);
+      if (isTypingCommuneRef.current) {
+        setCommuneSuggestions(results || []);
+        if (results && results.length > 0) {
+          // Synchroniser la commune sélectionnée si elle ne correspond plus
+          if (!selectedCommune || !selectedCommune.nom.toLowerCase().startsWith(text.trim().toLowerCase())) {
+            setSelectedCommune(results[0]);
+          }
+        }
       }
+    } catch (err) {
+      if (isTypingCommuneRef.current) setCommuneSuggestions([]);
+    } finally {
+      setIsSearchingCommune(false);
     }
   };
 
   const handleSelectCommune = (c) => {
+    isTypingCommuneRef.current = false;
     setSelectedCommune(c);
     setCommuneSearch(c.nom);
     setCommuneSuggestions([]);
@@ -674,7 +684,7 @@ export default function AutomaticOmbriereProspectingModal({
                     )}
                   </div>
 
-                  {communeSuggestions.length > 0 && (
+                  {isTypingCommuneRef.current && communeSuggestions.length > 0 && (
                     <div className="absolute z-50 left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-44 overflow-y-auto divide-y divide-slate-100">
                       {communeSuggestions.map((c) => (
                         <button

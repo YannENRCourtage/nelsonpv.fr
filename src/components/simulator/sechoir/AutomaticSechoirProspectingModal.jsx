@@ -64,6 +64,7 @@ export default function AutomaticSechoirProspectingModal({
   const [communeSuggestions, setCommuneSuggestions] = useState([]);
   const [selectedCommune, setSelectedCommune] = useState(DEFAULT_COMMUNE);
   const [isSearchingCommune, setIsSearchingCommune] = useState(false);
+  const isTypingCommuneRef = useRef(false);
 
   // Recherche par département entier
   const [selectedDeptCode, setSelectedDeptCode] = useState('40'); // Landes par défaut
@@ -129,9 +130,9 @@ export default function AutomaticSechoirProspectingModal({
     }
   }, [logs, rightPanelTab]);
 
-  // Recherche dynamique de commune avec debounce
+  // Recherche dynamique de commune avec debounce (uniquement si saisie active de l'utilisateur)
   useEffect(() => {
-    if (geoMode !== 'commune') return;
+    if (geoMode !== 'commune' || !isTypingCommuneRef.current) return;
     if (!communeSearch || communeSearch.trim().length < 2) {
       setCommuneSuggestions([]);
       return;
@@ -141,9 +142,11 @@ export default function AutomaticSechoirProspectingModal({
       setIsSearchingCommune(true);
       try {
         const results = await searchCommunes(communeSearch);
-        setCommuneSuggestions(results);
+        if (isTypingCommuneRef.current) {
+          setCommuneSuggestions(results || []);
+        }
       } catch (err) {
-        setCommuneSuggestions([]);
+        if (isTypingCommuneRef.current) setCommuneSuggestions([]);
       } finally {
         setIsSearchingCommune(false);
       }
@@ -735,7 +738,10 @@ export default function AutomaticSechoirProspectingModal({
                     <input
                       type="text"
                       value={communeSearch}
-                      onChange={(e) => setCommuneSearch(e.target.value)}
+                      onChange={(e) => {
+                        isTypingCommuneRef.current = true;
+                        setCommuneSearch(e.target.value);
+                      }}
                       placeholder="Tapez le nom ou le code postal..."
                       className="w-full pl-9 pr-9 py-2.5 bg-slate-950 border border-slate-700/80 rounded-2xl text-xs font-semibold text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
                     />
@@ -746,13 +752,14 @@ export default function AutomaticSechoirProspectingModal({
                   </div>
 
                   {/* Suggestions autocomplétion */}
-                  {communeSuggestions.length > 0 && (
+                  {isTypingCommuneRef.current && communeSuggestions.length > 0 && (
                     <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-slate-950 border border-slate-700 rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
                       {communeSuggestions.map((c) => (
                         <button
                           key={c.id}
                           type="button"
                           onClick={() => {
+                            isTypingCommuneRef.current = false;
                             setSelectedCommune(c);
                             setCommuneSearch(c.nom);
                             setCommuneSuggestions([]);

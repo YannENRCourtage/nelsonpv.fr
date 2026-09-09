@@ -1,7 +1,7 @@
 import { prisma } from '../../src/lib/prisma.js'
 import docusign from 'docusign-esign'
 import bcrypt from 'bcryptjs'
-import { withAuth, setSecureCors } from '../common/authMiddleware.js'
+import { withAuth, setSecureCors } from './_authMiddleware.js'
 
 async function handler(req, res) {
     setSecureCors(req, res, 'GET,OPTIONS,PATCH,DELETE,POST,PUT')

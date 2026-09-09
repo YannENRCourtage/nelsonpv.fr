@@ -1,5 +1,5 @@
 import { getFirebaseAdmin } from '../../src/lib/firebase-admin.js';
-import { withAdmin, setSecureCors } from '../common/authMiddleware.js';
+import { withAdmin, setSecureCors } from '../common/_authMiddleware.js';
 
 const CORS_CONFIG = [
   {

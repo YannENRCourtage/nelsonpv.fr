@@ -9,10 +9,14 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
   const [loading, setLoading] = useState(false);
   const containerRef = useRef(null);
   const isSelectedRef = useRef(false);
+  const isUserTypingRef = useRef(false);
 
-  // Sync internal query with external value
+  // Sync internal query with external value (pas de recherche automatique si mise à jour externe)
   useEffect(() => {
+    isUserTypingRef.current = false;
     setQuery(value || '');
+    setSuggestions([]);
+    setIsOpen(false);
   }, [value]);
 
   // Click outside to close
@@ -26,10 +30,9 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Search logic with debounce
+  // Search logic with debounce : uniquement si l'utilisateur saisit un nouveau caractère
   useEffect(() => {
-    // Ne pas chercher si l'utilisateur vient de cliquer sur une suggestion
-    if (isSelectedRef.current) {
+    if (!isUserTypingRef.current || isSelectedRef.current) {
       return;
     }
 
@@ -45,7 +48,7 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
       try {
         const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`);
         const data = await res.json();
-        if (!isSelectedRef.current) {
+        if (isUserTypingRef.current && !isSelectedRef.current) {
           setSuggestions(data.features || []);
           if (data.features?.length > 0) {
             setIsOpen(true);
@@ -63,6 +66,7 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
 
   const handleSelect = (feature) => {
     const label = feature.properties.name || feature.properties.label;
+    isUserTypingRef.current = false;
     isSelectedRef.current = true;
     setQuery(label);
     setSuggestions([]);
@@ -76,12 +80,10 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
         <Input
           value={query}
           onChange={(e) => {
+            isUserTypingRef.current = true;
             isSelectedRef.current = false;
             setQuery(e.target.value);
             onChange?.(e);
-          }}
-          onFocus={() => {
-            if (!isSelectedRef.current && suggestions.length > 0) setIsOpen(true);
           }}
           className={className}
           placeholder={placeholder}
