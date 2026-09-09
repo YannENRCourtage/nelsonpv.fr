@@ -850,6 +850,28 @@ export const generateBeforeAfterDualSnapshot = async ({
         ctx.lineWidth = 2.5;
         ctx.setLineDash([8, 4]);
         ctx.stroke();
+
+        // Bâtiments exclus du parking (AVANT)
+        if (buildings && Array.isArray(buildings) && buildings.length > 0) {
+          buildings.forEach(b => {
+            const rawPts = Array.isArray(b) ? b : (b.polygon || b.geometry || []);
+            if (!rawPts || rawPts.length < 3) return;
+            const bPts = rawPts.map(p => getCanvasPoint(p.lat, p.lng, 0));
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(bPts[0].x, bPts[0].y);
+            for (let i = 1; i < bPts.length; i++) ctx.lineTo(bPts[i].x, bPts[i].y);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.22)';
+            ctx.fill();
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 3]);
+            ctx.stroke();
+            ctx.restore();
+          });
+        }
+
         ctx.restore();
 
         // DROITE (APRÈS : PARKING AVEC LES BLOCS D'OMBRIÈRES BLEUS ET BORDURE AMBRE)
@@ -871,6 +893,38 @@ export const generateBeforeAfterDualSnapshot = async ({
         ctx.setLineDash([8, 4]);
         ctx.stroke();
         ctx.setLineDash([]);
+
+        // Bâtiments exclus du parking (APRÈS)
+        if (buildings && Array.isArray(buildings) && buildings.length > 0) {
+          buildings.forEach(b => {
+            const rawPts = Array.isArray(b) ? b : (b.polygon || b.geometry || []);
+            if (!rawPts || rawPts.length < 3) return;
+            const bPts = rawPts.map(p => getCanvasPoint(p.lat, p.lng, halfW + 6));
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(bPts[0].x, bPts[0].y);
+            for (let i = 1; i < bPts.length; i++) ctx.lineTo(bPts[i].x, bPts[i].y);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.22)';
+            ctx.fill();
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 3]);
+            ctx.stroke();
+
+            // Label "Bâtiment exclu"
+            let sumBx = 0, sumBy = 0;
+            bPts.forEach(pt => { sumBx += pt.x; sumBy += pt.y; });
+            const cBx = sumBx / bPts.length;
+            const cBy = sumBy / bPts.length;
+            ctx.fillStyle = '#f87171';
+            ctx.font = 'bold 8.5px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Bâtiment exclu', cBx, cBy);
+            ctx.restore();
+          });
+        }
 
         // Dessin des rangées d'ombrières photovoltaïques
         if (ombriereBlocks && ombriereBlocks.length > 0) {

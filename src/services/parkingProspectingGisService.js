@@ -83,11 +83,11 @@ export async function searchCommunes(query) {
   }
 }
 
-// Pool de miroirs Overpass API pour haute résilience et vitesse
+// Pool de miroirs Overpass API pour haute résilience et vitesse (serveur français en priorité)
 const OVERPASS_ENDPOINTS = [
+  'https://overpass.openstreetmap.fr/api/interpreter',
   'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.openstreetmap.fr/api/interpreter'
+  'https://overpass.kumi.systems/api/interpreter'
 ];
 
 // Test géométrique d'inclusion d'un point WGS84 dans un polygone WGS84
@@ -105,27 +105,153 @@ export function isPointInPolygonWgs84(pt, poly) {
 }
 
 /**
+ * Classification experte d'un parking : Poids Lourds (PL) vs Véhicules Légers (VL)
+ * Basée sur les tags OSM, typologie foncière, mots-clés transport/logistique et aire de manœuvre
+ */
+export function classifyParkingCategory(tags = {}, area = 0) {
+  const t = Object.entries(tags).reduce((acc, [k, v]) => {
+    acc[k.toLowerCase()] = String(v).toLowerCase();
+    return acc;
+  }, {});
+
+  const text = `${t.name || ''} ${t.operator || ''} ${t.description || ''} ${t.brand || ''}`.toLowerCase();
+
+  // 1. Tags formels Poids Lourds (PL)
+  const isDirectPL =
+    t.amenity === 'truck_parking' ||
+    t.hgv === 'yes' ||
+    t.hgv === 'designated' ||
+    t.hgv === 'official' ||
+    t.truck === 'yes' ||
+    t.parking === 'truck' ||
+    t.parking === 'lorry' ||
+    t.industrial === 'depot' ||
+    t.industrial === 'transport' ||
+    t.industrial === 'logistics' ||
+    t.landuse === 'depot';
+
+  // 2. Mots-clés transporteurs / logistique / fret / TP / poids lourds
+  const plKeywords = [
+    'transport', 'transports', 'logistique', 'fret', 'routier', 'routiers',
+    'camion', 'camions', 'poids lourd', 'poids lourds', 'hgv', 'truck',
+    'plateforme', 'plate-forme', 'messagerie', 'quai', 'quais', 'entrepot',
+    'entrepôt', 'entrepots', 'entrepôts', 'depot', 'dépôt', 'transit',
+    'manutention', 'carriere', 'carrière', 'bpe', 'beton', 'béton',
+    'enrobe', 'enrobé', 'tp', 'travaux publics', 'autocar', 'autocars', 'bus'
+  ];
+  const hasPLKeyword = plKeywords.some(kw => text.includes(kw));
+
+  // 3. Critère foncier industriel : grand site d'accès privé / livraisons avec aire de giration
+  const isIndustrialOrPrivateDepot =
+    (t.access === 'private' || t.access === 'delivery' || t.access === 'no') && area >= 2500;
+
+  if (isDirectPL || hasPLKeyword || isIndustrialOrPrivateDepot) {
+    return 'PL';
+  }
+
+  return 'VL';
+}
+
+/**
+ * Recherche et extrait les polygones de bâtiments situés à l'intérieur
+ * ou chevauchant l'emprise d'un parking (OSM way["building"] & relation["building"])
+ */
+export async function fetchBuildingsForParking(parking) {
+  if (!parking || !parking.polygon || parking.polygon.length < 3) return [];
+
+  const poly = parking.polygon;
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  poly.forEach(p => {
+    minLat = Math.min(minLat, p.lat);
+    maxLat = Math.max(maxLat, p.lat);
+    minLng = Math.min(minLng, p.lng);
+    maxLng = Math.max(maxLng, p.lng);
+  });
+
+  const query = `[out:json][timeout:10];
+(
+  way["building"](${minLat},${minLng},${maxLat},${maxLng});
+  relation["building"](${minLat},${minLng},${maxLat},${maxLng});
+);
+out geom;`;
+
+  let rawData = null;
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'NelsonPV-OmbriereProspector/1.0 (contact@nelsonpv.fr)'
+        },
+        body: 'data=' + encodeURIComponent(query),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        rawData = await res.json();
+        if (rawData && rawData.elements) break;
+      }
+    } catch (err) {}
+  }
+
+  if (!rawData || !rawData.elements) return [];
+
+  const overlappingBuildings = [];
+  for (const el of rawData.elements) {
+    if (!el.geometry || el.geometry.length < 3) continue;
+    if (el.tags?.building === 'roof' && (el.tags?.layer || el.tags?.power)) continue;
+
+    const bPoly = el.geometry.map(g => ({ lat: g.lat, lng: g.lon }));
+    const bArea = calculatePolygonArea(bPoly);
+
+    const anyIn = bPoly.some(p => isPointInPolygonWgs84(p, poly));
+    if (anyIn) {
+      overlappingBuildings.push({
+        id: `bld_${el.id}`,
+        osmId: el.id,
+        polygon: bPoly,
+        area: bArea,
+        tags: el.tags || {}
+      });
+    }
+  }
+
+  return overlappingBuildings;
+}
+
+/**
  * 2. Extraction des polygones de parkings via Overpass API
  * Filtres obligatoires :
  * - Surface >= 220 m² strictement
  * - Parking à l'air libre (exclut underground, multi-storey, covered=yes, building=roof)
  * - Exclut les parkings ayant déjà une centrale solaire ou ombrières existantes
+ * - Qualification PL vs VL adaptée à la typologie demandée
  */
 export async function fetchParkingsInBbox({
   bbox,
   minArea = 220,
   maxArea = 100000,
   limit = 50,
+  typologyKey = 'ombriere_vl_auto',
   onProgress = null
 }) {
   if (!bbox) throw new Error('Bounding box requise pour la recherche géospatiale des parkings.');
 
   const { minLat, minLng, maxLat, maxLng } = bbox;
 
-  // Requête Overpass ciblée sur les parkings en surface ET les centrales / ombrières solaires existantes
+  // Requête Overpass ciblée sur les parkings VL et PL en surface ET les centrales / ombrières solaires existantes
   const overpassQuery = `[out:json][timeout:30];
 (
   way["amenity"="parking"](${minLat},${minLng},${maxLat},${maxLng});
+  way["amenity"="truck_parking"](${minLat},${minLng},${maxLat},${maxLng});
+  relation["amenity"="parking"](${minLat},${minLng},${maxLat},${maxLng});
+  relation["amenity"="truck_parking"](${minLat},${minLng},${maxLat},${maxLng});
+  way["hgv"="designated"](${minLat},${minLng},${maxLat},${maxLng});
+  way["hgv"="yes"](${minLat},${minLng},${maxLat},${maxLng});
+  way["landuse"="depot"](${minLat},${minLng},${maxLat},${maxLng});
   way["power"="generator"](${minLat},${minLng},${maxLat},${maxLng});
   way["generator:source"="solar"](${minLat},${minLng},${maxLat},${maxLng});
   way["building"="roof"](${minLat},${minLng},${maxLat},${maxLng});
@@ -179,8 +305,22 @@ out geom;`;
 
   for (const el of elements) {
     const tags = el.tags || {};
-    if (tags.amenity === 'parking' && el.geometry && el.geometry.length >= 3) {
-      parkingWays.push(el);
+    const isParkingElement =
+      tags.amenity === 'parking' ||
+      tags.amenity === 'truck_parking' ||
+      tags.hgv === 'designated' ||
+      tags.hgv === 'yes' ||
+      tags.landuse === 'depot';
+
+    if (isParkingElement) {
+      if (el.type === 'way' && el.geometry && el.geometry.length >= 3) {
+        parkingWays.push(el);
+      } else if (el.type === 'relation' && el.members) {
+        const outer = el.members.find(m => m.role === 'outer' && m.geometry && m.geometry.length >= 3);
+        if (outer) {
+          parkingWays.push({ ...el, geometry: outer.geometry });
+        }
+      }
     } else if (
       tags.power === 'generator' ||
       tags['generator:source'] === 'solar' ||
@@ -196,6 +336,7 @@ out geom;`;
   }
 
   const eligibleParkings = [];
+  const isPLTypology = typologyKey.startsWith('ombriere_pl');
 
   for (const el of parkingWays) {
     const tags = el.tags || {};
@@ -230,8 +371,21 @@ out geom;`;
 
     const area = calculatePolygonArea(polygon);
 
-    // ─── FILTRE 1 : SURFACE STRICTEMENT >= 220 m² ────────────────────────────
+    // ─── FILTRE 1 : SURFACE STRICTEMENT >= 220 m² (ou >= 1500 m² pour PL) ───
     if (area < minArea || area > maxArea) continue;
+
+    const category = classifyParkingCategory(tags, area);
+
+    // Filtrage spécifique selon la typologie sélectionnée
+    if (isPLTypology) {
+      // Pour les ombrières PL (15.8m, 20.2m, 24.6m) :
+      // Exclure les surfaces trop exiguës (< 1 500 m²) non adaptées aux manœuvres poids lourds
+      if (area < 1500) continue;
+    } else {
+      // Pour les ombrières VL :
+      // Exclure les parkings exclusivement dédiés au stationnement poids lourds
+      if (tags.amenity === 'truck_parking') continue;
+    }
 
     // ─── FILTRE 3 : DÉTECTION OMBRIÈRES SOLAIRES EXISTANTES ──────────────────
     let hasExistingSolar =
@@ -253,6 +407,10 @@ out geom;`;
 
     const center = calculateCentroid(polygon);
 
+    const defaultName = category === 'PL'
+      ? (tags.name || tags.operator || 'Site / Dépôt Poids Lourds')
+      : (tags.name || tags.operator || (tags.access === 'customers' ? 'Parking Clientèle' : 'Parking en plein air'));
+
     eligibleParkings.push({
       id: `parking_${el.id}`,
       osmId: el.id,
@@ -260,14 +418,25 @@ out geom;`;
       polygon,
       center,
       tags,
+      category,
       hasExistingSolar,
-      parkingType: tags.parking || 'surface',
-      name: tags.name || tags.operator || (tags.access === 'customers' ? 'Parking Clientèle' : 'Parking en plein air')
+      parkingType: tags.parking || (category === 'PL' ? 'truck' : 'surface'),
+      name: defaultName
     });
   }
 
-  // Trier par surface décroissante (les parkings les plus vastes et valorisables en premier)
-  eligibleParkings.sort((a, b) => b.area - a.area);
+  // ─── TRI ET PRIORISATION SELON LA TYPOLOGIE ─────────────────────────────────
+  // Typologie PL : parkings identifiés PL prioritaires au sommet de la liste, puis par surface décroissante
+  // Typologie VL : parkings classés par surface décroissante
+  if (isPLTypology) {
+    eligibleParkings.sort((a, b) => {
+      if (a.category === 'PL' && b.category !== 'PL') return -1;
+      if (b.category === 'PL' && a.category !== 'PL') return 1;
+      return b.area - a.area;
+    });
+  } else {
+    eligibleParkings.sort((a, b) => b.area - a.area);
+  }
 
   const finalLimit = limit === 'all' || limit === 'Tout' ? eligibleParkings.length : Math.min(Number(limit) || 50, eligibleParkings.length);
   return eligibleParkings.slice(0, finalLimit);

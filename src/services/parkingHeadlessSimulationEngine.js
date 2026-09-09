@@ -16,6 +16,7 @@ import { layoutOmbrieresOnParking, OMBRIERE_TYPOLOGIES } from '@/services/parkin
 import { calculateBankLoan, calculateLeasingSubscription } from '@/services/solarFinancingEngine';
 import { generateSatelliteSnapshot, generateBeforeAfterDualSnapshot } from '@/utils/satelliteSnapshot';
 import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
+import { fetchBuildingsForParking, calculatePolygonArea } from '@/services/parkingProspectingGisService';
 
 /**
  * Recherche les parcelles cadastrales et les propriétaires personnes morales
@@ -116,12 +117,36 @@ export async function simulateParkingHeadless({
   const economicModel = customSettings.economicModel || 'vente_totale'; // 'vente_totale' | 'autoconsommation' | 'autoconsommation_stockage'
   const includeCoverLetter = customSettings.includeCoverLetter ?? false;
 
+  // 0. Détection / enrichissement des bâtiments existants sur le parking
+  let parkingBuildings = parking.buildings;
+  if (!parkingBuildings) {
+    try {
+      parkingBuildings = await fetchBuildingsForParking(parking);
+      parking.buildings = parkingBuildings;
+    } catch (e) {
+      console.warn('Erreur détection bâtiments parking:', e);
+      parkingBuildings = [];
+    }
+  }
+
+  // Déduction de l'emprise des bâtiments de la surface du parking
+  if (parkingBuildings && parkingBuildings.length > 0 && !parking.buildingArea) {
+    const totalBldArea = parkingBuildings.reduce((sum, b) => {
+      const bArea = b.area || calculatePolygonArea(b.polygon || b);
+      return sum + (bArea || 0);
+    }, 0);
+    parking.buildingArea = Math.round(totalBldArea);
+    if (!parking.rawArea) parking.rawArea = parking.area;
+    parking.area = Math.max(100, Math.round(parking.rawArea - parking.buildingArea));
+  }
+
   // 1. Calepinage géométrique des ombrières selon l'orientation naturelle du parking (plafonné à maxKwc)
   const layout = layoutOmbrieresOnParking({
     polygonWgs84: parking.polygon,
     parkingArea: parking.area,
     typologyKey,
-    maxKwc
+    maxKwc,
+    buildings: (parking.buildings || []).map(b => b.polygon || b)
   });
 
   const {
@@ -137,7 +162,9 @@ export async function simulateParkingHeadless({
   } = layout;
 
   // Filtre d'exclusion rapide avant appels réseaux coûteux (Cadastre, Koumoul, Snapshots satellite)
-  if (isCurved || !placedOmbrieres || placedOmbrieres.length === 0 || installedKwc < minKwc || installedKwc > maxKwc) {
+  // Un tracé courbé n'est disqualifié QUE si sa forme empêche le déploiement d'ombrières linéaires viables
+  const isUnusableCurved = isCurved && (!placedOmbrieres || placedOmbrieres.length === 0);
+  if (isUnusableCurved || !placedOmbrieres || placedOmbrieres.length === 0 || installedKwc < minKwc || installedKwc > maxKwc) {
     return {
       isCurved,
       curvedDetails,
@@ -250,6 +277,7 @@ export async function simulateParkingHeadless({
       polygonPoints: parking.polygon,
       polygonStyle: 'parking',
       ombriereBlocks: placedOmbrieres,
+      buildings: (parking.buildings || []).map(b => b.polygon || b),
       customKwc: installedKwc,
       roofSurface: parking.area,
       parkingArea: parking.area,
@@ -268,6 +296,7 @@ export async function simulateParkingHeadless({
       polygonPoints: parking.polygon,
       polygonStyle: 'parking',
       ombriereBlocks: placedOmbrieres,
+      buildings: (parking.buildings || []).map(b => b.polygon || b),
       width: 850,
       height: 480,
       zoom: 19
@@ -295,7 +324,11 @@ export async function simulateParkingHeadless({
     // Données techniques ombrières
     typology,
     typologyKey,
+    category: parking.category || 'VL',
     parkingArea: parking.area,
+    rawParkingArea: parking.rawArea || parking.area,
+    buildingArea: parking.buildingArea || 0,
+    buildings: parking.buildings || [],
     roofSurface: totalCoveredArea, // alias pour compatibilité PDF
     floorArea: totalCoveredArea,
     coveredArea: totalCoveredArea,

@@ -225,11 +225,12 @@ export function isCurvedParking(polygonWgs84) {
   const orthogonalityRatio = totalPerimeter > 0 ? bestScore / totalPerimeter : 1;
 
   // Critères de courbure :
-  // 1. Suite d'au moins 3 virages d'arc consécutifs totalisant au moins 25° de rotation
+  // 1. Suite d'au moins 4 virages d'arc consécutifs totalisant au moins 35° ET représentant plus de 15% du périmètre
   // 2. Ou plus de 25% du périmètre en segments courbes avec faible orthogonalité (< 0.68)
-  const hasArc = maxConsecutiveCurveTurns >= 3 && Math.abs(maxCumulativeArcAngle) >= 25;
+  // 3. Dans tous les cas, si l'orthogonalité globale est élevée (>= 0.72), le parking est géométriquement rectiligne (arrondis d'accès ignorés)
+  const hasArc = (maxConsecutiveCurveTurns >= 4 && Math.abs(maxCumulativeArcAngle) >= 35 && (curvedLength / totalPerimeter > 0.15)) && (orthogonalityRatio < 0.72);
   const isHighCurvature = (curvedLength / totalPerimeter > 0.25) && (orthogonalityRatio < 0.68);
-  const isCurved = hasArc || isHighCurvature;
+  const isCurved = (hasArc || isHighCurvature) && orthogonalityRatio < 0.72;
 
   return {
     isCurved,
@@ -364,7 +365,8 @@ export function layoutOmbrieresOnParking({
   polygonWgs84,
   parkingArea,
   typologyKey = 'ombriere_vl_auto',
-  maxKwc = 500
+  maxKwc = 500,
+  buildings = []
 }) {
   const selectedTypology = OMBRIERE_TYPOLOGIES[typologyKey] || OMBRIERE_TYPOLOGIES['ombriere_vl_auto'];
   const curvature = isCurvedParking(polygonWgs84);
@@ -386,6 +388,24 @@ export function layoutOmbrieresOnParking({
 
   const { bounds, localPoly, angleRad, center, metersPerDegLat, metersPerDegLng } = frame;
   const { minX, maxX, minY, maxY } = bounds;
+
+  // Projection des polygones de bâtiments dans le même repère local métrique
+  const cosOpt = Math.cos(-angleRad);
+  const sinOpt = Math.sin(-angleRad);
+  const localBuildings = (buildings || [])
+    .map(b => {
+      const pts = Array.isArray(b) ? b : (b.polygon || b.geometry || []);
+      if (!pts || pts.length < 3) return null;
+      return pts.map(p => {
+        const px = (p.lng - center.lng) * metersPerDegLng;
+        const py = (p.lat - center.lat) * metersPerDegLat;
+        return {
+          x: px * cosOpt - py * sinOpt,
+          y: px * sinOpt + py * cosOpt
+        };
+      });
+    })
+    .filter(Boolean);
 
   // Paramètres normatifs du calepinage de parking
   const isPL = typologyKey.startsWith('ombriere_pl') || (selectedTypology.widthMeters && selectedTypology.widthMeters > 12.0);
@@ -608,6 +628,19 @@ export function layoutOmbrieresOnParking({
         bLat /= polygonWgs84Ombriere.length;
         bLng /= polygonWgs84Ombriere.length;
 
+        // Vérifier qu'aucun coin ou centre du bloc ne touche un bâtiment exclu
+        const blockIntersectsBuilding = localBuildings.some(bPoly => {
+          const testBlockPts = [
+            ...localCorners,
+            { x: (xMinBlock + xMaxBlock) / 2, y: (yMinBlock + yMaxBlock) / 2 }
+          ];
+          return testBlockPts.some(pt => isPointIn2DPolygon(pt.x, pt.y, bPoly));
+        });
+        if (blockIntersectsBuilding) {
+          currentBlockBays = [];
+          return;
+        }
+
         placedOmbrieres.push({
           id: `omb_${blockIdCounter++}`,
           rowIndex: rowIndex + 1,
@@ -639,7 +672,12 @@ export function layoutOmbrieresOnParking({
         { x: x + BAY_LENGTH / 2, y: row.y } // centre
       ];
 
-      const isValidBay = testCorners.every(pt => isPointIn2DPolygon(pt.x, pt.y, localPoly));
+      const isInParking = testCorners.every(pt => isPointIn2DPolygon(pt.x, pt.y, localPoly));
+      const intersectsBuilding = localBuildings.some(bPoly =>
+        testCorners.some(pt => isPointIn2DPolygon(pt.x, pt.y, bPoly))
+      );
+
+      const isValidBay = isInParking && !intersectsBuilding;
 
       if (isValidBay) {
         currentBlockBays.push({ x });

@@ -572,8 +572,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #00429d;">${calculatedPower}</td>
           </tr>
           <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 2px 0; color: #64748b;">Emprise parking :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.parkingArea || 0} m² (${sim.spotsCount || 0} places abritées)</td>
+            <td style="padding: 2px 0; color: #64748b;">Emprise parking nette :</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">
+              ${sim.parkingArea || 0} m² (${sim.spotsCount || 0} places abritées)
+              ${sim.buildingArea ? `<br/><span style="font-size: 6.2pt; color: #64748b; font-weight: normal;">(hors bâti : ${sim.buildingArea} m²)</span>` : ''}
+            </td>
             <td style="padding: 2px 0 2px 12px; color: #64748b;">Surface couverte ombrières :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #16a34a;">${sim.coveredArea || sim.roofSurface || 0} m² (${sim.coverageRatio || 0}%)</td>
           </tr>

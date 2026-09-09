@@ -316,6 +316,7 @@ export default function AutomaticOmbriereProspectingModal({
         bbox: targetBbox,
         minArea,
         limit: effectiveLimit,
+        typologyKey: selectedTypology,
         onProgress: (msg) => setCurrentStepText(msg)
       });
 
@@ -345,6 +346,9 @@ export default function AutomaticOmbriereProspectingModal({
         const total = eligible.length;
         setCurrentStepText(`Calepinage et simulation ${stepNum}/${total} : ${p.area} m²...`);
         addLog(`─── Parking ${stepNum}/${total} : ${p.area} m² [OSM ID: ${p.osmId}] ───`);
+        if (p.category) {
+          addLog(`   🏷️ Typologie foncière : ${p.category === 'PL' ? '🅿️ Parking Poids Lourds (PL)' : '🚗 Parking Véhicules Légers (VL)'}`);
+        }
 
         // FILTRE 1 : Ombrières solaires déjà existantes (Image 4)
         if (p.hasExistingSolar) {
@@ -386,8 +390,12 @@ export default function AutomaticOmbriereProspectingModal({
           }
         });
 
+        if (sim?.buildingArea > 0) {
+          addLog(`   🏢 Emprise bâtiment détectée et exclue : ${sim.buildingArea} m² (Surface nette disponible : ${sim.parkingArea} m²)`);
+        }
+
         // FILTRE 2 : Tracé courbé / curviligne non adapté (Image 5)
-        if (sim?.isCurved) {
+        if (sim?.isCurved && (!sim.placedOmbrieres || sim.placedOmbrieres.length === 0)) {
           addLog(`   ⚠️ Parking ignoré : tracé courbé / curviligne non adapté aux ombrières linéaires.`);
           continue;
         }
@@ -1240,9 +1248,23 @@ export default function AutomaticOmbriereProspectingModal({
                               {item.addressLabel}
                             </div>
                             <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
+                              {(item.simulation?.category || item.parking?.category) && (
+                                <span className={`px-1.5 py-0.5 text-[9.5px] font-black rounded border ${
+                                  (item.simulation?.category || item.parking?.category) === 'PL'
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                    : 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                }`}>
+                                  {(item.simulation?.category || item.parking?.category) === 'PL' ? '🅿️ Poids Lourds (PL)' : '🚗 VL'}
+                                </span>
+                              )}
                               <span>📐 {item.cadastreRef}</span>
                               <span>•</span>
-                              <span>Parking : <strong>{item.parking.area} m²</strong></span>
+                              <span>
+                                Parking net : <strong>{item.parking.area} m²</strong>
+                                {item.simulation?.buildingArea > 0 && (
+                                  <span className="text-slate-400 text-[10px]"> (bâti exclu : {item.simulation.buildingArea} m²)</span>
+                                )}
+                              </span>
                               <span>•</span>
                               <span className="text-cyan-400 font-bold">🚗 {item.simulation?.totalShelteredSpots} places</span>
                               <span>•</span>
