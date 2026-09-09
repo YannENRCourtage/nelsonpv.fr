@@ -17,11 +17,7 @@
             "destination": "/api/enedis/signature-$1"
         },
         {
-            "source": "/api/(.*)",
-            "destination": "/api/$1"
-        },
-        {
-            "source": "/(.*)",
+            "source": "/((?!api/).*)",
             "destination": "/index.html"
         }
     ],
