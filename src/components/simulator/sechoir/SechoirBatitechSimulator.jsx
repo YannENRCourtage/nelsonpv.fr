@@ -10,7 +10,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   MapPin, Compass, Leaf, BarChart3,
   ChevronLeft, ChevronRight, RotateCcw,
-  CheckCircle2,
+  CheckCircle2, Sparkles,
 } from 'lucide-react';
 
 import useSechoirStore from '@/stores/useSechoirStore.js';
@@ -25,6 +25,9 @@ import Step5Results from '@/components/simulator/sechoir/steps/Step5Results.jsx'
 
 // Génération PDF
 import { generateSechoirPDF } from '@/components/simulator/sechoir/SechoirPDFGenerator.jsx';
+
+// Automate de prospection foncière & agronomique
+import AutomaticSechoirProspectingModal from './AutomaticSechoirProspectingModal.jsx';
 
 // ─── Configuration des 4 étapes ────────────────────────────────────────────────
 
@@ -55,6 +58,41 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
 
   // Direction d'animation (1 = forward, -1 = backward)
   const [direction, setDirection] = React.useState(1);
+
+  // Modale d'automate de prospection foncière & agronomique
+  const [isAutoProspectingOpen, setIsAutoProspectingOpen] = React.useState(false);
+
+  // Callback d'injection d'un prospect qualifié dans le simulateur
+  const handleSelectProspect = useCallback((prospect) => {
+    if (!prospect) return;
+    store.setClientName(prospect.clientName || `Exploitation PACAGE ${prospect.pacage}`);
+    store.setAddress({
+      address: prospect.address,
+      label: prospect.addressLabel,
+      latitude: prospect.latitude,
+      longitude: prospect.longitude,
+      departement: prospect.departement,
+      commune: prospect.commune,
+      codePostal: prospect.codePostal,
+    });
+    store.setModel(prospect.bestModelId);
+    store.setMapCenter(prospect.coords);
+
+    if (Array.isArray(prospect.materials)) {
+      prospect.materials.forEach((mat) => {
+        store.updateMaterialParams(mat.id, {
+          enabled: mat.enabled,
+          volume: mat.volume,
+          plusValueQualite: mat.plusValueQualite,
+          economieEnergie: mat.economieEnergie,
+        });
+      });
+    }
+
+    // Navigation instantanée vers l'étape des Résultats
+    store.setStep(4);
+    setIsAutoProspectingOpen(false);
+  }, [store]);
 
   // ─── Calcul des résultats (mémoïsé) ──────────────────────────────────────
 
@@ -261,8 +299,18 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
             </div>
           </div>
 
-          {/* Boutons Précédent, Suivant et Reset placés en haut à droite */}
-          <div className="flex items-center gap-2.5 self-end sm:self-center">
+          {/* Boutons d'action, Navigation et Automate */}
+          <div className="flex flex-wrap items-center gap-2.5 self-end sm:self-center">
+            {/* Bouton Automate Séchoirs BatiTech */}
+            <button
+              onClick={() => setIsAutoProspectingOpen(true)}
+              className="flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs sm:text-sm shadow-md shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              title="Lancer l'automate de prospection foncière et agronomique IGN RPG 2024"
+            >
+              <Sparkles className="w-4 h-4 fill-black shrink-0" />
+              <span>Automate Séchoirs BatiTech</span>
+            </button>
+
             {/* Bouton Précédent */}
             <button
               onClick={handlePrev}
@@ -371,6 +419,14 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Modale d'automate de prospection foncière & agronomique Séchoirs BatiTech */}
+      <AutomaticSechoirProspectingModal
+        isOpen={isAutoProspectingOpen}
+        onClose={() => setIsAutoProspectingOpen(false)}
+        defaultCommune={store.commune || 'Mont-de-Marsan'}
+        onSelectProspect={handleSelectProspect}
+      />
 
     </div>
   );

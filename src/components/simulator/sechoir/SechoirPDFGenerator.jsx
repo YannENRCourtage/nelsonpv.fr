@@ -287,6 +287,7 @@ export async function generateSechoirPDF({
   financialParams = {},
   projectName,
   customClientName,
+  returnBlobOnly = false,
 }) {
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;left:-9999px;top:0;width:297mm;background:#ffffff;color:#333333;font-family:Montserrat,Arial,sans-serif;';
@@ -935,7 +936,12 @@ export async function generateSechoirPDF({
     pdf.addImage(canvas5.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
 
     const filename = `Dossier_Etude_Sechoir_BatiTech_${modelName.replace(/\s+/g, '_')}_${(clientName || 'Client').replace(/\s+/g, '_')}.pdf`;
+    if (returnBlobOnly) {
+      const blob = pdf.output('blob');
+      return { blob, filename, pdf };
+    }
     pdf.save(filename);
+    return { filename, pdf };
   } finally {
     if (document.body.contains(container)) {
       document.body.removeChild(container);
