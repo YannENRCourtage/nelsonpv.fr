@@ -11,7 +11,7 @@ import crypto from 'crypto';
 import { getAdminDb } from '../../src/lib/firebase-admin.js';
 import { setSecureCors } from '../common/authMiddleware.js';
 import { generateMandatPdf } from '../../src/services/enedisMandatPdfService.js';
-import { declareAndFetchEnedis } from '../../scripts/enedis-cli.mjs';
+import { declareAndFetchEnedis } from '../../src/services/enedisAutomation.js';
 
 // Cache en mémoire pour sessions de signature rapides (avec persistance Firestore)
 const memorySessions = new Map();
