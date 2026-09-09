@@ -4,6 +4,7 @@ import {
   Trash2, MessageSquare, Plus, Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
+import MentionTextarea from '@/components/MentionTextarea.jsx';
 
 /**
  * Formatage de la date dans le style Monday : "janv. 19" ou "nov. 07 2025"
@@ -418,14 +419,15 @@ export default function MondayUpdatesDrawer({
                   <span className="text-[10px] text-slate-500">Ctrl + Entrée pour publier</span>
                 </div>
 
-                <textarea
-                  ref={textareaRef}
+                <MentionTextarea
+                  textareaRef={textareaRef}
                   value={newText}
-                  onChange={(e) => setNewText(e.target.value)}
+                  onChange={(val) => setNewText(val)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Rédiger une mise à jour pour ce dossier..."
+                  placeholder="Rédiger une mise à jour... Tapez @ ou # pour mentionner un utilisateur."
                   rows={4}
                   className="w-full p-3 bg-[#22272e] border border-slate-700 focus:border-blue-500 rounded-2xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none transition-all shadow-inner"
+                  darkMode={true}
                 />
 
                 <div className="flex items-center justify-between pt-1">

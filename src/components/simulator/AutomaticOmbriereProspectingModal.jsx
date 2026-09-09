@@ -933,7 +933,15 @@ export default function AutomaticOmbriereProspectingModal({
                       <input
                         type="number"
                         value={minTargetKwc}
-                        onChange={(e) => setMinTargetKwc(Math.max(10, Number(e.target.value)))}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setMinTargetKwc(raw === '' ? '' : Number(raw));
+                        }}
+                        onBlur={() => {
+                          if (minTargetKwc === '' || isNaN(Number(minTargetKwc)) || Number(minTargetKwc) < 1) {
+                            setMinTargetKwc(100);
+                          }
+                        }}
                         className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center"
                       />
                     </div>
@@ -942,7 +950,15 @@ export default function AutomaticOmbriereProspectingModal({
                       <input
                         type="number"
                         value={maxTargetKwc}
-                        onChange={(e) => setMaxTargetKwc(Math.max(minTargetKwc, Number(e.target.value)))}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setMaxTargetKwc(raw === '' ? '' : Number(raw));
+                        }}
+                        onBlur={() => {
+                          if (maxTargetKwc === '' || isNaN(Number(maxTargetKwc)) || Number(maxTargetKwc) < 1) {
+                            setMaxTargetKwc(500);
+                          }
+                        }}
                         className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center"
                       />
                     </div>

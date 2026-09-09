@@ -2,9 +2,27 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProject } from '@/contexts/ProjectContext';
 import { createComment } from '@/services/firebase/comments.service';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Send } from 'lucide-react';
+import MentionTextarea from '@/components/MentionTextarea.jsx';
+
+/**
+ * Rendu d'un texte avec @mentions surlignées en bleu
+ */
+const renderTextWithMentions = (text) => {
+  if (!text) return null;
+  const parts = text.split(/(@\w+)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('@')) {
+      return (
+        <span key={i} className="font-bold text-blue-400 bg-blue-500/10 rounded px-0.5">
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+};
 
 export default function ChatBox() {
   const { user } = useAuth();
@@ -19,6 +37,7 @@ export default function ChatBox() {
   );
 
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
   // Scroll automatique supprimé à la demande de l'utilisateur
   // useEffect(scrollToBottom, [lines]);
@@ -88,7 +107,7 @@ export default function ChatBox() {
             <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
               <div className="text-xs text-gray-500 mb-1">{l.who}</div>
               <div className={`max-w-xs md:max-w-md rounded-lg px-3 py-2 ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
-                {l.text}
+                {renderTextWithMentions(l.text)}
               </div>
             </div>
           );
@@ -97,13 +116,15 @@ export default function ChatBox() {
       </div>
       <div className="border-t p-4">
         <div className="relative">
-          <Textarea
+          <MentionTextarea
+            textareaRef={textareaRef}
             rows={2}
-            placeholder="Écrire un message..."
+            placeholder="Écrire un message... Tapez @ ou # pour mentionner."
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(val) => setInput(val)}
             onKeyDown={onKey}
-            className="pr-12"
+            className="w-full pr-12 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+            darkMode={false}
           />
           <Button onClick={send} size="icon" className="absolute right-2 bottom-2 h-8 w-8 bg-blue-600 hover:bg-blue-700">
             <Send size={16} className="text-white" />
@@ -112,4 +133,4 @@ export default function ChatBox() {
       </div>
     </div>
   );
-}
+}

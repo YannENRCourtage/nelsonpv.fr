@@ -84,6 +84,7 @@ export default function AutomaticProspectingModal({
   const [editingEconomicModel, setEditingEconomicModel] = useState('vente_totale');
   const [editingTarifEdfOa, setEditingTarifEdfOa] = useState(0.085);
   const [editingExcludeThirdParty, setEditingExcludeThirdParty] = useState(false);
+  const [editingMaxKwc, setEditingMaxKwc] = useState('');
   const [isRecalculatingRow, setIsRecalculatingRow] = useState(false);
 
   // Gestion du dossier local d'exportation (et mode Firefox natif)
@@ -480,6 +481,7 @@ export default function AutomaticProspectingModal({
     setEditingEconomicModel(item.simulation?.economicModel || economicModel || 'vente_totale');
     setEditingTarifEdfOa(item.simulation?.tarifEdfOaKwh ?? tarifEdfOa ?? 0.085);
     setEditingExcludeThirdParty(item.simulation?.excludeThirdParty ?? excludeThirdParty ?? false);
+    setEditingMaxKwc(item.simulation?.installedKwc ?? '');
   };
 
   // Recalcul d'une ligne de résultat avec de nouveaux paramètres (ex: pente = 0° terrasse plein Sud)
@@ -511,11 +513,12 @@ export default function AutomaticProspectingModal({
           costPerKwc: 920,
           minKwc: 10,
           maxKwc: 5000,
+          targetMaxKwc: editingMaxKwc !== '' ? Number(editingMaxKwc) : undefined,
           pitch: newPitch,
           isTerrasse: isZeroPitch,
           roofType: isZeroPitch ? 'terrasse' : item.simulation?.roofType,
           economicModel: editingEconomicModel,
-          tarifEdfOa: editingTarifEdfOa,
+          tarifEdfOa: Number(editingTarifEdfOa),
           excludeThirdParty: editingExcludeThirdParty,
           includeCoverLetter
         }
@@ -979,9 +982,17 @@ export default function AutomaticProspectingModal({
                         type="number"
                         value={minTargetKwc}
                         onChange={(e) => {
-                          const val = Math.max(10, Number(e.target.value));
-                          setMinTargetKwc(val);
-                          setMinArea(Math.max(100, Math.round((val * 1000 / 465) * 2.05 * 0.75)));
+                          const raw = e.target.value;
+                          setMinTargetKwc(raw === '' ? '' : Number(raw));
+                          if (raw !== '' && Number(raw) > 0) {
+                            setMinArea(Math.max(100, Math.round((Number(raw) * 1000 / 465) * 2.05 * 0.75)));
+                          }
+                        }}
+                        onBlur={() => {
+                          if (minTargetKwc === '' || isNaN(Number(minTargetKwc)) || Number(minTargetKwc) < 1) {
+                            setMinTargetKwc(100);
+                            setMinArea(Math.max(100, Math.round((100 * 1000 / 465) * 2.05 * 0.75)));
+                          }
                         }}
                         className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center"
                       />
@@ -992,9 +1003,17 @@ export default function AutomaticProspectingModal({
                         type="number"
                         value={maxTargetKwc}
                         onChange={(e) => {
-                          const val = Math.max(minTargetKwc, Number(e.target.value));
-                          setMaxTargetKwc(val);
-                          setMaxArea(Math.round((val * 1000 / 465) * 2.05 * 1.6));
+                          const raw = e.target.value;
+                          setMaxTargetKwc(raw === '' ? '' : Number(raw));
+                          if (raw !== '' && Number(raw) > 0) {
+                            setMaxArea(Math.round((Number(raw) * 1000 / 465) * 2.05 * 1.6));
+                          }
+                        }}
+                        onBlur={() => {
+                          if (maxTargetKwc === '' || isNaN(Number(maxTargetKwc)) || Number(maxTargetKwc) < 1) {
+                            setMaxTargetKwc(500);
+                            setMaxArea(Math.round((500 * 1000 / 465) * 2.05 * 1.6));
+                          }
                         }}
                         className="w-full p-1 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center"
                       />
@@ -1436,6 +1455,41 @@ export default function AutomaticProspectingModal({
                                   </span>
                                 </div>
                               )}
+                            </div>
+
+                            {/* Section 1b : Puissance maximale à installer */}
+                            <div className="flex items-center gap-3 pt-2 border-t border-slate-800">
+                              <label className="text-[11px] font-bold text-slate-200 flex items-center gap-1 whitespace-nowrap">
+                                ⚡ Puissance max à installer :
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={editingMaxKwc}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  setEditingMaxKwc(raw === '' ? '' : Number(raw));
+                                  // Auto-ajuster le tarif EDF OA selon la puissance
+                                  if (raw !== '' && Number(raw) > 0) {
+                                    const kwc = Number(raw);
+                                    if (kwc > 500) setEditingTarifEdfOa(0.078);
+                                    else if (kwc >= 100) setEditingTarifEdfOa(0.085);
+                                    else setEditingTarifEdfOa(0.011);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (editingMaxKwc === '' || isNaN(Number(editingMaxKwc)) || Number(editingMaxKwc) < 1) {
+                                    setEditingMaxKwc('');
+                                  }
+                                }}
+                                placeholder="Auto"
+                                className="w-20 p-1.5 bg-slate-800 border border-slate-700 rounded-xl text-center text-xs font-black text-amber-400"
+                              />
+                              <span className="text-[10.5px] text-slate-400">kWc</span>
+                              <span className="text-[9.5px] text-slate-500 italic">
+                                (vide = puissance réelle de la toiture)
+                              </span>
                             </div>
 
                             {/* Section 2 : Modèle économique & Tarif EDF OA */}

@@ -109,7 +109,8 @@ export async function simulateParkingHeadless({
 }) {
   const typologyKey = customSettings.typology || 'ombriere_vl_auto';
   const costPerKwc = customSettings.costPerKwc || 1200; // 1 200 € / kWc (structure + génie civil + PV)
-  const tarifEdfOaKwh = customSettings.tarifEdfOa !== undefined ? Number(customSettings.tarifEdfOa) : 0.085; // 0,085 €/kWh
+  const tarifEdfOaDefault = 0.085; // sera recalculé après calepinage si >500 kWc
+  const tarifEdfOaOverride = customSettings.tarifEdfOa !== undefined ? Number(customSettings.tarifEdfOa) : null;
   const minKwc = customSettings.minKwc !== undefined ? Number(customSettings.minKwc) : 100;
   const maxKwc = customSettings.maxKwc !== undefined ? Number(customSettings.maxKwc) : 500;
   const economicModel = customSettings.economicModel || 'vente_totale'; // 'vente_totale' | 'autoconsommation' | 'autoconsommation_stockage'
@@ -159,6 +160,11 @@ export async function simulateParkingHeadless({
   // 2. Productible solaire selon le département
   const departmentCode = addressInfo?.departmentCode || (addressInfo?.postcode ? addressInfo.postcode.substring(0, 2) : '33');
   const regionalBaseYield = getProductionForDepartment(departmentCode) || 1100;
+
+  // Tarif EDF OA : 0.078€/kWh pour >500 kWc, 0.085€/kWh pour 100-500 kWc, 0.011€/kWh pour <100 kWc
+  const tarifEdfOaKwh = tarifEdfOaOverride !== null
+    ? tarifEdfOaOverride
+    : (installedKwc > 500 ? 0.078 : (installedKwc >= 100 ? 0.085 : 0.011));
 
   // Coefficient d'inclinaison (pente ombrière 10° = ~0.95 de captation)
   const tiltCoeff = 0.95;

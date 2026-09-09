@@ -666,8 +666,8 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                         </td>
                         {cIdx === 0 && (
                             <td 
-                                className="px-2 py-1.5 border-r text-center bg-white group-hover:bg-slate-50 select-none" 
-                                style={{ width: 85, minWidth: 85, maxWidth: 85 }}
+                                className="px-1 py-1.5 border-r text-center bg-white group-hover:bg-slate-50 select-none" 
+                                style={{ width: 50, minWidth: 50, maxWidth: 50 }}
                             >
                                 <div className="flex items-center justify-center h-full min-h-[40px]">
                                     <UpdateBubble count={updateCount} onClick={() => onOpenUpdates && onOpenUpdates(row)} />
@@ -1604,20 +1604,20 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                     />
                                     {idx === 0 && (
                                         <th
-                                            style={{ width: 85, minWidth: 85, maxWidth: 85 }}
-                                            className="px-2 py-3 border-b border-r bg-slate-50 text-center select-none"
+                                            style={{ width: 50, minWidth: 50, maxWidth: 50 }}
+                                            className="px-1 py-3 border-b border-r bg-slate-50 text-center select-none"
                                         >
-                                            <span className="font-semibold text-slate-700 text-xs tracking-tight">Mises à jour</span>
+                                            <span className="font-semibold text-slate-700 text-xs tracking-tight">MaJ</span>
                                         </th>
                                     )}
                                 </React.Fragment>
                             ))}
                             {columns.length === 0 && (
                                 <th
-                                    style={{ width: 85, minWidth: 85, maxWidth: 85 }}
-                                    className="px-2 py-3 border-b border-r bg-slate-50 text-center select-none"
+                                    style={{ width: 50, minWidth: 50, maxWidth: 50 }}
+                                    className="px-1 py-3 border-b border-r bg-slate-50 text-center select-none"
                                 >
-                                    <span className="font-semibold text-slate-700 text-xs tracking-tight">Mises à jour</span>
+                                    <span className="font-semibold text-slate-700 text-xs tracking-tight">MaJ</span>
                                 </th>
                             )}
                             {/* Suppression du titre de la colonne de suppression */}

@@ -1322,7 +1322,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </p>
 
               <p style="margin: 14px 0;">
-                Je vous propose un bref échange de 15 minutes dans les prochains jours afin de faire le point sur vos objectifs et d’ajuster ces paramètres à vos priorités d'exploitation.
+                Je vous propose un bref échange dans les prochains jours afin de faire le point sur vos objectifs et d’ajuster ces paramètres à vos priorités d'exploitation.
               </p>
 
               <p style="margin: 14px 0 16px 0;">
@@ -1365,7 +1365,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </p>
 
               <p style="margin: 14px 0;">
-                Je vous propose un bref échange de 15 minutes dans les prochains jours afin de faire le point sur vos obligations réglementaires et d’ajuster ces paramètres à vos priorités d'exploitation.
+                Je vous propose un bref échange dans les prochains jours afin de faire le point sur vos obligations réglementaires et d’ajuster ces paramètres à vos priorités d'exploitation.
               </p>
 
               <p style="margin: 14px 0 16px 0;">
@@ -1417,7 +1417,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 <strong>P.J. :</strong> ${isToiture ? 'Étude de faisabilité & offre commerciale — Centrale toiture photovoltaïque' : 'Étude de faisabilité & offre commerciale — Ombrière de parking photovoltaïque'}
               </div>
 
-              <div style="text-align: right; border-top: 1.5px solid #00429d; padding-top: 6px; min-width: 220px;">
+              <div style="text-align: right; padding-top: 6px; min-width: 220px;">
                 <div style="font-size: 11.5pt; font-weight: 900; color: #00429d;">Yann BARBERIS</div>
                 <div style="font-size: 9.5pt; color: #475569; font-weight: bold; margin-top: 2px;">Conseiller solutions énergies</div>
                 <div style="font-size: 9pt; color: #0284c7; font-weight: bold; margin-top: 2px;">07 63 87 71 40</div>
@@ -1427,7 +1427,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
 
           <!-- PIED DE PAGE -->
-          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 5px; font-size: 8pt; color: #475569; margin-top: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 5px; font-size: 8pt; color: #475569; margin-top: auto;">
             <span style="font-weight: bold; color: #00429d;">enr-courtage.fr</span>
             <span>Energies Renouvelables &amp; Ingénierie Solaire</span>
             <span>contact@enr-courtage.fr</span>

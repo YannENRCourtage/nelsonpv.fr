@@ -650,18 +650,14 @@ const crop3DCanvas = (sourceCanvas) => {
 
   const roofArea = totalRoofArea;
 
-  const installedKwc = useMemo(() => {
+  const rawInstalledKwc = useMemo(() => {
     const raw = Math.round((roofArea * 0.20) * 100) / 100;
-    return Math.max(minTargetKwc, Math.min(maxTargetKwc, raw));
-  }, [roofArea, minTargetKwc, maxTargetKwc]);
+    return Math.min(maxTargetKwc || 500, raw);
+  }, [roofArea, maxTargetKwc]);
 
   const regionalBaseYield = useMemo(() => {
     return getProductionForDepartment(departmentCode);
   }, [departmentCode]);
-
-  const annualProductionKwh = useMemo(() => {
-    return Math.round(installedKwc * regionalBaseYield);
-  }, [installedKwc, regionalBaseYield]);
 
   // Modèle économique Gros-Œuvre & PV multi-bâtiments issu du catalogue officiel Barconnière / Acama
   const isCustomBuilding = config.configMode === 'custom' || (!isAcama && config.buildingType === 'custom');
@@ -675,6 +671,18 @@ const crop3DCanvas = (sourceCanvas) => {
     rightWidth: config.rightWidth || 0,
     isAcama: Boolean(isAcama),
   });
+
+  // Puissance réelle : utiliser barcMatch.kwc (catalogue) si disponible, sinon calcul surfacique
+  const installedKwc = useMemo(() => {
+    if (barcMatch && barcMatch.kwc && barcMatch.kwc > 0) {
+      return barcMatch.kwc;
+    }
+    return rawInstalledKwc;
+  }, [barcMatch, rawInstalledKwc]);
+
+  const annualProductionKwh = useMemo(() => {
+    return Math.round(installedKwc * regionalBaseYield);
+  }, [installedKwc, regionalBaseYield]);
 
   const totalBuildingCost = isCustomBuilding ? Math.round(floorArea * 128) : barcMatch.tarif;
   const ratioCostPerWc = installedKwc > 0 ? Number((totalBuildingCost / (installedKwc * 1000)).toFixed(2)) : barcMatch.ratioKwc;
@@ -1560,7 +1568,15 @@ const crop3DCanvas = (sourceCanvas) => {
                             <input
                               type="number"
                               value={minTargetKwc}
-                              onChange={(e) => setMinTargetKwc(Math.max(10, Number(e.target.value)))}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                setMinTargetKwc(raw === '' ? '' : Number(raw));
+                              }}
+                              onBlur={() => {
+                                if (minTargetKwc === '' || isNaN(Number(minTargetKwc)) || Number(minTargetKwc) < 1) {
+                                  setMinTargetKwc(100);
+                                }
+                              }}
                               className="w-full p-1.5 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center shadow-xs"
                             />
                           </div>
@@ -1569,7 +1585,15 @@ const crop3DCanvas = (sourceCanvas) => {
                             <input
                               type="number"
                               value={maxTargetKwc}
-                              onChange={(e) => setMaxTargetKwc(Math.max(minTargetKwc, Number(e.target.value)))}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                setMaxTargetKwc(raw === '' ? '' : Number(raw));
+                              }}
+                              onBlur={() => {
+                                if (maxTargetKwc === '' || isNaN(Number(maxTargetKwc)) || Number(maxTargetKwc) < 1) {
+                                  setMaxTargetKwc(500);
+                                }
+                              }}
                               className="w-full p-1.5 bg-white border border-slate-300 rounded-lg font-black text-slate-800 text-xs text-center shadow-xs"
                             />
                           </div>
@@ -1689,7 +1713,15 @@ const crop3DCanvas = (sourceCanvas) => {
                       <input
                         type="number"
                         value={minTargetKwc}
-                        onChange={(e) => setMinTargetKwc(Math.max(10, Number(e.target.value)))}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setMinTargetKwc(raw === '' ? '' : Number(raw));
+                        }}
+                        onBlur={() => {
+                          if (minTargetKwc === '' || isNaN(Number(minTargetKwc)) || Number(minTargetKwc) < 1) {
+                            setMinTargetKwc(100);
+                          }
+                        }}
                         className="w-20 p-1.5 bg-white border border-slate-300 rounded-xl font-black text-slate-900 text-xs text-center shadow-xs"
                       />
                       <span className="text-xs font-bold text-slate-500">kWc</span>
@@ -1700,7 +1732,15 @@ const crop3DCanvas = (sourceCanvas) => {
                       <input
                         type="number"
                         value={maxTargetKwc}
-                        onChange={(e) => setMaxTargetKwc(Math.max(minTargetKwc, Number(e.target.value)))}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setMaxTargetKwc(raw === '' ? '' : Number(raw));
+                        }}
+                        onBlur={() => {
+                          if (maxTargetKwc === '' || isNaN(Number(maxTargetKwc)) || Number(maxTargetKwc) < 1) {
+                            setMaxTargetKwc(500);
+                          }
+                        }}
                         className="w-20 p-1.5 bg-white border border-slate-300 rounded-xl font-black text-slate-900 text-xs text-center shadow-xs"
                       />
                       <span className="text-xs font-bold text-slate-500">kWc</span>

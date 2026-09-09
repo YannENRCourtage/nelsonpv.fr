@@ -194,17 +194,23 @@ export async function simulateBuildingHeadless({
   const minKwc = customSettings.minKwc !== undefined ? Number(customSettings.minKwc) : 100;
   const maxKwc = customSettings.maxKwc !== undefined ? Number(customSettings.maxKwc) : 500;
   const economicModel = customSettings.economicModel || 'vente_totale'; // 'vente_totale' | 'autoconsommation' | 'autoconsommation_stockage'
-  const tarifEdfOaKwh = customSettings.tarifEdfOa !== undefined ? Number(customSettings.tarifEdfOa) : (minKwc >= 100 ? 0.085 : 0.011);
 
   let rawKwc = Math.round(maxPanels * 0.465 * 10) / 10;
   
-  // Filtrage strict : rejeter si la puissance installable est hors plage [minKwc, maxKwc]
-  if (rawKwc < minKwc || rawKwc > maxKwc) {
+  // Support targetMaxKwc pour la révision post-génération (cap la puissance sans rejeter)
+  let installedKwc = rawKwc;
+  if (customSettings.targetMaxKwc && Number(customSettings.targetMaxKwc) > 0) {
+    installedKwc = Math.min(rawKwc, Math.round(Number(customSettings.targetMaxKwc) * 10) / 10);
+  } else if (rawKwc < minKwc || rawKwc > maxKwc) {
+    // Filtrage strict : rejeter si la puissance installable est hors plage [minKwc, maxKwc]
     console.warn(`[Ignoré] Toiture ${building.id} : puissance ${rawKwc} kWc hors plage cible [${minKwc} - ${maxKwc} kWc]`);
     return null;
   }
 
-  let installedKwc = rawKwc;
+  // Tarif EDF OA : 0.078€/kWh pour >500 kWc, 0.085€/kWh pour 100-500 kWc, 0.011€/kWh pour <100 kWc
+  const tarifEdfOaKwh = customSettings.tarifEdfOa !== undefined
+    ? Number(customSettings.tarifEdfOa)
+    : (installedKwc > 500 ? 0.078 : (installedKwc >= 100 ? 0.085 : 0.011));
   const panelCount = Math.max(1, Math.round((installedKwc * 1000) / 465));
 
   // 5. Productible énergétique départemental et inclinaison
