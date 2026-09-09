@@ -816,7 +816,7 @@ async function handleSignatureInitiate(req, res) {
 
 // ─── 2. RÉCUPÉRATION DE SESSION DE SIGNATURE ───────────────────────────────────
 async function handleSignatureSession(req, res) {
-  const { sessionId } = req.query;
+  const sessionId = req.query?.sessionId || (req.url ? new URL(req.url, 'https://localhost').searchParams.get('sessionId') : null);
   if (!sessionId) return res.status(400).json({ error: 'Session ID requis' });
 
   let session = memorySessions.get(sessionId);
@@ -1051,8 +1051,28 @@ async function handleSignatureWebhook(req, res) {
 
 
 export default async function handler(req, res) {
-  const { slug } = req.query;
-  const route = slug && slug.length > 0 ? slug[0] : '';
+  let route = '';
+  if (Array.isArray(req.query?.slug)) {
+    route = req.query.slug[0] || '';
+  } else if (typeof req.query?.slug === 'string') {
+    route = req.query.slug;
+  }
+
+  // Fallback direct sur l'URL si slug non résolu
+  if (!route && req.url) {
+    const urlPath = req.url.split('?')[0];
+    const match = urlPath.match(/\/api\/enedis\/(.+)/);
+    if (match) {
+      route = match[1];
+    } else {
+      const sigMatch = urlPath.match(/\/api\/signature\/(.+)/);
+      if (sigMatch) {
+        route = 'signature-' + sigMatch[1];
+      }
+    }
+  }
+
+  route = (route || '').split('/')[0].trim();
 
   // Configuration CORS pour les appels d'API
   setSecureCors(req, res, 'GET,POST,OPTIONS');
