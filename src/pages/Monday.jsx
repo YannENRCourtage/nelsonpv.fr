@@ -20,8 +20,9 @@ import {
 import * as XLSX from 'xlsx';
 import { useDrag, useDrop, DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useSearchParams } from 'react-router-dom';
 import apiService from '../services/api';
-import MondayUpdatesDrawer from '@/components/MondayUpdatesDrawer.jsx';
+import MondayUpdatesDrawer, { getRowTitle } from '@/components/MondayUpdatesDrawer.jsx';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 
 // Helper for Tab Icons
@@ -691,13 +692,22 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
 
 
 // --- Composant Tableau Editable (Updated) ---
-const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
+const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId }) => {
     const { user } = useAuth();
     // Data State
     const [columns, setColumns] = useState(data.columns || []);
     const [rows, setRows] = useState([]);
     const [rowOrder, setRowOrder] = useState(data.rowOrder || []);
     const [selectedRowForUpdates, setSelectedRowForUpdates] = useState(null);
+
+    // Auto-open updates drawer si targetRowId fourni (ex: clic notification)
+    useEffect(() => {
+        if (!targetRowId || rows.length === 0) return;
+        const matched = rows.find(r => r.id === targetRowId);
+        if (matched) {
+            setSelectedRowForUpdates(matched);
+        }
+    }, [targetRowId, rows]);
 
     // Couleur de l'en-tête basée sur le nom de l'onglet
     const headerColor = getTabHeaderColor(tabName || data.name || 'default');
@@ -1176,11 +1186,17 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
         try {
             await apiService.updateMondayRow(data.id, rowId, { data: updatedRow.data });
 
-            // Notification des collaborateurs mentionnés (@ ou #)
+            // Notification des collaborateurs mentionnés (@ ou #) avec métadonnées Monday
             try {
                 const { createComment } = await import('@/services/firebase/comments.service');
                 const uid = user?.uid || user?.id || 'unknown';
-                await createComment(rowId, uid, authorName, text.trim(), null, user?.email);
+                const rowTitle = getRowTitle(targetRow, columns);
+                await createComment(rowId, uid, authorName, text.trim(), null, user?.email, {
+                    context: 'monday',
+                    tableId: data.id,
+                    tableName: tabName || data.name || 'Monday',
+                    rowName: rowTitle
+                });
             } catch (notifyErr) {
                 console.warn("Notification mention non envoyée:", notifyErr);
             }
@@ -1798,6 +1814,10 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
 };
 
 export default function Monday() {
+    const [searchParams] = useSearchParams();
+    const urlTableId = searchParams.get('table') || searchParams.get('tableId');
+    const urlRowId = searchParams.get('rowId');
+
     const [tabs, setTabs] = useState([]);
     const [activeTabId, setActiveTabId] = useState(null);
     const [newTabName, setNewTabName] = useState('');
@@ -1827,11 +1847,47 @@ export default function Monday() {
     }, []);
 
     useEffect(() => {
-        if (!activeTabId && tabs.length > 0) {
+        if (tabs.length === 0) return;
+
+        // 1. Table explicitement demandée dans l'URL (?table=xxx)
+        if (urlTableId) {
+            const found = tabs.find(t => t.id === urlTableId);
+            if (found) {
+                setActiveTabId(found.id);
+                return;
+            }
+        }
+
+        // 2. Si un rowId est passé sans tableId (cas legacy notification)
+        if (urlRowId && !urlTableId) {
+            let isCancelled = false;
+            const findTableByRow = async () => {
+                try {
+                    const { doc, getDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/config/firebase.js');
+                    for (const tab of tabs) {
+                        const rowSnap = await getDoc(doc(db, 'monday_tables', tab.id, 'rows', urlRowId));
+                        if (rowSnap.exists()) {
+                            if (!isCancelled) {
+                                setActiveTabId(tab.id);
+                            }
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.warn("[Monday] Erreur détection table par rowId:", err);
+                }
+            };
+            findTableByRow();
+            return () => { isCancelled = true; };
+        }
+
+        // 3. Sélection par défaut si aucun onglet actif
+        if (!activeTabId) {
             const mdpTab = tabs.find(t => t.name.toLowerCase().includes('mdp'));
             setActiveTabId(mdpTab ? mdpTab.id : tabs[0].id);
         }
-    }, [tabs, activeTabId]);
+    }, [tabs, activeTabId, urlTableId, urlRowId]);
 
     const activeTab = tabs.find(t => t.id === activeTabId);
 
@@ -2002,7 +2058,7 @@ export default function Monday() {
                                 </div>
                             </div>
                             <div className="flex-1 min-h-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-2 lg:p-4 flex flex-col overflow-x-auto">
-                                <EditableTable key={activeTab.id} data={activeTab} onUpdate={handleUpdateTab} onRowCountChange={setRowCount} tabName={activeTab.name} />
+                                <EditableTable key={activeTab.id} data={activeTab} onUpdate={handleUpdateTab} onRowCountChange={setRowCount} tabName={activeTab.name} targetRowId={urlRowId} />
                             </div>
                         </>
                     ) : (

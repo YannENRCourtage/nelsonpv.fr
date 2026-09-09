@@ -27,7 +27,7 @@ import { db } from '@/config/firebase.js';
  * @param {string} userEmail - (Optional) Comment author email for better exclusion
  * @returns {Promise<Object>} Created comment
  */
-export const createComment = async (projectId, userId, userName, content, assignedTo = null, userEmail = null) => {
+export const createComment = async (projectId, userId, userName, content, assignedTo = null, userEmail = null, metadata = {}) => {
     try {
         // Extract mentions from content (@username)
         const mentionMatches = content.match(/@(\w+)/g) || [];
@@ -39,6 +39,8 @@ export const createComment = async (projectId, userId, userName, content, assign
             userName,
             content,
             mentions,
+            context: metadata?.context || 'crm',
+            tableId: metadata?.tableId || null,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
         };
@@ -107,13 +109,30 @@ export const createComment = async (projectId, userId, userName, content, assign
 
         // 3. Create Notifications
         console.log(`[Notifications] Creating notifications for targets:`, [...targets]);
+        const isMonday = metadata?.context === 'monday';
+        const notifMessage = isMonday
+            ? (metadata?.rowName
+                ? `${userName} a commenté dans "${metadata?.tableName || 'Monday'}" : « ${metadata.rowName} »`
+                : `${userName} a commenté dans le tableau "${metadata?.tableName || 'Monday'}"`)
+            : `${userName} a commenté sur le projet`;
+
+        const notifUrl = isMonday
+            ? `/monday?table=${metadata?.tableId || ''}&rowId=${projectId}`
+            : `/project/${projectId}/edit`;
+
         for (const targetUserId of targets) {
             await addDoc(collection(db, 'notifications'), {
                 userId: targetUserId,
                 projectId,
+                rowId: isMonday ? projectId : undefined,
+                tableId: metadata?.tableId || null,
+                tableName: metadata?.tableName || null,
+                rowName: metadata?.rowName || null,
+                context: metadata?.context || 'crm',
                 commentId: commentRef.id,
-                type: 'comment',
-                message: `${userName} a commenté sur le projet`,
+                type: isMonday ? 'monday_comment' : 'comment',
+                message: notifMessage,
+                url: notifUrl,
                 read: false,
                 createdAt: serverTimestamp()
             });

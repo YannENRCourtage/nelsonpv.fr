@@ -17,6 +17,10 @@
             "destination": "/api/enedis/signature-$1"
         },
         {
+            "source": "/api/enedis-contraintes(.*)",
+            "destination": "/api/enedis/contraintes$1"
+        },
+        {
             "source": "/((?!api/).*)",
             "destination": "/index.html"
         }
@@ -87,7 +91,7 @@
         "api/proxies/[[...slug]].js": {
             "maxDuration": 60
         },
-        "api/admin/change-password.js": {
+        "api/admin/[[...slug]].js": {
             "maxDuration": 30
         }
     }

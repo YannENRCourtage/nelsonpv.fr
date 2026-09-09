@@ -1,7 +1,9 @@
 import { createSign } from 'crypto';
+import { getFirebaseAdmin } from '../../src/lib/firebase-admin.js';
+import { withAdmin, setSecureCors } from '../common/_authMiddleware.js';
 
 // ============================================================
-// Utilitaires JWT / OAuth2 (sans dépendance Firebase Admin SDK)
+// Utilitaires JWT / OAuth2 (pour change-password)
 // ============================================================
 
 function toBase64Url(buffer) {
@@ -14,7 +16,6 @@ function toBase64Url(buffer) {
 function parsePrivateKey() {
     let key = process.env.FIREBASE_PRIVATE_KEY || '';
 
-    // Cas 1 : JSON complet collé dans la variable
     if (key.trim().startsWith('{')) {
         try {
             const sa = JSON.parse(key);
@@ -22,21 +23,17 @@ function parsePrivateKey() {
         } catch (e) { /* continue */ }
     }
 
-    // Cas 2 : entouré de guillemets
     if (key.startsWith('"') && key.endsWith('"')) {
         key = key.slice(1, -1);
     }
 
-    // Remplacer les \n littéraux par de vrais sauts de ligne
     key = key.replace(/\\n/g, '\n');
 
-    // Reconstruire le format PEM correct
     const HEADER = '-----BEGIN PRIVATE KEY-----';
     const FOOTER = '-----END PRIVATE KEY-----';
 
     if (key.includes(HEADER) && key.includes(FOOTER)) {
-        const body = key.split(HEADER)[1].split(FOOTER)[0]
-            .replace(/\s/g, '');
+        const body = key.split(HEADER)[1].split(FOOTER)[0].replace(/\s/g, '');
         const lines = body.match(/.{1,64}/g) || [];
         key = `${HEADER}\n${lines.join('\n')}\n${FOOTER}`;
     }
@@ -44,10 +41,6 @@ function parsePrivateKey() {
     return key;
 }
 
-/**
- * Génère un access token Google OAuth2 en signant un JWT avec
- * les credentials du compte de service — aucun SDK externe requis.
- */
 async function getGoogleAccessToken() {
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
         || 'firebase-adminsdk-fbsvc@nelsonpv-4722c.iam.gserviceaccount.com';
@@ -92,15 +85,15 @@ async function getGoogleAccessToken() {
 }
 
 // ============================================================
-// Handler principal
+// Handlers spécifiques
 // ============================================================
 
-export default async function handler(req, res) {
+async function handleChangePassword(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { uid, newPassword } = req.body;
+    const { uid, newPassword } = req.body || {};
 
     if (!uid || !newPassword) {
         return res.status(400).json({ error: 'UID and newPassword are required' });
@@ -109,7 +102,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    // Vérification stricte du token d'authentification de l'administrateur
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
@@ -119,10 +111,10 @@ export default async function handler(req, res) {
     try {
         const projectId = process.env.FIREBASE_PROJECT_ID || 'nelsonpv-4722c';
 
-        // 1. Obtenir un token OAuth2 via JWT de compte de service
+        // 1. Obtenir un token OAuth2
         const accessToken = await getGoogleAccessToken();
 
-        // 2. Vérifier l'identité de l'appelant via l'API officielle Google Identity Toolkit
+        // 2. Vérifier l'identité de l'appelant
         const lookupRes = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup', {
             method: 'POST',
             headers: {
@@ -156,7 +148,7 @@ export default async function handler(req, res) {
             return res.status(403).json({ error: 'Forbidden: Admin privileges required' });
         }
 
-        // 3. Appeler l'Identity Toolkit Admin API pour changer le mot de passe
+        // 3. Mettre à jour le mot de passe
         const apiUrl = `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:update`;
 
         const updateRes = await fetch(apiUrl, {
@@ -188,4 +180,72 @@ export default async function handler(req, res) {
             details: error.message
         });
     }
+}
+
+const CORS_CONFIG = [
+  {
+    origin: ['*'],
+    method: ['GET', 'HEAD', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
+    responseHeader: ['*'],
+    maxAgeSeconds: 3600
+  }
+];
+
+async function handleSetStorageCors(req, res) {
+  setSecureCors(req, res, 'GET, POST, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  try {
+    const admin = getFirebaseAdmin();
+    const storage = admin.storage();
+
+    const bucketNames = [
+      'nelsonpv-4722c.appspot.com',
+      'nelsonpv-4722c.firebasestorage.app'
+    ];
+
+    const results = [];
+
+    for (const name of bucketNames) {
+      try {
+        const bucket = storage.bucket(name);
+        await bucket.setCorsConfiguration(CORS_CONFIG);
+        results.push({ bucket: name, status: 'success' });
+      } catch (err) {
+        results.push({ bucket: name, status: 'warning', message: err.message });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'CORS configuration applied to Firebase Storage buckets',
+      results
+    });
+  } catch (error) {
+    console.error('Error applying Storage CORS:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Internal Server Error'
+    });
+  }
+}
+
+// Handler principal
+export default async function handler(req, res) {
+    const { slug } = req.query || {};
+    const action = Array.isArray(slug) ? slug[0] : (slug || '');
+    const url = req.url || '';
+
+    if (action === 'change-password' || url.includes('/change-password')) {
+        return handleChangePassword(req, res);
+    }
+
+    if (action === 'set-storage-cors' || url.includes('/set-storage-cors')) {
+        return withAdmin(handleSetStorageCors)(req, res);
+    }
+
+    return res.status(404).json({ error: 'Admin route not found' });
 }

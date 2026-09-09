@@ -1443,6 +1443,39 @@ export default async function handler(req, res) {
     if (route === 'signature-download-pdf' || route === 'download-pdf')       return await handleSignatureDownloadPdf(req, res);
     if (route === 'signature-webhook' || route === 'webhook')                 return await handleSignatureWebhook(req, res);
 
+    if (route === 'contraintes') {
+      const { lat1, lng1, lat2, lng2 } = req.query;
+      try {
+        const enedisUrl = `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/carte-zones-contrainte-projets-enr/records?limit=100&where=within_box(geo_shape,${lat1},${lng1},${lat2},${lng2})`;
+        let fetchSuccess = false;
+        let data = null;
+        try {
+          const enedisRes = await fetch(enedisUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+          });
+          if (enedisRes.ok) {
+            data = await enedisRes.json();
+            fetchSuccess = true;
+          }
+        } catch (e) {
+          console.warn("L'API officielle Enedis est inaccessible (WAF ou 404).");
+        }
+        if (!fetchSuccess) {
+          const host = req.headers.host || 'www.nelsonpv.fr';
+          const protocol = host.includes('localhost') ? 'http' : 'https';
+          const fallbackRes = await fetch(`${protocol}://${host}/datas/capareseau_voronoi.json`);
+          if (!fallbackRes.ok) {
+            throw new Error("Erreur lors de la lecture du dataset de secours Capareseau");
+          }
+          data = await fallbackRes.json();
+        }
+        return res.status(200).json(data);
+      } catch (error) {
+        console.error("Erreur Vercel Serverless proxy Enedis:", error);
+        return res.status(500).json({ error: "Erreur interne lors de la récupération des données Enedis." });
+      }
+    }
+
     return res.status(404).json({ error: `Route Enedis inconnue: ${route}` });
   } catch (err) {
     console.error('[Enedis API Dispatcher] Error:', err.message);

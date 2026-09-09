@@ -281,11 +281,35 @@ export default function ProjectEditor() {
           setProject(freshProject);
           setRemountKey(k => k + 1);
         } else {
-          // Fallback to list if API fails or returns null (unlikely if exists)
+          // Fallback to list if API fails or returns null
           const foundInList = projects && Array.isArray(projects) ? projects.find(p => p.id === projectId) : null;
           if (foundInList) {
             setProject(foundInList);
             setRemountKey(k => k + 1);
+          } else {
+            // Si le projet n'existe pas en CRM, vérifier s'il s'agit d'une notification provenant du tableau Monday
+            try {
+              const { getDocs, query, collection, where } = await import('firebase/firestore');
+              const { db } = await import('@/config/firebase.js');
+              const notifQ = query(collection(db, 'notifications'), where('projectId', '==', projectId));
+              const notifSnap = await getDocs(notifQ);
+              let isMondayRow = false;
+              let targetTable = null;
+              notifSnap.forEach(d => {
+                const nd = d.data();
+                if (nd.context === 'monday' || nd.type === 'monday_comment' || nd.tableId || nd.message?.includes('commenté')) {
+                  isMondayRow = true;
+                  if (nd.tableId) targetTable = nd.tableId;
+                }
+              });
+              if (isMondayRow) {
+                console.log(`[ProjectEditor] ID ${projectId} correspond à une ligne Monday. Redirection vers Monday...`);
+                navigate(`/monday?${targetTable ? `table=${targetTable}&` : ''}rowId=${projectId}`, { replace: true });
+                return;
+              }
+            } catch (redirErr) {
+              console.warn("[ProjectEditor] Erreur vérification redirection Monday:", redirErr);
+            }
           }
         }
       } catch (error) {
