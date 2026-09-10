@@ -6892,3 +6892,6 @@ function MapSidePanel({ type, data, onClose }) {
 
 
 
+
+import { squarePolygon } from '@/utils/squarePolygon';
+
