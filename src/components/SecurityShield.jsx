@@ -44,11 +44,11 @@ export default function SecurityShield() {
 
     // 4. Blocage des raccourcis d'inspection et de copie de source
     const handleKeyDown = (e) => {
-      // F12
-      if (e.key === 'F12' || e.keyCode === 123) {
-        e.preventDefault();
-        return false;
-      }
+  // F12
+  // if (e.key === 'F12' || e.keyCode === 123) {
+// e.preventDefault();
+  //   return false;
+  // }
 
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
