@@ -80,6 +80,47 @@ const enedisService = {
   },
 
   /**
+   * Recherche un PRM par adresse postale et croisement avec le nom d'entreprise (Anti-doublon)
+   */
+  async searchPrm({
+    address = '',
+    streetNumber = '',
+    streetName = '',
+    zip = '',
+    city = '',
+    complement = '',
+    companyName = '',
+    clientName = '',
+    meterSerial = '',
+    predecessor = '',
+    projectId = '',
+    env = 'production',
+    autoSave = true
+  } = {}) {
+    try {
+      const response = await axios.post('/api/enedis/search-prm', {
+        address,
+        streetNumber,
+        streetName,
+        zip,
+        city,
+        complement,
+        companyName,
+        clientName,
+        meterSerial,
+        predecessor,
+        projectId,
+        env,
+        autoSave
+      });
+      return response.data;
+    } catch (error) {
+      console.error('[Enedis Service] Error searching PRM:', error);
+      throw new Error(error.response?.data?.error || error.message || 'Échec de la recherche du PRM');
+    }
+  },
+
+  /**
    * Initie une demande de signature de mandat via l'un des 4 canaux (email, sms, whatsapp, tablet)
    */
   async initiateSignature(payload) {

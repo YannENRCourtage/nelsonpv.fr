@@ -200,8 +200,7 @@ export default function NotificationBell() {
                                             <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notification.read ? 'bg-blue-500' : 'bg-transparent'
                                                 }`} />
                                             <div className="flex-1 min-w-0">
-                                                <p className={`text-sm ${!notification.read ? 'font-semibold text-gray-900' : 'text-gray-700'
-                                                    }`}>
+                                                <p className={`text-sm break-words ${!notification.read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
                                                     {notification.message}
                                                 </p>
                                                 <p className="text-xs text-gray-500 mt-1">

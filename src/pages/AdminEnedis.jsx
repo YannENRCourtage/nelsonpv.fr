@@ -404,14 +404,13 @@ export default function AdminEnedis() {
                       <button
                         type="button"
                         onClick={() => setSignatureModalOpen(true)}
-                        disabled={prm.length !== 14}
-                        className="w-full disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
+                        className="w-full group cursor-pointer"
                       >
                         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg shadow-orange-500/20 group-hover:scale-[1.02] active:scale-[0.98] h-14 flex items-center justify-center gap-3 text-slate-950 px-4">
                           <span className="text-xl">✍️</span>
                           <div className="text-left leading-tight">
                             <div className="font-black text-sm text-slate-950">Faire Signer le Mandat Enedis</div>
-                            <div className="text-[10px] text-slate-900 font-bold">Email • SMS • WhatsApp • Tablette (eIDAS)</div>
+                            <div className="text-[10px] text-slate-900 font-bold">Recherche auto par adresse • Email • SMS • Tablette</div>
                           </div>
                         </div>
                       </button>

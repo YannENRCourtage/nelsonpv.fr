@@ -74,7 +74,9 @@ export default function CDP() {
         champLibre1: '',
         champLibre2: '',
         champLibre3: '',
-        champLibre4: ''
+        champLibre4: '',
+        prm: '',
+        puissanceSouscrite: ''
     });
 
     // Balises disponibles
@@ -98,6 +100,8 @@ export default function CDP() {
         { key: '{{nom_mise_a_disposition}}', label: 'Nom mise à disposition', value: () => clientData.nomMiseADisposition },
         { key: '{{nom_exploitant}}', label: 'Nom exploitant', value: () => clientData.nomExploitant },
         { key: '{{adresse_projet}}', label: 'Adresse projet', value: () => `${clientData.adresse} ${clientData.codePostal} ${clientData.ville}`.trim() },
+        { key: '{{prm}}', label: 'Numéro PRM Enedis (14 chiffres)', value: () => clientData.prm || targetProject?.enedisPrm || '' },
+        { key: '{{puissance_souscrite}}', label: 'Puissance souscrite (kVA)', value: () => clientData.puissanceSouscrite || targetProject?.enedisSubscribedPower || '' },
         { key: '{{parcelle_1}}', label: 'Parcelle 1', value: () => clientData.parcelle1 },
         { key: '{{parcelle_2}}', label: 'Parcelle 2', value: () => clientData.parcelle2 },
         { key: '{{parcelle_3}}', label: 'Parcelle 3', value: () => clientData.parcelle3 },
@@ -171,7 +175,9 @@ export default function CDP() {
                 champLibre1: '',
                 champLibre2: '',
                 champLibre3: '',
-                champLibre4: ''
+                champLibre4: '',
+                prm: targetProject.enedisPrm || targetProject.prm || '',
+                puissanceSouscrite: targetProject.enedisSubscribedPower || ''
             });
         }
     }, [targetProject, setProject]);

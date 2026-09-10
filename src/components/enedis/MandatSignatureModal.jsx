@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { X, Mail, MessageSquare, Smartphone, Tablet, Copy, Check, ExternalLink, ShieldCheck, Sparkles, RefreshCw } from 'lucide-react';
+import { X, Mail, MessageSquare, Smartphone, Tablet, Copy, Check, ExternalLink, ShieldCheck, Sparkles, RefreshCw, Search, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import enedisService from '@/services/enedis';
+import PrmSelectionModal from './PrmSelectionModal';
 
 export default function MandatSignatureModal({
   isOpen,
@@ -11,6 +13,9 @@ export default function MandatSignatureModal({
   initialEmail = '',
   initialPhone = '',
   initialCompany = '',
+  initialAddress = '',
+  initialZip = '',
+  initialCity = '',
   projectId = 'admin_test',
   onSignatureSuccess = null
 }) {
@@ -19,11 +24,63 @@ export default function MandatSignatureModal({
   const [clientCompany, setClientCompany] = useState(initialCompany);
   const [clientEmail, setClientEmail] = useState(initialEmail);
   const [clientPhone, setClientPhone] = useState(initialPhone);
+  const [clientAddress, setClientAddress] = useState(initialAddress);
+  const [clientZip, setClientZip] = useState(initialZip);
+  const [clientCity, setClientCity] = useState(initialCity);
+  const [subscribedPower, setSubscribedPower] = useState(null);
+
+  const [searchingPrm, setSearchingPrm] = useState(false);
+  const [prmCandidates, setPrmCandidates] = useState([]);
+  const [ambiguityModalOpen, setAmbiguityModalOpen] = useState(false);
+  const [searchFeedback, setSearchFeedback] = useState(null);
 
   const [selectedChannel, setSelectedChannel] = useState('email'); // 'email' | 'sms' | 'whatsapp' | 'tablet'
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(false);
+
+  const handleAutoSearchPrm = async () => {
+    if (!clientAddress && !clientZip && !clientCity) {
+      alert('Veuillez renseigner au moins une adresse, un code postal ou une ville pour lancer la recherche.');
+      return;
+    }
+    setSearchingPrm(true);
+    setSearchFeedback(null);
+    try {
+      const res = await enedisService.searchPrm({
+        address: clientAddress,
+        zip: clientZip,
+        city: clientCity,
+        companyName: clientCompany,
+        clientName,
+        projectId
+      });
+
+      if (res.status === 'HIGH_CONFIDENCE' && res.selectedPrm?.prm) {
+        setPrm(res.selectedPrm.prm);
+        setSubscribedPower(res.selectedPrm.puissance_souscrite_kva || null);
+        setSearchFeedback({
+          type: 'success',
+          text: `PRM identifié avec succès : ${res.selectedPrm.prm} (${res.selectedPrm.puissance_souscrite_kva ? res.selectedPrm.puissance_souscrite_kva + ' kVA • ' : ''}${res.selectedPrm.titulaire || clientCompany})`
+        });
+      } else if (res.status === 'AMBIGUOUS' || res.isAmbiguous) {
+        setPrmCandidates(res.candidates || []);
+        setAmbiguityModalOpen(true);
+      } else {
+        setSearchFeedback({
+          type: 'warn',
+          text: 'Aucun compteur Enedis trouvé automatiquement. Saisie manuelle possible.'
+        });
+      }
+    } catch (err) {
+      setSearchFeedback({
+        type: 'error',
+        text: err.message || 'Erreur lors de la recherche Enedis'
+      });
+    } finally {
+      setSearchingPrm(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -110,17 +167,56 @@ export default function MandatSignatureModal({
           {/* Formulaire Client & PRM */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
-              <label className="text-[11px] font-bold text-slate-300 block mb-1">
-                Numéro PRM Enedis (14 chiffres) *
-              </label>
-              <Input
-                type="text"
-                maxLength={14}
-                value={prm}
-                onChange={(e) => setPrm(e.target.value.replace(/\D/g, ''))}
-                placeholder="Ex: 16138350177475"
-                className="bg-slate-950 border-slate-700 text-white font-mono font-bold tracking-wider"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold text-slate-300 block">
+                  Numéro PRM Enedis (14 chiffres) *
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAutoSearchPrm}
+                  disabled={searchingPrm}
+                  className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors disabled:opacity-50"
+                  title="Recherche automatique du PRM via l'API Enedis et la raison sociale"
+                >
+                  {searchingPrm ? (
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Search className="w-3 h-3" />
+                  )}
+                  <span>Rechercher par adresse</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <Input
+                  type="text"
+                  maxLength={14}
+                  value={prm}
+                  onChange={(e) => {
+                    setPrm(e.target.value.replace(/\D/g, ''));
+                    setSubscribedPower(null);
+                    setSearchFeedback(null);
+                  }}
+                  placeholder="Ex: 16138350177475"
+                  className="bg-slate-950 border-slate-700 text-white font-mono font-bold tracking-wider pr-20"
+                />
+                {subscribedPower && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded text-[10px] font-bold">
+                    <Zap className="w-3 h-3" />
+                    {subscribedPower} kVA
+                  </div>
+                )}
+              </div>
+
+              {searchFeedback && (
+                <div className={`text-[11px] mt-1.5 font-medium flex items-center gap-1.5 ${
+                  searchFeedback.type === 'success' ? 'text-emerald-400' :
+                  searchFeedback.type === 'warn' ? 'text-amber-400' : 'text-red-400'
+                }`}>
+                  {searchFeedback.type === 'success' && <ShieldCheck className="w-3.5 h-3.5" />}
+                  <span>{searchFeedback.text}</span>
+                </div>
+              )}
             </div>
 
             <div>
@@ -286,6 +382,24 @@ export default function MandatSignatureModal({
         </div>
 
       </div>
+
+      {/* Modale de sélection de PRM en cas d'ambiguïté */}
+      <PrmSelectionModal
+        isOpen={ambiguityModalOpen}
+        onClose={() => setAmbiguityModalOpen(false)}
+        candidates={prmCandidates}
+        address={`${clientAddress} ${clientZip} ${clientCity}`.trim()}
+        companyName={clientCompany}
+        clientName={clientName}
+        onSelectPrm={(selected) => {
+          setPrm(selected.prm);
+          setSubscribedPower(selected.puissance_souscrite_kva || null);
+          setSearchFeedback({
+            type: 'success',
+            text: `Compteur sélectionné : ${selected.prm} ${selected.puissance_souscrite_kva ? '(' + selected.puissance_souscrite_kva + ' kVA)' : ''} — ${selected.titulaire || clientCompany}`
+          });
+        }}
+      />
     </div>
   );
 }
