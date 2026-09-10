@@ -1531,6 +1531,26 @@ export default function ProjectEditor() {
                             </SelectContent>
                           </Select>
                         </div>
+                
+        {/* Google Solar Panel detection & tools */}
+        <div className="mt-6">
+          <GoogleSolarPanel
+            gps={project?.gps || ''}
+            onSolarDetected={(result) => {
+              // update project fields and emit event for map
+              updateProject({ solarSlope: result.slope, solarAzimuth: result.azimuth, solarPolygon: result.polygon });
+              window.dispatchEvent(new CustomEvent('map:solar-polygon-loaded', { detail: { polygon: result.polygon } }));
+            }}
+            onDrawMode={() => {
+              window.dispatchEvent(new CustomEvent('map:draw-roof-polygon'));
+            }}
+            onSquare={(squared) => {
+              // Replace polygon with squared version
+              window.dispatchEvent(new CustomEvent('map:solar-polygon-loaded', { detail: { polygon: squared } }));
+            }}
+            activePolygon={project?.solarPolygon}
+          />
+        </div>
 
                         {/* Productible 1 */}
                         <div className="flex-1">
