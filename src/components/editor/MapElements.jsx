@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input.jsx";
 import { urbanismeService } from "@/services/UrbanismeService";
 import { isochroneService } from "@/services/IsochroneService";
 import { Zap, Sun, Users, Building as BuildingIcon } from 'lucide-react';
+import { squarePolygon } from '@/utils/squarePolygon';
 
 // --- Clé API IGN ---
 // 👇 COPIEZ VOTRE CLÉ API GÉOSERVICES IGN CI-DESSOUS 👇
@@ -2422,6 +2423,31 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
     setFeatures((arr) => arr.filter((f) => f.id !== selectedId));
     setSelectedId(null);
   });
+
+  useEffect(() => {
+    const handleSquareSurfaces = () => {
+      if (!selectedId) {
+        toast({ title: 'Aucun polygone sélectionné', description: 'Veuillez sélectionner un polygone à optimiser.', variant: 'destructive' });
+        return;
+      }
+      setFeatures((prev) => {
+        const feature = prev.find(f => f.id === selectedId);
+        if (feature && feature.type === 'polygon') {
+          return prev.map(f => {
+            if (f.id === selectedId) {
+              return { ...f, coords: squarePolygon(f.coords) };
+            }
+            return f;
+          });
+        } else {
+          toast({ title: 'Mauvais type d\'élément', description: 'Veuillez sélectionner une surface polygonale.', variant: 'destructive' });
+          return prev;
+        }
+      });
+    };
+    window.addEventListener('map:square-surfaces', handleSquareSurfaces);
+    return () => window.removeEventListener('map:square-surfaces', handleSquareSurfaces);
+  }, [selectedId, setFeatures]);
 
   const handleAltimetry = async (line) => {
     // If profile is already open, close it
@@ -6886,12 +6912,200 @@ function MapSidePanel({ type, data, onClose }) {
         <span className="text-[10px] text-gray-400">Données MELODI / SIRENE • NELSON</span>
       </div>
     </div>
+            onAddressFound={onAddressFound}
+            onAddressSearched={onAddressSearched}
+
+            setFeatures={setFeaturesWrapper} // Use Wrapper
+            onRightClick={(latlng) => setTargetPos(latlng)}
+            isRotatingRef={isRotatingRef}
+            setTargetPos={setTargetPos}
+            setShowInfoPanel={setShowInfoPanel}
+            activeTab={activeTab}
+            onSelectOwners={(item) => setSelectedParcelOwners(item)}
+          />
+          <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
+          <AltimetryProfile
+            profile={altimetryProfile}
+            setProfile={setAltimetryProfile}
+            setFeatures={setFeaturesWrapper} // Use Wrapper
+            features={features}
+            setHoverInfo={setHoverInfo}
+          />
+
+          {/* --- Routing Tool --- */}
+        <RoutingLayerManager 
+          isRoutingActive={isRoutingActive}
+          routingPoints={routingPoints}
+          setRoutingPoints={setRoutingPoints}
+          onRouteUpdate={setSelectedRoutingData}
+        />
+        <MapSidePanel 
+          type="routing" 
+          data={selectedRoutingData} 
+          onClose={() => {
+            setSelectedRoutingData(null);
+            setIsRoutingActive(false);
+          }} 
+        />
+      </MapContainer>
+
+        {/* New Side Panels (Outside MapContainer for z-index/overlay reliability) */}
+        <MapSidePanel 
+          type="company" 
+          data={selectedCompany} 
+          onClose={() => setSelectedCompany(null)} 
+        />
+        <MapSidePanel 
+          type="substation" 
+          data={selectedSubstation} 
+          onClose={() => setSelectedSubstation(null)} 
+        />
+      </div>
+    </div>
   );
 }
 
+function MapSidePanel({ type, data, onClose }) {
+  if (!data) return null;
 
+  const isCompany = type === 'company';
+  const isRouting = type === 'routing';
+  
+  let title = "Détails";
+  if (isCompany) title = data.nom_raison_sociale || data.name || "Détails Entreprise";
+  else if (isRouting) title = "Détails de l'itinéraire";
+  else title = data.nom_du_poste || "Poste Source";
 
+  const side = isCompany ? "right" : "left";
 
+  const copyToClipboard = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copié !", description: `"${text}" copié dans le presse-papier.`, ...toastStyle });
+  };
 
-import { squarePolygon } from '@/utils/squarePolygon';
+  const formatDuration = (seconds) => {
+    const minutes = Math.ceil(seconds / 60);
+    if (minutes >= 60) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return `${h}h${m.toString().padStart(2, '0')}min`;
+    }
+    return `${minutes} min`;
+  };
 
+  return (
+    <div 
+      className={`absolute top-4 ${side}-4 z-[5000] w-[350px] max-h-[calc(100%-2rem)] bg-white shadow-2xl border border-gray-200 rounded-xl flex flex-col overflow-hidden`}
+      style={{ pointerEvents: 'auto', display: 'flex' }}
+    >
+      {/* Header */}
+      <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+        <h3 className="font-bold text-gray-900 truncate pr-4">{title}</h3>
+        <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+          <XIcon size={18} className="text-gray-500" />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="p-4 overflow-y-auto space-y-4">
+        {isRouting ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="text-[10px] text-blue-700 font-bold uppercase">Distance Totale</div>
+                <div className="text-lg font-bold text-blue-900">{(data.totalDistance / 1000).toFixed(2)} km</div>
+              </div>
+              <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                <div className="text-[10px] text-indigo-700 font-bold uppercase">Temps Total</div>
+                <div className="text-lg font-bold text-indigo-900">{formatDuration(data.totalDuration)}</div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Étapes du trajet</label>
+              <div className="space-y-2">
+                {data.portions.map((portion, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="flex flex-col items-center">
+                      <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">
+                        {idx + 1}
+                      </div>
+                      {idx < data.portions.length - 1 && <div className="w-0.5 h-8 bg-gray-200 my-1"></div>}
+                      {idx === data.portions.length - 1 && (
+                        <>
+                           <div className="w-0.5 h-8 bg-gray-200 my-1"></div>
+                           <div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold">
+                            {idx + 2}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex-1 pt-0.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold text-gray-700">Portion {idx + 1}</span>
+                        <span className="text-[10px] bg-white px-2 py-0.5 rounded border text-blue-600 font-bold">
+                          {formatDuration(portion.duration)}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-gray-500 mt-1">
+                        {(portion.distance / 1000).toFixed(2)} km
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <Button 
+              variant="outline" 
+              className="w-full text-red-600 border-red-200 hover:bg-red-50"
+              onClick={() => {
+                onClose();
+                // Clear state is handled by onClose parent logic if we pass the right props
+              }}
+            >
+              Effacer le tracé
+            </Button>
+          </div>
+        ) : isCompany ? (
+          <CompanyDetailsPanel 
+            data={data} 
+            onClose={onClose} 
+            copyToClipboard={copyToClipboard} 
+          />
+        ) : (
+          <>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-orange-600 uppercase tracking-wider">Capacités (S3REnR)</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 bg-orange-50 rounded border border-orange-100">
+                  <div className="text-[10px] text-orange-700">Réservée</div>
+                  <div className="text-sm font-bold text-orange-900">{data.capacite_reservee_mw || 0} MW</div>
+                </div>
+                <div className="p-2 bg-blue-50 rounded border border-blue-100">
+                  <div className="text-[10px] text-blue-700">Disponible</div>
+                  <div className="text-sm font-bold text-blue-900">{data.capacite_disponible_mw || 0} MW</div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1 pt-2 border-t">
+               <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Tension</span>
+                  <span className="text-xs font-medium text-gray-900">{data.niveau_de_tension || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Type</span>
+                  <span className="text-xs font-medium text-gray-900">{data.ouvrage_type || 'Poste Source'}</span>
+                </div>
+            </div>
+          </>
+        )}
+      </div>
+      {/* Footer Branding */}
+      <div className="p-3 bg-gray-50 border-t flex justify-center italic">
+        <span className="text-[10px] text-gray-400">Données MELODI / SIRENE • NELSON</span>
+      </div>
+    </div>
+  );
+}

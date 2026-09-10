@@ -12,11 +12,14 @@ import { apiService } from '@/services/api'; // generic api helper used elsewher
 export async function getBuildingInsights(lat, lng) {
   const query = new URLSearchParams({ lat: String(lat), lng: String(lng) });
   const url = `/api/solar/building-insights?${query.toString()}`;
-  const res = await apiService.get(url);
-  if (!res) {
-    throw new Error('No response from Google Solar proxy');
+  
+  const response = await fetch(url);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Erreur serveur (${response.status})`);
   }
-  return res; // already JSON
+  
+  return response.json();
 }
 
 /**

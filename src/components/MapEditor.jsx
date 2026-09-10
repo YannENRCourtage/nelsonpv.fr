@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MapElements from './editor/MapElements.jsx';
 import { Button } from './ui/button.jsx';
-import { FolderHeart as HomeIcon, Route } from 'lucide-react';
+import { FolderHeart as HomeIcon, Route, CloudSun, CheckSquare, Loader2 } from 'lucide-react';
+import { getBuildingInsights, selectBestRoofSegment, boundingBoxToPolygon } from '@/services/googleSolar';
+import { toast } from '@/components/ui/use-toast';
 
-function MapControls({ project, isRoutingActive, setIsRoutingActive }) {
+function MapControls({ project, setProject, isRoutingActive, setIsRoutingActive }) {
+  const [loadingSolar, setLoadingSolar] = useState(false);
+
   const goToProjectAddress = () => {
     if (project?.gps) {
       const [lat, lng] = project.gps.split(',').map(Number);
@@ -12,7 +16,6 @@ function MapControls({ project, isRoutingActive, setIsRoutingActive }) {
         return;
       }
     }
-    // Fallback to address search if no GPS
     if (project?.address || project?.zip || project?.city) {
       window.dispatchEvent(new CustomEvent('map:goto-project-address'));
     }
@@ -33,8 +36,51 @@ function MapControls({ project, isRoutingActive, setIsRoutingActive }) {
     setIsRoutingActive(!isRoutingActive);
   };
 
+  const handleDetectSolar = async () => {
+    if (!project?.gps) {
+      toast({ title: 'Coordonnées manquantes', description: 'Veuillez d\'abord saisir une adresse.', variant: 'destructive' });
+      return;
+    }
+    const [latStr, lngStr] = project.gps.split(',').map(s => s.trim());
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    setLoadingSolar(true);
+    try {
+      const data = await getBuildingInsights(lat, lng);
+      const segment = selectBestRoofSegment(data.roofSegmentSummaries || []);
+      if (!segment) {
+        toast({ title: 'Aucun segment détecté', description: 'Google Solar n\'a rien trouvé.', variant: 'destructive' });
+        return;
+      }
+      const polygon = boundingBoxToPolygon(segment.boundingBox);
+      
+      // Mettre à jour le projet avec les nouvelles données
+      setProject(prev => ({
+        ...prev,
+        solarSlope: segment.pitchDegrees,
+        solarAzimuth: segment.azimuthDegrees,
+        solarPolygon: polygon
+      }));
+      
+      // Dispatch event for map drawing/calepinage
+      window.dispatchEvent(new CustomEvent('map:solar-polygon-loaded', { detail: { polygon } }));
+      toast({ title: 'Détection Google Solar réussie', description: `Inclinaison ${segment.pitchDegrees}°` });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erreur Google Solar', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoadingSolar(false);
+    }
+  };
+
+  const handleSquareSurfaces = () => {
+    window.dispatchEvent(new CustomEvent('map:square-surfaces'));
+  };
+
   return (
-    <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-start hide-on-capture w-[160px]">
+    <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-end hide-on-capture w-[160px]">
       <Button
         type="button"
         onClick={goToProjectAddress}
@@ -46,37 +92,63 @@ function MapControls({ project, isRoutingActive, setIsRoutingActive }) {
       </Button>
 
       <div className="flex gap-2 items-start w-full">
-        <Button
-          type="button"
-          onClick={toggleRouting}
-          className={`shadow-md transition-colors flex-1 min-w-0 px-2 justify-center ${isRoutingActive 
-            ? "bg-blue-600 text-white hover:bg-blue-700" 
-            : "bg-white text-gray-800 hover:bg-gray-100"}`}
-          title="Calculer l'itinéraire"
-        >
-          <Route size={16} className="lg:mr-2 shrink-0" />
-          <span className="hidden lg:inline text-sm font-medium truncate">Itinéraire</span>
-        </Button>
+        <div className="flex flex-col gap-2 flex-1 min-w-0">
+          <Button
+            type="button"
+            onClick={toggleRouting}
+            className={`shadow-md transition-colors w-full px-2 justify-center ${isRoutingActive 
+              ? "bg-blue-600 text-white hover:bg-blue-700" 
+              : "bg-white text-gray-800 hover:bg-gray-100"}`}
+            title="Calculer l'itinéraire"
+          >
+            <Route size={16} className="lg:mr-2 shrink-0" />
+            <span className="hidden lg:inline text-sm font-medium truncate">Itinéraire</span>
+          </Button>
 
-        {/* Boutons Zoom style Leaflet */}
-        <div className="flex flex-col bg-white rounded-md shadow-md border-2 border-black/20 overflow-hidden w-[34px] shrink-0">
+          {/* Bouton Google Solar */}
+          <Button
+            type="button"
+            onClick={handleDetectSolar}
+            disabled={loadingSolar}
+            className="shadow-md transition-colors w-full px-2 justify-center bg-white text-yellow-600 hover:bg-yellow-50 border border-yellow-200"
+            title="Détection Google Solar"
+          >
+            {loadingSolar ? <Loader2 size={16} className="animate-spin lg:mr-2 shrink-0" /> : <CloudSun size={16} className="lg:mr-2 shrink-0" />}
+            <span className="hidden lg:inline text-sm font-medium truncate">Google Solar</span>
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-2 w-[34px] shrink-0">
+          {/* Boutons Zoom style Leaflet */}
+          <div className="flex flex-col bg-white rounded-md shadow-md border-2 border-black/20 overflow-hidden">
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              className="w-full h-[30px] flex items-center justify-center text-black hover:bg-[#f4f4f4] font-bold text-xl border-b border-[#ccc] outline-none"
+              title="Zoomer"
+              style={{ lineHeight: '30px' }}
+            >
+              +
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              className="w-full h-[30px] flex items-center justify-center text-black hover:bg-[#f4f4f4] font-bold text-xl outline-none"
+              title="Dézoomer"
+              style={{ lineHeight: '30px' }}
+            >
+              −
+            </button>
+          </div>
+
+          {/* Bouton d'optimisation (squaring) */}
           <button
             type="button"
-            onClick={handleZoomIn}
-            className="w-full h-[30px] flex items-center justify-center text-black hover:bg-[#f4f4f4] font-bold text-xl border-b border-[#ccc] outline-none"
-            title="Zoomer"
-            style={{ lineHeight: '30px' }}
+            onClick={handleSquareSurfaces}
+            className="w-full h-[34px] flex items-center justify-center bg-white text-green-600 hover:bg-green-50 rounded-md shadow-md border-2 border-black/20 outline-none"
+            title="Optimiser les angles (90°)"
           >
-            +
-          </button>
-          <button
-            type="button"
-            onClick={handleZoomOut}
-            className="w-full h-[30px] flex items-center justify-center text-black hover:bg-[#f4f4f4] font-bold text-xl outline-none"
-            title="Dézoomer"
-            style={{ lineHeight: '30px' }}
-          >
-            −
+            <CheckSquare size={18} />
           </button>
         </div>
       </div>
