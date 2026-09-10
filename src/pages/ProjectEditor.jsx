@@ -38,6 +38,7 @@ import { BATTERY_MODELS } from "@/data/batteryModels.js";
 import enedisService from "@/services/enedis";
 import MandatSignatureModal from "@/components/enedis/MandatSignatureModal";
 import PrmSelectionModal from "@/components/enedis/PrmSelectionModal";
+import GoogleSolarPanel from "@/components/solar/GoogleSolarPanel";
 
 const INCLINATION_OPTIONS = Array.from({ length: 91 }, (_, i) => {
   const percentage = Math.tan(i * Math.PI / 180) * 100;
