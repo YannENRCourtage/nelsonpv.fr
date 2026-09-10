@@ -1,6 +1,6 @@
 // src/components/solar/GoogleSolarPanel.jsx
 import React, { useState } from 'react';
-import { Loader2, CloudSun, Edit, SquarePen } from 'lucide-react';
+import { Loader2, CloudSun, Edit, CheckSquare } from 'lucide-react';
 import { getBuildingInsights, selectBestRoofSegment, boundingBoxToPolygon } from '@/services/googleSolar';
 import { toast } from '@/components/ui/use-toast';
 
@@ -108,7 +108,7 @@ export default function GoogleSolarPanel({
       </button>
       <hr className="my-2" />
       <div className="flex items-center gap-2">
-        <SquarePen className="w-5 h-5 text-green-600" />
+        <CheckSquare className="w-5 h-5 text-green-600" />
         <span className="font-medium">Optimiser les angles (90°)</span>
       </div>
       <button
@@ -116,7 +116,7 @@ export default function GoogleSolarPanel({
         onClick={handleSquare}
         className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700"
       >
-        <SquarePen className="w-4 h-4" /> Appliquer le squaring
+        <CheckSquare className="w-4 h-4" /> Appliquer le squaring
       </button>
     </div>
   );
