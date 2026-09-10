@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 
 /**
  * SecurityShield
@@ -42,24 +42,17 @@ export default function SecurityShield() {
       }
     };
 
-    // 4. Blocage des raccourcis d'inspection et de copie de source
+    // 4. Blocage des raccourcis d'inspection et de copie de source (F12 et DevTools autorisés)
     const handleKeyDown = (e) => {
-  // F12
-  // if (e.key === 'F12' || e.keyCode === 123) {
-// e.preventDefault();
-  //   return false;
-  // }
+      // F12 et DevTools (Ctrl+Shift+I/J/C) sont explicitement autorisés pour le développement
+      if (e.key === 'F12' || e.keyCode === 123) {
+        return true;
+      }
 
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
 
       if (ctrlOrCmd) {
-        // Ctrl+Shift+I / Ctrl+Shift+J / Ctrl+Shift+C (DevTools)
-        if (e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
-          e.preventDefault();
-          return false;
-        }
-
         // Ctrl+U (Afficher code source)
         if (e.key === 'u' || e.key === 'U') {
           e.preventDefault();
@@ -68,7 +61,6 @@ export default function SecurityShield() {
 
         // Ctrl+S (Sauvegarder la page complète)
         if (e.key === 's' || e.key === 'S') {
-          // Permettre seulement dans les inputs si souhaité, sinon bloquer la capture HTML
           const target = e.target;
           const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
           if (!isInput) {
