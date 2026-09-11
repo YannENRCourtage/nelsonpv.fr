@@ -568,7 +568,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const configActions = useConfiguratorActions();
 
   const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
-  const [solutionType, setSolutionType] = useState((!isAcama && isDP) ? 'ombriere' : 'building'); // 'building' | 'ombriere' | 'battery'
+  const initialSolType = project?.solutionType || project?.urbanisme_solutionType || (
+    (project?.type === 'battery' || project?.type === 'batterie_standalone' || project?.installationType?.toLowerCase()?.includes('batterie'))
+      ? 'battery'
+      : ((!isAcama && isDP) ? 'ombriere' : 'building')
+  );
+  const [solutionType, setSolutionType] = useState(initialSolType); // 'building' | 'ombriere' | 'battery'
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
 
   const [editedProject, setEditedProject] = useState(project || {});
@@ -633,7 +638,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [masseCapturedToast, setMasseCapturedToast] = useState({}); // { [strId]: string }
   const masseMapInstancesRef = useRef({});
 
-  // Sync ACAMA / Green Invest mode on open
+  // Sync ACAMA / Green Invest mode on open & verrouillage solution
   useEffect(() => {
     if (isOpen) {
       configActions.setIsAcama(isAcama);
@@ -641,9 +646,22 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         configActions.setConfigMode('custom');
         setSolutionType((!isAcama && isDP) ? 'ombriere' : 'building');
         setBatteryStorage(prev => ({ ...prev, enabled: false }));
+      } else {
+        const detectedSol = project?.solutionType || project?.urbanisme_solutionType || (
+          (project?.type === 'battery' || project?.type === 'batterie_standalone' || project?.installationType?.toLowerCase()?.includes('batterie'))
+            ? 'battery'
+            : null
+        );
+        if (detectedSol) {
+          setSolutionType(detectedSol);
+          if (detectedSol === 'battery') {
+            setBatteryStorage(prev => ({ ...prev, enabled: true }));
+            setSelectedStructureIds(['bat-sa-1']);
+          }
+        }
       }
     }
-  }, [isOpen, isAcama, isNoBattery, isDP]);
+  }, [isOpen, isAcama, isNoBattery, isDP, project]);
 
   // État cloisonné et indépendant pour chaque solution (Bâtiment vs Ombrière)
   const [solutions, setSolutions] = useState(() => ({
@@ -928,22 +946,32 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     return list;
   }, [solutions, isAcama, isNoBattery, solutionType, activeBuildingIndex, config, getBuildingDisplayName, batteryStorage]);
 
+  // Structures strictement filtrées selon le type de solution actif
+  const scopedStructures = useMemo(() => {
+    return allConfiguredStructures.filter(str => {
+      if (solutionType === 'battery') return str.solutionKey === 'battery' || str.isBattery;
+      if (solutionType === 'ombriere') return str.solutionKey === 'ombriere';
+      if (solutionType === 'building') return str.solutionKey === 'building' || (!str.solutionKey && !str.isBattery);
+      return true;
+    });
+  }, [allConfiguredStructures, solutionType]);
+
   const hasInitializedSelectionRef = React.useRef(false);
 
   // Synchronisation des identifiants sélectionnés
   useEffect(() => {
-    if (!hasInitializedSelectionRef.current && allConfiguredStructures.length > 0) {
+    if (!hasInitializedSelectionRef.current && scopedStructures.length > 0) {
       hasInitializedSelectionRef.current = true;
       setSelectedStructureIds(prev => {
-        if (prev && prev.length > 0) return prev;
-        if (solutionType === 'battery') {
-          const batIds = allConfiguredStructures.filter(s => s.solutionKey === 'battery').map(s => s.id);
-          return batIds.length > 0 ? batIds : ['bat-sa-1'];
+        if (prev && prev.length > 0) {
+          const validIds = scopedStructures.map(s => s.id);
+          const retained = prev.filter(id => validIds.includes(id));
+          if (retained.length > 0) return retained;
         }
-        return allConfiguredStructures.filter(s => s.solutionKey !== 'battery').map(s => s.id);
+        return scopedStructures.map(s => s.id);
       });
     }
-  }, [allConfiguredStructures, solutionType]);
+  }, [scopedStructures, solutionType]);
 
   // Mise à jour de l'orientation d'une structure quelconque depuis Carte DP2/PC2
   const handleMasseRotationUpdate = useCallback((targetId, val) => {
@@ -1396,8 +1424,18 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       };
     });
 
-    // 2. Basculer le type de solution
+    // 2. Basculer le type de solution et enregistrer dans le state global du dossier
     setSolutionType(newSolType);
+    setEditedProject(prev => ({
+      ...prev,
+      solutionType: newSolType,
+      urbanisme_solutionType: newSolType,
+      type: newSolType === 'battery' ? 'battery' : (newSolType === 'ombriere' ? 'ombriere' : 'batiment_solaire'),
+      installationType: newSolType === 'battery'
+        ? 'Station Batteries Stand-Alone (500 kW)'
+        : (newSolType === 'ombriere' ? 'Ombrières photovoltaïques' : 'Bâtiment photovoltaïque')
+    }));
+
     if (newSolType === 'battery') {
       setBatteryStorage(prev => ({
         ...prev,
@@ -2891,8 +2929,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         .replace(/Station Batteries \([^\)]*\)/gi, isDP ? 'Ombrière' : 'Bâtiment');
     }
 
-    // Rassembler toutes les structures configurées de toutes les solutions actives
-    const allConfigured = allConfiguredStructures;
+    // Rassembler les structures configurées de la solution sélectionnée
+    const allConfigured = scopedStructures;
     
     // Filtrer selon la sélection explicite de l'utilisateur (selectedStructureIds)
     const candidateBuildings = allConfigured.filter(b => selectedStructureIds.includes(b.id));
@@ -3283,8 +3321,113 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                 <motion.div key="step0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
                   <div>
-                    <h3 className="text-sm font-bold text-gray-800">Étape 1 : Identité & Coordonnées du déclarant</h3>
-                    <p className="text-xs text-gray-500">Ces informations sont préremplies automatiquement et restent modifiables.</p>
+                    <h3 className="text-sm font-bold text-gray-800">Étape 1 : Nature du projet & Coordonnées du déclarant</h3>
+                    <p className="text-xs text-gray-500">Choisissez la solution technique à déclarer et vérifiez les coordonnées du demandeur.</p>
+                  </div>
+
+                  {/* SÉLECTION GLOBALE DE LA NATURE DU PROJET (Bâtiment, Ombrière, Batterie) */}
+                  <div className="bg-white rounded-2xl p-5 border-2 border-slate-200/90 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div>
+                        <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <Layers className="w-4 h-4 text-blue-600" />
+                          Nature du projet d'urbanisme *
+                        </span>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Ce choix verrouille la modélisation 3D, les formulaires Cerfa et la cartographie DP2 sur l'ensemble du dossier.
+                        </p>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${
+                        solutionType === 'battery'
+                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                          : (solutionType === 'ombriere'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-blue-50 text-blue-700 border-blue-200')
+                      }`}>
+                        {solutionType === 'battery' ? '⚡ Station Batteries (DP < 20 m²)' : (solutionType === 'ombriere' ? '🚗 Ombrières Photovoltaïques' : '🏢 Bâtiment / Hangar Solaire')}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                      {/* 1. Bâtiment / Hangar */}
+                      <div
+                        onClick={() => handleSwitchSolution('building')}
+                        className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                          solutionType === 'building'
+                            ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-400/20'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-extrabold text-xs text-slate-900 flex items-center gap-2">
+                            <Building2 className={`w-4 h-4 ${solutionType === 'building' ? 'text-blue-600' : 'text-slate-500'}`} />
+                            {isAcama ? 'Bâtiment Sur-mesure' : 'Bâtiment / Hangar'}
+                          </span>
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                            solutionType === 'building' ? 'border-blue-600 bg-blue-600' : 'border-slate-300'
+                          }`}>
+                            {solutionType === 'building' && <Check className="w-2.5 h-2.5 text-white stroke-3" />}
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-slate-500 leading-relaxed">
+                          Construction ou couverture solaire avec charpente métallique, bardage et toiture photovoltaïque.
+                        </p>
+                      </div>
+
+                      {/* 2. Ombrière Photovoltaïque */}
+                      {!isAcama && (
+                        <div
+                          onClick={() => handleSwitchSolution('ombriere')}
+                          className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                            solutionType === 'ombriere'
+                              ? 'border-emerald-600 bg-emerald-50/50 shadow-md ring-2 ring-emerald-400/20'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-extrabold text-xs text-slate-900 flex items-center gap-2">
+                              <Car className={`w-4 h-4 ${solutionType === 'ombriere' ? 'text-emerald-600' : 'text-slate-500'}`} />
+                              Ombrière de Parking
+                            </span>
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                              solutionType === 'ombriere' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+                            }`}>
+                              {solutionType === 'ombriere' && <Check className="w-2.5 h-2.5 text-white stroke-3" />}
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            Structure d'ombrage pour véhicules légers ou poids-lourds conforme à la loi APER.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* 3. Station Batteries Stand-Alone */}
+                      {!isNoBattery && (
+                        <div
+                          onClick={() => handleSwitchSolution('battery')}
+                          className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                            solutionType === 'battery'
+                              ? 'border-purple-600 bg-purple-50/50 shadow-md ring-2 ring-purple-400/20'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-extrabold text-xs text-slate-900 flex items-center gap-2">
+                              <Zap className={`w-4 h-4 ${solutionType === 'battery' ? 'text-purple-600' : 'text-slate-500'}`} />
+                              Station Batteries (500 kW)
+                            </span>
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                              solutionType === 'battery' ? 'border-purple-600 bg-purple-600' : 'border-slate-300'
+                            }`}>
+                              {solutionType === 'battery' && <Check className="w-2.5 h-2.5 text-white stroke-3" />}
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            4 armoires CESC Mercury 261 sur dalle béton (19.84 m² &lt; 20 m²) ceinturée d'un grillage rigide.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
@@ -3805,6 +3948,42 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 vue_couverture: dataUrl
                               }
                             }));
+                          }}
+                          onCaptureViews={(views) => {
+                            setCaptures(prev => ({
+                              ...prev,
+                              facades_projet: views.sud,
+                              facade_sud: views.sud,
+                              facade_nord: views.nord,
+                              facade_est: views.est,
+                              facade_ouest: views.ouest,
+                              section: views.dessus,
+                              vue_couverture: views.dessus
+                            }));
+                            setEditedProject(prev => ({
+                              ...prev,
+                              urbanisme_captures: {
+                                ...(prev.urbanisme_captures || {}),
+                                facades_projet: views.sud,
+                                facade_sud: views.sud,
+                                facade_nord: views.nord,
+                                facade_est: views.est,
+                                facade_ouest: views.ouest,
+                                section: views.dessus,
+                                vue_couverture: views.dessus
+                              }
+                            }));
+                            updateActiveBuilding({
+                              captures: {
+                                facades_projet: views.sud,
+                                facade_sud: views.sud,
+                                facade_nord: views.nord,
+                                facade_est: views.est,
+                                facade_ouest: views.ouest,
+                                section: views.dessus,
+                                vue_couverture: views.dessus
+                              }
+                            });
                           }}
                         />
                       </div>
@@ -4382,7 +4561,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
               {/* ÉTAPE 4 — Carte DP2 / PC2 (Visionneuses actives divisées en 1, 2, 3 ou 4 cadres dynamiques) */}
               {step === 4 && (() => {
-                const activeStructures = allConfiguredStructures.filter(str => selectedStructureIds.includes(str.id));
+                const activeStructures = scopedStructures.filter(str => selectedStructureIds.includes(str.id));
                 const siteCoords = resolveProjectCoordinates(editedProject, project);
                 const refSiteLat = siteCoords.lat;
                 const refSiteLng = siteCoords.lng;
@@ -4405,13 +4584,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           </h3>
                         </div>
                         <p className="text-[11px] text-gray-500">
-                          Activez les visionneuses souhaitées. Chaque cadre correspond à un bâtiment ou une ombrière géoréférencé sur le site du déclarant.
+                          {solutionType === 'battery'
+                            ? "Activez la visionneuse de la station de stockage par batteries (dalle béton armé < 20 m² géoréférencée)."
+                            : "Activez les visionneuses souhaitées. Chaque cadre correspond à un bâtiment ou une ombrière géoréférencé sur le site du déclarant."}
                         </p>
                       </div>
 
                       {/* Boutons d'activation / désactivation des visionneuses */}
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {allConfiguredStructures.map((str) => {
+                        {scopedStructures.map((str) => {
                           const isAct = selectedStructureIds.includes(str.id);
                           return (
                             <button
@@ -4449,7 +4630,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200">
                           <button
                             type="button"
-                            onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
+                            onClick={() => setSelectedStructureIds(scopedStructures.map(s => s.id))}
                             className="px-2 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-[11px] font-bold shadow-2xs"
                           >
                             Tout voir
@@ -4468,7 +4649,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         </p>
                         <button
                           type="button"
-                          onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
+                          onClick={() => setSelectedStructureIds(scopedStructures.map(s => s.id))}
                           className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-sm"
                         >
                           Réactiver toutes les structures
@@ -4815,7 +4996,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   />
 
                                   {/* Rendu dynamique en temps réel des autres structures activées sur la parcelle */}
-                                  {activeStructures.filter(other => other.id !== str.id).map(other => {
+                                  {activeStructures.filter(other => other.id !== str.id && (solutionType !== 'battery' || other.solutionKey === 'battery' || other.isBattery)).map(other => {
                                     let oLat = Number(other.lat || (other.gps ? other.gps.split(',')[0] : null));
                                     let oLng = Number(other.lng || (other.gps ? other.gps.split(',')[1] : null));
                                     if (!oLat || !oLng || isNaN(oLat) || isNaN(oLng) || Math.hypot(oLat - refSiteLat, oLng - refSiteLng) > 0.05 || (Math.abs(oLat - 43.5612) < 0.001 && Math.abs(refSiteLat - 43.5612) > 0.001)) {
@@ -4994,12 +5175,12 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                         <Layers className="w-4 h-4 text-blue-600" />
-                        Structures &amp; Sous-onglets à inclure dans le PDF ({selectedStructureIds.length}/{allConfiguredStructures.length})
+                        Structures &amp; Sous-onglets à inclure dans le PDF ({selectedStructureIds.length}/{scopedStructures.length})
                       </span>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => setSelectedStructureIds(allConfiguredStructures.map(s => s.id))}
+                          onClick={() => setSelectedStructureIds(scopedStructures.map(s => s.id))}
                           className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
                         >
                           Toutes
@@ -5007,8 +5188,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         <button
                           type="button"
                           onClick={() => {
-                            if (allConfiguredStructures.length > 0) {
-                              setSelectedStructureIds([allConfiguredStructures[0].id]);
+                            if (scopedStructures.length > 0) {
+                              setSelectedStructureIds([scopedStructures[0].id]);
                             }
                           }}
                           className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
@@ -5019,10 +5200,11 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                      {allConfiguredStructures.map((str) => {
+                      {scopedStructures.map((str) => {
                         const isSelected = selectedStructureIds.includes(str.id);
-                        const strLen = Number(str.length || (str.bayCount || 5) * (str.baySpacing || 7.5));
-                        const strWid = Number(str.width || 15);
+                        const isBatStr = str.solutionKey === 'battery' || str.isBattery;
+                        const strLen = isBatStr ? Number(str.length || batteryStorage.dalleLength || 6.20) : Number(str.length || (str.bayCount || 5) * (str.baySpacing || 7.5));
+                        const strWid = isBatStr ? Number(str.width || batteryStorage.dalleWidth || 3.20) : Number(str.width || 15);
                         return (
                           <div
                             key={str.id}
@@ -5037,14 +5219,16 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                             }}
                             className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
                               isSelected
-                                ? 'bg-white border-blue-600 shadow-xs ring-2 ring-blue-200'
+                                ? (isBatStr ? 'bg-white border-purple-600 shadow-xs ring-2 ring-purple-200' : 'bg-white border-blue-600 shadow-xs ring-2 ring-blue-200')
                                 : 'bg-slate-100/70 border-slate-200 opacity-60 hover:opacity-85'
                             }`}
                           >
                             <div className="min-w-0 pr-2">
                               <div className="flex items-center gap-1.5 mb-1">
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
-                                  str.solutionKey === 'ombriere' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                  isBatStr
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : (str.solutionKey === 'ombriere' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800')
                                 }`}>
                                   {str.solutionLabel}
                                 </span>
@@ -5058,7 +5242,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => {}}
-                              className="w-4 h-4 rounded text-blue-600 pointer-events-none flex-shrink-0"
+                              className={`w-4 h-4 rounded pointer-events-none flex-shrink-0 ${isBatStr ? 'text-purple-600' : 'text-blue-600'}`}
                             />
                           </div>
                         );
