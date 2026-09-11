@@ -213,6 +213,8 @@ export default function ProjectEditor() {
     }
 
     setSearchingPrm(true);
+    setPrmCandidates([]);
+    setAmbiguityModalOpen(true); // Ouvre la modale immédiatement pour afficher le spinner
     try {
       const res = await enedisService.searchPrm({
         address: targetAddr,
@@ -230,8 +232,11 @@ export default function ProjectEditor() {
           enedisTitulaire: res.selectedPrm.titulaire || company || '',
           enedisSegment: res.selectedPrm.segment || 'BT <= 36 kVA'
         };
-        if (!p.name && res.selectedPrm.titulaire) {
+        if (!p.name && res.selectedPrm.titulaire && res.selectedPrm.titulaire !== 'Compteur Résidentiel' && res.selectedPrm.titulaire !== 'Saisie manuelle') {
           updates.name = res.selectedPrm.titulaire;
+        }
+        if (!p.company && res.selectedPrm.titulaire && res.selectedPrm.titulaire !== 'Compteur Résidentiel' && res.selectedPrm.titulaire !== 'Saisie manuelle') {
+          updates.company = res.selectedPrm.titulaire;
         }
         if (!p.phone && (res.selectedPrm.phone || res.selectedPrm.telephone || res.selectedPrm.mobile)) {
           updates.phone = res.selectedPrm.phone || res.selectedPrm.telephone || res.selectedPrm.mobile;
@@ -240,21 +245,22 @@ export default function ProjectEditor() {
           updates.email = res.selectedPrm.email || res.selectedPrm.mail;
         }
         updateProject(updates);
+        setAmbiguityModalOpen(false);
         toast({
           title: "✅ Compteur Enedis identifié",
           description: `PRM ${res.selectedPrm.prm} • ${res.selectedPrm.puissance_souscrite_kva ? res.selectedPrm.puissance_souscrite_kva + ' kVA • ' : ''}${res.selectedPrm.titulaire || company}`
         });
-      } else if (res.status === 'AMBIGUOUS' || res.isAmbiguous) {
-        setPrmCandidates(res.candidates || []);
+      } else if (res.candidates && res.candidates.length > 0) {
+        setPrmCandidates(res.candidates);
         setAmbiguityModalOpen(true);
       } else {
-        toast({
-          title: "Aucun compteur détecté",
-          description: "Aucun compteur n'a pu être identifié automatiquement. Vous pouvez le saisir manuellement.",
-          variant: "destructive"
-        });
+        // 0 compteur trouvé : la modale reste ouverte pour afficher l'alerte et la saisie manuelle 14 chiffres
+        setPrmCandidates([]);
+        setAmbiguityModalOpen(true);
       }
     } catch (err) {
+      setPrmCandidates([]);
+      setAmbiguityModalOpen(true);
       toast({
         title: "Erreur Enedis",
         description: err.message || "Erreur lors de la recherche Enedis",
@@ -2763,11 +2769,12 @@ export default function ProjectEditor() {
         )}
       </div>
 
-      {/* Modale de sélection de PRM en cas d'ambiguïté Enedis */}
+      {/* Modale de sélection de PRM en cas d'ambiguïté ou chargement Enedis */}
       <PrmSelectionModal
         isOpen={ambiguityModalOpen}
         onClose={() => setAmbiguityModalOpen(false)}
         candidates={prmCandidates}
+        isLoading={searchingPrm}
         address={`${p.address || ''} ${p.zip || ''} ${p.city || ''}`.trim()}
         companyName={selectedCompany?.nom_raison_sociale || selectedCompany?.name || p.company || p.name || ''}
         clientName={[p.firstName, p.name].filter(Boolean).join(' ')}
@@ -2778,8 +2785,11 @@ export default function ProjectEditor() {
             enedisTitulaire: selected.titulaire || p.name || '',
             enedisSegment: selected.segment || 'BT <= 36 kVA'
           };
-          if (!p.name && selected.titulaire) {
+          if (!p.name && selected.titulaire && selected.titulaire !== 'Compteur Résidentiel' && selected.titulaire !== 'Saisie manuelle') {
             updates.name = selected.titulaire;
+          }
+          if (!p.company && selected.titulaire && selected.titulaire !== 'Compteur Résidentiel' && selected.titulaire !== 'Saisie manuelle') {
+            updates.company = selected.titulaire;
           }
           if (!p.phone && (selected.phone || selected.telephone || selected.mobile)) {
             updates.phone = selected.phone || selected.telephone || selected.mobile;

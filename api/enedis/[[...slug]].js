@@ -15,7 +15,7 @@ import crypto from 'crypto';
 import { setSecureCors } from '../common/_authMiddleware.js';
 import { generateMandatPdf } from '../../src/services/enedisMandatPdfService.js';
 import { declareAndFetchEnedis } from '../../src/services/enedisAutomation.js';
-import { matchAndDisambiguatePrms } from '../../src/services/enedisPrmMatcher.js';
+import { matchAndDisambiguatePrms, calculateTextSimilarity, normalizeText } from '../../src/services/enedisPrmMatcher.js';
 
 // ─── Passerelles & Domaines Enedis ───────────────────────────────────────────
 const ENEDIS_HOSTS = {
@@ -1399,111 +1399,66 @@ async function handleSignatureWebhook(req, res) {
   return res.status(200).json({ received: true });
 }
 
-// ─── 6. RECHERCHE DE PRM PAR CRITÈRES (SGE TIERS / DATAHUB ENEDIS) ─────────────
+// ─── 6. RECHERCHE DE PRM PAR CRITÈRES (SGE TIERS / DATAHUB ENEDIS & SIRENE) ────
 
 /**
- * Générateur de compteurs candidats simulés pour environnement de test / bac à sable
- * ou secours lorsque le contrat SGE Tiers est en attente d'homologation.
+ * Interroge l'API publique ouverte recherche-entreprises.api.gouv.fr
+ * pour récupérer en temps réel les entreprises actives situées à l'adresse exacte.
  */
-function generateSimulatedCandidates({ numVoie, nomVoie, codePostal, commune, companyName, clientName }) {
-  const fullAddress = `${numVoie} ${nomVoie}`.trim().toLowerCase();
-  
-  // Cas de test pour adresse introuvable
-  if (fullAddress.includes('introuvable') || fullAddress.includes('inexistant') || codePostal === '00000') {
+async function fetchSireneCompaniesAtAddress({ address = '', numVoie = '', nomVoie = '', zip = '', city = '' }) {
+  try {
+    const qParts = [];
+    if (address) {
+      qParts.push(address);
+    } else {
+      if (numVoie) qParts.push(numVoie);
+      if (nomVoie) qParts.push(nomVoie);
+    }
+    const q = qParts.join(' ').trim();
+    const codePostal = (zip || '').toString().trim();
+
+    if (!q && !codePostal && !city) {
+      return [];
+    }
+
+    const params = {
+      q: q || city || 'commerce',
+      per_page: 5,
+      etat_administratif: 'A'
+    };
+    if (codePostal && /^\d{5}$/.test(codePostal)) {
+      params.code_postal = codePostal;
+    }
+
+    const res = await axios.get('https://recherche-entreprises.api.gouv.fr/search', {
+      params,
+      timeout: 6000,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Nelson-Solar/1.0 (https://nelsonpv.fr)'
+      }
+    });
+
+    const items = res.data?.results || [];
+    return items.map(item => {
+      const matchEtab = item.matching_etablissements?.[0] || item.siege || {};
+      const raisonSociale = item.nom_raison_sociale || item.nom_complet || matchEtab.nom_commercial || '';
+      return {
+        siren: item.siren,
+        siret: matchEtab.siret || '',
+        nomRaisonSociale: raisonSociale,
+        nomComplet: item.nom_complet || raisonSociale,
+        adresse: matchEtab.adresse || item.siege?.adresse || '',
+        commune: matchEtab.libelle_commune || item.siege?.libelle_commune || '',
+        codePostal: matchEtab.code_postal || item.siege?.code_postal || '',
+        activite: item.activite_principale || matchEtab.activite_principale || '',
+        dirigeants: (item.dirigeants || []).map(d => `${d.prenoms || ''} ${d.nom || ''}`.trim()).filter(Boolean)
+      };
+    });
+  } catch (err) {
+    console.warn('[Search PRM - Sirene API warning]:', err.message);
     return [];
   }
-
-  // Génération d'un préfixe PRM déterministe (14 chiffres) basé sur le code postal
-  const cpClean = (codePostal || '75000').replace(/\D/g, '').padEnd(5, '0').slice(0, 5);
-  const hashNum = Math.abs(
-    (companyName || clientName || nomVoie || 'nelson')
-      .split('')
-      .reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) % 10000000, 1234567)
-  ).toString().padStart(7, '0');
-
-  const proPrm = `16${cpClean}${hashNum.slice(0, 7)}`;
-  const resiPrm = `16${cpClean}${(parseInt(hashNum.slice(0, 7)) + 1).toString().padStart(7, '0')}`;
-  const secondProPrm = `16${cpClean}${(parseInt(hashNum.slice(0, 7)) + 2).toString().padStart(7, '0')}`;
-
-  const displayName = companyName ? companyName.trim() : (clientName ? `${clientName.trim()} (Pro)` : 'Exploitation Agricole');
-
-  // Cas ambigu explicite si demandé dans les critères de test ou si aucune entreprise n'est spécifiée
-  if (companyName && companyName.toLowerCase().includes('ambigu')) {
-    return [
-      {
-        usage_point_id: proPrm,
-        prm: proPrm,
-        adresse: {
-          numero_voie: numVoie || '1',
-          nom_voie: nomVoie || 'Chemin Principal',
-          code_postal: codePostal,
-          commune: commune,
-          complement_adresse: 'Bâtiment A - Atelier Usinage'
-        },
-        matricule: '458',
-        puissance_souscrite_kva: 36,
-        segment: 'BT <= 36 kVA',
-        etat_contractuel: 'En service',
-        titulaire: `${companyName} - Site Nord`,
-        usage: 'Professionnel'
-      },
-      {
-        usage_point_id: secondProPrm,
-        prm: secondProPrm,
-        adresse: {
-          numero_voie: numVoie || '1',
-          nom_voie: nomVoie || 'Chemin Principal',
-          code_postal: codePostal,
-          commune: commune,
-          complement_adresse: 'Bâtiment B - Hangar Stockage'
-        },
-        matricule: '892',
-        puissance_souscrite_kva: 48,
-        segment: 'BT > 36 kVA',
-        etat_contractuel: 'En service',
-        titulaire: `${companyName} - Site Sud`,
-        usage: 'Professionnel'
-      }
-    ];
-  }
-
-  // Cas standard : Adresse mixte avec 1 compteur pro (hangar/exploitation) + 1 compteur domestique (maison)
-  return [
-    {
-      usage_point_id: proPrm,
-      prm: proPrm,
-      adresse: {
-        numero_voie: numVoie || '12',
-        nom_voie: nomVoie || 'Rue Principale',
-        code_postal: codePostal,
-        commune: commune,
-        complement_adresse: 'Hangar Agricole / Bâtiment d\'exploitation'
-      },
-      matricule: '714',
-      puissance_souscrite_kva: 36,
-      segment: 'BT <= 36 kVA',
-      etat_contractuel: 'En service',
-      titulaire: displayName,
-      usage: 'Professionnel'
-    },
-    {
-      usage_point_id: resiPrm,
-      prm: resiPrm,
-      adresse: {
-        numero_voie: numVoie || '12',
-        nom_voie: nomVoie || 'Rue Principale',
-        code_postal: codePostal,
-        commune: commune,
-        complement_adresse: 'Maison d\'habitation'
-      },
-      matricule: '219',
-      puissance_souscrite_kva: 6,
-      segment: 'BT <= 36 kVA',
-      etat_contractuel: 'En service',
-      titulaire: clientName ? `M. ${clientName}` : 'M. Dupont Pierre',
-      usage: 'Résidentiel'
-    }
-  ];
 }
 
 /**
@@ -1548,9 +1503,9 @@ async function handleSearchPrm(req, res) {
     }
   }
 
-  if (!codePostal && !commune) {
+  if (!codePostal && !commune && !address) {
     return res.status(400).json({
-      error: 'Le code postal ou la commune est obligatoire pour rechercher un PRM.'
+      error: 'L\'adresse, le code postal ou la commune est obligatoire pour rechercher un PRM.'
     });
   }
 
@@ -1558,97 +1513,228 @@ async function handleSearchPrm(req, res) {
     let rawCandidates = [];
     let enedisApiCalled = false;
     let apiError = null;
+    let sireneCompanies = [];
 
-    // 1. Tenter l'appel API Enedis réel (SGE Tiers / Services de consultation)
-    try {
-      const token = await getOrRefreshTiersToken(env);
-      const baseUrl = getBaseUrl(env);
-      enedisApiCalled = true;
+    // Interrogation concurrente : API Sirene & API Enedis live
+    const [sireneResults, enedisResults] = await Promise.all([
+      fetchSireneCompaniesAtAddress({ address, numVoie, nomVoie, zip: codePostal, city: commune }),
+      (async () => {
+        try {
+          const token = await getOrRefreshTiersToken(env);
+          const baseUrl = getBaseUrl(env);
+          enedisApiCalled = true;
 
-      const searchPayload = {
-        adresse: {
-          numero_voie: numVoie || undefined,
-          nom_voie: nomVoie || undefined,
-          code_postal: codePostal || undefined,
-          commune: commune || undefined,
-          complement_adresse: complement || undefined
-        },
-        raison_sociale: companyName || undefined,
-        nom_client: clientName || undefined,
-        matricule_compteur: meterSerial || undefined,
-        predecesseur: predecessor || undefined
-      };
-
-      try {
-        const enedisRes = await axios.post(
-          `${baseUrl}/v1/points_de_livraison/recherche`,
-          searchPayload,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
+          const searchPayload = {
+            adresse: {
+              numero_voie: numVoie || undefined,
+              nom_voie: nomVoie || undefined,
+              code_postal: codePostal || undefined,
+              commune: commune || undefined,
+              complement_adresse: complement || undefined
             },
-            timeout: 10000
+            raison_sociale: companyName || undefined,
+            nom_client: clientName || undefined,
+            matricule_compteur: meterSerial || undefined,
+            predecesseur: predecessor || undefined
+          };
+
+          try {
+            const enedisRes = await axios.post(
+              `${baseUrl}/v1/points_de_livraison/recherche`,
+              searchPayload,
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                },
+                timeout: 10000
+              }
+            );
+
+            if (Array.isArray(enedisRes.data?.points_de_livraison)) {
+              return enedisRes.data.points_de_livraison;
+            } else if (Array.isArray(enedisRes.data)) {
+              return enedisRes.data;
+            }
+            return [];
+          } catch (postErr) {
+            // Repli GET /v1/points_de_livraison si POST n'est pas configuré sur ce profil Enedis
+            if (postErr.response?.status === 404 || postErr.response?.status === 405) {
+              const getRes = await axios.get(`${baseUrl}/v1/points_de_livraison`, {
+                params: {
+                  code_postal: codePostal || undefined,
+                  commune: commune || undefined,
+                  nom_voie: nomVoie || undefined,
+                  numero_voie: numVoie || undefined
+                },
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Accept': 'application/json'
+                },
+                timeout: 8000
+              });
+              if (Array.isArray(getRes.data?.points_de_livraison)) {
+                return getRes.data.points_de_livraison;
+              } else if (Array.isArray(getRes.data)) {
+                return getRes.data;
+              }
+            }
+            throw postErr;
           }
-        );
-
-        if (Array.isArray(enedisRes.data?.points_de_livraison)) {
-          rawCandidates = enedisRes.data.points_de_livraison;
-        } else if (Array.isArray(enedisRes.data)) {
-          rawCandidates = enedisRes.data;
+        } catch (err) {
+          apiError = err.response?.data?.error || err.message;
+          console.warn(`[Search PRM] Enedis live consultation error: ${apiError}`);
+          return [];
         }
-      } catch (postErr) {
-        // Repli GET /v1/points_de_livraison si POST n'est pas configuré sur ce profil Enedis
-        if (postErr.response?.status === 404 || postErr.response?.status === 405) {
-          const getRes = await axios.get(`${baseUrl}/v1/points_de_livraison`, {
-            params: {
-              code_postal: codePostal,
-              commune: commune,
-              nom_voie: nomVoie,
-              numero_voie: numVoie
-            },
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json'
-            },
-            timeout: 8000
-          });
-          if (Array.isArray(getRes.data?.points_de_livraison)) {
-            rawCandidates = getRes.data.points_de_livraison;
-          }
-        } else {
-          throw postErr;
-        }
-      }
-    } catch (err) {
-      apiError = err.response?.data?.error || err.message;
-      console.warn(`[Search PRM] Enedis live consultation fallback: ${apiError}`);
-    }
+      })()
+    ]);
 
-    // 2. Si Enedis ne renvoie aucun résultat ou en environnement de développement / test,
-    // basculer sur le générateur de simulation pour permettre le test de bout en bout
+    sireneCompanies = sireneResults || [];
+    rawCandidates = enedisResults || [];
+
+    // Si Enedis ne renvoie aucun compteur à cette adresse :
+    // Respect strict des exigences : AUCUN faux candidat simulé généré !
     if (rawCandidates.length === 0) {
-      rawCandidates = generateSimulatedCandidates({
-        numVoie,
-        nomVoie,
-        codePostal,
-        commune,
-        companyName,
-        clientName
+      return res.status(200).json({
+        success: true,
+        query: { numVoie, nomVoie, codePostal, commune, companyName, clientName },
+        enedisApiCalled,
+        apiError: apiError || null,
+        status: 'NOT_FOUND',
+        selectedPrm: null,
+        candidates: [],
+        sireneCompanies,
+        isAmbiguous: false,
+        message: 'Aucun compteur trouvé à cette adresse exacte. Veuillez saisir le PRM manuellement.',
+        savedToProject: false
       });
     }
 
-    // 3. Application du filtre intelligent et de l'anti-doublon
-    const matchResult = matchAndDisambiguatePrms(rawCandidates, {
-      companyName,
+    // Détermination de l'entreprise Sirene la plus pertinente
+    let matchedSireneCompany = null;
+    if (sireneCompanies.length > 0) {
+      if (companyName) {
+        let bestSim = 0;
+        for (const comp of sireneCompanies) {
+          const sim = Math.max(
+            calculateTextSimilarity(comp.nomRaisonSociale, companyName),
+            calculateTextSimilarity(comp.nomComplet, companyName)
+          );
+          if (sim > bestSim) {
+            bestSim = sim;
+            matchedSireneCompany = comp;
+          }
+        }
+        if (bestSim < 0.2) {
+          matchedSireneCompany = sireneCompanies[0];
+        }
+      } else {
+        matchedSireneCompany = sireneCompanies[0];
+      }
+    }
+
+    // Normalisation des compteurs candidats réels Enedis
+    let maxPower = 0;
+    const normalizedCandidates = rawCandidates.map(raw => {
+      const prm = (
+        raw.usage_point_id ||
+        raw.prm ||
+        raw.id_point_de_livraison ||
+        raw.pdl ||
+        raw.id ||
+        ''
+      ).toString().trim().replace(/\D/g, '');
+
+      const powerKva = parseFloat(
+        raw.puissance_souscrite_kva ||
+        raw.puissance_souscrite ||
+        raw.caracteristiques?.puissance_souscrite_kva ||
+        raw.contrat?.puissance_souscrite_kva ||
+        raw.contrat?.puissance_souscrite ||
+        0
+      );
+      if (powerKva > maxPower) maxPower = powerKva;
+
+      let segment = raw.segment || raw.segment_client || raw.segment_tension || '';
+      if (!segment) {
+        if (powerKva > 36) segment = 'BT > 36 kVA';
+        else if (powerKva > 0) segment = 'BT <= 36 kVA';
+        else segment = 'BT <= 36 kVA';
+      }
+
+      const complement = raw.complement_adresse || raw.adresse?.complement_adresse || '';
+      const matricule = raw.matricule || raw.matricule_compteur || raw.serial_number || '';
+      const etatContractuel = raw.etat_contractuel || raw.statut || 'En service';
+
+      return {
+        usage_point_id: prm,
+        prm,
+        adresse: {
+          numero_voie: raw.adresse?.numero_voie || numVoie,
+          nom_voie: raw.adresse?.nom_voie || nomVoie,
+          code_postal: raw.adresse?.code_postal || codePostal,
+          commune: raw.adresse?.commune || commune,
+          complement_adresse: complement
+        },
+        matricule,
+        puissance_souscrite_kva: powerKva,
+        segment,
+        etat_contractuel: etatContractuel,
+        complement_adresse: complement,
+        rawTitulaire: raw.titulaire || raw.nom_client || raw.raison_sociale || ''
+      };
+    });
+
+    // Application des règles RGPD & attribution de la Raison Sociale Sirene
+    normalizedCandidates.forEach(cand => {
+      const pKva = cand.puissance_souscrite_kva;
+      const compLower = (cand.complement_adresse || '').toLowerCase();
+      const isProKeyword = ['hangar', 'atelier', 'exploitation', 'batiment', 'bâtiment', 'bureau', 'depot', 'dépôt', 'za', 'zi'].some(kw => compLower.includes(kw));
+      const isProSegment = cand.segment && (cand.segment.includes('> 36') || cand.segment.includes('HTA') || cand.segment.includes('C4') || cand.segment.includes('C3'));
+      const isProPower = pKva > 9 || (pKva === maxPower && maxPower > 6 && normalizedCandidates.length > 1);
+      const isProMeter = isProPower || isProSegment || isProKeyword;
+
+      if (matchedSireneCompany) {
+        if (isProMeter || normalizedCandidates.length === 1) {
+          cand.titulaire = matchedSireneCompany.nomRaisonSociale || matchedSireneCompany.nomComplet;
+          cand.usage = 'Professionnel';
+          cand.sireneMatched = true;
+          cand.sireneCompany = matchedSireneCompany;
+        } else {
+          cand.titulaire = 'Compteur Résidentiel';
+          cand.usage = 'Résidentiel';
+          cand.sireneMatched = false;
+        }
+      } else {
+        // Aucune entreprise trouvée par Sirene à cette adresse
+        if (companyName && isProMeter) {
+          cand.titulaire = companyName;
+          cand.usage = 'Professionnel';
+          cand.sireneMatched = false;
+        } else if (!isProMeter || pKva <= 9) {
+          // Respect strict du RGPD : Compteur Résidentiel garanti
+          cand.titulaire = 'Compteur Résidentiel';
+          cand.usage = 'Résidentiel';
+          cand.sireneMatched = false;
+        } else {
+          cand.titulaire = clientName ? `${clientName} (Pro)` : 'Installation Professionnelle';
+          cand.usage = 'Professionnel';
+          cand.sireneMatched = false;
+        }
+      }
+    });
+
+    // Application du filtre intelligent et calcul des scores
+    const matchResult = matchAndDisambiguatePrms(normalizedCandidates, {
+      companyName: matchedSireneCompany?.nomRaisonSociale || companyName,
       clientName,
       address: `${numVoie} ${nomVoie}`.trim(),
       zip: codePostal,
       city: commune
     });
 
-    // 4. Auto-sauvegarde immédiate dans Firestore si projectId fourni et haute certitude
+    // Auto-sauvegarde immédiate dans Firestore si projectId fourni et haute certitude
     let savedToProject = false;
     if (autoSave && projectId && projectId !== 'admin_test' && matchResult.status === 'HIGH_CONFIDENCE' && matchResult.selectedPrm?.prm) {
       try {
@@ -1675,6 +1761,7 @@ async function handleSearchPrm(req, res) {
       status: matchResult.status,
       selectedPrm: matchResult.selectedPrm,
       candidates: matchResult.candidates,
+      sireneCompanies,
       isAmbiguous: matchResult.isAmbiguous,
       message: matchResult.message,
       savedToProject

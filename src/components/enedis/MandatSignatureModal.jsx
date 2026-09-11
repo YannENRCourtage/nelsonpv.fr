@@ -103,6 +103,8 @@ export default function MandatSignatureModal({
     }
     setSearchingPrm(true);
     setSearchFeedback(null);
+    setPrmCandidates([]);
+    setAmbiguityModalOpen(true); // Ouvre la modale immédiatement pour afficher le spinner
     try {
       const res = await enedisService.searchPrm({
         address: clientAddress,
@@ -116,24 +118,29 @@ export default function MandatSignatureModal({
       if (res.status === 'HIGH_CONFIDENCE' && res.selectedPrm?.prm) {
         setPrm(res.selectedPrm.prm);
         setSubscribedPower(res.selectedPrm.puissance_souscrite_kva || null);
+        if (res.selectedPrm.titulaire && res.selectedPrm.titulaire !== 'Compteur Résidentiel' && res.selectedPrm.titulaire !== 'Saisie manuelle') {
+          if (!clientCompany) setClientCompany(res.selectedPrm.titulaire);
+        }
         setSearchFeedback({
           type: 'success',
           text: `PRM identifié avec succès : ${res.selectedPrm.prm} (${res.selectedPrm.puissance_souscrite_kva ? res.selectedPrm.puissance_souscrite_kva + ' kVA • ' : ''}${res.selectedPrm.titulaire || clientCompany})`
         });
-      } else if (res.status === 'AMBIGUOUS' || res.isAmbiguous) {
-        setPrmCandidates(res.candidates || []);
+        setAmbiguityModalOpen(false);
+      } else if (res.candidates && res.candidates.length > 0) {
+        setPrmCandidates(res.candidates);
         setAmbiguityModalOpen(true);
       } else {
-        setSearchFeedback({
-          type: 'warn',
-          text: 'Aucun compteur Enedis trouvé automatiquement. Saisie manuelle possible.'
-        });
+        // 0 compteur trouvé : la modale reste ouverte pour afficher l'alerte et la saisie manuelle 14 chiffres
+        setPrmCandidates([]);
+        setAmbiguityModalOpen(true);
       }
     } catch (err) {
       setSearchFeedback({
         type: 'error',
         text: err.message || 'Erreur lors de la recherche Enedis'
       });
+      setPrmCandidates([]);
+      setAmbiguityModalOpen(true);
     } finally {
       setSearchingPrm(false);
     }
@@ -463,18 +470,20 @@ export default function MandatSignatureModal({
 
       </div>
 
-      {/* Modale de sélection de PRM en cas d'ambiguïté */}
+      {/* Modale de sélection de PRM en cas d'ambiguïté ou de chargement Enedis */}
       <PrmSelectionModal
         isOpen={ambiguityModalOpen}
         onClose={() => setAmbiguityModalOpen(false)}
         candidates={prmCandidates}
+        isLoading={searchingPrm}
+        error={searchFeedback?.type === 'error' ? searchFeedback.text : null}
         address={`${clientAddress} ${clientZip} ${clientCity}`.trim()}
         companyName={clientCompany}
         clientName={clientName}
         onSelectPrm={(selected) => {
           setPrm(selected.prm);
           setSubscribedPower(selected.puissance_souscrite_kva || null);
-          if (selected.titulaire) {
+          if (selected.titulaire && selected.titulaire !== 'Compteur Résidentiel' && selected.titulaire !== 'Saisie manuelle') {
             if (!clientName) setClientName(selected.titulaire);
             if (!clientCompany) setClientCompany(selected.titulaire);
           }

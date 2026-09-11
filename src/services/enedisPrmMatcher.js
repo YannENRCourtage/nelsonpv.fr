@@ -83,8 +83,17 @@ export function scoreElectricalProfile(meter = {}) {
   const complement = normalizeText(meter.complement_adresse || meter.adresse?.complement_adresse || '');
   const usage = normalizeText(meter.usage || meter.type_point || '');
   const segment = normalizeText(meter.segment || '');
+  const titulaire = normalizeText(meter.titulaire || '');
 
-  // 1. Analyse de la puissance souscrite
+  // 1. Analyse du croisement Sirene ou compteur résidentiel
+  if (meter.sireneMatched) {
+    score += 25;
+  }
+  if (titulaire === 'compteur residentiel' || usage.includes('resi') || usage.includes('domest')) {
+    score -= 30;
+  }
+
+  // 2. Analyse de la puissance souscrite
   if (powerKva >= 36) {
     // Puissance typique professionnelle / agricole (Tarif Jaune ou Vert ou max Bleu)
     score += 35;
@@ -97,7 +106,7 @@ export function scoreElectricalProfile(meter = {}) {
     score -= 15;
   }
 
-  // 2. Analyse des mots-clés du complément d'adresse
+  // 3. Analyse des mots-clés du complément d'adresse
   for (const kw of PRO_KEYWORDS) {
     if (complement.includes(kw)) {
       score += 25;
@@ -112,11 +121,9 @@ export function scoreElectricalProfile(meter = {}) {
     }
   }
 
-  // 3. Analyse du segment ou usage explicite
+  // 4. Analyse du segment ou usage explicite
   if (usage.includes('pro') || segment.includes('jaune') || segment.includes('vert') || segment.includes('c4') || segment.includes('c3') || segment.includes('c2')) {
     score += 20;
-  } else if (usage.includes('resi') || usage.includes('domest')) {
-    score -= 25;
   }
 
   // Borner entre 0 et 100
@@ -130,6 +137,14 @@ export function scoreElectricalProfile(meter = {}) {
 export function scoreNameMatch(meter = {}, criteria = {}) {
   const meterTitulaire = meter.titulaire || meter.nom_client || meter.raison_sociale || '';
   const { companyName = '', clientName = '' } = criteria;
+
+  if (normalizeText(meterTitulaire) === 'compteur residentiel') {
+    return 0; // Compteur domestique neutre RGPD
+  }
+
+  if (meter.sireneMatched) {
+    return 95; // Entreprise certifiée croisée via l'API Sirene
+  }
 
   if (!meterTitulaire) return 40; // Donnée non fournie par Enedis (souvent masquée RGPD)
 
@@ -176,7 +191,7 @@ export function matchAndDisambiguatePrms(candidates = [], criteria = {}) {
       selectedPrm: null,
       candidates: [],
       isAmbiguous: false,
-      message: 'Aucun compteur Enedis détecté à cette adresse.'
+      message: 'Aucun compteur trouvé à cette adresse exacte. Veuillez saisir le PRM manuellement.'
     };
   }
 
@@ -197,9 +212,18 @@ export function matchAndDisambiguatePrms(candidates = [], criteria = {}) {
 
     // Construction d'une explication lisible
     const reasons = [];
-    if (nameScore >= 70) reasons.push(`Titulaire concordant ("${meter.titulaire || criteria.companyName}")`);
+    if (meter.sireneMatched) {
+      reasons.push(`Entreprise certifiée Sirene ("${meter.titulaire}")`);
+    } else if (nameScore >= 70) {
+      reasons.push(`Titulaire concordant ("${meter.titulaire || criteria.companyName}")`);
+    }
+
     if (powerKva >= 36) reasons.push(`Puissance professionnelle (${powerKva} kVA)`);
-    else if (powerKva > 0 && powerKva <= 6) reasons.push(`Faible puissance (${powerKva} kVA - probable logement)`);
+    else if (powerKva > 0 && powerKva <= 6) reasons.push(`Faible puissance (${powerKva} kVA - logement)`);
+
+    if (normalizeText(meter.titulaire) === 'compteur residentiel') {
+      reasons.push('Usage Domestique • RGPD');
+    }
 
     const complement = meter.complement_adresse || meter.adresse?.complement_adresse;
     if (complement) reasons.push(`Complément : ${complement}`);
