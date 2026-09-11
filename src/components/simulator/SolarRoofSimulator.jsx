@@ -763,6 +763,13 @@ export default function SolarRoofSimulator({
               polygonPoints={polygonPoints}
               onPolygonChange={setPolygonPoints}
               onSurfaceCalculated={(m2) => setRoofSurface(Math.round(m2))}
+              onSolarDetected={({ pitch }) => {
+                if (pitch != null) {
+                  const presets = [0, 15, 20, 30, 45, 60];
+                  const closest = presets.reduce((prev, curr) => Math.abs(curr - pitch) < Math.abs(prev - pitch) ? curr : prev);
+                  setSelectedPitch(closest);
+                }
+              }}
               mapContainerRef={mapContainerRef}
             />
           </motion.div>

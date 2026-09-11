@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { Environment, ContactShadows } from '@react-three/drei';
+import { Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import BatteryStation3DModel from './BatteryStation3DModel';
 import {
@@ -68,9 +68,6 @@ function BatteryLandscapeThreeBridge({ onReady, transform, sunAngle, batteryConf
       <directionalLight
         position={[Math.cos(sunRad) * 60, 55, Math.sin(sunRad) * 60]}
         intensity={2.3}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0001}
       />
       <directionalLight
         position={[-Math.cos(sunRad) * 35, 25, -Math.sin(sunRad) * 35]}
@@ -91,13 +88,6 @@ function BatteryLandscapeThreeBridge({ onReady, transform, sunAngle, batteryConf
           showFence={transform.showFence}
           showSlab={transform.showSlab}
           opacity={transform.opacity}
-        />
-        <ContactShadows
-          position={[0, 0, 0]}
-          opacity={0.65 * transform.opacity}
-          scale={12}
-          blur={1.6}
-          far={3}
         />
       </group>
     </>
@@ -381,7 +371,6 @@ export default function BatteryInsertionCompositor({
                 {/* 2. Scène 3D Three.js transparente superposée sur TOUTE la photo */}
                 <div className="absolute inset-0 pointer-events-none">
                   <Canvas
-                    shadows
                     gl={{ preserveDrawingBuffer: true, antialias: true, alpha: true }}
                     camera={{ position: [0, 2.5, 14], fov: 40 }}
                     style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}

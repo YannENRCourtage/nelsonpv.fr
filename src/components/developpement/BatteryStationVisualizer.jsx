@@ -77,7 +77,7 @@ export default function BatteryStationVisualizer({
   onCaptureViews = null,
   onCaptureSnapshot = null,
   onCapture = null,
-  height = 340,
+  height = '100%',
   className = '',
 }) {
   // Mode actif interne synchronisé avec la prop externe
@@ -199,8 +199,8 @@ export default function BatteryStationVisualizer({
 
   return (
     <div
-      className={`relative w-full rounded-2xl overflow-hidden bg-slate-950 flex flex-col border border-slate-800 shadow-xl ${className}`}
-      style={{ height: typeof height === 'number' ? `${height}px` : height }}
+      className={`relative w-full h-full min-h-[480px] rounded-2xl overflow-hidden bg-slate-950 flex flex-col border border-slate-800 shadow-xl ${className}`}
+      style={{ height: typeof height === 'number' ? `${height}px` : (height || '100%') }}
     >
       {/* 1. BARRE SUPÉRIEURE : SÉLECTEUR DE MODE 3D / 2D FAÇADE / PLAN DE MASSE */}
       <div className="absolute top-2.5 left-2.5 right-2.5 z-30 flex items-center justify-between pointer-events-none">

@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { MapContainer, TileLayer, Polygon, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { RotateCcw, Plus, Minus, Compass } from 'lucide-react';
+import { RotateCcw, Plus, Minus, Compass, Sun, Maximize2, Sparkles, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { getBuildingInsights, selectBestRoofSegment, boundingBoxToPolygon } from '@/services/googleSolar';
+import { squarePolygon } from '@/utils/squarePolygon';
 
 // ─── Calcul de Surface Géodésique (Formule Sphérique WGS84) ──────────────────
 export function calculatePolygonArea(latlngs) {
@@ -558,9 +560,14 @@ export default function RoofMapPolygonSelector({
   onRoofTypeChange,
   orientationInfo = { orientationKey: 'south', orientationLabel: 'Plein Sud' },
   onOrientationChange,
+  onSolarDetected,
   mapContainerRef
 }) {
   const [mapInstance, setMapInstance] = useState(null);
+  const [isDetectingSolar, setIsDetectingSolar] = useState(false);
+  const [solarFeedback, setSolarFeedback] = useState(null);
+  const [solarSegments, setSolarSegments] = useState([]);
+  const [selectedSegmentIdx, setSelectedSegmentIdx] = useState(0);
 
   // Initialisation d'un rectangle de 4 points par défaut
   const initializeDefaultPolygon = useCallback((lat, lng) => {
@@ -598,6 +605,131 @@ export default function RoofMapPolygonSelector({
       const reset = initializeDefaultPolygon(center[0], center[1]);
       if (onPolygonChange) onPolygonChange(reset);
       setLiveSurface(calculatePolygonArea(reset));
+      setSolarFeedback(null);
+    }
+  };
+
+  // Applique un pan de toiture spécifique (provenant de Google Solar)
+  const applyRoofSegment = useCallback((seg, idx = 0, allSegments = solarSegments) => {
+    if (!seg) return;
+    setSelectedSegmentIdx(idx);
+
+    let pts = [];
+    if (seg.boundingBox) {
+      pts = boundingBoxToPolygon(seg.boundingBox);
+    }
+
+    if (pts && pts.length === 4) {
+      const squared = squarePolygon(pts);
+      const finalPts = (squared && squared.length === 4) ? squared : pts;
+      if (onPolygonChange) onPolygonChange(finalPts);
+      const newArea = calculatePolygonArea(finalPts);
+      setLiveSurface(newArea);
+    }
+
+    const pitch = Math.round(seg.pitchDegrees || 20);
+    const googleAzimuth = Math.round(seg.azimuthDegrees || 180);
+    let appAzimuth = googleAzimuth - 180;
+    while (appAzimuth > 180) appAzimuth -= 360;
+    while (appAzimuth <= -180) appAzimuth += 360;
+
+    const orientDetails = getOrientationDetailsFromAngle(appAzimuth);
+    if (onOrientationChange) {
+      onOrientationChange({
+        roofType: 'asymetrique',
+        orientationKey: orientDetails.orientationKey,
+        orientationLabel: orientDetails.orientationLabel,
+        rawOrientationLabel: orientDetails.rawLabel,
+        angle: orientDetails.angle,
+        ridgeIndex: 0,
+        pan1: { ...orientDetails, share: 1.0 },
+        pan2: null,
+        effectiveCoeff: orientDetails.coeff
+      });
+    }
+
+    if (onSolarDetected) {
+      onSolarDetected({
+        pitch,
+        azimuth: appAzimuth,
+        googleAzimuth,
+        area: Math.round(seg.stats?.areaMeters2 || 0),
+        segment: seg,
+        allSegments
+      });
+    }
+
+    setSolarFeedback({
+      type: 'success',
+      text: `Pan #${idx + 1} appliqué : ${Math.round(seg.stats?.areaMeters2 || 0)} m² • ${orientDetails.orientationLabel} • Pente ${pitch}°`
+    });
+    setTimeout(() => setSolarFeedback(null), 6000);
+  }, [solarSegments, onPolygonChange, onOrientationChange, onSolarDetected]);
+
+  // Interrogation de l'API Google Solar Building Insights
+  const handleGoogleSolarDetect = async () => {
+    if (!center || !center[0] || !center[1]) return;
+    setIsDetectingSolar(true);
+    setSolarFeedback(null);
+    try {
+      const data = await getBuildingInsights(center[0], center[1]);
+      if (!data || data.available === false || !data.solarPotential) {
+        setSolarFeedback({
+          type: 'warning',
+          text: 'Données 3D Google Solar non disponibles pour cette zone géographique. Déplacez les 4 coins manuellement.'
+        });
+        setTimeout(() => setSolarFeedback(null), 6000);
+        return;
+      }
+
+      const summaries = data.solarPotential.roofSegmentSummaries || [];
+      if (summaries.length === 0) {
+        setSolarFeedback({
+          type: 'warning',
+          text: 'Aucun pan de toiture distinct identifié par Google Solar sur ce bâtiment.'
+        });
+        setTimeout(() => setSolarFeedback(null), 5000);
+        return;
+      }
+
+      // Trier les pans de toiture par surface décroissante
+      const sorted = [...summaries].sort((a, b) => {
+        const areaA = a.stats?.areaMeters2 || 0;
+        const areaB = b.stats?.areaMeters2 || 0;
+        return areaB - areaA;
+      });
+
+      setSolarSegments(sorted);
+      applyRoofSegment(sorted[0], 0, sorted);
+    } catch (err) {
+      console.error('Erreur Google Solar:', err);
+      setSolarFeedback({
+        type: 'error',
+        text: 'Erreur lors de la communication avec l\'API Google Solar.'
+      });
+      setTimeout(() => setSolarFeedback(null), 5000);
+    } finally {
+      setIsDetectingSolar(false);
+    }
+  };
+
+  // Optimisation du tracé : Boîte Englobante Minimale Orientée (OMBB) à 90°
+  const handleOptimize90 = () => {
+    if (!currentPoints || currentPoints.length < 3) return;
+    try {
+      const squared = squarePolygon(currentPoints);
+      if (squared && squared.length === 4) {
+        if (onPolygonChange) onPolygonChange(squared);
+        const newArea = calculatePolygonArea(squared);
+        setLiveSurface(newArea);
+        setSolarFeedback({
+          type: 'success',
+          text: 'Angles réalignés à 90° avec précision !'
+        });
+        setTimeout(() => setSolarFeedback(null), 4000);
+      }
+    } catch (e) {
+      console.error('Erreur optimisation 90°:', e);
     }
   };
 
@@ -658,27 +790,109 @@ export default function RoofMapPolygonSelector({
 
       {/* Barre d'informations Étape 3 */}
       {step === 3 && (
-        <div className="p-3.5 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={handleResetRectangle}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors shadow-2xs"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Réinitialiser le rectangle
-          </button>
+        <div className="p-3.5 bg-white border-t border-slate-200 flex flex-col gap-3">
+          {/* Notifications ou retours Google Solar / Optimisation */}
+          {solarFeedback && (
+            <div className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${
+              solarFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+              solarFeedback.type === 'warning' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+              'bg-red-50 text-red-800 border-red-200'
+            }`}>
+              {solarFeedback.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              )}
+              <span>{solarFeedback.text}</span>
+            </div>
+          )}
 
-          <div className="px-6 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl text-center shadow-xs">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Nous estimons la surface de toiture à :
-            </span>
-            <span className="text-2xl font-black text-emerald-700 tracking-tight">
-              {liveSurface} m²
-            </span>
-          </div>
+          {/* Si plusieurs pans détectés par Google Solar, sélecteur rapide */}
+          {solarSegments.length > 1 && (
+            <div className="flex items-center gap-1.5 flex-wrap bg-slate-50 p-2 rounded-xl border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1 flex items-center gap-1">
+                <Sun className="w-3.5 h-3.5 text-amber-500" />
+                Pans Google Solar :
+              </span>
+              {solarSegments.slice(0, 4).map((seg, idx) => {
+                const sArea = Math.round(seg.stats?.areaMeters2 || 0);
+                const sAz = Math.round(seg.azimuthDegrees || 180);
+                let aAz = sAz - 180;
+                while (aAz > 180) aAz -= 360;
+                while (aAz <= -180) aAz += 360;
+                const orient = getOrientationDetailsFromAngle(aAz);
+                const isSel = selectedSegmentIdx === idx;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => applyRoofSegment(seg, idx, solarSegments)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                      isSel
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    <span>Pan #{idx + 1}</span>
+                    <span className="opacity-80">({sArea} m² • {orient.rawLabel})</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-          <div className="text-xs text-slate-500 font-semibold hidden md:block">
-            Déplacez les 4 coins vert fluo (1, 2, 3, 4)
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* Boutons d'Action Outils Solaires */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleGoogleSolarDetect}
+                disabled={isDetectingSolar}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black text-amber-900 bg-amber-100/90 hover:bg-amber-200 border border-amber-300 transition-all shadow-2xs hover:scale-102 cursor-pointer disabled:opacity-50"
+                title="Détecter automatiquement la toiture la plus adaptée au solaire via Google Solar API"
+              >
+                {isDetectingSolar ? (
+                  <Loader2 className="w-4 h-4 text-amber-700 animate-spin" />
+                ) : (
+                  <Sun className="w-4 h-4 text-amber-600" />
+                )}
+                <span>{isDetectingSolar ? 'Analyse Google Solar...' : 'Google Solar API'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOptimize90}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all shadow-2xs hover:scale-102 cursor-pointer"
+                title="Optimiser le tracé en rectangle parfait avec des angles à 90° (OMBB)"
+              >
+                <Maximize2 className="w-4 h-4 text-blue-600" />
+                <span>Optimiser (90°)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetRectangle}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors shadow-2xs cursor-pointer"
+                title="Réinitialiser les 4 coins"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span className="hidden md:inline">Réinitialiser</span>
+              </button>
+            </div>
+
+            {/* Surface estimée */}
+            <div className="px-5 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl text-center shadow-xs">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Surface de toiture estimée :
+              </span>
+              <span className="text-2xl font-black text-emerald-700 tracking-tight">
+                {liveSurface} m²
+              </span>
+            </div>
+
+            <div className="text-xs text-slate-500 font-semibold hidden lg:block">
+              Déplacez les 4 coins vert fluo (1, 2, 3, 4)
+            </div>
           </div>
         </div>
       )}

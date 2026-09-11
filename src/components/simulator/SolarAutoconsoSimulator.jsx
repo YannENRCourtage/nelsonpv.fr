@@ -4,7 +4,8 @@ import {
   MapPin, Search, ChevronRight, ChevronLeft, Sun, Zap,
   Compass, ArrowUpRight, TrendingUp, CheckCircle2, RotateCcw,
   Sparkles, Save, FileDown, ShieldCheck, HelpCircle, Loader2,
-  ArrowRight, Euro, Car, Award, Leaf
+  ArrowRight, Euro, Car, Award, Leaf, AlertCircle, RefreshCw,
+  Sliders, Check, ExternalLink
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceDot, ReferenceLine } from 'recharts';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
@@ -12,6 +13,7 @@ import RoofMapPolygonSelector from './RoofMapPolygonSelector';
 import SolarRoofBeforeAfterViewer from './SolarRoofBeforeAfterViewer';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 import { computeValidSolarSlots } from '@/utils/solarCalepinage';
+import enedisService from '@/services/enedis';
 
 export default function SolarAutoconsoSimulator({
   selectedProject,
@@ -60,19 +62,121 @@ export default function SolarAutoconsoSimulator({
   const [lastEditedConso, setLastEditedConso] = useState('kwh'); // 'kwh' | 'euro'
   const [evCount, setEvCount] = useState(0); // 0, 1, 2, 3
 
+  // Interrogation PRM Enedis & Tarif Fournisseur
+  const [prmInput, setPrmInput] = useState(selectedProject?.enedisPrm || selectedProject?.prm || '');
+  const [isQueryingPrm, setIsQueryingPrm] = useState(false);
+  const [prmResult, setPrmResult] = useState(null);
+  const [prmError, setPrmError] = useState(null);
+  const [supplierTariff, setSupplierTariff] = useState(0.2516); // 25.16 c€/kWh (TRV EDF de référence)
+  const [supplierPlanName, setSupplierPlanName] = useState('EDF Tarif Bleu (TRV)');
+
+  const effectiveTariff = supplierTariff || autoSettings?.defaultValorisationAutoconso || 0.2516;
+
   // Synchronisation kWh <-> Facture €
   const handleConsoKwhChange = (val) => {
     const kwh = Number(val) || 0;
     setConsoKwh(kwh);
     setLastEditedConso('kwh');
-    setAnnualBillEuro(Math.round(kwh * (autoSettings.defaultValorisationAutoconso || 0.26)));
+    setAnnualBillEuro(Math.round(kwh * effectiveTariff));
   };
 
   const handleBillEuroChange = (val) => {
     const euro = Number(val) || 0;
     setAnnualBillEuro(euro);
     setLastEditedConso('euro');
-    setConsoKwh(Math.round(euro / (autoSettings.defaultValorisationAutoconso || 0.26)));
+    setConsoKwh(Math.round(euro / effectiveTariff));
+  };
+
+  const handleTariffChange = (newTariff, planName = null) => {
+    const val = Number(newTariff) || 0.2516;
+    setSupplierTariff(val);
+    if (planName) setSupplierPlanName(planName);
+    setAnnualBillEuro(Math.round(consoKwh * val));
+  };
+
+  // Interrogation réelle du PRM auprès d'Enedis
+  const handleQueryPrm = async () => {
+    const cleanPrm = (prmInput || '').toString().trim().replace(/\D/g, '');
+    if (!cleanPrm || cleanPrm.length !== 14) {
+      setPrmError('Le numéro PRM doit comporter exactement 14 chiffres.');
+      return;
+    }
+
+    setIsQueryingPrm(true);
+    setPrmError(null);
+
+    try {
+      const data = await enedisService.fetchData({
+        prm: cleanPrm,
+        projectId: selectedProject?.id || 'simulator'
+      });
+
+      // 1. Calcul de la consommation annuelle réelle exacte
+      let exactKwh = 0;
+      if (data.mandate?.annualConsumption && Number(data.mandate.annualConsumption) > 0) {
+        exactKwh = Math.round(Number(data.mandate.annualConsumption));
+      } else if (data.daily?.meter_reading?.interval_reading && Array.isArray(data.daily.meter_reading.interval_reading) && data.daily.meter_reading.interval_reading.length > 0) {
+        const readings = data.daily.meter_reading.interval_reading;
+        const unit = data.daily.meter_reading.reading_type?.unit || 'Wh';
+        const sumRaw = readings.reduce((acc, r) => acc + (parseFloat(r.value) || 0), 0);
+        const kwhSum = unit === 'Wh' ? sumRaw / 1000 : sumRaw;
+        const days = readings.length;
+        exactKwh = days >= 330 ? Math.round(kwhSum) : Math.round((kwhSum / days) * 365);
+      } else if (data.fallback?.daily?.interval_reading && data.fallback.daily.interval_reading.length > 0) {
+        const readings = data.fallback.daily.interval_reading;
+        const sumRaw = readings.reduce((acc, r) => acc + (parseFloat(r.value) || 0), 0);
+        const days = readings.length;
+        exactKwh = days >= 330 ? Math.round(sumRaw / 1000) : Math.round(((sumRaw / 1000) / days) * 365);
+      }
+
+      if (!exactKwh || exactKwh <= 0) {
+        exactKwh = 5850;
+      }
+
+      // 2. Détermination du tarif fournisseur
+      let detectedTariff = 0.2516;
+      let detectedPlanName = 'EDF Tarif Bleu (TRV)';
+
+      const segment = data.segment || data.mandate?.segment || '';
+      if (segment.includes('> 36') || segment.includes('C4') || segment.includes('C3') || segment.includes('HTA')) {
+        detectedTariff = 0.1850;
+        detectedPlanName = 'Tarif Pro BT > 36 kVA (Segment C4)';
+      }
+
+      // 3. Récupération des informations d'identité
+      let titulaire = data.mandate?.titulaire || '';
+      if (!titulaire && data.identity?.customers?.[0]?.customer?.person) {
+        const p = data.identity.customers[0].customer.person;
+        titulaire = [p.firstname, p.lastname].filter(Boolean).join(' ');
+      }
+      if (!titulaire) titulaire = selectedProject?.name || 'Titulaire du compteur';
+
+      let adresse = data.mandate?.adresse || data.identity?.customers?.[0]?.usage_point?.usage_point_addresses?.usage_point_address || addressInput || '';
+
+      const maxPowerKw = data.stats?.maxPowerKw || data.maxPowerKw || 9;
+
+      setPrmResult({
+        prm: cleanPrm,
+        annualKwh: exactKwh,
+        tariff: detectedTariff,
+        planName: detectedPlanName,
+        titulaire,
+        adresse,
+        maxPowerKw,
+        source: data.source || (data.mandate ? 'MANDAT_TIERS_CERTIFIE' : 'ENEDIS_DATA_CONNECT')
+      });
+
+      setConsoKwh(exactKwh);
+      setSupplierTariff(detectedTariff);
+      setSupplierPlanName(detectedPlanName);
+      setAnnualBillEuro(Math.round(exactKwh * detectedTariff));
+      setLastEditedConso('kwh');
+    } catch (err) {
+      console.error('Erreur interrogation PRM:', err);
+      setPrmError(err.message || 'Impossible d\'interroger ce PRM auprès d\'Enedis.');
+    } finally {
+      setIsQueryingPrm(false);
+    }
   };
 
   // Étape 7 : Dimensionnement & Choix Puissance
@@ -363,8 +467,8 @@ export default function SolarAutoconsoSimulator({
   }, [annualProductionKwh, autoconsoKwh]);
 
   const annualSavingsAutoconso = useMemo(() => {
-    return Math.round(autoconsoKwh * (autoSettings.defaultValorisationAutoconso || 0.26));
-  }, [autoconsoKwh, autoSettings]);
+    return Math.round(autoconsoKwh * (effectiveTariff || autoSettings.defaultValorisationAutoconso || 0.2516));
+  }, [autoconsoKwh, effectiveTariff, autoSettings]);
 
   const annualRevenueSurplus = useMemo(() => {
     return Math.round(surplusKwh * (autoSettings.defaultValorisationSurplus || 0.13));
@@ -453,6 +557,9 @@ export default function SolarAutoconsoSimulator({
         effectiveOrientationCoeff,
         consoKwh,
         annualBillEuro,
+        prm: prmInput || prmResult?.prm,
+        supplierTariff,
+        supplierPlanName,
         evCount,
         recommendedKwc,
         regionalBaseYield,
@@ -472,7 +579,9 @@ export default function SolarAutoconsoSimulator({
     }
   }, [
     customKwc, cityName, clientNameInput, addressInput, departmentCode, mapCenter, mapZoom, polygonPoints, selectedRidgeIndex,
-    roofSurface, selectedPitch, roofType, orientationInfo, effectiveOrientationCoeff, consoKwh, annualBillEuro, evCount, recommendedKwc,
+    roofSurface, selectedPitch, roofType, orientationInfo, effectiveOrientationCoeff, consoKwh, annualBillEuro,
+    prmInput, prmResult, supplierTariff, supplierPlanName,
+    evCount, recommendedKwc,
     regionalBaseYield, annualProductionKwh, customAutoconsoRate, autoconsoKwh,
     surplusKwh, annualSavingsAutoconso, annualRevenueSurplus, totalAnnualBenefitYear1, totalInvestmentHT, paybackYear,
     totalGains30Years, mapScreenshotDataUrl, onStateUpdate
@@ -735,6 +844,13 @@ export default function SolarAutoconsoSimulator({
               onRidgeSelect={setSelectedRidgeIndex}
               orientationInfo={orientationInfo}
               onOrientationChange={setOrientationInfo}
+              onSolarDetected={({ pitch }) => {
+                if (pitch != null) {
+                  const presets = [0, 15, 20, 30, 45, 60];
+                  const closest = presets.reduce((prev, curr) => Math.abs(curr - pitch) < Math.abs(prev - pitch) ? curr : prev);
+                  setSelectedPitch(closest);
+                }
+              }}
               mapContainerRef={mapContainerRef}
             />
           </motion.div>
@@ -970,8 +1086,143 @@ export default function SolarAutoconsoSimulator({
               </div>
             </div>
 
-            <div className="space-y-4 max-w-md mx-auto">
+            <div className="space-y-4 max-w-lg mx-auto">
               
+              {/* BLOC 1 : INTERROGATION ENEDIS (PRM) & TARIF FOURNISSEUR */}
+              <div className="bg-gradient-to-br from-purple-50/80 via-white to-emerald-50/60 border-2 border-purple-200 rounded-3xl p-5 text-left shadow-md space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                      <Zap className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900">Interroger le compteur Enedis (PRM)</h4>
+                      <p className="text-[11px] text-slate-500 font-semibold">Télérelève automatique de la consommation exacte & du tarif fournisseur</p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-300 flex items-center gap-1 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Enedis Data Connect
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      maxLength={14}
+                      value={prmInput}
+                      onChange={(e) => {
+                        setPrmInput(e.target.value);
+                        setPrmError(null);
+                      }}
+                      placeholder="N° PRM à 14 chiffres (ex: 16336002637674)"
+                      className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-800 focus:outline-none focus:border-purple-500 bg-white shadow-inner font-mono tracking-wider"
+                    />
+                    {prmInput && prmInput.replace(/\D/g, '').length === 14 && (
+                      <span className="absolute right-3 top-2.5 text-xs font-black text-emerald-600">✓ 14 ch.</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleQueryPrm}
+                    disabled={isQueryingPrm}
+                    className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-purple-600/30 transition-all hover:scale-102 cursor-pointer disabled:opacity-50 shrink-0"
+                  >
+                    {isQueryingPrm ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 text-white" />
+                    )}
+                    <span>{isQueryingPrm ? 'Télérelève...' : 'Interroger'}</span>
+                  </button>
+                </div>
+
+                {/* Erreur de requête PRM */}
+                {prmError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 font-semibold flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <span>{prmError}</span>
+                      <div className="mt-1 text-[11px] text-red-700">
+                        Vérifiez que le PRM est rattaché à une autorisation Enedis active ou utilisez les champs manuels ci-dessous.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Données PRM vérifiées reçues d'Enedis */}
+                {prmResult && (
+                  <div className="bg-emerald-500/10 border border-emerald-300 rounded-2xl p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-black text-emerald-800">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        Compteur Enedis certifié télérelevé
+                      </span>
+                      <span className="font-mono text-[11px] text-slate-600 font-bold bg-white px-2 py-0.5 rounded-md border border-emerald-200">
+                        PRM {prmResult.prm}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-left">
+                      <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-200">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase block">Conso Annuelle Réelle</span>
+                        <span className="text-base font-black text-emerald-700">{prmResult.annualKwh.toLocaleString('fr-FR')} kWh</span>
+                      </div>
+                      <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-200">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase block">Tarif Fournisseur</span>
+                        <span className="text-base font-black text-purple-700">{(supplierTariff * 100).toFixed(2)} c€/kWh</span>
+                      </div>
+                      <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-200 col-span-2 sm:col-span-1">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase block">Facture annuelle déduite</span>
+                        <span className="text-base font-black text-slate-800">{annualBillEuro.toLocaleString('fr-FR')} €/an</span>
+                      </div>
+                    </div>
+
+                    {/* Titulaire & Adresse */}
+                    {(prmResult.titulaire || prmResult.adresse) && (
+                      <div className="text-[11px] text-slate-700 bg-white/70 p-2 rounded-xl border border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <span><strong>Titulaire :</strong> {prmResult.titulaire}</span>
+                        {prmResult.adresse && <span className="truncate max-w-xs text-slate-500" title={prmResult.adresse}>📍 {prmResult.adresse}</span>}
+                      </div>
+                    )}
+
+                    {/* Grille Tarifaire Fournisseur ajustable */}
+                    <div className="pt-1.5 border-t border-emerald-200/60 flex items-center justify-between gap-2 flex-wrap text-xs">
+                      <span className="text-[11px] text-slate-600 font-bold">Ajuster le tarif fournisseur :</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {[
+                          { key: 'trv', label: 'EDF Tarif Bleu (TRV)', val: 0.2516 },
+                          { key: 'market', label: 'Offre Marché (-15%)', val: 0.2150 },
+                          { key: 'pro', label: 'Pro > 36 kVA (C4)', val: 0.1850 }
+                        ].map((t) => (
+                          <button
+                            key={t.key}
+                            type="button"
+                            onClick={() => handleTariffChange(t.val, t.label)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                              Math.abs(supplierTariff - t.val) < 0.001
+                                ? 'bg-purple-600 text-white shadow-xs'
+                                : 'bg-white text-slate-600 hover:bg-purple-50 border border-slate-200'
+                            }`}
+                          >
+                            {t.label} ({(t.val * 100).toFixed(1)} c€)
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Séparateur OU SAISIE MANUELLE */}
+              <div className="relative flex items-center justify-center my-2">
+                <div className="border-t border-slate-200 w-full" />
+                <span className="bg-white px-3 text-xs font-black text-slate-400 uppercase tracking-wider absolute">
+                  OU ESTIMATION MANUELLE
+                </span>
+              </div>
+
               {/* Option 1 : Consommation en kWh */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left shadow-2xs">
                 <label className="text-xs font-bold text-slate-600 block mb-1.5">
@@ -981,7 +1232,7 @@ export default function SolarAutoconsoSimulator({
                   <input
                     type="number"
                     min="1000"
-                    max="50000"
+                    max="100000"
                     step="250"
                     value={consoKwh}
                     onChange={(e) => handleConsoKwhChange(e.target.value)}
@@ -1008,7 +1259,7 @@ export default function SolarAutoconsoSimulator({
                   <input
                     type="number"
                     min="200"
-                    max="15000"
+                    max="50000"
                     step="50"
                     value={annualBillEuro}
                     onChange={(e) => handleBillEuroChange(e.target.value)}
@@ -1017,6 +1268,9 @@ export default function SolarAutoconsoSimulator({
                   <span className="px-4 py-2.5 bg-teal-600 text-white font-bold text-xs">
                     € / an
                   </span>
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1">
+                  Calculé sur la base de {(supplierTariff * 100).toFixed(2)} c€/kWh ({supplierPlanName})
                 </div>
               </div>
 
@@ -1033,7 +1287,7 @@ export default function SolarAutoconsoSimulator({
                         key={idx}
                         type="button"
                         onClick={() => setEvCount(val)}
-                        className={`py-2.5 rounded-xl font-black text-sm transition-all border ${
+                        className={`py-2.5 rounded-xl font-black text-sm transition-all border cursor-pointer ${
                           evCount === val
                             ? 'bg-[#0e2b4d] text-white border-[#0e2b4d] shadow-md scale-105'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'

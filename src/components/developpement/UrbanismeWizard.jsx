@@ -3749,7 +3749,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
                   {/* VUE BATTERIES STAND-ALONE */}
                   {solutionType === 'battery' ? (
-                    <div className="flex-1 flex flex-col lg:flex-row gap-3.5 min-h-0 overflow-hidden">
+                    <div className="flex-1 flex flex-col lg:flex-row gap-3.5 min-h-[560px] overflow-hidden">
                       {/* Panneau de contrôle gauche pour Batteries */}
                       <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1 space-y-3 pb-6">
                         <div className="bg-white rounded-2xl p-4 border border-purple-200 shadow-sm space-y-3">
@@ -3910,7 +3910,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                       </div>
 
                       {/* Zone Visualizer à droite */}
-                      <div className="flex-1 relative h-full rounded-2xl overflow-hidden border border-slate-800 shadow-md">
+                      <div className="flex-1 relative h-full min-h-[560px] rounded-2xl overflow-hidden border border-slate-800 shadow-md flex flex-col">
                         {/* Toggles Vue 3D / 2D Façade / Plan de masse */}
                         <div className="absolute top-3 right-3 z-30 flex gap-1.5 bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-slate-700 shadow-lg pointer-events-auto">
                           <button
@@ -3943,6 +3943,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         </div>
 
                         <BatteryStationVisualizer
+                          height="100%"
+                          className="w-full h-full flex-1"
                           batteryStorage={batteryStorage}
                           viewMode={viewMode}
                           showDimensions={config.showDimensions !== false}

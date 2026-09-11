@@ -52,8 +52,14 @@ export function selectBestRoofSegment(segments) {
  */
 export function boundingBoxToPolygon(bbox) {
   if (!bbox || !bbox.sw || !bbox.ne) return [];
-  const { sw, ne } = bbox;
-  const nw = { lat: ne.lat, lng: sw.lng };
-  const se = { lat: sw.lat, lng: ne.lng };
+  const swLat = bbox.sw.lat ?? bbox.sw.latitude;
+  const swLng = bbox.sw.lng ?? bbox.sw.longitude;
+  const neLat = bbox.ne.lat ?? bbox.ne.latitude;
+  const neLng = bbox.ne.lng ?? bbox.ne.longitude;
+  if (swLat == null || swLng == null || neLat == null || neLng == null) return [];
+  const sw = { lat: swLat, lng: swLng };
+  const nw = { lat: neLat, lng: swLng };
+  const ne = { lat: neLat, lng: neLng };
+  const se = { lat: swLat, lng: neLng };
   return [sw, nw, ne, se];
 }
