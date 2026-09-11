@@ -556,6 +556,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const isDP = type === 'dp';
   const isPC = type === 'pc'; 
   const hasInitializedRef = React.useRef(false);
+  const hasInitializedSelectionRef = React.useRef(false);
   const prevProjectIdRef = React.useRef(null);
 
   const { activeTenantId, user } = useAuth() || {};

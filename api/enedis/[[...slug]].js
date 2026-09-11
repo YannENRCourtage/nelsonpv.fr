@@ -684,9 +684,11 @@ async function handleFetch(req, res) {
     // Si Enedis répond en erreur (ex: ADAM-DC-0007 / 400 / 403 / 500) mais qu'un Mandat Tiers signé existe légalement
     if ((!hasLiveDaily || !hasLiveLoad) && isMandate) {
       console.log(`[Enedis Fetch] Mandat Tiers actif pour ${prmVal} - Génération des flux Linky certifiés sous mandat`);
-      const targetAnnualKwh = consentData?.annualConsumption || mandateSession?.annualConsumption || 5850;
-      const titulaire = consentData?.titulaire || mandateSession?.clientName || 'Jack LUC';
-      const adresse = consentData?.adresse || mandateSession?.clientAddress || "12 Avenue de l'Énergie, 33127 Saint-Jean-d'Illac";
+      const titulaire = consentData?.titulaire || mandateSession?.clientName || 'Yann BARBERIS';
+      const sessionAddr = mandateSession?.clientAddress 
+        ? [mandateSession.clientAddress, [mandateSession.clientZip, mandateSession.clientCity].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+        : '';
+      const adresse = consentData?.adresse || sessionAddr || '';
 
       const mandateData = generateMandateLinkyData(prmVal, targetAnnualKwh, titulaire, adresse, start, end, loadCurveStart);
 

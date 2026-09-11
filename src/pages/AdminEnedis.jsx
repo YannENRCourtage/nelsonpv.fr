@@ -32,6 +32,11 @@ export default function AdminEnedis() {
   const [consentForm, setConsentForm] = useState({ name: '', email: '' });
   const [consentSent, setConsentSent] = useState(false);
 
+  // Coordonnées du titulaire du PRM pour l'export PDF et affichage
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerAddress, setOwnerAddress] = useState('');
+  const [isEditingOwner, setIsEditingOwner] = useState(false);
+
   const { toast } = useToast();
 
   // Charger les consentements via API Admin (contourne les règles Firestore)
@@ -53,6 +58,23 @@ export default function AdminEnedis() {
     const interval = setInterval(loadConsents, 30000);
     return () => clearInterval(interval);
   }, [loadConsents]);
+
+  // Synchronisation des coordonnées du titulaire (pour affichage et export PDF)
+  useEffect(() => {
+    if (!prm) return;
+    const currentConsent = consents.find(c => c.prm === prm);
+    const detectedName = data?.mandate?.titulaire
+      || currentConsent?.titulaire
+      || currentConsent?.clientName
+      || (data?.identity?.customer ? [data.identity.customer[0]?.first_name, data.identity.customer[0]?.last_name].filter(Boolean).join(' ') : '')
+      || '';
+    const detectedAddress = data?.mandate?.adresse
+      || currentConsent?.adresse
+      || '';
+
+    if (detectedName) setOwnerName(detectedName);
+    if (detectedAddress) setOwnerAddress(detectedAddress);
+  }, [data, prm, consents]);
 
   // Auto-fetch si redirigé avec succès depuis le callback Enedis
   useEffect(() => {
@@ -544,6 +566,69 @@ export default function AdminEnedis() {
                       </div>
                     )}
 
+                    {/* Coordonnées Titulaire & Adresse pour le Rapport / Export PDF */}
+                    <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+                          <User size={18} />
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Titulaire du PRM & Adresse postale (Export PDF)
+                          </div>
+                          {isEditingOwner ? (
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                              <input
+                                type="text"
+                                value={ownerName}
+                                onChange={e => setOwnerName(e.target.value)}
+                                placeholder="Nom du titulaire"
+                                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg font-medium focus:ring-1 focus:ring-blue-500 outline-none w-48"
+                              />
+                              <input
+                                type="text"
+                                value={ownerAddress}
+                                onChange={e => setOwnerAddress(e.target.value)}
+                                placeholder="Adresse postale complète"
+                                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg font-medium focus:ring-1 focus:ring-blue-500 outline-none w-64"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingOwner(false)}
+                                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                              >
+                                Valider
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                              <span className="font-bold text-slate-800">
+                                {ownerName || 'Nom non spécifié'}
+                              </span>
+                              {ownerAddress ? (
+                                <span className="text-slate-500">
+                                  • {ownerAddress}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic">
+                                  • Aucune adresse renseignée
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {!isEditingOwner && (
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingOwner(true)}
+                          className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline shrink-0 self-start md:self-center"
+                        >
+                          Modifier
+                        </button>
+                      )}
+                    </div>
+
                     <div className="flex-1 bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden transition-all hover:shadow-blue-100/50">
                       <ConsumptionChart data={data} loading={loading} />
                     </div>
@@ -727,6 +812,8 @@ export default function AdminEnedis() {
         prm={prm}
         data={data}
         consent={consents.find(c => c.prm === prm) || {}}
+        ownerName={ownerName}
+        ownerAddress={ownerAddress}
       />
 
       {/* ===== MODAL DE CONSENTEMENT PAR EMAIL ===== */}
