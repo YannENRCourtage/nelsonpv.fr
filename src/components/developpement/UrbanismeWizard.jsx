@@ -6,7 +6,7 @@ import {
   Hash, Ruler, Info, RefreshCw, Mail, Phone, FileText,
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
   Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus,
-  Compass, User, Download
+  Compass, User, Download, Lock, Unlock, Move
 } from 'lucide-react';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
 import { cadastreService } from '@/services/CadastreService';
@@ -138,7 +138,7 @@ function getOrientationLabel(deg) {
 }
 
 // Capture directe haute fidélité d'une carte Leaflet sans passer par html2canvas sur le SVG (élimine tout décalage)
-async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [], showDimensions = true) {
+async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [], showDimensions = true, distances = []) {
   if (!map) return null;
   try {
     const size = map.getSize();
@@ -252,6 +252,67 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
 
       ctx.restore();
     });
+
+    // 2b. Rendu des tracés de distance personnalisés (côtes DP2 / PC2)
+    if (distances && distances.length > 0) {
+      distances.forEach(d => {
+        if (!d.p1 || !d.p2) return;
+        const pt1 = map.latLngToContainerPoint(d.p1);
+        const pt2 = map.latLngToContainerPoint(d.p2);
+        const dx = pt2.x - pt1.x;
+        const dy = pt2.y - pt1.y;
+        const len = Math.hypot(dx, dy);
+        if (len > 0) {
+          const nx = -dy / len;
+          const ny = dx / len;
+          const wLen = 7;
+
+          ctx.save();
+          // Ligne de cote rouge pointillée
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(pt1.x, pt1.y);
+          ctx.lineTo(pt2.x, pt2.y);
+          ctx.stroke();
+
+          // Témoins perpendiculaires aux deux extrémités
+          ctx.setLineDash([]);
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(pt1.x - nx * wLen, pt1.y - ny * wLen);
+          ctx.lineTo(pt1.x + nx * wLen, pt1.y + ny * wLen);
+          ctx.moveTo(pt2.x - nx * wLen, pt2.y - ny * wLen);
+          ctx.lineTo(pt2.x + nx * wLen, pt2.y + ny * wLen);
+          ctx.stroke();
+
+          // Badge de mesure au centre de la cote
+          const midX = (pt1.x + pt2.x) / 2;
+          const midY = (pt1.y + pt2.y) / 2;
+          const text = `${Number(d.meters).toFixed(1)} M`;
+          ctx.font = 'bold 11px monospace';
+          const tWidth = ctx.measureText(text).width;
+          const bW = tWidth + 12;
+          const bH = 18;
+
+          ctx.fillStyle = '#b91c1c';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(midX - bW / 2, midY - bH / 2, bW, bH, 4);
+          else ctx.rect(midX - bW / 2, midY - bH / 2, bW, bH);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(text, midX, midY + 0.5);
+          ctx.restore();
+        }
+      });
+    }
 
     // 3. Flèche Nord officielle en haut à droite
     drawNorthArrow(ctx, size.x - 36, 36, 22);
@@ -488,6 +549,247 @@ function MasseMapController({ strId, onMapChange, mapInstancesRef, activeView = 
   return null;
 }
 
+function MasseMapLockController({ isLocked = false }) {
+  const map = useMap();
+  useEffect(() => {
+    if (isLocked) {
+      map.dragging.disable();
+    } else {
+      map.dragging.enable();
+    }
+  }, [map, isLocked]);
+  return null;
+}
+
+function MasseDistanceLayer({ distances = [], onRemoveDistance }) {
+  return (
+    <>
+      {distances.map(d => {
+        if (!d.p1 || !d.p2) return null;
+        const p1 = d.p1;
+        const p2 = d.p2;
+        const midLat = (p1[0] + p2[0]) / 2;
+        const midLng = (p1[1] + p2[1]) / 2;
+
+        const dLat = p2[0] - p1[0];
+        const dLng = p2[1] - p1[1];
+        const len = Math.hypot(dLat, dLng);
+        let tLat = 0;
+        let tLng = 0;
+        if (len > 0) {
+          const witnessSize = 0.000035;
+          tLat = (-dLng / len) * witnessSize;
+          tLng = (dLat / len) * witnessSize;
+        }
+
+        const w1 = [[p1[0] - tLat, p1[1] - tLng], [p1[0] + tLat, p1[1] + tLng]];
+        const w2 = [[p2[0] - tLat, p2[1] - tLng], [p2[0] + tLat, p2[1] + tLng]];
+
+        return (
+          <React.Fragment key={d.id}>
+            <Polyline positions={[p1, p2]} pathOptions={{ color: '#dc2626', weight: 2.5, dashArray: '5, 4' }} />
+            <Polyline positions={w1} pathOptions={{ color: '#dc2626', weight: 2 }} />
+            <Polyline positions={w2} pathOptions={{ color: '#dc2626', weight: 2 }} />
+            <Marker
+              position={[midLat, midLng]}
+              icon={L.divIcon({
+                className: 'bg-transparent',
+                html: `<div style="transform: translate(-50%, -50%); background: #b91c1c; color: #ffffff; padding: 2px 7px; border-radius: 6px; font-weight: 900; font-size: 11px; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,0.4); border: 1.5px solid #ffffff; display: flex; align-items: center; gap: 5px; font-family: monospace; letter-spacing: 0.5px; cursor: pointer;"><span>${Number(d.meters).toFixed(1)} M</span><span title="Supprimer la côte" style="background: rgba(0,0,0,0.3); border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1;">&times;</span></div>`,
+                iconSize: [0, 0]
+              })}
+              eventHandlers={{
+                click: (e) => {
+                  L.DomEvent.stopPropagation(e);
+                  if (onRemoveDistance) onRemoveDistance(d.id);
+                }
+              }}
+            />
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+}
+
+function MasseDistanceDrawer({ isMeasuring, onAddDistance }) {
+  const [p1, setP1] = useState(null);
+  const [currentMouse, setCurrentMouse] = useState(null);
+  const map = useMap();
+
+  useEffect(() => {
+    if (!isMeasuring) {
+      setP1(null);
+      setCurrentMouse(null);
+      map.getContainer().style.cursor = '';
+    } else {
+      map.getContainer().style.cursor = 'crosshair';
+      map.dragging.disable();
+    }
+  }, [isMeasuring, map]);
+
+  useMapEvents({
+    click(e) {
+      if (!isMeasuring) return;
+      L.DomEvent.stopPropagation(e);
+      if (!p1) {
+        setP1([e.latlng.lat, e.latlng.lng]);
+        setCurrentMouse([e.latlng.lat, e.latlng.lng]);
+      } else {
+        const p2 = [e.latlng.lat, e.latlng.lng];
+        const dist = L.latLng(p1).distanceTo(e.latlng);
+        if (dist >= 0.5) {
+          onAddDistance({
+            id: `dist_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+            p1,
+            p2,
+            meters: Math.round(dist * 10) / 10
+          });
+        }
+        setP1(null);
+        setCurrentMouse(null);
+      }
+    },
+    mousemove(e) {
+      if (!isMeasuring || !p1) return;
+      setCurrentMouse([e.latlng.lat, e.latlng.lng]);
+    }
+  });
+
+  if (!isMeasuring || !p1 || !currentMouse) return null;
+
+  const liveDist = L.latLng(p1).distanceTo(L.latLng(currentMouse));
+  const midLat = (p1[0] + currentMouse[0]) / 2;
+  const midLng = (p1[1] + currentMouse[1]) / 2;
+
+  return (
+    <>
+      <Polyline positions={[p1, currentMouse]} pathOptions={{ color: '#ea580c', weight: 2, dashArray: '4, 4' }} />
+      <Marker
+        position={[midLat, midLng]}
+        icon={L.divIcon({
+          className: 'bg-transparent',
+          html: `<div style="transform: translate(-50%, -50%); background: #ea580c; color: white; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.3); border: 1px solid white;">${liveDist.toFixed(1)} M</div>`,
+          iconSize: [0, 0]
+        })}
+        interactive={false}
+      />
+    </>
+  );
+}
+
+function DraggableMasseStructure({
+  polygonPositions,
+  centerLat,
+  centerLng,
+  isBattery,
+  solutionKey,
+  structureName,
+  rotation,
+  onGpsUpdate,
+  isLocked,
+  isMeasuring
+}) {
+  const map = useMap();
+  const draggingRef = useRef(false);
+  const startMouseRef = useRef(null);
+  const startPosRef = useRef({ lat: centerLat, lng: centerLng });
+
+  const strokeColor = isBattery ? '#9333ea' : (solutionKey === 'ombriere' ? '#059669' : '#2563eb');
+  const fillColor = isBattery ? '#a855f7' : (solutionKey === 'ombriere' ? '#10b981' : '#3b82f6');
+
+  const handleDragStart = useCallback((e) => {
+    if (isMeasuring) return;
+    L.DomEvent.stopPropagation(e);
+    if (e.originalEvent) {
+      L.DomEvent.preventDefault(e.originalEvent);
+    }
+    map.dragging.disable();
+    draggingRef.current = true;
+    startMouseRef.current = e.latlng;
+    startPosRef.current = { lat: centerLat, lng: centerLng };
+
+    const onMouseMove = (moveEvt) => {
+      if (!draggingRef.current || !startMouseRef.current) return;
+      const dLat = moveEvt.latlng.lat - startMouseRef.current.lat;
+      const dLng = moveEvt.latlng.lng - startMouseRef.current.lng;
+      const newLat = startPosRef.current.lat + dLat;
+      const newLng = startPosRef.current.lng + dLng;
+      onGpsUpdate(newLat, newLng);
+    };
+
+    const onMouseUp = () => {
+      draggingRef.current = false;
+      map.off('mousemove', onMouseMove);
+      map.off('mouseup', onMouseUp);
+      window.removeEventListener('mouseup', onMouseUp);
+      if (!isLocked) {
+        map.dragging.enable();
+      }
+    };
+
+    map.on('mousemove', onMouseMove);
+    map.on('mouseup', onMouseUp);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [map, centerLat, centerLng, onGpsUpdate, isLocked, isMeasuring]);
+
+  return (
+    <>
+      <Polygon
+        positions={polygonPositions}
+        interactive={!isMeasuring}
+        pathOptions={{
+          color: strokeColor,
+          fillColor: fillColor,
+          fillOpacity: 0.38,
+          dashArray: '5, 4',
+          weight: 2.5,
+          className: isMeasuring ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'
+        }}
+        eventHandlers={isMeasuring ? {} : {
+          mousedown: handleDragStart
+        }}
+      >
+        {!isMeasuring && (
+          <Tooltip sticky direction="top" offset={[0, -10]}>
+            <div className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs whitespace-nowrap bg-white/95 text-slate-800 border border-slate-300 text-center">
+              ✋ Glisser pour déplacer • {structureName || 'Projet'} ({rotation}°)
+            </div>
+          </Tooltip>
+        )}
+      </Polygon>
+
+      {/* Ancre centrale de déplacement */}
+      <Marker
+        position={[centerLat, centerLng]}
+        interactive={!isMeasuring}
+        draggable={!isMeasuring}
+        eventHandlers={isMeasuring ? {} : {
+          dragstart: () => {
+            map.dragging.disable();
+          },
+          drag: (e) => {
+            const pos = e.target.getLatLng();
+            onGpsUpdate(pos.lat, pos.lng);
+          },
+          dragend: (e) => {
+            const pos = e.target.getLatLng();
+            onGpsUpdate(pos.lat, pos.lng);
+            if (!isLocked) {
+              map.dragging.enable();
+            }
+          },
+          mousedown: handleDragStart
+        }}
+        icon={L.divIcon({
+          className: 'bg-transparent',
+          html: `<div style="transform: translate(-50%, -50%); width: 28px; height: 28px; border-radius: 50%; background: ${strokeColor}; border: 2.5px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; cursor: ${isMeasuring ? 'crosshair' : 'grab'}; color: white;" title="${isMeasuring ? 'Point de mesure' : 'Glisser pour déplacer'}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg></div>`,
+          iconSize: [28, 28]
+        })}
+      />
+    </>
+  );
+}
+
 function MapClickHandler({ setGps }) {
   useMapEvents({
     click(e) {
@@ -637,8 +939,61 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [masseViewTabs, setMasseViewTabs] = useState({}); // { [strId]: 1 | 2 }
   const [hasMasseView2, setHasMasseView2] = useState({}); // { [strId]: boolean }
   const [masseShowDimensions, setMasseShowDimensions] = useState({}); // { [strId]: boolean }
+  const [masseDistances, setMasseDistances] = useState({}); // { [strId]: [ { id, p1, p2, meters } ] }
+  const [measuringMasseStrId, setMeasuringMasseStrId] = useState(null); // ID de structure en cours de cotation
+  const [masseLockedMaps, setMasseLockedMaps] = useState({}); // { [strId]: boolean } - true par défaut (carte fixe)
   const [masseCapturedToast, setMasseCapturedToast] = useState({}); // { [strId]: string }
   const masseMapInstancesRef = useRef({});
+
+  // Synchronisation des cotations personnalisées enregistrées sur le projet
+  useEffect(() => {
+    if (project?.masseDistances) {
+      setMasseDistances(project.masseDistances);
+    }
+  }, [project?.id, project?.masseDistances]);
+
+  const handleAddMasseDistance = useCallback((strId, newDistance) => {
+    setMasseDistances(prev => {
+      const list = prev[strId] || [];
+      const next = { ...prev, [strId]: [...list, newDistance] };
+      setEditedProject(proj => ({
+        ...proj,
+        masseDistances: next
+      }));
+      return next;
+    });
+    setMeasuringMasseStrId(null);
+  }, []);
+
+  const handleRemoveMasseDistance = useCallback((strId, distId) => {
+    setMasseDistances(prev => {
+      const list = prev[strId] || [];
+      const next = { ...prev, [strId]: list.filter(d => d.id !== distId) };
+      setEditedProject(proj => ({
+        ...proj,
+        masseDistances: next
+      }));
+      return next;
+    });
+  }, []);
+
+  const handleClearMasseDistances = useCallback((strId) => {
+    setMasseDistances(prev => {
+      const next = { ...prev, [strId]: [] };
+      setEditedProject(proj => ({
+        ...proj,
+        masseDistances: next
+      }));
+      return next;
+    });
+  }, []);
+
+  const handleToggleMasseLock = useCallback((strId) => {
+    setMasseLockedMaps(prev => ({
+      ...prev,
+      [strId]: prev[strId] === false ? true : false
+    }));
+  }, []);
 
   // Sync ACAMA / Green Invest mode on open & verrouillage solution
   useEffect(() => {
@@ -2519,7 +2874,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     let dataUrl = null;
     // 1. Tenter la capture directe instantanée sur le conteneur Leaflet si la vue affichée correspond
     if (map && isCurrentViewOnScreen) {
-      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim);
+      const strDistances = masseDistances[strId] || targetStr?.masseDistances || [];
+      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim, strDistances);
     }
 
     // 2. Fallback de haute précision : génération statique sans faille (AutoMapService)
@@ -2532,7 +2888,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       return dataUrl;
     }
     return null;
-  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs]);
+  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs, masseDistances]);
 
   // Bascule active entre la Vue 1 et la Vue 2 d'une structure
   const handleSwitchMasseView = useCallback(async (strId, targetViewNum) => {
@@ -3026,7 +3382,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       // --- VUE 1 : TOUJOURS fraîchement régénérée avec le zoom exact (>= 18) et les côtes ---
       let masse1 = null;
       if (isView1OnMap) {
-        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim);
+        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, masseDistances[b.id] || b.masseDistances || []);
       }
       if (!masse1) {
         masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, updatedBuildings, bShowDim);
@@ -3048,7 +3404,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
           bZoom2 = Number(map.getZoom() || bZoom2);
           bCenterLat2 = Number(map.getCenter().lat || bCenterLat2);
           bCenterLng2 = Number(map.getCenter().lng || bCenterLng2);
-          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim);
+          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, masseDistances[b.id] || b.masseDistances || []);
         }
         if (!masse2) {
           masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'map', bZoom2, updatedBuildings, bShowDim);
@@ -4863,53 +5219,95 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   )}
                                 </div>
 
-                                {/* Boutons d'action droite : Afficher les côtes (style configurateur) & Capturer */}
-                                <div className="flex items-center gap-2">
-                                  {/* Bouton Toggle Afficher les côtes */}
-                                  {(() => {
-                                    const isDimensionsShown = masseShowDimensions[str.id] !== undefined
-                                      ? Boolean(masseShowDimensions[str.id])
-                                      : (str.masse_show_dimensions !== false);
-                                    return (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleToggleMasseDimensions(str.id)}
-                                        className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 border shadow-2xs ${
-                                          isDimensionsShown
-                                            ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
-                                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                                        }`}
-                                        title="Afficher ou masquer les traits d'indication de mesure (longueur et largeur)"
-                                      >
-                                        <span>Afficher les côtes</span>
-                                        <div className={`w-7 h-4 rounded-full relative transition-colors ${
-                                          isDimensionsShown ? 'bg-white/30' : 'bg-slate-300'
-                                        }`}>
-                                          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
-                                            isDimensionsShown ? 'left-3.5' : 'left-0.5'
-                                          }`} />
-                                        </div>
-                                      </button>
-                                    );
-                                  })()}
+                                 {/* Boutons d'action droite : Côtes, Carte fixe, Tracer distance & Capturer */}
+                                 <div className="flex items-center gap-2 flex-wrap">
+                                   {/* Bouton Toggle Afficher les côtes bâtiment */}
+                                   {(() => {
+                                     const isDimensionsShown = masseShowDimensions[str.id] !== undefined
+                                       ? Boolean(masseShowDimensions[str.id])
+                                       : (str.masse_show_dimensions !== false);
+                                     return (
+                                       <button
+                                         type="button"
+                                         onClick={() => handleToggleMasseDimensions(str.id)}
+                                         className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 border shadow-2xs ${
+                                           isDimensionsShown
+                                             ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                         }`}
+                                         title="Afficher ou masquer les traits d'indication de mesure du bâtiment (longueur et largeur)"
+                                       >
+                                         <span>Côtes bâtiment</span>
+                                         <div className={`w-7 h-4 rounded-full relative transition-colors ${
+                                           isDimensionsShown ? 'bg-white/30' : 'bg-slate-300'
+                                         }`}>
+                                           <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
+                                             isDimensionsShown ? 'left-3.5' : 'left-0.5'
+                                           }`} />
+                                         </div>
+                                       </button>
+                                     );
+                                   })()}
 
-                                  {/* Bouton manuel de capture avec feedback */}
-                                  {masseCapturedToast[str.id] && (
-                                    <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 animate-fade-in">
-                                      <CheckCircle2 className="w-3 h-3" />
-                                      {masseCapturedToast[str.id]}
-                                    </span>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleManualCapture(str.id)}
-                                    className="px-2 py-1 rounded-lg text-[11px] font-bold bg-white border border-slate-300 text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 flex items-center gap-1 transition-all shadow-2xs"
-                                    title="Prendre une capture de la vue courante"
-                                  >
-                                    <Camera className="w-3 h-3 text-blue-600" />
-                                    <span>Capturer</span>
-                                  </button>
-                                </div>
+                                   {/* Bouton Carte fixe / Carte libre */}
+                                   <button
+                                     type="button"
+                                     onClick={() => handleToggleMasseLock(str.id)}
+                                     className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
+                                       masseLockedMaps[str.id] !== false
+                                         ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                     }`}
+                                     title={masseLockedMaps[str.id] !== false ? "Carte verrouillée (fixe). Vous pouvez déplacer le bâtiment en drag & drop sans que le fond de carte ne bouge." : "Carte libre. Cliquez pour figer la carte."}
+                                   >
+                                     {masseLockedMaps[str.id] !== false ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                                     <span>{masseLockedMaps[str.id] !== false ? 'Carte fixe' : 'Carte libre'}</span>
+                                   </button>
+
+                                   {/* Outil de tracé de distance manuel (DP2 / PC2) */}
+                                   <button
+                                     type="button"
+                                     onClick={() => setMeasuringMasseStrId(measuringMasseStrId === str.id ? null : str.id)}
+                                     className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
+                                       measuringMasseStrId === str.id
+                                         ? 'bg-orange-600 text-white border-orange-700 shadow-xs animate-pulse'
+                                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                     }`}
+                                     title="Tracer une côte de distance (ex: recul limite parcellaire ou voie). Cliquez sur un 1er point puis un 2nd point."
+                                   >
+                                     <Move className="w-3.5 h-3.5" />
+                                     <span>{measuringMasseStrId === str.id ? 'Tracer (cliquer 2 pts)...' : 'Tracer distance'}</span>
+                                   </button>
+
+                                   {/* Bouton Effacer côtes si des tracés existent */}
+                                   {(masseDistances[str.id]?.length > 0) && (
+                                     <button
+                                       type="button"
+                                       onClick={() => handleClearMasseDistances(str.id)}
+                                       className="p-1 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 text-slate-400 transition-colors"
+                                       title="Effacer tous les tracés de distance de cette vue"
+                                     >
+                                       <X className="w-3.5 h-3.5" />
+                                     </button>
+                                   )}
+
+                                   {/* Bouton manuel de capture avec feedback */}
+                                   {masseCapturedToast[str.id] && (
+                                     <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 animate-fade-in">
+                                       <CheckCircle2 className="w-3 h-3" />
+                                       {masseCapturedToast[str.id]}
+                                     </span>
+                                   )}
+                                   <button
+                                     type="button"
+                                     onClick={() => handleManualCapture(str.id)}
+                                     className="px-2 py-1 rounded-lg text-[11px] font-bold bg-white border border-slate-300 text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 flex items-center gap-1 transition-all shadow-2xs"
+                                     title="Prendre une capture de la vue courante"
+                                   >
+                                     <Camera className="w-3 h-3 text-blue-600" />
+                                     <span>Capturer</span>
+                                   </button>
+                                 </div>
                               </div>
 
                               {/* Visionneuse Carte pour ce bâtiment / cette ombrière */}
@@ -4917,146 +5315,153 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 id={`masse-map-container-${str.id}`}
                                 className="relative flex-1 min-h-[260px] w-full overflow-hidden"
                               >
-                                {/* Boussole / Flèche Nord réglementaire en overlay */}
-                                <div className="absolute top-3 right-3 z-[1000] pointer-events-none bg-white/95 backdrop-blur-xs border border-slate-300 rounded-full w-9 h-9 flex flex-col items-center justify-center shadow-md">
-                                  <span className="text-[10px] font-black text-slate-800 leading-none">N</span>
-                                  <span className="text-blue-600 text-[10px] leading-none font-bold">▲</span>
-                                </div>
+                                 {/* Message d'aide en mode mesure */}
+                                 {measuringMasseStrId === str.id && (
+                                   <div className="absolute top-3 left-3 z-[1000] bg-orange-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-lg border border-white/40 flex items-center gap-2 animate-pulse">
+                                     <Move className="w-3.5 h-3.5" />
+                                     <span>Mode mesure : Cliquez sur 2 points de la carte pour tracer la côte</span>
+                                   </div>
+                                 )}
 
-                                <MapContainer
-                                  key={`map-masse-${str.id}-${activeStructures.length}`}
-                                  center={[
-                                    Number((masseViewTabs[str.id] === 2 ? str.masse_center_lat_2 : str.masse_center_lat) || strLat),
-                                    Number((masseViewTabs[str.id] === 2 ? str.masse_center_lng_2 : str.masse_center_lng) || strLng)
-                                  ]}
-                                  zoom={Number((masseViewTabs[str.id] === 2 ? str.masse_zoom_2 : str.masse_zoom) || (isBatteryStr ? 19 : (masseViewTabs[str.id] === 2 ? 16 : 18)))}
-                                  scrollWheelZoom={true}
-                                  className="h-full w-full"
-                                  style={{ height: '100%', width: '100%' }}
-                                >
-                                  <TileLayer
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    attribution="&copy; OpenStreetMap"
-                                    crossOrigin="anonymous"
-                                    maxZoom={21}
-                                    maxNativeZoom={19}
-                                  />
-                                  <MapResizer activeCount={activeStructures.length} center={[strLat, strLng]} />
-                                  <MapSyncCenter lat={strLat} lng={strLng} disabled={masseViewTabs[str.id] === 2} />
-                                  <MasseMapController 
-                                    strId={str.id} 
-                                    onMapChange={handleMasseMapChange} 
-                                    mapInstancesRef={masseMapInstancesRef}
-                                    activeView={masseViewTabs[str.id] || 1}
-                                  />
+                                 {/* Boussole / Flèche Nord réglementaire en overlay */}
+                                 <div className="absolute top-3 right-3 z-[1000] pointer-events-none bg-white/95 backdrop-blur-xs border border-slate-300 rounded-full w-9 h-9 flex flex-col items-center justify-center shadow-md">
+                                   <span className="text-[10px] font-black text-slate-800 leading-none">N</span>
+                                   <span className="text-blue-600 text-[10px] leading-none font-bold">▲</span>
+                                 </div>
 
-                                  {/* Polygone de la structure active de ce cadre (clé dynamique pour mise à jour instantanée) */}
-                                  <Polygon
-                                    key={`poly-main-${str.id}-${Number(strLat).toFixed(7)}-${Number(strLng).toFixed(7)}-${sRot}-${sLen}-${sWid}`}
-                                    positions={corners}
-                                    pathOptions={{
-                                      color: isBatteryStr ? '#9333ea' : (str.solutionKey === 'ombriere' ? '#059669' : '#2563eb'),
-                                      fillColor: isBatteryStr ? '#a855f7' : (str.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6'),
-                                      fillOpacity: 0.35,
-                                      dashArray: '5, 4',
-                                      weight: 2.5,
-                                    }}
-                                  >
-                                    <Tooltip sticky direction="top" offset={[0, -10]}>
-                                      <div className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs whitespace-nowrap bg-white/95 text-slate-800 border border-slate-300 text-center">
-                                        {str.name || 'Projet'} ({sRot}°)
-                                      </div>
-                                    </Tooltip>
-                                  </Polygon>
+                                 <MapContainer
+                                   key={`map-masse-${str.id}-${activeStructures.length}`}
+                                   center={[
+                                     Number((masseViewTabs[str.id] === 2 ? str.masse_center_lat_2 : str.masse_center_lat) || strLat),
+                                     Number((masseViewTabs[str.id] === 2 ? str.masse_center_lng_2 : str.masse_center_lng) || strLng)
+                                   ]}
+                                   zoom={Number((masseViewTabs[str.id] === 2 ? str.masse_zoom_2 : str.masse_zoom) || (isBatteryStr ? 19 : (masseViewTabs[str.id] === 2 ? 16 : 18)))}
+                                   scrollWheelZoom={true}
+                                   className="h-full w-full"
+                                   style={{ height: '100%', width: '100%' }}
+                                 >
+                                   <TileLayer
+                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                     attribution="&copy; OpenStreetMap"
+                                     crossOrigin="anonymous"
+                                     maxZoom={21}
+                                     maxNativeZoom={19}
+                                   />
+                                   <MapResizer activeCount={activeStructures.length} center={[strLat, strLng]} />
+                                   <MasseMapLockController isLocked={masseLockedMaps[str.id] !== false} />
+                                   <MasseMapController 
+                                     strId={str.id} 
+                                     onMapChange={handleMasseMapChange} 
+                                     mapInstancesRef={masseMapInstancesRef}
+                                     activeView={masseViewTabs[str.id] || 1}
+                                   />
 
-                                  {/* Rendu intérieur des 4 armoires CESC 261 sur la dalle béton pour la Station Batteries */}
-                                  {isBatteryStr && (() => {
-                                    const cabElements = [];
-                                    for (let ci = 0; ci < 4; ci++) {
-                                      const t0 = (ci + 0.12) / 4;
-                                      const t1 = (ci + 0.88) / 4;
-                                      const p0 = [
-                                        corners[0][0] + (corners[1][0] - corners[0][0]) * t0,
-                                        corners[0][1] + (corners[1][1] - corners[0][1]) * t0,
-                                      ];
-                                      const p1 = [
-                                        corners[0][0] + (corners[1][0] - corners[0][0]) * t1,
-                                        corners[0][1] + (corners[1][1] - corners[0][1]) * t1,
-                                      ];
-                                      const p2 = [
-                                        corners[3][0] + (corners[2][0] - corners[3][0]) * t1,
-                                        corners[3][1] + (corners[2][1] - corners[3][1]) * t1,
-                                      ];
-                                      const p3 = [
-                                        corners[3][0] + (corners[2][0] - corners[3][0]) * t0,
-                                        corners[3][1] + (corners[2][1] - corners[3][1]) * t0,
-                                      ];
+                                   {/* Structure principale déplaçable en drag & drop (carte fixe) */}
+                                   <DraggableMasseStructure
+                                     key={`draggable-masse-${str.id}-${Number(strLat).toFixed(7)}-${Number(strLng).toFixed(7)}-${sRot}-${sLen}-${totalWid}`}
+                                     polygonPositions={corners}
+                                     centerLat={strLat}
+                                     centerLng={strLng}
+                                     isBattery={isBatteryStr}
+                                     solutionKey={str.solutionKey}
+                                     structureName={str.name}
+                                     rotation={sRot}
+                                     onGpsUpdate={(newLat, newLng) => handleMasseGpsUpdate(str.id, newLat, newLng)}
+                                     isLocked={masseLockedMaps[str.id] !== false}
+                                     isMeasuring={measuringMasseStrId === str.id}
+                                   />
 
-                                      const c0 = [p0[0] + (p3[0] - p0[0]) * 0.15, p0[1] + (p3[1] - p0[1]) * 0.15];
-                                      const c1 = [p1[0] + (p2[0] - p1[0]) * 0.15, p1[1] + (p2[1] - p1[1]) * 0.15];
-                                      const c2 = [p1[0] + (p2[0] - p1[0]) * 0.85, p1[1] + (p2[1] - p1[1]) * 0.85];
-                                      const c3 = [p0[0] + (p3[0] - p0[0]) * 0.85, p0[1] + (p3[1] - p0[1]) * 0.85];
+                                   {/* Tracés de distance / côtes manuelles enregistrées et outil de tracé interactif */}
+                                   <MasseDistanceLayer
+                                     distances={masseDistances[str.id] || []}
+                                     onRemoveDistance={(distId) => handleRemoveMasseDistance(str.id, distId)}
+                                   />
+                                   <MasseDistanceDrawer
+                                     isMeasuring={measuringMasseStrId === str.id}
+                                     onAddDistance={(newDist) => handleAddMasseDistance(str.id, newDist)}
+                                   />
 
-                                      cabElements.push(
-                                        <Polygon
-                                          key={`poly-cab-${str.id}-${ci}`}
-                                          positions={[c0, c1, c2, c3]}
-                                          pathOptions={{
-                                            color: '#7e22ce',
-                                            fillColor: '#ffffff',
-                                            fillOpacity: 0.85,
-                                            weight: 1.5,
-                                            interactive: false,
-                                          }}
-                                        />
-                                      );
-                                    }
-                                    return cabElements;
-                                  })()}
+                                   {/* Rendu intérieur des 4 armoires CESC 261 sur la dalle béton pour la Station Batteries */}
+                                   {isBatteryStr && (() => {
+                                     const cabElements = [];
+                                     for (let ci = 0; ci < 4; ci++) {
+                                       const t0 = (ci + 0.12) / 4;
+                                       const t1 = (ci + 0.88) / 4;
+                                       const p0 = [
+                                         corners[0][0] + (corners[1][0] - corners[0][0]) * t0,
+                                         corners[0][1] + (corners[1][1] - corners[0][1]) * t0,
+                                       ];
+                                       const p1 = [
+                                         corners[0][0] + (corners[1][0] - corners[0][0]) * t1,
+                                         corners[0][1] + (corners[1][1] - corners[0][1]) * t1,
+                                       ];
+                                       const p2 = [
+                                         corners[3][0] + (corners[2][0] - corners[3][0]) * t1,
+                                         corners[3][1] + (corners[2][1] - corners[3][1]) * t1,
+                                       ];
+                                       const p3 = [
+                                         corners[3][0] + (corners[2][0] - corners[3][0]) * t0,
+                                         corners[3][1] + (corners[2][1] - corners[3][1]) * t0,
+                                       ];
 
-                                  {/* Cotations architecturales le long des côtés extérieurs du rectangle si activées */}
-                                  {(masseShowDimensions[str.id] !== undefined ? Boolean(masseShowDimensions[str.id]) : (str.masse_show_dimensions !== false)) && (() => {
-                                    const dim = getBuildingDimensionLines(strLat, strLng, sLen, totalWid, sRot, 2.8);
-                                    const strokeColor = isBatteryStr ? '#9333ea' : (str.solutionKey === 'ombriere' ? '#059669' : '#2563eb');
-                                    return (
-                                      <>
-                                        {/* Longueur */}
-                                        <Polyline positions={dim.lenLine} pathOptions={{ color: strokeColor, weight: 2 }} />
-                                        <Polyline positions={dim.lenWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
-                                        <Polyline positions={dim.lenWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
-                                        <Marker
-                                          position={dim.lenTextPos || dim.lenMid}
-                                          icon={L.divIcon({
-                                            className: 'bg-transparent',
-                                            html: `<div style="transform: translate(-50%, -50%) rotate(${(dim.lenAngle || 0).toFixed(1)}deg); font-size: 12px; font-weight: 800; color: ${strokeColor}; white-space: nowrap; text-shadow: 0 0 3px #ffffff, 0 0 2px #ffffff, 0 0 1px #ffffff; pointer-events: none; user-select: none;">${sLen.toFixed(1)} M</div>`,
-                                            iconSize: [0, 0]
-                                          })}
-                                          interactive={false}
-                                        />
+                                       const c0 = [p0[0] + (p3[0] - p0[0]) * 0.15, p0[1] + (p3[1] - p0[1]) * 0.15];
+                                       const c1 = [p1[0] + (p2[0] - p1[0]) * 0.15, p1[1] + (p2[1] - p1[1]) * 0.15];
+                                       const c2 = [p1[0] + (p2[0] - p1[0]) * 0.85, p1[1] + (p2[1] - p1[1]) * 0.85];
+                                       const c3 = [p0[0] + (p3[0] - p0[0]) * 0.85, p0[1] + (p3[1] - p0[1]) * 0.85];
 
-                                        {/* Largeur */}
-                                        <Polyline positions={dim.widLine} pathOptions={{ color: strokeColor, weight: 2 }} />
-                                        <Polyline positions={dim.widWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
-                                        <Polyline positions={dim.widWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
-                                        <Marker
-                                          position={dim.widTextPos || dim.widMid}
-                                          icon={L.divIcon({
-                                            className: 'bg-transparent',
-                                            html: `<div style="transform: translate(-50%, -50%) rotate(${(dim.widAngle || 0).toFixed(1)}deg); font-size: 12px; font-weight: 800; color: ${strokeColor}; white-space: nowrap; text-shadow: 0 0 3px #ffffff, 0 0 2px #ffffff, 0 0 1px #ffffff; pointer-events: none; user-select: none;">${totalWid.toFixed(1)} M</div>`,
-                                            iconSize: [0, 0]
-                                          })}
-                                          interactive={false}
-                                        />
-                                      </>
-                                    );
-                                  })()}
+                                       cabElements.push(
+                                         <Polygon
+                                           key={`poly-cab-${str.id}-${ci}`}
+                                           positions={[c0, c1, c2, c3]}
+                                           pathOptions={{
+                                             color: '#7e22ce',
+                                             fillColor: '#ffffff',
+                                             fillOpacity: 0.85,
+                                             weight: 1.5,
+                                             interactive: false,
+                                           }}
+                                         />
+                                       );
+                                     }
+                                     return cabElements;
+                                   })()}
 
-                                  {/* Marqueur déplaçable propre UNIQUEMENT à cette structure */}
-                                  <DraggableLocationMarker
-                                    lat={strLat}
-                                    lng={strLng}
-                                    setGps={(newLat, newLng) => handleMasseGpsUpdate(str.id, newLat, newLng)}
-                                  />
+                                   {/* Cotations architecturales le long des côtés extérieurs du rectangle si activées */}
+                                   {(masseShowDimensions[str.id] !== undefined ? Boolean(masseShowDimensions[str.id]) : (str.masse_show_dimensions !== false)) && (() => {
+                                     const dim = getBuildingDimensionLines(strLat, strLng, sLen, totalWid, sRot, 2.8);
+                                     const strokeColor = isBatteryStr ? '#9333ea' : (str.solutionKey === 'ombriere' ? '#059669' : '#2563eb');
+                                     return (
+                                       <>
+                                         {/* Longueur */}
+                                         <Polyline positions={dim.lenLine} pathOptions={{ color: strokeColor, weight: 2 }} />
+                                         <Polyline positions={dim.lenWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                         <Polyline positions={dim.lenWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                         <Marker
+                                           position={dim.lenTextPos || dim.lenMid}
+                                           icon={L.divIcon({
+                                             className: 'bg-transparent',
+                                             html: `<div style="transform: translate(-50%, -50%) rotate(${(dim.lenAngle || 0).toFixed(1)}deg); font-size: 12px; font-weight: 800; color: ${strokeColor}; white-space: nowrap; text-shadow: 0 0 3px #ffffff, 0 0 2px #ffffff, 0 0 1px #ffffff; pointer-events: none; user-select: none;">${sLen.toFixed(1)} M</div>`,
+                                             iconSize: [0, 0]
+                                           })}
+                                           interactive={false}
+                                         />
+
+                                         {/* Largeur */}
+                                         <Polyline positions={dim.widLine} pathOptions={{ color: strokeColor, weight: 2 }} />
+                                         <Polyline positions={dim.widWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                         <Polyline positions={dim.widWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                         <Marker
+                                           position={dim.widTextPos || dim.widMid}
+                                           icon={L.divIcon({
+                                             className: 'bg-transparent',
+                                             html: `<div style="transform: translate(-50%, -50%) rotate(${(dim.widAngle || 0).toFixed(1)}deg); font-size: 12px; font-weight: 800; color: ${strokeColor}; white-space: nowrap; text-shadow: 0 0 3px #ffffff, 0 0 2px #ffffff, 0 0 1px #ffffff; pointer-events: none; user-select: none;">${totalWid.toFixed(1)} M</div>`,
+                                             iconSize: [0, 0]
+                                           })}
+                                           interactive={false}
+                                         />
+                                       </>
+                                     );
+                                   })()}
 
                                   {/* Rendu dynamique en temps réel des autres structures activées sur la parcelle */}
                                   {activeStructures.filter(other => other.id !== str.id && (solutionType !== 'battery' || other.solutionKey === 'battery' || other.isBattery)).map(other => {

@@ -201,7 +201,7 @@ export default function AutomaticProspectingModal({
     setLogs(prev => [...prev.slice(-120), `[${time}] ${msg}`]);
   };
 
-  // Autocomplétion commune
+  // Autocomplétion commune avec sélection intelligente
   const handleSearchCommunes = async (text) => {
     isTypingCommuneRef.current = true;
     setCommuneSearch(text);
@@ -214,8 +214,16 @@ export default function AutomaticProspectingModal({
       const results = await searchCommunes(text);
       if (isTypingCommuneRef.current) {
         setCommuneSuggestions(results || []);
-        if (results.length > 0 && !selectedCommune) {
-          setSelectedCommune(results[0]);
+        if (results && results.length > 0) {
+          // Présélectionner automatiquement la commune la plus concordante
+          const clean = text.trim().toLowerCase();
+          const match = results.find(
+            r => r.nom.toLowerCase() === clean ||
+                 r.postalCode === clean ||
+                 r.codeInsee === clean ||
+                 `${r.nom.toLowerCase()} (${r.postalCode})` === clean
+          );
+          setSelectedCommune(match || results[0]);
         }
       }
     } catch (err) {
@@ -230,6 +238,15 @@ export default function AutomaticProspectingModal({
     setSelectedCommune(c);
     setCommuneSearch(c.nom);
     setCommuneSuggestions([]);
+  };
+
+  const handleCommuneKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (communeSuggestions && communeSuggestions.length > 0) {
+        handleSelectCommune(communeSuggestions[0]);
+      }
+    }
   };
 
   // Sélection du dossier local (File System Access API ou Mode Firefox)
@@ -393,13 +410,28 @@ export default function AutomaticProspectingModal({
       // 1. Définition de l'emprise géographique
       let targetBbox = null;
       let zoneLabel = '';
+      let targetCommune = selectedCommune;
 
       if (geoMode === 'commune') {
-        if (!selectedCommune || !selectedCommune.bbox) {
+        const currentSearchText = (communeSearch || '').trim();
+        // Si le texte saisi diffère de la commune sélectionnée en mémoire, résoudre dynamiquement
+        if (!targetCommune || (currentSearchText && currentSearchText.toLowerCase() !== (targetCommune.nom || '').toLowerCase())) {
+          try {
+            const list = await searchCommunes(currentSearchText);
+            if (list && list.length > 0) {
+              targetCommune = list[0];
+              setSelectedCommune(targetCommune);
+            }
+          } catch (resErr) {
+            console.warn('Erreur résolution commune saisie:', resErr);
+          }
+        }
+
+        if (!targetCommune || !targetCommune.bbox) {
           throw new Error('Veuillez sélectionner une commune valide disposant d’un contour cadastral.');
         }
-        targetBbox = selectedCommune.bbox;
-        zoneLabel = `${selectedCommune.nom} (${selectedCommune.postalCode})`;
+        targetBbox = targetCommune.bbox;
+        zoneLabel = `${targetCommune.nom} (${targetCommune.postalCode})`;
         addLog(`📍 Zone sélectionnée : Commune de ${zoneLabel}`);
       } else {
         targetBbox = computedMapBbox;
@@ -414,15 +446,15 @@ export default function AutomaticProspectingModal({
       addLog(`🛰️ Recherche des bâtiments (Emprise : ${minArea} à ${maxArea} m² • Cible : ${minTargetKwc} à ${maxTargetKwc} kWc • Objectif : ${limitLabel})...`);
 
       // S'assurer que le contour GeoJSON officiel est chargé pour la commune sélectionnée
-      let communeContour = selectedCommune?.contour || null;
-      const communeInsee = selectedCommune?.codeInsee || selectedCommune?.id || null;
-      if (geoMode === 'commune' && !communeContour && selectedCommune?.nom) {
+      let communeContour = targetCommune?.contour || null;
+      const communeInsee = targetCommune?.codeInsee || targetCommune?.id || null;
+      if (geoMode === 'commune' && !communeContour && targetCommune?.nom) {
         try {
-          const list = await searchCommunes(selectedCommune.nom);
-          const found = list.find(c => c.codeInsee === communeInsee || c.nom.toLowerCase() === selectedCommune.nom.toLowerCase()) || list[0];
+          const list = await searchCommunes(targetCommune.nom);
+          const found = list.find(c => c.codeInsee === communeInsee || c.nom.toLowerCase() === targetCommune.nom.toLowerCase()) || list[0];
           if (found?.contour) {
             communeContour = found.contour;
-            selectedCommune.contour = found.contour;
+            targetCommune.contour = found.contour;
           }
         } catch (e) {}
       }
@@ -624,7 +656,7 @@ export default function AutomaticProspectingModal({
           filename: pdfResult.filename,
           blob: pdfResult.blob,
           arrayBuffer: pdfResult.arrayBuffer,
-          addressLabel: addressInfo?.label || `${b.area} m² - Commune de ${selectedCommune?.nom || 'Secteur'}`,
+          addressLabel: addressInfo?.label || `${b.area} m² - Commune de ${targetCommune?.nom || selectedCommune?.nom || 'Secteur'}`,
           cadastreRef: cadastreInfo?.parcelleRef || 'Parcelle non cadastrée',
           saveResult: saveRes
         };
@@ -1109,6 +1141,7 @@ export default function AutomaticProspectingModal({
                       type="text"
                       value={communeSearch}
                       onChange={(e) => handleSearchCommunes(e.target.value)}
+                      onKeyDown={handleCommuneKeyDown}
                       placeholder="Nom de la commune ou code postal (ex: Bordeaux, Mérignac...)"
                       className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white shadow-xs"
                       disabled={status === 'running' || status === 'sourcing'}

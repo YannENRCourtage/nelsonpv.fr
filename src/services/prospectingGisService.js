@@ -397,6 +397,20 @@ export async function fetchBuildingsInBbox({
               }
             }
 
+            const nature = (f.properties?.nature || '').toLowerCase();
+            const usage = (f.properties?.usage_1 || '').toLowerCase();
+            // Exclusion stricte des auvents, arcades, silos, réservoirs ou ombrières/parkings
+            if (
+              nature.includes('auvent') ||
+              nature.includes('arcade') ||
+              nature.includes('silo') ||
+              nature.includes('reservoir') ||
+              nature.includes('réservoir') ||
+              usage.includes('parking')
+            ) {
+              continue;
+            }
+
             const area = calculatePolygonArea(polygon);
             if (area < minArea || area > maxArea) continue;
             if (!isStrictRectangle(polygon)) continue;
@@ -426,19 +440,19 @@ export async function fetchBuildingsInBbox({
     }
   };
 
-  // 2. SOURCING OVERPASS OSM (en complément avec filtre par code INSEE)
+  // 2. SOURCING OVERPASS OSM (en complément avec filtre par code INSEE et exclusion des ombrières/canopies de parking)
   const fetchOSM = async () => {
     try {
       const overpassQuery = codeInsee
         ? `[out:json][timeout:25];
 area["boundary"="administrative"]["ref:INSEE"="${codeInsee}"]->.searchArea;
 (
-  way["building"](area.searchArea)(${minLat},${minLng},${maxLat},${maxLng});
+  way["building"]["building"!~"canopy|carport|roof|shelter"]["amenity"!="parking"]["wall"!="no"]["parking"!~".*"](area.searchArea)(${minLat},${minLng},${maxLat},${maxLng});
 );
 out geom;`
         : `[out:json][timeout:20];
 (
-  way["building"](${minLat},${minLng},${maxLat},${maxLng});
+  way["building"]["building"!~"canopy|carport|roof|shelter"]["amenity"!="parking"]["wall"!="no"]["parking"!~".*"](${minLat},${minLng},${maxLat},${maxLng});
 );
 out geom;`;
 
@@ -468,7 +482,7 @@ out geom;`;
 
       // Si la requête avec searchArea a échoué, repli automatique sur la bbox classique
       if (!rawData && codeInsee) {
-        const fallbackQuery = `[out:json][timeout:15];(way["building"](${minLat},${minLng},${maxLat},${maxLng}););out geom;`;
+        const fallbackQuery = `[out:json][timeout:15];(way["building"]["building"!~"canopy|carport|roof|shelter"]["amenity"!="parking"]["wall"!="no"]["parking"!~".*"](${minLat},${minLng},${maxLat},${maxLng}););out geom;`;
         for (const endpoint of OVERPASS_ENDPOINTS) {
           try {
             const controller = new AbortController();
@@ -494,6 +508,35 @@ out geom;`;
       if (rawData && rawData.elements) {
         for (const el of rawData.elements) {
           if (!el.geometry || el.geometry.length < 3) continue;
+
+          // Exclusion stricte des ombrières de parking, canopies, abris sans murs et carports
+          const bType = (el.tags?.building || '').toLowerCase();
+          const amenity = (el.tags?.amenity || '').toLowerCase();
+          const parking = (el.tags?.parking || '').toLowerCase();
+          const wall = (el.tags?.wall || '').toLowerCase();
+          const shelterType = (el.tags?.shelter_type || '').toLowerCase();
+          const name = (el.tags?.name || '').toLowerCase();
+          const desc = (el.tags?.description || '').toLowerCase();
+
+          const isParkingOrCanopy =
+            bType === 'canopy' ||
+            bType === 'carport' ||
+            bType === 'roof' ||
+            bType === 'shelter' ||
+            wall === 'no' ||
+            amenity === 'parking' ||
+            parking !== '' ||
+            shelterType === 'carport' ||
+            name.includes('parking') ||
+            name.includes('ombriere') ||
+            name.includes('ombrière') ||
+            name.includes('carport') ||
+            name.includes('auvent') ||
+            desc.includes('parking') ||
+            desc.includes('ombriere') ||
+            desc.includes('ombrière');
+
+          if (isParkingOrCanopy) continue;
 
           const polygon = el.geometry.map(g => ({ lat: g.lat, lng: g.lon }));
           if (polygon.length > 3) {

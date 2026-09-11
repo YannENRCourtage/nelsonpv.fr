@@ -4,7 +4,7 @@ import {
   MapPin, Search, ChevronRight, ChevronLeft, Building2,
   Euro, TrendingUp, CheckCircle2, RotateCcw, Sparkles,
   Save, FileDown, ShieldCheck, HelpCircle, Loader2, Landmark,
-  Zap, Sun, Clock, Wallet, Leaf, Trees, Users, Award
+  Zap, Sun, Clock, Wallet, Leaf, Trees, Users, Award, ArrowLeft
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Cell } from 'recharts';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
@@ -39,29 +39,30 @@ export default function SolarRoofSimulator({
   const [departmentCode, setDepartmentCode] = useState('33');
   const [cityName, setCityName] = useState('Bordeaux');
 
-  const [mapCenter, setMapCenter] = useState([44.8412, -0.5805]);
+  const [mapCenter, setMapCenter] = useState([44.8378, -0.5792]);
   const [mapZoom, setMapZoom] = useState(19);
   const [polygonPoints, setPolygonPoints] = useState([]);
-  const [roofSurface, setRoofSurface] = useState(1179);
+  const [roofSurface, setRoofSurface] = useState(300);
 
   // Orientation & Pente & Type de toiture
   const [roofType, setRoofType] = useState('asymetrique'); // 'asymetrique' | 'symetrique'
-  const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(0);
   const [orientationInfo, setOrientationInfo] = useState({
-    orientationKey: 'south',
-    orientationLabel: 'Plein Sud (0°)',
-    azimuthDeg: 0,
-    angle: 0,
+    ridgeAngle: 0,
+    southPanIndex: 0,
+    southPanName: 'Pan Sud',
+    panAzimuth: 180,
     ridgeIndex: 0
   });
   const [selectedPitch, setSelectedPitch] = useState(30);
 
   const [userSelectedKwc, setUserSelectedKwc] = useState(null);
   const [isAutoProspectingOpen, setIsAutoProspectingOpen] = useState(false);
+  const [hasOpenedFromProspecting, setHasOpenedFromProspecting] = useState(false);
 
   // Charger et entrer directement dans l'éditeur complet depuis l'automate de prospection
   const handleOpenProjectFromProspecting = (item) => {
     if (!item) return;
+    setHasOpenedFromProspecting(true);
     const b = item.building;
     const sim = item.simulation;
 
@@ -564,6 +565,19 @@ export default function SolarRoofSimulator({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-end md:self-auto">
+            {/* Bouton Retour direct aux résultats de l'automate si session ouverte */}
+            {hasOpenedFromProspecting && (
+              <button
+                type="button"
+                onClick={() => setIsAutoProspectingOpen(true)}
+                className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs flex items-center gap-1.5 shadow-lg shadow-blue-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer border border-blue-300/40"
+                title="Revenir à la liste des offres de l'automate de recherche"
+              >
+                <ArrowLeft className="w-4 h-4 text-white" />
+                <span>Retour aux offres de l'automate</span>
+              </button>
+            )}
+
             {/* Bouton Mode Prospection Automatique */}
             <button
               type="button"
@@ -801,6 +815,18 @@ export default function SolarRoofSimulator({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                {hasOpenedFromProspecting && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAutoProspectingOpen(true)}
+                    className="px-3.5 py-2 rounded-xl text-xs font-black text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-all flex items-center gap-1.5 shadow-2xs"
+                    title="Revenir à la liste des offres de l'automate de recherche"
+                  >
+                    <ArrowLeft className="w-4 h-4 text-indigo-600" />
+                    <span>Retour aux offres</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
