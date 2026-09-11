@@ -29,6 +29,8 @@ import {
 } from '@/services/localPdfExportService';
 
 import ServicePostalModal from '@/components/simulator/ServicePostalModal';
+import CommercialOfferConfigModal from '@/components/simulator/CommercialOfferConfigModal';
+import { generateCommercialProposalPDF } from '@/services/CommercialProposalPdfGenerator';
 import { toast } from '@/components/ui/use-toast';
 import { getBuildingInsights, selectBestRoofSegment, boundingBoxToPolygon } from '@/services/googleSolar';
 import { squarePolygon } from '@/utils/squarePolygon';
@@ -88,6 +90,10 @@ export default function AutomaticProspectingModal({
   // Modal d'envoi postal via ServicePostal
   const [postalModalItem, setPostalModalItem] = useState(null);
   const [isPostalModalOpen, setIsPostalModalOpen] = useState(false);
+
+  // Modal de paramétrage de l'offre commerciale avant export PDF
+  const [configModalItem, setConfigModalItem] = useState(null);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   // Gestion de la révision / édition individuelle des paramètres par ligne
   const [editingRowIndex, setEditingRowIndex] = useState(null);
@@ -288,7 +294,7 @@ export default function AutomaticProspectingModal({
     }
   };
 
-  // Télécharger unitaire d'un PDF
+  // Télécharger unitaire d'un PDF direct (fallback)
   const handleDownloadSinglePdf = (item) => {
     if (!item) return;
     const content = item.blob || (item.arrayBuffer ? new Blob([item.arrayBuffer], { type: 'application/pdf' }) : null);
@@ -301,6 +307,54 @@ export default function AutomaticProspectingModal({
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 4000);
+  };
+
+  // Ouverture de la modale de paramétrage avant export PDF Commercial
+  const handleOpenOfferConfigModal = (item) => {
+    setConfigModalItem(item);
+    setIsConfigModalOpen(true);
+  };
+
+  // Validation et génération du PDF Commercial paramétré (4 à 5 pages)
+  const handleConfirmGenerateOfferPdf = async (configOptions) => {
+    if (!configModalItem) return;
+    const simToUse = configModalItem.simulation || configModalItem;
+
+    try {
+      addLog(`📄 Génération du PDF commercial paramétré (${configOptions.economicModel})...`);
+      const pdfResult = await generateCommercialProposalPDF({
+        simulation: simToUse,
+        options: configOptions,
+        returnBlob: true
+      });
+
+      if (pdfResult?.blob) {
+        const saveRes = await savePdfToLocalDestination({
+          filename: pdfResult.filename,
+          blob: pdfResult.blob,
+          arrayBuffer: pdfResult.arrayBuffer,
+          directoryHandle,
+          preferBridge: true
+        });
+
+        if (saveRes.success) {
+          addLog(`   💾 PDF Commercial enregistré : ${saveRes.filename} [${saveRes.method}]`);
+          toast({
+            title: 'PDF Commercial généré avec succès',
+            description: `Le fichier ${saveRes.filename} a été enregistré.`,
+            variant: 'success'
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Erreur génération PDF Commercial:', err);
+      addLog(`   ❌ Échec génération PDF : ${err.message}`);
+      toast({
+        title: 'Erreur génération PDF',
+        description: err.message || 'Impossible de générer le document.',
+        variant: 'destructive'
+      });
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -393,7 +447,52 @@ export default function AutomaticProspectingModal({
           }
         } catch (e) {}
 
-        // C. Simulation Toiture Headless avec Inférence Dynamique Toiture (Terrasse vs Inclinée)
+        // B2. Interrogation & Filtrage de rentabilité Google Solar (buildingInsights:findClosest)
+        let googleSolarData = null;
+        try {
+          const lat = Array.isArray(b.center) ? b.center[0] : (b.center.lat || b.center[0]);
+          const lng = Array.isArray(b.center) ? b.center[1] : (b.center.lng || b.center.lon || b.center[1]);
+          const solarInsights = await getBuildingInsights(lat, lng);
+
+          if (solarInsights && solarInsights.available !== false && solarInsights.solarPotential) {
+            const sp = solarInsights.solarPotential;
+            const sunshineHours = Number(sp.maxSunshineHoursPerYear || 0);
+            const usefulArea = Number(sp.maxArrayAreaMeters2 || 0);
+
+            // Filtrage conditionnel 1 : Ensoleillement critique (< 1000 h/an)
+            if (sunshineHours > 0 && sunshineHours < 1000) {
+              addLog(`   ⚠️ Bâtiment ignoré (Google Solar) : Ensoleillement insuffisant (${Math.round(sunshineHours)} h/an < 1 000 h/an).`);
+              continue;
+            }
+
+            // Filtrage conditionnel 2 : Surface utile réelle trop faible pour l'objectif de puissance
+            const minUsefulAreaRequired = Math.round((minTargetKwc * 1000 / 465) * 1.4);
+            if (usefulArea > 0 && (usefulArea < minUsefulAreaRequired || usefulArea < 180)) {
+              addLog(`   ⚠️ Bâtiment ignoré (Google Solar) : Surface utile réelle insuffisante (${Math.round(usefulArea)} m² < ${minUsefulAreaRequired} m² requis pour ${minTargetKwc} kWc).`);
+              continue;
+            }
+
+            const bestSeg = selectBestRoofSegment(sp.roofSegmentSummaries);
+            const gPitch = bestSeg?.pitchDegrees !== undefined ? Math.round(bestSeg.pitchDegrees) : null;
+            const gAzimuth = bestSeg?.azimuthDegrees !== undefined ? Math.round(bestSeg.azimuthDegrees) : null;
+
+            googleSolarData = {
+              maxSunshineHoursPerYear: sunshineHours,
+              maxArrayAreaMeters2: usefulArea,
+              pitch: gPitch,
+              azimuth: gAzimuth,
+              solarPotential: sp
+            };
+
+            addLog(`   ☀️ Google Solar 3D validé : ${Math.round(sunshineHours)} h/an • Surface utile ${Math.round(usefulArea)} m² • Pente ${gPitch !== null ? gPitch + '°' : 'auto'} • Azimut ${gAzimuth !== null ? gAzimuth + '°' : 'auto'}`);
+          } else {
+            addLog(`   ℹ️ Google Solar non disponible sur cette zone (3D rurale non couverte). Inférence géométrique Nelson appliquée.`);
+          }
+        } catch (errSolar) {
+          console.warn('Erreur vérification Google Solar bâtiment:', errSolar);
+        }
+
+        // C. Simulation Toiture Headless avec Inférence Dynamique Toiture & Données Google Solar
         const sim = await simulateBuildingHeadless({
           building: b,
           addressInfo,
@@ -405,7 +504,8 @@ export default function AutomaticProspectingModal({
             economicModel,
             tarifEdfOa,
             excludeThirdParty,
-            includeCoverLetter
+            includeCoverLetter,
+            googleSolarData
           }
         });
 
@@ -427,10 +527,19 @@ export default function AutomaticProspectingModal({
           addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • Gains Autoconso + Surplus : ~${sim.annualBenefitYear1?.toLocaleString('fr-FR')} €/an`);
         }
 
-
-        // D. Génération de l'Offre Commerciale PDF
+        // D. Génération de l'Offre Commerciale PDF (Modèle Synthétique 4-5 pages)
         setCurrentStepText(`Génération de l'offre PDF ${stepNum}/${total}...`);
-        const pdfResult = await generateProspectingPdfBlob(sim);
+        const pdfResult = await generateCommercialProposalPDF({
+          simulation: sim,
+          options: {
+            economicModel,
+            tarifEdfOa,
+            financingChoices: excludeThirdParty ? ['credit_bancaire', 'abonnement'] : ['tiers_investisseur', 'credit_bancaire', 'abonnement'],
+            includeCoverLetter,
+            includeAmortizationTable: true
+          },
+          returnBlob: true
+        });
 
         if (!pdfResult || (!pdfResult.blob && !pdfResult.arrayBuffer)) {
           addLog(`   ❌ Échec génération PDF pour bâtiment ${b.osmId}`);
@@ -1581,6 +1690,14 @@ export default function AutomaticProspectingModal({
                                 </span>
                                 <span>•</span>
                                 <span className="text-emerald-400 font-bold">💶 {item.simulation?.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an</span>
+                                {item.simulation?.googleSolar?.maxSunshineHoursPerYear && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/30 text-[10px] flex items-center gap-1">
+                                      ☀️ Google Solar : {Math.round(item.simulation.googleSolar.maxSunshineHoursPerYear)} h/an
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1602,9 +1719,9 @@ export default function AutomaticProspectingModal({
 
                             <button
                               type="button"
-                              onClick={() => handleDownloadSinglePdf(item)}
-                              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white hover:text-amber-300 transition-colors cursor-pointer"
-                              title={`Télécharger le PDF : ${item.filename}`}
+                              onClick={() => handleOpenOfferConfigModal(item)}
+                              className="p-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 hover:text-white transition-colors cursor-pointer border border-emerald-500/30"
+                              title="Configurer et générer l'offre PDF commerciale"
                             >
                               <Download className="w-4 h-4" />
                             </button>
@@ -1958,6 +2075,14 @@ export default function AutomaticProspectingModal({
               includeCoverLetter: true
             });
           }}
+        />
+
+        {/* Modale de paramétrage interactif de l'offre commerciale avant export PDF */}
+        <CommercialOfferConfigModal
+          isOpen={isConfigModalOpen}
+          onClose={() => setIsConfigModalOpen(false)}
+          item={configModalItem}
+          onConfirmGenerate={handleConfirmGenerateOfferPdf}
         />
 
       </motion.div>

@@ -149,22 +149,34 @@ export async function simulateBuildingHeadless({
 }) {
   const { polygon, area, center } = building;
 
+  const googleSolarData = customSettings.googleSolarData || building.googleSolarData || null;
+
   // 1. Inférence géospatiale dynamique de la toiture (OBB, faîtage, azimut, versants, terrasse vs inclinée)
   const roofInference = inferRoofCharacteristics(polygon, building.tags || {});
 
-  if (customSettings.azimuth !== undefined) {
-    const customAz = Number(customSettings.azimuth);
-    roofInference.azimuth = customAz;
-    const azDiff = Math.abs(customAz - 180);
+  // Utilisation prioritaire de l'azimut personnalisé ou fourni par Google Solar
+  const targetAzimuth = customSettings.azimuth !== undefined
+    ? Number(customSettings.azimuth)
+    : (googleSolarData?.azimuth !== undefined ? Number(googleSolarData.azimuth) : undefined);
+
+  if (targetAzimuth !== undefined) {
+    roofInference.azimuth = targetAzimuth;
+    const azDiff = Math.abs(targetAzimuth - 180);
     const azCoeff = Math.max(0.70, 1.0 - (azDiff / 180) * 0.25);
     if (roofInference.slopes?.pan1) {
       roofInference.slopes.pan1.coeff = azCoeff;
-      roofInference.slopes.pan1.azimuth = customAz;
+      roofInference.slopes.pan1.azimuth = targetAzimuth;
     }
-    roofInference.displayLabel = `Azimut ${Math.round(customAz)}°`;
+    roofInference.displayLabel = googleSolarData?.azimuth !== undefined && customSettings.azimuth === undefined
+      ? `Google Solar Azimut ${Math.round(targetAzimuth)}°`
+      : `Azimut ${Math.round(targetAzimuth)}°`;
   }
 
-  const requestedPitch = customSettings.pitch !== undefined ? Number(customSettings.pitch) : undefined;
+  // Utilisation prioritaire de la pente personnalisée ou fournie par Google Solar
+  const requestedPitch = customSettings.pitch !== undefined
+    ? Number(customSettings.pitch)
+    : (googleSolarData?.pitch !== undefined ? Number(googleSolarData.pitch) : undefined);
+
   const isTerrasse = requestedPitch === 0
     ? true
     : (customSettings.isTerrasse !== undefined ? customSettings.isTerrasse : roofInference.isTerrasse);
@@ -234,6 +246,13 @@ export async function simulateBuildingHeadless({
   const departmentCode = addressInfo?.departmentCode || (addressInfo?.postcode ? addressInfo.postcode.substring(0, 2) : '59');
   const regionalBaseYield = getProductionForDepartment(departmentCode) || 1100;
 
+  // Modulation de précision par l'ensoleillement réel Google Solar (heures/an)
+  const sunshineHours = Number(googleSolarData?.maxSunshineHoursPerYear || 0);
+  const sunshineYieldBoost = sunshineHours > 0
+    ? Math.max(0.85, Math.min(1.30, sunshineHours / 1400))
+    : 1.0;
+  const effectiveBaseYield = Math.round(regionalBaseYield * sunshineYieldBoost);
+
   // Coefficient d'inclinaison (1.00 à 30°, 0.96 à 15°, 0.95 à 0° terrasse plein Sud, 0.90 standard)
   const inclinationCoeff = (pitch === 0 || isTerrasse) ? 0.95 : (pitch === 30 ? 1.00 : (pitch === 15 || pitch === 45) ? 0.96 : 0.90);
 
@@ -245,7 +264,7 @@ export async function simulateBuildingHeadless({
   const pan2Kwc = Math.max(0, Math.round((installedKwc - pan1Kwc) * 10) / 10);
 
   const coeff1 = (pitch === 0 || isTerrasse) ? 1.00 : (roofInference.slopes.pan1?.coeff || 1.00);
-  const yield1 = Math.round(regionalBaseYield * coeff1 * inclinationCoeff);
+  const yield1 = Math.round(effectiveBaseYield * coeff1 * inclinationCoeff);
   const prodKwh1 = Math.round(pan1Kwc * yield1);
 
   let coeff2 = 0.70;
@@ -253,7 +272,7 @@ export async function simulateBuildingHeadless({
   let prodKwh2 = 0;
   if (share2 > 0 && roofInference.slopes.pan2 && !isTerrasse) {
     coeff2 = roofInference.slopes.pan2.coeff || 0.70;
-    yield2 = Math.round(regionalBaseYield * coeff2 * inclinationCoeff);
+    yield2 = Math.round(effectiveBaseYield * coeff2 * inclinationCoeff);
     prodKwh2 = Math.round(pan2Kwc * yield2);
   }
 
@@ -416,6 +435,13 @@ export async function simulateBuildingHeadless({
       installedKwc: pan2Kwc,
       productionKwh: prodKwh2,
       specificYield: yield2
+    } : null,
+    googleSolar: googleSolarData ? {
+      maxSunshineHoursPerYear: googleSolarData.maxSunshineHoursPerYear,
+      maxArrayAreaMeters2: googleSolarData.maxArrayAreaMeters2,
+      pitch: googleSolarData.pitch,
+      azimuth: googleSolarData.azimuth,
+      hasGoogle3D: true
     } : null
   };
 

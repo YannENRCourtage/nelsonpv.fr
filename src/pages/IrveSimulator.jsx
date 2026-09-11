@@ -19,6 +19,8 @@ import SechoirBatitechSimulator from '@/components/simulator/sechoir/SechoirBati
 import SimulatorDatabaseTab from '@/components/simulator/SimulatorDatabaseTab';
 import SimulatorArchivesTab from '@/components/simulator/SimulatorArchivesTab';
 import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
+import CommercialOfferConfigModal from '@/components/simulator/CommercialOfferConfigModal';
+import { generateCommercialProposalPDF } from '@/services/CommercialProposalPdfGenerator';
 import useSechoirStore from '@/stores/useSechoirStore.js';
 import { BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
 import { calculateFullSimulation } from '@/components/simulator/sechoir/sechoirCalculations.js';
@@ -168,6 +170,10 @@ export default function IrveSimulator() {
   // ─── État dynamique de la simulation en cours pour actions globales ────────
   const [activeSimulationState, setActiveSimulationState] = useState(null);
   const [clientNameGlobal, setClientNameGlobal] = useState('');
+
+  // ─── Modale de paramétrage de l'offre commerciale PDF ──────────────────────
+  const [configModalSim, setConfigModalSim] = useState(null);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   const selectedProject = (projects || []).find(p => p.id === selectedProjectId);
 
@@ -439,11 +445,69 @@ export default function IrveSimulator() {
       };
     }
 
+    // Interception pour les solutions solaires toiture / autoconsommation :
+    // Ouverture de la modale de configuration avant génération du PDF commercial de 4-5 pages
+    const isSolar = activeSolution === 'toiture' || activeSolution === 'autoconso' ||
+      targetSim?.type === 'toiture_pv' || targetSim?.type === 'autoconsommation' || targetSim?.type === 'toiture' || targetSim?.type === 'autoconso';
+
+    if (isSolar) {
+      const enrichedSim = {
+        ...targetSim,
+        economicModel: targetSim.economicModel || (activeSolution === 'autoconso' || targetSim.type === 'autoconsommation' ? 'autoconsommation' : 'vente_totale'),
+        address: targetSim.address || selectedProject?.address || targetSim.cityName || 'Site d\'implantation',
+        cityName: targetSim.cityName || targetSim.city || selectedProject?.city || 'Bordeaux',
+        postalCode: targetSim.postalCode || selectedProject?.zip || targetSim.zip || '33000',
+        clientName: targetSim.clientName || targetSim.ownerName || selectedProject?.name || null,
+        installedKwc: targetSim.kwc || targetSim.installedKwc || (targetSim.nbModules ? Math.round(targetSim.nbModules * 0.465 * 10) / 10 : 100),
+        annualProductionKwh: targetSim.annualProductionKwh || (targetSim.kwc ? targetSim.kwc * 1150 : 115000),
+        annualRevenueReventeTotale: targetSim.annualRevenueReventeTotale || targetSim.gainNetAnnuel || 12000,
+        annualBenefitYear1: targetSim.annualBenefitYear1 || targetSim.gainNetAnnuel || 12000,
+        totalInvestmentHT: targetSim.totalInvestmentHT || targetSim.investissementNet || 95000,
+      };
+      setConfigModalSim(enrichedSim);
+      setIsConfigModalOpen(true);
+      return;
+    }
+
+    // Solutions non solaires directes (séchoirs, ombrières de structure, IRVE)
     await generateCommercialOfferPDF({
       simulation: targetSim,
       selectedProject,
       customClientName: targetSim.clientName || (isSechoirSolution ? useSechoirStore.getState().clientName : null) || selectedProject?.name || null
     });
+  };
+
+  // Validation de la modale de configuration et génération du PDF Commercial 4-5 pages
+  const handleConfirmGenerateCommercialProposal = async (configOptions) => {
+    if (!configModalSim) return;
+    try {
+      toast({
+        title: "Génération de l'offre en cours...",
+        description: "Mise en page haute définition de votre dossier commercial (4-5 pages)...",
+      });
+
+      await generateCommercialProposalPDF({
+        simulation: configModalSim,
+        options: {
+          ...configOptions,
+          clientName: configModalSim.clientName || selectedProject?.name || null,
+        },
+        returnBlob: false
+      });
+
+      toast({
+        title: "Offre Commerciale générée !",
+        description: "Le document PDF a été téléchargé avec succès.",
+      });
+      setIsConfigModalOpen(false);
+    } catch (err) {
+      console.error("Erreur lors de la génération de l'offre commerciale :", err);
+      toast({
+        title: "Erreur de génération",
+        description: err.message || "Impossible de générer le PDF commercial.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -747,6 +811,14 @@ export default function IrveSimulator() {
         </div>
 
       </main>
+
+      {/* Modale de paramétrage interactif de l'offre commerciale avant export PDF */}
+      <CommercialOfferConfigModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+        item={configModalSim}
+        onConfirmGenerate={handleConfirmGenerateCommercialProposal}
+      />
 
     </div>
   );
