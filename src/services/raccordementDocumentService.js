@@ -29,6 +29,7 @@ export const INSTALLATION_TYPES = [
   { id: 'ombriere_pl', label: 'Ombrières de parking Poids Lourds (PL)', isPv: true, isBess: false },
   { id: 'pv_sol', label: 'Centrale Solaire au Sol', isPv: true, isBess: false },
   { id: 'bess_standalone', label: 'Stockage Stationnaire par Batterie (BESS Stand-Alone)', isPv: false, isBess: true },
+  { id: 'bess_standalone_hta', label: 'Stockage Stand-Alone HTA — 4× CESC Mercury 261 (500 kW / 1044 kWh)', isPv: false, isBess: true },
   { id: 'hybride_pv_bess', label: 'Centrale Hybride (Solaire PV + Batterie BESS)', isPv: true, isBess: true },
 ];
 

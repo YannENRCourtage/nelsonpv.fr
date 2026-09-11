@@ -69,14 +69,30 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
 
   // Variables calculées
   const powerKwc = parseFloat(project?.kwc || project?.projectSize || formData.puissanceInjectionKva || 0);
-  const isHTA = formData.tension === 'HTA' || powerKwc >= 250;
+  const isBatterySA = project?.isBatterySA || project?.type === 'batterie' || project?.type === 'bess_standalone';
+  const isHTA = formData.tension === 'HTA' || powerKwc >= 250 || isBatterySA;
   const isRTE = formData.tension === 'HTB' || powerKwc >= 10000;
-  const isBess = formData.natureInstallation === 'bess_standalone' || formData.natureInstallation === 'hybride_pv_bess';
+  const isBess = formData.natureInstallation === 'bess_standalone' || formData.natureInstallation === 'bess_standalone_hta' || formData.natureInstallation === 'hybride_pv_bess' || isBatterySA;
+  const isDpValidated = project?.devWorkflow?.dp?.status === 'validated' || project?.dpStatus === 'validated' || project?.stepsState?.dp?.status === 'validated';
 
   // Calcul du délai légal PTF (3 mois)
   const ptfCountdown = useMemo(() => {
     return calculatePtfCountdown(formData.dateReceptionPtf);
   }, [formData.dateReceptionPtf]);
+
+  // Pre-configure Stand-Alone HTA battery projects (500 kW / 4x CESC Mercury 261)
+  useEffect(() => {
+    if (isBatterySA && isOpen) {
+      setFormData(prev => ({
+        ...prev,
+        natureInstallation: 'bess_standalone_hta',
+        tension: 'HTA',
+        typeInjection: 'card_is',
+        puissanceInjectionKva: '500',
+        puissanceSoutirageKva: '500'
+      }));
+    }
+  }, [isBatterySA, isOpen]);
 
   // Gestion des changements de champs
   const handleChange = (e) => {
@@ -95,7 +111,7 @@ export default function RaccordementModal({ isOpen, onClose, project, onSave }) 
 
       // Si choix BESS, ajuster le type d'injection par défaut
       if (name === 'natureInstallation') {
-        if (value === 'bess_standalone' || value === 'hybride_pv_bess') {
+        if (value === 'bess_standalone' || value === 'bess_standalone_hta' || value === 'hybride_pv_bess') {
           if (updated.typeInjection === 'injection_totale') {
             updated.typeInjection = 'card_is';
           }

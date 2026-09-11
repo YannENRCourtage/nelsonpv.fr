@@ -121,14 +121,16 @@ function EmptyState() {
 }
 
 function DPContent({ proj, batteryName, initialQty }) {
-    const [batteryQty, setBatteryQty] = React.useState(initialQty);
+    const isBSA = proj?.isBatterySA || proj?.type === 'batterie' || proj?.type === 'bess_standalone';
+    const [batteryQty, setBatteryQty] = React.useState(isBSA ? 4 : (initialQty || 4));
     const power = batteryQty * 125;
     const capacity = batteryQty * 261;
 
     // Reset quand le projet change
     React.useEffect(() => {
-        setBatteryQty(proj?.battery_quantity || 2);
-    }, [proj?.id]);
+        const qty = proj?.battery_quantity || (isBSA ? 4 : 4);
+        setBatteryQty(qty);
+    }, [proj?.id, isBSA]);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

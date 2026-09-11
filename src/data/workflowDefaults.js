@@ -137,9 +137,53 @@ export const STEP_STATUSES = {
   COMPLETED: 'completed'
 };
 
+export const BSA_WORKFLOW_STEPS = [
+  {
+    id: 'bsa_attente_ptf',
+    label: 'Attente PTF Enedis HTA',
+    type: 'raccordement',
+    icon: 'Clock',
+    description: 'Proposition Technique & Financière Enedis (> 250 kVA / 500 kW)',
+    defaultDurationDays: 90,
+    actions: ['Dépôt dossier HTA', 'Instruction Enedis', 'Réception PTF'],
+    order: 101
+  },
+  {
+    id: 'bsa_paiement_acompte',
+    label: 'Paiement Acompte CRD',
+    type: 'raccordement',
+    icon: 'Euro',
+    description: 'Versement acompte travaux & quote-part S3REnR',
+    defaultDurationDays: 30,
+    actions: ['Validation montant PTF', 'Ordre de virement', 'Confirmation Enedis'],
+    order: 102
+  },
+  {
+    id: 'bsa_consuel_violet',
+    label: 'Demande Consuel Violet',
+    type: 'admin',
+    icon: 'ShieldCheck',
+    description: 'Attestation de conformité Consuel Violet (Stockage BESS)',
+    defaultDurationDays: 60,
+    actions: ['Constitution dossier SC144/Violet', 'Dépôt Consuel', 'Visite de contrôle', 'Obtention Visa'],
+    order: 103
+  },
+  {
+    id: 'bsa_signature_cae_crd',
+    label: 'Signature CAE / CRD',
+    type: 'raccordement',
+    icon: 'FileSignature',
+    description: 'Contrat d\'Accès et Convention de Raccordement Direct HTA',
+    defaultDurationDays: 30,
+    actions: ['Rédaction convention CRD/CAE', 'Signature Enedis & Mandataire', 'Notification mise en service'],
+    order: 104
+  }
+];
+
 export const PROJECT_TYPES = [
   { id: 'batterie', label: 'Batterie de stockage', icon: 'Battery' },
   { id: 'batiment_solaire', label: 'Bâtiment Solaire', icon: 'Building' },
   { id: 'ombriere', label: 'Ombrière de parking', icon: 'Car' },
   { id: 'toiture', label: 'Panneaux en toiture', icon: 'Home' }
 ];
+

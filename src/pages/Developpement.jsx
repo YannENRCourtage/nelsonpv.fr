@@ -21,6 +21,7 @@ import EmailMandatementModal from '@/components/developpement/EmailMandatementMo
 import RaccordementModal from '@/components/developpement/RaccordementModal';
 import AosAoModal from '@/components/developpement/AosAoModal';
 import ConsuelModal from '@/components/developpement/ConsuelModal';
+import BatteryInsertionCompositor from '@/components/developpement/BatteryInsertionCompositor';
 
 // Existing plate components (reused for PDF generation)
 import {
@@ -105,6 +106,7 @@ export default function Developpement() {
   const [raccordementModal, setRaccordementModal] = useState(false);
   const [aosModal, setAosModal] = useState(false);
   const [consuelModal, setConsuelModal] = useState(false);
+  const [batteryCompositorModal, setBatteryCompositorModal] = useState({ open: false, docType: 'DPC6' });
 
   // ── PDF Generation State ────────────────────────────────────────
   const [isGenerating, setIsGenerating] = useState(false);
@@ -690,6 +692,26 @@ export default function Developpement() {
         onClose={() => setConsuelModal(false)}
         project={selectedProject}
         onSave={(data) => handleUpdateProjectData(selectedProject?.id, data)}
+      />
+
+      {/* 6. Modal Incrustation Paysagère Batterie (DPC6/DPC7/DPC8) */}
+      <BatteryInsertionCompositor
+        isOpen={batteryCompositorModal.open}
+        onClose={() => setBatteryCompositorModal({ open: false, docType: 'DPC6' })}
+        initialPhoto={selectedProject?.pc_photos?.apres || selectedProject?.pc_photos?.avant || selectedProject?.pc_photos?.lointain}
+        docType={batteryCompositorModal.docType}
+        onSaveSimulation={(dataUrl) => {
+          handleUpdateProjectData(selectedProject?.id, {
+            pc_photos: {
+              ...(selectedProject?.pc_photos || {}),
+              apres: dataUrl
+            },
+            urbanisme_captures: {
+              ...(selectedProject?.urbanisme_captures || {}),
+              dpc6: dataUrl
+            }
+          });
+        }}
       />
 
       {/* ═══ ZONE DE RENDU HTML2CANVAS POUR LE PDF CERFA ════════════ */}

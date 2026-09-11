@@ -18,15 +18,16 @@ export default function BatteryStationVisualizer({
   const powerKw = Number(batteryStorage.powerKw) || (quantity * 125);
   const capacityKwh = Number(batteryStorage.capacityKwh) || (quantity * 261);
 
-  // Dimensions unitaires d'un container
-  const cLen = Number(batteryStorage.unitLength) || (model.includes('Megapack') ? 7.10 : (model.includes('20ft') ? 6.05 : 3.50));
-  const cWidth = Number(batteryStorage.unitWidth) || (model.includes('Megapack') ? 1.65 : (model.includes('20ft') ? 2.44 : 2.20));
-  const cHeight = Number(batteryStorage.unitHeight) || (model.includes('Megapack') ? 2.80 : (model.includes('20ft') ? 2.59 : 2.60));
+  // Dimensions unitaires d'une armoire CESC Mercury 261
+  const isCescMercury = model.includes('Mercury') || model.includes('261') || batteryStorage.isBatterySA;
+  const cLen = Number(batteryStorage.unitLength) || (isCescMercury ? 1.05 : (model.includes('Megapack') ? 7.10 : (model.includes('20ft') ? 6.05 : 3.50)));
+  const cWidth = Number(batteryStorage.unitWidth) || (isCescMercury ? 0.75 : (model.includes('Megapack') ? 1.65 : (model.includes('20ft') ? 2.44 : 2.20)));
+  const cHeight = Number(batteryStorage.unitHeight) || (isCescMercury ? 2.10 : (model.includes('Megapack') ? 2.80 : (model.includes('20ft') ? 2.59 : 2.60)));
 
-  // Dalle béton totale
-  const dalleLength = Number(batteryStorage.dalleLength) || Math.max(6.0, Number((quantity * (cLen > 4 ? 4.0 : 3.2) + 3.0).toFixed(2)));
-  const dalleWidth = Number(batteryStorage.dalleWidth) || (quantity > 4 ? 8.0 : 6.0);
-  const dalleArea = Math.round(dalleLength * dalleWidth);
+  // Dalle béton totale (strictement < 20 m² pour 4 armoires CESC : 4.50m x 4.40m = 19.80 m²)
+  const dalleLength = Number(batteryStorage.dalleLength) || (isCescMercury ? 4.50 : Math.max(6.0, Number((quantity * (cLen > 4 ? 4.0 : 3.2) + 3.0).toFixed(2))));
+  const dalleWidth = Number(batteryStorage.dalleWidth) || (isCescMercury ? 4.40 : (quantity > 4 ? 8.0 : 6.0));
+  const dalleArea = Number((dalleLength * dalleWidth).toFixed(2));
 
   // Méthode de capture haute résolution
   const handleSnapshot = () => {

@@ -238,7 +238,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
       ombriere:         `Installation d'une structure ombrière photovoltaïque${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
       toiture:          `Installation de modules solaires photovoltaïques en toiture${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
-      batterie:         `Installation d'un système de stockage d'énergie par batterie.`,
+      batterie_standalone: `Installation d'une station de stockage d'énergie par batteries Stand-Alone composée de 4 armoires CESC Mercury 261 (500 kW / 1044 kWh) sur dalle béton (emprise 19.80 m² < 20 m²) ceinturée par un grillage métallique rigide (H 2.00m).`,
+      batterie:         `Installation d'une station de stockage d'énergie par batteries Stand-Alone composée de 4 armoires CESC Mercury 261 (500 kW / 1044 kWh) sur dalle béton (emprise 19.80 m² < 20 m²) ceinturée par un grillage métallique rigide (H 2.00m).`,
     };
 
     let objet = project?.objet_travaux || project?.objetTravaux || project?.description || project?.projectDescription || typeLabels[installationType] || typeLabels[isDP ? 'ombriere' : 'batiment_solaire'];

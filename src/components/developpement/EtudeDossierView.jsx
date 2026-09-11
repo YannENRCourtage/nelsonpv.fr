@@ -274,6 +274,61 @@ export default function EtudeDossierView({
     return s.deadline <= todayStr;
   };
 
+  const isBatterySA = project?.isBatterySA || project?.type === 'batterie' || project?.type === 'bess_standalone';
+
+  const STEPS_CONFIG = useMemo(() => {
+    const base = [...INITIAL_STEPS_CONFIG];
+    if (isBatterySA) {
+      base.push(
+        {
+          id: 'bsa_attente_ptf',
+          zone: 'action_externe',
+          title: 'Attente PTF Enedis HTA',
+          subtitle: 'Instruction Enedis HTA (500 kW / > 250 kVA, délai 3 mois)',
+          icon: Clock,
+          badge: 'Enedis HTA',
+          color: 'border-orange-500 text-orange-600 bg-orange-50',
+          actionLabel: 'Gérer la PTF HTA',
+          actionType: 'raccordement',
+        },
+        {
+          id: 'bsa_paiement_acompte',
+          zone: 'action_externe',
+          title: 'Paiement Acompte CRD',
+          subtitle: 'Règlement acompte travaux & quote-part S3REnR',
+          icon: Zap,
+          badge: 'CRD HTA',
+          color: 'border-indigo-500 text-indigo-600 bg-indigo-50',
+          actionLabel: 'Valider l\'acompte',
+          actionType: 'raccordement',
+        },
+        {
+          id: 'bsa_consuel_violet',
+          zone: 'action_externe',
+          title: 'Consuel Violet (BESS)',
+          subtitle: 'Attestation de conformité pour stockage stationnaire',
+          icon: ShieldCheck,
+          badge: 'Consuel',
+          color: 'border-purple-500 text-purple-600 bg-purple-50',
+          actionLabel: 'Gérer Consuel Violet',
+          actionType: 'consuel',
+        },
+        {
+          id: 'bsa_signature_cae_crd',
+          zone: 'action_externe',
+          title: 'Signature CAE / CRD',
+          subtitle: 'Contrat d\'Accès et Convention de Raccordement Direct',
+          icon: FileText,
+          badge: 'Contractuel',
+          color: 'border-emerald-500 text-emerald-600 bg-emerald-50',
+          actionLabel: 'Gérer CAE/CRD',
+          actionType: 'raccordement',
+        }
+      );
+    }
+    return base;
+  }, [isBatterySA]);
+
   // Gestion du clic d'action sur l'étape
   const handleStepAction = (step) => {
     if (step.actionType === 'urbanisme') {
@@ -281,6 +336,16 @@ export default function EtudeDossierView({
     } else if (step.actionType === 'mandatement') {
       onOpenEmailMandatement(step.mandatementType);
     } else if (step.actionType === 'raccordement') {
+      // Trigger conditionnel Enedis pour projet batterie Stand-Alone
+      const dpStatus = stepsState.dp?.status;
+      if (isBatterySA && dpStatus !== 'validated') {
+        toast({
+          title: 'Demande Enedis verrouillée 🔒',
+          description: 'La demande de raccordement Enedis HTA ne peut être soumise que lorsque le statut de la DP est à "Validée / Arrêté de non-opposition obtenu".',
+          variant: 'destructive',
+        });
+        return;
+      }
       onOpenRaccordementModal();
     } else if (step.actionType === 'aos_ao') {
       onOpenAosModal();
@@ -666,7 +731,7 @@ export default function EtudeDossierView({
           </div>
 
           <div className="flex flex-col gap-2.5">
-            {INITIAL_STEPS_CONFIG.filter(s => s.zone === 'urbanisme').map(renderStepCard)}
+            {STEPS_CONFIG.filter(s => s.zone === 'urbanisme').map(renderStepCard)}
           </div>
         </div>
 
@@ -681,11 +746,11 @@ export default function EtudeDossierView({
           </div>
 
           <div className="flex flex-col gap-2.5">
-            {INITIAL_STEPS_CONFIG.filter(s => s.zone === 'mandatement').map(renderStepCard)}
+            {STEPS_CONFIG.filter(s => s.zone === 'mandatement').map(renderStepCard)}
           </div>
         </div>
 
-        {/* COLONNE 3 : ACTION EXTERNE (Raccordement, AOS/AO, Consuel) */}
+        {/* COLONNE 3 : ACTION EXTERNE (Raccordement, AOS/AO, Consuel + Jalons BSA) */}
         <div className="bg-slate-50/70 rounded-2xl p-3 border border-slate-200/80 flex flex-col gap-2.5 shadow-2xs">
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/70">
             <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
@@ -696,7 +761,7 @@ export default function EtudeDossierView({
           </div>
 
           <div className="flex flex-col gap-2.5">
-            {INITIAL_STEPS_CONFIG.filter(s => s.zone === 'action_externe').map(renderStepCard)}
+            {STEPS_CONFIG.filter(s => s.zone === 'action_externe').map(renderStepCard)}
           </div>
         </div>
       </div>
