@@ -20,6 +20,7 @@ import {
 import { useConfiguratorStore, useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import { cacheMediaLocal, getAllCachedMediaForProject, uploadUrbanismeDataUrl, persistProjectUrbanismeMedia } from '@/services/urbanismeMediaService';
 import { useAuth } from '@/contexts/AuthContext.jsx';
+import { apiService } from '@/services/api';
 import { ControlPanel } from '../configurator/ui/ControlPanel.jsx';
 import { BuildingSummaryCard } from '../configurator/ui/BuildingSummaryCard.jsx';
 import BuildingScene from '../configurator/BuildingScene.jsx';
@@ -1392,6 +1393,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     isSwitchingBuildingRef.current = true;
     
+    const outgoingSol = solutions[solutionType];
+    const outgoingB = outgoingSol?.buildings?.[outgoingSol?.activeBuildingIndex || 0] || outgoingSol?.buildings?.[0];
+
     // 1. Sauvegarder l'état 3D courant dans le bâtiment actif de la solution SORTANTE
     setSolutions(prev => {
       const curSol = prev[solutionType];
@@ -1439,8 +1443,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     if (newSolType === 'battery') {
       const siteCoords = resolveProjectCoordinates(editedProject, project);
-      const refLat = curB?.lat || project?.lat || siteCoords.lat;
-      const refLng = curB?.lng || project?.lng || siteCoords.lng;
+      const refLat = outgoingB?.lat || project?.lat || siteCoords.lat;
+      const refLng = outgoingB?.lng || project?.lng || siteCoords.lng;
 
       setSolutions(sPrev => {
         const curBat = sPrev.battery?.buildings?.[0];
@@ -2681,22 +2685,6 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     });
 
     setBuildings(prev => prev.map(b => b.id === strId ? { ...b, masse_show_dimensions: nextVal } : b));
-    setSolutionStates(prev => {
-      let updated = false;
-      const next = {};
-      for (const [k, v] of Object.entries(prev)) {
-        if (v?.structures?.some(s => s.id === strId)) {
-          updated = true;
-          next[k] = {
-            ...v,
-            structures: v.structures.map(s => s.id === strId ? { ...s, masse_show_dimensions: nextVal } : s)
-          };
-        } else {
-          next[k] = v;
-        }
-      }
-      return updated ? next : prev;
-    });
 
     // Re-capturer immédiatement la vue active avec l'état de cotation choisi
     setTimeout(async () => {
