@@ -5675,7 +5675,16 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       }
       // Pas de GPS : géocoder l'adresse du projet via l'API Adresse nationale
       if (project?.address || project?.zip || project?.city) {
-        const parts = [project.address, project.zip, project.city].filter(p => p && p.trim() !== '');
+        let cleanAddr = (project.address || '').trim();
+        if (project.zip) {
+          cleanAddr = cleanAddr.replace(new RegExp(`\\b${project.zip}\\b`, 'g'), '').trim();
+        }
+        if (project.city) {
+          cleanAddr = cleanAddr.replace(new RegExp(`\\b${project.city}\\b`, 'gi'), '').trim();
+        }
+        cleanAddr = cleanAddr.replace(/[,\s]+$/, '').trim();
+
+        const parts = [cleanAddr, project.zip, project.city].filter(p => p && p.trim() !== '');
         if (parts.length > 0) {
           const fullAddress = parts.join(' ');
           // Géocodage via l'API Adresse
@@ -5692,6 +5701,8 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
                 // Synchroniser les champs GPS avec le résultat du géocodage
                 if (onAddressFound) {
                   onAddressFound({
+                    feature,
+                    properties: feature.properties,
                     label: feature.properties.label,
                     lat: lat,
                     lng: lng

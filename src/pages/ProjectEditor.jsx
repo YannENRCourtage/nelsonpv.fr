@@ -108,20 +108,53 @@ export default function ProjectEditor() {
   const navigate = useNavigate();
   const { projects, setProject, project, updateProject, saveProject } = useProjects();
 
+  const extractCleanAddressParts = (properties = {}, label = '') => {
+    const { name = '', postcode = '', city = '', housenumber = '', street = '', citycode = '' } = properties;
+
+    let cleanStreet = '';
+    if (housenumber && street) {
+      cleanStreet = `${housenumber} ${street}`.trim();
+    } else if (street) {
+      cleanStreet = street.trim();
+    } else if (name) {
+      cleanStreet = name.trim();
+      if (postcode) cleanStreet = cleanStreet.replace(new RegExp(`\\b${postcode}\\b`, 'g'), '').trim();
+      if (city) cleanStreet = cleanStreet.replace(new RegExp(`\\b${city}\\b`, 'gi'), '').trim();
+    } else if (label) {
+      cleanStreet = label.split(',')[0].trim();
+      if (postcode) cleanStreet = cleanStreet.replace(new RegExp(`\\b${postcode}\\b`, 'g'), '').trim();
+      if (city) cleanStreet = cleanStreet.replace(new RegExp(`\\b${city}\\b`, 'gi'), '').trim();
+    }
+
+    cleanStreet = cleanStreet.replace(/[,\s]+$/, '').trim();
+
+    return {
+      address: cleanStreet || (housenumber && street ? `${housenumber} ${street}` : (street || name || label || '')),
+      zip: postcode || '',
+      city: city || '',
+      citycode: citycode || ''
+    };
+  };
+
   const handleAddressSelect = (feature) => {
-    const { name, postcode, city, label } = feature.properties;
-    const [lng, lat] = feature.geometry.coordinates;
+    const props = feature?.properties || {};
+    const { address, zip, city, citycode } = extractCleanAddressParts(props, props.label);
+    const [lng, lat] = feature?.geometry?.coordinates || [];
     const latFmt = typeof lat === 'number' ? Number(lat.toFixed(6)) : parseFloat(lat)?.toFixed(6);
     const lngFmt = typeof lng === 'number' ? Number(lng.toFixed(6)) : parseFloat(lng)?.toFixed(6);
     updateProject({
-      address: name || label.split(',')[0],
-      zip: postcode || '',
-      city: city || '',
-      gps: `${latFmt}, ${lngFmt}`
+      address: address || props.name || '',
+      zip: zip || props.postcode || '',
+      city: city || props.city || '',
+      citycode: citycode || props.citycode || '',
+      inseeCode: citycode || props.citycode || '',
+      gps: latFmt && lngFmt ? `${latFmt}, ${lngFmt}` : (p.gps || '')
     });
-    window.dispatchEvent(new CustomEvent('map:goto-location', {
-      detail: { lat, lng, zoom: 18 }
-    }));
+    if (lat && lng) {
+      window.dispatchEvent(new CustomEvent('map:goto-location', {
+        detail: { lat, lng, zoom: 18 }
+      }));
+    }
   };
 
   // ...
@@ -197,9 +230,19 @@ export default function ProjectEditor() {
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
 
   const handleTriggerSearchPrm = async (customAddress = null) => {
-    const targetAddr = customAddress || p.address;
-    const targetZip = p.zip;
-    const targetCity = p.city;
+    let targetAddr = (customAddress || p.address || '').trim();
+    let targetZip = (p.zip || '').trim();
+    let targetCity = (p.city || '').trim();
+
+    // Élimination des codes postaux ou communes dupliqués dans le champ adresse
+    if (targetZip && targetAddr.includes(targetZip)) {
+      targetAddr = targetAddr.replace(new RegExp(`\\b${targetZip}\\b`, 'g'), '').trim();
+    }
+    if (targetCity && targetAddr.toLowerCase().includes(targetCity.toLowerCase())) {
+      targetAddr = targetAddr.replace(new RegExp(`\\b${targetCity}\\b`, 'gi'), '').trim();
+    }
+    targetAddr = targetAddr.replace(/[,\s]+$/, '').trim();
+
     const company = selectedCompany?.nom_raison_sociale || selectedCompany?.name || p.company || p.name;
     const clientFullName = [p.firstName, p.name].filter(Boolean).join(' ');
 
@@ -220,6 +263,7 @@ export default function ProjectEditor() {
         address: targetAddr,
         zip: targetZip,
         city: targetCity,
+        citycode: p.citycode || p.inseeCode || '',
         companyName: company,
         clientName: clientFullName,
         projectId: p.id
@@ -576,8 +620,22 @@ export default function ProjectEditor() {
   }, [captures, updateProject]);
 
   const handleAddressFound = (location) => {
-    const { label, lat, lng } = location;
-    updateProject({ address: label, gps: `${lat}, ${lng}` });
+    const { label, lat, lng, feature, properties } = location;
+    const props = properties || feature?.properties || {};
+    const { address, zip, city, citycode } = extractCleanAddressParts(props, label);
+
+    const updates = {
+      address: address || label || '',
+      gps: `${lat}, ${lng}`
+    };
+    if (zip) updates.zip = zip;
+    if (city) updates.city = city;
+    if (citycode) {
+      updates.citycode = citycode;
+      updates.inseeCode = citycode;
+    }
+
+    updateProject(updates);
     // Force map to go to this address immediately by passing coords directly
     window.dispatchEvent(new CustomEvent("map:goto-address", { detail: { lat, lng } }));
   };
@@ -2004,7 +2062,7 @@ export default function ProjectEditor() {
                         if (feature) {
                           const [lng, lat] = feature.geometry.coordinates;
                           const label = feature.properties.label;
-                          handleAddressFound({ label, lat, lng });
+                          handleAddressFound({ feature, properties: feature.properties, label, lat, lng });
                         }
                       }
                     } catch (err) { console.error('Address search error', err); }
@@ -2026,7 +2084,7 @@ export default function ProjectEditor() {
                       if (feature) {
                         const [lng, lat] = feature.geometry.coordinates;
                         const label = feature.properties.label;
-                        handleAddressFound({ label, lat, lng });
+                        handleAddressFound({ feature, properties: feature.properties, label, lat, lng });
                       }
                     }
                   } catch (err) { console.error('Address search error', err); }

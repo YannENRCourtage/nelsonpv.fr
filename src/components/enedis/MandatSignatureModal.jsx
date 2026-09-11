@@ -106,8 +106,17 @@ export default function MandatSignatureModal({
     setPrmCandidates([]);
     setAmbiguityModalOpen(true); // Ouvre la modale immédiatement pour afficher le spinner
     try {
+      let targetAddr = (clientAddress || '').trim();
+      if (clientZip && targetAddr.includes(clientZip)) {
+        targetAddr = targetAddr.replace(new RegExp(`\\b${clientZip}\\b`, 'g'), '').trim();
+      }
+      if (clientCity && targetAddr.toLowerCase().includes(clientCity.toLowerCase())) {
+        targetAddr = targetAddr.replace(new RegExp(`\\b${clientCity}\\b`, 'gi'), '').trim();
+      }
+      targetAddr = targetAddr.replace(/[,\s]+$/, '').trim();
+
       const res = await enedisService.searchPrm({
-        address: clientAddress,
+        address: targetAddr,
         zip: clientZip,
         city: clientCity,
         companyName: clientCompany,

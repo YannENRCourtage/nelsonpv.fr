@@ -1462,8 +1462,170 @@ async function fetchSireneCompaniesAtAddress({ address = '', numVoie = '', nomVo
 }
 
 /**
+ * Normalise une chaîne de caractères pour l'API Enedis SGE Tiers :
+ * - Passage en majuscules (UPPERCASE)
+ * - Suppression stricte des accents et diacritiques (ASCII)
+ * - Remplacement de la ponctuation (apostrophes, etc.) par des espaces
+ * - Nettoyage des espaces multiples
+ */
+function normalizeEnedisText(str = '') {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Supprime les diacritiques
+    .toUpperCase()
+    .replace(/['’`]/g, ' ')           // Remplace apostrophes par un espace
+    .replace(/[^A-Z0-9\s-]/g, ' ')   // Conserve uniquement lettres, chiffres, tirets, espaces
+    .replace(/\s+/g, ' ')             // Compacte les espaces consécutifs
+    .trim();
+}
+
+/**
+ * Interroge l'API Base Adresse Nationale (BAN) en pre-flight
+ * pour découper et normer strictement l'adresse saisie :
+ * housenumber, street, postcode, city, citycode (INSEE).
+ */
+async function queryBanAddress(rawQuery = '', zipHint = '', cityHint = '') {
+  try {
+    let clean = (rawQuery || '').toString().trim();
+    // Élimination des codes postaux répétés (ex: "17100 ... 17100")
+    clean = clean.replace(/\b(\d{5})\b(?=.*\b\1\b)/g, '').replace(/\s+/g, ' ').trim();
+
+    if (!clean && (zipHint || cityHint)) {
+      clean = `${zipHint} ${cityHint}`.trim();
+    }
+
+    if (!clean) return null;
+
+    let url = `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(clean)}&limit=1`;
+    if (zipHint && /^\d{5}$/.test(zipHint.trim())) {
+      url += `&postcode=${zipHint.trim()}`;
+    }
+
+    const res = await axios.get(url, {
+      timeout: 6000,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible; NelsonSolar/1.0; +https://nelsonpv.fr)'
+      }
+    });
+
+    const feature = res.data?.features?.[0];
+    if (!feature || !feature.properties) {
+      return null;
+    }
+
+    const p = feature.properties;
+    return {
+      housenumber: p.housenumber || '',
+      street: p.street || (p.type === 'street' || p.type === 'locality' ? p.name : '') || '',
+      postcode: p.postcode || '',
+      city: p.city || '',
+      citycode: p.citycode || '',
+      label: p.label || '',
+      score: p.score || 0
+    };
+  } catch (err) {
+    console.warn('[Search PRM - BAN Pre-flight warning]:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Exécute une requête de recherche de points de livraison auprès de l'API Enedis
+ * (avec repli POST -> GET si le profil Enedis n'expose que la méthode GET)
+ */
+async function queryEnedisPointsDeLivraison({
+  baseUrl,
+  token,
+  numVoie,
+  nomVoie,
+  codePostal,
+  commune,
+  codeInsee,
+  complement,
+  companyName,
+  clientName,
+  meterSerial,
+  predecessor
+}) {
+  const searchPayload = {
+    adresse: {
+      numero_voie: numVoie || undefined,
+      nom_voie: nomVoie || undefined,
+      code_postal: codePostal || undefined,
+      commune: commune || undefined,
+      code_insee_commune: codeInsee || undefined,
+      complement_adresse: complement || undefined
+    },
+    raison_sociale: companyName || undefined,
+    nom_client: clientName || undefined,
+    matricule_compteur: meterSerial || undefined,
+    predecesseur: predecessor || undefined
+  };
+
+  try {
+    const enedisRes = await axios.post(
+      `${baseUrl}/v1/points_de_livraison/recherche`,
+      searchPayload,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+
+    if (Array.isArray(enedisRes.data?.points_de_livraison)) {
+      return enedisRes.data.points_de_livraison;
+    } else if (Array.isArray(enedisRes.data)) {
+      return enedisRes.data;
+    }
+    return [];
+  } catch (postErr) {
+    // Repli GET /v1/points_de_livraison si POST n'est pas configuré sur ce profil Enedis
+    if (postErr.response?.status === 404 || postErr.response?.status === 405) {
+      try {
+        const getRes = await axios.get(`${baseUrl}/v1/points_de_livraison`, {
+          params: {
+            code_postal: codePostal || undefined,
+            commune: commune || undefined,
+            nom_voie: nomVoie || undefined,
+            numero_voie: numVoie || undefined,
+            code_insee_commune: codeInsee || undefined
+          },
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          },
+          timeout: 8000
+        });
+        if (Array.isArray(getRes.data?.points_de_livraison)) {
+          return getRes.data.points_de_livraison;
+        } else if (Array.isArray(getRes.data)) {
+          return getRes.data;
+        }
+        return [];
+      } catch (getErr) {
+        if (getErr.response?.status === 404) {
+          return [];
+        }
+        throw getErr;
+      }
+    }
+    if (postErr.response?.status === 404) {
+      return [];
+    }
+    throw postErr;
+  }
+}
+
+/**
  * Route handler : /api/enedis/search-prm
  * Recherche de PRM par critères géographiques, adresse et croisement d'entreprise (Anti-doublon)
+ * Intègre un pré-vol BAN obligatoire, la normalisation stricte Enedis et un fallback automatique à la rue.
  */
 async function handleSearchPrm(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -1477,6 +1639,8 @@ async function handleSearchPrm(req, res) {
     streetName = '',
     zip = '',
     city = '',
+    citycode = '',
+    inseeCode = '',
     complement = '',
     companyName = '',
     clientName = '',
@@ -1487,101 +1651,135 @@ async function handleSearchPrm(req, res) {
     autoSave = true
   } = params;
 
-  // Extraction intelligente du numéro et du nom de voie
-  let numVoie = (streetNumber || '').toString().trim();
-  let nomVoie = (streetName || '').toString().trim();
-  let codePostal = (zip || '').toString().trim();
-  let commune = (city || '').toString().trim();
+  // 1. Nettoyage de l'adresse brute et suppression des doublons de code postal / ville
+  let cleanAddress = (address || '').trim();
+  const rawZip = (zip || '').toString().trim();
+  const rawCity = (city || '').toString().trim();
 
-  if (!nomVoie && address) {
-    const match = address.trim().match(/^(\d+(?:\s*(?:bis|ter|quater|[a-z]))?)\s*,?\s+(.+)$/i);
+  cleanAddress = cleanAddress.replace(/\b(\d{5})\b(?=.*\b\1\b)/g, '').replace(/\s+/g, ' ').trim();
+  if (rawZip && cleanAddress.includes(rawZip)) {
+    const zipRegex = new RegExp(`\\b${rawZip}\\b`, 'g');
+    const matches = cleanAddress.match(zipRegex) || [];
+    if (matches.length > 1) {
+      let seen = false;
+      cleanAddress = cleanAddress.replace(zipRegex, (match) => {
+        if (!seen) { seen = true; return match; }
+        return '';
+      }).replace(/\s+/g, ' ').trim();
+    }
+  }
+
+  // 2. Pre-flight obligatoire via l'API BAN (Base Adresse Nationale)
+  const banQueryParts = [cleanAddress];
+  if (rawZip && !cleanAddress.includes(rawZip)) banQueryParts.push(rawZip);
+  if (rawCity && !cleanAddress.toLowerCase().includes(rawCity.toLowerCase())) banQueryParts.push(rawCity);
+  const banQuery = banQueryParts.join(' ').trim();
+
+  const banData = await queryBanAddress(banQuery, rawZip, rawCity);
+
+  // Extraction et découpage strict des composants
+  let numVoie = (banData?.housenumber || streetNumber || '').toString().trim();
+  let nomVoie = (banData?.street || streetName || '').toString().trim();
+  let codePostal = (banData?.postcode || rawZip || '').toString().trim();
+  let commune = (banData?.city || rawCity || '').toString().trim();
+  let codeInsee = (banData?.citycode || citycode || inseeCode || '').toString().trim();
+
+  // Repli parsing manuel si BAN indisponible ou n'a pas identifié de rue
+  if (!nomVoie && cleanAddress) {
+    const match = cleanAddress.match(/^(\d+(?:\s*(?:bis|ter|quater|[a-z]))?)\s*,?\s+(.+)$/i);
     if (match) {
       numVoie = numVoie || match[1];
       nomVoie = match[2];
     } else {
-      nomVoie = address.trim();
+      nomVoie = cleanAddress;
     }
   }
 
-  if (!codePostal && !commune && !address) {
+  // Nettoyage de nomVoie : s'assurer qu'aucun code postal ni commune n'est collé dans le nom de rue
+  if (codePostal && nomVoie.includes(codePostal)) {
+    nomVoie = nomVoie.replace(new RegExp(`\\b${codePostal}\\b`, 'g'), '').trim();
+  }
+  if (commune && nomVoie.toLowerCase().includes(commune.toLowerCase())) {
+    nomVoie = nomVoie.replace(new RegExp(`\\b${commune}\\b`, 'gi'), '').trim();
+  }
+  nomVoie = nomVoie.replace(/^[,\s]+|[,\s]+$/g, '').trim();
+
+  if (!codePostal && !commune && !nomVoie) {
     return res.status(400).json({
       error: 'L\'adresse, le code postal ou la commune est obligatoire pour rechercher un PRM.'
     });
   }
+
+  // 3. Normalisation stricte pour l'API Enedis (ASCII, majuscules, sans accents)
+  const normNumVoie = numVoie.trim();
+  const normNomVoie = normalizeEnedisText(nomVoie);
+  const normCodePostal = codePostal.trim();
+  const normCommune = normalizeEnedisText(commune);
+  const normCodeInsee = codeInsee.trim();
 
   try {
     let rawCandidates = [];
     let enedisApiCalled = false;
     let apiError = null;
     let sireneCompanies = [];
+    let isFallbackStreetSearch = false;
 
     // Interrogation concurrente : API Sirene & API Enedis live
     const [sireneResults, enedisResults] = await Promise.all([
-      fetchSireneCompaniesAtAddress({ address, numVoie, nomVoie, zip: codePostal, city: commune }),
+      fetchSireneCompaniesAtAddress({
+        address: `${normNumVoie} ${nomVoie}`.trim(),
+        numVoie: normNumVoie,
+        nomVoie,
+        zip: normCodePostal,
+        city: commune
+      }),
       (async () => {
         try {
           const token = await getOrRefreshTiersToken(env);
           const baseUrl = getBaseUrl(env);
           enedisApiCalled = true;
 
-          const searchPayload = {
-            adresse: {
-              numero_voie: numVoie || undefined,
-              nom_voie: nomVoie || undefined,
-              code_postal: codePostal || undefined,
-              commune: commune || undefined,
-              complement_adresse: complement || undefined
-            },
-            raison_sociale: companyName || undefined,
-            nom_client: clientName || undefined,
-            matricule_compteur: meterSerial || undefined,
-            predecesseur: predecessor || undefined
-          };
+          // TENTATIVE 1 : Recherche exacte avec numéro de voie (si présent)
+          let candidates = await queryEnedisPointsDeLivraison({
+            baseUrl,
+            token,
+            numVoie: normNumVoie || undefined,
+            nomVoie: normNomVoie || undefined,
+            codePostal: normCodePostal || undefined,
+            commune: normCommune || undefined,
+            codeInsee: normCodeInsee || undefined,
+            complement,
+            companyName,
+            clientName,
+            meterSerial,
+            predecessor
+          });
 
-          try {
-            const enedisRes = await axios.post(
-              `${baseUrl}/v1/points_de_livraison/recherche`,
-              searchPayload,
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json'
-                },
-                timeout: 10000
-              }
-            );
+          // TENTATIVE 2 (FALLBACK RUE) : Si 0 résultat avec numéro exact, relancer sans numéro de voie
+          if (candidates.length === 0 && normNumVoie && normNomVoie) {
+            console.log(`[Search PRM] Tentative 1 (n°${normNumVoie} ${normNomVoie}) infructueuse. Lancement du fallback voie : ${normNomVoie} à ${normCommune}...`);
+            const fallbackCandidates = await queryEnedisPointsDeLivraison({
+              baseUrl,
+              token,
+              numVoie: undefined, // élargissement à toute la rue
+              nomVoie: normNomVoie || undefined,
+              codePostal: normCodePostal || undefined,
+              commune: normCommune || undefined,
+              codeInsee: normCodeInsee || undefined,
+              complement,
+              companyName,
+              clientName,
+              meterSerial,
+              predecessor
+            });
 
-            if (Array.isArray(enedisRes.data?.points_de_livraison)) {
-              return enedisRes.data.points_de_livraison;
-            } else if (Array.isArray(enedisRes.data)) {
-              return enedisRes.data;
+            if (fallbackCandidates.length > 0) {
+              isFallbackStreetSearch = true;
+              return fallbackCandidates;
             }
-            return [];
-          } catch (postErr) {
-            // Repli GET /v1/points_de_livraison si POST n'est pas configuré sur ce profil Enedis
-            if (postErr.response?.status === 404 || postErr.response?.status === 405) {
-              const getRes = await axios.get(`${baseUrl}/v1/points_de_livraison`, {
-                params: {
-                  code_postal: codePostal || undefined,
-                  commune: commune || undefined,
-                  nom_voie: nomVoie || undefined,
-                  numero_voie: numVoie || undefined
-                },
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Accept': 'application/json'
-                },
-                timeout: 8000
-              });
-              if (Array.isArray(getRes.data?.points_de_livraison)) {
-                return getRes.data.points_de_livraison;
-              } else if (Array.isArray(getRes.data)) {
-                return getRes.data;
-              }
-            }
-            throw postErr;
           }
+
+          return candidates;
         } catch (err) {
           apiError = err.response?.data?.error || err.message;
           console.warn(`[Search PRM] Enedis live consultation error: ${apiError}`);
@@ -1594,11 +1792,25 @@ async function handleSearchPrm(req, res) {
     rawCandidates = enedisResults || [];
 
     // Si Enedis ne renvoie aucun compteur à cette adresse :
-    // Respect strict des exigences : AUCUN faux candidat simulé généré !
     if (rawCandidates.length === 0) {
       return res.status(200).json({
         success: true,
-        query: { numVoie, nomVoie, codePostal, commune, companyName, clientName },
+        query: {
+          numVoie: normNumVoie,
+          nomVoie: normNomVoie,
+          codePostal: normCodePostal,
+          commune: normCommune,
+          codeInsee: normCodeInsee,
+          companyName,
+          clientName
+        },
+        banNormalized: {
+          housenumber: banData?.housenumber || '',
+          street: banData?.street || '',
+          postcode: banData?.postcode || '',
+          city: banData?.city || '',
+          citycode: banData?.citycode || ''
+        },
         enedisApiCalled,
         apiError: apiError || null,
         status: 'NOT_FOUND',
@@ -1606,7 +1818,8 @@ async function handleSearchPrm(req, res) {
         candidates: [],
         sireneCompanies,
         isAmbiguous: false,
-        message: 'Aucun compteur trouvé à cette adresse exacte. Veuillez saisir le PRM manuellement.',
+        isFallbackStreetSearch: false,
+        message: 'Aucun compteur trouvé à cette adresse. Veuillez saisir le PRM manuellement.',
         savedToProject: false
       });
     }
@@ -1671,12 +1884,13 @@ async function handleSearchPrm(req, res) {
         usage_point_id: prm,
         prm,
         adresse: {
-          numero_voie: raw.adresse?.numero_voie || numVoie,
-          nom_voie: raw.adresse?.nom_voie || nomVoie,
-          code_postal: raw.adresse?.code_postal || codePostal,
-          commune: raw.adresse?.commune || commune,
+          numero_voie: raw.adresse?.numero_voie || (isFallbackStreetSearch ? '' : normNumVoie),
+          nom_voie: raw.adresse?.nom_voie || normNomVoie,
+          code_postal: raw.adresse?.code_postal || normCodePostal,
+          commune: raw.adresse?.commune || normCommune,
           complement_adresse: complement
         },
+        isFallbackStreetSearch,
         matricule,
         puissance_souscrite_kva: powerKva,
         segment,
@@ -1729,14 +1943,21 @@ async function handleSearchPrm(req, res) {
     const matchResult = matchAndDisambiguatePrms(normalizedCandidates, {
       companyName: matchedSireneCompany?.nomRaisonSociale || companyName,
       clientName,
-      address: `${numVoie} ${nomVoie}`.trim(),
-      zip: codePostal,
-      city: commune
+      address: `${normNumVoie} ${normNomVoie}`.trim(),
+      zip: normCodePostal,
+      city: normCommune
     });
 
-    // Auto-sauvegarde immédiate dans Firestore si projectId fourni et haute certitude
+    // Si on est en repli sur la voie, forcer le statut STREET_FALLBACK et exiger la validation utilisateur
+    if (isFallbackStreetSearch) {
+      matchResult.status = 'STREET_FALLBACK';
+      matchResult.isAmbiguous = true;
+      matchResult.message = `Recherche élargie : aucun compteur au n°${normNumVoie}. ${matchResult.candidates.length} compteur(s) trouvé(s) sur la voie (${normNomVoie}). Veuillez sélectionner le compteur de votre client.`;
+    }
+
+    // Auto-sauvegarde immédiate dans Firestore UNIQUEMENT si certitude absolue et PAS en fallback rue
     let savedToProject = false;
-    if (autoSave && projectId && projectId !== 'admin_test' && matchResult.status === 'HIGH_CONFIDENCE' && matchResult.selectedPrm?.prm) {
+    if (autoSave && projectId && projectId !== 'admin_test' && !isFallbackStreetSearch && matchResult.status === 'HIGH_CONFIDENCE' && matchResult.selectedPrm?.prm) {
       try {
         const db = getAdminDb();
         await db.collection('projects').doc(projectId).set({
@@ -1755,7 +1976,22 @@ async function handleSearchPrm(req, res) {
 
     return res.status(200).json({
       success: true,
-      query: { numVoie, nomVoie, codePostal, commune, companyName, clientName },
+      query: {
+        numVoie: normNumVoie,
+        nomVoie: normNomVoie,
+        codePostal: normCodePostal,
+        commune: normCommune,
+        codeInsee: normCodeInsee,
+        companyName,
+        clientName
+      },
+      banNormalized: {
+        housenumber: banData?.housenumber || '',
+        street: banData?.street || '',
+        postcode: banData?.postcode || '',
+        city: banData?.city || '',
+        citycode: banData?.citycode || ''
+      },
       enedisApiCalled,
       apiError: apiError || null,
       status: matchResult.status,
@@ -1763,6 +1999,7 @@ async function handleSearchPrm(req, res) {
       candidates: matchResult.candidates,
       sireneCompanies,
       isAmbiguous: matchResult.isAmbiguous,
+      isFallbackStreetSearch,
       message: matchResult.message,
       savedToProject
     });

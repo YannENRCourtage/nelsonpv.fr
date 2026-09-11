@@ -86,8 +86,12 @@ export default function PrmSelectionModal({
     return `${s.slice(0, 2)} ${s.slice(2, 5)} ${s.slice(5, 8)} ${s.slice(8, 11)} ${s.slice(11, 14)}`.trim();
   };
 
+  const isFallback = candidates.some(c => c.isFallbackStreetSearch);
+
   const modalTitle = isLoading
     ? 'Recherche de compteurs Enedis & Sirene'
+    : isFallback
+    ? 'Recherche élargie à la voie (aucun compteur au numéro exact)'
     : candidates.length === 0
     ? 'Recherche de compteur Enedis'
     : candidates.length === 1
@@ -210,6 +214,21 @@ export default function PrmSelectionModal({
         {/* 4. ÉTAT LISTE DES COMPTEURS CANDIDATS */}
         {!isLoading && candidates.length > 0 && (
           <>
+            {/* Bannière explicative si repli / recherche élargie à la voie */}
+            {isFallback && (
+              <div className="px-6 py-2.5 bg-amber-950/40 border-b border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-300">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold text-white">
+                    Recherche élargie à la voie (numéro exact introuvable)
+                  </p>
+                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                    Aucun compteur n'a été recensé au numéro exact. Voici les compteurs identifiés sur l'ensemble de la voie : sélectionnez le compteur de votre client.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Message d'aide */}
             <div className="px-6 pt-4 pb-2 bg-slate-900/60 border-b border-slate-800/60">
               <div className="flex items-center gap-2 text-xs text-slate-300">
@@ -279,6 +298,23 @@ export default function PrmSelectionModal({
                             </Badge>
                           )}
                         </div>
+
+                        {/* Adresse spécifique du compteur si renseignée */}
+                        {cand.adresse && (cand.adresse.numero_voie || cand.adresse.nom_voie) && (
+                          <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
+                              Voie
+                            </span>
+                            <span className="text-white font-medium">
+                              {[cand.adresse.numero_voie, cand.adresse.nom_voie].filter(Boolean).join(' ')}
+                            </span>
+                            {(cand.adresse.code_postal || cand.adresse.commune) && (
+                              <span className="text-slate-400 text-[11px]">
+                                ({[cand.adresse.code_postal, cand.adresse.commune].filter(Boolean).join(' ')})
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {/* Titulaire / Raison Sociale croisée Sirene ou Résidentiel RGPD */}
                         <div className="flex flex-wrap items-center gap-2 text-xs">

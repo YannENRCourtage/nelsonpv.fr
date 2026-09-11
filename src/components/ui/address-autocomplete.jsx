@@ -65,10 +65,25 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
   }, [query]);
 
   const handleSelect = (feature) => {
-    const label = feature.properties.name || feature.properties.label;
+    const props = feature?.properties || {};
+    let label = '';
+    if (props.housenumber && props.street) {
+      label = `${props.housenumber} ${props.street}`.trim();
+    } else if (props.street) {
+      label = props.street.trim();
+    } else if (props.name) {
+      label = props.name.trim();
+      if (props.postcode) label = label.replace(new RegExp(`\\b${props.postcode}\\b`, 'g'), '').trim();
+      if (props.city) label = label.replace(new RegExp(`\\b${props.city}\\b`, 'gi'), '').trim();
+    } else {
+      label = props.label || '';
+      if (props.postcode) label = label.replace(new RegExp(`\\b${props.postcode}\\b`, 'g'), '').trim();
+    }
+    label = label.replace(/[,\s]+$/, '').trim();
+
     isUserTypingRef.current = false;
     isSelectedRef.current = true;
-    setQuery(label);
+    setQuery(label || props.name || props.label || '');
     setSuggestions([]);
     setIsOpen(false);
     onSelect(feature);
