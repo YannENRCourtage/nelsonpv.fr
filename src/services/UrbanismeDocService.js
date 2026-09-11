@@ -20,11 +20,11 @@ export function getInstallationTypeInfo(type, kwc, isNoBattery = false) {
     };
   }
 
-  if (t.includes('batterie')) {
+  if (t.includes('batterie') || t.includes('battery')) {
     return {
-      title: 'Système de stockage par batterie',
-      subtitle: kwcSubtitle,
-      cerfaText: `Installation d'un système de stockage d'énergie par batterie`,
+      title: "Station de stockage d'énergie par batteries Stand-Alone",
+      subtitle: "Puissance nominale : 500 kW — 4 armoires CESC Mercury 261",
+      cerfaText: "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide",
       code: 'BATTERIE',
       isNewConstruction: true,
     };
@@ -136,8 +136,11 @@ async function drawCoverPage(doc, project, type, installationType) {
   const puissanceVal = rawKwcVal ? (String(rawKwcVal).includes('kWc') ? String(rawKwcVal) : `${rawKwcVal} kWc`) : '—';
   // Dynamic type label based on configured buildings
   const isDP = type === 'dp';
-  let installCode = project?.urbanismeType || project?.typeLabel || project?.installationType || (isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière');
-  if (!project?.urbanismeType && !project?.typeLabel && !project?.installationType) {
+  const isBattery = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone) || Boolean(project?.isBattery);
+  let installCode = project?.urbanismeType || project?.typeLabel || project?.installationType;
+  if (isBattery) {
+    installCode = 'Station Batteries Stand-Alone (500 kW)';
+  } else if (!installCode) {
     const projectBuildings = project?.buildings || [];
     if (isDP) {
       installCode = projectBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
@@ -152,7 +155,7 @@ async function drawCoverPage(doc, project, type, installationType) {
   const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
   const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
   const isNoBattery = isAcama || isGreenInvest;
-  if (!isNoBattery && project?.batteryStorage?.enabled) {
+  if (!isNoBattery && !isBattery && project?.batteryStorage?.enabled) {
     installCode += ' + Stockage batterie';
   }
 
@@ -259,11 +262,15 @@ async function drawCoverPage(doc, project, type, installationType) {
   });
   
   // Utiliser le texte personnalisé saisi ou synthétique
-  const objetText = (project?.objet_travaux || project?.objetTravaux)
+  let objetText = (project?.objet_travaux || project?.objetTravaux)
     ? (project.objet_travaux || project.objetTravaux)
     : (project?.description && !project.description.includes("NOTICE D'INSERTION") && !project.description.includes('1- OBJET') && project.description.length < 350)
       ? project.description
       : typeInfo.cerfaText;
+
+  if (isBattery && (!project?.objet_travaux && !project?.objetTravaux)) {
+    objetText = "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
+  }
 
   // Largeur maximale : ~112 caractères par ligne sur 550 pt de largeur utile
   const descLines = wrapText(objetText, 112);
@@ -417,13 +424,36 @@ export async function generateFullUrbanismePDF({ type, project, installationType
       if (onProgress) onProgress('Pré-remplissage du formulaire CERFA...');
 
       try {
-        const cerfaUrl = type === 'pc'
-          ? '/templates/cerfa_13404.pdf'
-          : '/cerfa_DPC_16702_03.pdf';
+        let cerfaUrl;
+        if (type === 'pc') {
+          cerfaUrl = '/templates/cerfa_13404.pdf';
+        } else {
+          // Déclaration Préalable (DP) : Routage dynamique Cerfa 13703 (Résidentiel) vs Cerfa 16702 (Agricole / Tertiaire / Pro)
+          const isResidential =
+            String(project?.category || '').toLowerCase().includes('resid') ||
+            String(project?.category || '').toLowerCase().includes('maison') ||
+            String(project?.segment || '').toLowerCase().includes('resid') ||
+            String(project?.segment || '').toLowerCase().includes('particulier') ||
+            String(project?.type || '').toLowerCase().includes('resid') ||
+            String(project?.type || '').toLowerCase().includes('maison') ||
+            String(project?.clientCategory || '').toLowerCase().includes('resid') ||
+            String(project?.clientCategory || '').toLowerCase().includes('particulier') ||
+            String(project?.typologie || '').toLowerCase().includes('resid') ||
+            String(project?.typologie || '').toLowerCase().includes('maison') ||
+            String(project?.destination || '').toLowerCase().includes('maison') ||
+            String(project?.destination || '').toLowerCase().includes('resid') ||
+            project?.cerfaModel === '13703';
 
+          cerfaUrl = isResidential
+            ? '/templates/cerfa_13703.pdf'
+            : '/cerfa_DPC_16702_03.pdf';
+        }
+
+        const isBat = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone);
         const cerfaType = type === 'cu' ? 'cu' : type === 'pc' ? 'pc' : 'dp';
+        const effInstallType = isBat ? 'batterie_standalone' : (installationType || 'batiment_solaire');
 
-        const filledCerfaBytes = await smartFillCerfa(cerfaUrl, project, cerfaType, installationType || 'batiment_solaire', plateIds);
+        const filledCerfaBytes = await smartFillCerfa(cerfaUrl, project, cerfaType, effInstallType, plateIds);
         if (filledCerfaBytes) {
           const cerfaDoc = await PDFDocument.load(filledCerfaBytes);
           const cerfaPages = await finalDoc.copyPages(cerfaDoc, cerfaDoc.getPageIndices());

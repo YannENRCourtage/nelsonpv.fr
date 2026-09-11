@@ -160,7 +160,13 @@ export const PlateCover = ({ project, installationType }) => {
                         <div>{project?.zip || project?.zipCode || ''} {project?.city || project?.commune || ''}</div>
                         <div style={{ marginTop: '2mm', fontWeight: 'bold', color: '#00429d' }}>DESCRIPTIF SOMMAIRE :</div>
                         <div style={{ fontSize: '8.5pt', color: '#334155' }}>
-                            {project?.description || (isNoBattery ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque d'une puissance de ${project?.kwc || 100} kWc.` : `Installation d'une ombrière photovoltaïque en structure métallique d'une puissance de ${project?.kwc || 100} kWc.`)}
+                            {(() => {
+                                const isBat = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone) || Boolean(project?.isBattery);
+                                if (isBat) {
+                                    return "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
+                                }
+                                return project?.description || (isNoBattery ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque d'une puissance de ${project?.kwc || 100} kWc.` : `Installation d'une ombrière photovoltaïque en structure métallique d'une puissance de ${project?.kwc || 100} kWc.`);
+                            })()}
                         </div>
                     </div>
                 </div>

@@ -242,11 +242,19 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       batterie:         `Installation d'une station de stockage d'énergie par batteries Stand-Alone composée de 4 armoires CESC Mercury 261 (500 kW / 1044 kWh) sur dalle béton (emprise 19.80 m² < 20 m²) ceinturée par un grillage métallique rigide (H 2.00m).`,
     };
 
-    let objet = project?.objet_travaux || project?.objetTravaux || project?.description || project?.projectDescription || typeLabels[installationType] || typeLabels[isDP ? 'ombriere' : 'batiment_solaire'];
-    if (isDP && objet && typeof objet === 'string') {
-      objet = objet.replace(/bâtiment\s+agricole/gi, 'ombrière photovoltaïque').replace(/bâtiments/gi, 'ombrières').replace(/bâtiment/gi, 'ombrière').replace(/Bâtiment/g, 'Ombrière');
+    const isBat = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone) || Boolean(project?.isBattery);
+    let objet = project?.objet_travaux || project?.objetTravaux;
+    if (!objet) {
+      if (isBat) {
+        objet = "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
+      } else {
+        objet = project?.description || project?.projectDescription || typeLabels[installationType] || typeLabels[isDP ? 'ombriere' : 'batiment_solaire'];
+        if (isDP && objet && typeof objet === 'string') {
+          objet = objet.replace(/bâtiment\s+agricole/gi, 'ombrière photovoltaïque').replace(/bâtiments/gi, 'ombrières').replace(/bâtiment/gi, 'ombrière').replace(/Bâtiment/g, 'Ombrière');
+        }
+      }
     }
-    if (rawKwc && kwcStr && !objet.includes(kwcStr)) {
+    if (rawKwc && kwcStr && !objet.includes(kwcStr) && !isBat) {
       objet = objet.replace(/\d+\s*kWc/gi, kwcStr);
     }
     const isNewConstruction = !['toiture'].includes(installationType);
@@ -397,15 +405,24 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       } else {
         setCheck(['topmostSubform[0].Page4[0].C2ZB1_existante[0]', 'topmostSubform[0].Page5[0].C2ZB1_existante[0]', 'C2ZB1_existante'], true);
       }
+      if (isBat) {
+        setCheck(['C2ZC3_cloture', 'topmostSubform[0].Page4[0].C2ZC3_cloture[0]'], true);
+        setField(['C2ZA7_autres'], 'Station technique de stockage batteries', 9);
+      }
       setField(fieldMap.description,    objet, 9.5);
 
-      // 5. Puissance crête (ex: 256) & Matériaux
-      if (cleanKwcVal) {
+      // 5. Puissance crête (ex: 500 kW) & Matériaux
+      if (isBat) {
+        setField(['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'], '500', 9.5);
+        setField(['topmostSubform[0].Page5[0].C2ZP1_crete[0]', 'C2ZP1_crete'], '500', 9.5);
+        setCheck(['C6ZL2_metal'], true);
+        setCheck(['C6ZL5_beton'], true);
+      } else if (cleanKwcVal) {
         setField(['topmostSubform[0].Page5[0].C2ZP1_crete[0]', 'C2ZP1_crete'], cleanKwcVal, 9.5);
         setField(['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'], cleanKwcVal, 9.5);
       }
-      // Cocher "Métal" pour les structures ombrières métalliques
-      if (isDP || installationType === 'ombriere' || installationType === 'batiment_solaire') {
+      // Cocher "Métal" pour les structures ombrières métalliques ou containers
+      if (isDP || isBat || installationType === 'ombriere' || installationType === 'batiment_solaire') {
         setCheck(['C6ZL2_metal'], true);
       }
 
@@ -416,6 +433,11 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
 
       // 7. Bordereau des pièces jointes
       const plateList = Array.isArray(plateIds) ? plateIds : [];
+
+      let isCerfa13703 = false;
+      try {
+        isCerfa13703 = Boolean(form.getCheckBox('P5PA1') && (form.getCheckBox('P4GF1') || form.getCheckBox('P4MA1')));
+      } catch (_) {}
 
       if (isCerfa16702_03) {
         CERFA_16702_03_ALL_BORDEREAU.forEach(name => setCheck(name, false));
@@ -456,6 +478,27 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         if (plateList.some(id => id.includes('notice') || id.includes('dp11') || id.includes('pc11'))) {
           setCheck('P4CD1', true);
         }
+      } else if (isCerfa13703) {
+        ['P5PA1', 'P5PB1', 'P4GE1', 'P4GF1', 'P5PC1', 'P4EG1', 'P4HG1', 'P4MA1', 'P8EA1', 'P4CD1'].forEach(name => setCheck(name, false));
+
+        // DP1 : Plan de situation
+        if (plateList.some(id => id.includes('situation')) || plateList.length > 0) setCheck('P5PA1', true);
+        // DP2 : Plan de masse
+        if (plateList.some(id => id.includes('masse')) || plateList.length > 0) setCheck('P5PB1', true);
+        // DP3 : Plan en coupe
+        if (plateList.some(id => id.includes('section') || id.includes('coupe'))) setCheck('P4GE1', true);
+        // DP4 : Plan des façades et des toitures
+        if (plateList.some(id => id.includes('facades') || id.includes('toiture'))) setCheck('P4GF1', true);
+        // DP5 : Aspect extérieur
+        if (plateList.some(id => id.includes('aspect') || id.includes('materiaux'))) setCheck('P5PC1', true);
+        // DP6 : Insertion paysagère
+        if (plateList.some(id => id.includes('insertion') || id.includes('dp6') || id.includes('pc6'))) setCheck('P4EG1', true);
+        // DP7 : Environnement proche
+        if (plateList.some(id => id.includes('env-proche') || id.includes('dp7') || id.includes('pc7') || (id.includes('env') && !id.includes('env-lointain')))) setCheck('P4HG1', true);
+        // DP8 : Environnement lointain
+        if (plateList.some(id => id.includes('env-lointain') || id.includes('dp8') || id.includes('pc8') || (id.includes('env') && !id.includes('env-proche')))) setCheck('P4MA1', true);
+        // DP11 : Notice descriptive
+        if (plateList.some(id => id.includes('notice') || id.includes('dp11') || id.includes('pc11'))) setCheck('P4CD1', true);
       } else {
         ALL_BORDEREAU_CHECKBOXES.forEach(name => setCheck(name, false));
 

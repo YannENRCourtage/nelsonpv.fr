@@ -30,6 +30,7 @@ import DimensionsModal from './DimensionsModal';
 import LandscapeIntegrationModal from './LandscapeIntegrationModal';
 import Building3DViewer from './Building3DViewer';
 import BatteryStationVisualizer from './BatteryStationVisualizer';
+import BatteryInsertionCompositor from './BatteryInsertionCompositor';
 import html2canvas from 'html2canvas';
 import { MapContainer, TileLayer, Marker, Polygon, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -691,6 +692,30 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           photos: {}
         }
       ]
+    },
+    battery: {
+      activeBuildingIndex: 0,
+      buildings: [
+        {
+          id: 'bat-sa-1',
+          name: 'Station Batteries Stand-Alone (500 kW)',
+          solutionType: 'battery',
+          length: 6.20,
+          width: 3.20,
+          eaveHeight: 2.38,
+          roofPitch: 0,
+          buildingType: 'battery_standalone',
+          isBattery: true,
+          hasSolar: false,
+          bayCount: 4,
+          baySpacing: 1.15,
+          unitLength: 1.15,
+          unitWidth: 1.44,
+          unitHeight: 2.38,
+          captures: {},
+          photos: {}
+        }
+      ]
     }
   }));
 
@@ -867,21 +892,58 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         });
       });
     }
+
+    if (!isNoBattery && solutions.battery?.buildings?.length > 0) {
+      solutions.battery.buildings.forEach((b, i) => {
+        const batId = b.id ? (String(b.id).startsWith('bat-sa-') ? String(b.id) : `bat-sa-${b.id}`) : `bat-sa-${i + 1}`;
+        const isCurrentActive = solutionType === 'battery' && activeBuildingIndex === i;
+
+        const effectiveLen = isCurrentActive
+          ? Number(config.length || batteryStorage.dalleLength || b.length || 6.20)
+          : Number(b.length || batteryStorage.dalleLength || 6.20);
+        const effectiveWid = isCurrentActive
+          ? Number(config.width || batteryStorage.dalleWidth || b.width || 3.20)
+          : Number(b.width || batteryStorage.dalleWidth || 3.20);
+        const effectiveHeight = isCurrentActive
+          ? Number(config.eaveHeight || b.eaveHeight || 2.38)
+          : Number(b.eaveHeight || 2.38);
+
+        const dynamicName = b.name || `Station Batteries 500 kW (${effectiveLen.toFixed(1)}m × ${effectiveWid.toFixed(1)}m)`;
+
+        list.push({
+          ...b,
+          id: batId,
+          name: dynamicName,
+          length: effectiveLen,
+          width: effectiveWid,
+          totalWidth: effectiveWid,
+          eaveHeight: effectiveHeight,
+          solutionKey: 'battery',
+          solutionLabel: 'Station Batteries 500 kW',
+          isBattery: true,
+          indexInSol: i
+        });
+      });
+    }
     return list;
-  }, [solutions, isAcama, solutionType, activeBuildingIndex, config, getBuildingDisplayName]);
+  }, [solutions, isAcama, isNoBattery, solutionType, activeBuildingIndex, config, getBuildingDisplayName, batteryStorage]);
 
   const hasInitializedSelectionRef = React.useRef(false);
 
-  // Synchronisation des identifiants sélectionnés (tous cochés à l'initialisation, jamais modifiés tout seuls après)
+  // Synchronisation des identifiants sélectionnés
   useEffect(() => {
     if (!hasInitializedSelectionRef.current && allConfiguredStructures.length > 0) {
       hasInitializedSelectionRef.current = true;
       setSelectedStructureIds(prev => {
         if (prev && prev.length > 0) return prev;
-        return allConfiguredStructures.map(s => s.id);
+        if (solutionType === 'battery') {
+          const batIds = allConfiguredStructures.filter(s => s.solutionKey === 'battery').map(s => s.id);
+          return batIds.length > 0 ? batIds : ['bat-sa-1'];
+        }
+        return allConfiguredStructures.filter(s => s.solutionKey !== 'battery').map(s => s.id);
       });
     }
-  }, [allConfiguredStructures]);
+  }, [allConfiguredStructures, solutionType]);
 
   // Mise à jour de l'orientation d'une structure quelconque depuis Carte DP2/PC2
   const handleMasseRotationUpdate = useCallback((targetId, val) => {
@@ -890,10 +952,10 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       const nextSol = { ...prev };
       let updated = false;
 
-      ['building', 'ombriere'].forEach(solKey => {
+      ['building', 'ombriere', 'battery'].forEach(solKey => {
         if (nextSol[solKey]?.buildings) {
           const bIdx = nextSol[solKey].buildings.findIndex(b => {
-            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : 'bat-') ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-1`;
+            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : (solKey === 'battery' ? 'bat-sa-' : 'bat-')) ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-1`;
             return b.id === targetId || currentId === targetId;
           });
           if (bIdx !== -1) {
@@ -925,10 +987,10 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       const nextSol = { ...prev };
       let updated = false;
 
-      ['building', 'ombriere'].forEach(solKey => {
+      ['building', 'ombriere', 'battery'].forEach(solKey => {
         if (nextSol[solKey]?.buildings) {
           const bIdx = nextSol[solKey].buildings.findIndex(b => {
-            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : 'bat-') ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-1`;
+            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : (solKey === 'battery' ? 'bat-sa-' : 'bat-')) ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-1`;
             return b.id === targetId || currentId === targetId;
           });
           if (bIdx !== -1) {
@@ -963,10 +1025,10 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       const nextSol = { ...prev };
       let updated = false;
 
-      ['building', 'ombriere'].forEach(solKey => {
+      ['building', 'ombriere', 'battery'].forEach(solKey => {
         if (nextSol[solKey]?.buildings) {
           const bIdx = nextSol[solKey].buildings.findIndex(b => {
-            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : 'bat-') ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-1`;
+            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : (solKey === 'battery' ? 'bat-sa-' : 'bat-')) ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-1`;
             return b.id === targetId || currentId === targetId;
           });
           if (bIdx !== -1) {
@@ -1065,7 +1127,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         const nextSolutions = { ...prev };
 
         let gIdx = 0;
-        ['building', 'ombriere'].forEach(solKey => {
+        ['building', 'ombriere', 'battery'].forEach(solKey => {
           if (nextSolutions[solKey]?.buildings) {
             const updated = nextSolutions[solKey].buildings.map(b => {
               const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null));
@@ -1111,36 +1173,36 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
     // Cas particulier : Projet de stockage d'énergie par batterie Stand-Alone (BESS)
     if (!isAcama && solutionType === 'battery') {
-      const pQty = batteryStorage.quantity || 1;
+      const pQty = batteryStorage.quantity || 4;
       const pModel = batteryStorage.model || 'CESC Mercury 261';
-      const pPower = batteryStorage.powerKw || (pQty * 125);
-      const pCap = batteryStorage.capacityKwh || (pQty * 261);
-      const pDalleL = batteryStorage.dalleLength || Math.max(6.0, Number((pQty * 3.2 + 3.0).toFixed(1)));
-      const pDalleW = batteryStorage.dalleWidth || 6.0;
-      const pFootprintArea = Math.round(pDalleL * pDalleW);
+      const pPower = batteryStorage.powerKw || 500;
+      const pCap = batteryStorage.capacityKwh || 1044;
+      const pDalleL = batteryStorage.dalleLength || 6.20;
+      const pDalleW = batteryStorage.dalleWidth || 3.20;
+      const pFootprintArea = (pDalleL * pDalleW).toFixed(2);
 
       return `1- OBJET DE LA DEMANDE
-La présente demande porte sur l'implantation d'un système de stockage d'énergie par batteries stationnaires Stand-Alone (BESS) d'une puissance totale raccordée de ${pPower} kW et d'une capacité de ${pCap} kWh sur dalle béton étanche dédiée (~${pFootprintArea} m²).
+La présente demande porte sur l'installation d'une station de stockage d'énergie par batteries Stand-Alone (Puissance nominale : ${pPower} kW) sur dalle béton avec clôture rigide, d'une capacité de ${pCap} kWh (${pQty} armoires ${pModel}). L'emprise au sol totale est strictement inférieure à 20 m² (${pFootprintArea} m²), soumise au régime de la Déclaration Préalable de travaux (DP).
 
 2- LE SITE
-Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}). Le terrain est globalement plat et se trouve à une altitude de ${projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un cadre adapté disposant d'un accès direct depuis la voirie existante au Sud de la parcelle.
+Le projet s'implante sur la commune de ${projectCity} (${projectZip}), à l'adresse : ${projectAddress}. Références cadastrales : Section/Parcelle ${projectCadastre} (surface de la parcelle : ${projectSurface}, altitude : ${projectAltitude}).
+Le site dispose d'un accès sécurisé pour les interventions techniques et les services d'incendie et de secours (SDIS).
 
 3- LE PROJET
 Le projet comprend :
-- L'implantation de ${pQty} container(s) technique(s) modulaire(s) de stockage ${pModel} (teinte gris anthracite RAL 7016 / gris clair RAL 7035, hauteur hors-tout : 2.60m),
-- La réalisation d'une dalle en béton armé étanche avec bac de rétention intégré (${pDalleL.toFixed(2)}m × ${pDalleW.toFixed(2)}m, surface : ~${pFootprintArea} m²),
-- L'implantation d'un poste de transformation et de livraison HTA (PDL ENEDIS) compact (2.50m × 2.00m, h : 2.40m),
-- La pose d'une clôture grillagée périphérique de sécurité de 2.00m de hauteur avec portail d'accès pompier et maintenance (largeur 4.00m).
+- L'implantation de ${pQty} armoires techniques de stockage d'énergie (Modèle ${pModel}, dimensions unitaires : 1.15m (L) × 1.44m (P) × 2.38m (H), teinte sobre gris clair / blanc industriel),
+- La réalisation d'une dalle en béton armé dédiée de ${Number(pDalleL).toFixed(2)}m × ${Number(pDalleW).toFixed(2)}m (surface : ${pFootprintArea} m² < 20 m²),
+- La pose d'une clôture rigide grillagée périphérique (hauteur 2.00m) ceinturant la dalle béton avec portillon d'accès de sécurité.
 
 4- RACCORDEMENT AUX RESEAUX
-L'installation est raccordée au réseau public de distribution d'électricité ENEDIS via le poste de livraison HTA situé sur la parcelle. Le dispositif est totalement autonome, silencieux et ne requiert aucun raccordement aux réseaux d'eau ni d'assainissement collectif.
+L'installation est raccordée au réseau public de distribution d'électricité ENEDIS. Le dispositif est totalement autonome, statique, silencieux et ne requiert aucun raccordement aux réseaux d'eau ni d'assainissement collectif.
 
 5- SECURITE INCENDIE & PRESCRIPTIONS SDIS
 L'installation intègre tous les dispositifs de sécurité et répond strictement aux préconisations SDIS :
-- Système autonome de détection précoce thermique et dispositif d'extinction d'urgence automatique intégré à chaque container,
-- Dispositif de coupure générale d'urgence asservi et accessible depuis l'extérieur de la clôture,
-- Bac de rétention étanche sous dalle assurant la rétention totale des fluides et des eaux d'extinction éventuelles,
-- Réserve d'eau incendie (bâche à eau de 120 m³) avec aire d'aspiration stabilisée et distance de sécurité minimale de 5.00m préservée vis-à-vis des limites parcellaires.`;
+- Système de gestion thermique avancé avec détection précoce asservie et dispositif d'extinction d'urgence intégré aux armoires,
+- Dispositif de coupure générale d'urgence accessible aux services de secours,
+- Rétention étanche sous dalle assurant la sécurité environnementale,
+- Respect des distances d'isolement réglementaires vis-à-vis des tiers.`;
     }
     
     // Liste des structures retenues par l'utilisateur à l'étape Carte DP2 / PC2
@@ -1336,7 +1398,28 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     // 2. Basculer le type de solution
     setSolutionType(newSolType);
-    setBatteryStorage(prev => ({ ...prev, enabled: false }));
+    if (newSolType === 'battery') {
+      setBatteryStorage(prev => ({
+        ...prev,
+        enabled: true,
+        name: 'Station Batteries Stand-Alone (500 kW)',
+        model: 'CESC Mercury 261',
+        quantity: 4,
+        powerKw: 500,
+        capacityKwh: 1044,
+        dalleLength: 6.20,
+        dalleWidth: 3.20,
+        footprint: '6.20m × 3.20m (19.84 m²)'
+      }));
+      setSelectedStructureIds(['bat-sa-1']);
+    } else {
+      setBatteryStorage(prev => ({ ...prev, enabled: false }));
+      const targetSol = solutions[newSolType];
+      const solIds = (targetSol?.buildings || []).map((b, i) => b.id || `${newSolType === 'ombriere' ? 'omb' : 'bat'}-${i + 1}`);
+      if (solIds.length > 0) {
+        setSelectedStructureIds(solIds);
+      }
+    }
 
     // 3. Charger fidèlement le bâtiment actif de la solution ENTRANTE dans le store 3D
     const targetSol = solutions[newSolType];
@@ -1512,6 +1595,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
   // Modales
   const [cropModal, setCropModal] = useState({ open: false, src: null, category: null, key: null, title: '' });
   const [landscapeModalOpen, setLandscapeModalOpen] = useState(false);
+  const [batteryLandscapeModalOpen, setBatteryLandscapeModalOpen] = useState(false);
 
   const dossierInfo = DOSSIER_INFO[type] || DOSSIER_INFO.pc;
 
@@ -1551,30 +1635,30 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const detectedSolutionType = isNoBattery ? ((!isAcama && isDP) ? 'ombriere' : 'building') : (isBatteryProject ? 'battery' : (isDP ? 'ombriere' : 'building'));
     setSolutionType(detectedSolutionType);
 
-    let parsedBatteryQty = 1;
+    let parsedBatteryQty = 4;
     const projectCombinedStr = `${project?.project || ''} ${project?.name || ''} ${project?.nom || ''} ${project?.description || ''}`;
-    const qMatch = projectCombinedStr.match(/x\s*(\d+)/i) || projectCombinedStr.match(/(\d+)\s*(?:batterie|battery|containers?|unit[eé]s?)/i);
+    const qMatch = projectCombinedStr.match(/x\s*(\d+)/i) || projectCombinedStr.match(/(\d+)\s*(?:batterie|battery|containers?|unit[eé]s?|armoires?)/i);
     if (qMatch && Number(qMatch[1]) > 0) {
       parsedBatteryQty = Number(qMatch[1]);
     } else if (Number(project?.battery_quantity) > 0) {
       parsedBatteryQty = Number(project.battery_quantity);
     }
 
-    const parsedBatteryPower = Number(project?.kwc || project?.puissance || project?.projectSize || (parsedBatteryQty * 125)) || (parsedBatteryQty * 125);
-    const parsedBatteryCap = Number(project?.battery_capacity || (parsedBatteryQty * 261)) || (parsedBatteryQty * 261);
+    const parsedBatteryPower = Number(project?.kwc || project?.puissance || project?.projectSize || (parsedBatteryQty * 125)) || 500;
+    const parsedBatteryCap = Number(project?.battery_capacity || (parsedBatteryQty * 261)) || 1044;
     const parsedBatteryModel = project?.battery_model || 'CESC Mercury 261';
 
     if (isBatteryProject) {
       setBatteryStorage({
         enabled: true,
-        name: 'Système de stockage par batterie Stand-Alone',
+        name: 'Station Batteries Stand-Alone (500 kW)',
         model: parsedBatteryModel,
         quantity: parsedBatteryQty,
         capacityKwh: parsedBatteryCap,
         powerKw: parsedBatteryPower,
-        dalleLength: Math.max(6.0, Number((parsedBatteryQty * 3.2 + 3.0).toFixed(1))),
-        dalleWidth: 6.0,
-        footprint: `${(parsedBatteryQty * 3.2 + 3.0).toFixed(2)}m × 6.00m`,
+        dalleLength: 6.20,
+        dalleWidth: 3.20,
+        footprint: '6.20m × 3.20m (19.84 m²)',
         fireSafety: 'Bâche à eau 120m³, rétention étanche intégrée, distance de sécurité 5m, clôture grillagée 2m'
       });
     }
@@ -1601,19 +1685,24 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     // Restaurer fidèlement les bâtiments existants ou initialiser le Bâtiment 1 avec les paramètres précis du projet
     let initialBuildings = [];
     if (isBatteryProject && (!project.buildings || project.buildings.length === 0)) {
-      const batLen = Math.max(6.0, Number((parsedBatteryQty * 3.2 + 3.0).toFixed(1)));
-      const batW = 6.0;
+      const batLen = 6.20;
+      const batW = 3.20;
       initialBuildings = [
         {
-          id: 'bat-1',
-          name: `Station Batteries (${parsedBatteryQty}× ${parsedBatteryModel})`,
+          id: 'bat-sa-1',
+          name: `Station Batteries Stand-Alone (500 kW)`,
           length: batLen,
           width: batW,
-          eaveHeight: 2.6,
+          eaveHeight: 2.38,
           roofPitch: 0,
           buildingType: 'battery_standalone',
           isBattery: true,
           hasSolar: false,
+          bayCount: 4,
+          baySpacing: 1.15,
+          unitLength: 1.15,
+          unitWidth: 1.44,
+          unitHeight: 2.38,
           lat: defLat,
           lng: defLng,
           gps: `${defLat},${defLng}`,
@@ -1729,17 +1818,60 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       ];
     }
 
-    // Partitionner et structurer les bâtiments par solution (Bâtiment vs Ombrière)
+    // Partitionner et structurer les bâtiments par solution (Bâtiment vs Ombrière vs Battery)
     let loadedSolutions;
     if (project?.solutions?.building?.buildings && project?.solutions?.ombriere?.buildings) {
-      loadedSolutions = project.solutions;
+      loadedSolutions = {
+        ...project.solutions,
+        battery: project.solutions.battery || {
+          activeBuildingIndex: 0,
+          buildings: [
+            {
+              id: 'bat-sa-1',
+              name: 'Station Batteries Stand-Alone (500 kW)',
+              solutionType: 'battery',
+              length: 6.20,
+              width: 3.20,
+              eaveHeight: 2.38,
+              roofPitch: 0,
+              buildingType: 'battery_standalone',
+              isBattery: true,
+              hasSolar: false,
+              bayCount: 4,
+              baySpacing: 1.15,
+              unitLength: 1.15,
+              unitWidth: 1.44,
+              unitHeight: 2.38,
+              lat: defLat,
+              lng: defLng,
+              gps: `${defLat},${defLng}`,
+              rotation: 0,
+              captures: {},
+              photos: {}
+            }
+          ]
+        }
+      };
     } else {
       const buildingList = [];
       const ombriereList = [];
+      const batteryList = [];
 
       initialBuildings.forEach((b) => {
+        const isBat = (b.solutionType === 'battery') || (b.buildingType === 'battery_standalone') || b.isBattery;
         const isOmb = (b.solutionType === 'ombriere') || (b.buildingType || '').toLowerCase().startsWith('ombriere') || (b.category === 'ombriere');
-        if (isOmb) {
+        if (isBat) {
+          batteryList.push({
+            ...b,
+            id: b.id || 'bat-sa-1',
+            solutionType: 'battery',
+            isBattery: true,
+            name: b.name || 'Station Batteries Stand-Alone (500 kW)',
+            length: Number(b.length || 6.20),
+            width: Number(b.width || 3.20),
+            eaveHeight: Number(b.eaveHeight || 2.38)
+          });
+        } else if (isOmb) {
           ombriereList.push({
             ...b,
             solutionType: 'ombriere',
@@ -1753,6 +1885,32 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
           });
         }
       });
+
+      if (batteryList.length === 0) {
+        batteryList.push({
+          id: 'bat-sa-1',
+          name: 'Station Batteries Stand-Alone (500 kW)',
+          solutionType: 'battery',
+          length: 6.20,
+          width: 3.20,
+          eaveHeight: 2.38,
+          roofPitch: 0,
+          buildingType: 'battery_standalone',
+          isBattery: true,
+          hasSolar: false,
+          bayCount: 4,
+          baySpacing: 1.15,
+          unitLength: 1.15,
+          unitWidth: 1.44,
+          unitHeight: 2.38,
+          lat: defLat,
+          lng: defLng,
+          gps: `${defLat},${defLng}`,
+          rotation: 0,
+          captures: {},
+          photos: {}
+        });
+      }
 
       if (buildingList.length === 0) {
         const bInitLen = isAcama ? 30 : 37.5;
@@ -1810,6 +1968,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         ombriere: {
           activeBuildingIndex: 0,
           buildings: ombriereList
+        },
+        battery: {
+          activeBuildingIndex: 0,
+          buildings: batteryList
         }
       };
     }
@@ -1818,7 +1980,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     // Initialiser les structures sélectionnées
     hasInitializedSelectionRef.current = true;
-    if (project?.selectedStructureIds && Array.isArray(project.selectedStructureIds) && project.selectedStructureIds.length > 0) {
+    if (detectedSolutionType === 'battery') {
+      const batIds = (loadedSolutions.battery?.buildings || []).map(b => b.id);
+      setSelectedStructureIds(batIds.length > 0 ? batIds : ['bat-sa-1']);
+    } else if (project?.selectedStructureIds && Array.isArray(project.selectedStructureIds) && project.selectedStructureIds.length > 0) {
       setSelectedStructureIds(project.selectedStructureIds);
     } else {
       const allIds = [
@@ -1842,11 +2007,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const initialNotice = project?.noticeText || buildAutoNoticeText();
       setNoticeText(initialNotice);
       const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
-      const shortObjet = isDP
-        ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
-        : (isPC
-          ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-          : "Demande d'urbanisme photovoltaïque");
+      const shortObjet = isBatteryProject
+        ? "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide"
+        : (isDP
+          ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
+          : (isPC
+            ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+            : "Demande d'urbanisme photovoltaïque"));
 
       const initProj = {
         ...project,
@@ -2597,21 +2764,22 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
   // Chargement direct de photo (sans pop-up automatique de recadrage)
   const handleDirectPhotoUpload = (category, key, event) => {
-    const file = event.target.files?.[0];
+    const file = event.target?.files?.[0];
+    if (event.target) event.target.value = '';
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const dataUrl = e.target.result;
+      const dataUrl = e.target?.result;
+      if (!dataUrl) return;
       const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
       if (category === 'photos') {
-        if (activeBuildingIndex === 0) {
-          setPhotos(prev => ({ ...prev, [key]: dataUrl }));
-          setEditedProject(prev => ({
-            ...prev,
-            pc_photos: { ...(prev.pc_photos || {}), [key]: dataUrl }
-          }));
-        }
+        setPhotos(prev => ({ ...prev, [key]: dataUrl }));
+        setEditedProject(prev => ({
+          ...prev,
+          pc_photos: { ...(prev.pc_photos || {}), [key]: dataUrl },
+          photos: { ...(prev.photos || {}), [key]: dataUrl }
+        }));
         setBuildings(prev => {
           const updated = [...prev];
           if (updated[activeBuildingIndex]) {
@@ -2628,21 +2796,14 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         });
         persistMediaItem(bKey, key, dataUrl, 'photos');
       } else if (category === 'captures') {
+        setCaptures(prev => ({ ...prev, [key]: dataUrl }));
+        setEditedProject(prev => ({
+          ...prev,
+          urbanisme_captures: { ...(prev.urbanisme_captures || {}), [key]: dataUrl }
+        }));
         if (key === 'situation_ign' || key === 'satellite' || key === 'masse_projet') {
-          setCaptures(prev => ({ ...prev, [key]: dataUrl }));
-          setEditedProject(prev => ({
-            ...prev,
-            urbanisme_captures: { ...(prev.urbanisme_captures || {}), [key]: dataUrl }
-          }));
           persistMediaItem('general', key, dataUrl, 'captures');
         } else {
-          if (activeBuildingIndex === 0) {
-            setCaptures(prev => ({ ...prev, [key]: dataUrl }));
-            setEditedProject(prev => ({
-              ...prev,
-              urbanisme_captures: { ...(prev.urbanisme_captures || {}), [key]: dataUrl }
-            }));
-          }
           setBuildings(prev => {
             const updated = [...prev];
             if (updated[activeBuildingIndex]) {
@@ -2658,7 +2819,6 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       }
     };
     reader.readAsDataURL(file);
-    event.target.value = '';
   };
 
   const handleOpenCrop = (src, category, key, title) => {
@@ -2669,10 +2829,12 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const { category, key } = cropModal;
     const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
     if (category === 'photos') {
-      if (activeBuildingIndex === 0) {
-        setPhotos(prev => ({ ...prev, [key]: croppedDataUrl }));
-        setEditedProject(prev => ({ ...prev, pc_photos: { ...(prev.pc_photos || {}), [key]: croppedDataUrl } }));
-      }
+      setPhotos(prev => ({ ...prev, [key]: croppedDataUrl }));
+      setEditedProject(prev => ({
+        ...prev,
+        pc_photos: { ...(prev.pc_photos || {}), [key]: croppedDataUrl },
+        photos: { ...(prev.photos || {}), [key]: croppedDataUrl }
+      }));
       setBuildings(prev => {
         const updated = [...prev];
         if (updated[activeBuildingIndex]) {
@@ -2684,16 +2846,11 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       persistMediaItem(bKey, key, croppedDataUrl, 'photos');
     }
     if (category === 'captures') {
+      setCaptures(prev => ({ ...prev, [key]: croppedDataUrl }));
+      setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), [key]: croppedDataUrl } }));
       if (key === 'situation_ign' || key === 'satellite' || key === 'masse_projet') {
-        const updated = { ...captures, [key]: croppedDataUrl };
-        setCaptures(updated);
-        setEditedProject(prev => ({ ...prev, urbanisme_captures: updated }));
         persistMediaItem('general', key, croppedDataUrl, 'captures');
       } else {
-        if (activeBuildingIndex === 0) {
-          setCaptures(prev => ({ ...prev, [key]: croppedDataUrl }));
-          setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), [key]: croppedDataUrl } }));
-        }
         setBuildings(prev => {
           const updated = [...prev];
           if (updated[activeBuildingIndex]) {
@@ -3376,6 +3533,21 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           <span>Ombrière PV</span>
                         </button>
                       )}
+
+                      {!isNoBattery && (
+                        <button
+                          type="button"
+                          onClick={() => handleSwitchSolution('battery')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
+                            solutionType === 'battery'
+                              ? 'bg-purple-600 text-white ring-2 ring-purple-400'
+                              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                          }`}
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>Station Batteries 500 kW</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Sélecteur multi-bâtiments si mode Bâtiment/Ombrière */}
@@ -3429,11 +3601,11 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               </div>
                               <div>
                                 <h3 className="text-sm font-extrabold text-slate-800">Station Batteries Stand-Alone</h3>
-                                <p className="text-[11px] text-purple-600 font-semibold">Stockage stationnaire d'énergie (BESS)</p>
+                                <p className="text-[11px] text-purple-600 font-semibold">Stockage stationnaire 500 kW (DP &lt; 20 m²)</p>
                               </div>
                             </div>
                             <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200">
-                              {batteryStorage.quantity || 1} unité(s)
+                              {batteryStorage.quantity || 4} armoires
                             </span>
                           </div>
 
@@ -3444,71 +3616,55 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               value={batteryStorage.model || 'CESC Mercury 261'}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                let unitKw = 125;
-                                let unitKwh = 261;
-                                let uL = 3.50;
-                                let uW = 2.20;
-                                let uH = 2.60;
-
-                                if (val.includes('Megapack')) { unitKw = 1900; unitKwh = 3900; uL = 7.10; uW = 1.65; uH = 2.80; }
-                                else if (val.includes('LUNA')) { unitKw = 1000; unitKwh = 2000; uL = 6.05; uW = 2.44; uH = 2.59; }
-                                else if (val.includes('PowerTitan')) { unitKw = 1375; unitKwh = 2750; uL = 6.05; uW = 2.44; uH = 2.59; }
-                                else if (val.includes('BYD')) { unitKw = 1000; unitKwh = 2000; uL = 6.05; uW = 2.44; uH = 2.59; }
-                                else if (val.includes('20ft')) { unitKw = 125; unitKwh = 250; uL = 6.05; uW = 2.44; uH = 2.59; }
-
-                                const q = batteryStorage.quantity || 1;
                                 setBatteryStorage(prev => ({
                                   ...prev,
                                   model: val,
-                                  powerKw: q * unitKw,
-                                  capacityKwh: q * unitKwh,
-                                  unitLength: uL,
-                                  unitWidth: uW,
-                                  unitHeight: uH,
-                                  dalleLength: Math.max(6.0, Number((q * (uL > 4 ? 4.0 : 3.2) + 3.0).toFixed(1))),
-                                  dalleWidth: q > 4 ? 8.0 : 6.0,
-                                  footprint: `${(q * (uL > 4 ? 4.0 : 3.2) + 3.0).toFixed(2)}m × 6.00m`
+                                  powerKw: 500,
+                                  capacityKwh: 1044,
+                                  unitLength: 1.15,
+                                  unitWidth: 1.44,
+                                  unitHeight: 2.38,
+                                  dalleLength: 6.20,
+                                  dalleWidth: 3.20,
+                                  footprint: '6.20m × 3.20m (19.84 m²)'
                                 }));
+                                updateActiveBuilding({ length: 6.20, width: 3.20, eaveHeight: 2.38 });
                               }}
                               className="w-full text-xs font-semibold rounded-xl border border-slate-200 p-2 bg-slate-50 text-slate-800 focus:ring-2 focus:ring-purple-400 outline-none"
                             >
-                              <option value="CESC Mercury 261">CESC Mercury 261 (125 kW / 261 kWh — 3.50m × 2.20m)</option>
-                              <option value="Tesla Megapack 2XL">Tesla Megapack 2XL (1 900 kW / 3 900 kWh — 7.10m × 1.65m)</option>
-                              <option value="Huawei LUNA2000-2.0MWH">Huawei LUNA2000 (1 000 kW / 2 000 kWh — 6.05m × 2.44m)</option>
-                              <option value="Sungrow PowerTitan">Sungrow PowerTitan (1 375 kW / 2 750 kWh — 6.05m × 2.44m)</option>
-                              <option value="BYD Energy City">BYD Energy City (1 000 kW / 2 000 kWh — 6.05m × 2.44m)</option>
-                              <option value="Container 20ft Standard">Container 20ft Standard (125 kW / 250 kWh — 6.05m × 2.44m)</option>
+                              <option value="CESC Mercury 261">CESC Mercury 261 (4× 125 kW = 500 kW / 1044 kWh)</option>
                             </select>
                           </div>
 
-                          {/* Nombre de containers */}
+                          {/* Nombre d'armoires */}
                           <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1">Nombre de containers / packs</label>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Nombre d'armoires Mercury 261</label>
                             <div className="flex items-center gap-1.5">
-                              {[1, 2, 4, 6, 8].map(qty => (
+                              {[2, 4].map(qty => (
                                 <button
                                   key={qty}
                                   type="button"
                                   onClick={() => {
-                                    const curQ = batteryStorage.quantity || 1;
-                                    const unitKw = Math.round((batteryStorage.powerKw || 500) / curQ) || 125;
-                                    const unitKwh = Math.round((batteryStorage.capacityKwh || 1044) / curQ) || 261;
+                                    const dL = qty === 4 ? 6.20 : 3.60;
+                                    const dW = 3.20;
                                     setBatteryStorage(prev => ({
                                       ...prev,
                                       quantity: qty,
-                                      powerKw: qty * unitKw,
-                                      capacityKwh: qty * unitKwh,
-                                      dalleLength: Math.max(6.0, Number((qty * 3.2 + 3.0).toFixed(1))),
-                                      footprint: `${(qty * 3.2 + 3.0).toFixed(2)}m × 6.00m`
+                                      powerKw: qty * 125,
+                                      capacityKwh: qty * 261,
+                                      dalleLength: dL,
+                                      dalleWidth: dW,
+                                      footprint: `${dL.toFixed(2)}m × ${dW.toFixed(2)}m (${(dL * dW).toFixed(2)} m²)`
                                     }));
+                                    updateActiveBuilding({ length: dL, width: dW });
                                   }}
                                   className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                    (batteryStorage.quantity || 1) === qty
+                                    (batteryStorage.quantity || 4) === qty
                                       ? 'bg-purple-600 text-white shadow-sm ring-1 ring-purple-400'
                                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                   }`}
                                 >
-                                  {qty}x
+                                  {qty} armoires ({qty * 125} kW)
                                 </button>
                               ))}
                             </div>
@@ -3542,9 +3698,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               <label className="block text-[11px] font-bold text-slate-600 mb-1">Longueur dalle (m)</label>
                               <input
                                 type="number"
-                                step="0.5"
-                                value={batteryStorage.dalleLength || Math.max(6.0, Number(((batteryStorage.quantity || 1) * 3.2 + 3.0).toFixed(1)))}
-                                onChange={(e) => setBatteryStorage(prev => ({ ...prev, dalleLength: Number(e.target.value) }))}
+                                step="0.1"
+                                value={batteryStorage.dalleLength || 6.20}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  setBatteryStorage(prev => ({ ...prev, dalleLength: val }));
+                                  updateActiveBuilding({ length: val });
+                                }}
                                 className="w-full text-xs font-bold rounded-lg border border-slate-200 p-2 bg-slate-50 text-slate-800 focus:ring-2 focus:ring-purple-400"
                               />
                             </div>
@@ -3552,13 +3712,31 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               <label className="block text-[11px] font-bold text-slate-600 mb-1">Largeur dalle (m)</label>
                               <input
                                 type="number"
-                                step="0.5"
-                                value={batteryStorage.dalleWidth || 6.0}
-                                onChange={(e) => setBatteryStorage(prev => ({ ...prev, dalleWidth: Number(e.target.value) }))}
+                                step="0.1"
+                                value={batteryStorage.dalleWidth || 3.20}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  setBatteryStorage(prev => ({ ...prev, dalleWidth: val }));
+                                  updateActiveBuilding({ width: val });
+                                }}
                                 className="w-full text-xs font-bold rounded-lg border border-slate-200 p-2 bg-slate-50 text-slate-800 focus:ring-2 focus:ring-purple-400"
                               />
                             </div>
                           </div>
+
+                          {/* Indicateur de conformité emprise < 20 m² */}
+                          {(() => {
+                            const curArea = (Number(batteryStorage.dalleLength || 6.20) * Number(batteryStorage.dalleWidth || 3.20));
+                            const isCompliant = curArea < 20;
+                            return (
+                              <div className={`rounded-xl p-2 text-[11px] font-bold flex items-center justify-between border ${
+                                isCompliant ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-red-50 text-red-800 border-red-200'
+                              }`}>
+                                <span>Surface dalle : {curArea.toFixed(2)} m²</span>
+                                <span>{isCompliant ? '✓ Conforme DP (< 20 m²)' : '⚠️ Dépasse 20 m² (PC requis)'}</span>
+                              </div>
+                            );
+                          })()}
 
                           {/* Sécurité SDIS & Rétention */}
                           <div className="bg-amber-50/80 rounded-xl p-2.5 border border-amber-200/80 text-[11px] text-amber-900 space-y-1">
@@ -3566,7 +3744,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               <span>🛡️ Prescriptions SDIS & Sécurité</span>
                             </div>
                             <p className="text-[10px] text-amber-800/90 leading-tight">
-                              Bac de rétention étanche intégré, réserve incendie 120m³, coupure d'urgence asservie, distance d'isolement 5m et clôture 2.00m.
+                              Bac de rétention étanche intégré, clôture rigide 2.00m ceinturant la dalle, coupure d'urgence générale asservie, distance d'isolement 5m.
                             </p>
                           </div>
                         </div>
@@ -3770,8 +3948,19 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
               {/* ÉTAPE 3 — Visionneuse 3D (DP4/PC5 5 VUES) & Insertion Paysagère 3D (DP6/PC6) */}
               {step === 3 && (() => {
                 const b = buildings[activeBuildingIndex] || {};
-                const currentPhotos = b.photos || b.pc_photos || {};
-                const currentCaptures = b.captures || b.urbanisme_captures || {};
+                const currentPhotos = {
+                  ...(editedProject?.pc_photos || {}),
+                  ...(editedProject?.photos || {}),
+                  ...(photos || {}),
+                  ...(b.photos || {}),
+                  ...(b.pc_photos || {})
+                };
+                const currentCaptures = {
+                  ...(editedProject?.urbanisme_captures || {}),
+                  ...(captures || {}),
+                  ...(b.captures || {}),
+                  ...(b.urbanisme_captures || {})
+                };
                 return (
                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-5 space-y-3 overflow-y-auto max-h-[70vh]">
@@ -3803,6 +3992,18 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           >
                             <Car className="w-3 h-3" />
                             <span>Ombrière PV</span>
+                          </button>
+                        )}
+                        {!isNoBattery && (
+                          <button
+                            type="button"
+                            onClick={() => handleSwitchSolution('battery')}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                              solutionType === 'battery' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            <Zap className="w-3 h-3" />
+                            <span>Station Batteries 500 kW</span>
                           </button>
                         )}
                       </div>
@@ -3841,7 +4042,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                       </div>
 
                       {/* Contrôle interactif de la taille de police des mesures pour l'ombrière/bâtiment actif */}
-                      {(() => {
+                      {solutionType !== 'battery' && !buildings[activeBuildingIndex]?.isBattery && (() => {
                         const activeB = buildings[activeBuildingIndex] || {};
                         const currentFontSize = activeB.dimensionFontSize || 2.5;
                         const buildingName = getBuildingDisplayName(activeB, activeBuildingIndex);
@@ -3909,6 +4110,21 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                       <div className="flex-1 flex flex-col justify-center">
                         {(() => {
                           const activeB = buildings[activeBuildingIndex] || {};
+                          const isBat = solutionType === 'battery' || activeB.isBattery || activeB.solutionType === 'battery';
+                          if (isBat) {
+                            return (
+                              <BatteryStationVisualizer
+                                powerKw={batteryStorage?.powerKw || 500}
+                                cabinetCount={batteryStorage?.quantity || 4}
+                                cabinetModel={batteryStorage?.model || 'CESC Mercury 261'}
+                                dalleLength={batteryStorage?.dalleLength || activeB.length || 6.20}
+                                dalleWidth={batteryStorage?.dalleWidth || activeB.width || 3.20}
+                                onCaptureViews={handleCaptureAll5ViewsPC5}
+                                onCaptureSnapshot={handleCaptureSnapshotPC5}
+                                height={270}
+                              />
+                            );
+                          }
                           return (
                             <Building3DViewer
                               buildingConfig={{
@@ -3939,11 +4155,12 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                           {(() => {
-                            const curW = Number(b.width || config.width || 16.4);
-                            const curL = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config.length || 37.5)));
+                            const isBat = solutionType === 'battery' || b.isBattery;
+                            const curW = isBat ? Number(batteryStorage.dalleWidth || b.width || 3.20) : Number(b.width || config.width || 16.4);
+                            const curL = isBat ? Number(batteryStorage.dalleLength || b.length || 6.20) : Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (config.length || 37.5)));
                             return (
                               <>
-                                <Sparkles className="w-4 h-4 text-indigo-600" /> {isDP ? "DP6 — Insertion Paysagère 3D" : "PC6 — Insertion Paysagère 3D"} ({curW.toFixed(1)}m × {curL.toFixed(1)}m)
+                                <Sparkles className="w-4 h-4 text-indigo-600" /> {isDP ? "DP6 — Insertion Paysagère 3D" : "PC6 — Insertion Paysagère 3D"} ({curL.toFixed(1)}m × {curW.toFixed(1)}m)
                               </>
                             );
                           })()}
@@ -4037,7 +4254,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                             </div>
 
                             <button
-                              onClick={() => setLandscapeModalOpen(true)}
+                              onClick={() => {
+                                if (solutionType === 'battery' || b.isBattery || b.solutionType === 'battery') {
+                                  setBatteryLandscapeModalOpen(true);
+                                } else {
+                                  setLandscapeModalOpen(true);
+                                }
+                              }}
                               className="w-full py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
                             >
                               <Box className="w-3.5 h-3.5" /> Ajuster & Déplacer le modèle 3D sur la photo
@@ -4204,9 +4427,11 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                               }}
                               className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs ${
                                 isAct
-                                  ? (str.solutionKey === 'ombriere'
-                                      ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-300'
-                                      : 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-300')
+                                  ? (str.solutionKey === 'battery' || str.isBattery
+                                      ? 'bg-purple-600 text-white shadow-sm ring-2 ring-purple-300'
+                                      : (str.solutionKey === 'ombriere'
+                                          ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-300'
+                                          : 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-300'))
                                   : 'bg-white text-slate-500 border border-slate-300 hover:bg-slate-100 opacity-70'
                               }`}
                             >
@@ -4268,10 +4493,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                             strLng = refSiteLng + sIdx * 0.00020;
                           }
 
-                          const sLen = Number(str.length || (str.bayCount ? str.bayCount * (str.baySpacing || 7.5) : (config.length || 30)));
-                          const sWid = Number(str.width || config.width || 15);
-                          const extLeft = str.leftSide !== 'none' ? Number(str.leftWidth || (str.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
-                          const extRight = str.rightSide !== 'none' ? Number(str.rightWidth || (str.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+                          const isBatteryStr = str.solutionKey === 'battery' || str.isBattery;
+                          const sLen = isBatteryStr
+                            ? Number(str.length || batteryStorage.dalleLength || 6.20)
+                            : Number(str.length || (str.bayCount ? str.bayCount * (str.baySpacing || 7.5) : (config.length || 30)));
+                          const sWid = isBatteryStr
+                            ? Number(str.width || batteryStorage.dalleWidth || 3.20)
+                            : Number(str.width || config.width || 15);
+                          const extLeft = !isBatteryStr && str.leftSide !== 'none' ? Number(str.leftWidth || (str.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+                          const extRight = !isBatteryStr && str.rightSide !== 'none' ? Number(str.rightWidth || (str.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
                           const totalWid = sWid + extLeft + extRight;
                           const sRot = Number(str.rotation || 0);
                           const corners = getBuildingCorners(strLat, strLng, sLen, totalWid, sRot);
@@ -4280,18 +4510,24 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                             <div
                               key={str.id}
                               className={`flex flex-col bg-white border-2 rounded-2xl shadow-xs overflow-hidden transition-colors min-h-[360px] ${
-                                str.solutionKey === 'ombriere' ? 'border-emerald-500/80 shadow-emerald-50' : 'border-blue-500/80 shadow-blue-50'
+                                isBatteryStr
+                                  ? 'border-purple-500/80 shadow-purple-50'
+                                  : (str.solutionKey === 'ombriere' ? 'border-emerald-500/80 shadow-emerald-50' : 'border-blue-500/80 shadow-blue-50')
                               }`}
                             >
                               {/* En-tête du Cadre avec bouton de désactivation immédiate */}
                               <div className={`flex items-center justify-between p-2.5 border-b select-none ${
-                                str.solutionKey === 'ombriere' ? 'bg-emerald-50/80 border-emerald-100' : 'bg-blue-50/80 border-blue-100'
+                                isBatteryStr
+                                  ? 'bg-purple-50/80 border-purple-100'
+                                  : (str.solutionKey === 'ombriere' ? 'bg-emerald-50/80 border-emerald-100' : 'bg-blue-50/80 border-blue-100')
                               }`}>
                                 <div className="flex items-center gap-1.5 min-w-0">
                                   <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide ${
-                                    str.solutionKey === 'ombriere' ? 'bg-emerald-200 text-emerald-900' : 'bg-blue-200 text-blue-900'
+                                    isBatteryStr
+                                      ? 'bg-purple-200 text-purple-900'
+                                      : (str.solutionKey === 'ombriere' ? 'bg-emerald-200 text-emerald-900' : 'bg-blue-200 text-blue-900')
                                   }`}>
-                                    {str.solutionKey === 'ombriere' ? 'Ombrière' : 'Bâtiment'}
+                                    {isBatteryStr ? 'Batteries' : (str.solutionKey === 'ombriere' ? 'Ombrière' : 'Bâtiment')}
                                   </span>
                                   <span className="font-black text-xs text-slate-900 truncate">{str.name}</span>
                                 </div>
@@ -4520,8 +4756,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                     key={`poly-main-${str.id}-${Number(strLat).toFixed(7)}-${Number(strLng).toFixed(7)}-${sRot}-${sLen}-${sWid}`}
                                     positions={corners}
                                     pathOptions={{
-                                      color: str.solutionKey === 'ombriere' ? '#059669' : '#2563eb',
-                                      fillColor: str.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6',
+                                      color: isBatteryStr ? '#9333ea' : (str.solutionKey === 'ombriere' ? '#059669' : '#2563eb'),
+                                      fillColor: isBatteryStr ? '#a855f7' : (str.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6'),
                                       fillOpacity: 0.35,
                                       dashArray: '5, 4',
                                       weight: 2.5,
@@ -4537,7 +4773,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   {/* Cotations architecturales le long des côtés extérieurs du rectangle si activées */}
                                   {(masseShowDimensions[str.id] !== undefined ? Boolean(masseShowDimensions[str.id]) : (str.masse_show_dimensions !== false)) && (() => {
                                     const dim = getBuildingDimensionLines(strLat, strLng, sLen, totalWid, sRot, 2.8);
-                                    const strokeColor = str.solutionKey === 'ombriere' ? '#059669' : '#2563eb';
+                                    const strokeColor = isBatteryStr ? '#9333ea' : (str.solutionKey === 'ombriere' ? '#059669' : '#2563eb');
                                     return (
                                       <>
                                         {/* Longueur */}
@@ -4586,10 +4822,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                       oLat = refSiteLat + (other.indexInSol || 0) * 0.00015;
                                       oLng = refSiteLng + (other.indexInSol || 0) * 0.00020;
                                     }
-                                    const oLen = Number(other.length || (other.bayCount ? other.bayCount * (other.baySpacing || 7.5) : 30));
-                                    const oWid = Number(other.width || 15);
-                                    const oExtL = other.leftSide !== 'none' ? Number(other.leftWidth || (other.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
-                                    const oExtR = other.rightSide !== 'none' ? Number(other.rightWidth || (other.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+                                    const isOtherBat = other.solutionKey === 'battery' || other.type === 'battery' || other.isBattery;
+                                    const oLen = isOtherBat
+                                      ? Number(other.length || batteryStorage.dalleLength || 6.20)
+                                      : Number(other.length || (other.bayCount ? other.bayCount * (other.baySpacing || 7.5) : 30));
+                                    const oWid = isOtherBat
+                                      ? Number(other.width || batteryStorage.dalleWidth || 3.20)
+                                      : Number(other.width || 15);
+                                    const oExtL = !isOtherBat && other.leftSide !== 'none' ? Number(other.leftWidth || (other.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+                                    const oExtR = !isOtherBat && other.rightSide !== 'none' ? Number(other.rightWidth || (other.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
                                     const oTotalWid = oWid + oExtL + oExtR;
                                     const oRot = Number(other.rotation || 0);
                                     const oCorners = getBuildingCorners(oLat, oLng, oLen, oTotalWid, oRot);
@@ -4599,8 +4840,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                         key={`poly-cadre-${str.id}-other-${other.id}-${Number(oLat).toFixed(7)}-${Number(oLng).toFixed(7)}-${oRot}-${oLen}-${oWid}`}
                                         positions={oCorners}
                                         pathOptions={{
-                                          color: other.solutionKey === 'ombriere' ? '#059669' : '#2563eb',
-                                          fillColor: other.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6',
+                                          color: isOtherBat ? '#9333ea' : (other.solutionKey === 'ombriere' ? '#059669' : '#2563eb'),
+                                          fillColor: isOtherBat ? '#a855f7' : (other.solutionKey === 'ombriere' ? '#10b981' : '#3b82f6'),
                                           fillOpacity: 0.25,
                                           dashArray: '3, 3',
                                           weight: 2,
@@ -5389,6 +5630,26 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
             installationType={editedProject.type}
             onSaveSimulation={handleSaveSimulation}
           />
+
+          {batteryLandscapeModalOpen && (
+            <BatteryInsertionCompositor
+              isOpen={batteryLandscapeModalOpen}
+              onClose={() => setBatteryLandscapeModalOpen(false)}
+              initialPhoto={buildings[activeBuildingIndex]?.photos?.avant || photos?.avant}
+              batteryConfig={{
+                powerKw: batteryStorage?.powerKw || 500,
+                quantity: batteryStorage?.quantity || 4,
+                model: batteryStorage?.model || 'CESC Mercury 261',
+                dalleLength: batteryStorage?.dalleLength || 6.20,
+                dalleWidth: batteryStorage?.dalleWidth || 3.20
+              }}
+              onSaveSimulation={(simulatedDataUrl) => {
+                handleSaveSimulation(simulatedDataUrl);
+                setBatteryLandscapeModalOpen(false);
+              }}
+              docType={isDP ? "DP6" : "PC6"}
+            />
+          )}
 
           {/* Footer */}
           <div className="px-6 py-3.5 border-t border-gray-100 flex items-center justify-between bg-gray-50/80 flex-shrink-0">
