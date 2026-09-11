@@ -59,6 +59,70 @@ export default function SolarRoofSimulator({
   const [userSelectedKwc, setUserSelectedKwc] = useState(null);
   const [isAutoProspectingOpen, setIsAutoProspectingOpen] = useState(false);
 
+  // Charger et entrer directement dans l'éditeur complet depuis l'automate de prospection
+  const handleOpenProjectFromProspecting = (item) => {
+    if (!item) return;
+    const b = item.building;
+    const sim = item.simulation;
+
+    if (b?.center && Array.isArray(b.center) && b.center.length >= 2) {
+      setMapCenter([b.center[0], b.center[1]]);
+    } else if (sim?.mapCenter && Array.isArray(sim.mapCenter)) {
+      setMapCenter(sim.mapCenter);
+    }
+
+    if (b?.polygon && Array.isArray(b.polygon) && b.polygon.length >= 3) {
+      setPolygonPoints(b.polygon);
+    } else if (sim?.polygonPoints && Array.isArray(sim.polygonPoints) && sim.polygonPoints.length >= 3) {
+      setPolygonPoints(sim.polygonPoints);
+    }
+
+    if (b?.area) {
+      setRoofSurface(Math.round(b.area));
+    } else if (sim?.roofSurface) {
+      setRoofSurface(Math.round(sim.roofSurface));
+    }
+
+    if (sim?.installedKwc) {
+      setUserSelectedKwc(sim.installedKwc);
+    }
+
+    if (sim?.pitch !== undefined && sim?.pitch !== null) {
+      setSelectedPitch(Number(sim.pitch));
+    }
+
+    if (sim?.ridgeIndex !== undefined && sim?.ridgeIndex !== null) {
+      setSelectedRidgeIndex(Number(sim.ridgeIndex));
+    }
+
+    if (sim?.roofType) {
+      setRoofType(sim.roofType);
+    }
+
+    const clientName = sim?.ownerName || sim?.clientName || '';
+    if (clientName) {
+      setClientNameInput(clientName);
+    }
+
+    const fullAddr = item.addressLabel || sim?.address || '';
+    if (fullAddr) {
+      setAddressInput(fullAddr);
+      setIsAddressSelected(true);
+    }
+
+    if (sim?.cityName) {
+      setCityName(sim.cityName);
+    }
+
+    if (sim?.departmentCode) {
+      setDepartmentCode(sim.departmentCode);
+    }
+
+    // Basculer directement à l'étape 3 (Surface / Délimitation des 4 coins du polygone)
+    setCurrentStep(3);
+    setIsAutoProspectingOpen(false);
+  };
+
   // Emprise cartographique courante calculée autour de mapCenter
   const currentMapBbox = useMemo(() => {
     if (!mapCenter || !mapCenter[0] || !mapCenter[1]) return null;
@@ -1001,6 +1065,17 @@ export default function SolarRoofSimulator({
                   <RotateCcw className="w-3.5 h-3.5" />
                   Refaire une simulation
                 </button>
+                {onExportPDF && (
+                  <button
+                    type="button"
+                    onClick={() => onExportPDF()}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-sm transition-all hover:scale-105 cursor-pointer ml-1"
+                    title="Télécharger l'offre commerciale (Fiche Simplifiée 1 page ou Étude Détaillée)"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    <span>Exporter PDF</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1387,6 +1462,53 @@ export default function SolarRoofSimulator({
               </div>
             </div>
 
+            {/* ─── BARRE D'ACTIONS DU BAS (ENREGISTRER & EXPORTER PDF) ───────────── */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-md flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(5)}
+                  className="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent (Pente)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(3)}
+                  className="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Modifier la toiture (Étape 3)
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {onSaveSimulation && (
+                  <button
+                    type="button"
+                    onClick={() => onSaveSimulation()}
+                    className="px-5 py-2.5 rounded-2xl bg-white border-2 border-emerald-600 hover:bg-emerald-50 text-emerald-700 font-black text-xs flex items-center gap-2 shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    Enregistrer la simulation
+                  </button>
+                )}
+
+                {onExportPDF && (
+                  <button
+                    type="button"
+                    onClick={() => onExportPDF()}
+                    className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    title="Télécharger l'offre commerciale (Fiche Simplifiée 1 page ou Étude Détaillée)"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    Télécharger l'Offre Commerciale PDF
+                  </button>
+                )}
+              </div>
+            </div>
+
           </motion.div>
         )}
 
@@ -1399,6 +1521,7 @@ export default function SolarRoofSimulator({
         defaultCommune={cityName || 'Bordeaux'}
         currentMapBbox={currentMapBbox}
         simulatorMapCenter={mapCenter}
+        onOpenInSimulator={handleOpenProjectFromProspecting}
       />
 
     </div>

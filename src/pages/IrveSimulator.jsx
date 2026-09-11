@@ -477,28 +477,52 @@ export default function IrveSimulator() {
     });
   };
 
-  // Validation de la modale de configuration et génération du PDF Commercial 4-5 pages
+  // Validation de la modale de configuration et génération du PDF Commercial
   const handleConfirmGenerateCommercialProposal = async (configOptions) => {
     if (!configModalSim) return;
+    const isSimplified = configOptions?.format === 'simplified';
     try {
-      toast({
-        title: "Génération de l'offre en cours...",
-        description: "Mise en page haute définition de votre dossier commercial (4-5 pages)...",
-      });
+      if (isSimplified) {
+        toast({
+          title: "Génération de la fiche simplifiée...",
+          description: "Mise en page haute définition de votre fiche commerciale (1 page)...",
+        });
 
-      await generateCommercialProposalPDF({
-        simulation: configModalSim,
-        options: {
-          ...configOptions,
-          clientName: configModalSim.clientName || selectedProject?.name || null,
-        },
-        returnBlob: false
-      });
+        await generateCommercialOfferPDF({
+          simulation: {
+            ...configModalSim,
+            includeCoverLetter: false,
+            economicModel: configOptions.economicModel,
+            tarifEdfOa: configOptions.tarifEdfOa
+          },
+          selectedProject,
+          customClientName: configOptions?.clientName || configModalSim.clientName || null
+        });
 
-      toast({
-        title: "Offre Commerciale générée !",
-        description: "Le document PDF a été téléchargé avec succès.",
-      });
+        toast({
+          title: "Fiche Simplifiée générée !",
+          description: "Le document PDF (1 page) a été téléchargé avec succès.",
+        });
+      } else {
+        toast({
+          title: "Génération de l'offre en cours...",
+          description: "Mise en page haute définition de votre dossier commercial (4-5 pages)...",
+        });
+
+        await generateCommercialProposalPDF({
+          simulation: configModalSim,
+          options: {
+            ...configOptions,
+            clientName: configModalSim.clientName || selectedProject?.name || null,
+          },
+          returnBlob: false
+        });
+
+        toast({
+          title: "Offre Commerciale générée !",
+          description: "Le dossier commercial complet a été téléchargé avec succès.",
+        });
+      }
       setIsConfigModalOpen(false);
     } catch (err) {
       console.error("Erreur lors de la génération de l'offre commerciale :", err);

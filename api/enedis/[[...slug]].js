@@ -151,7 +151,7 @@ async function handleDeclareMandate(req, res) {
     mandateDate: validSignatureDate.toISOString(),
     expiresAt: expiresDate.toISOString(),
     mandateRef: mandateRef || `MAN-${cleanPrm}-${Date.now().toString(36).toUpperCase()}`,
-    declaredBy: 'ENR COURTAGE ENERGIE',
+    declaredBy: 'ENR COURTAGE',
     declarantEmail: 'contact@enr-courtage.fr',
     declarantPortal: 'SGE Tiers',
     scope,

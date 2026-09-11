@@ -453,16 +453,33 @@ export async function reverseGeocodeBAN(lat, lng) {
     clearTimeout(timeoutId);
     if (!res.ok) return null;
     const data = await res.json();
-    const feat = data.features?.[0]?.properties;
+    const features = data.features || [];
+    if (features.length === 0) return null;
+
+    const bestFeature = features.find(f => f.properties?.type === 'housenumber')
+      || features.find(f => f.properties?.type === 'street')
+      || features[0];
+
+    const feat = bestFeature?.properties;
     if (!feat) return null;
 
+    const streetName = feat.name || feat.street || '';
+    const city = feat.city || '';
+    const postcode = feat.postcode || '';
+
+    const cleanLabel = (streetName && city)
+      ? `${streetName}, ${postcode} ${city}`.trim()
+      : (feat.label || `${streetName} ${postcode} ${city}`.trim());
+
     return {
-      label: feat.label || '',
-      street: feat.street || feat.name || '',
+      label: cleanLabel,
+      name: streetName,
+      street: streetName,
       housenumber: feat.housenumber || '',
-      postcode: feat.postcode || '',
-      city: feat.city || '',
-      departmentCode: feat.postcode ? feat.postcode.substring(0, 2) : '33'
+      postcode,
+      city,
+      type: feat.type || '',
+      departmentCode: postcode ? postcode.substring(0, 2) : '33'
     };
   } catch (err) {
     console.warn('Erreur reverse geocoding BAN:', err.message);

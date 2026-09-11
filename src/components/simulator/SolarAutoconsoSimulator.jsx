@@ -1701,11 +1701,48 @@ export default function SolarAutoconsoSimulator({
               <button
                 type="button"
                 onClick={() => setCurrentStep(3)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 flex items-center gap-1"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 flex items-center gap-1 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Modifier
               </button>
+            </div>
+
+            {/* ─── BARRE D'ACTIONS DU BAS (ENREGISTRER & EXPORTER PDF) ───────────── */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-md flex flex-wrap items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(6)}
+                className="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Précédent (Consommation)
+              </button>
+
+              <div className="flex items-center gap-3">
+                {onSaveSimulation && (
+                  <button
+                    type="button"
+                    onClick={() => onSaveSimulation()}
+                    className="px-5 py-2.5 rounded-2xl bg-white border-2 border-emerald-600 hover:bg-emerald-50 text-emerald-700 font-black text-xs flex items-center gap-2 shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    Enregistrer la simulation
+                  </button>
+                )}
+
+                {onExportPDF && (
+                  <button
+                    type="button"
+                    onClick={() => onExportPDF()}
+                    className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    title="Télécharger l'offre commerciale (Fiche Simplifiée 1 page ou Étude Détaillée)"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    Télécharger l'Offre Commerciale PDF
+                  </button>
+                )}
+              </div>
             </div>
           </motion.div>
         )}

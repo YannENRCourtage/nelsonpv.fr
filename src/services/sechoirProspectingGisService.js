@@ -304,15 +304,21 @@ export async function reverseGeocodeBAN(lat, lng) {
     const res = await fetch(url);
     if (!res.ok) throw new Error('BAN reverse failed');
     const data = await res.json();
-    const feature = data.features?.[0];
+    const features = data.features || [];
+    const feature = features.find(f => f.properties?.type === 'housenumber')
+      || features.find(f => f.properties?.type === 'street')
+      || features[0];
 
     if (feature && feature.properties) {
       const p = feature.properties;
       const banLon = feature.geometry?.coordinates?.[0];
       const banLat = feature.geometry?.coordinates?.[1];
       const hasValidCoords = typeof banLat === 'number' && typeof banLon === 'number' && !isNaN(banLat) && !isNaN(banLon);
+      const cleanLabel = (p.name && p.city)
+        ? `${p.name}, ${p.postcode || ''} ${p.city}`.trim()
+        : (p.label || `${p.name || ''}, ${p.postcode || ''} ${p.city || ''}`.trim());
       return {
-        addressLabel: p.label || `${p.name || ''}, ${p.postcode || ''} ${p.city || ''}`.trim(),
+        addressLabel: cleanLabel,
         street: p.name || '',
         postalCode: p.postcode || '',
         city: p.city || '',

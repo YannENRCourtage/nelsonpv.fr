@@ -451,9 +451,9 @@ export default function BuildingStructureBeforeAfterViewer({
             </div>
           </div>
 
-          {/* Instruction */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/80 backdrop-blur px-3 py-1 rounded-full text-[11px] font-bold text-white/90 border border-white/20 pointer-events-none">
-            ↔ Glissez le curseur pour révéler le projet sur votre terrain
+          {/* Instruction et bandeau récapitulatif positionné en bas */}
+          <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/90 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-xs font-bold border border-white/25 shadow-xl flex items-center gap-2 pointer-events-none whitespace-nowrap">
+            <span>📐 {totalFloorArea} m² &bull; {installedKwc} kWc</span>
           </div>
         </div>
       )}

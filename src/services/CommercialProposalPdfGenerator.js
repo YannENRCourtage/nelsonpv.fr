@@ -385,6 +385,7 @@ export async function generateCommercialProposalPDF({
   const createPageContainer = () => {
     const el = document.createElement('div');
     el.style.width = '794px';
+    el.style.maxWidth = '794px';
     el.style.height = '1123px';
     el.style.minHeight = '1123px';
     el.style.maxHeight = '1123px';
@@ -392,11 +393,13 @@ export async function generateCommercialProposalPDF({
     el.style.position = 'fixed';
     el.style.left = '-9999px';
     el.style.top = '0';
-    el.style.padding = '38px 45px';
+    el.style.padding = '36px 42px';
     el.style.background = '#ffffff';
     el.style.fontFamily = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
     el.style.color = '#0f172a';
     el.style.overflow = 'hidden';
+    el.style.wordWrap = 'break-word';
+    el.style.overflowWrap = 'break-word';
     el.style.display = 'flex';
     el.style.flexDirection = 'column';
     el.style.justifyContent = 'space-between';
@@ -445,7 +448,7 @@ export async function generateCommercialProposalPDF({
             <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR Courtage" style="height: 46px; object-fit: contain;" />
           </div>
           <div style="text-align: right; font-size: 8.5pt; color: #475569; line-height: 1.4;">
-            <strong style="color: #0e2b4d; font-size: 9.5pt;">ENR COURTAGE ENERGIE</strong><br/>
+            <strong style="color: #0e2b4d; font-size: 9.5pt;">ENR COURTAGE</strong><br/>
             Ingénierie &amp; Développement Photovoltaïque<br/>
             33000 Bordeaux &bull; contact@enr-courtage.fr<br/>
             <span style="color: #0284c7; font-weight: bold;">07 63 87 71 40</span>
@@ -542,16 +545,16 @@ export async function generateCommercialProposalPDF({
         </div>
 
         <!-- GRAND VISUEL DE TOITURE (CALEPINAGE HD) -->
-        <div style="margin-top: 16px; border: 1.5px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #0f172a; position: relative; height: 260px; display: flex; align-items: center; justify-content: center;">
+        <div style="margin-top: 14px; border: 1.5px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #0f172a; position: relative; height: 260px; max-height: 260px; max-width: 100%; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
           ${mapVisualDataUrl
-            ? `<img src="${mapVisualDataUrl}" alt="Implantation toiture" style="width: 100%; height: 100%; object-fit: cover;" />`
+            ? `<img src="${mapVisualDataUrl}" alt="Implantation toiture" style="width: 100%; height: 100%; max-height: 260px; object-fit: cover;" />`
             : `<div style="color: #94a3b8; font-size: 11pt; font-weight: bold;">Vue Satellite &amp; Calepinage Solaire</div>`
           }
-          <div style="position: absolute; top: 10px; left: 12px; background: rgba(14, 43, 77, 0.90); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 8.5pt; font-weight: 800; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2);">
+          <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(14, 43, 77, 0.92); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 8.5pt; font-weight: 800; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.25); white-space: nowrap; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
             📐 ${roofSurface} m² de toiture &bull; ${panelCount} modules 465 Wc
           </div>
           ${googleSolar?.maxSunshineHoursPerYear ? `
-            <div style="position: absolute; bottom: 10px; right: 12px; background: rgba(16, 185, 129, 0.92); color: #ffffff; padding: 5px 12px; border-radius: 20px; font-size: 8pt; font-weight: 800; backdrop-filter: blur(4px);">
+            <div style="position: absolute; bottom: 10px; right: 12px; background: rgba(16, 185, 129, 0.92); color: #ffffff; padding: 5px 12px; border-radius: 20px; font-size: 8pt; font-weight: 800; backdrop-filter: blur(4px); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
               ☀️ Données Google Solar 3D : ${Math.round(googleSolar.maxSunshineHoursPerYear)} h/an
             </div>
           ` : ''}

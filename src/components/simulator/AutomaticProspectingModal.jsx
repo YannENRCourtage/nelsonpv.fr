@@ -31,6 +31,7 @@ import {
 import ServicePostalModal from '@/components/simulator/ServicePostalModal';
 import CommercialOfferConfigModal from '@/components/simulator/CommercialOfferConfigModal';
 import { generateCommercialProposalPDF } from '@/services/CommercialProposalPdfGenerator';
+import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
 import { toast } from '@/components/ui/use-toast';
 import { getBuildingInsights, selectBestRoofSegment, boundingBoxToPolygon } from '@/services/googleSolar';
 import { squarePolygon } from '@/utils/squarePolygon';
@@ -58,7 +59,8 @@ export default function AutomaticProspectingModal({
   onClose,
   currentMapBbox = null,
   simulatorMapCenter = null,
-  defaultCommune = 'Bordeaux'
+  defaultCommune = 'Bordeaux',
+  onOpenInSimulator = null
 }) {
   // Mode de sélection géographique : 'commune' | 'bbox'
   const [geoMode, setGeoMode] = useState('commune');
@@ -73,11 +75,11 @@ export default function AutomaticProspectingModal({
   // Rayon pour l'emprise carte (en mètres)
   const [mapRadius, setMapRadius] = useState(1000); // 500, 1000, 2000, 5000
 
-  // Critères de filtrage, puissance et modèle économique
+  // Critères de filtrage, puissance et modèle économique (100 à 500 kWc par défaut)
   const [minArea, setMinArea] = useState(400);
   const [maxArea, setMaxArea] = useState(50000);
   const [minTargetKwc, setMinTargetKwc] = useState(100);
-  const [maxTargetKwc, setMaxTargetKwc] = useState(3000);
+  const [maxTargetKwc, setMaxTargetKwc] = useState(500);
   const [economicModel, setEconomicModel] = useState('vente_totale'); // 'vente_totale' | 'autoconsommation' | 'autoconsommation_stockage'
   const [tarifEdfOa, setTarifEdfOa] = useState(0.085);
   const [targetLimit, setTargetLimit] = useState(10); // 10, 30, 50, 100, 'Tout'
@@ -85,6 +87,7 @@ export default function AutomaticProspectingModal({
   const [roofType, setRoofType] = useState('asymetrique');
   const [excludeThirdParty, setExcludeThirdParty] = useState(false);
   const [includeCoverLetter, setIncludeCoverLetter] = useState(true);
+  const [pdfFormat, setPdfFormat] = useState('simplified'); // 'simplified' (1 page par défaut) | 'detailed' (4-5 pages)
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Modal d'envoi postal via ServicePostal
@@ -315,20 +318,36 @@ export default function AutomaticProspectingModal({
     setIsConfigModalOpen(true);
   };
 
-  // Validation et génération du PDF Commercial paramétré (4 à 5 pages)
+  // Validation et génération du PDF Commercial paramétré (Fiche Simplifiée 1 page ou Étude Détaillée 4-5 pages)
   const handleConfirmGenerateOfferPdf = async (configOptions) => {
     if (!configModalItem) return;
     const simToUse = configModalItem.simulation || configModalItem;
+    const isSimplified = configOptions.format === 'simplified';
 
     try {
-      addLog(`📄 Génération du PDF commercial paramétré (${configOptions.economicModel})...`);
-      const pdfResult = await generateCommercialProposalPDF({
-        simulation: simToUse,
-        options: configOptions,
-        returnBlob: true
-      });
+      addLog(`📄 Génération du PDF commercial (${isSimplified ? 'Fiche Simplifiée 1 page' : 'Étude Détaillée 4-5 pages'})...`);
+      let pdfResult = null;
 
-      if (pdfResult?.blob) {
+      if (isSimplified) {
+        pdfResult = await generateCommercialOfferPDF({
+          simulation: {
+            ...simToUse,
+            includeCoverLetter: false,
+            economicModel: configOptions.economicModel,
+            tarifEdfOa: configOptions.tarifEdfOa
+          },
+          customClientName: simToUse.ownerName || simToUse.clientName || null,
+          returnBlob: true
+        });
+      } else {
+        pdfResult = await generateCommercialProposalPDF({
+          simulation: simToUse,
+          options: configOptions,
+          returnBlob: true
+        });
+      }
+
+      if (pdfResult?.blob || pdfResult?.arrayBuffer) {
         const saveRes = await savePdfToLocalDestination({
           filename: pdfResult.filename,
           blob: pdfResult.blob,
@@ -338,9 +357,9 @@ export default function AutomaticProspectingModal({
         });
 
         if (saveRes.success) {
-          addLog(`   💾 PDF Commercial enregistré : ${saveRes.filename} [${saveRes.method}]`);
+          addLog(`   💾 PDF enregistré : ${saveRes.filename} [${saveRes.method}]`);
           toast({
-            title: 'PDF Commercial généré avec succès',
+            title: isSimplified ? 'Fiche Simplifiée (1 page) générée' : 'Étude Détaillée générée avec succès',
             description: `Le fichier ${saveRes.filename} a été enregistré.`,
             variant: 'success'
           });
@@ -388,14 +407,30 @@ export default function AutomaticProspectingModal({
         addLog(`🗺️ Zone sélectionnée : ${zoneLabel}`);
       }
 
-      // 2. Sourcing géospatial rapide
+      // 2. Sourcing géospatial rapide avec restriction stricte sur le contour communal
       const effectiveLimit = targetLimit === 'Tout' ? 500 : Number(targetLimit);
       const limitLabel = targetLimit === 'Tout' ? 'toutes les toitures éligibles' : `${targetLimit} toitures cibles`;
       setCurrentStepText(`Interrogation cadastrale Overpass API (${limitLabel})...`);
       addLog(`🛰️ Recherche des bâtiments (Emprise : ${minArea} à ${maxArea} m² • Cible : ${minTargetKwc} à ${maxTargetKwc} kWc • Objectif : ${limitLabel})...`);
 
+      // S'assurer que le contour GeoJSON officiel est chargé pour la commune sélectionnée
+      let communeContour = selectedCommune?.contour || null;
+      const communeInsee = selectedCommune?.codeInsee || selectedCommune?.id || null;
+      if (geoMode === 'commune' && !communeContour && selectedCommune?.nom) {
+        try {
+          const list = await searchCommunes(selectedCommune.nom);
+          const found = list.find(c => c.codeInsee === communeInsee || c.nom.toLowerCase() === selectedCommune.nom.toLowerCase()) || list[0];
+          if (found?.contour) {
+            communeContour = found.contour;
+            selectedCommune.contour = found.contour;
+          }
+        } catch (e) {}
+      }
+
       const eligible = await fetchBuildingsInBbox({
         bbox: targetBbox,
+        codeInsee: geoMode === 'commune' ? communeInsee : null,
+        contour: geoMode === 'commune' ? communeContour : null,
         minArea,
         maxArea,
         limit: effectiveLimit,
@@ -454,42 +489,51 @@ export default function AutomaticProspectingModal({
           const lng = Array.isArray(b.center) ? b.center[1] : (b.center.lng || b.center.lon || b.center[1]);
           const solarInsights = await getBuildingInsights(lat, lng);
 
-          if (solarInsights && solarInsights.available !== false && solarInsights.solarPotential) {
-            const sp = solarInsights.solarPotential;
-            const sunshineHours = Number(sp.maxSunshineHoursPerYear || 0);
-            const usefulArea = Number(sp.maxArrayAreaMeters2 || 0);
-
-            // Filtrage conditionnel 1 : Ensoleillement critique (< 1000 h/an)
-            if (sunshineHours > 0 && sunshineHours < 1000) {
-              addLog(`   ⚠️ Bâtiment ignoré (Google Solar) : Ensoleillement insuffisant (${Math.round(sunshineHours)} h/an < 1 000 h/an).`);
-              continue;
-            }
-
-            // Filtrage conditionnel 2 : Surface utile réelle trop faible pour l'objectif de puissance
-            const minUsefulAreaRequired = Math.round((minTargetKwc * 1000 / 465) * 1.4);
-            if (usefulArea > 0 && (usefulArea < minUsefulAreaRequired || usefulArea < 180)) {
-              addLog(`   ⚠️ Bâtiment ignoré (Google Solar) : Surface utile réelle insuffisante (${Math.round(usefulArea)} m² < ${minUsefulAreaRequired} m² requis pour ${minTargetKwc} kWc).`);
-              continue;
-            }
-
-            const bestSeg = selectBestRoofSegment(sp.roofSegmentSummaries);
-            const gPitch = bestSeg?.pitchDegrees !== undefined ? Math.round(bestSeg.pitchDegrees) : null;
-            const gAzimuth = bestSeg?.azimuthDegrees !== undefined ? Math.round(bestSeg.azimuthDegrees) : null;
-
-            googleSolarData = {
-              maxSunshineHoursPerYear: sunshineHours,
-              maxArrayAreaMeters2: usefulArea,
-              pitch: gPitch,
-              azimuth: gAzimuth,
-              solarPotential: sp
-            };
-
-            addLog(`   ☀️ Google Solar 3D validé : ${Math.round(sunshineHours)} h/an • Surface utile ${Math.round(usefulArea)} m² • Pente ${gPitch !== null ? gPitch + '°' : 'auto'} • Azimut ${gAzimuth !== null ? gAzimuth + '°' : 'auto'}`);
-          } else {
-            addLog(`   ℹ️ Google Solar non disponible sur cette zone (3D rurale non couverte). Inférence géométrique Nelson appliquée.`);
+          // Exclure automatiquement si données solaires indisponibles ou qualité d'imagerie LOW
+          if (!solarInsights || solarInsights.available === false || !solarInsights.solarPotential || solarInsights.imageryQuality === 'LOW') {
+            const reason = !solarInsights || solarInsights.available === false
+              ? 'Données Google Solar indisponibles sur cette zone'
+              : solarInsights.imageryQuality === 'LOW'
+              ? 'Qualité imagerie satellite insuffisante (LOW)'
+              : 'Gisement solaire insuffisant';
+            addLog(`   ⚠️ Bâtiment ignoré (Google Solar) : ${reason}.`);
+            continue;
           }
+
+          const sp = solarInsights.solarPotential;
+          const sunshineHours = Number(sp.maxSunshineHoursPerYear || 0);
+          const usefulArea = Number(sp.maxArrayAreaMeters2 || 0);
+
+          // Filtrage conditionnel 1 : Ensoleillement critique (< 1000 h/an)
+          if (sunshineHours > 0 && sunshineHours < 1000) {
+            addLog(`   ⚠️ Bâtiment ignoré (Google Solar) : Ensoleillement insuffisant (${Math.round(sunshineHours)} h/an < 1 000 h/an).`);
+            continue;
+          }
+
+          // Filtrage conditionnel 2 : Surface utile réelle trop faible pour l'objectif de puissance
+          const minUsefulAreaRequired = Math.round((minTargetKwc * 1000 / 465) * 1.4);
+          if (usefulArea > 0 && (usefulArea < minUsefulAreaRequired || usefulArea < 180)) {
+            addLog(`   ⚠️ Bâtiment ignoré (Google Solar) : Surface utile réelle insuffisante (${Math.round(usefulArea)} m² < ${minUsefulAreaRequired} m² requis pour ${minTargetKwc} kWc).`);
+            continue;
+          }
+
+          const bestSeg = selectBestRoofSegment(sp.roofSegmentSummaries);
+          const gPitch = bestSeg?.pitchDegrees !== undefined ? Math.round(bestSeg.pitchDegrees) : null;
+          const gAzimuth = bestSeg?.azimuthDegrees !== undefined ? Math.round(bestSeg.azimuthDegrees) : null;
+
+          googleSolarData = {
+            maxSunshineHoursPerYear: sunshineHours,
+            maxArrayAreaMeters2: usefulArea,
+            pitch: gPitch,
+            azimuth: gAzimuth,
+            solarPotential: sp
+          };
+
+          addLog(`   ☀️ Google Solar 3D validé (${solarInsights.imageryQuality || 'HD'}) : ${Math.round(sunshineHours)} h/an • Surface utile ${Math.round(usefulArea)} m² • Pente ${gPitch !== null ? gPitch + '°' : 'auto'} • Azimut ${gAzimuth !== null ? gAzimuth + '°' : 'auto'}`);
         } catch (errSolar) {
           console.warn('Erreur vérification Google Solar bâtiment:', errSolar);
+          addLog(`   ⚠️ Bâtiment ignoré : Erreur d'analyse Google Solar (${errSolar.message}).`);
+          continue;
         }
 
         // C. Simulation Toiture Headless avec Inférence Dynamique Toiture & Données Google Solar
@@ -527,19 +571,32 @@ export default function AutomaticProspectingModal({
           addLog(`   💶 Production : ~${sim.annualProductionKwh?.toLocaleString('fr-FR')} kWh/an • Gains Autoconso + Surplus : ~${sim.annualBenefitYear1?.toLocaleString('fr-FR')} €/an`);
         }
 
-        // D. Génération de l'Offre Commerciale PDF (Modèle Synthétique 4-5 pages)
+        // D. Génération de l'Offre Commerciale PDF (Par défaut Fiche Simplifiée 1 page)
         setCurrentStepText(`Génération de l'offre PDF ${stepNum}/${total}...`);
-        const pdfResult = await generateCommercialProposalPDF({
-          simulation: sim,
-          options: {
-            economicModel,
-            tarifEdfOa,
-            financingChoices: excludeThirdParty ? ['credit_bancaire', 'abonnement'] : ['tiers_investisseur', 'credit_bancaire', 'abonnement'],
-            includeCoverLetter,
-            includeAmortizationTable: true
-          },
-          returnBlob: true
-        });
+        let pdfResult = null;
+        if (pdfFormat === 'detailed') {
+          pdfResult = await generateCommercialProposalPDF({
+            simulation: sim,
+            options: {
+              economicModel,
+              tarifEdfOa,
+              financingChoices: excludeThirdParty ? ['credit_bancaire', 'abonnement'] : ['tiers_investisseur', 'credit_bancaire', 'abonnement'],
+              includeCoverLetter,
+              includeAmortizationTable: true
+            },
+            returnBlob: true
+          });
+        } else {
+          // Fiche Simplifiée (1 page) par défaut
+          pdfResult = await generateCommercialOfferPDF({
+            simulation: {
+              ...sim,
+              includeCoverLetter: false
+            },
+            customClientName: sim.ownerName || sim.clientName || null,
+            returnBlob: true
+          });
+        }
 
         if (!pdfResult || (!pdfResult.blob && !pdfResult.arrayBuffer)) {
           addLog(`   ❌ Échec génération PDF pour bâtiment ${b.osmId}`);
@@ -1674,9 +1731,14 @@ export default function AutomaticProspectingModal({
                               #{idx + 1}
                             </div>
 
-                            <div className="min-w-0">
-                              <div className="font-bold text-white truncate max-w-xs sm:max-w-md">
-                                {item.addressLabel}
+                            <div
+                              className="min-w-0 cursor-pointer group"
+                              onClick={() => onOpenInSimulator && onOpenInSimulator(item)}
+                              title="Cliquer pour entrer et éditer ce projet dans le simulateur"
+                            >
+                              <div className="font-bold text-white group-hover:text-emerald-300 transition-colors truncate max-w-xs sm:max-w-md flex items-center gap-1.5">
+                                <span>{item.addressLabel}</span>
+                                <ExternalLink className="w-3 h-3 text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                               </div>
                               <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
                                 <span>📐 {item.cadastreRef}</span>
@@ -1686,7 +1748,7 @@ export default function AutomaticProspectingModal({
                                 <span className="text-amber-400 font-bold">⚡ {item.simulation?.installedKwc} kWc</span>
                                 <span>•</span>
                                 <span className="text-teal-300 font-medium">
-                                  📐 {Number(item.simulation?.pitch) === 0 ? 'Plein Sud (0°)' : `${item.simulation?.pitch ?? 15}°`}
+                                   📐 {Number(item.simulation?.pitch) === 0 ? 'Plein Sud (0°)' : `${item.simulation?.pitch ?? 15}°`}
                                 </span>
                                 <span>•</span>
                                 <span className="text-emerald-400 font-bold">💶 {item.simulation?.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an</span>
@@ -1703,6 +1765,18 @@ export default function AutomaticProspectingModal({
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
+                            {/* Bouton pour entrer dans l'Éditeur / Simulateur complet */}
+                            <button
+                              type="button"
+                              onClick={() => onOpenInSimulator && onOpenInSimulator(item)}
+                              className="px-2.5 py-1.5 rounded-xl font-black bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 text-[11px]"
+                              title="Entrer dans le simulateur complet pour modifier les 4 coins du polygone, la puissance ou interroger le PRM"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-blue-400 group-hover:text-white" />
+                              <span className="hidden md:inline">Éditer dans le Simulateur ↗</span>
+                              <span className="md:hidden">Éditer</span>
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => handleOpenEditRow(idx, item)}
@@ -1721,7 +1795,7 @@ export default function AutomaticProspectingModal({
                               type="button"
                               onClick={() => handleOpenOfferConfigModal(item)}
                               className="p-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 hover:text-white transition-colors cursor-pointer border border-emerald-500/30"
-                              title="Configurer et générer l'offre PDF commerciale"
+                              title="Télécharger l'offre PDF (Fiche Simplifiée 1 page ou Étude Détaillée)"
                             >
                               <Download className="w-4 h-4" />
                             </button>

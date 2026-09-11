@@ -94,6 +94,54 @@ export function simplifyColinearVertices(pts, angleToleranceDeg = 15) {
   return simplified;
 }
 
+// Algorithme de Ray-Casting pour tester l'appartenance d'un point au contour communal strict GeoJSON
+export function isPointInContour(lat, lng, contour) {
+  if (!contour || !contour.coordinates) return true; // Si pas de contour, tolérance totale
+
+  function pointInRing(x, y, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0], yi = ring[i][1];
+      const xj = ring[j][0], yj = ring[j][1];
+      const intersect = ((yi > y) !== (yj > y)) &&
+        (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  try {
+    if (contour.type === 'Polygon') {
+      const rings = contour.coordinates;
+      if (!rings || rings.length === 0) return true;
+      if (!pointInRing(lng, lat, rings[0])) return false;
+      for (let i = 1; i < rings.length; i++) {
+        if (pointInRing(lng, lat, rings[i])) return false; // trou intérieur
+      }
+      return true;
+    } else if (contour.type === 'MultiPolygon') {
+      const polygons = contour.coordinates;
+      if (!polygons || polygons.length === 0) return true;
+      for (const poly of polygons) {
+        if (pointInRing(lng, lat, poly[0])) {
+          let inHole = false;
+          for (let i = 1; i < poly.length; i++) {
+            if (pointInRing(lng, lat, poly[i])) {
+              inHole = true;
+              break;
+            }
+          }
+          if (!inHole) return true;
+        }
+      }
+      return false;
+    }
+  } catch (err) {
+    console.warn('Erreur vérification point in contour:', err);
+  }
+  return true;
+}
+
 // Vérifie si le polygone forme une emprise de toiture exploitable pour le solaire
 export function isStrictRectangle(rawPolygon) {
   if (!rawPolygon || rawPolygon.length < 3) return false;
@@ -107,14 +155,41 @@ export function isStrictRectangle(rawPolygon) {
     }
   }
 
+  // Si le polygone brut a déjà plus de 12 sommets, rejet immédiat (toitures trop complexes)
+  if (pts.length > 12) return false;
+
   // Simplifier les sommets colinéaires sur les murs droits
   const simplified = simplifyColinearVertices(pts, 20);
 
-  // Accepte tous les quadrilatères et polygones industriels / agricoles de toiture (jusqu'à 12 sommets)
-  if (simplified.length >= 4 && simplified.length <= 14) {
-    return true;
+  // Rejeter les toitures avec trop de sommets (> 12) ou trop peu (< 3)
+  if (simplified.length < 3 || simplified.length > 12) {
+    return false;
   }
-  return simplified.length >= 3;
+
+  // Filtrage par ratio de compacité : Surface Toiture / Surface Bounding Box >= 0.45
+  // Exclut les toits formes spaghettis, cours intérieures démesurées ou débordantes
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  for (const p of simplified) {
+    if (p.lat < minLat) minLat = p.lat;
+    if (p.lat > maxLat) maxLat = p.lat;
+    if (p.lng < minLng) minLng = p.lng;
+    if (p.lng > maxLng) maxLng = p.lng;
+  }
+
+  const midLat = ((minLat + maxLat) / 2 * Math.PI) / 180;
+  const bboxWidthM = (maxLng - minLng) * 111320 * Math.cos(midLat);
+  const bboxHeightM = (maxLat - minLat) * 110574;
+  const bboxArea = bboxWidthM * bboxHeightM;
+
+  if (bboxArea > 0) {
+    const polyArea = calculatePolygonArea(simplified);
+    const compactnessRatio = polyArea / bboxArea;
+    if (compactnessRatio < 0.45) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // Détermine l'exposition et l'arête de faîtage optimale de la toiture
@@ -211,6 +286,7 @@ export async function searchCommunes(query) {
         departmentCode: c.code ? c.code.substring(0, 2) : '33',
         center: c.centre ? [c.centre.coordinates[1], c.centre.coordinates[0]] : [44.8412, -0.5805],
         bbox,
+        contour: c.contour || null,
         population: c.population || 0
       };
     });
@@ -230,6 +306,8 @@ const OVERPASS_ENDPOINTS = [
 
 export async function fetchBuildingsInBbox({
   bbox,
+  codeInsee = null,
+  contour = null,
   minArea = 400,
   maxArea = 50000,
   limit = 50,
@@ -250,6 +328,10 @@ export async function fetchBuildingsInBbox({
   }
 
   const addBuilding = (b) => {
+    // Filtrage géographique strict : exclure impérativement si le centre du bâtiment est hors du contour communal
+    if (contour && !isPointInContour(b.center[0], b.center[1], contour)) {
+      return;
+    }
     if (isDuplicate(b.center)) return;
     seenCentroids.push(b.center);
     eligibleBuildings.push(b);
@@ -344,10 +426,17 @@ export async function fetchBuildingsInBbox({
     }
   };
 
-  // 2. SOURCING OVERPASS OSM (en complément pour maximiser l'exhaustivité)
+  // 2. SOURCING OVERPASS OSM (en complément avec filtre par code INSEE)
   const fetchOSM = async () => {
     try {
-      const overpassQuery = `[out:json][timeout:20];
+      const overpassQuery = codeInsee
+        ? `[out:json][timeout:25];
+area["boundary"="administrative"]["ref:INSEE"="${codeInsee}"]->.searchArea;
+(
+  way["building"](area.searchArea)(${minLat},${minLng},${maxLat},${maxLng});
+);
+out geom;`
+        : `[out:json][timeout:20];
 (
   way["building"](${minLat},${minLng},${maxLat},${maxLng});
 );
@@ -357,7 +446,7 @@ out geom;`;
       for (const endpoint of OVERPASS_ENDPOINTS) {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const timeoutId = setTimeout(() => controller.abort(), 9000);
           const res = await fetch(endpoint, {
             method: 'POST',
             headers: {
@@ -374,6 +463,31 @@ out geom;`;
           }
         } catch (err) {
           // miroir suivant
+        }
+      }
+
+      // Si la requête avec searchArea a échoué, repli automatique sur la bbox classique
+      if (!rawData && codeInsee) {
+        const fallbackQuery = `[out:json][timeout:15];(way["building"](${minLat},${minLng},${maxLat},${maxLng}););out geom;`;
+        for (const endpoint of OVERPASS_ENDPOINTS) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'NelsonPV-SolarProspector/1.0 (contact@nelsonpv.fr)'
+              },
+              body: 'data=' + encodeURIComponent(fallbackQuery),
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (res.ok) {
+              rawData = await res.json();
+              break;
+            }
+          } catch (err) {}
         }
       }
 
@@ -442,16 +556,36 @@ export async function reverseGeocodeBAN(lat, lng) {
     clearTimeout(timeoutId);
     if (!res.ok) return null;
     const data = await res.json();
-    const feat = data.features?.[0]?.properties;
+    const features = data.features || [];
+    if (features.length === 0) return null;
+
+    // Prioriser strictement les numéros de voie ('housenumber'), puis les rues ('street')
+    // afin d'éviter les résultats vagues de type POI ou "Zone d'activités (59)"
+    const bestFeature = features.find(f => f.properties?.type === 'housenumber')
+      || features.find(f => f.properties?.type === 'street')
+      || features[0];
+
+    const feat = bestFeature?.properties;
     if (!feat) return null;
 
+    const streetName = feat.name || feat.street || '';
+    const city = feat.city || '';
+    const postcode = feat.postcode || '';
+
+    // Libellé propre avec numéro + voie et ville pour constituer une adresse postale réelle
+    const cleanLabel = (streetName && city)
+      ? `${streetName}, ${postcode} ${city}`.trim()
+      : (feat.label || `${streetName} ${postcode} ${city}`.trim());
+
     return {
-      label: feat.label || '',
-      street: feat.street || feat.name || '',
+      label: cleanLabel,
+      name: streetName,
+      street: streetName,
       housenumber: feat.housenumber || '',
-      postcode: feat.postcode || '',
-      city: feat.city || '',
-      departmentCode: feat.postcode ? feat.postcode.substring(0, 2) : '33'
+      postcode,
+      city,
+      type: feat.type || '',
+      departmentCode: postcode ? postcode.substring(0, 2) : '33'
     };
   } catch (err) {
     console.warn('Erreur reverse geocoding BAN:', err.message);

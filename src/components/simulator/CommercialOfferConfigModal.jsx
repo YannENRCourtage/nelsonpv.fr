@@ -95,7 +95,27 @@ export default function CommercialOfferConfigModal({
       : (annualProdKwh * 0.65 * Number(electricityBuyPrice || 0.22)) + (annualProdKwh * 0.35 * Number(tarifEdfOa || 0.12))
   );
 
-  const handleGenerateClick = async () => {
+  const handleGenerateSimplified = async () => {
+    setIsGenerating(true);
+    try {
+      await onConfirmGenerate({
+        economicModel,
+        tarifEdfOa: Number(tarifEdfOa),
+        electricityBuyPrice: Number(electricityBuyPrice),
+        financingChoices,
+        includeCoverLetter: false,
+        includeAmortizationTable: false,
+        format: 'simplified'
+      });
+      onClose();
+    } catch (err) {
+      console.error('Erreur génération offre PDF simplifiée:', err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateDetailed = async () => {
     setIsGenerating(true);
     try {
       await onConfirmGenerate({
@@ -104,11 +124,12 @@ export default function CommercialOfferConfigModal({
         electricityBuyPrice: Number(electricityBuyPrice),
         financingChoices,
         includeCoverLetter,
-        includeAmortizationTable
+        includeAmortizationTable,
+        format: 'detailed'
       });
       onClose();
     } catch (err) {
-      console.error('Erreur génération offre PDF configurée:', err);
+      console.error('Erreur génération offre PDF détaillée:', err);
     } finally {
       setIsGenerating(false);
     }
@@ -410,35 +431,51 @@ export default function CommercialOfferConfigModal({
 
           </div>
 
-          {/* PIED DE PAGE & BOUTON D'ACTION */}
-          <div className="px-6 py-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+          {/* PIED DE PAGE & BOUTONS D'ACTION (FICHE SIMPLIFIÉE vs ÉTUDE DÉTAILLÉE) */}
+          <div className="px-6 py-4 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
             <button
               type="button"
               onClick={onClose}
               disabled={isGenerating}
-              className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               Annuler
             </button>
 
-            <button
-              type="button"
-              onClick={handleGenerateClick}
-              disabled={isGenerating || financingChoices.length === 0}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Génération du PDF en cours...</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  <span>Générer le PDF Commercial</span>
-                </>
-              )}
-            </button>
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+              {/* Bouton 1 : Fiche Simplifiée (1 page) */}
+              <button
+                type="button"
+                onClick={handleGenerateSimplified}
+                disabled={isGenerating}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 hover:text-white border border-teal-500/30 font-black text-xs flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
+                title="Générer une offre commerciale synthétique sur 1 seule page A4"
+              >
+                <FileText className="w-4 h-4 text-teal-400" />
+                <span>Télécharger la Fiche Simplifiée (1 page)</span>
+              </button>
+
+              {/* Bouton 2 : Étude Détaillée (4-5 pages) */}
+              <button
+                type="button"
+                onClick={handleGenerateDetailed}
+                disabled={isGenerating || financingChoices.length === 0}
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                title="Générer l'étude complète et le dossier technique détaillé de 4 à 5 pages"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Génération en cours...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    <span>Télécharger l'Étude Détaillée (4-5 pages)</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </motion.div>
       </div>
