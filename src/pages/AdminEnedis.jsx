@@ -410,7 +410,7 @@ export default function AdminEnedis() {
                           <span className="text-xl">✍️</span>
                           <div className="text-left leading-tight">
                             <div className="font-black text-sm text-slate-950">Faire Signer le Mandat Enedis</div>
-                            <div className="text-[10px] text-slate-900 font-bold">Recherche auto par adresse • Email • SMS • Tablette</div>
+                            <div className="text-[10px] text-slate-900 font-bold">Lien de signature eIDAS à envoyer au client</div>
                           </div>
                         </div>
                       </button>
@@ -843,7 +843,7 @@ export default function AdminEnedis() {
         </div>
       )}
 
-      {/* Modal de signature omnicanale eIDAS (Email, SMS, WhatsApp, Tablette) */}
+      {/* Modal de signature du Mandat Enedis eIDAS */}
       <MandatSignatureModal
         isOpen={signatureModalOpen}
         onClose={() => setSignatureModalOpen(false)}

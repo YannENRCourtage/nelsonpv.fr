@@ -922,7 +922,7 @@ async function handleSignatureInitiate(req, res) {
     clientAddress = '',
     clientEmail = '',
     clientPhone = '',
-    channel = 'email', // 'email' | 'sms' | 'whatsapp' | 'tablet'
+    channel = 'link', // 'link' | 'tablet'
     projectId = 'admin_test'
   } = req.body || {};
 

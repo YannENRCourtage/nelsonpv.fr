@@ -121,7 +121,7 @@ const enedisService = {
   },
 
   /**
-   * Initie une demande de signature de mandat via l'un des 4 canaux (email, sms, whatsapp, tablet)
+   * Initie une demande de signature de mandat eIDAS (génération de lien à copier ou présentiel)
    */
   async initiateSignature(payload) {
     try {

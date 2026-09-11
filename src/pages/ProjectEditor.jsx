@@ -224,12 +224,22 @@ export default function ProjectEditor() {
       });
 
       if (res.status === 'HIGH_CONFIDENCE' && res.selectedPrm?.prm) {
-        updateProject({
+        const updates = {
           enedisPrm: res.selectedPrm.prm,
           enedisSubscribedPower: res.selectedPrm.puissance_souscrite_kva || 36,
           enedisTitulaire: res.selectedPrm.titulaire || company || '',
           enedisSegment: res.selectedPrm.segment || 'BT <= 36 kVA'
-        });
+        };
+        if (!p.name && res.selectedPrm.titulaire) {
+          updates.name = res.selectedPrm.titulaire;
+        }
+        if (!p.phone && (res.selectedPrm.phone || res.selectedPrm.telephone || res.selectedPrm.mobile)) {
+          updates.phone = res.selectedPrm.phone || res.selectedPrm.telephone || res.selectedPrm.mobile;
+        }
+        if (!p.email && (res.selectedPrm.email || res.selectedPrm.mail)) {
+          updates.email = res.selectedPrm.email || res.selectedPrm.mail;
+        }
+        updateProject(updates);
         toast({
           title: "✅ Compteur Enedis identifié",
           description: `PRM ${res.selectedPrm.prm} • ${res.selectedPrm.puissance_souscrite_kva ? res.selectedPrm.puissance_souscrite_kva + ' kVA • ' : ''}${res.selectedPrm.titulaire || company}`
@@ -1335,7 +1345,7 @@ export default function ProjectEditor() {
                     type="button"
                     onClick={() => setSignatureModalOpen(true)}
                     className="h-9 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs px-3.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
-                    title="Générer et faire signer le mandat Enedis par Email, SMS, WhatsApp ou Tablette"
+                    title="Générer le lien de signature du mandat Enedis eIDAS à envoyer au client"
                   >
                     <span>✍️</span>
                     <span>Faire Signer le Mandat Enedis</span>
@@ -2762,12 +2772,22 @@ export default function ProjectEditor() {
         companyName={selectedCompany?.nom_raison_sociale || selectedCompany?.name || p.company || p.name || ''}
         clientName={[p.firstName, p.name].filter(Boolean).join(' ')}
         onSelectPrm={(selected) => {
-          updateProject({
+          const updates = {
             enedisPrm: selected.prm,
             enedisSubscribedPower: selected.puissance_souscrite_kva || 36,
             enedisTitulaire: selected.titulaire || p.name || '',
             enedisSegment: selected.segment || 'BT <= 36 kVA'
-          });
+          };
+          if (!p.name && selected.titulaire) {
+            updates.name = selected.titulaire;
+          }
+          if (!p.phone && (selected.phone || selected.telephone || selected.mobile)) {
+            updates.phone = selected.phone || selected.telephone || selected.mobile;
+          }
+          if (!p.email && (selected.email || selected.mail)) {
+            updates.email = selected.email || selected.mail;
+          }
+          updateProject(updates);
           toast({
             title: "✅ Compteur sélectionné",
             description: `PRM ${selected.prm} ${selected.puissance_souscrite_kva ? '(' + selected.puissance_souscrite_kva + ' kVA)' : ''}`
@@ -2775,23 +2795,26 @@ export default function ProjectEditor() {
         }}
       />
 
-      {/* Modale de signature omnicanale du Mandat Enedis */}
+      {/* Modale de signature du Mandat Enedis eIDAS */}
       <MandatSignatureModal
         isOpen={signatureModalOpen}
         onClose={() => setSignatureModalOpen(false)}
         initialPrm={p.enedisPrm || ''}
-        initialClientName={[p.firstName, p.name].filter(Boolean).join(' ')}
-        initialCompany={selectedCompany?.nom_raison_sociale || selectedCompany?.name || p.company || p.name || ''}
+        initialClientName={[p.firstName, p.name].filter(Boolean).join(' ') || p.enedisTitulaire || ''}
+        initialCompany={selectedCompany?.nom_raison_sociale || selectedCompany?.name || p.company || p.clientSociete || ''}
         initialEmail={p.email || ''}
         initialPhone={p.phone || ''}
         initialAddress={p.address || ''}
         initialZip={p.zip || ''}
         initialCity={p.city || ''}
         projectId={p.id || projectId}
-        onSignatureSuccess={() => {
+        onSignatureSuccess={(data) => {
+          if (data?.prm) {
+            updateProject({ enedisPrm: data.prm });
+          }
           toast({
-            title: "Mandat en cours de signature",
-            description: "Le client a été notifié pour signer son mandat de collecte Enedis."
+            title: "Lien de mandat généré",
+            description: "Le lien de signature Enedis est prêt à être partagé au client."
           });
         }}
       />

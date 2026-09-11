@@ -1,5 +1,6 @@
 // src/components/enedis/PrmSelectionModal.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Zap, Building2, Check, AlertTriangle, HelpCircle, ShieldCheck, ArrowRight, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,11 +19,17 @@ export default function PrmSelectionModal({
   companyName = '',
   clientName = ''
 }) {
+  const [mounted, setMounted] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualPrm, setManualPrm] = useState('');
   const [manualError, setManualError] = useState('');
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   if (!isOpen) return null;
+  if (!mounted || typeof document === 'undefined') return null;
 
   const handleSelectCandidate = (candidate) => {
     if (onSelectPrm) {
@@ -56,9 +63,12 @@ export default function PrmSelectionModal({
     return `${s.slice(0, 2)} ${s.slice(2, 5)} ${s.slice(5, 8)} ${s.slice(8, 11)} ${s.slice(11, 14)}`.trim();
   };
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col text-slate-100 max-h-[90vh]">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+      style={{ isolation: 'isolate' }}
+    >
+      <div className="relative z-[100000] bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col text-slate-100 max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
         
         {/* En-tête de la modale */}
         <div className="p-5 border-b border-slate-800 flex items-start justify-between bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900">
@@ -264,4 +274,6 @@ export default function PrmSelectionModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
