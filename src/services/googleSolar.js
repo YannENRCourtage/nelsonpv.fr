@@ -14,12 +14,19 @@ export async function getBuildingInsights(lat, lng) {
   const url = `/api/solar/building-insights?${query.toString()}`;
   
   const response = await fetch(url);
+  if (response.status === 404) {
+    return { available: false, message: 'NOT_FOUND' };
+  }
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    if (errorData.message === 'NOT_FOUND' || errorData.available === false) {
+      return { available: false, message: 'NOT_FOUND' };
+    }
     throw new Error(errorData.error || `Erreur serveur (${response.status})`);
   }
   
-  return response.json();
+  const data = await response.json();
+  return data;
 }
 
 /**

@@ -2432,10 +2432,16 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
       setFeatures((prev) => {
         const feature = prev.find(f => f.id === selectedId);
-        if (feature && feature.type === 'polygon') {
+        if (feature && (feature.type === 'polygon' || feature.type === 'rectangle')) {
+          const newCoords = squarePolygon(feature.coords);
+          toast({
+            title: 'Angles optimisés à 90° (OMBB) !',
+            description: 'Les angles du polygone ont été orthogonalisés avec succès.',
+            className: 'bg-emerald-600 text-white border-emerald-700'
+          });
           return prev.map(f => {
             if (f.id === selectedId) {
-              return { ...f, coords: squarePolygon(f.coords) };
+              return { ...f, coords: newCoords };
             }
             return f;
           });

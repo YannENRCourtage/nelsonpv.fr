@@ -152,6 +152,18 @@ export async function simulateBuildingHeadless({
   // 1. Inférence géospatiale dynamique de la toiture (OBB, faîtage, azimut, versants, terrasse vs inclinée)
   const roofInference = inferRoofCharacteristics(polygon, building.tags || {});
 
+  if (customSettings.azimuth !== undefined) {
+    const customAz = Number(customSettings.azimuth);
+    roofInference.azimuth = customAz;
+    const azDiff = Math.abs(customAz - 180);
+    const azCoeff = Math.max(0.70, 1.0 - (azDiff / 180) * 0.25);
+    if (roofInference.slopes?.pan1) {
+      roofInference.slopes.pan1.coeff = azCoeff;
+      roofInference.slopes.pan1.azimuth = customAz;
+    }
+    roofInference.displayLabel = `Azimut ${Math.round(customAz)}°`;
+  }
+
   const requestedPitch = customSettings.pitch !== undefined ? Number(customSettings.pitch) : undefined;
   const isTerrasse = requestedPitch === 0
     ? true

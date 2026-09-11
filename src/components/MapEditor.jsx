@@ -49,9 +49,21 @@ function MapControls({ project, setProject, isRoutingActive, setIsRoutingActive 
     setLoadingSolar(true);
     try {
       const data = await getBuildingInsights(lat, lng);
+      if (!data || data.available === false) {
+        toast({
+          title: 'Données 3D non disponibles',
+          description: 'Données 3D non disponibles pour cette zone géographique. Veuillez utiliser le tracé manuel.',
+          className: 'bg-amber-500 text-white border-amber-600',
+        });
+        return;
+      }
       const segment = selectBestRoofSegment(data.roofSegmentSummaries || []);
       if (!segment) {
-        toast({ title: 'Aucun segment détecté', description: 'Google Solar n\'a rien trouvé.', variant: 'destructive' });
+        toast({
+          title: 'Données 3D non disponibles',
+          description: 'Données 3D non disponibles pour cette zone géographique. Veuillez utiliser le tracé manuel.',
+          className: 'bg-amber-500 text-white border-amber-600',
+        });
         return;
       }
       const polygon = boundingBoxToPolygon(segment.boundingBox);
@@ -68,8 +80,12 @@ function MapControls({ project, setProject, isRoutingActive, setIsRoutingActive 
       window.dispatchEvent(new CustomEvent('map:solar-polygon-loaded', { detail: { polygon } }));
       toast({ title: 'Détection Google Solar réussie', description: `Inclinaison ${segment.pitchDegrees}°` });
     } catch (err) {
-      console.error(err);
-      toast({ title: 'Erreur Google Solar', description: err.message, variant: 'destructive' });
+      console.warn('[Google Solar]', err);
+      toast({
+        title: 'Données 3D non disponibles',
+        description: 'Données 3D non disponibles pour cette zone géographique. Veuillez utiliser le tracé manuel.',
+        className: 'bg-amber-500 text-white border-amber-600',
+      });
     } finally {
       setLoadingSolar(false);
     }

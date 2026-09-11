@@ -29,6 +29,9 @@ import {
 } from '@/services/localPdfExportService';
 
 import ServicePostalModal from '@/components/simulator/ServicePostalModal';
+import { toast } from '@/components/ui/use-toast';
+import { getBuildingInsights, selectBestRoofSegment, boundingBoxToPolygon } from '@/services/googleSolar';
+import { squarePolygon } from '@/utils/squarePolygon';
 
 
 // Profil géométrique et cadastral par défaut : Bordeaux (33)
@@ -89,11 +92,16 @@ export default function AutomaticProspectingModal({
   // Gestion de la révision / édition individuelle des paramètres par ligne
   const [editingRowIndex, setEditingRowIndex] = useState(null);
   const [editingPitch, setEditingPitch] = useState(15);
+  const [editingAzimuth, setEditingAzimuth] = useState(180);
+  const [editingPolygon, setEditingPolygon] = useState(null);
+  const [editingArea, setEditingArea] = useState(null);
   const [editingEconomicModel, setEditingEconomicModel] = useState('vente_totale');
   const [editingTarifEdfOa, setEditingTarifEdfOa] = useState(0.085);
   const [editingExcludeThirdParty, setEditingExcludeThirdParty] = useState(false);
   const [editingMaxKwc, setEditingMaxKwc] = useState('');
   const [isRecalculatingRow, setIsRecalculatingRow] = useState(false);
+  const [isDetecting3D, setIsDetecting3D] = useState(false);
+  const [isSquaringManual, setIsSquaringManual] = useState(false);
 
   // Gestion du dossier local d'exportation (et mode Firefox natif)
   const isFirefoxBrowser = typeof window !== 'undefined' && !window.showDirectoryPicker;
@@ -495,25 +503,196 @@ export default function AutomaticProspectingModal({
     }
     setEditingRowIndex(idx);
     setEditingPitch(item.simulation?.pitch ?? 15);
+    setEditingAzimuth(item.simulation?.azimuth ?? item.simulation?.orientation ?? 180);
+    setEditingPolygon(item.building?.polygon || null);
+    setEditingArea(item.building?.area || item.simulation?.surfaceToiture || null);
     setEditingEconomicModel(item.simulation?.economicModel || economicModel || 'vente_totale');
     setEditingTarifEdfOa(item.simulation?.tarifEdfOaKwh ?? tarifEdfOa ?? 0.085);
     setEditingExcludeThirdParty(item.simulation?.excludeThirdParty ?? excludeThirdParty ?? false);
     setEditingMaxKwc(item.simulation?.installedKwc ?? '');
   };
 
-  // Recalcul d'une ligne de résultat avec de nouveaux paramètres (ex: pente = 0° terrasse plein Sud)
+  // Détection 3D Auto via Google Solar pour CETTE toiture
+  const handleSolar3DDetect = async (idx) => {
+    const item = processedResults[idx];
+    if (!item?.building) return;
+
+    let lat = null, lng = null;
+    if (item.building.center) {
+      if (Array.isArray(item.building.center)) {
+        [lat, lng] = item.building.center;
+      } else if (item.building.center.lat !== undefined) {
+        lat = item.building.center.lat;
+        lng = item.building.center.lng;
+      }
+    }
+    if ((lat == null || lng == null) && item.building.polygon?.[0]) {
+      const p = item.building.polygon[0];
+      if (Array.isArray(p)) {
+        lat = Math.abs(p[0]) > 90 ? p[1] : p[0];
+        lng = Math.abs(p[0]) > 90 ? p[0] : p[1];
+      } else {
+        lat = p.lat ?? p.latitude;
+        lng = p.lng ?? p.lon ?? p.longitude;
+      }
+    }
+
+    if (lat == null || lng == null) {
+      toast({ title: 'Coordonnées introuvables', description: 'Impossible de localiser le bâtiment pour la détection 3D.', variant: 'destructive' });
+      return;
+    }
+
+    setIsDetecting3D(true);
+    try {
+      const data = await getBuildingInsights(lat, lng);
+      if (!data || data.available === false) {
+        toast({
+          title: 'Données 3D non disponibles',
+          description: 'Données 3D non disponibles pour cette zone géographique. Veuillez utiliser le tracé manuel.',
+          className: 'bg-amber-500 text-white border-amber-600',
+        });
+        return;
+      }
+      const segment = selectBestRoofSegment(data.roofSegmentSummaries || []);
+      if (!segment) {
+        toast({
+          title: 'Données 3D non disponibles',
+          description: 'Données 3D non disponibles pour cette zone géographique. Veuillez utiliser le tracé manuel.',
+          className: 'bg-amber-500 text-white border-amber-600',
+        });
+        return;
+      }
+
+      const slope = Math.round(segment.pitchDegrees || 0);
+      const azimuth = Math.round(segment.azimuthDegrees || 180);
+      const solarPoly = boundingBoxToPolygon(segment.boundingBox);
+
+      // Mise à jour de l'état de CETTE ligne uniquement
+      setEditingPitch(slope);
+      setEditingAzimuth(azimuth);
+      if (solarPoly && solarPoly.length >= 4) {
+        setEditingPolygon(solarPoly);
+      }
+      if (segment.stats?.areaMeters2) {
+        const area = Math.round(segment.stats.areaMeters2);
+        setEditingArea(area);
+        const estKwc = Math.round((area * 0.9 * 0.465) / 2.05);
+        if (estKwc > 0) {
+          setEditingMaxKwc(estKwc);
+        }
+      }
+
+      toast({
+        title: 'Détection 3D Google Solar réussie !',
+        description: `Pente : ${slope}° • Azimut : ${azimuth}°`,
+        className: 'bg-emerald-600 text-white border-emerald-700'
+      });
+      addLog(`✨ Détection 3D Toiture #${idx + 1} : Pente ${slope}°, Azimut ${azimuth}°`);
+    } catch (err) {
+      console.warn('Erreur Solar 3D:', err);
+      toast({
+        title: 'Données 3D non disponibles',
+        description: 'Données 3D non disponibles pour cette zone géographique. Veuillez utiliser le tracé manuel.',
+        className: 'bg-amber-500 text-white border-amber-600',
+      });
+    } finally {
+      setIsDetecting3D(false);
+    }
+  };
+
+  // Optimisation 90° (OMBB) du tracé de CETTE toiture
+  const handleSquareManual = (idx) => {
+    const item = processedResults[idx];
+    const poly = editingPolygon || item.building?.polygon;
+    if (!poly || poly.length < 3) {
+      toast({
+        title: 'Tracé introuvable',
+        description: 'Aucune coordonnée de toiture trouvée pour ce bâtiment.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsSquaringManual(true);
+    try {
+      const squared = squarePolygon(poly);
+      if (!squared || squared.length < 4) {
+        toast({ title: 'Erreur d\'optimisation', description: 'Impossible d\'orthogonaliser ce polygone.', variant: 'destructive' });
+        return;
+      }
+
+      // Calcul métrique surface et azimut sur le rectangle orthogonalisé
+      const R = 6378137;
+      const toRad = deg => (deg * Math.PI) / 180;
+      const avgLat = squared.reduce((s, p) => s + p.lat, 0) / squared.length;
+      const cosLat = Math.cos(toRad(avgLat));
+      const cart = squared.map(p => ({
+        x: R * toRad(p.lng) * cosLat,
+        y: R * toRad(p.lat)
+      }));
+
+      let maxLen = 0;
+      let dominantAngle = 0;
+      for (let i = 0; i < cart.length; i++) {
+        const p1 = cart[i];
+        const p2 = cart[(i + 1) % cart.length];
+        const len = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        if (len > maxLen) {
+          maxLen = len;
+          dominantAngle = Math.atan2(p2.x - p1.x, p2.y - p1.y) * (180 / Math.PI);
+        }
+      }
+      let az = Math.round((dominantAngle + 360) % 360);
+
+      let areaM2 = 0;
+      for (let i = 0; i < cart.length; i++) {
+        const p1 = cart[i];
+        const p2 = cart[(i + 1) % cart.length];
+        areaM2 += (p1.x * p2.y - p2.x * p1.y);
+      }
+      areaM2 = Math.round(Math.abs(areaM2) / 2);
+
+      // Mise à jour de l'état de CETTE ligne uniquement
+      setEditingPolygon(squared);
+      setEditingAzimuth(az);
+      setEditingArea(areaM2);
+      const estKwc = Math.round((areaM2 * 0.9 * 0.465) / 2.05);
+      if (estKwc > 0) {
+        setEditingMaxKwc(estKwc);
+      }
+
+      toast({
+        title: 'Angles optimisés à 90° (OMBB) !',
+        description: `Rectangle parfait généré • Surface : ${areaM2} m² • Azimut : ${az}°`,
+        className: 'bg-emerald-600 text-white border-emerald-700'
+      });
+      addLog(`📐 Toiture #${idx + 1} angles optimisés à 90° : ${areaM2} m² • Azimut ${az}°`);
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erreur', description: 'Échec de l\'orthogonalisation.', variant: 'destructive' });
+    } finally {
+      setIsSquaringManual(false);
+    }
+  };
+
+  // Recalcul d'une ligne de résultat avec de nouveaux paramètres (ex: pente, azimut, puissance, polygone)
   const handleRecalculateRow = async (idx) => {
     setIsRecalculatingRow(true);
     try {
       const item = processedResults[idx];
       const newPitch = Number(editingPitch);
+      const newAzimuth = editingAzimuth !== undefined ? Number(editingAzimuth) : undefined;
       const isZeroPitch = newPitch === 0;
+      const polyToUse = editingPolygon || item.building?.polygon;
+      const areaToUse = editingArea || item.building?.area;
 
-      addLog(`⚙️ Recalcul de la toiture #${idx + 1} (${item.addressLabel}) avec pente ${newPitch}°...`);
+      addLog(`⚙️ Recalcul de la toiture #${idx + 1} (${item.addressLabel}) avec pente ${newPitch}°, azimut ${newAzimuth ?? 'auto'}°...`);
 
       const newSim = await simulateBuildingHeadless({
         building: {
           ...item.building,
+          polygon: polyToUse,
+          area: areaToUse,
           tags: {
             ...item.building.tags,
             'roof:shape': isZeroPitch ? 'flat' : item.building.tags?.['roof:shape']
@@ -532,6 +711,7 @@ export default function AutomaticProspectingModal({
           maxKwc: 5000,
           targetMaxKwc: editingMaxKwc !== '' ? Number(editingMaxKwc) : undefined,
           pitch: newPitch,
+          azimuth: newAzimuth,
           isTerrasse: isZeroPitch,
           roofType: isZeroPitch ? 'terrasse' : item.simulation?.roofType,
           economicModel: editingEconomicModel,
@@ -569,6 +749,11 @@ export default function AutomaticProspectingModal({
       const updated = [...processedResults];
       updated[idx] = {
         ...item,
+        building: {
+          ...item.building,
+          polygon: polyToUse,
+          area: areaToUse
+        },
         simulation: newSim,
         filename: pdfResult.filename,
         blob: pdfResult.blob,
@@ -1453,6 +1638,86 @@ export default function AutomaticProspectingModal({
                               >
                                 ✕ Fermer
                               </button>
+                            </div>
+
+                            {/* Section 0 : Outils de dessin et de détection 3D (Google Solar & Orthogonalisation 90°) */}
+                            <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-black text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                                  Outils toiture (Google Solar &amp; Orthogonalisation)
+                                </span>
+                                {editingPolygon && (
+                                  <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
+                                    {editingPolygon.length} sommets • {editingArea ? `${editingArea} m²` : ''}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {/* Bouton 1 : Détection 3D Auto Google Solar */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleSolar3DDetect(idx)}
+                                  disabled={isDetecting3D}
+                                  className="p-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 rounded-xl text-xs font-bold text-amber-300 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+                                >
+                                  {isDetecting3D ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                                      <span>Analyse 3D en cours...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles className="w-4 h-4 text-amber-400" />
+                                      <span>Détection 3D Auto (Google Solar)</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                {/* Bouton 2 : Tracé manuel + Optimisation 90° (OMBB) */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleSquareManual(idx)}
+                                  disabled={isSquaringManual}
+                                  className="p-2 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 hover:from-blue-500/30 hover:to-indigo-500/30 border border-blue-500/40 rounded-xl text-xs font-bold text-blue-300 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+                                >
+                                  {isSquaringManual ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                                      <span>Calcul OMBB 90°...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Square className="w-4 h-4 text-blue-400" />
+                                      <span>Tracé manuel + Optimisation 90°</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+
+                              {/* Réglage de l'Azimut */}
+                              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-300 border-t border-slate-900">
+                                <div className="flex items-center gap-2">
+                                  <Compass className="w-3.5 h-3.5 text-blue-400" />
+                                  <span className="font-bold">Azimut toiture :</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="360"
+                                    value={editingAzimuth}
+                                    onChange={(e) => setEditingAzimuth(Math.round(Number(e.target.value)))}
+                                    className="w-16 p-1 bg-slate-800 border border-slate-700 rounded-lg text-center text-xs font-black text-blue-400"
+                                  />
+                                  <span className="text-slate-400">° (180° = Plein Sud)</span>
+                                </div>
+
+                                {editingArea && (
+                                  <span className="text-[10px] text-slate-400">
+                                    Surface : <strong className="text-white">{editingArea} m²</strong>
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {/* Section 1 : Pente de toiture & Règle Plein Sud 0° */}

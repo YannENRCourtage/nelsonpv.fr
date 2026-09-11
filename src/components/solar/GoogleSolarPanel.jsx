@@ -38,9 +38,22 @@ export default function GoogleSolarPanel({
     setLoading(true);
     try {
       const data = await getBuildingInsights(lat, lng);
+      if (!data || data.available === false) {
+        toast({
+          title: 'Données 3D non disponibles',
+          description: 'Données 3D non disponibles pour cette zone géographique. Veuillez utiliser le tracé manuel.',
+          className: 'bg-amber-500 text-white border-amber-600',
+        });
+        setLoading(false);
+        return;
+      }
       const segment = selectBestRoofSegment(data.roofSegmentSummaries || []);
       if (!segment) {
-        toast({ title: 'Aucun segment détecté', description: 'Google Solar n\'a trouvé aucune surface exploitable.', variant: 'destructive' });
+        toast({
+          title: 'Données 3D non disponibles',
+          description: 'Données 3D non disponibles pour cette zone géographique. Veuillez utiliser le tracé manuel.',
+          className: 'bg-amber-500 text-white border-amber-600',
+        });
         setLoading(false);
         return;
       }
@@ -52,8 +65,12 @@ export default function GoogleSolarPanel({
       toast({ title: 'Détection réussie', description: `Inclinaison ${slope}°, azimut ${azimuth}°` });
       if (onSolarDetected) onSolarDetected(result);
     } catch (err) {
-      console.error(err);
-      toast({ title: 'Erreur Google Solar', description: err.message || 'Erreur inconnue', variant: 'destructive' });
+      console.warn('[Google Solar Panel]', err);
+      toast({
+        title: 'Données 3D non disponibles',
+        description: 'Données 3D non disponibles pour cette zone géographique. Veuillez utiliser le tracé manuel.',
+        className: 'bg-amber-500 text-white border-amber-600',
+      });
     } finally {
       setLoading(false);
     }

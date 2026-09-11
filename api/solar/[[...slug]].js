@@ -29,13 +29,17 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(endpoint);
     if (!response.ok) {
+      if (response.status === 404) {
+        // Zone géographique non couverte par Google Solar 3D -> retour gracieux
+        return res.status(200).json({ available: false, message: 'NOT_FOUND' });
+      }
       const errText = await response.text();
       console.error('Google Solar API error', response.status, errText);
       return res.status(response.status).json({ error: 'Google Solar API error', details: errText });
     }
     const data = await response.json();
-    // Pass through the relevant parts (avoid exposing internal fields)
-    return res.status(200).json(data);
+    // Pass through the relevant parts with available: true
+    return res.status(200).json({ available: true, ...data });
   } catch (err) {
     console.error('Error calling Google Solar API', err);
     return res.status(500).json({ error: 'Internal server error' });
