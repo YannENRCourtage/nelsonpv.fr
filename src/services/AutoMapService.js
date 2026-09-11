@@ -176,15 +176,16 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
             });
 
             // Détection du type de structure pour un rendu fidèle à l'interface DP2 / PC2
-            const isOmbriere = b.solutionKey === 'ombriere' || (b.buildingType || '').toLowerCase().includes('ombriere') || (b.name || '').toLowerCase().includes('ombrière');
-            const strokeColor = isOmbriere ? '#059669' : '#2563eb';
-            const fillColor = isOmbriere ? 'rgba(16, 185, 129, 0.35)' : 'rgba(59, 130, 246, 0.35)';
-            const badgeBorder = isOmbriere ? '#a7f3d0' : '#bfdbfe';
-            const badgeTextColor = isOmbriere ? '#065f46' : '#1e40af';
+            const isBattery = b.solutionKey === 'battery' || b.isBattery || (b.buildingType || '').toLowerCase().includes('battery') || (b.name || '').toLowerCase().includes('batterie');
+            const isOmbriere = !isBattery && (b.solutionKey === 'ombriere' || (b.buildingType || '').toLowerCase().includes('ombriere') || (b.name || '').toLowerCase().includes('ombrière'));
+            const strokeColor = isBattery ? '#9333ea' : (isOmbriere ? '#059669' : '#2563eb');
+            const fillColor = isBattery ? 'rgba(168, 85, 247, 0.35)' : (isOmbriere ? 'rgba(16, 185, 129, 0.35)' : 'rgba(59, 130, 246, 0.35)');
+            const badgeBorder = isBattery ? '#e9d5ff' : (isOmbriere ? '#a7f3d0' : '#bfdbfe');
+            const badgeTextColor = isBattery ? '#581c87' : (isOmbriere ? '#065f46' : '#1e40af');
 
             ctx.save();
 
-            // Rendu du polygone précis
+            // Rendu du polygone précis de la dalle / structure
             ctx.beginPath();
             ctx.moveTo(pixelCorners[0].x, pixelCorners[0].y);
             ctx.lineTo(pixelCorners[1].x, pixelCorners[1].y);
@@ -195,29 +196,68 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
             ctx.fill();
             ctx.strokeStyle = strokeColor;
             ctx.lineWidth = 2.5;
-            ctx.setLineDash([5, 4]);
+            ctx.setLineDash(isBattery ? [6, 3] : [5, 4]);
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Faîtage médian en pointillés discrets
-            const ridgeStart = {
-              x: (pixelCorners[0].x + pixelCorners[3].x) / 2,
-              y: (pixelCorners[0].y + pixelCorners[3].y) / 2
-            };
-            const ridgeEnd = {
-              x: (pixelCorners[1].x + pixelCorners[2].x) / 2,
-              y: (pixelCorners[1].y + pixelCorners[2].y) / 2
-            };
-            ctx.beginPath();
-            ctx.setLineDash([4, 3]);
-            ctx.strokeStyle = isOmbriere ? '#10b981' : '#60a5fa';
-            ctx.lineWidth = 1.5;
-            ctx.moveTo(ridgeStart.x, ridgeStart.y);
-            ctx.lineTo(ridgeEnd.x, ridgeEnd.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
+            if (isBattery) {
+              // Rendu intérieur des 4 armoires de batteries sur la dalle béton
+              const cabCount = 4;
+              for (let ci = 0; ci < cabCount; ci++) {
+                const t0 = (ci + 0.12) / cabCount;
+                const t1 = (ci + 0.88) / cabCount;
+                // Points le long des côtés longs
+                const pTop0 = {
+                  x: pixelCorners[0].x + (pixelCorners[1].x - pixelCorners[0].x) * t0,
+                  y: pixelCorners[0].y + (pixelCorners[1].y - pixelCorners[0].y) * t0
+                };
+                const pTop1 = {
+                  x: pixelCorners[0].x + (pixelCorners[1].x - pixelCorners[0].x) * t1,
+                  y: pixelCorners[0].y + (pixelCorners[1].y - pixelCorners[0].y) * t1
+                };
+                const pBtm0 = {
+                  x: pixelCorners[3].x + (pixelCorners[2].x - pixelCorners[3].x) * t0,
+                  y: pixelCorners[3].y + (pixelCorners[2].y - pixelCorners[3].y) * t0
+                };
+                const pBtm1 = {
+                  x: pixelCorners[3].x + (pixelCorners[2].x - pixelCorners[3].x) * t1,
+                  y: pixelCorners[3].y + (pixelCorners[2].y - pixelCorners[3].y) * t1
+                };
 
-            // Cotations architecturales du bâtiment (Longueur et Largeur sur les arêtes uniquement)
+                // Tracé de l'armoire
+                ctx.beginPath();
+                ctx.moveTo(pTop0.x + (pBtm0.x - pTop0.x) * 0.15, pTop0.y + (pBtm0.y - pTop0.y) * 0.15);
+                ctx.lineTo(pTop1.x + (pBtm1.x - pTop1.x) * 0.15, pTop1.y + (pBtm1.y - pTop1.y) * 0.15);
+                ctx.lineTo(pTop1.x + (pBtm1.x - pTop1.x) * 0.85, pTop1.y + (pBtm1.y - pTop1.y) * 0.85);
+                ctx.lineTo(pTop0.x + (pBtm0.x - pTop0.x) * 0.85, pTop0.y + (pBtm0.y - pTop0.y) * 0.85);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.fill();
+                ctx.strokeStyle = '#7e22ce';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+              }
+            } else {
+              // Faîtage médian en pointillés discrets pour bâtiments et ombrières
+              const ridgeStart = {
+                x: (pixelCorners[0].x + pixelCorners[3].x) / 2,
+                y: (pixelCorners[0].y + pixelCorners[3].y) / 2
+              };
+              const ridgeEnd = {
+                x: (pixelCorners[1].x + pixelCorners[2].x) / 2,
+                y: (pixelCorners[1].y + pixelCorners[2].y) / 2
+              };
+              ctx.beginPath();
+              ctx.setLineDash([4, 3]);
+              ctx.strokeStyle = isOmbriere ? '#10b981' : '#60a5fa';
+              ctx.lineWidth = 1.5;
+              ctx.moveTo(ridgeStart.x, ridgeStart.y);
+              ctx.lineTo(ridgeEnd.x, ridgeEnd.y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+
+            // Cotations architecturales du bâtiment / dalle (Longueur et Largeur sur les arêtes)
             const bShowDim = showDimensions !== false;
             if (bShowDim) {
               const centerPt = { x: bPixelX, y: bPixelY };

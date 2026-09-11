@@ -956,19 +956,19 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
   }, [allConfiguredStructures, solutionType]);
 
-  const hasInitializedSelectionRef = React.useRef(false);
-
-  // Synchronisation des identifiants sélectionnés
+  // Synchronisation des identifiants sélectionnés avec la solution active
   useEffect(() => {
-    if (!hasInitializedSelectionRef.current && scopedStructures.length > 0) {
-      hasInitializedSelectionRef.current = true;
+    if (scopedStructures.length > 0) {
       setSelectedStructureIds(prev => {
+        const validIds = scopedStructures.map(s => s.id);
+        if (solutionType === 'battery') {
+          return validIds.length > 0 ? validIds : ['bat-sa-1'];
+        }
         if (prev && prev.length > 0) {
-          const validIds = scopedStructures.map(s => s.id);
           const retained = prev.filter(id => validIds.includes(id));
           if (retained.length > 0) return retained;
         }
-        return scopedStructures.map(s => s.id);
+        return validIds;
       });
     }
   }, [scopedStructures, solutionType]);
@@ -1437,6 +1437,33 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     }));
 
     if (newSolType === 'battery') {
+      const siteCoords = resolveProjectCoordinates(editedProject, project);
+      const refLat = curB?.lat || project?.lat || siteCoords.lat;
+      const refLng = curB?.lng || project?.lng || siteCoords.lng;
+
+      setSolutions(sPrev => {
+        const curBat = sPrev.battery?.buildings?.[0];
+        return {
+          ...sPrev,
+          battery: {
+            ...sPrev.battery,
+            buildings: [{
+              ...(curBat || {}),
+              id: 'bat-sa-1',
+              name: 'Station Batteries Stand-Alone (500 kW)',
+              solutionType: 'battery',
+              isBattery: true,
+              length: 6.20,
+              width: 3.20,
+              eaveHeight: 2.38,
+              lat: curBat?.lat || refLat,
+              lng: curBat?.lng || refLng,
+              gps: `${curBat?.lat || refLat},${curBat?.lng || refLng}`
+            }]
+          }
+        };
+      });
+
       setBatteryStorage(prev => ({
         ...prev,
         enabled: true,
@@ -4911,7 +4938,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                     Number((masseViewTabs[str.id] === 2 ? str.masse_center_lat_2 : str.masse_center_lat) || strLat),
                                     Number((masseViewTabs[str.id] === 2 ? str.masse_center_lng_2 : str.masse_center_lng) || strLng)
                                   ]}
-                                  zoom={Number((masseViewTabs[str.id] === 2 ? str.masse_zoom_2 : str.masse_zoom) || (masseViewTabs[str.id] === 2 ? 16 : 18))}
+                                  zoom={Number((masseViewTabs[str.id] === 2 ? str.masse_zoom_2 : str.masse_zoom) || (isBatteryStr ? 19 : (masseViewTabs[str.id] === 2 ? 16 : 18)))}
                                   scrollWheelZoom={true}
                                   className="h-full w-full"
                                   style={{ height: '100%', width: '100%' }}
@@ -4950,6 +4977,51 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                       </div>
                                     </Tooltip>
                                   </Polygon>
+
+                                  {/* Rendu intérieur des 4 armoires CESC 261 sur la dalle béton pour la Station Batteries */}
+                                  {isBatteryStr && (() => {
+                                    const cabElements = [];
+                                    for (let ci = 0; ci < 4; ci++) {
+                                      const t0 = (ci + 0.12) / 4;
+                                      const t1 = (ci + 0.88) / 4;
+                                      const p0 = [
+                                        corners[0][0] + (corners[1][0] - corners[0][0]) * t0,
+                                        corners[0][1] + (corners[1][1] - corners[0][1]) * t0,
+                                      ];
+                                      const p1 = [
+                                        corners[0][0] + (corners[1][0] - corners[0][0]) * t1,
+                                        corners[0][1] + (corners[1][1] - corners[0][1]) * t1,
+                                      ];
+                                      const p2 = [
+                                        corners[3][0] + (corners[2][0] - corners[3][0]) * t1,
+                                        corners[3][1] + (corners[2][1] - corners[3][1]) * t1,
+                                      ];
+                                      const p3 = [
+                                        corners[3][0] + (corners[2][0] - corners[3][0]) * t0,
+                                        corners[3][1] + (corners[2][1] - corners[3][1]) * t0,
+                                      ];
+
+                                      const c0 = [p0[0] + (p3[0] - p0[0]) * 0.15, p0[1] + (p3[1] - p0[1]) * 0.15];
+                                      const c1 = [p1[0] + (p2[0] - p1[0]) * 0.15, p1[1] + (p2[1] - p1[1]) * 0.15];
+                                      const c2 = [p1[0] + (p2[0] - p1[0]) * 0.85, p1[1] + (p2[1] - p1[1]) * 0.85];
+                                      const c3 = [p0[0] + (p3[0] - p0[0]) * 0.85, p0[1] + (p3[1] - p0[1]) * 0.85];
+
+                                      cabElements.push(
+                                        <Polygon
+                                          key={`poly-cab-${str.id}-${ci}`}
+                                          positions={[c0, c1, c2, c3]}
+                                          pathOptions={{
+                                            color: '#7e22ce',
+                                            fillColor: '#ffffff',
+                                            fillOpacity: 0.85,
+                                            weight: 1.5,
+                                            interactive: false,
+                                          }}
+                                        />
+                                      );
+                                    }
+                                    return cabElements;
+                                  })()}
 
                                   {/* Cotations architecturales le long des côtés extérieurs du rectangle si activées */}
                                   {(masseShowDimensions[str.id] !== undefined ? Boolean(masseShowDimensions[str.id]) : (str.masse_show_dimensions !== false)) && (() => {
