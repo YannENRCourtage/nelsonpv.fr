@@ -122,6 +122,57 @@ export default function NotificationBell() {
         return `Il y a ${days}j`;
     };
 
+    const getNotificationTitle = (n) => {
+        if (!n) return 'Notification';
+        if (typeof n.message === 'string' && n.message.trim()) return n.message;
+        if (typeof n.title === 'string' && n.title.trim()) return n.title;
+        if (typeof n.content === 'string' && n.content.trim()) return n.content;
+        if (typeof n.text === 'string' && n.text.trim()) return n.text;
+        if (typeof n.body === 'string' && n.body.trim()) return n.body;
+        if (typeof n.description === 'string' && n.description.trim()) return n.description;
+
+        if (n.data) {
+            if (typeof n.data === 'string' && n.data.trim()) return n.data;
+            if (typeof n.data.message === 'string' && n.data.message.trim()) return n.data.message;
+            if (typeof n.data.title === 'string' && n.data.title.trim()) return n.data.title;
+            if (typeof n.data.content === 'string' && n.data.content.trim()) return n.data.content;
+            if (typeof n.data.text === 'string' && n.data.text.trim()) return n.data.text;
+        }
+
+        const author = n.userName || n.authorName || n.assignedBy || 'Un collègue';
+        if (n.type === 'monday_comment' || n.type === 'comment') {
+            if (n.rowName) return `${author} a commenté dans "${n.tableName || 'Monday'}" : « ${n.rowName} »`;
+            if (n.tableName) return `${author} a commenté dans le tableau "${n.tableName}"`;
+            if (n.projectName) return `${author} a commenté sur le projet "${n.projectName}"`;
+            return `${author} a commenté un élément`;
+        }
+        if (n.type === 'assignment') {
+            return `Vous avez été affecté(e) au projet ${n.projectName || 'un projet'}`;
+        }
+        if (n.type === 'mention') {
+            return `${author} vous a mentionné(e) dans un commentaire`;
+        }
+        if (n.type === 'monday_update' || n.type === 'update' || n.type === 'row_update') {
+            return n.details || `Mise à jour dans le tableau ${n.tableName || ''}`;
+        }
+
+        return 'Notification';
+    };
+
+    const getNotificationSubtitle = (n) => {
+        if (!n) return null;
+        if (n.title && n.message && n.title.trim() !== n.message.trim()) {
+            return n.message;
+        }
+        if (n.title && n.content && n.title.trim() !== n.content.trim()) {
+            return n.content;
+        }
+        if (n.data && typeof n.data === 'object' && n.data.description) {
+            return n.data.description;
+        }
+        return null;
+    };
+
     return (
         <div className="relative">
             {/* Style inline pour l'animation de secouement dynamique de la cloche */}
@@ -144,9 +195,9 @@ export default function NotificationBell() {
             `}</style>
             <button
                 onClick={handleBellClick}
-                className={`relative p-2 rounded-lg transition-all ${
-                    unreadCount > 0
-                        ? 'bg-amber-50 hover:bg-amber-100 text-amber-600 ring-1 ring-amber-200'
+                className={`relative p-2 rounded-full transition-colors ${
+                    showDropdown
+                        ? 'bg-amber-100 text-amber-700'
                         : 'hover:bg-gray-100 text-gray-700'
                 }`}
                 title={unreadCount > 0 ? `${unreadCount} notification(s) non lue(s)` : 'Notifications'}
@@ -171,12 +222,12 @@ export default function NotificationBell() {
                     />
 
                     {/* Dropdown */}
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
-                        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                            <h3 className="font-bold text-gray-900">Notifications</h3>
+                    <div className="absolute right-0 mt-2 w-[calc(100vw-24px)] sm:w-80 max-w-[360px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 max-h-[80vh] sm:max-h-96 overflow-y-auto">
+                        <div className="p-3.5 sm:p-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+                            <h3 className="font-bold text-gray-900 text-sm sm:text-base">Notifications</h3>
                             <button
                                 onClick={() => setShowDropdown(false)}
-                                className="p-1 hover:bg-gray-100 rounded"
+                                className="p-1 hover:bg-gray-100 text-gray-500 hover:text-gray-900 rounded-lg cursor-pointer"
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -185,31 +236,44 @@ export default function NotificationBell() {
                         {notifications.length === 0 ? (
                             <div className="p-8 text-center text-gray-500">
                                 <Bell className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                                <p>Aucune notification</p>
+                                <p className="text-xs sm:text-sm">Aucune notification</p>
                             </div>
                         ) : (
                             <div className="divide-y divide-gray-100">
-                                {notifications.map((notification) => (
-                                    <button
-                                        key={notification.id}
-                                        onClick={() => handleNotificationClick(notification)}
-                                        className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50' : ''
+                                {notifications.map((notification) => {
+                                    const titleText = getNotificationTitle(notification);
+                                    const subtitleText = getNotificationSubtitle(notification);
+                                    return (
+                                        <button
+                                            key={notification.id}
+                                            onClick={() => handleNotificationClick(notification)}
+                                            className={`w-full p-3 sm:p-3.5 text-left hover:bg-gray-50 transition-colors cursor-pointer ${
+                                                !notification.read ? 'bg-amber-50/40' : ''
                                             }`}
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notification.read ? 'bg-blue-500' : 'bg-transparent'
+                                        >
+                                            <div className="flex items-start gap-2.5">
+                                                <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                                                    !notification.read ? 'bg-amber-500' : 'bg-transparent'
                                                 }`} />
-                                            <div className="flex-1 min-w-0">
-                                                <p className={`text-sm break-words ${!notification.read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
-                                                    {notification.message}
-                                                </p>
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    {formatTime(notification.createdAt)}
-                                                </p>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={`text-xs sm:text-sm leading-snug break-words ${
+                                                        !notification.read ? 'font-bold text-gray-900' : 'font-medium text-gray-700'
+                                                    }`}>
+                                                        {titleText}
+                                                    </p>
+                                                    {subtitleText && (
+                                                        <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5 break-words">
+                                                            {subtitleText}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-[10.5px] text-gray-400 mt-1 font-semibold">
+                                                        {formatTime(notification.createdAt)}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </button>
-                                ))}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

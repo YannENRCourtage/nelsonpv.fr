@@ -16,6 +16,11 @@ import {
 } from '@/services/prospectingGisService';
 
 import {
+  DEPARTEMENTS_FRANCE,
+  fetchDepartmentCommunes
+} from '@/services/sechoirProspectingGisService';
+
+import {
   simulateBuildingHeadless,
   generateProspectingPdfBlob
 } from '@/services/headlessSimulationEngine';
@@ -62,8 +67,11 @@ export default function AutomaticProspectingModal({
   defaultCommune = 'Bordeaux',
   onOpenInSimulator = null
 }) {
-  // Mode de sélection géographique : 'commune' | 'bbox'
+  // Mode de sélection géographique : 'commune' | 'departement' | 'bbox'
   const [geoMode, setGeoMode] = useState('commune');
+
+  // Recherche par département (Gironde 33 par défaut)
+  const [selectedDeptCode, setSelectedDeptCode] = useState('33');
 
   // Recherche par commune (Bordeaux 33 par défaut)
   const [communeSearch, setCommuneSearch] = useState(defaultCommune || 'Bordeaux');
@@ -301,7 +309,7 @@ export default function AutomaticProspectingModal({
     if (!list || list.length === 0) return;
     try {
       setIsExportingZip(true);
-      const zoneName = geoMode === 'commune' ? (selectedCommune?.nom || 'Bordeaux') : 'Emprise_Carte';
+      const zoneName = geoMode === 'commune' ? (selectedCommune?.nom || 'Bordeaux') : geoMode === 'departement' ? `Dept_${selectedDeptCode}` : 'Emprise_Carte';
       const dateStr = new Date().toISOString().slice(0, 10);
       const zipName = `Offres_Solaires_${zoneName}_${dateStr}.zip`;
       addLog(`📦 Préparation de l'archive ZIP groupée (${list.length} fichiers)...`);
@@ -411,6 +419,9 @@ export default function AutomaticProspectingModal({
       let targetBbox = null;
       let zoneLabel = '';
       let targetCommune = selectedCommune;
+      const effectiveLimit = targetLimit === 'Tout' ? 500 : Number(targetLimit);
+      const limitLabel = targetLimit === 'Tout' ? 'toutes les toitures éligibles' : `${targetLimit} toitures cibles`;
+      let eligible = [];
 
       if (geoMode === 'commune') {
         const currentSearchText = (communeSearch || '').trim();
@@ -433,41 +444,84 @@ export default function AutomaticProspectingModal({
         targetBbox = targetCommune.bbox;
         zoneLabel = `${targetCommune.nom} (${targetCommune.postalCode})`;
         addLog(`📍 Zone sélectionnée : Commune de ${zoneLabel}`);
+        setCurrentStepText(`Interrogation cadastrale Overpass API (${limitLabel})...`);
+        addLog(`🛰️ Recherche des bâtiments (Emprise : ${minArea} à ${maxArea} m² • Cible : ${minTargetKwc} à ${maxTargetKwc} kWc • Objectif : ${limitLabel})...`);
+
+        // S'assurer que le contour GeoJSON officiel est chargé pour la commune sélectionnée
+        let communeContour = targetCommune?.contour || null;
+        const communeInsee = targetCommune?.codeInsee || targetCommune?.id || null;
+        if (!communeContour && targetCommune?.nom) {
+          try {
+            const list = await searchCommunes(targetCommune.nom);
+            const found = list.find(c => c.codeInsee === communeInsee || c.nom.toLowerCase() === targetCommune.nom.toLowerCase()) || list[0];
+            if (found?.contour) {
+              communeContour = found.contour;
+              targetCommune.contour = found.contour;
+            }
+          } catch (e) {}
+        }
+
+        eligible = await fetchBuildingsInBbox({
+          bbox: targetBbox,
+          codeInsee: communeInsee,
+          contour: communeContour,
+          minArea,
+          maxArea,
+          limit: effectiveLimit,
+          onProgress: (msg) => setCurrentStepText(msg)
+        });
+      } else if (geoMode === 'departement') {
+        const deptObj = DEPARTEMENTS_FRANCE.find((d) => d.code === selectedDeptCode);
+        zoneLabel = `Département ${selectedDeptCode} - ${deptObj?.nom || ''}`;
+        addLog(`🗺️ Zone sélectionnée : ${zoneLabel} (${deptObj?.region || ''})`);
+        setCurrentStepText(`Sourcing des communes du département ${selectedDeptCode}...`);
+
+        const communesInDept = await fetchDepartmentCommunes(selectedDeptCode, 15);
+        if (!communesInDept || communesInDept.length === 0) {
+          throw new Error(`Aucune commune trouvée pour le département ${selectedDeptCode}.`);
+        }
+        addLog(`🔍 ${communesInDept.length} communes sélectionnées dans le département ${selectedDeptCode}.`);
+
+        for (let cIdx = 0; cIdx < communesInDept.length; cIdx++) {
+          if (isAbortedRef.current || eligible.length >= effectiveLimit) break;
+          const comm = communesInDept[cIdx];
+          if (!comm.bbox) continue;
+          setCurrentStepText(`Recherche toitures : ${comm.nom} (${cIdx + 1}/${communesInDept.length})...`);
+          try {
+            const commEligible = await fetchBuildingsInBbox({
+              bbox: comm.bbox,
+              codeInsee: comm.codeInsee,
+              contour: comm.contour || null,
+              minArea,
+              maxArea,
+              limit: Math.min(effectiveLimit - eligible.length, 15),
+              onProgress: (msg) => setCurrentStepText(msg)
+            });
+            if (commEligible && commEligible.length > 0) {
+              eligible.push(...commEligible);
+              addLog(`🏠 ${comm.nom} : ${commEligible.length} toiture(s) identifiée(s) (Total : ${eligible.length})`);
+            }
+          } catch (cErr) {
+            console.warn(`Erreur sourcing toitures sur ${comm.nom}:`, cErr);
+          }
+        }
       } else {
         targetBbox = computedMapBbox;
         zoneLabel = `Carte (Lat ${computedMapBbox.center[0].toFixed(3)}, Lng ${computedMapBbox.center[1].toFixed(3)} - Rayon ${mapRadius}m)`;
         addLog(`🗺️ Zone sélectionnée : ${zoneLabel}`);
+        setCurrentStepText(`Interrogation cadastrale Overpass API (${limitLabel})...`);
+        addLog(`🛰️ Recherche des bâtiments (Emprise : ${minArea} à ${maxArea} m² • Cible : ${minTargetKwc} à ${maxTargetKwc} kWc • Objectif : ${limitLabel})...`);
+
+        eligible = await fetchBuildingsInBbox({
+          bbox: targetBbox,
+          codeInsee: null,
+          contour: null,
+          minArea,
+          maxArea,
+          limit: effectiveLimit,
+          onProgress: (msg) => setCurrentStepText(msg)
+        });
       }
-
-      // 2. Sourcing géospatial rapide avec restriction stricte sur le contour communal
-      const effectiveLimit = targetLimit === 'Tout' ? 500 : Number(targetLimit);
-      const limitLabel = targetLimit === 'Tout' ? 'toutes les toitures éligibles' : `${targetLimit} toitures cibles`;
-      setCurrentStepText(`Interrogation cadastrale Overpass API (${limitLabel})...`);
-      addLog(`🛰️ Recherche des bâtiments (Emprise : ${minArea} à ${maxArea} m² • Cible : ${minTargetKwc} à ${maxTargetKwc} kWc • Objectif : ${limitLabel})...`);
-
-      // S'assurer que le contour GeoJSON officiel est chargé pour la commune sélectionnée
-      let communeContour = targetCommune?.contour || null;
-      const communeInsee = targetCommune?.codeInsee || targetCommune?.id || null;
-      if (geoMode === 'commune' && !communeContour && targetCommune?.nom) {
-        try {
-          const list = await searchCommunes(targetCommune.nom);
-          const found = list.find(c => c.codeInsee === communeInsee || c.nom.toLowerCase() === targetCommune.nom.toLowerCase()) || list[0];
-          if (found?.contour) {
-            communeContour = found.contour;
-            targetCommune.contour = found.contour;
-          }
-        } catch (e) {}
-      }
-
-      const eligible = await fetchBuildingsInBbox({
-        bbox: targetBbox,
-        codeInsee: geoMode === 'commune' ? communeInsee : null,
-        contour: geoMode === 'commune' ? communeContour : null,
-        minArea,
-        maxArea,
-        limit: effectiveLimit,
-        onProgress: (msg) => setCurrentStepText(msg)
-      });
 
       setDetectedBuildings(eligible);
       addLog(`✅ ${eligible.length} bâtiments éligibles identifiés (${minTargetKwc} - ${maxTargetKwc} kWc).`);
@@ -1091,11 +1145,11 @@ export default function AutomaticProspectingModal({
           </div>
         </div>
 
-        {/* ─── 2. CORPS PRINCIPAL EN 2 COLONNES (SANS SCROLL GAUCHE NÉCESSAIRE) ─── */}
-        <div className="p-3 sm:p-4 overflow-hidden flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3.5 min-h-0 bg-slate-100/70">
+        {/* ─── 2. CORPS PRINCIPAL EN 2 COLONNES (SCROLLABLE SUR MOBILE) ─── */}
+        <div className="p-3 sm:p-4 overflow-y-auto lg:overflow-hidden flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3.5 min-h-0 bg-slate-100/70">
 
           {/* ═══ COLONNE GAUCHE (5 cols) : TOUT VISIBLE SANS SCROLL VERTICAL ════ */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-2.5 overflow-y-auto overflow-x-hidden pr-0.5 min-w-0">
+          <div className="lg:col-span-5 flex flex-col justify-between space-y-2.5 overflow-visible lg:overflow-y-auto overflow-x-hidden pr-0.5 min-w-0 shrink-0 lg:shrink">
 
             {/* CARTE 1 : ZONE GÉOGRAPHIQUE */}
             <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
@@ -1105,12 +1159,12 @@ export default function AutomaticProspectingModal({
                   1. Zone Géographique de Prospection
                 </label>
 
-                {/* SELECTEUR D'ONGLET COMMUNE / EMPRISE CARTE */}
+                {/* SELECTEUR D'ONGLET COMMUNE / DÉPARTEMENT / EMPRISE CARTE */}
                 <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl text-xs font-bold border border-slate-200">
                   <button
                     type="button"
                     onClick={() => setGeoMode('commune')}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                       geoMode === 'commune'
                         ? 'bg-[#0e2b4d] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -1120,8 +1174,19 @@ export default function AutomaticProspectingModal({
                   </button>
                   <button
                     type="button"
+                    onClick={() => setGeoMode('departement')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      geoMode === 'departement'
+                        ? 'bg-[#0e2b4d] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Par Département
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setGeoMode('bbox')}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                       geoMode === 'bbox'
                         ? 'bg-[#0e2b4d] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -1131,6 +1196,27 @@ export default function AutomaticProspectingModal({
                   </button>
                 </div>
               </div>
+
+              {/* CONTENU MODE DÉPARTEMENT */}
+              {geoMode === 'departement' && (
+                <div className="space-y-1">
+                  <select
+                    value={selectedDeptCode}
+                    onChange={(e) => setSelectedDeptCode(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    disabled={status === 'running' || status === 'sourcing'}
+                  >
+                    {DEPARTEMENTS_FRANCE.map((d) => (
+                      <option key={d.code} value={d.code}>
+                        {d.code} — {d.nom} ({d.region})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-500">
+                    L’automate explorera les toitures des principales agglomérations du département {selectedDeptCode}.
+                  </p>
+                </div>
+              )}
 
               {/* CONTENU MODE COMMUNE */}
               {geoMode === 'commune' && (
@@ -1619,6 +1705,8 @@ export default function AutomaticProspectingModal({
                     Lancer la Prospection Automatique
                     {geoMode === 'commune'
                       ? ` (${selectedCommune?.nom || communeSearch || 'Commune'} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} toitures`})`
+                      : geoMode === 'departement'
+                      ? ` (Dépt ${selectedDeptCode} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} toitures`})`
                       : ` (Emprise Carte - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} toitures`})`}
                   </span>
                 </button>
@@ -1627,7 +1715,7 @@ export default function AutomaticProspectingModal({
           </div>
 
           {/* ═══ COLONNE DROITE (7 cols) : DASHBOARD TEMPS RÉEL & RÉSULTATS ═══ */}
-          <div className="lg:col-span-7 flex flex-col min-h-0 bg-slate-900 rounded-3xl p-5 text-white shadow-2xl border border-slate-800 space-y-4">
+          <div className="lg:col-span-7 flex flex-col min-h-[550px] lg:min-h-0 bg-slate-900 rounded-3xl p-4 sm:p-5 text-white shadow-2xl border border-slate-800 space-y-4 shrink-0 lg:shrink lg:overflow-hidden">
 
             {/* 1. GRILLE KPI EN TEMPS RÉEL */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">

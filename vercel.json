@@ -21,6 +21,30 @@
             "destination": "/api/enedis/contraintes$1"
         },
         {
+            "source": "/api/catalog/(.*)",
+            "destination": "/api/common/catalog/$1"
+        },
+        {
+            "source": "/api/catalog",
+            "destination": "/api/common/catalog"
+        },
+        {
+            "source": "/api/quotes/(.*)",
+            "destination": "/api/common/quotes/$1"
+        },
+        {
+            "source": "/api/quotes",
+            "destination": "/api/common/quotes"
+        },
+        {
+            "source": "/api/tarifs-energie/(.*)",
+            "destination": "/api/common/tarifs-energie/$1"
+        },
+        {
+            "source": "/api/tarifs-energie",
+            "destination": "/api/common/tarifs-energie"
+        },
+        {
             "source": "/((?!api/).*)",
             "destination": "/index.html"
         }

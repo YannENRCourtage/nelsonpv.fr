@@ -1,15 +1,14 @@
 import { prisma } from '../../src/lib/prisma.js';
-import { setSecureCors } from '../common/_authMiddleware.js';
+import { setSecureCors } from './_authMiddleware.js';
 
-export default async function handler(req, res) {
+export default async function handleCatalog(req, res, subSlug = []) {
     setSecureCors(req, res, 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
 
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
 
-    const { slug } = req.query;
-    const id = slug && slug.length > 0 ? slug[0] : null;
+    const id = subSlug && subSlug.length > 0 ? subSlug[0] : null;
 
     try {
         if (!id) {

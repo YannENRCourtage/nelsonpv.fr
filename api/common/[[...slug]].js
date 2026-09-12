@@ -2,6 +2,9 @@ import { prisma } from '../../src/lib/prisma.js'
 import docusign from 'docusign-esign'
 import bcrypt from 'bcryptjs'
 import { withAuth, setSecureCors } from './_authMiddleware.js'
+import handleCatalog from './_catalogHandler.js'
+import handleQuotes from './_quotesHandler.js'
+import handleTarifsEnergie from './_tarifsEnergieHandler.js'
 
 async function handler(req, res) {
     setSecureCors(req, res, 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
@@ -15,6 +18,20 @@ async function handler(req, res) {
     const module = slug && slug.length > 0 ? slug[0] : null
 
     try {
+        // Module Catalogue Matériel
+        if (module === 'catalog') {
+            return handleCatalog(req, res, slug.slice(1))
+        }
+
+        // Module Devis & Offres Solaires
+        if (module === 'quotes') {
+            return handleQuotes(req, res, slug.slice(1))
+        }
+
+        // Module Tarifs Énergie Dynamiques (CRE / EDF OA)
+        if (module === 'tarifs-energie') {
+            return handleTarifsEnergie(req, res, slug.slice(1))
+        }
         // SDIS Integration
         if (module === 'sdis') {
             const { dept } = req.query
@@ -138,8 +155,9 @@ export default async function(req, res) {
     const { slug } = req.query
     const module = slug && slug.length > 0 ? slug[0] : null
     
-    // Auth module doesn't need withAuth because it's for logging in
-    if (module === 'auth') {
+    // Modules publics ou gérant leur propre sécurité
+    const PUBLIC_MODULES = ['auth', 'sdis', 'catalog', 'quotes', 'tarifs-energie']
+    if (PUBLIC_MODULES.includes(module)) {
         return handler(req, res)
     }
     

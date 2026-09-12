@@ -1,4 +1,4 @@
-import { setSecureCors } from '../common/_authMiddleware.js';
+import { setSecureCors } from './_authMiddleware.js';
 
 // Valeurs de référence officielles CRE / EDF OA (Arrêté S21 indexé trimestriellement)
 const REFERENCE_ENERGY_TARIFS = {
@@ -89,7 +89,7 @@ async function fetchLiveTarifs() {
     return cachedTarifs;
 }
 
-export default async function handler(req, res) {
+export default async function handleTarifsEnergie(req, res, subSlug = []) {
     setSecureCors(req, res, 'GET,POST,OPTIONS');
 
     if (req.method === 'OPTIONS') {

@@ -738,10 +738,10 @@ export default function AutomaticSechoirProspectingModal({
         </div>
 
         {/* ═══ 2. CORPS EN 2 COLONNES (5 COLS GAUCHE / 7 COLS DROITE) ═══════════ */}
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 p-5 overflow-hidden">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 p-3 sm:p-5 overflow-y-auto lg:overflow-hidden">
 
           {/* ─── COLONNE GAUCHE (5 cols) : PARAMÈTRES DE PROSPECTION ──────────── */}
-          <div className="lg:col-span-5 flex flex-col min-h-0 bg-slate-900/70 rounded-3xl p-5 border border-slate-800 space-y-4 overflow-y-auto">
+          <div className="lg:col-span-5 flex flex-col min-h-0 bg-slate-900/70 rounded-3xl p-4 sm:p-5 border border-slate-800 space-y-4 overflow-visible lg:overflow-y-auto shrink-0 lg:shrink">
 
             {/* 1. Mode de sélection géographique */}
             <div className="space-y-2">
@@ -918,30 +918,31 @@ export default function AutomaticSechoirProspectingModal({
                 </span>
               </label>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {Object.values(RPG_BATITECH_CROP_MAPPING).map((stream) => {
+              <div className="grid grid-cols-6 gap-1.5">
+                {Object.values(RPG_BATITECH_CROP_MAPPING).map((stream, idx) => {
                   const isActive = selectedStreams.includes(stream.id);
+                  const colSpanClass = idx < 3 ? 'col-span-2' : 'col-span-3';
                   return (
                     <button
                       key={stream.id}
                       type="button"
                       onClick={() => toggleStream(stream.id)}
-                      className={`p-2 rounded-xl text-left border transition-all flex items-center justify-between cursor-pointer ${
+                      className={`${colSpanClass} p-1.5 px-2 rounded-xl text-left border transition-all flex items-center justify-between cursor-pointer min-w-0 ${
                         isActive
-                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-200 shadow-xs'
                           : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
                       }`}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm">{stream.icon}</span>
-                        <div className="truncate text-[11px] font-bold">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="text-xs shrink-0">{stream.icon}</span>
+                        <div className="truncate text-[10px] sm:text-[11px] font-bold">
                           {stream.label}
                         </div>
                       </div>
-                      <div className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] shrink-0 ${
+                      <div className={`w-3.5 h-3.5 ml-1 rounded flex items-center justify-center text-[9px] shrink-0 ${
                         isActive ? 'bg-amber-500 text-black font-black' : 'border border-slate-700'
                       }`}>
-                        {isActive && <Check className="w-3 h-3 stroke-[3]" />}
+                        {isActive && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                       </div>
                     </button>
                   );
@@ -1137,7 +1138,7 @@ export default function AutomaticSechoirProspectingModal({
           </div>
 
           {/* ═══ COLONNE DROITE (7 cols) : DASHBOARD TEMPS RÉEL & RÉSULTATS ═══ */}
-          <div className="lg:col-span-7 flex flex-col min-h-0 bg-slate-900/90 rounded-3xl p-5 border border-slate-800 space-y-4">
+          <div className="lg:col-span-7 flex flex-col min-h-[550px] lg:min-h-0 bg-slate-900/90 rounded-3xl p-4 sm:p-5 border border-slate-800 space-y-4 shrink-0 lg:shrink lg:overflow-hidden">
 
             {/* 1. GRILLE KPI EN TEMPS RÉEL */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">

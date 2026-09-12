@@ -15,6 +15,11 @@ import {
 } from '@/services/parkingProspectingGisService';
 
 import {
+  DEPARTEMENTS_FRANCE,
+  fetchDepartmentCommunes
+} from '@/services/sechoirProspectingGisService';
+
+import {
   simulateParkingHeadless,
   generateParkingProspectingPdfBlob
 } from '@/services/parkingHeadlessSimulationEngine';
@@ -58,8 +63,11 @@ export default function AutomaticOmbriereProspectingModal({
   simulatorMapCenter = null,
   defaultCommune = 'Bordeaux'
 }) {
-  // Mode de sélection géographique : 'commune' | 'bbox'
+  // Mode de sélection géographique : 'commune' | 'departement' | 'bbox'
   const [geoMode, setGeoMode] = useState('commune');
+
+  // Recherche par département (Gironde 33 par défaut)
+  const [selectedDeptCode, setSelectedDeptCode] = useState('33');
 
   // Recherche par commune (Bordeaux 33 par défaut)
   const [communeSearch, setCommuneSearch] = useState(defaultCommune || 'Bordeaux');
@@ -263,7 +271,7 @@ export default function AutomaticOmbriereProspectingModal({
     if (!list || list.length === 0) return;
     try {
       setIsExportingZip(true);
-      const zoneName = geoMode === 'commune' ? (selectedCommune?.nom || 'Bordeaux') : 'Emprise_Carte';
+      const zoneName = geoMode === 'commune' ? (selectedCommune?.nom || 'Bordeaux') : geoMode === 'departement' ? `Dept_${selectedDeptCode}` : 'Emprise_Carte';
       const dateStr = new Date().toISOString().slice(0, 10);
       const zipName = `Offres_Ombrieres_${zoneName}_${dateStr}.zip`;
       addLog(`📦 Préparation de l'archive ZIP groupée (${list.length} fichiers)...`);
@@ -309,6 +317,9 @@ export default function AutomaticOmbriereProspectingModal({
       // 1. Définition de l'emprise géographique
       let targetBbox = null;
       let zoneLabel = '';
+      const effectiveLimit = targetLimit === 'Tout' ? 500 : Number(targetLimit);
+      const limitLabel = targetLimit === 'Tout' ? 'tous les parkings éligibles' : `${targetLimit} parkings cibles`;
+      let eligible = [];
 
       if (geoMode === 'commune') {
         if (!selectedCommune || !selectedCommune.bbox) {
@@ -317,25 +328,64 @@ export default function AutomaticOmbriereProspectingModal({
         targetBbox = selectedCommune.bbox;
         zoneLabel = `${selectedCommune.nom} (${selectedCommune.postalCode})`;
         addLog(`📍 Zone sélectionnée : Commune de ${zoneLabel}`);
+        setCurrentStepText(`Interrogation Overpass API des parkings ouverts (${limitLabel})...`);
+        addLog(`🛰️ Recherche des parkings à l'air libre (Surface >= ${minArea} m² • Objectif : ${limitLabel})...`);
+
+        eligible = await fetchParkingsInBbox({
+          bbox: targetBbox,
+          minArea,
+          limit: effectiveLimit,
+          typologyKey: selectedTypology,
+          onProgress: (msg) => setCurrentStepText(msg)
+        });
+      } else if (geoMode === 'departement') {
+        const deptObj = DEPARTEMENTS_FRANCE.find((d) => d.code === selectedDeptCode);
+        zoneLabel = `Département ${selectedDeptCode} - ${deptObj?.nom || ''}`;
+        addLog(`🗺️ Zone sélectionnée : ${zoneLabel} (${deptObj?.region || ''})`);
+        setCurrentStepText(`Sourcing des communes du département ${selectedDeptCode}...`);
+
+        const communesInDept = await fetchDepartmentCommunes(selectedDeptCode, 15);
+        if (!communesInDept || communesInDept.length === 0) {
+          throw new Error(`Aucune commune trouvée pour le département ${selectedDeptCode}.`);
+        }
+        addLog(`🔍 ${communesInDept.length} communes sélectionnées dans le département ${selectedDeptCode}.`);
+
+        for (let cIdx = 0; cIdx < communesInDept.length; cIdx++) {
+          if (isAbortedRef.current || eligible.length >= effectiveLimit) break;
+          const comm = communesInDept[cIdx];
+          if (!comm.bbox) continue;
+          setCurrentStepText(`Recherche parkings : ${comm.nom} (${cIdx + 1}/${communesInDept.length})...`);
+          try {
+            const commEligible = await fetchParkingsInBbox({
+              bbox: comm.bbox,
+              minArea,
+              limit: Math.min(effectiveLimit - eligible.length, 10),
+              typologyKey: selectedTypology,
+              onProgress: (msg) => setCurrentStepText(msg)
+            });
+            if (commEligible && commEligible.length > 0) {
+              eligible.push(...commEligible);
+              addLog(`🅿️ ${comm.nom} : ${commEligible.length} parking(s) trouvé(s) (Total : ${eligible.length})`);
+            }
+          } catch (cErr) {
+            console.warn(`Erreur sourcing parking sur ${comm.nom}:`, cErr);
+          }
+        }
       } else {
         targetBbox = computedMapBbox;
         zoneLabel = `Carte (Lat ${computedMapBbox.center[0].toFixed(3)}, Lng ${computedMapBbox.center[1].toFixed(3)} - Rayon ${mapRadius}m)`;
         addLog(`🗺️ Zone sélectionnée : ${zoneLabel}`);
+        setCurrentStepText(`Interrogation Overpass API des parkings ouverts (${limitLabel})...`);
+        addLog(`🛰️ Recherche des parkings à l'air libre (Surface >= ${minArea} m² • Objectif : ${limitLabel})...`);
+
+        eligible = await fetchParkingsInBbox({
+          bbox: targetBbox,
+          minArea,
+          limit: effectiveLimit,
+          typologyKey: selectedTypology,
+          onProgress: (msg) => setCurrentStepText(msg)
+        });
       }
-
-      // 2. Sourcing géospatial Overpass API
-      const effectiveLimit = targetLimit === 'Tout' ? 500 : Number(targetLimit);
-      const limitLabel = targetLimit === 'Tout' ? 'tous les parkings éligibles' : `${targetLimit} parkings cibles`;
-      setCurrentStepText(`Interrogation Overpass API des parkings ouverts (${limitLabel})...`);
-      addLog(`🛰️ Recherche des parkings à l'air libre (Surface >= ${minArea} m² • Objectif : ${limitLabel})...`);
-
-      const eligible = await fetchParkingsInBbox({
-        bbox: targetBbox,
-        minArea,
-        limit: effectiveLimit,
-        typologyKey: selectedTypology,
-        onProgress: (msg) => setCurrentStepText(msg)
-      });
 
       setDetectedParkings(eligible);
       addLog(`✅ ${eligible.length} parkings à l'air libre identifiés (surface >= ${minArea} m²).`);
@@ -632,11 +682,11 @@ export default function AutomaticOmbriereProspectingModal({
           </div>
         </div>
 
-        {/* ─── 2. CORPS PRINCIPAL EN 2 COLONNES (SANS SCROLL GAUCHE NÉCESSAIRE) ─── */}
-        <div className="p-2.5 sm:p-3.5 overflow-hidden flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0 bg-slate-100/70">
+        {/* ─── 2. CORPS PRINCIPAL EN 2 COLONNES (SCROLLABLE SUR MOBILE) ─── */}
+        <div className="p-2.5 sm:p-3.5 overflow-y-auto lg:overflow-hidden flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0 bg-slate-100/70">
 
           {/* ═══ COLONNE GAUCHE (5 cols) : PARAMÈTRES ET CONFIGURATION ════ */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-2 overflow-y-auto overflow-x-hidden pr-1 min-w-0">
+          <div className="lg:col-span-5 flex flex-col justify-between space-y-2 overflow-visible lg:overflow-y-auto overflow-x-hidden pr-1 min-w-0 shrink-0 lg:shrink">
 
             {/* CARTE 1 : ZONE GÉOGRAPHIQUE */}
             <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-xs space-y-1.5">
@@ -646,12 +696,12 @@ export default function AutomaticOmbriereProspectingModal({
                   1. Zone Géographique
                 </label>
 
-                {/* SELECTEUR D'ONGLET COMMUNE / EMPRISE CARTE */}
+                {/* SELECTEUR D'ONGLET COMMUNE / DÉPARTEMENT / EMPRISE CARTE */}
                 <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl text-xs font-bold border border-slate-200">
                   <button
                     type="button"
                     onClick={() => setGeoMode('commune')}
-                    className={`px-2 py-0.5 rounded-lg text-[11px] transition-all ${
+                    className={`px-2 py-0.5 rounded-lg text-[11px] transition-all cursor-pointer ${
                       geoMode === 'commune'
                         ? 'bg-[#0e2b4d] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -661,8 +711,19 @@ export default function AutomaticOmbriereProspectingModal({
                   </button>
                   <button
                     type="button"
+                    onClick={() => setGeoMode('departement')}
+                    className={`px-2 py-0.5 rounded-lg text-[11px] transition-all cursor-pointer ${
+                      geoMode === 'departement'
+                        ? 'bg-[#0e2b4d] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Par Département
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setGeoMode('bbox')}
-                    className={`px-2 py-0.5 rounded-lg text-[11px] transition-all ${
+                    className={`px-2 py-0.5 rounded-lg text-[11px] transition-all cursor-pointer ${
                       geoMode === 'bbox'
                         ? 'bg-[#0e2b4d] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -672,6 +733,27 @@ export default function AutomaticOmbriereProspectingModal({
                   </button>
                 </div>
               </div>
+
+              {/* CONTENU MODE DÉPARTEMENT */}
+              {geoMode === 'departement' && (
+                <div className="space-y-1">
+                  <select
+                    value={selectedDeptCode}
+                    onChange={(e) => setSelectedDeptCode(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    disabled={status === 'running' || status === 'sourcing'}
+                  >
+                    {DEPARTEMENTS_FRANCE.map((d) => (
+                      <option key={d.code} value={d.code}>
+                        {d.code} — {d.nom} ({d.region})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-500">
+                    L’automate explorera les parkings des principales agglomérations du département {selectedDeptCode}.
+                  </p>
+                </div>
+              )}
 
               {/* CONTENU MODE COMMUNE */}
               {geoMode === 'commune' && (
@@ -1146,6 +1228,8 @@ export default function AutomaticOmbriereProspectingModal({
                     Lancer la Prospection Ombrières
                     {geoMode === 'commune'
                       ? ` (${selectedCommune?.nom || communeSearch || 'Commune'} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} parkings`})`
+                      : geoMode === 'departement'
+                      ? ` (Dépt ${selectedDeptCode} - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} parkings`})`
                       : ` (Emprise Carte - ${targetLimit === 'Tout' ? 'Tout' : `${targetLimit} parkings`})`}
                   </span>
                 </button>
@@ -1154,7 +1238,7 @@ export default function AutomaticOmbriereProspectingModal({
           </div>
 
           {/* ═══ COLONNE DROITE (7 cols) : DASHBOARD TEMPS RÉEL & RÉSULTATS ═══ */}
-          <div className="lg:col-span-7 flex flex-col min-h-0 bg-slate-900 rounded-3xl p-5 text-white shadow-2xl border border-slate-800 space-y-4">
+          <div className="lg:col-span-7 flex flex-col min-h-[550px] lg:min-h-0 bg-slate-900 rounded-3xl p-4 sm:p-5 text-white shadow-2xl border border-slate-800 space-y-4 shrink-0 lg:shrink lg:overflow-hidden">
 
             {/* 1. GRILLE KPI EN TEMPS RÉEL */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
