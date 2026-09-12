@@ -39,6 +39,7 @@ import enedisService from "@/services/enedis";
 import MandatSignatureModal from "@/components/enedis/MandatSignatureModal";
 import PrmSelectionModal from "@/components/enedis/PrmSelectionModal";
 import GoogleSolarPanel from "@/components/solar/GoogleSolarPanel";
+import QuoteEditorModal from "@/components/devis/QuoteEditorModal";
 
 const INCLINATION_OPTIONS = Array.from({ length: 91 }, (_, i) => {
   const percentage = Math.tan(i * Math.PI / 180) * 100;
@@ -228,6 +229,7 @@ export default function ProjectEditor() {
   const [prmCandidates, setPrmCandidates] = useState([]);
   const [ambiguityModalOpen, setAmbiguityModalOpen] = useState(false);
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false);
 
   const handleTriggerSearchPrm = async (customAddress = null) => {
     let targetAddr = (customAddress || p.address || '').trim();
@@ -1405,6 +1407,16 @@ export default function ProjectEditor() {
                 </div>
 
                 <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                  <Button
+                    type="button"
+                    onClick={() => setQuoteModalOpen(true)}
+                    className="h-9 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                    title="Ouvrir l'éditeur de devis, chiffrage et génération de proposition commerciale avec fiches techniques"
+                  >
+                    <span>📑</span>
+                    <span>Éditeur de Devis & Offre</span>
+                  </Button>
+
                   <Button
                     type="button"
                     onClick={() => setSignatureModalOpen(true)}

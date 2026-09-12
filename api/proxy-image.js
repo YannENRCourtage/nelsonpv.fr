@@ -74,10 +74,16 @@ export default async function handler(request, response) {
             });
         }
 
-        const contentType = imageResponse.headers.get('content-type') || 'image/png';
-        if (!contentType.startsWith('image/')) {
-            return response.status(400).json({ error: 'Target URL did not return an image' });
+        const contentType = imageResponse.headers.get('content-type') || 'application/octet-stream';
+        const isImage = contentType.startsWith('image/');
+        const isPdf = contentType.includes('pdf') || targetUrl.toLowerCase().endsWith('.pdf');
+        
+        if (!isImage && !isPdf && !contentType.startsWith('application/octet-stream')) {
+            return response.status(400).json({ error: 'Target URL did not return an image or PDF' });
         }
+
+        const arrayBuffer = await imageResponse.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
 
         // 5. If JSON / Base64 requested, return dataUrl
         const wantsBase64 = request.query?.format === 'base64' || 

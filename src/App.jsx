@@ -19,6 +19,7 @@ import BpAcama from './pages/BpAcama.jsx';
 import Developpement from './pages/Developpement.jsx';
 import AdminEnedis from './pages/AdminEnedis.jsx';
 import IrveSimulator from './pages/IrveSimulator.jsx';
+import DevisPage from './pages/DevisPage.jsx';
 
 import MentionsLegales from './pages/Legal/MentionsLegales.jsx';
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy.jsx';
@@ -173,6 +174,14 @@ function AppContent() {
             element={
               <ProtectedRoute requiredPermission="canAccessEnedis">
                 <AdminEnedis />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="devis"
+            element={
+              <ProtectedRoute>
+                <DevisPage />
               </ProtectedRoute>
             }
           />

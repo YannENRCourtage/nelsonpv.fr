@@ -161,3 +161,51 @@ model Notification {
   @@index([userId, read])
   @@index([createdAt])
 }
+
+model ProductCatalogItem {
+  id                String   @id @default(cuid())
+  ref               String   @unique
+  marque            String
+  modele            String
+  category          String   // "module", "inverter", "battery", "mounting", "electrical", "service"
+  puissanceWc       Float?   // Wc pour module, kW pour onduleur, kWh pour batterie
+  prixUnitaireHt    Float    // Prix unitaire HT en €
+  tauxTva           Float    @default(20.0) // 20, 10, 5.5, 0
+  ficheTechniqueUrl String?  // URL du PDF de la fiche technique fabricant
+  unite             String   @default("U") // U, m², ml, forfait, kWc
+  garantieAnnees    Int?     // Durée garantie constructeur
+  caracteristiques  Json?    // Rendement, dimensions, poids, cellules, etc.
+  description       String?  @db.Text
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("product_catalog_items")
+  @@index([category])
+  @@index([marque])
+}
+
+model ProjectQuote {
+  id              String   @id @default(cuid())
+  quoteNumber     String   @unique // ex: DEV-2026-09-001
+  projectId       String?
+  clientName      String
+  clientAddress   String?
+  clientEmail     String?
+  clientPhone     String?
+  status          String   @default("brouillon") // brouillon, envoye, accepte, refuse
+  totalHtBrut     Float
+  remiseGlobale   Float    @default(0)
+  totalNetHt      Float
+  tvaDetails      Json     // { "20": { baseHt: X, montantTva: Y }, ... }
+  totalTtc        Float
+  sections        Json     // Lignes du devis regroupées par section
+  options         Json?    // Configuration d'affichage et fiches techniques incluses
+  commercialName  String?
+  validityDays    Int      @default(30)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("project_quotes")
+  @@index([projectId])
+}

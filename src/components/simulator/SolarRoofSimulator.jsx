@@ -45,6 +45,7 @@ export default function SolarRoofSimulator({
   const [roofSurface, setRoofSurface] = useState(300);
 
   // Orientation & Pente & Type de toiture
+  const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(0);
   const [roofType, setRoofType] = useState('asymetrique'); // 'asymetrique' | 'symetrique'
   const [orientationInfo, setOrientationInfo] = useState({
     ridgeAngle: 0,

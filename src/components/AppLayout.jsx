@@ -4,10 +4,11 @@ import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useProject } from '../contexts/ProjectContext.jsx';
 import { Button } from './ui/button.jsx';
-import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X, Shuffle, List as ListIcon, Activity, Layers } from 'lucide-react';
+import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X, Shuffle, List as ListIcon, Activity, Layers, FileText } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast.js";
 import jsPDF from "jspdf";
 import html2canvas from 'html2canvas';
+import QuoteEditorModal from './devis/QuoteEditorModal.jsx';
 // CHEMIN CORRIGÉ et IMPORT DE LA LÉGENDE
 import PDFGenerator, { PDFSymbolLegend } from './PDFGenerator.jsx';
 import ReactDOMServer from 'react-dom/server';
@@ -248,6 +249,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
   const { project, saveProject, setProject } = useProject();
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
 
   const isTransferAuthorized = () => {
     if (!user) return false;
@@ -443,6 +445,10 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
               </NavLink>
             )}
 
+            <NavLink to="/devis" className={({ isActive }) => isActive ? 'nav-link active devis' : 'nav-link devis'}>
+              Devis & Offres
+            </NavLink>
+
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessConfigurator) && (
               <NavLink to="/configurateur" className={({ isActive }) => isActive ? 'nav-link active configurateur' : 'nav-link configurateur'}>Configurateur</NavLink>
             )}
@@ -560,6 +566,14 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
                 <FileDown className="h-5 w-5 mr-2" />
                 Générer le PDF
               </Button>
+              <Button 
+                onClick={() => setShowQuoteModal(true)} 
+                className="rounded-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shadow-sm"
+                title="Éditeur de Devis & Offre chiffrée avec fiches techniques"
+              >
+                <FileText className="h-5 w-5 mr-2" />
+                Devis & Offre
+              </Button>
               {isTransferAuthorized() && (
                 <Button
                   onClick={() => setShowTransferModal(true)}
@@ -616,6 +630,12 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
         onClose={() => setShowTransferModal(false)}
         project={project}
         onTransfer={handleTransferProject}
+      />
+
+      <QuoteEditorModal
+        isOpen={showQuoteModal}
+        onClose={() => setShowQuoteModal(false)}
+        project={project}
       />
     </header >
   );
@@ -700,6 +720,14 @@ export default function AppLayout() {
                 Editeur de projet
               </NavLink>
             )}
+
+            <NavLink
+              to="/devis"
+              className={({ isActive }) => isActive ? 'mobile-nav-link active devis' : 'mobile-nav-link devis'}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Devis & Offres
+            </NavLink>
 
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessConfigurator) && (
               <NavLink
