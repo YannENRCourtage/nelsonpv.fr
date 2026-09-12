@@ -39,11 +39,37 @@ export default function CommercialOfferConfigModal({
     'abonnement'
   ]);
 
+  // 3b. Durée d'étude des financements (20, 25, 30 ans)
+  const [durationYears, setDurationYears] = useState(25);
+
+  // 3c. Consommation annuelle du site (kWh/an)
+  const [siteConsumptionKwh, setSiteConsumptionKwh] = useState(
+    simulation.siteConsumptionKwh || Math.round(annualProdKwh * 0.85)
+  );
+
   // 4. Pages optionnelles
   const [includeCoverLetter, setIncludeCoverLetter] = useState(true);
   const [includeAmortizationTable, setIncludeAmortizationTable] = useState(true);
 
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Détection ombrière & visuel typologie
+  const isOmbriere = Boolean(
+    simulation.type === 'ombriere_parking' ||
+    simulation.projectType === 'ombriere_parking' ||
+    simulation.type === 'ombriere' ||
+    simulation.isOmbriere ||
+    simulation.typologyKey ||
+    simulation.parkingArea
+  );
+
+  let ombrierePhoto = '/ombriere_vl_double.jpg';
+  const typoKey = simulation.typologyKey || simulation.typology?.id || '';
+  if (typoKey.includes('pl_24') || typoKey.includes('pl_20')) ombrierePhoto = '/ombriere_pl_large.jpg';
+  else if (typoKey.includes('pl')) ombrierePhoto = '/ombriere_pl.jpg';
+  else if (typoKey.includes('simple_droite')) ombrierePhoto = '/ombriere_vl_simple_droite.jpg';
+  else if (typoKey.includes('simple')) ombrierePhoto = '/ombriere_vl_simple_gauche.jpg';
+  else if (typoKey.includes('double_plus')) ombrierePhoto = '/ombriere_vl_double_plus.jpg';
 
   // Synchronisation lors de l'ouverture
   useEffect(() => {
@@ -56,6 +82,8 @@ export default function CommercialOfferConfigModal({
         : 0.12; // Tarif surplus standard
       setTarifEdfOa(simulation.tarifEdfOaKwh || defTarif);
       setElectricityBuyPrice(0.22);
+      setDurationYears(simulation.durationYears || 25);
+      setSiteConsumptionKwh(simulation.siteConsumptionKwh || Math.round(annualProdKwh * 0.85));
       
       if (simulation.excludeThirdParty) {
         setFinancingChoices(['credit_bancaire', 'abonnement']);
@@ -63,7 +91,7 @@ export default function CommercialOfferConfigModal({
         setFinancingChoices(['tiers_investisseur', 'credit_bancaire', 'abonnement']);
       }
     }
-  }, [isOpen, simulation, powerKwc]);
+  }, [isOpen, simulation, powerKwc, annualProdKwh]);
 
   // Ajustement automatique du tarif conseillé lors du changement de modèle
   const handleModelChange = (newModel) => {
@@ -103,6 +131,8 @@ export default function CommercialOfferConfigModal({
         tarifEdfOa: Number(tarifEdfOa),
         electricityBuyPrice: Number(electricityBuyPrice),
         financingChoices,
+        durationYears: Number(durationYears),
+        siteConsumptionKwh: Number(siteConsumptionKwh),
         includeCoverLetter: false,
         includeAmortizationTable: false,
         format: 'simplified'
@@ -123,6 +153,8 @@ export default function CommercialOfferConfigModal({
         tarifEdfOa: Number(tarifEdfOa),
         electricityBuyPrice: Number(electricityBuyPrice),
         financingChoices,
+        durationYears: Number(durationYears),
+        siteConsumptionKwh: Number(siteConsumptionKwh),
         includeCoverLetter,
         includeAmortizationTable,
         format: 'detailed'
@@ -318,6 +350,52 @@ export default function CommercialOfferConfigModal({
                 </div>
               </div>
 
+              {/* 2b. CONSOMMATION ANNUELLE DU SITE (EN KWH/AN) */}
+              <div className="mt-3 pt-3 border-t border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                    🏢 Consommation électrique du site :
+                  </span>
+                  <span className="text-[10px] text-slate-500">Profil de charge &amp; dimensionnement</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      step="1000"
+                      min="0"
+                      value={siteConsumptionKwh}
+                      onChange={(e) => setSiteConsumptionKwh(Math.max(0, Number(e.target.value)))}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500 transition-colors"
+                      placeholder="Ex: 120 000"
+                    />
+                    <span className="absolute right-3 text-xs font-semibold text-slate-500">kWh/an</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                    {[
+                      { label: '50k', val: 50000 },
+                      { label: '100k', val: 100000 },
+                      { label: '250k', val: 250000 },
+                      { label: '500k', val: 50000 },
+                      { label: '1M', val: 1000000 }
+                    ].map(p => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => setSiteConsumptionKwh(p.val)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
+                          siteConsumptionKwh === p.val
+                            ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                            : 'bg-slate-800 hover:bg-slate-700 text-slate-400'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               {/* Badge dynamique aperçu des gains */}
               <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
                 <span className="text-slate-400">Gains annuels estimés (An 1) :</span>
@@ -327,14 +405,30 @@ export default function CommercialOfferConfigModal({
               </div>
             </div>
 
-            {/* 3. SOLUTIONS DE FINANCEMENT À COMPARER (CASES À COCHER) */}
-            <div className="space-y-2.5">
+            {/* 3. SOLUTIONS DE FINANCEMENT & DURÉE D'ÉTUDE */}
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
                   <Building2 className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>3. Solutions de financement à inclure dans le comparatif</span>
+                  <span>3. Solutions de financement &amp; Durée d'étude</span>
                 </label>
-                <span className="text-[10px] text-slate-500">Min. 1 solution cochée</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10.5px] text-slate-400 font-semibold mr-1">Durée :</span>
+                  {[20, 25, 30].map(yr => (
+                    <button
+                      key={yr}
+                      type="button"
+                      onClick={() => setDurationYears(yr)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        durationYears === yr
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                      }`}
+                    >
+                      {yr} ans
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -355,7 +449,7 @@ export default function CommercialOfferConfigModal({
                     </div>
                     <div>
                       <div className="font-bold text-xs">Tiers-Investisseur</div>
-                      <div className="text-[10px] text-slate-400">0 € d'apport &bull; Loyer garanti</div>
+                      <div className="text-[10px] text-slate-400">0 € d'apport &bull; Loyer garanti ({durationYears} ans)</div>
                     </div>
                   </div>
                 </div>
@@ -377,7 +471,7 @@ export default function CommercialOfferConfigModal({
                     </div>
                     <div>
                       <div className="font-bold text-xs">Crédit Bancaire</div>
-                      <div className="text-[10px] text-slate-400">Propriétaire J1 &bull; Prêt pro</div>
+                      <div className="text-[10px] text-slate-400">Propriétaire &bull; Prêt {durationYears} ans</div>
                     </div>
                   </div>
                 </div>
@@ -399,12 +493,30 @@ export default function CommercialOfferConfigModal({
                     </div>
                     <div>
                       <div className="font-bold text-xs">Abonnement Solaire</div>
-                      <div className="text-[10px] text-slate-400">Leasing LOA avec option d'achat</div>
+                      <div className="text-[10px] text-slate-400">Leasing LOA &bull; {durationYears} ans</div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* APERÇU DU VISUEL TYPOLOGIE (SI OMBRIÈRE) */}
+            {isOmbriere && (
+              <div className="p-3 bg-slate-950/60 rounded-2xl border border-slate-800 flex items-center gap-3">
+                <div className="w-24 h-16 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 shrink-0">
+                  <img src={ombrierePhoto} alt="Visuel ombrière" className="w-full h-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-white flex items-center gap-1.5">
+                    <span>🚗 Typologie :</span>
+                    <span className="text-amber-400">{simulation.typology?.label || 'Ombrière Photovoltaïque'}</span>
+                  </div>
+                  <div className="text-[10.5px] text-slate-400 mt-0.5 leading-snug">
+                    Visuel intégré automatiquement dans l'étude détaillée pour illustrer la structure retenue auprès du client.
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* 4. OPTIONS SUPPLÉMENTAIRES */}
             <div className="flex items-center gap-6 pt-2 border-t border-slate-800 text-xs">

@@ -4,7 +4,8 @@ import {
   Sparkles, Zap, Search, Car, Truck, MapPin, FolderDown, FolderOpen,
   FileText, CheckCircle2, AlertCircle, Loader2, Play, Square,
   RotateCcw, SlidersHorizontal, HardDrive, Compass, Euro,
-  Download, Archive, X, ShieldCheck, Warehouse, Mail
+  Download, Archive, X, ShieldCheck, Warehouse, Mail, ExternalLink,
+  Sliders, Pencil, Check, Info
 } from 'lucide-react';
 
 import {
@@ -37,6 +38,10 @@ import {
 } from '@/services/localPdfExportService';
 
 import ServicePostalModal from '@/components/simulator/ServicePostalModal';
+import CommercialOfferConfigModal from '@/components/simulator/CommercialOfferConfigModal';
+import { generateCommercialProposalPDF } from '@/services/CommercialProposalPdfGenerator';
+import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
+import { toast } from '@/components/ui/use-toast';
 
 
 // Profil géographique par défaut : Bordeaux (33)
@@ -61,7 +66,8 @@ export default function AutomaticOmbriereProspectingModal({
   onClose,
   currentMapBbox = null,
   simulatorMapCenter = null,
-  defaultCommune = 'Bordeaux'
+  defaultCommune = 'Bordeaux',
+  onOpenInSimulator = null
 }) {
   // Mode de sélection géographique : 'commune' | 'departement' | 'bbox'
   const [geoMode, setGeoMode] = useState('commune');
@@ -95,6 +101,22 @@ export default function AutomaticOmbriereProspectingModal({
   // Modal d'envoi postal La Poste via ServicePostal
   const [postalModalItem, setPostalModalItem] = useState(null);
   const [isPostalModalOpen, setIsPostalModalOpen] = useState(false);
+
+  // Modal de paramétrage de l'offre commerciale avant export PDF (Fiche 1 page ou Étude Détaillée 4-5 pages)
+  const [configModalItem, setConfigModalItem] = useState(null);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+
+  // Édition & révision individuelle des paramètres d'une étude d'ombrière
+  const [editingRowIndex, setEditingRowIndex] = useState(null);
+  const [editingTypology, setEditingTypology] = useState('ombriere_vl_auto');
+  const [editingMaxKwc, setEditingMaxKwc] = useState('');
+  const [editingSpotsCount, setEditingSpotsCount] = useState('');
+  const [editingEconomicModel, setEditingEconomicModel] = useState('vente_totale');
+  const [editingTarifEdfOa, setEditingTarifEdfOa] = useState(0.085);
+  const [editingDurationYears, setEditingDurationYears] = useState(25);
+  const [editingSiteConsumptionKwh, setEditingSiteConsumptionKwh] = useState(0);
+  const [editingExcludeThirdParty, setEditingExcludeThirdParty] = useState(false);
+  const [isRecalculatingRow, setIsRecalculatingRow] = useState(false);
 
   // Gestion du dossier local d'exportation (et mode Firefox natif)
   const isFirefoxBrowser = typeof window !== 'undefined' && !window.showDirectoryPicker;
@@ -297,6 +319,150 @@ export default function AutomaticOmbriereProspectingModal({
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 4000);
+  };
+
+  // Ouverture du tiroir de modification des paramètres d'une étude d'ombrière
+  const handleOpenEditRow = (idx, item) => {
+    if (editingRowIndex === idx) {
+      setEditingRowIndex(null);
+      return;
+    }
+    const sim = item.simulation || item;
+    setEditingRowIndex(idx);
+    setEditingTypology(sim.typologyKey || selectedTypology || 'ombriere_vl_auto');
+    setEditingMaxKwc(sim.installedKwc || '');
+    setEditingSpotsCount(sim.spotsCount || sim.totalShelteredSpots || '');
+    setEditingEconomicModel(sim.economicModel || economicModel || 'vente_totale');
+    setEditingTarifEdfOa(sim.tarifEdfOaKwh !== undefined ? sim.tarifEdfOaKwh : tarifEdfOa);
+    setEditingDurationYears(sim.durationYears || 25);
+    setEditingSiteConsumptionKwh(sim.siteConsumptionKwh || 0);
+    setEditingExcludeThirdParty(Boolean(sim.excludeThirdParty));
+  };
+
+  // Recalcul en direct de l'étude avec les paramètres personnalisés
+  const handleRecalculateRow = async (idx) => {
+    const item = processedResults[idx];
+    if (!item) return;
+    setIsRecalculatingRow(true);
+    try {
+      addLog(`⚙️ Recalcul de l'étude #${idx + 1} (${item.addressLabel})...`);
+      const newSim = await simulateParkingHeadless({
+        parking: item.parking,
+        addressInfo: item.addressInfo || { label: item.addressLabel },
+        cadastreInfo: { parcelleRef: item.cadastreRef },
+        customSettings: {
+          typology: editingTypology,
+          installedKwc: editingMaxKwc ? Number(editingMaxKwc) : null,
+          customSpots: editingSpotsCount ? Number(editingSpotsCount) : null,
+          economicModel: editingEconomicModel,
+          tarifEdfOa: editingTarifEdfOa,
+          durationYears: editingDurationYears,
+          siteConsumptionKwh: editingSiteConsumptionKwh,
+          excludeThirdParty: editingExcludeThirdParty,
+          includeCoverLetter
+        }
+      });
+
+      const newPdfBlob = await generateParkingProspectingPdfBlob(newSim);
+      const updatedItem = {
+        ...item,
+        simulation: newSim,
+        pdfBlob: newPdfBlob,
+        addressLabel: newSim.address || item.addressLabel,
+        cadastreRef: newSim.cadastreRef || item.cadastreRef
+      };
+
+      setProcessedResults(prev => {
+        const copy = [...prev];
+        copy[idx] = updatedItem;
+        return copy;
+      });
+
+      addLog(`   ✅ Étude #${idx + 1} actualisée : ${newSim.installedKwc} kWc • ${newSim.totalShelteredSpots} places.`);
+      toast({
+        title: 'Étude d\'ombrière actualisée',
+        description: `Centrale de ${newSim.installedKwc} kWc (${newSim.totalShelteredSpots} places) recalculée avec succès.`,
+        variant: 'success'
+      });
+      setEditingRowIndex(null);
+    } catch (err) {
+      console.error('Erreur recalcul étude ombrière:', err);
+      addLog(`   ❌ Échec recalcul : ${err.message}`);
+      toast({
+        title: 'Erreur recalcul',
+        description: err.message || 'Impossible de recalculer cette étude.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsRecalculatingRow(false);
+    }
+  };
+
+  // Ouverture de la modale de configuration de l'Offre Commerciale (1 page ou 4-5 pages)
+  const handleOpenOfferConfigModal = (item) => {
+    setConfigModalItem(item.simulation || item);
+    setIsConfigModalOpen(true);
+  };
+
+  // Confirmation et génération de l'offre commerciale (Fiche 1 page ou Étude Détaillée 4-5 pages)
+  const handleConfirmGenerateOfferPdf = async (configOptions) => {
+    if (!configModalItem) return;
+    const isSimplified = configOptions.format === 'simplified';
+    const simToUse = {
+      ...configModalItem,
+      isOmbriere: true,
+      type: 'ombriere_parking',
+      projectType: 'ombriere_parking',
+      durationYears: configOptions.durationYears || 25,
+      siteConsumptionKwh: configOptions.siteConsumptionKwh || 0,
+      economicModel: configOptions.economicModel,
+      tarifEdfOaKwh: configOptions.tarifEdfOa,
+      financingChoices: configOptions.financingChoices
+    };
+
+    try {
+      addLog(`📄 Génération de l'Offre Commerciale (${isSimplified ? 'Fiche Simplifiée 1 page' : 'Étude Détaillée 4-5 pages'})...`);
+      let pdfResult = null;
+      if (isSimplified) {
+        pdfResult = await generateCommercialOfferPDF({
+          simulation: simToUse,
+          customClientName: simToUse.clientName || simToUse.ownerName || null,
+          returnBlob: true
+        });
+      } else {
+        pdfResult = await generateCommercialProposalPDF({
+          simulation: simToUse,
+          options: configOptions,
+          returnBlob: true
+        });
+      }
+
+      if (pdfResult?.blob || pdfResult?.arrayBuffer) {
+        const saveRes = await savePdfToLocalDestination({
+          filename: pdfResult.filename,
+          blob: pdfResult.blob,
+          arrayBuffer: pdfResult.arrayBuffer,
+          directoryHandle,
+          preferBridge: true
+        });
+        if (saveRes.success) {
+          addLog(`   💾 Document enregistré : ${saveRes.filename} [${saveRes.method}]`);
+          toast({
+            title: isSimplified ? 'Fiche Simplifiée générée' : 'Étude Détaillée générée avec succès',
+            description: `Le fichier ${saveRes.filename} a été enregistré.`,
+            variant: 'success'
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Erreur export offre commerciale ombrière:', err);
+      addLog(`   ❌ Échec génération PDF : ${err.message}`);
+      toast({
+        title: 'Erreur génération PDF',
+        description: err.message || 'Impossible de générer le document.',
+        variant: 'destructive'
+      });
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1367,71 +1533,337 @@ export default function AutomaticOmbriereProspectingModal({
                     processedResults.map((item, idx) => (
                       <div
                         key={idx}
-                        className="p-3 hover:bg-slate-900/60 rounded-xl transition-colors flex items-center justify-between gap-3 text-xs"
+                        className="p-3 hover:bg-slate-900/60 rounded-xl transition-colors text-xs"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-black text-xs shrink-0">
-                            #{idx + 1}
-                          </div>
-
-                          <div className="min-w-0">
-                            <div className="font-bold text-white truncate max-w-xs sm:max-w-md">
-                              {item.addressLabel}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-black text-xs shrink-0">
+                              #{idx + 1}
                             </div>
-                            <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
-                              {(item.simulation?.category || item.parking?.category) && (
-                                <span className={`px-1.5 py-0.5 text-[9.5px] font-black rounded border ${
-                                  (item.simulation?.category || item.parking?.category) === 'PL'
-                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                                    : 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                                }`}>
-                                  {(item.simulation?.category || item.parking?.category) === 'PL' ? '🅿️ Poids Lourds (PL)' : '🚗 VL'}
-                                </span>
-                              )}
-                              <span>📐 {item.cadastreRef}</span>
-                              <span>•</span>
-                              <span>
-                                Parking net : <strong>{item.parking.area} m²</strong>
-                                {item.simulation?.buildingArea > 0 && (
-                                  <span className="text-slate-400 text-[10px]"> (bâti exclu : {item.simulation.buildingArea} m²)</span>
+
+                            <div
+                              className="min-w-0 cursor-pointer group"
+                              onClick={() => onOpenInSimulator && onOpenInSimulator(item)}
+                              title="Cliquer pour entrer et éditer cette étude dans le simulateur"
+                            >
+                              <div className="font-bold text-white group-hover:text-amber-300 transition-colors truncate max-w-xs sm:max-w-md flex items-center gap-1.5">
+                                <span>{item.addressLabel}</span>
+                                <ExternalLink className="w-3 h-3 text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                              </div>
+                              <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
+                                {(item.simulation?.category || item.parking?.category) && (
+                                  <span className={`px-1.5 py-0.5 text-[9.5px] font-black rounded border ${
+                                    (item.simulation?.category || item.parking?.category) === 'PL'
+                                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                      : 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                  }`}>
+                                    {(item.simulation?.category || item.parking?.category) === 'PL' ? '🅿️ Poids Lourds (PL)' : '🚗 VL'}
+                                  </span>
                                 )}
-                              </span>
-                              <span>•</span>
-                              <span className="text-cyan-400 font-bold">🚗 {item.simulation?.totalShelteredSpots} places</span>
-                              <span>•</span>
-                              <span className="text-amber-400 font-bold">⚡ {item.simulation?.installedKwc} kWc</span>
-                              <span>•</span>
-                              <span className="text-emerald-400 font-bold">💶 {item.simulation?.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an</span>
+                                <span>📐 {item.cadastreRef}</span>
+                                <span>•</span>
+                                <span>
+                                  Parking net : <strong>{item.parking.area} m²</strong>
+                                  {item.simulation?.buildingArea > 0 && (
+                                    <span className="text-slate-400 text-[10px]"> (bâti exclu : {item.simulation.buildingArea} m²)</span>
+                                  )}
+                                </span>
+                                <span>•</span>
+                                <span className="text-cyan-400 font-bold">🚗 {item.simulation?.totalShelteredSpots || item.simulation?.spotsCount} places</span>
+                                <span>•</span>
+                                <span className="text-amber-400 font-bold">⚡ {item.simulation?.installedKwc} kWc</span>
+                                <span>•</span>
+                                <span className="text-teal-300 font-medium">
+                                  🧭 {item.simulation?.orientationLabel || 'Plein Sud (180°)'}
+                                </span>
+                                <span>•</span>
+                                <span className="text-emerald-400 font-bold">💶 {item.simulation?.annualRevenueReventeTotale?.toLocaleString('fr-FR')} €/an</span>
+                              </div>
                             </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {/* Bouton pour entrer dans l'Éditeur / Simulateur d'ombrières */}
+                            <button
+                              type="button"
+                              onClick={() => onOpenInSimulator && onOpenInSimulator(item)}
+                              className="px-2.5 py-1.5 rounded-xl font-black bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 text-[11px]"
+                              title="Entrer dans le simulateur complet pour modifier le placement des ombrières, le tracé ou l'orientation"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-blue-400 group-hover:text-white" />
+                              <span className="hidden md:inline">Éditer dans le Simulateur ↗</span>
+                              <span className="md:hidden">Éditer</span>
+                            </button>
+
+                            {/* Bouton pour ouvrir le tiroir des paramètres de cette étude */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditRow(idx, item)}
+                              className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                                editingRowIndex === idx
+                                  ? 'bg-amber-500 text-slate-950 ring-2 ring-amber-400'
+                                  : 'bg-white/10 hover:bg-white/20 text-white hover:text-amber-300'
+                              }`}
+                              title="Modifier la typologie, le nombre de places et les options de financement"
+                            >
+                              <Sliders className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline text-[11px]">Paramètres</span>
+                            </button>
+
+                            {/* Bouton pour configurer l'offre commerciale (1 page ou 4-5 pages) */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenOfferConfigModal(item)}
+                              className="p-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 hover:text-white transition-colors cursor-pointer border border-emerald-500/30"
+                              title="Offre Commerciale PDF (Fiche Simplifiée 1 page ou Étude Détaillée 4-5 pages)"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </button>
+
+                            {/* Téléchargement rapide */}
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadSinglePdf(item)}
+                              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white hover:text-amber-300 transition-colors cursor-pointer"
+                              title={`Télécharger le PDF direct : ${item.filename}`}
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+
+                            {/* Envoi postal */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPostalModalItem(item.simulation || item);
+                                setIsPostalModalOpen(true);
+                              }}
+                              className="p-2 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 text-blue-200 hover:text-white transition-colors cursor-pointer"
+                              title="Expédier ce dossier par La Poste (ServicePostal)"
+                            >
+                              <Mail className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                            Prêt
-                          </span>
+                        {/* TIROIR D'ÉDITION INLINE DES PARAMÈTRES DE CETTE ÉTUDE D'OMBRIÈRE */}
+                        {editingRowIndex === idx && (
+                          <div className="mt-3 p-3.5 bg-slate-900/95 border border-amber-500/40 rounded-2xl space-y-3 shadow-xl">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                              <div className="text-xs font-black text-amber-400 flex items-center gap-1.5">
+                                <Sliders className="w-4 h-4 text-amber-400" />
+                                <span>Modification de l'étude — Parking #{idx + 1} ({item.parking?.area} m²)</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setEditingRowIndex(null)}
+                                className="text-slate-400 hover:text-white text-xs cursor-pointer px-2 py-0.5 rounded-lg hover:bg-slate-800"
+                              >
+                                ✕ Fermer
+                              </button>
+                            </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadSinglePdf(item)}
-                            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white hover:text-amber-300 transition-colors cursor-pointer"
-                            title={`Télécharger le PDF : ${item.filename}`}
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
+                            {/* 1. Typologie d'ombrière */}
+                            <div className="space-y-1.5">
+                              <label className="text-[11px] font-bold text-slate-200 flex items-center gap-1">
+                                🚗 Typologie d'ombrière :
+                              </label>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                                {[
+                                  { id: 'ombriere_vl_auto', label: 'Mixte VL (Optimal)' },
+                                  { id: 'ombriere_vl_double', label: 'VL Double vis-à-vis' },
+                                  { id: 'ombriere_vl_simple', label: 'VL Simple bordure' },
+                                  { id: 'ombriere_pl_15_8', label: 'PL 15.8m (Porteurs)' },
+                                  { id: 'ombriere_pl_20_2', label: 'PL 20.2m (Semi)' },
+                                  { id: 'ombriere_pl_24_6', label: 'PL 24.6m (Grands)' }
+                                ].map((t) => (
+                                  <button
+                                    key={t.id}
+                                    type="button"
+                                    onClick={() => setEditingTypology(t.id)}
+                                    className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black transition-all cursor-pointer text-center ${
+                                      editingTypology === t.id
+                                        ? 'bg-amber-500 text-slate-950 shadow-md ring-1 ring-amber-300'
+                                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                                    }`}
+                                  >
+                                    {t.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPostalModalItem(item.simulation || item);
-                              setIsPostalModalOpen(true);
-                            }}
-                            className="p-2 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 text-blue-200 hover:text-white transition-colors cursor-pointer"
-                            title="Expédier ce dossier par La Poste (ServicePostal)"
-                          >
-                            <Mail className="w-4 h-4" />
-                          </button>
-                        </div>
+                            {/* 2. Nombre de places & Puissance maximale */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-800 text-[10.5px]">
+                              <div>
+                                <label className="block text-slate-300 font-bold mb-1">Nombre de places abritées :</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={editingSpotsCount}
+                                  onChange={(e) => setEditingSpotsCount(e.target.value === '' ? '' : Number(e.target.value))}
+                                  placeholder="Auto selon géométrie"
+                                  className="w-full p-1.5 bg-slate-800 border border-slate-700 rounded-xl text-cyan-300 text-xs font-black text-center"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-slate-300 font-bold mb-1">Puissance installée (kWc) :</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={editingMaxKwc}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    setEditingMaxKwc(raw === '' ? '' : Number(raw));
+                                    if (raw !== '' && Number(raw) > 0) {
+                                      const kwc = Number(raw);
+                                      if (kwc > 500) setEditingTarifEdfOa(0.078);
+                                      else if (kwc >= 100) setEditingTarifEdfOa(0.085);
+                                      else setEditingTarifEdfOa(0.011);
+                                    }
+                                  }}
+                                  placeholder="Auto selon emprise"
+                                  className="w-full p-1.5 bg-slate-800 border border-slate-700 rounded-xl text-amber-400 text-xs font-black text-center"
+                                />
+                              </div>
+                            </div>
+
+                            {/* 3. Consommation annuelle du site & Durée d'étude */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-800 text-[10.5px]">
+                              <div>
+                                <label className="block text-slate-300 font-bold mb-1">Consommation du site (kWh/an) :</label>
+                                <div className="space-y-1">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="5000"
+                                    value={editingSiteConsumptionKwh || ''}
+                                    onChange={(e) => setEditingSiteConsumptionKwh(Number(e.target.value) || 0)}
+                                    placeholder="Ex : 150000"
+                                    className="w-full p-1.5 bg-slate-800 border border-slate-700 rounded-xl text-emerald-400 text-xs font-black text-center"
+                                  />
+                                  <div className="flex gap-1">
+                                    {[50000, 100000, 250000, 500000].map(val => (
+                                      <button
+                                        key={val}
+                                        type="button"
+                                        onClick={() => setEditingSiteConsumptionKwh(val)}
+                                        className={`flex-1 py-0.5 rounded text-[9px] font-bold ${
+                                          editingSiteConsumptionKwh === val ? 'bg-emerald-500 text-slate-950 font-black' : 'bg-slate-800 text-slate-400 hover:text-white'
+                                        }`}
+                                      >
+                                        {val >= 1000000 ? `${val / 1000000}M` : `${val / 1000}k`}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-slate-300 font-bold mb-1">Durée d'étude du financement :</label>
+                                <div className="grid grid-cols-3 gap-1 pt-1">
+                                  {[20, 25, 30].map(y => (
+                                    <button
+                                      key={y}
+                                      type="button"
+                                      onClick={() => setEditingDurationYears(y)}
+                                      className={`py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
+                                        editingDurationYears === y
+                                          ? 'bg-blue-600 text-white ring-1 ring-blue-400 shadow-sm'
+                                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                      }`}
+                                    >
+                                      {y} ans
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 4. Modèle de valorisation & Tarif EDF OA */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-800 text-[10.5px]">
+                              <div>
+                                <label className="block text-slate-400 font-bold mb-1">Modèle de valorisation :</label>
+                                <select
+                                  value={editingEconomicModel}
+                                  onChange={(e) => setEditingEconomicModel(e.target.value)}
+                                  className="w-full p-1.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs font-bold"
+                                >
+                                  <option value="vente_totale">Revente totale (EDF OA 20 ans)</option>
+                                  <option value="autoconsommation">Autoconsommation + Vente surplus</option>
+                                  <option value="autoconsommation_stockage">Autoconsommation + Stockage</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-slate-400 font-bold mb-1">Tarif EDF OA (€/kWh) :</label>
+                                <input
+                                  type="number"
+                                  step="0.001"
+                                  value={editingTarifEdfOa}
+                                  onChange={(e) => setEditingTarifEdfOa(parseFloat(e.target.value) || 0)}
+                                  className="w-full p-1.5 bg-slate-800 border border-slate-700 rounded-xl text-blue-400 text-xs font-black text-center"
+                                />
+                              </div>
+                            </div>
+
+                            {/* 5. Financement PDF (Option d'exclure le Tiers Financement) */}
+                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/90 border border-slate-700/80">
+                              <div className="space-y-0.5">
+                                <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                  <span>Financement PDF :</span>
+                                  <span className={editingExcludeThirdParty ? "text-purple-400 font-black" : "text-slate-300 font-semibold"}>
+                                    {editingExcludeThirdParty ? 'Crédit bancaire & Abonnement uniquement' : '3 solutions (Tiers, Crédit, Abonnement)'}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-400">
+                                  {editingExcludeThirdParty 
+                                    ? 'La solution Tiers Financement sera retirée de l\'offre PDF (affichage 2 colonnes).' 
+                                    : '3 solutions incluses : Tiers-investisseur, Crédit bancaire et Abonnement.'}
+                                </div>
+                              </div>
+                              <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+                                <input
+                                  type="checkbox"
+                                  checked={editingExcludeThirdParty}
+                                  onChange={(e) => setEditingExcludeThirdParty(e.target.checked)}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                              </label>
+                            </div>
+
+                            {/* Actions de recalcul & fermeture */}
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                              <button
+                                type="button"
+                                onClick={() => setEditingRowIndex(null)}
+                                disabled={isRecalculatingRow}
+                                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 cursor-pointer"
+                              >
+                                Annuler
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRecalculateRow(idx)}
+                                disabled={isRecalculatingRow}
+                                className="px-4 py-1.5 rounded-xl text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95 disabled:opacity-50"
+                              >
+                                {isRecalculatingRow ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Recalcul de l'étude en cours...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>Recalculer &amp; Actualiser l'Offre PDF</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -1489,6 +1921,14 @@ export default function AutomaticOmbriereProspectingModal({
               includeCoverLetter: true
             });
           }}
+        />
+
+        {/* Modale de paramétrage interactif de l'offre commerciale avant export PDF */}
+        <CommercialOfferConfigModal
+          isOpen={isConfigModalOpen}
+          onClose={() => setIsConfigModalOpen(false)}
+          item={configModalItem}
+          onConfirmGenerate={handleConfirmGenerateOfferPdf}
         />
 
       </motion.div>

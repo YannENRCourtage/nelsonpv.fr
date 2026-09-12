@@ -912,16 +912,7 @@ export const generateBeforeAfterDualSnapshot = async ({
             ctx.setLineDash([4, 3]);
             ctx.stroke();
 
-            // Label "Bâtiment exclu"
-            let sumBx = 0, sumBy = 0;
-            bPts.forEach(pt => { sumBx += pt.x; sumBy += pt.y; });
-            const cBx = sumBx / bPts.length;
-            const cBy = sumBy / bPts.length;
-            ctx.fillStyle = '#f87171';
-            ctx.font = 'bold 8.5px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('Bâtiment exclu', cBx, cBy);
+            // Le tracé rouge en pointillés matérialise l'emprise bâtie sans label texte
             ctx.restore();
           });
         }

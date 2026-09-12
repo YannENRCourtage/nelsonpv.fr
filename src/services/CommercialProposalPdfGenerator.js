@@ -264,27 +264,57 @@ export async function generateCommercialProposalPDF({
   const financingChoices = options.financingChoices && options.financingChoices.length > 0
     ? options.financingChoices
     : ['tiers_investisseur', 'credit_bancaire', 'abonnement'];
+  const durationYears = Number(options.durationYears || simulation.durationYears || 25);
+  const siteConsumptionKwh = Number(options.siteConsumptionKwh || simulation.siteConsumptionKwh || 0);
   const includeCoverLetter = options.includeCoverLetter !== false;
   const includeAmortizationTable = options.includeAmortizationTable !== false;
+
+  // Détection Ombrière vs Toiture
+  const isOmbriere = Boolean(
+    simulation.type === 'ombriere_parking' ||
+    simulation.projectType === 'ombriere_parking' ||
+    simulation.type === 'ombriere' ||
+    simulation.isOmbriere ||
+    simulation.typologyKey ||
+    simulation.parkingArea
+  );
 
   // Données de base
   const powerKwc = Math.round(Number(simulation.installedKwc || simulation.kwc || simulation.power || 100) * 10) / 10;
   const panelCount = Number(simulation.panelCount || Math.round((powerKwc * 1000) / 465));
   const roofSurface = Math.round(Number(simulation.roofSurface || simulation.area || (powerKwc * 5)) || 600);
+  const parkingArea = isOmbriere
+    ? Math.max(Number(simulation.parkingArea || 0), Number(simulation.rawParkingArea || 0), Math.round(Number(simulation.coveredArea || simulation.roofSurface || 0) / 0.65))
+    : 0;
+  const spotsCount = isOmbriere
+    ? Number(simulation.spotsCount || simulation.totalShelteredSpots || Math.round(powerKwc / 2.5))
+    : 0;
+  const coveredArea = Math.round(Number(simulation.coveredArea || simulation.roofSurface || (powerKwc * 5)));
   const annualProdKwh = Math.round(Number(simulation.annualProductionKwh || (powerKwc * 1150)));
   const specificYield = powerKwc > 0 ? Math.round(annualProdKwh / powerKwc) : 1150;
-  const capexHT = Math.round(Number(simulation.totalInvestmentHT || (powerKwc * 920)));
+  const capexHT = Math.round(Number(simulation.totalInvestmentHT || (powerKwc * (isOmbriere ? 1180 : 920))));
+
+  // Visuel typologie ombrière
+  let ombrierePhoto = '/ombriere_vl_double.jpg';
+  const typoKey = simulation.typologyKey || simulation.typology?.id || '';
+  if (typoKey.includes('pl_24') || typoKey.includes('pl_20')) ombrierePhoto = '/ombriere_pl_large.jpg';
+  else if (typoKey.includes('pl')) ombrierePhoto = '/ombriere_pl.jpg';
+  else if (typoKey.includes('simple_droite')) ombrierePhoto = '/ombriere_vl_simple_droite.jpg';
+  else if (typoKey.includes('simple')) ombrierePhoto = '/ombriere_vl_simple_gauche.jpg';
+  else if (typoKey.includes('double_plus')) ombrierePhoto = '/ombriere_vl_double_plus.jpg';
 
   // Client & Localisation
   const clientName = options.clientName || simulation.clientName || simulation.ownerName || 'Bénéficiaire du projet';
   const clientAddress = simulation.address || `${simulation.cityName || 'Bâtiment'} (${simulation.departmentCode || 'France'})`;
   const cadastreRef = simulation.cadastreRef || (Array.isArray(simulation.cadastreParcels) ? simulation.cadastreParcels.join(', ') : null);
 
-  // Caractéristiques toiture
-  const pitch = simulation.pitch !== undefined ? simulation.pitch : 15;
-  const isTerrasse = pitch === 0 || simulation.isTerrasse;
-  const roofTypeLabel = isTerrasse ? 'Toiture Terrasse (bacs lestés)' : (simulation.roofType === 'symetrique' ? 'Bi-pente symétrique' : 'Toiture industrielle inclinée');
-  const orientationLabel = simulation.orientationLabel || 'Orientation Sud optimisée';
+  // Caractéristiques toiture & orientation
+  const pitch = simulation.pitch !== undefined ? simulation.pitch : (isOmbriere ? 10 : 15);
+  const isTerrasse = !isOmbriere && (pitch === 0 || simulation.isTerrasse);
+  const roofTypeLabel = isOmbriere
+    ? (simulation.typology?.label || 'Ombrière Photovoltaïque Métallique')
+    : (isTerrasse ? 'Toiture Terrasse (bacs lestés)' : (simulation.roofType === 'symetrique' ? 'Bi-pente symétrique' : 'Toiture industrielle inclinée'));
+  const orientationLabel = simulation.orientationLabel || (isOmbriere ? 'Plein Sud (180°)' : 'Orientation Sud optimisée');
   const googleSolar = simulation.googleSolar || null;
   const sunshineHours = googleSolar?.maxSunshineHoursPerYear || 0;
 
@@ -308,11 +338,11 @@ export async function generateCommercialProposalPDF({
     annualGain = Math.round((autoconsoKwh * electricityBuyPrice) + (surplusKwh * customTarifEdfOa));
   }
 
-  // Cumuls 20 ans avec dégradation nominale (0.5%/an)
-  let cumul20 = 0;
-  for (let yr = 1; yr <= 20; yr++) {
+  // Cumul sur la durée d'étude choisie (20, 25 ou 30 ans) avec dégradation nominale (0.5%/an)
+  let cumulStudyYears = 0;
+  for (let yr = 1; yr <= durationYears; yr++) {
     const deg = Math.pow(0.995, yr - 1);
-    cumul20 += Math.round(annualGain * deg);
+    cumulStudyYears += Math.round(annualGain * deg);
   }
 
   // Impact écologique
@@ -326,27 +356,27 @@ export async function generateCommercialProposalPDF({
     rentMultiplier: 14
   });
   const tiersRent = tiersFinancing.annualRentFixed;
-  const tiersCumul20 = tiersFinancing.cumulYears1To20;
+  const tiersCumul = tiersRent * durationYears;
 
   const bankLoan = calculateBankLoan({
     capexHT,
-    durationYears: 20,
+    durationYears: Math.min(25, durationYears),
     annualRevenue: annualGain,
     interestRate: 0.0448
   });
   const bankMonthly = Math.round(bankLoan.monthlyPaymentExact);
   const bankAnnualNet = bankLoan.annualNetCashflow;
-  const bankCumul20 = bankAnnualNet * 20;
+  const bankCumul = bankAnnualNet * durationYears;
 
   const leasing = calculateLeasingSubscription({
     capexHT,
     powerKwc,
     annualRevenue: annualGain
   });
-  const selectedLeas = leasing.durations?.find(d => d.years === 20) || leasing.durations?.[2] || {};
+  const selectedLeas = leasing.durations?.find(d => d.years === durationYears) || leasing.durations?.[2] || leasing.durations?.[0] || {};
   const leasingMonthly = Number(selectedLeas.monthlyPaymentHT || Math.round(bankMonthly * 1.05));
   const leasingAnnualNet = Number(selectedLeas.annualNetCashflowPostIS || Math.round(annualGain - (leasingMonthly * 12)));
-  const leasingCumul20 = leasingAnnualNet * 20;
+  const leasingCumul = leasingAnnualNet * durationYears;
 
   // Snapshot satellite
   let mapVisualDataUrl = simulation.mapScreenshot || simulation.beforeAfterSnapshot || null;
@@ -355,8 +385,12 @@ export async function generateCommercialProposalPDF({
       const snap = await generateBeforeAfterDualSnapshot({
         center: simulation.mapCenter || [44.8412, -0.5805],
         polygonPoints: simulation.polygonPoints || [],
+        polygonStyle: isOmbriere ? 'parking' : 'roof',
+        ombriereBlocks: simulation.placedOmbrieres || simulation.ombriereBlocks || null,
+        parkingArea: parkingArea || null,
+        spotsCount: spotsCount || null,
         customKwc: powerKwc,
-        roofSurface,
+        roofSurface: isOmbriere ? coveredArea : roofSurface,
         width: 900,
         height: 480,
         zoom: 19
@@ -471,7 +505,10 @@ export async function generateCommercialProposalPDF({
 
         <!-- OBJET DU COURRIER -->
         <div style="margin-top: 28px; padding: 12px 16px; background: #f0fdf4; border-left: 4px solid #10b981; border-radius: 6px; font-size: 10pt; font-weight: 800; color: #065f46;">
-          Objet : Étude d'opportunité &amp; Valorisation solaire de toiture — Centrale de ${powerKwc} kWc (${economicModelLabel})
+          ${isOmbriere
+            ? `Objet : Proposition d'Implantation d'Ombrières Photovoltaïques — Centrale de ${powerKwc} kWc (${spotsCount} places abritées)`
+            : `Objet : Étude d'opportunité &amp; Valorisation solaire de toiture — Centrale de ${powerKwc} kWc (${economicModelLabel})`
+          }
         </div>
 
         <!-- CORPS DE LA LETTRE -->
@@ -479,16 +516,19 @@ export async function generateCommercialProposalPDF({
           <p style="margin-bottom: 12px;"><strong>Madame, Monsieur,</strong></p>
 
           <p style="margin-bottom: 12px;">
-            Dans le cadre du déploiement de notre programme régional de valorisation énergétique, notre bureau d'études a conduit une analyse géospatiale et cadastrale approfondie de votre toiture située <strong>${clientAddress}</strong>.
+            Dans le cadre du déploiement de notre programme régional de valorisation énergétique, notre bureau d'études a conduit une analyse géospatiale et cadastrale approfondie ${isOmbriere ? `de votre parcelle et aire de stationnement située <strong>${clientAddress}</strong>.` : `de votre toiture située <strong>${clientAddress}</strong>.`}
           </p>
 
           <p style="margin-bottom: 12px;">
-            Grâce à l'analyse de votre gisement solaire ${sunshineHours > 0 ? `(potentiel certifié Google Solar de <strong>${Math.round(sunshineHours)} heures d'ensoleillement/an</strong>)` : ''} et à votre surface de toiture disponible d'environ <strong>${roofSurface} m²</strong>, nous avons configuré une installation solaire optimale de <strong>${powerKwc} kWc</strong> (${panelCount} modules photovoltaïques 465 Wc haute performance). Ce projet permettra de générer annuellement environ <strong>${fmtNum(annualProdKwh)} kWh</strong> d'électricité verte.
+            ${isOmbriere
+              ? `Grâce à l'analyse géométrique de votre parking d'une emprise nette de <strong>${fmtNum(parkingArea)} m²</strong>, nous avons configuré une centrale d'ombrières solaires de <strong>${powerKwc} kWc</strong> abritant <strong>${spotsCount} places de stationnement</strong> (${panelCount} modules photovoltaïques haute performance). Cette infrastructure permet de valoriser vos surfaces foncières tout en générant annuellement environ <strong>${fmtNum(annualProdKwh)} kWh</strong> d'électricité verte.`
+              : `Grâce à l'analyse de votre gisement solaire ${sunshineHours > 0 ? `(potentiel certifié Google Solar de <strong>${Math.round(sunshineHours)} heures d'ensoleillement/an</strong>)` : ''} et à votre surface de toiture disponible d'environ <strong>${roofSurface} m²</strong>, nous avons configuré une installation solaire optimale de <strong>${powerKwc} kWc</strong> (${panelCount} modules photovoltaïques 465 Wc haute performance). Ce projet permettra de générer annuellement environ <strong>${fmtNum(annualProdKwh)} kWh</strong> d'électricité verte.`
+            }
           </p>
 
           <p style="margin-bottom: 12px;">
             ${economicModel === 'vente_totale'
-              ? `Sur le modèle de la <strong>Vente Totale à EDF Obligation d'Achat</strong>, votre toiture devient un actif patrimonial sécurisé produisant un chiffre d'affaires annuel garanti par l'État d'environ <strong>${fmtEuro(annualGain)}/an sur 20 ans</strong> au tarif réglementé de <strong>${customTarifEdfOa} €/kWh</strong>, sans aucun impact sur votre activité.`
+              ? `Sur le modèle de la <strong>Vente Totale à EDF Obligation d'Achat</strong>, votre installation devient un actif patrimonial sécurisé produisant un chiffre d'affaires annuel garanti par l'État d'environ <strong>${fmtEuro(annualGain)}/an sur ${durationYears} ans</strong> au tarif réglementé de <strong>${customTarifEdfOa} €/kWh</strong>, sans aucun impact sur votre activité.`
               : economicModel === 'autoconsommation_stockage'
               ? `En combinant <strong>Autoconsommation et Batterie de Stockage</strong>, vous atteignez un taux d'autonomie remarquable (~95%). Vos gains et économies annuels estimés s'élèvent à <strong>${fmtEuro(annualGain)} dès la première année</strong>, tout en effaçant vos consommations en heures pleines.`
               : `En privilégiant l'<strong>Autoconsommation avec Vente du Surplus</strong>, vous couvrez immédiatement une part substantielle de vos besoins énergétiques sur site tout en revendant les excédents à EDF OA. Vos gains et économies annuels s'élèvent à environ <strong>${fmtEuro(annualGain)} dès l'année 1</strong>.`
@@ -496,7 +536,7 @@ export async function generateCommercialProposalPDF({
           </p>
 
           <p style="margin-bottom: 16px;">
-            Afin de vous offrir une vision stratégique complète, nous avons mis en concurrence les différentes options de financement (Tiers-Investisseur à 0 € d'apport, Crédit Bancaire autofinancé ou Abonnement leasing). Vous trouverez ci-après la synthèse technique, l'analyse comparative et la trajectoire financière de votre centrale.
+            Afin de vous offrir une vision stratégique complète, nous avons mis en concurrence les différentes options de financement (Tiers-Investisseur à 0 € d'apport, Crédit Bancaire autofinancé ou Abonnement leasing). Vous trouverez ci-après la synthèse technique, l'analyse comparative et la trajectoire financière de votre centrale sur ${durationYears} ans.
           </p>
         </div>
 
@@ -525,7 +565,7 @@ export async function generateCommercialProposalPDF({
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // PAGE 2 : SYNTHÈSE DU PROJET & GRAND VISUEL TOITURE + KPI
+  // PAGE 2 : SYNTHÈSE DU PROJET & VISUELS (SATELLITE + RENDU TYPOLOGIE) + KPI
   // ═════════════════════════════════════════════════════════════════════════
   {
     const page2 = createPageContainer();
@@ -535,30 +575,51 @@ export async function generateCommercialProposalPDF({
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0e2b4d; padding-bottom: 12px;">
           <div>
             <div style="font-size: 13pt; font-weight: 900; color: #0e2b4d; letter-spacing: -0.5px;">
-              SYNTHÈSE DU PROJET &amp; IMPLANTATION SOLAIRE
+              ${isOmbriere ? 'SYNTHÈSE DU PROJET &amp; IMPLANTATION OMBRIÈRES DE PARKING' : 'SYNTHÈSE DU PROJET &amp; IMPLANTATION SOLAIRE'}
             </div>
             <div style="font-size: 8.5pt; color: #64748b; margin-top: 2px;">
-              Centrale Photovoltaïque ${powerKwc} kWc &bull; ${clientAddress}
+              ${isOmbriere ? `Centrale d'Ombrières ${powerKwc} kWc (${spotsCount} places) &bull; ${clientAddress}` : `Centrale Photovoltaïque ${powerKwc} kWc &bull; ${clientAddress}`}
             </div>
           </div>
           <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR Courtage" style="height: 36px; object-fit: contain;" />
         </div>
 
-        <!-- GRAND VISUEL DE TOITURE (CALEPINAGE HD) -->
-        <div style="margin-top: 14px; border: 1.5px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #0f172a; position: relative; height: 260px; max-height: 260px; max-width: 100%; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-          ${mapVisualDataUrl
-            ? `<img src="${mapVisualDataUrl}" alt="Implantation toiture" style="width: 100%; height: 100%; max-height: 260px; object-fit: cover;" />`
-            : `<div style="color: #94a3b8; font-size: 11pt; font-weight: bold;">Vue Satellite &amp; Calepinage Solaire</div>`
-          }
-          <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(14, 43, 77, 0.92); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 8.5pt; font-weight: 800; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.25); white-space: nowrap; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-            📐 ${roofSurface} m² de toiture &bull; ${panelCount} modules 465 Wc
-          </div>
-          ${googleSolar?.maxSunshineHoursPerYear ? `
-            <div style="position: absolute; bottom: 10px; right: 12px; background: rgba(16, 185, 129, 0.92); color: #ffffff; padding: 5px 12px; border-radius: 20px; font-size: 8pt; font-weight: 800; backdrop-filter: blur(4px); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
-              ☀️ Données Google Solar 3D : ${Math.round(googleSolar.maxSunshineHoursPerYear)} h/an
+        <!-- SECTION VISUELS : DUAL SATELLITE + RENDU STRUCTURE 3D POUR OMBRIÈRE -->
+        ${isOmbriere ? `
+          <div style="display: grid; grid-template-columns: 1.35fr 1fr; gap: 10px; margin-top: 14px; height: 250px; max-height: 250px;">
+            <div style="border: 1.5px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #0f172a; position: relative; height: 100%;">
+              ${mapVisualDataUrl
+                ? `<img src="${mapVisualDataUrl}" alt="Implantation satellite ombrières" style="width: 100%; height: 100%; object-fit: cover;" />`
+                : `<div style="color: #94a3b8; font-size: 10pt; font-weight: bold; text-align: center; padding: 20px;">Vue Satellite &amp; Calepinage Ombrières</div>`
+              }
+              <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(14, 43, 77, 0.92); color: #ffffff; padding: 4px 10px; border-radius: 6px; font-size: 7.5pt; font-weight: 800; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 2px 6px rgba(0,0,0,0.4); z-index: 10;">
+                🅿️ Emprise : ${fmtNum(parkingArea)} m² &bull; Ombrières : ${coveredArea} m²
+              </div>
             </div>
-          ` : ''}
-        </div>
+            <div style="border: 1.5px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #f8fafc; position: relative; height: 100%;">
+              <img src="${ombrierePhoto}" alt="Rendu typologie ombrière" style="width: 100%; height: 100%; object-fit: cover;" />
+              <div style="position: absolute; bottom: 8px; left: 8px; right: 8px; background: rgba(15, 23, 42, 0.90); color: #ffffff; padding: 4px 8px; border-radius: 6px; font-size: 7.2pt; font-weight: bold; text-align: center; border: 1px solid rgba(255,255,255,0.2); z-index: 10;">
+                ${roofTypeLabel} &bull; ${spotsCount} places
+              </div>
+            </div>
+          </div>
+        ` : `
+          <!-- GRAND VISUEL DE TOITURE (CALEPINAGE HD) -->
+          <div style="margin-top: 14px; border: 1.5px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #0f172a; position: relative; height: 260px; max-height: 260px; max-width: 100%; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            ${mapVisualDataUrl
+              ? `<img src="${mapVisualDataUrl}" alt="Implantation toiture" style="width: 100%; height: 100%; max-height: 260px; object-fit: cover;" />`
+              : `<div style="color: #94a3b8; font-size: 11pt; font-weight: bold;">Vue Satellite &amp; Calepinage Solaire</div>`
+            }
+            <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(14, 43, 77, 0.92); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 8.5pt; font-weight: 800; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.25); white-space: nowrap; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+              📐 ${roofSurface} m² de toiture &bull; ${panelCount} modules 465 Wc
+            </div>
+            ${googleSolar?.maxSunshineHoursPerYear ? `
+              <div style="position: absolute; bottom: 10px; right: 12px; background: rgba(16, 185, 129, 0.92); color: #ffffff; padding: 5px 12px; border-radius: 20px; font-size: 8pt; font-weight: 800; backdrop-filter: blur(4px); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                ☀️ Données Google Solar 3D : ${Math.round(googleSolar.maxSunshineHoursPerYear)} h/an
+              </div>
+            ` : ''}
+          </div>
+        `}
 
         <!-- GRILLE DE 6 CARTES KPI PRINCIPALES -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px;">
@@ -583,18 +644,18 @@ export async function generateCommercialProposalPDF({
             <div style="font-size: 7.8pt; color: #64748b; margin-top: 2px;">${economicModel === 'vente_totale' ? `Tarif OA : ${customTarifEdfOa} €/kWh` : 'Facture allégée + surplus'}</div>
           </div>
 
-          <!-- Carte 4 : Gain 20 ans -->
+          <!-- Carte 4 : Gain cumulé -->
           <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-top: 3px solid #059669; border-radius: 10px; padding: 12px 14px;">
-            <div style="font-size: 8pt; font-weight: 800; color: #065f46; text-transform: uppercase;">Gain Net Cumulé 20 ans</div>
-            <div style="font-size: 17pt; font-weight: 900; color: #047857; margin-top: 3px;">+${fmtEuro(cumul20)}</div>
+            <div style="font-size: 8pt; font-weight: 800; color: #065f46; text-transform: uppercase;">Gain Net Cumulé ${durationYears} ans</div>
+            <div style="font-size: 17pt; font-weight: 900; color: #047857; margin-top: 3px;">+${fmtEuro(cumulStudyYears)}</div>
             <div style="font-size: 7.8pt; color: #059669; margin-top: 2px;">Valorisation nette cumulée</div>
           </div>
 
-          <!-- Carte 5 : Surface -->
+          <!-- Carte 5 : Surface / Emprise -->
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #8b5cf6; border-radius: 10px; padding: 12px 14px;">
-            <div style="font-size: 8pt; font-weight: 800; color: #64748b; text-transform: uppercase;">Surface Toiture</div>
-            <div style="font-size: 17pt; font-weight: 900; color: #5b21b6; margin-top: 3px;">${roofSurface} <span style="font-size: 11pt;">m²</span></div>
-            <div style="font-size: 7.8pt; color: #64748b; margin-top: 2px;">${roofTypeLabel}</div>
+            <div style="font-size: 8pt; font-weight: 800; color: #64748b; text-transform: uppercase;">${isOmbriere ? 'Emprise & Places' : 'Surface Toiture'}</div>
+            <div style="font-size: 17pt; font-weight: 900; color: #5b21b6; margin-top: 3px;">${isOmbriere ? `${spotsCount} pl.` : `${roofSurface} m²`}</div>
+            <div style="font-size: 7.8pt; color: #64748b; margin-top: 2px;">${isOmbriere ? `Parking : ${fmtNum(parkingArea)} m² (${coveredArea} m² d'ombrières)` : roofTypeLabel}</div>
           </div>
 
           <!-- Carte 6 : Impact Carbone -->
@@ -612,10 +673,10 @@ export async function generateCommercialProposalPDF({
           </div>
           <div style="display: grid; grid-template-columns: repeat(2, 1fr); padding: 12px 16px; gap: 10px; font-size: 8.8pt; color: #334155;">
             <div>&bull; <strong>Orientation &amp; Azimut :</strong> ${orientationLabel}</div>
-            <div>&bull; <strong>Inclinaison toiture :</strong> ${pitch === 0 ? 'Toiture Terrasse (0° avec bacs 15°)' : `${pitch}°`}</div>
-            <div>&bull; <strong>Ensoleillement moyen :</strong> ${sunshineHours > 0 ? `${Math.round(sunshineHours)} h/an (Relevé Google Solar)` : '1 350 à 1 500 h/an (Gisement régional)'}</div>
+            <div>&bull; <strong>${isOmbriere ? 'Typologie structure :' : 'Inclinaison toiture :'}</strong> ${isOmbriere ? `${roofTypeLabel} (pente ${pitch}°)` : (pitch === 0 ? 'Toiture Terrasse (0° avec bacs 15°)' : `${pitch}°`)}</div>
+            <div>&bull; <strong>${isOmbriere ? 'Places & Emprise couverte :' : 'Ensoleillement moyen :'}</strong> ${isOmbriere ? `${spotsCount} places abritées (${coveredArea} m² d'ombrières)` : (sunshineHours > 0 ? `${Math.round(sunshineHours)} h/an (Relevé Google Solar)` : '1 350 à 1 500 h/an (Gisement régional)')}</div>
             <div>&bull; <strong>Raccordement réseau :</strong> Injection Enedis sécurisée (Poste HTA/BT)</div>
-            <div>&bull; <strong>Garantie matériel :</strong> Modules 25 ans &bull; Onduleurs 10 à 20 ans</div>
+            <div>&bull; <strong>Garantie matériel :</strong> ${isOmbriere ? 'Structure métallique 30 ans &bull; Modules 25 ans' : 'Modules 25 ans &bull; Onduleurs 10 à 20 ans'}</div>
             <div>&bull; <strong>Référence cadastrale :</strong> ${cadastreRef || 'Parcelle répertoriée IGN'}</div>
           </div>
         </div>
@@ -653,10 +714,10 @@ export async function generateCommercialProposalPDF({
             <div style="font-size: 12pt; font-weight: 900; color: #0e2b4d; margin-bottom: 2px;">Tiers-Investisseur</div>
             <div style="font-size: 7.8pt; color: #64748b; margin-bottom: 12px;">Bail emphytéotique &bull; Risque zéro</div>
 
-            <!-- GAIN 20 ANS MIS EN AVANT -->
+            <!-- GAIN ANNUEL & CUMULÉ MIS EN AVANT -->
             <div style="background: #faf5ff; border: 1px solid #d8b4fe; border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 14px;">
-              <div style="font-size: 7.5pt; font-weight: 800; color: #6b21a8; text-transform: uppercase;">Gain Net Cumulé 20 ans</div>
-              <div style="font-size: 16pt; font-weight: 900; color: #7c3aed; margin-top: 2px;">+${fmtEuro(tiersCumul20)}</div>
+              <div style="font-size: 7.5pt; font-weight: 800; color: #6b21a8; text-transform: uppercase;">Gain Net Cumulé ${durationYears} ans</div>
+              <div style="font-size: 16pt; font-weight: 900; color: #7c3aed; margin-top: 2px;">+${fmtEuro(tiersCumul)}</div>
               <div style="font-size: 7.5pt; color: #7e22ce;">Loyer garanti net d'impôt</div>
             </div>
 
@@ -666,12 +727,12 @@ export async function generateCommercialProposalPDF({
               <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">&bull; <strong>Loyer annuel garanti :</strong> +${fmtEuro(tiersRent)}/an</div>
               <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">&bull; <strong>Maintenance &amp; Entretien :</strong> 100% inclus</div>
               <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">&bull; <strong>Assurance &amp; Risque :</strong> Porté par le tiers</div>
-              <div style="padding-top: 4px;">&bull; <strong>Propriété :</strong> Tiers (bail 20 à 30 ans)</div>
+              <div style="padding-top: 4px;">&bull; <strong>Propriété :</strong> Tiers (bail ${durationYears} ans)</div>
             </div>
           </div>
 
           <div style="margin-top: 14px; padding: 8px; background: #f8fafc; border-radius: 6px; font-size: 7.8pt; color: #475569; text-align: center; font-weight: 600;">
-            Idéal pour monétiser la toiture sans mobiliser de trésorerie ni d'endettement.
+            ${isOmbriere ? 'Idéal pour valoriser le parking sans mobiliser de trésorerie ni d\'endettement.' : 'Idéal pour monétiser la toiture sans mobiliser de trésorerie ni d\'endettement.'}
           </div>
         </div>
       `);
@@ -688,17 +749,17 @@ export async function generateCommercialProposalPDF({
             <div style="font-size: 12pt; font-weight: 900; color: #0e2b4d; margin-bottom: 2px;">Crédit Bancaire</div>
             <div style="font-size: 7.8pt; color: #64748b; margin-bottom: 12px;">Emprunt pro &bull; Rentabilité maximale</div>
 
-            <!-- GAIN 20 ANS MIS EN AVANT -->
+            <!-- GAIN ANNUEL & CUMULÉ MIS EN AVANT -->
             <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 14px;">
-              <div style="font-size: 7.5pt; font-weight: 800; color: #166534; text-transform: uppercase;">Gain Net Cumulé 20 ans</div>
-              <div style="font-size: 16pt; font-weight: 900; color: #15803d; margin-top: 2px;">+${fmtEuro(bankCumul20)}</div>
+              <div style="font-size: 7.5pt; font-weight: 800; color: #166534; text-transform: uppercase;">Gain Net Cumulé ${durationYears} ans</div>
+              <div style="font-size: 16pt; font-weight: 900; color: #15803d; margin-top: 2px;">+${fmtEuro(bankCumul)}</div>
               <div style="font-size: 7.5pt; color: #15803d;">Après remboursement total du prêt</div>
             </div>
 
             <!-- DÉTAILS DU MODÈLE -->
             <div style="font-size: 8.5pt; color: #334155; line-height: 1.6;">
               <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">&bull; <strong>Montant financé :</strong> ${fmtEuro(capexHT)} HT</div>
-              <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">&bull; <strong>Mensualité emprunt (20 ans) :</strong> ~${fmtEuro(bankMonthly)}/mois</div>
+              <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">&bull; <strong>Mensualité emprunt (${Math.min(25, durationYears)} ans) :</strong> ~${fmtEuro(bankMonthly)}/mois</div>
               <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">&bull; <strong>Cashflow net annuel moyen :</strong> +${fmtEuro(bankAnnualNet)}/an</div>
               <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">&bull; <strong>Taux estimé du prêt :</strong> ~4,48 %</div>
               <div style="padding-top: 4px;">&bull; <strong>Propriété :</strong> 100% Client dès le 1er jour</div>
@@ -723,10 +784,10 @@ export async function generateCommercialProposalPDF({
             <div style="font-size: 12pt; font-weight: 900; color: #0e2b4d; margin-bottom: 2px;">Abonnement Solaire</div>
             <div style="font-size: 7.8pt; color: #64748b; margin-bottom: 12px;">Location financière &bull; Option d'achat</div>
 
-            <!-- GAIN 20 ANS MIS EN AVANT -->
+            <!-- GAIN ANNUEL & CUMULÉ MIS EN AVANT -->
             <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 14px;">
-              <div style="font-size: 7.5pt; font-weight: 800; color: #166534; text-transform: uppercase;">Gain Net Cumulé 20 ans</div>
-              <div style="font-size: 16pt; font-weight: 900; color: #059669; margin-top: 2px;">+${fmtEuro(leasingCumul20)}</div>
+              <div style="font-size: 7.5pt; font-weight: 800; color: #166534; text-transform: uppercase;">Gain Net Cumulé ${durationYears} ans</div>
+              <div style="font-size: 16pt; font-weight: 900; color: #059669; margin-top: 2px;">+${fmtEuro(leasingCumul)}</div>
               <div style="font-size: 7.5pt; color: #047857;">Option rachat comprise</div>
             </div>
 
@@ -756,7 +817,7 @@ export async function generateCommercialProposalPDF({
               COMPARATIF DES SOLUTIONS DE FINANCEMENT
             </div>
             <div style="font-size: 8.5pt; color: #64748b; margin-top: 2px;">
-              Analyse comparative des modèles de valorisation sur 20 ans &bull; Centrale ${powerKwc} kWc
+              Analyse comparative des modèles de valorisation sur ${durationYears} ans &bull; Centrale ${powerKwc} kWc
             </div>
           </div>
           <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR Courtage" style="height: 36px; object-fit: contain;" />
@@ -833,8 +894,27 @@ export async function generateCommercialProposalPDF({
           <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR Courtage" style="height: 36px; object-fit: contain;" />
         </div>
 
+        ${siteConsumptionKwh > 0 ? `
+          <!-- CARTE CONSOMMATION DU SITE & COUVERTURE -->
+          <div style="margin-top: 14px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 8pt; font-weight: 800; color: #166534; text-transform: uppercase;">Bilan Consommation Site vs Production Solaire</div>
+              <div style="font-size: 10.5pt; font-weight: 900; color: #065f46; margin-top: 2px;">
+                Consommation annuelle : <strong>${fmtNum(siteConsumptionKwh)} kWh/an</strong> &bull; Production centrale : <strong>${fmtNum(annualProdKwh)} kWh/an</strong>
+              </div>
+              <div style="font-size: 7.8pt; color: #166534; margin-top: 2px;">
+                ${isOmbriere ? 'Ombrières photovoltaïques adaptées aux besoins énergétiques de votre site.' : 'Installation toiture calibrée selon vos consommations réelles.'}
+              </div>
+            </div>
+            <div style="text-align: right; background: #ffffff; border: 1px solid #bbf7d0; padding: 6px 14px; border-radius: 8px;">
+              <div style="font-size: 7.5pt; color: #64748b; font-weight: bold;">Taux de Couverture</div>
+              <div style="font-size: 15pt; font-weight: 900; color: #15803d;">${Math.min(100, Math.round((annualProdKwh / siteConsumptionKwh) * 100))} %</div>
+            </div>
+          </div>
+        ` : ''}
+
         <!-- GRAPHIQUE 1 : HISTOGRAMME DE PRODUCTION MENSUELLE -->
-        <div style="margin-top: 16px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+        <div style="margin-top: 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="font-size: 9.5pt; font-weight: 800; color: #0e2b4d;">
               Distribution Mensuelle de l'Énergie Produite (kWh)
@@ -847,7 +927,7 @@ export async function generateCommercialProposalPDF({
         <!-- SECTION SELON LE MODÈLE ÉCONOMIQUE -->
         ${economicModel !== 'vente_totale' ? `
           <!-- MODÈLE AUTOCONSOMMATION / BATTERIE -->
-          <div style="margin-top: 16px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+          <div style="margin-top: 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
             <div style="font-size: 9.5pt; font-weight: 800; color: #0e2b4d; margin-bottom: 8px;">
               Profil Journalier Type : Production Solaire vs Consommation du Site
             </div>
@@ -876,7 +956,7 @@ export async function generateCommercialProposalPDF({
           </div>
         ` : `
           <!-- MODÈLE VENTE TOTALE EDF OA -->
-          <div style="margin-top: 16px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 16px;">
+          <div style="margin-top: 14px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 14px;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
               <span style="font-size: 14pt;">🏛️</span>
               <div style="font-size: 10pt; font-weight: 900; color: #0e2b4d;">
@@ -887,7 +967,7 @@ export async function generateCommercialProposalPDF({
               <p style="margin-bottom: 8px;">
                 La totalité de l'électricité produite par votre centrale de <strong>${powerKwc} kWc</strong> est injectée sur le réseau public Enedis et achetée par EDF Obligation d'Achat au tarif contractuel indexé de <strong>${customTarifEdfOa} €/kWh</strong>.
               </p>
-              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px;">
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px;">
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
                   <strong style="color: #0e2b4d;">&bull; Durée d'engagement :</strong> 20 ans fermes
                   <div style="font-size: 7.8pt; color: #64748b; margin-top: 2px;">Contrat officiel adossé au Ministère de la Transition Écologique.</div>
@@ -922,34 +1002,37 @@ export async function generateCommercialProposalPDF({
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // PAGE 5 : TABLEAU D'AMORTISSEMENT SUR 20 ANS & ROADMAP (OPTIONNELLE)
+  // PAGE 5 : TABLEAU D'AMORTISSEMENT SUR DURATION_YEARS & ROADMAP (OPTIONNELLE)
   // ═════════════════════════════════════════════════════════════════════════
   if (includeAmortizationTable) {
     const page5 = createPageContainer();
 
-    // Génération des 20 lignes du tableau d'amortissement
+    // Génération des lignes du tableau d'amortissement selon durationYears (20, 25, 30)
     const tableRows = [];
     let runningCumul = 0;
     const isCredit = financingChoices.includes('credit_bancaire');
     const annualCharge = isCredit ? Math.round(bankLoan.annualPaymentExact) : 0;
+    const loanDuration = Math.min(25, durationYears);
 
-    for (let yr = 1; yr <= 20; yr++) {
+    for (let yr = 1; yr <= durationYears; yr++) {
       const degradation = Math.pow(0.995, yr - 1);
       const prodYr = Math.round(annualProdKwh * degradation);
       const revYr = Math.round(annualGain * degradation);
-      const netCashYr = revYr - annualCharge;
+      const chargeYr = yr <= loanDuration ? annualCharge : 0;
+      const netCashYr = revYr - chargeYr;
       runningCumul += netCashYr;
 
       const bgRow = yr % 2 === 0 ? 'background: #f8fafc;' : '';
+      const cellPad = durationYears > 20 ? '3.5px 6px' : '4.5px 8px';
       tableRows.push(`
         <tr style="border-bottom: 1px solid #f1f5f9; ${bgRow}">
-          <td style="padding: 4.5px 8px; font-weight: bold; color: #0e2b4d; text-align: center;">Année ${yr}</td>
-          <td style="padding: 4.5px 8px; text-align: center; color: #64748b;">${(degradation * 100).toFixed(1)} %</td>
-          <td style="padding: 4.5px 8px; text-align: right; color: #334155;">${fmtNum(prodYr)} kWh</td>
-          <td style="padding: 4.5px 8px; text-align: right; font-weight: bold; color: #065f46;">${fmtEuro(revYr)}</td>
-          <td style="padding: 4.5px 8px; text-align: right; color: ${annualCharge > 0 ? '#b91c1c' : '#64748b'};">${annualCharge > 0 ? `-${fmtEuro(annualCharge)}` : '0 €'}</td>
-          <td style="padding: 4.5px 8px; text-align: right; font-weight: bold; color: ${netCashYr >= 0 ? '#15803d' : '#b91c1c'};">${netCashYr >= 0 ? '+' : ''}${fmtEuro(netCashYr)}</td>
-          <td style="padding: 4.5px 8px; text-align: right; font-weight: 900; color: #0e2b4d; background: rgba(2, 132, 199, 0.05);">${fmtEuro(runningCumul)}</td>
+          <td style="padding: ${cellPad}; font-weight: bold; color: #0e2b4d; text-align: center;">Année ${yr}</td>
+          <td style="padding: ${cellPad}; text-align: center; color: #64748b;">${(degradation * 100).toFixed(1)} %</td>
+          <td style="padding: ${cellPad}; text-align: right; color: #334155;">${fmtNum(prodYr)} kWh</td>
+          <td style="padding: ${cellPad}; text-align: right; font-weight: bold; color: #065f46;">${fmtEuro(revYr)}</td>
+          <td style="padding: ${cellPad}; text-align: right; color: ${chargeYr > 0 ? '#b91c1c' : '#64748b'};">${chargeYr > 0 ? `-${fmtEuro(chargeYr)}` : '0 €'}</td>
+          <td style="padding: ${cellPad}; text-align: right; font-weight: bold; color: ${netCashYr >= 0 ? '#15803d' : '#b91c1c'};">${netCashYr >= 0 ? '+' : ''}${fmtEuro(netCashYr)}</td>
+          <td style="padding: ${cellPad}; text-align: right; font-weight: 900; color: #0e2b4d; background: rgba(2, 132, 199, 0.05);">${fmtEuro(runningCumul)}</td>
         </tr>
       `);
     }
@@ -960,27 +1043,27 @@ export async function generateCommercialProposalPDF({
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0e2b4d; padding-bottom: 12px;">
           <div>
             <div style="font-size: 13pt; font-weight: 900; color: #0e2b4d; letter-spacing: -0.5px;">
-              PLAN D'AMORTISSEMENT SUR 20 ANS &amp; DÉPLOIEMENT
+              PLAN D'AMORTISSEMENT SUR ${durationYears} ANS &amp; DÉPLOIEMENT
             </div>
             <div style="font-size: 8.5pt; color: #64748b; margin-top: 2px;">
-              Flux de trésorerie net annuel et cumulé &bull; Centrale ${powerKwc} kWc
+              Flux de trésorerie net annuel et cumulé sur ${durationYears} ans &bull; Centrale ${powerKwc} kWc
             </div>
           </div>
           <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR Courtage" style="height: 36px; object-fit: contain;" />
         </div>
 
-        <!-- TABLEAU DES FLUX FINANCIERS 20 ANS -->
+        <!-- TABLEAU DES FLUX FINANCIERS DURATION_YEARS -->
         <div style="margin-top: 14px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; overflow: hidden;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 7.8pt;">
+          <table style="width: 100%; border-collapse: collapse; font-size: ${durationYears > 20 ? '7.2pt' : '7.8pt'};">
             <thead>
               <tr style="background: #0e2b4d; color: #ffffff;">
-                <th style="padding: 7px 8px; text-align: center;">Année</th>
-                <th style="padding: 7px 8px; text-align: center;">Rendement</th>
-                <th style="padding: 7px 8px; text-align: right;">Production (kWh)</th>
-                <th style="padding: 7px 8px; text-align: right;">Recettes/Gains (€)</th>
-                <th style="padding: 7px 8px; text-align: right;">Charges/Prêt (€)</th>
-                <th style="padding: 7px 8px; text-align: right;">Cashflow Net (€)</th>
-                <th style="padding: 7px 8px; text-align: right; background: #0284c7;">Trésorerie Cumulée</th>
+                <th style="padding: 6px 8px; text-align: center;">Année</th>
+                <th style="padding: 6px 8px; text-align: center;">Rendement</th>
+                <th style="padding: 6px 8px; text-align: right;">Production (kWh)</th>
+                <th style="padding: 6px 8px; text-align: right;">Recettes/Gains (€)</th>
+                <th style="padding: 6px 8px; text-align: right;">Charges/Prêt (€)</th>
+                <th style="padding: 6px 8px; text-align: right;">Cashflow Net (€)</th>
+                <th style="padding: 6px 8px; text-align: right; background: #0284c7;">Trésorerie Cumulée</th>
               </tr>
             </thead>
             <tbody>
@@ -990,9 +1073,9 @@ export async function generateCommercialProposalPDF({
         </div>
 
         <!-- INDICATEURS DE RENTABILITÉ CLÉS -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px;">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;">
           <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="font-size: 7.5pt; font-weight: 800; color: #166534; text-transform: uppercase;">TRI Projet (20 ans)</div>
+            <div style="font-size: 7.5pt; font-weight: 800; color: #166534; text-transform: uppercase;">TRI Projet (${durationYears} ans)</div>
             <div style="font-size: 15pt; font-weight: 900; color: #15803d; margin-top: 2px;">~9,8 %</div>
             <div style="font-size: 7.2pt; color: #166534;">Taux de Rentabilité Interne</div>
           </div>
@@ -1004,31 +1087,31 @@ export async function generateCommercialProposalPDF({
           </div>
 
           <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="font-size: 7.5pt; font-weight: 800; color: #6b21a8; text-transform: uppercase;">Trésorerie Nette à 20 ans</div>
+            <div style="font-size: 7.5pt; font-weight: 800; color: #6b21a8; text-transform: uppercase;">Trésorerie Nette à ${durationYears} ans</div>
             <div style="font-size: 15pt; font-weight: 900; color: #7c3aed; margin-top: 2px;">+${fmtEuro(runningCumul)}</div>
             <div style="font-size: 7.2pt; color: #6b21a8;">Gain net après toutes charges</div>
           </div>
         </div>
 
         <!-- ROADMAP / LES 4 ÉTAPES DU DÉPLOIEMENT CLÉ EN MAIN -->
-        <div style="margin-top: 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-          <div style="font-size: 8.5pt; font-weight: 900; color: #0e2b4d; text-transform: uppercase; margin-bottom: 8px;">
+        <div style="margin-top: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+          <div style="font-size: 8.5pt; font-weight: 900; color: #0e2b4d; text-transform: uppercase; margin-bottom: 6px;">
             Accompagnement Clé en Main ENR Courtage — 4 Étapes vers la Mise en Service
           </div>
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 7.5pt;">
-            <div style="background: #f8fafc; border-left: 3px solid #0284c7; padding: 8px; border-radius: 4px;">
+            <div style="background: #f8fafc; border-left: 3px solid #0284c7; padding: 6px 8px; border-radius: 4px;">
               <strong style="color: #0e2b4d;">1. Étude &amp; Audit</strong><br/>
               Validation structurelle sur site et note de calcul de charpente.
             </div>
-            <div style="background: #f8fafc; border-left: 3px solid #10b981; padding: 8px; border-radius: 4px;">
+            <div style="background: #f8fafc; border-left: 3px solid #10b981; padding: 6px 8px; border-radius: 4px;">
               <strong style="color: #0e2b4d;">2. Urbanisme (DP)</strong><br/>
               Dépôt du dossier de Déclaration Préalable complet en mairie.
             </div>
-            <div style="background: #f8fafc; border-left: 3px solid #f59e0b; padding: 8px; border-radius: 4px;">
+            <div style="background: #f8fafc; border-left: 3px solid #f59e0b; padding: 6px 8px; border-radius: 4px;">
               <strong style="color: #0e2b4d;">3. Accord Enedis</strong><br/>
               Proposition Technique et Financière (PTF) &amp; Convention CRAE.
             </div>
-            <div style="background: #f8fafc; border-left: 3px solid #8b5cf6; padding: 8px; border-radius: 4px;">
+            <div style="background: #f8fafc; border-left: 3px solid #8b5cf6; padding: 6px 8px; border-radius: 4px;">
               <strong style="color: #0e2b4d;">4. Pose &amp; Injection</strong><br/>
               Installation certifiée QualiPV, Consuel et mise sous tension.
             </div>
@@ -1039,7 +1122,7 @@ export async function generateCommercialProposalPDF({
       <!-- BAS DE PAGE -->
       <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 8px; font-size: 7.5pt; color: #94a3b8;">
         <span style="font-weight: 700; color: #0e2b4d;">ENR COURTAGE &bull; enr-courtage.fr</span>
-        <span>Plan d'Amortissement 20 ans &bull; Offre Commerciale</span>
+        <span>Plan d'Amortissement ${durationYears} ans &bull; Offre Commerciale</span>
         <span>Page 5 / 5</span>
       </div>
     `;

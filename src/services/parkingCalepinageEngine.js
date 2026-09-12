@@ -303,45 +303,81 @@ export function computePrincipalLocalFrame(polygonWgs84) {
     }
   }
 
-  // 5. Rotation dans le repère orienté selon l'angle dominant
-  let optimalAngle = dominantAngle;
-  let cosOpt = Math.cos(-optimalAngle);
-  let sinOpt = Math.sin(-optimalAngle);
+  // 5. Analyse d'exposition Plein Sud entre les deux axes naturels orthogonaux du parking
+  // Axe 1 : dominantAngle
+  // Axe 2 : (dominantAngle + Math.PI / 2) % Math.PI
+  const angle1 = dominantAngle;
+  const angle2 = (dominantAngle + Math.PI / 2) % Math.PI;
 
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  const localPoly = ptsM.map(p => {
-    const rx = p.x * cosOpt - p.y * sinOpt;
-    const ry = p.x * sinOpt + p.y * cosOpt;
-    minX = Math.min(minX, rx);
-    maxX = Math.max(maxX, rx);
-    minY = Math.min(minY, ry);
-    maxY = Math.max(maxY, ry);
-    return { x: rx, y: ry };
-  });
-
-  let boxW = maxX - minX;
-  let boxH = maxY - minY;
-
-  // 6. Aligner l'axe X sur la dimension longitudinale principale des travées
-  // Si la profondeur locale est supérieure à la largeur, pivoter de 90°
-  // pour que X soit l'axe le plus long d'implantation des allées.
-  if (boxH > boxW) {
-    optimalAngle += Math.PI / 2;
-    cosOpt = Math.cos(-optimalAngle);
-    sinOpt = Math.sin(-optimalAngle);
-
-    minX = Infinity; maxX = -Infinity; minY = Infinity; maxY = -Infinity;
-    for (let i = 0; i < ptsM.length; i++) {
-      const rx = ptsM[i].x * cosOpt - ptsM[i].y * sinOpt;
-      const ry = ptsM[i].x * sinOpt + ptsM[i].y * cosOpt;
-      localPoly[i] = { x: rx, y: ry };
+  const getBoundsForAngle = (ang) => {
+    const c = Math.cos(-ang);
+    const s = Math.sin(-ang);
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    const poly = ptsM.map(p => {
+      const rx = p.x * c - p.y * s;
+      const ry = p.x * s + p.y * c;
       minX = Math.min(minX, rx);
       maxX = Math.max(maxX, rx);
       minY = Math.min(minY, ry);
       maxY = Math.max(maxY, ry);
+      return { x: rx, y: ry };
+    });
+    return { w: maxX - minX, h: maxY - minY, minX, maxX, minY, maxY, poly };
+  };
+
+  const b1 = getBoundsForAngle(angle1);
+  const b2 = getBoundsForAngle(angle2);
+
+  // Score Plein Sud : plus |cos(ang)| est proche de 1, plus les rangées sont Est-Ouest,
+  // et plus le pan incliné des ombrières pointe directement vers le PLEIN SUD.
+  const southScore1 = Math.abs(Math.cos(angle1));
+  const southScore2 = Math.abs(Math.cos(angle2));
+
+  let optimalAngle = angle1;
+  let chosenBounds = b1;
+
+  // Si l'axe 2 offre une orientation nettement plus au Sud et permet d'implanter des rangées (largeur et profondeur viables >= 9m)
+  if (southScore2 > southScore1 && (b2.w >= 9.0 && b2.h >= 9.0)) {
+    optimalAngle = angle2;
+    chosenBounds = b2;
+  } else if (southScore1 >= southScore2 && (b1.w >= 9.0 && b1.h >= 9.0)) {
+    optimalAngle = angle1;
+    chosenBounds = b1;
+  } else {
+    // Si une des dimensions est trop étroite pour les allées, choisir l'axe le plus large
+    if (b2.w > b1.w && b2.h >= 8.0) {
+      optimalAngle = angle2;
+      chosenBounds = b2;
+    } else {
+      optimalAngle = angle1;
+      chosenBounds = b1;
     }
-    boxW = maxX - minX;
-    boxH = maxY - minY;
+  }
+
+  // Calcul du vecteur normal pointant vers le Sud pour l'azimut solaire exact
+  // uX = (cos(optimalAngle), sin(optimalAngle))
+  // Normale vers l'hémisphère Sud (y <= 0) :
+  let nx = Math.sin(optimalAngle);
+  let ny = -Math.cos(optimalAngle);
+  if (ny > 0) {
+    nx = -nx;
+    ny = -ny;
+  }
+  const solarAzimuthRad = Math.atan2(nx, -ny);
+  let solarAzimuthDeg = Math.round((solarAzimuthRad * 180 / Math.PI + 180) % 360);
+  if (solarAzimuthDeg === 0) solarAzimuthDeg = 360;
+
+  // Libellé d'orientation solaire
+  let orientationLabel = 'Plein Sud (180°)';
+  const diffFromSouth = Math.abs(solarAzimuthDeg - 180);
+  if (diffFromSouth <= 15) {
+    orientationLabel = `Plein Sud (${solarAzimuthDeg}°)`;
+  } else if (solarAzimuthDeg < 180) {
+    orientationLabel = `Sud-Est (${solarAzimuthDeg}°)`;
+  } else if (solarAzimuthDeg <= 235) {
+    orientationLabel = `Sud-Ouest (${solarAzimuthDeg}°)`;
+  } else {
+    orientationLabel = `${solarAzimuthDeg}°`;
   }
 
   return {
@@ -350,8 +386,17 @@ export function computePrincipalLocalFrame(polygonWgs84) {
     metersPerDegLng,
     angleRad: optimalAngle,
     angleDeg: Math.round(((optimalAngle * 180) / Math.PI) % 360),
-    bounds: { minX, maxX, minY, maxY, width: boxW, height: boxH },
-    localPoly,
+    solarAzimuthDeg,
+    orientationLabel,
+    bounds: {
+      minX: chosenBounds.minX,
+      maxX: chosenBounds.maxX,
+      minY: chosenBounds.minY,
+      maxY: chosenBounds.maxY,
+      width: chosenBounds.w,
+      height: chosenBounds.h
+    },
+    localPoly: chosenBounds.poly,
     ptsM
   };
 }
@@ -719,6 +764,8 @@ export function layoutOmbrieresOnParking({
     panelCount,
     installedKwc,
     principalAngleDeg: frame.angleDeg,
+    solarAzimuthDeg: frame.solarAzimuthDeg,
+    orientationLabel: frame.orientationLabel,
     typology: selectedTypology,
     isCurved: curvature.isCurved,
     curvedDetails: curvature

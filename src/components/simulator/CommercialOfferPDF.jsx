@@ -854,8 +854,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                   <div style="font-size: 8pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
                 </div>
               `}
-              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-top-left-radius: 6px; font-size: 7.5pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">
-                ${isOmbriere ? `Emprise Parking : ${sim.parkingArea || 0} m² &bull; Ombrières : ${sim.coveredArea || sim.roofSurface || 0} m² (${sim.spotsCount || 0} pl.)` : `Surface : ${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m² &bull; ${sim.kwc || 0} kWc`}
+              <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(15,23,42,0.92); color: #ffffff; padding: 5px 10px; border-radius: 6px; font-size: 8pt; font-weight: bold; margin: 0; line-height: 1.2; display: flex; align-items: center; box-shadow: 0 3px 8px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); z-index: 10;">
+                ${isOmbriere ? `Emprise Parking : ${Math.max(Number(sim.parkingArea || 0), Number(sim.rawParkingArea || 0), Math.round(Number(sim.coveredArea || sim.roofSurface || 0) / 0.65)).toLocaleString('fr-FR')} m² &bull; Ombrières : ${sim.coveredArea || sim.roofSurface || 0} m² (${sim.spotsCount || 0} pl.)` : `Surface : ${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m² &bull; ${sim.kwc || 0} kWc`}
               </div>
             </div>
           `
@@ -894,8 +894,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 <div style="font-size: 8pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
               </div>
             `}
-            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-top-left-radius: 6px; font-size: 7.5pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">
-              ${isOmbriere ? `Emprise Parking : ${sim.parkingArea || 0} m² &bull; Ombrières : ${sim.coveredArea || sim.roofSurface || 0} m² (${sim.spotsCount || 0} pl.)` : `Surface : ${sim.roofSurface || sim.floorArea || 83} m²`}
+            <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(15,23,42,0.92); color: #ffffff; padding: 5px 10px; border-radius: 6px; font-size: 8pt; font-weight: bold; margin: 0; line-height: 1.2; display: flex; align-items: center; box-shadow: 0 3px 8px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); z-index: 10;">
+              ${isOmbriere ? `Emprise Parking : ${Math.max(Number(sim.parkingArea || 0), Number(sim.rawParkingArea || 0), Math.round(Number(sim.coveredArea || sim.roofSurface || 0) / 0.65)).toLocaleString('fr-FR')} m² &bull; Ombrières : ${sim.coveredArea || sim.roofSurface || 0} m² (${sim.spotsCount || 0} pl.)` : `Surface : ${sim.roofSurface || sim.floorArea || 83} m²`}
             </div>
           </div>
         `}

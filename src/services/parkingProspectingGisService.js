@@ -208,13 +208,20 @@ out geom;`;
     const bPoly = el.geometry.map(g => ({ lat: g.lat, lng: g.lon }));
     const bArea = calculatePolygonArea(bPoly);
 
-    const anyIn = bPoly.some(p => isPointInPolygonWgs84(p, poly));
-    if (anyIn) {
+    const ptsInCount = bPoly.filter(p => isPointInPolygonWgs84(p, poly)).length;
+    if (ptsInCount > 0) {
+      const bCenter = calculateCentroid(bPoly);
+      const centerIn = isPointInPolygonWgs84({ lat: bCenter[0], lng: bCenter[1] }, poly);
+      const ratioIn = ptsInCount / bPoly.length;
+      const isInternal = centerIn || ratioIn >= 0.40;
+
       overlappingBuildings.push({
         id: `bld_${el.id}`,
         osmId: el.id,
         polygon: bPoly,
         area: bArea,
+        isInternal,
+        isAdjacent: !isInternal,
         tags: el.tags || {}
       });
     }

@@ -318,6 +318,79 @@ export default function BuildingStructureSimulator({
   const mapContainerRef = useRef(null);
   const [mapScreenshotDataUrl, setMapScreenshotDataUrl] = useState(null);
 
+  // Callback pour entrer et éditer une étude d'ombrières directement dans le simulateur
+  const handleOpenOmbriereInSimulator = (item) => {
+    if (!item) return;
+    const sim = item.simulation || item;
+    const parking = item.parking || {};
+
+    let center = null;
+    if (parking.center && Array.isArray(parking.center) && parking.center.length >= 2) {
+      center = [parking.center[0], parking.center[1]];
+    } else if (sim.mapCenter && Array.isArray(sim.mapCenter) && sim.mapCenter.length >= 2) {
+      center = [sim.mapCenter[0], sim.mapCenter[1]];
+    } else if (Array.isArray(parking.polygon) && parking.polygon.length > 0) {
+      const p0 = parking.polygon[0];
+      center = Array.isArray(p0) ? [p0[0], p0[1]] : [p0.lat, p0.lng];
+    }
+
+    if (center) {
+      setMapCenter(center);
+    }
+
+    const fullAddr = item.addressLabel || sim.address || '';
+    if (fullAddr) {
+      setAddressInput(fullAddr);
+      setIsAddressSelected(true);
+    }
+
+    if (sim.cityName || parking.cityName) {
+      setCityName(sim.cityName || parking.cityName);
+    }
+
+    if (sim.departmentCode || parking.departmentCode) {
+      setDepartmentCode(sim.departmentCode || parking.departmentCode);
+    }
+
+    const client = sim.clientName || sim.ownerName || '';
+    if (client) {
+      setClientNameInput(client);
+    }
+
+    // Si des ombrières ont été calepinées, les convertir en structures déplaçables et éditables
+    const placed = sim.placedOmbrieres || [];
+    if (placed.length > 0) {
+      const newBuildings = placed.map((block, idx) => {
+        const typo = block.typology || {};
+        const bLength = block.structureWidthMeters || (block.bayCount ? block.bayCount * 5.0 : 30);
+        const bWidth = block.structureDepthMeters || typo.widthMeters || 10;
+        const bRot = block.angleRad ? Math.round((block.angleRad * 180) / Math.PI) : 0;
+        const offX = block.centerLocal ? Math.round(block.centerLocal.x * 4.6) : 0;
+        const offY = block.centerLocal ? Math.round(-block.centerLocal.y * 4.6) : 0;
+
+        return {
+          id: idx + 1,
+          name: `Ombrière ${idx + 1} (${typo.shortLabel || 'VL'})`,
+          length: bLength,
+          width: bWidth,
+          rotation: bRot,
+          buildingType: 'ombriere',
+          offsetX: offX,
+          offsetY: offY,
+          spotsCount: block.totalShelteredSpots || 0,
+          kwc: block.totalKwc || 0
+        };
+      });
+
+      setSimBuildings(newBuildings);
+      setActiveBuildingIdx(0);
+    }
+
+    setActiveView('feasibility');
+    setStudyStep(2);
+    setIsAutoOmbriereOpen(false);
+  };
+
   useEffect(() => {
     actions.setIsAcama(isAcama);
   }, [isAcama]);
@@ -1956,6 +2029,7 @@ const crop3DCanvas = (sourceCanvas) => {
         onClose={() => setIsAutoOmbriereOpen(false)}
         defaultCommune={cityName || 'Bordeaux'}
         simulatorMapCenter={mapCenter}
+        onOpenInSimulator={handleOpenOmbriereInSimulator}
       />
 
     </div>

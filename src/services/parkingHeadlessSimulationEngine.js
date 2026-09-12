@@ -130,14 +130,21 @@ export async function simulateParkingHeadless({
   }
 
   // Déduction de l'emprise des bâtiments de la surface du parking
-  if (parkingBuildings && parkingBuildings.length > 0 && !parking.buildingArea) {
-    const totalBldArea = parkingBuildings.reduce((sum, b) => {
+  const geomArea = calculatePolygonArea(parking.polygon);
+  const rawArea = Math.max(geomArea, Number(parking.area || 0), Number(parking.rawArea || 0));
+  parking.rawArea = rawArea;
+
+  if (parkingBuildings && parkingBuildings.length > 0 && (!parking.buildingArea || parking.area <= 100)) {
+    const internalBldArea = parkingBuildings.reduce((sum, b) => {
+      // Les bâtiments adjacents/voisins (qui ne sont pas réellement au milieu du parking) ne sont pas déduits
+      if (b.isAdjacent) return sum;
       const bArea = b.area || calculatePolygonArea(b.polygon || b);
-      return sum + (bArea || 0);
+      return sum + Math.min(bArea || 0, rawArea * 0.40);
     }, 0);
-    parking.buildingArea = Math.round(totalBldArea);
-    if (!parking.rawArea) parking.rawArea = parking.area;
-    parking.area = Math.max(100, Math.round(parking.rawArea - parking.buildingArea));
+    parking.buildingArea = Math.round(internalBldArea);
+    parking.area = Math.max(Math.round(rawArea * 0.50), Math.round(rawArea - internalBldArea));
+  } else if (!parking.area || parking.area <= 100) {
+    parking.area = rawArea;
   }
 
   // 1. Calepinage géométrique des ombrières selon l'orientation naturelle du parking (plafonné à maxKwc)
@@ -149,17 +156,34 @@ export async function simulateParkingHeadless({
     buildings: (parking.buildings || []).map(b => b.polygon || b)
   });
 
-  const {
+  let {
     placedOmbrieres,
     totalCoveredArea,
     totalShelteredSpots,
     coverageRatio,
     panelCount,
     installedKwc,
+    principalAngleDeg,
+    solarAzimuthDeg,
+    orientationLabel,
     typology,
     isCurved,
     curvedDetails
   } = layout;
+
+  // Prise en compte d'éventuelles surcharges manuelles
+  if (customSettings.installedKwc && Number(customSettings.installedKwc) > 0) {
+    installedKwc = Math.round(Number(customSettings.installedKwc) * 10) / 10;
+    panelCount = Math.round((installedKwc * 1000) / 465);
+  }
+  if (customSettings.customSpots && Number(customSettings.customSpots) > 0) {
+    totalShelteredSpots = Math.round(Number(customSettings.customSpots));
+  }
+
+  // Cohérence géométrique : l'emprise parking nette ne peut pas être inférieure aux ombrières installées
+  if (totalCoveredArea > 0 && parking.area < totalCoveredArea) {
+    parking.area = Math.max(parking.area, Math.round(totalCoveredArea / 0.65), rawArea);
+  }
 
   // Filtre d'exclusion rapide avant appels réseaux coûteux (Cadastre, Koumoul, Snapshots satellite)
   // Un tracé courbé n'est disqualifié QUE si sa forme empêche le déploiement d'ombrières linéaires viables
@@ -338,6 +362,9 @@ export async function simulateParkingHeadless({
     installedKwc,
     kwc: installedKwc,
     placedOmbrieres,
+    principalAngleDeg,
+    solarAzimuthDeg,
+    orientationLabel,
     isCurved,
     curvedDetails,
 
@@ -356,6 +383,9 @@ export async function simulateParkingHeadless({
     totalInvestmentHT: capexHT,
     capexHT,
     tarifEdfOaKwh,
+    durationYears: customSettings.durationYears || 25,
+    siteConsumptionKwh: customSettings.siteConsumptionKwh || 0,
+    excludeThirdParty: Boolean(customSettings.excludeThirdParty),
 
     // Cumuls financiers
     cumul10,
