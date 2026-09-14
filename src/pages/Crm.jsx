@@ -120,6 +120,7 @@ import DuplicateProjectModal from '@/components/DuplicateProjectModal.jsx';
 
 export default function Crm() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { projects, setProjects, refreshProjects } = useProjects();
   const { user, activeTenantId } = useAuth();
 
