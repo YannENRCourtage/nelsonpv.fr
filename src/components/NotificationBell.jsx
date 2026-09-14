@@ -195,18 +195,18 @@ export default function NotificationBell() {
             `}</style>
             <button
                 onClick={handleBellClick}
-                className={`relative p-2 rounded-full transition-colors ${
+                className={`relative h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
                     showDropdown
                         ? 'bg-amber-100 text-amber-700'
                         : 'hover:bg-gray-100 text-gray-700'
                 }`}
                 title={unreadCount > 0 ? `${unreadCount} notification(s) non lue(s)` : 'Notifications'}
             >
-                <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'bell-dynamic-ring text-amber-600' : 'text-gray-700'}`} />
+                <Bell className={`w-4 h-4 ${unreadCount > 0 ? 'bell-dynamic-ring text-amber-600' : 'text-gray-700'}`} />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex items-center justify-center rounded-full h-5 w-5 bg-red-600 text-white text-[10px] font-bold shadow-md">
+                        <span className="relative inline-flex items-center justify-center rounded-full h-4 w-4 bg-red-600 text-white text-[9px] font-bold shadow-md">
                             {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                     </span>

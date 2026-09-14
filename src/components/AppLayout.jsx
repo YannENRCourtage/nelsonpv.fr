@@ -424,7 +424,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
   return (
     <header className="app-header no-print">
       <div className="app-header__container">
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-3 lg:gap-5 xl:gap-8">
           <Link to="/" className="app-header__logo">
             <img src="/logo-header.png" alt="NELSON par ENR Courtage" />
           </Link>
@@ -554,47 +554,79 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">
           {isProjectPage ? (
             <>
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{getProjectTitle()}</span>
-              <Button onClick={handleGeneratePdf} className="rounded-full bg-orange-500 hover:bg-orange-600 text-white">
-                <FileDown className="h-5 w-5 mr-2" />
+              <span 
+                className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[120px] lg:max-w-[180px] xl:max-w-[240px]" 
+                title={getProjectTitle()}
+              >
+                {getProjectTitle()}
+              </span>
+
+              {/* Bouton Générer le PDF */}
+              <Button 
+                onClick={handleGeneratePdf} 
+                size="sm"
+                className="h-8 px-2.5 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold shrink-0 shadow-xs"
+                title="Générer le dossier PDF (DP/PC)"
+              >
+                <FileDown className="h-3.5 w-3.5 mr-1 shrink-0" />
                 Générer le PDF
               </Button>
+
+              {/* Bouton Devis & Offre */}
               <Button 
                 onClick={() => setShowQuoteModal(true)} 
-                className="rounded-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shadow-sm"
+                size="sm"
+                className="h-8 px-2.5 rounded-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shrink-0 shadow-xs"
                 title="Éditeur de Devis & Offre chiffrée avec fiches techniques"
               >
-                <FileText className="h-5 w-5 mr-2" />
+                <FileText className="h-3.5 w-3.5 mr-1 shrink-0" />
                 Devis & Offre
               </Button>
+
+              {/* Bouton Transférer */}
               {isTransferAuthorized() && (
                 <Button
                   onClick={() => setShowTransferModal(true)}
-                  className="rounded-full bg-amber-500 hover:bg-amber-600 text-white"
+                  size="sm"
+                  className="h-8 px-2.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shrink-0 shadow-xs"
                   title="Transférer le projet vers une autre entreprise"
                 >
-                  <Shuffle className="h-5 w-5 mr-2" />
+                  <Shuffle className="h-3.5 w-3.5 mr-1 shrink-0" />
                   Transférer
                 </Button>
               )}
-              <Button onClick={handleSave} className="rounded-full text-white" style={{ background: 'linear-gradient(to right, #3b82f6, #8b5cf6)' }}>
-                <Save className="h-5 w-5 mr-2" />
+
+              {/* Bouton Sauvegarder */}
+              <Button 
+                onClick={handleSave} 
+                size="sm"
+                className="h-8 px-2.5 rounded-full text-white text-xs font-semibold shrink-0 shadow-xs" 
+                style={{ background: 'linear-gradient(to right, #3b82f6, #8b5cf6)' }}
+                title="Sauvegarder les modifications du projet"
+              >
+                <Save className="h-3.5 w-3.5 mr-1 shrink-0" />
                 Sauvegarder
               </Button>
             </>
           ) : (
-            <span className="text-sm text-gray-600 dark:text-gray-300">
+            <span className="text-xs text-gray-600 dark:text-gray-300">
               {/* Fix: Display firstName if available, fallback to displayName, then generic */}
               Bonjour, {user?.firstName ? user.firstName : (user?.displayName || 'Utilisateur')}
             </span>
           )}
           <NotificationBell />
-          {/* Removed Dark Mode Toggle Button */}
-          <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full bg-red-500 hover:bg-red-600 text-white">
-            <LogOut className="h-5 w-5" />
+          {/* Bouton Déconnexion */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleLogout} 
+            className="h-8 w-8 rounded-full bg-red-500 hover:bg-red-600 text-white shrink-0 p-0 flex items-center justify-center shadow-xs"
+            title="Se déconnecter"
+          >
+            <LogOut className="h-4 w-4" />
           </Button>
         </div>
       </div>
