@@ -74,6 +74,7 @@ export default function BatteryStationVisualizer({
   dalleWidth = 3.20,
   viewMode = '3D', // '3D' | '2D_FRONT' | '2D_TOP'
   showDimensions = true,
+  showCaptureButtons = true,
   onCaptureViews = null,
   onCaptureSnapshot = null,
   onCapture = null,
@@ -214,7 +215,7 @@ export default function BatteryStationVisualizer({
 
   return (
     <div
-      className={`relative w-full h-full min-h-[480px] rounded-2xl overflow-hidden bg-white flex flex-col border border-slate-200 shadow-xl ${className}`}
+      className={`relative w-full h-full min-h-0 rounded-2xl overflow-hidden bg-white flex flex-col border border-slate-200 shadow-xl ${className}`}
       style={{ height: typeof height === 'number' ? `${height}px` : (height || '100%') }}
     >
       {/* 1. BARRE SUPÉRIEURE : SÉLECTEUR DE MODE 3D / 2D FAÇADE / PLAN DE MASSE */}
@@ -390,44 +391,46 @@ export default function BatteryStationVisualizer({
         </label>
 
         {/* Boutons de capture */}
-        <div className="flex items-center gap-2 pointer-events-auto">
-          {capturedFeedback && (
-            <span className="bg-emerald-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-md animate-fade-in">
-              <Check className="w-3.5 h-3.5" />
-              {capturedFeedback}
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={handleCaptureCurrent}
-            className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold rounded-xl border border-slate-200 shadow-sm flex items-center gap-1.5 transition-all"
-            title="Capturer l'angle courant"
-          >
-            <Camera className="w-3.5 h-3.5 text-purple-600" />
-            <span>Capturer cette vue</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCaptureAll5}
-            disabled={isCapturingAll}
-            className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-extrabold rounded-xl shadow-md flex items-center gap-1.5 transition-all disabled:opacity-50"
-            title="Prendre automatiquement les 5 vues réglementaires pour DP4"
-          >
-            {isCapturingAll ? (
-              <>
-                <RotateCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Captures en cours...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>✓ Capturer les 5 Vues 3D (DP4)</span>
-              </>
+        {showCaptureButtons && (
+          <div className="flex items-center gap-2 pointer-events-auto">
+            {capturedFeedback && (
+              <span className="bg-emerald-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-md animate-fade-in">
+                <Check className="w-3.5 h-3.5" />
+                {capturedFeedback}
+              </span>
             )}
-          </button>
-        </div>
+
+            <button
+              type="button"
+              onClick={handleCaptureCurrent}
+              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold rounded-xl border border-slate-200 shadow-sm flex items-center gap-1.5 transition-all"
+              title="Capturer l'angle courant"
+            >
+              <Camera className="w-3.5 h-3.5 text-purple-600" />
+              <span>Capturer cette vue</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCaptureAll5}
+              disabled={isCapturingAll}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-extrabold rounded-xl shadow-md flex items-center gap-1.5 transition-all disabled:opacity-50"
+              title="Prendre automatiquement les 5 vues réglementaires pour DP4"
+            >
+              {isCapturingAll ? (
+                <>
+                  <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Captures en cours...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>✓ Capturer les 5 Vues 3D (DP4)</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

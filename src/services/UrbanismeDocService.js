@@ -139,7 +139,7 @@ async function drawCoverPage(doc, project, type, installationType) {
   const isBattery = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone) || Boolean(project?.isBattery);
   let installCode = project?.urbanismeType || project?.typeLabel || project?.installationType;
   if (isBattery) {
-    installCode = 'Station Batteries Stand-Alone (500 kW)';
+    installCode = 'Station Batteries Stand-Alone';
   } else if (!installCode) {
     const projectBuildings = project?.buildings || [];
     if (isDP) {
@@ -161,7 +161,14 @@ async function drawCoverPage(doc, project, type, installationType) {
 
   const drawLeft = (label, value, yPos) => {
     page.drawText(label.toUpperCase(), { x: 18, y: yPos + 14, size: 7, font: fontR, color: rgb(1,1,1,0.6) });
-    page.drawText((value || '—').substring(0, 24), { x: 18, y: yPos, size: 9.5, font: fontB, color: C.white });
+    const val = (value || '—').trim();
+    const lines = wrapText(val, 18);
+    if (lines.length > 1) {
+      page.drawText(lines[0], { x: 18, y: yPos + 3, size: 8.5, font: fontB, color: C.white });
+      page.drawText(lines.slice(1).join(' '), { x: 18, y: yPos - 8, size: 8.5, font: fontB, color: C.white });
+    } else {
+      page.drawText(lines[0], { x: 18, y: yPos, size: 9.5, font: fontB, color: C.white });
+    }
   };
 
   drawLeft('Demandeur',  clientName,                          H - 140);
@@ -185,7 +192,7 @@ async function drawCoverPage(doc, project, type, installationType) {
   page.drawText('Dossier de demande d\'autorisation d\'urbanisme', { x: cx + 16, y: H - 73, size: 8, font: fontR, color: rgb(1,1,1,0.75) });
 
   // Titre du projet
-  const typeInfo = getInstallationTypeInfo(installationType || project?.type, project?.kwc || project?.projectSize, isNoBattery);
+  const typeInfo = getInstallationTypeInfo(isBattery ? 'batterie' : (installationType || project?.type), project?.kwc || project?.projectSize, isNoBattery);
   page.drawText(typeInfo.title, { x: cx + 16, y: H - 115, size: 16, font: fontB, color: C.dark });
   page.drawText(typeInfo.subtitle, { x: cx + 16, y: H - 135, size: 10, font: fontR, color: C.gray });
 
@@ -228,7 +235,8 @@ async function drawCoverPage(doc, project, type, installationType) {
   // ── Description (objet des travaux) — Cadre Élargi Stylisé ────────────────
   const cardX = cx + 16;
   const cardW = W - cx - 36; // 585.89 pt (pleine largeur)
-  const cardBottom = isDP ? 128 : 32;
+  const hasEncart = type === 'dp' && !isBattery;
+  const cardBottom = hasEncart ? 128 : 32;
   const cardTop = H - 248;
   const cardH = cardTop - cardBottom;
 
@@ -272,12 +280,12 @@ async function drawCoverPage(doc, project, type, installationType) {
     objetText = "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
   }
 
-  // Largeur maximale : ~112 caractères par ligne sur 550 pt de largeur utile
-  const descLines = wrapText(objetText, 112);
-  const isLong = descLines.length > 8;
-  const fontSize = isLong ? 8.5 : 9.0;
-  const lineHeight = isLong ? 12.0 : 13.5;
-  const maxAvailableLines = Math.floor((cardH - 32) / lineHeight);
+  // Largeur maximale : ~108 caractères par ligne sur 550 pt de largeur utile
+  const descLines = wrapText(objetText, 108);
+  const isLong = descLines.length > 10;
+  const fontSize = isLong ? 8.5 : 9.5;
+  const lineHeight = isLong ? 12.5 : 14.5;
+  const maxAvailableLines = Math.floor((cardH - 34) / lineHeight);
 
   descLines.slice(0, maxAvailableLines).forEach((line, i) => {
     page.drawText(line, {
@@ -290,7 +298,7 @@ async function drawCoverPage(doc, project, type, installationType) {
   });
 
   // ── Encart Réglementaire Déclaration Préalable (Article R.421-9 du Code de l'Urbanisme) ──
-  if (type === 'dp') {
+  if (hasEncart) {
     const encartX = cx + 16;
     const encartW = W - cx - 36;
     const encartH = 88;

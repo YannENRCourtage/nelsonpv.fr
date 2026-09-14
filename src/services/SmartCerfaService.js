@@ -330,18 +330,27 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
 
       const fullDeclarantName = `${firstName} ${lastName}`.trim() || lastName || project?.demandeur || '';
 
-      // 0. Page 2 : Récépissé de dépôt (uniquement sur CERFA 16702*03)
-      if (isCerfa16702_03) {
-        setField(['R2N_deposant'], fullDeclarantName, 9.5);
-        setField(['R3D_denomination'], project?.company || project?.denomination || '', 9.5);
-        setField(['R3N_numero'], addrNum, 9.5);
-        setField(['R3V_voie'], addrVoie, 9.5);
-        setField(['R3W_lieudit'], project?.lieudit || '', 9);
-        setField(['R3L_localite'], city, 9.5);
-        setField(['R3C_code'], zip, 9.5);
-        setField(['R3T_telephone'], tel, 9.5);
-        setField(['R3GE1_email'], emailLeft, 8.5);
-        setField(['R3GE2_email'], emailRight, 8.5);
+      // 0. Le cadre réservé à la mairie (et récépissé de dépôt) ne doit JAMAIS être rempli automatiquement
+      const MAIRIE_RESERVED_FIELDS = [
+        'M2C_dept', 'M2K_commune', 'M2S_annee', 'M2D_dossier', 'M2E_date', 'M2M_cachet',
+        'M2B_ABF', 'M2J_PN',
+        'R2A_numero', 'R2M_date', 'R3A_cachet',
+        'R2N_deposant', 'R3D_denomination', 'R3N_numero', 'R3V_voie', 'R3W_lieudit',
+        'R3L_localite', 'R3C_code', 'R3B_boite', 'R3X_cedex', 'R3T_telephone', 'R3GE1_email', 'R3GE2_email',
+        'N1D_date', 'N1C_reception', 'N1T_recepteur',
+        'topmostSubform[0].Page1[0].N1C_reception[0]',
+        'topmostSubform[0].Page1[0].N1T_recepteur[0]',
+        'topmostSubform[0].Page1[0].N1D_date[0]',
+      ];
+      for (const mField of MAIRIE_RESERVED_FIELDS) {
+        try {
+          const tf = form.getTextField(mField);
+          if (tf) tf.setText('');
+        } catch (_) {}
+        try {
+          const cb = form.getCheckBox(mField);
+          if (cb) cb.uncheck();
+        } catch (_) {}
       }
 
       // 1. Identité du déclarant (Page 2 ou 4 du CERFA)

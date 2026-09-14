@@ -204,9 +204,10 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
       const corners = getBuildingCorners(strLat, strLng, sLen, totalWid, sRot);
       const pixelCorners = corners.map(([cLat, cLng]) => map.latLngToContainerPoint([cLat, cLng]));
 
-      const isOmb = str.solutionKey === 'ombriere' || (str.buildingType || '').toLowerCase().includes('ombriere');
-      const strokeColor = isOmb ? '#059669' : '#2563eb';
-      const fillColor = isOmb ? 'rgba(16, 185, 129, 0.35)' : 'rgba(59, 130, 246, 0.35)';
+      const isBat = str.solutionKey === 'battery' || str.isBattery;
+      const isOmb = !isBat && (str.solutionKey === 'ombriere' || (str.buildingType || '').toLowerCase().includes('ombriere'));
+      const strokeColor = isBat ? '#9333ea' : (isOmb ? '#059669' : '#2563eb');
+      const fillColor = isBat ? 'rgba(168, 85, 247, 0.35)' : (isOmb ? 'rgba(16, 185, 129, 0.35)' : 'rgba(59, 130, 246, 0.35)');
 
       ctx.save();
       // Polygone précis (rectangle de la construction parfaitement visible)
@@ -224,23 +225,64 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Faîtage médian
-      const ridgeStart = {
-        x: (pixelCorners[0].x + pixelCorners[3].x) / 2,
-        y: (pixelCorners[0].y + pixelCorners[3].y) / 2
-      };
-      const ridgeEnd = {
-        x: (pixelCorners[1].x + pixelCorners[2].x) / 2,
-        y: (pixelCorners[1].y + pixelCorners[2].y) / 2
-      };
-      ctx.beginPath();
-      ctx.setLineDash([4, 3]);
-      ctx.strokeStyle = isOmb ? '#10b981' : '#60a5fa';
-      ctx.lineWidth = 1.5;
-      ctx.moveTo(ridgeStart.x, ridgeStart.y);
-      ctx.lineTo(ridgeEnd.x, ridgeEnd.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      if (isBat) {
+        // Dessin des 4 armoires de batteries sur la dalle béton
+        for (let ci = 0; ci < 4; ci++) {
+          const t0 = (ci + 0.12) / 4;
+          const t1 = (ci + 0.88) / 4;
+          const p0 = {
+            x: pixelCorners[0].x + (pixelCorners[1].x - pixelCorners[0].x) * t0,
+            y: pixelCorners[0].y + (pixelCorners[1].y - pixelCorners[0].y) * t0
+          };
+          const p1 = {
+            x: pixelCorners[0].x + (pixelCorners[1].x - pixelCorners[0].x) * t1,
+            y: pixelCorners[0].y + (pixelCorners[1].y - pixelCorners[0].y) * t1
+          };
+          const p2 = {
+            x: pixelCorners[3].x + (pixelCorners[2].x - pixelCorners[3].x) * t1,
+            y: pixelCorners[3].y + (pixelCorners[2].y - pixelCorners[3].y) * t1
+          };
+          const p3 = {
+            x: pixelCorners[3].x + (pixelCorners[2].x - pixelCorners[3].x) * t0,
+            y: pixelCorners[3].y + (pixelCorners[2].y - pixelCorners[3].y) * t0
+          };
+
+          const c0 = { x: p0.x + (p3.x - p0.x) * 0.15, y: p0.y + (p3.y - p0.y) * 0.15 };
+          const c1 = { x: p1.x + (p2.x - p1.x) * 0.15, y: p1.y + (p2.y - p1.y) * 0.15 };
+          const c2 = { x: p1.x + (p2.x - p1.x) * 0.85, y: p1.y + (p2.y - p1.y) * 0.85 };
+          const c3 = { x: p0.x + (p3.x - p0.x) * 0.85, y: p0.y + (p3.y - p0.y) * 0.85 };
+
+          ctx.beginPath();
+          ctx.moveTo(c0.x, c0.y);
+          ctx.lineTo(c1.x, c1.y);
+          ctx.lineTo(c2.x, c2.y);
+          ctx.lineTo(c3.x, c3.y);
+          ctx.closePath();
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.strokeStyle = '#7e22ce';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      } else {
+        // Faîtage médian
+        const ridgeStart = {
+          x: (pixelCorners[0].x + pixelCorners[3].x) / 2,
+          y: (pixelCorners[0].y + pixelCorners[3].y) / 2
+        };
+        const ridgeEnd = {
+          x: (pixelCorners[1].x + pixelCorners[2].x) / 2,
+          y: (pixelCorners[1].y + pixelCorners[2].y) / 2
+        };
+        ctx.beginPath();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = isOmb ? '#10b981' : '#60a5fa';
+        ctx.lineWidth = 1.5;
+        ctx.moveTo(ridgeStart.x, ridgeStart.y);
+        ctx.lineTo(ridgeEnd.x, ridgeEnd.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       // Cotations architecturales en plan : SEULEMENT Longueur et Largeur sur les arêtes extérieures
       const strShowDim = showDimensions !== false;
@@ -946,6 +988,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [masseCapturedToast, setMasseCapturedToast] = useState({}); // { [strId]: string }
   const masseMapInstancesRef = useRef({});
   const captureStructureMasseMapRef = useRef(null);
+  const masseRotationDebounceRef = useRef(null);
 
   // Synchronisation des cotations personnalisées enregistrées sur le projet
   useEffect(() => {
@@ -1366,8 +1409,6 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
               ...nextList[bIdx],
               id: targetId,
               rotation: numRot,
-              masse_capture: null,
-              masse_capture_2: null
             };
             nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
             updated = true;
@@ -1377,7 +1418,23 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
       return updated ? nextSol : prev;
     });
-  }, []);
+
+    if (String(targetId).startsWith('bat') || solutionType === 'battery') {
+      setBatteryStorage(prev => ({ ...prev, rotation: numRot }));
+      setEditedProject(prev => ({
+        ...prev,
+        rotation: numRot,
+        batteryStorage: { ...(prev.batteryStorage || {}), rotation: numRot }
+      }));
+    }
+
+    if (masseRotationDebounceRef.current) clearTimeout(masseRotationDebounceRef.current);
+    masseRotationDebounceRef.current = setTimeout(() => {
+      if (typeof captureStructureMasseMapRef.current === 'function') {
+        captureStructureMasseMapRef.current(targetId, masseViewTabs[targetId] || 1);
+      }
+    }, 400);
+  }, [solutionType, masseViewTabs]);
 
   // Mise à jour des coordonnées GPS d'une structure quelconque depuis Carte DP2/PC2
   const handleMasseGpsUpdate = useCallback((targetId, newLat, newLng) => {
@@ -2806,10 +2863,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       const nextSol = { ...prev };
       let updated = false;
 
-      ['building', 'ombriere'].forEach(solKey => {
+      ['building', 'ombriere', 'battery'].forEach(solKey => {
         if (nextSol[solKey]?.buildings) {
           const bIdx = nextSol[solKey].buildings.findIndex(b => {
-            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : 'bat-') ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-1`;
+            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : (solKey === 'battery' ? 'bat-sa-' : 'bat-')) ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-1`;
             return b.id === targetId || currentId === targetId;
           });
           if (bIdx !== -1) {
@@ -2979,7 +3036,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     setSolutions(prev => {
       const nextSol = { ...prev };
-      ['building', 'ombriere'].forEach(solKey => {
+      ['building', 'ombriere', 'battery'].forEach(solKey => {
         if (nextSol[solKey]?.buildings) {
           nextSol[solKey] = {
             ...nextSol[solKey],
@@ -3044,10 +3101,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     setSolutions(prev => {
       const nextSol = { ...prev };
       let updated = false;
-      ['building', 'ombriere'].forEach(solKey => {
+      ['building', 'ombriere', 'battery'].forEach(solKey => {
         if (nextSol[solKey]?.buildings) {
           const nextList = nextSol[solKey].buildings.map(b => {
-            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : 'bat-') ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : 'bat'}-1`;
+            const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : (solKey === 'battery' ? 'bat-sa-' : 'bat-')) ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-1`;
             if (b.id === strId || currentId === strId) {
               updated = true;
               return { ...b, masse_show_dimensions: nextVal };
@@ -3420,6 +3477,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         // Conserver la capture active si elle existe (contient les tracés de cotes réalisés à l'étape Carte)
         masse1 = b.masse_capture;
       }
+      if (!masse1 && captures?.masse_projet) {
+        masse1 = captures.masse_projet;
+      }
+      if (!masse1 && editedProject?.urbanisme_captures?.masse_projet) {
+        masse1 = editedProject.urbanisme_captures.masse_projet;
+      }
+      if (!masse1 && editedProject?.masse_capture) {
+        masse1 = editedProject.masse_capture;
+      }
       if (!masse1) {
         masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, updatedBuildings, bShowDim, strDistances1);
       }
@@ -3442,6 +3508,12 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         }
         if (!masse2 && b.masse_capture_2) {
           masse2 = b.masse_capture_2;
+        }
+        if (!masse2 && captures?.masse_projet_2) {
+          masse2 = captures.masse_projet_2;
+        }
+        if (!masse2 && editedProject?.urbanisme_captures?.masse_projet_2) {
+          masse2 = editedProject.urbanisme_captures.masse_projet_2;
         }
         if (!masse2) {
           masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'map', bZoom2, updatedBuildings, bShowDim, strDistances2);
@@ -3471,7 +3543,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       ? Boolean(masseShowDimensions[buildingsWithMasse[0]?.id])
       : (buildingsWithMasse[0]?.masse_show_dimensions !== false);
     const b1Distances = masseDistances[buildingsWithMasse[0]?.id] || buildingsWithMasse[0]?.masseDistances || [];
-    const masseMap = buildingsWithMasse[0]?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 18, updatedBuildings, firstShowDim, b1Distances);
+    const masseMap = buildingsWithMasse[0]?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 18, updatedBuildings, firstShowDim, b1Distances);
     const masseMap2 = buildingsWithMasse[0]?.masse_capture_2 || null;
 
     const allBuildingsCaptures = updatedBuildings.reduce((acc, b) => ({
@@ -4339,6 +4411,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           batteryStorage={batteryStorage}
                           viewMode={viewMode}
                           showDimensions={config.showDimensions !== false}
+                          showCaptureButtons={false}
                           onCapture={(dataUrl) => {
                             setCaptures(prev => ({
                               ...prev,
@@ -4710,6 +4783,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 onCaptureViews={handleCaptureAll5ViewsPC5}
                                 onCaptureSnapshot={handleCaptureSnapshotPC5}
                                 height={270}
+                                showCaptureButtons={true}
                               />
                             );
                           }
@@ -5147,8 +5221,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 <div className="flex items-center gap-2">
                                   <input
                                     type="range"
-                                    min="-90"
-                                    max="90"
+                                    min={isBatteryStr ? "-180" : "-90"}
+                                    max={isBatteryStr ? "180" : "90"}
                                     step="1"
                                     value={sRot}
                                     onChange={(e) => handleMasseRotationUpdate(str.id, Number(e.target.value))}
@@ -5168,12 +5242,17 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
                                 {/* Raccourcis d'orientation compacts */}
                                 <div className="grid grid-cols-4 gap-1 pt-0.5">
-                                  {[
+                                  {(isBatteryStr ? [
+                                    { label: 'Sud', val: 0 },
+                                    { label: 'Ouest', val: 90 },
+                                    { label: 'Nord', val: 180 },
+                                    { label: 'Est', val: -90 },
+                                  ] : [
                                     { label: 'Ouest', val: 90 },
                                     { label: 'S-O', val: 45 },
                                     { label: 'S-E', val: -45 },
                                     { label: 'Est', val: -90 },
-                                  ].map(({ label, val }) => (
+                                  ]).map(({ label, val }) => (
                                     <button
                                       key={val}
                                       type="button"
@@ -6072,19 +6151,21 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                       </div>
                       <textarea
                         value={editedProject?.objet_travaux !== undefined ? editedProject.objet_travaux : (
-                          isDP
-                            ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
-                            : (isPC
-                              ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-                              : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque")
+                          (solutionType === 'battery' || (!isNoBattery && batteryStorage?.enabled))
+                            ? "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)"
+                            : (isDP
+                                ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
+                                : (isPC
+                                    ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+                                    : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque"))
                         )}
                         onChange={(e) => {
                           const val = e.target.value;
                           setEditedProject(prev => ({ ...prev, objet_travaux: val, description: val }));
                           handleFieldChange('objet_travaux', val);
                         }}
-                        placeholder={isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"}
-                        className="w-full flex-1 min-h-[220px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
+                        placeholder={(solutionType === 'battery' || (!isNoBattery && batteryStorage?.enabled)) ? "Ex: Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)" : (isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque")}
+                        className="w-full flex-1 min-h-[260px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner resize-none"
                       />
                     </div>
                   </div>

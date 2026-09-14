@@ -221,9 +221,9 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
     const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
         ? project.buildings
         : [{
-            name: isNoBattery ? (isAcama ? 'Bâtiment 1' : 'Ombrière 1') : 'Ombrière 1',
-            length: Number(project?.longueur || 30),
-            width: Number(project?.largeur || 20),
+            name: isNoBattery ? (isAcama ? 'Bâtiment 1' : 'Ombrière 1') : ((project?.isBattery || project?.solutionType === 'battery') ? 'Station Batteries Stand-Alone' : 'Ombrière 1'),
+            length: Number(project?.longueur || (project?.isBattery ? 6.20 : 30)),
+            width: Number(project?.largeur || (project?.isBattery ? 3.20 : 20)),
             masse_capture: captures?.masse_projet || captures?.satellite
         }];
 
@@ -249,16 +249,19 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                                 bW = Math.max(bW, 15);
                             }
                             const bArea = Math.round(bLen * bW);
-                            let bDisplayName = b.name || (isAcama ? `Bâtiment ${idx + 1}` : `Ombrière ${idx + 1}`);
+                            const isBatB = !isNoBattery && (b.isBattery || b.solutionType === 'battery' || project?.isBattery || project?.solutionType === 'battery');
+                            let bDisplayName = b.name || (isAcama ? `Bâtiment ${idx + 1}` : (isBatB ? 'Station Batteries Stand-Alone' : `Ombrière ${idx + 1}`));
                             if (isNoBattery) {
                                 bDisplayName = bDisplayName.replace(/Station Batteries[^\)]*\)?/gi, isAcama ? 'Bâtiment' : 'Ombrière');
                             }
-                            bDisplayName = bDisplayName
-                                .replace(/Bâtiment/gi, isAcama ? 'Bâtiment' : 'Ombrière')
-                                .replace(/Ombrière/gi, isAcama ? 'Bâtiment' : 'Ombrière')
-                                .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
-                                .trim();
-                            if (!bDisplayName) bDisplayName = isAcama ? `Bâtiment ${idx + 1}` : `Ombrière ${idx + 1}`;
+                            if (!isBatB) {
+                                bDisplayName = bDisplayName
+                                    .replace(/Bâtiment/gi, isAcama ? 'Bâtiment' : 'Ombrière')
+                                    .replace(/Ombrière/gi, isAcama ? 'Bâtiment' : 'Ombrière')
+                                    .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
+                                    .trim();
+                            }
+                            if (!bDisplayName) bDisplayName = isBatB ? 'Station Batteries Stand-Alone' : (isAcama ? `Bâtiment ${idx + 1}` : `Ombrière ${idx + 1}`);
 
                             const bZoomRaw = (viewNumber === 2 ? (b.masse_zoom_2 || project?.masse_zoom_2 || captures?.masse_zoom_2) : null) || b.masse_zoom || project?.masse_zoom || captures?.masse_zoom || (viewNumber === 2 ? 16 : 18);
                             const bZoom = viewNumber === 2 ? bZoomRaw : (Number(bZoomRaw) < 17 ? 18 : bZoomRaw);
@@ -281,7 +284,7 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.2mm', padding: '1mm 1.5mm', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '1.5mm', fontSize: '6.5pt', color: '#334155' }}>
                                         <div style={{ display: 'flex', gap: '2.5mm', flexWrap: 'wrap' }}>
                                             <span><strong>Cotation 3D :</strong> L={bLen.toFixed(1)}m × l={bW.toFixed(1)}m</span>
-                                            <span><strong>Altimétrie :</strong> Faîtage +{bRidge.toFixed(2)}m / Sablière +{bEave.toFixed(2)}m (TN 0.00m)</span>
+                                            <span><strong>Altimétrie :</strong> {isBatB ? `Hauteur max +${bEave.toFixed(2)}m (Dalle +0.15m / TN 0.00m)` : `Faîtage +${bRidge.toFixed(2)}m / Sablière +${bEave.toFixed(2)}m (TN 0.00m)`}</span>
                                         </div>
                                         <span style={{ fontWeight: 'bold', color: '#0f172a' }}>Nord ↑ | Cotes d'implantation</span>
                                     </div>
@@ -299,16 +302,19 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                         bW = Math.max(bW, 15);
                     }
                     const bArea = Math.round(bLen * bW);
-                    let bDisplayName = b?.name || (isAcama ? 'Bâtiment 1' : 'Ombrière 1');
+                    const isBatB = !isNoBattery && (b?.isBattery || b?.solutionType === 'battery' || project?.isBattery || project?.solutionType === 'battery');
+                    let bDisplayName = b?.name || (isAcama ? 'Bâtiment 1' : (isBatB ? 'Station Batteries Stand-Alone' : 'Ombrière 1'));
                     if (isNoBattery) {
                         bDisplayName = bDisplayName.replace(/Station Batteries[^\)]*\)?/gi, isAcama ? 'Bâtiment' : 'Ombrière');
                     }
-                    bDisplayName = bDisplayName
-                        .replace(/Bâtiment/gi, isAcama ? 'Bâtiment' : 'Ombrière')
-                        .replace(/Ombrière/gi, isAcama ? 'Bâtiment' : 'Ombrière')
-                        .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
-                        .trim();
-                    if (!bDisplayName) bDisplayName = isAcama ? 'Bâtiment 1' : 'Ombrière 1';
+                    if (!isBatB) {
+                        bDisplayName = bDisplayName
+                            .replace(/Bâtiment/gi, isAcama ? 'Bâtiment' : 'Ombrière')
+                            .replace(/Ombrière/gi, isAcama ? 'Bâtiment' : 'Ombrière')
+                            .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
+                            .trim();
+                    }
+                    if (!bDisplayName) bDisplayName = isBatB ? 'Station Batteries Stand-Alone' : (isAcama ? 'Bâtiment 1' : 'Ombrière 1');
 
                     const bZoomRaw = (viewNumber === 2 ? (b?.masse_zoom_2 || project?.masse_zoom_2 || captures?.masse_zoom_2) : null) || b?.masse_zoom || project?.masse_zoom || captures?.masse_zoom || (viewNumber === 2 ? 16 : 18);
                     const bZoom = viewNumber === 2 ? bZoomRaw : (Number(bZoomRaw) < 17 ? 18 : bZoomRaw);
@@ -332,7 +338,7 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                                 <div style={{ display: 'flex', gap: '3.5mm' }}>
                                     <span><strong>1. Longueur :</strong> {bLen.toFixed(1)} m</span>
                                     <span><strong>2. Largeur :</strong> {bW.toFixed(1)} m (Emprise : {bArea} m²)</span>
-                                    <span><strong>3. Altimétrie :</strong> Faîtage +{bRidge.toFixed(2)} m | Sablière +{bEave.toFixed(2)} m (TN = 0.00 m)</span>
+                                    <span><strong>3. Altimétrie :</strong> {isBatB ? `Hauteur max +${bEave.toFixed(2)} m (Dalle +0.15m / TN 0.00m)` : `Faîtage +${bRidge.toFixed(2)} m | Sablière +${bEave.toFixed(2)} m (TN = 0.00 m)`}</span>
                                 </div>
                                 <div style={{ display: 'flex', gap: '3mm', fontWeight: 'bold' }}>
                                     <span style={{ color: '#0f172a' }}>Orientation : N ↑</span>
