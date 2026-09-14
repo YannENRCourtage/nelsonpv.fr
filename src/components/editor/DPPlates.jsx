@@ -55,7 +55,7 @@ export const SafePlateImage = ({ src, alt = '', style = {}, className = '' }) =>
 export const PlateHeader = ({ title, project, showBranding }) => {
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
-    const isNoBattery = isAcama || isGreenInvest;
+    const isNoBattery = isAcama;
 
     const names = resolveDemandeurNames(project);
     let clientFullName = project?.clientFullName || (names.lastName ? `${names.lastName} ${names.firstName}`.trim() : (project?.clientName || project?.name || 'Demandeur'));
@@ -110,7 +110,7 @@ export const Footer = ({ project }) => (
 export const PlateCover = ({ project, installationType }) => {
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
-    const isNoBattery = isAcama || isGreenInvest;
+    const isNoBattery = isAcama;
     const typeInfo = getInstallationTypeInfo(isNoBattery ? 'batiment_solaire' : (installationType || project?.type || 'batiment_solaire'), project?.kwc || project?.projectSize, isNoBattery);
     
     const names = resolveDemandeurNames(project);
@@ -216,7 +216,7 @@ export const PlateSituation = ({ project, captures }) => {
 export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
-    const isNoBattery = isAcama || isGreenInvest;
+    const isNoBattery = isAcama;
 
     const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
         ? project.buildings
@@ -355,7 +355,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     // Détection stricte du type d'ouvrage
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
-    const isNoBattery = isAcama || isGreenInvest;
+    const isNoBattery = isAcama;
 
     let longueur = project?.longueur || project?.length || '30.0';
     let largeur = parseFloat(project?.largeur || project?.width || 20.0);
@@ -1012,7 +1012,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
 export const PlateCoupe = ({ project, captures, noticeText, includeNotice = false }) => {
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
-    const isNoBattery = isAcama || isGreenInvest;
+    const isNoBattery = isAcama;
 
     const hasNotice = Boolean(includeNotice || project?.includeNotice || project?.hasNotice);
     const rawNoticeText = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description;
@@ -1066,7 +1066,7 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
 export const PlateCoupeMulti = ({ project, buildings = [] }) => {
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
-    const isNoBattery = isAcama || isGreenInvest;
+    const isNoBattery = isAcama;
 
     const bList = (buildings && buildings.length > 0) ? buildings : (project?.buildings || [project]);
     const b1 = bList[0] || project;
@@ -1138,7 +1138,7 @@ export const PlateCoupeMulti = ({ project, buildings = [] }) => {
 export const PlateNoticeDedicated = ({ project, noticeText }) => {
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
-    const isNoBattery = isAcama || isGreenInvest;
+    const isNoBattery = isAcama;
 
     const rawNotice = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description || '';
     let cleanNotice = rawNotice.replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
@@ -1179,11 +1179,12 @@ export const PlateSection = PlateCoupe;
  */
 export const PlateFacades = ({ project, captures }) => {
     const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
-    const sud = safeCaptures.facade_sud || safeCaptures.facades_projet;
-    const nord = safeCaptures.facade_nord;
-    const est = safeCaptures.facade_est;
-    const ouest = safeCaptures.facade_ouest;
-    const toiture = safeCaptures.vue_couverture || safeCaptures.toiture;
+    const safePhotos = project?.photos || project?.pc_photos || {};
+    const sud = safeCaptures.facade_sud || safeCaptures.facades_projet || safeCaptures.sud || safePhotos.facade_sud || safePhotos.sud || project?.facade_sud;
+    const nord = safeCaptures.facade_nord || safeCaptures.nord || safePhotos.facade_nord || safePhotos.nord || project?.facade_nord;
+    const est = safeCaptures.facade_est || safeCaptures.est || safePhotos.facade_est || safePhotos.est || project?.facade_est;
+    const ouest = safeCaptures.facade_ouest || safeCaptures.ouest || safePhotos.facade_ouest || safePhotos.ouest || project?.facade_ouest;
+    const toiture = safeCaptures.vue_couverture || safeCaptures.toiture || safeCaptures.dessus || safeCaptures.section || safePhotos.vue_couverture || safePhotos.dessus || project?.vue_couverture;
 
     const renderSlot = (src, alt, label) => {
         if (src) {

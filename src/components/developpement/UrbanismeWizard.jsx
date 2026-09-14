@@ -265,7 +265,7 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
         if (len > 0) {
           const nx = -dy / len;
           const ny = dx / len;
-          const wLen = 7;
+          const wLen = 3.5;
 
           ctx.save();
           // Ligne de cote rouge pointillée
@@ -277,7 +277,7 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
           ctx.lineTo(pt2.x, pt2.y);
           ctx.stroke();
 
-          // Témoins perpendiculaires aux deux extrémités
+          // Témoins perpendiculaires aux deux extrémités (longueur réduite)
           ctx.setLineDash([]);
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -287,28 +287,22 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
           ctx.lineTo(pt2.x + nx * wLen, pt2.y + ny * wLen);
           ctx.stroke();
 
-          // Badge de mesure au centre de la cote
+          // Mesure au centre de la cote (sans bulle rouge)
           const midX = (pt1.x + pt2.x) / 2;
           const midY = (pt1.y + pt2.y) / 2;
-          const text = `${Number(d.meters).toFixed(1)} M`;
+          const text = `${Number(d.meters).toFixed(1)} m`;
           ctx.font = 'bold 11px monospace';
-          const tWidth = ctx.measureText(text).width;
-          const bW = tWidth + 12;
-          const bH = 18;
-
-          ctx.fillStyle = '#b91c1c';
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(midX - bW / 2, midY - bH / 2, bW, bH, 4);
-          else ctx.rect(midX - bW / 2, midY - bH / 2, bW, bH);
-          ctx.fill();
-          ctx.stroke();
-
-          ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(text, midX, midY + 0.5);
+
+          // Contour blanc pour lisibilité maximale
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#ffffff';
+          ctx.strokeText(text, midX, midY);
+
+          // Texte en rouge
+          ctx.fillStyle = '#dc2626';
+          ctx.fillText(text, midX, midY);
           ctx.restore();
         }
       });
@@ -570,16 +564,23 @@ function MasseDistanceLayer({ distances = [], onRemoveDistance }) {
         const p2 = d.p2;
         const midLat = (p1[0] + p2[0]) / 2;
         const midLng = (p1[1] + p2[1]) / 2;
+        const cosLat = Math.cos((midLat * Math.PI) / 180);
 
-        const dLat = p2[0] - p1[0];
-        const dLng = p2[1] - p1[1];
-        const len = Math.hypot(dLat, dLng);
+        // Vecteurs en mètres pour garantir une perpendicularité rigoureuse sur la projection Mercator
+        const dyMeters = (p2[0] - p1[0]) * 111111;
+        const dxMeters = (p2[1] - p1[1]) * 111111 * cosLat;
+        const lenMeters = Math.hypot(dxMeters, dyMeters);
+
         let tLat = 0;
         let tLng = 0;
-        if (len > 0) {
-          const witnessSize = 0.000035;
-          tLat = (-dLng / len) * witnessSize;
-          tLng = (dLat / len) * witnessSize;
+        if (lenMeters > 0) {
+          // Témoins d'extrémités discrets et courts (~1.2m de demi-longueur, soit ~2.4m total)
+          const witnessHalfMeters = 1.2;
+          const perpX = -dyMeters / lenMeters;
+          const perpY = dxMeters / lenMeters;
+
+          tLat = (perpY * witnessHalfMeters) / 111111;
+          tLng = (perpX * witnessHalfMeters) / (111111 * cosLat);
         }
 
         const w1 = [[p1[0] - tLat, p1[1] - tLng], [p1[0] + tLat, p1[1] + tLng]];
@@ -594,7 +595,7 @@ function MasseDistanceLayer({ distances = [], onRemoveDistance }) {
               position={[midLat, midLng]}
               icon={L.divIcon({
                 className: 'bg-transparent',
-                html: `<div style="transform: translate(-50%, -50%); background: #b91c1c; color: #ffffff; padding: 2px 7px; border-radius: 6px; font-weight: 900; font-size: 11px; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,0.4); border: 1.5px solid #ffffff; display: flex; align-items: center; gap: 5px; font-family: monospace; letter-spacing: 0.5px; cursor: pointer;"><span>${Number(d.meters).toFixed(1)} M</span><span title="Supprimer la côte" style="background: rgba(0,0,0,0.3); border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1;">&times;</span></div>`,
+                html: `<div style="transform: translate(-50%, -50%); color: #dc2626; font-weight: 900; font-size: 11px; white-space: nowrap; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 3px #fff, 0 0 5px #fff; display: flex; align-items: center; gap: 4px; font-family: monospace; letter-spacing: 0.5px; cursor: pointer; user-select: none;"><span>${Number(d.meters).toFixed(1)} m</span><span title="Supprimer la côte" style="background: #dc2626; color: #ffffff; border-radius: 50%; width: 13px; height: 13px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; line-height: 1; text-shadow: none; box-shadow: 0 1px 2px rgba(0,0,0,0.3);">&times;</span></div>`,
                 iconSize: [0, 0]
               })}
               eventHandlers={{
@@ -668,7 +669,7 @@ function MasseDistanceDrawer({ isMeasuring, onAddDistance }) {
         position={[midLat, midLng]}
         icon={L.divIcon({
           className: 'bg-transparent',
-          html: `<div style="transform: translate(-50%, -50%); background: #ea580c; color: white; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.3); border: 1px solid white;">${liveDist.toFixed(1)} M</div>`,
+          html: `<div style="transform: translate(-50%, -50%); color: #ea580c; font-weight: 900; font-size: 11px; white-space: nowrap; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 3px #fff; font-family: monospace;">${liveDist.toFixed(1)} m</div>`,
           iconSize: [0, 0]
         })}
         interactive={false}
@@ -865,7 +866,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const { activeTenantId, user } = useAuth() || {};
   const isAcama = activeTenantId === 'acama' || project?.tenantId === 'acama' || Boolean(project?.isAcama);
   const isGreenInvest = activeTenantId === 'green-invest' || activeTenantId === 'greeninvest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest' || Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest';
-  const isNoBattery = isAcama || isGreenInvest;
+  const isNoBattery = isAcama;
   
   // Zustand Store du Configurateur Nelson
   const config = useConfiguratorValues();
@@ -944,6 +945,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [masseLockedMaps, setMasseLockedMaps] = useState({}); // { [strId]: boolean } - true par défaut (carte fixe)
   const [masseCapturedToast, setMasseCapturedToast] = useState({}); // { [strId]: string }
   const masseMapInstancesRef = useRef({});
+  const captureStructureMasseMapRef = useRef(null);
 
   // Synchronisation des cotations personnalisées enregistrées sur le projet
   useEffect(() => {
@@ -963,7 +965,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       return next;
     });
     setMeasuringMasseStrId(null);
-  }, []);
+    setTimeout(() => {
+      if (typeof captureStructureMasseMapRef.current === 'function') {
+        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+      }
+    }, 150);
+  }, [masseViewTabs]);
 
   const handleRemoveMasseDistance = useCallback((strId, distId) => {
     setMasseDistances(prev => {
@@ -975,7 +982,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       }));
       return next;
     });
-  }, []);
+    setTimeout(() => {
+      if (typeof captureStructureMasseMapRef.current === 'function') {
+        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+      }
+    }, 150);
+  }, [masseViewTabs]);
 
   const handleClearMasseDistances = useCallback((strId) => {
     setMasseDistances(prev => {
@@ -986,7 +998,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       }));
       return next;
     });
-  }, []);
+    setTimeout(() => {
+      if (typeof captureStructureMasseMapRef.current === 'function') {
+        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+      }
+    }, 150);
+  }, [masseViewTabs]);
 
   const handleToggleMasseLock = useCallback((strId) => {
     setMasseLockedMaps(prev => ({
@@ -2880,7 +2897,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     // 2. Fallback de haute précision : génération statique sans faille (AutoMapService)
     if (!dataUrl) {
-      dataUrl = await generateStaticMapImage(cLat, cLng, 'map', cZoom, activeList, showDim);
+      const strDistances = masseDistances[strId] || targetStr?.masseDistances || [];
+      dataUrl = await generateStaticMapImage(cLat, cLng, 'map', cZoom, activeList, showDim, strDistances);
     }
 
     if (dataUrl) {
@@ -2889,6 +2907,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     }
     return null;
   }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs, masseDistances]);
+
+  useEffect(() => {
+    captureStructureMasseMapRef.current = captureStructureMasseMap;
+  }, [captureStructureMasseMap]);
 
   // Bascule active entre la Vue 1 et la Vue 2 d'une structure
   const handleSwitchMasseView = useCallback(async (strId, targetViewNum) => {
@@ -3144,15 +3166,24 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
   const handleCaptureAll5ViewsPC5 = (fiveViewsObj) => {
     if (!fiveViewsObj) return;
+    const normalized = {
+      ...fiveViewsObj,
+      facade_sud: fiveViewsObj.facade_sud || fiveViewsObj.sud,
+      facade_nord: fiveViewsObj.facade_nord || fiveViewsObj.nord,
+      facade_est: fiveViewsObj.facade_est || fiveViewsObj.est,
+      facade_ouest: fiveViewsObj.facade_ouest || fiveViewsObj.ouest,
+      vue_couverture: fiveViewsObj.vue_couverture || fiveViewsObj.toiture || fiveViewsObj.dessus,
+      facades_projet: fiveViewsObj.facades_projet || fiveViewsObj.facade_sud || fiveViewsObj.sud
+    };
     const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
     if (activeBuildingIndex === 0) {
-      setCaptures(prev => ({ ...prev, ...fiveViewsObj, facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture }));
+      setCaptures(prev => ({ ...prev, ...normalized, facades_projet: normalized.facade_sud || normalized.vue_couverture }));
       setEditedProject(prev => ({
         ...prev,
         urbanisme_captures: { 
           ...(prev.urbanisme_captures || {}), 
-          ...fiveViewsObj, 
-          facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture 
+          ...normalized, 
+          facades_projet: normalized.facade_sud || normalized.vue_couverture 
         }
       }));
     }
@@ -3161,13 +3192,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       if (updated[activeBuildingIndex]) {
         updated[activeBuildingIndex].captures = {
           ...(updated[activeBuildingIndex].captures || {}),
-          ...fiveViewsObj,
-          facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture || updated[activeBuildingIndex].captures?.facades_projet
+          ...normalized,
+          facades_projet: normalized.facade_sud || normalized.vue_couverture || updated[activeBuildingIndex].captures?.facades_projet
         };
       }
       return updated;
     });
-    Object.entries(fiveViewsObj).forEach(([k, v]) => {
+    Object.entries(normalized).forEach(([k, v]) => {
       if (v) persistMediaItem(bKey, k, v, 'captures');
     });
   };
@@ -3379,16 +3410,18 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         ? Boolean(masseShowDimensions[b.id])
         : (b.masse_show_dimensions !== false);
 
-      // --- VUE 1 : TOUJOURS fraîchement régénérée avec le zoom exact (>= 18) et les côtes ---
+      // --- VUE 1 : Plan de masse avec zoom exact et cotations / mesures personnalisées ---
+      const strDistances1 = masseDistances[b.id] || b.masseDistances || [];
       let masse1 = null;
       if (isView1OnMap) {
-        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, masseDistances[b.id] || b.masseDistances || []);
+        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances1);
       }
-      if (!masse1) {
-        masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, updatedBuildings, bShowDim);
-      }
-      if (!masse1) {
+      if (!masse1 && b.masse_capture) {
+        // Conserver la capture active si elle existe (contient les tracés de cotes réalisés à l'étape Carte)
         masse1 = b.masse_capture;
+      }
+      if (!masse1) {
+        masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, updatedBuildings, bShowDim, strDistances1);
       }
 
       // --- VUE 2 (si demandée) ---
@@ -3399,18 +3432,19 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       let bCenterLng2 = Number(b.masse_center_lng_2 || bLng);
 
       if (wantsVue2) {
+        const strDistances2 = masseDistances[b.id] || b.masseDistances || [];
         const isView2OnMap = map && masseViewTabs[b.id] === 2;
         if (isView2OnMap) {
           bZoom2 = Number(map.getZoom() || bZoom2);
           bCenterLat2 = Number(map.getCenter().lat || bCenterLat2);
           bCenterLng2 = Number(map.getCenter().lng || bCenterLng2);
-          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, masseDistances[b.id] || b.masseDistances || []);
+          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances2);
         }
-        if (!masse2) {
-          masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'map', bZoom2, updatedBuildings, bShowDim);
-        }
-        if (!masse2) {
+        if (!masse2 && b.masse_capture_2) {
           masse2 = b.masse_capture_2;
+        }
+        if (!masse2) {
+          masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'map', bZoom2, updatedBuildings, bShowDim, strDistances2);
         }
       }
 
@@ -3436,7 +3470,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const firstShowDim = masseShowDimensions[buildingsWithMasse[0]?.id] !== undefined
       ? Boolean(masseShowDimensions[buildingsWithMasse[0]?.id])
       : (buildingsWithMasse[0]?.masse_show_dimensions !== false);
-    const masseMap = buildingsWithMasse[0]?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 18, updatedBuildings, firstShowDim);
+    const b1Distances = masseDistances[buildingsWithMasse[0]?.id] || buildingsWithMasse[0]?.masseDistances || [];
+    const masseMap = buildingsWithMasse[0]?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 18, updatedBuildings, firstShowDim, b1Distances);
     const masseMap2 = buildingsWithMasse[0]?.masse_capture_2 || null;
 
     const allBuildingsCaptures = updatedBuildings.reduce((acc, b) => ({

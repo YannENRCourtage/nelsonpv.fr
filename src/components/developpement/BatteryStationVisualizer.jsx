@@ -179,8 +179,23 @@ export default function BatteryStationVisualizer({
       gl.render(scene, camera);
       views.dessus = gl.domElement.toDataURL('image/jpeg', 0.95);
 
+      const allViews = {
+        facade_sud: views.sud,
+        facade_nord: views.nord,
+        facade_est: views.est,
+        facade_ouest: views.ouest,
+        vue_couverture: views.dessus,
+        toiture: views.dessus,
+        facades_projet: views.sud,
+        sud: views.sud,
+        nord: views.nord,
+        est: views.est,
+        ouest: views.ouest,
+        dessus: views.dessus
+      };
+
       if (onCaptureViews) {
-        onCaptureViews(views);
+        onCaptureViews(allViews);
       }
       if (onCapture) {
         onCapture(views.sud);
@@ -199,33 +214,33 @@ export default function BatteryStationVisualizer({
 
   return (
     <div
-      className={`relative w-full h-full min-h-[480px] rounded-2xl overflow-hidden bg-slate-950 flex flex-col border border-slate-800 shadow-xl ${className}`}
+      className={`relative w-full h-full min-h-[480px] rounded-2xl overflow-hidden bg-white flex flex-col border border-slate-200 shadow-xl ${className}`}
       style={{ height: typeof height === 'number' ? `${height}px` : (height || '100%') }}
     >
       {/* 1. BARRE SUPÉRIEURE : SÉLECTEUR DE MODE 3D / 2D FAÇADE / PLAN DE MASSE */}
       <div className="absolute top-2.5 left-2.5 right-2.5 z-30 flex items-center justify-between pointer-events-none">
         {/* Badge informatif */}
-        <div className="bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/80 shadow-md flex items-center gap-2 pointer-events-auto">
-          <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-          <span className="text-[11px] font-extrabold text-white">
+        <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 shadow-md flex items-center gap-2 pointer-events-auto">
+          <div className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
+          <span className="text-[11px] font-extrabold text-slate-800">
             {internalMode === '3D' && 'Vue 3D Libre (Rotation 360°)'}
             {internalMode === '2D_FRONT' && 'Vue 2D Façade Sud (Élévation technique)'}
             {internalMode === '2D_TOP' && 'Plan de masse (Vue zénithale / Emprise sol)'}
           </span>
-          <span className="text-[10px] text-purple-300 font-bold bg-purple-900/50 px-2 py-0.5 rounded-md border border-purple-700/40">
+          <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
             {dLen}m × {dWid}m ({dArea} m²)
           </span>
         </div>
 
         {/* Boutons de bascule des 3 modes */}
-        <div className="flex gap-1 bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-slate-700/80 shadow-md pointer-events-auto">
+        <div className="flex gap-1 bg-white/95 backdrop-blur-md p-1 rounded-xl border border-slate-200 shadow-md pointer-events-auto">
           <button
             type="button"
             onClick={() => setInternalMode('3D')}
             className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${
               internalMode === '3D'
                 ? 'bg-purple-600 text-white shadow-xs'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <RotateCw className="w-3 h-3" />
@@ -237,11 +252,11 @@ export default function BatteryStationVisualizer({
             className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${
               internalMode === '2D_FRONT'
                 ? 'bg-purple-600 text-white shadow-xs'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <Eye className="w-3 h-3" />
-            <span>Vue 2D Façade</span>
+            <span>Façade Sud</span>
           </button>
           <button
             type="button"
@@ -249,11 +264,11 @@ export default function BatteryStationVisualizer({
             className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${
               internalMode === '2D_TOP'
                 ? 'bg-purple-600 text-white shadow-xs'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <Layers className="w-3 h-3" />
-            <span>Plan de masse</span>
+            <span>Plan Masse</span>
           </button>
         </div>
       </div>
@@ -263,17 +278,17 @@ export default function BatteryStationVisualizer({
       {internalMode === '2D_FRONT' && showDimensions && (
         <div className="absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-4">
           {/* Cotation Longueur dalle en haut */}
-          <div className="mx-auto mt-12 bg-slate-900/85 backdrop-blur-xs px-3 py-1 rounded-lg border border-purple-500/50 text-[11px] font-black text-purple-300 shadow-md flex items-center gap-2">
+          <div className="mx-auto mt-12 bg-white/95 backdrop-blur-xs px-3 py-1 rounded-lg border border-purple-300 text-[11px] font-black text-purple-700 shadow-md flex items-center gap-2">
             <span>&larr;</span>
             <span>Longueur Dalle : {dLen.toFixed(2)} M (4 armoires CESC 261)</span>
             <span>&rarr;</span>
           </div>
 
           {/* Cotation Hauteur armoire & clôture sur le flanc gauche */}
-          <div className="absolute left-6 top-1/2 -translate-y-1/2 bg-slate-900/85 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-purple-500/50 text-[10px] font-black text-purple-300 shadow-md flex flex-col items-center">
+          <div className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-purple-300 text-[10px] font-black text-purple-700 shadow-md flex flex-col items-center">
             <span>&uarr;</span>
             <span>H: 2.38 M</span>
-            <span className="text-[9px] text-slate-400 font-semibold">(Clôture 2.00M)</span>
+            <span className="text-[9px] text-slate-500 font-semibold">(Clôture 2.00M)</span>
             <span>&darr;</span>
           </div>
         </div>
@@ -290,14 +305,14 @@ export default function BatteryStationVisualizer({
 
           {/* Cotations architecturales en filigrane */}
           {showDimensions && (
-            <div className="mt-14 ml-4 bg-slate-900/85 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-purple-500/40 text-[10px] font-bold text-slate-200 shadow-md max-w-xs space-y-0.5">
-              <div className="text-purple-400 font-extrabold text-[11px]">
+            <div className="mt-14 ml-4 bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-purple-200 text-[10px] font-bold text-slate-700 shadow-md max-w-xs space-y-0.5">
+              <div className="text-purple-700 font-extrabold text-[11px]">
                 Emprise au sol : {dLen.toFixed(2)}m × {dWid.toFixed(2)}m = {dArea} m²
               </div>
-              <div className="text-slate-400 text-[9px]">
+              <div className="text-slate-500 text-[9px]">
                 Dalle béton armé 0.20m • {qty} armoires 1.15m × 1.44m • Portillon technique Ouest
               </div>
-              <div className="text-emerald-400 font-extrabold text-[9px]">
+              <div className="text-emerald-600 font-extrabold text-[9px]">
                 ✓ Conforme Déclaration Préalable (&lt; 20 m²)
               </div>
             </div>
@@ -313,7 +328,7 @@ export default function BatteryStationVisualizer({
           camera={{ position: [dLen * 0.95, 3.8, dWid * 2.2], fov: 40 }}
           style={{ width: '100%', height: '100%' }}
         >
-          <color attach="background" args={['#090d16']} />
+          <color attach="background" args={['#ffffff']} />
           <ambientLight intensity={0.9} />
           <directionalLight
             position={[40, 50, 30]}
@@ -364,7 +379,7 @@ export default function BatteryStationVisualizer({
       {/* 4. BARRE INFÉRIEURE : CONTRÔLES & ACTIONS */}
       <div className="absolute bottom-2.5 left-2.5 right-2.5 z-30 flex items-center justify-between pointer-events-none">
         {/* Toggle Clôture */}
-        <label className="bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/80 text-xs font-bold text-slate-300 flex items-center gap-2 cursor-pointer pointer-events-auto hover:bg-slate-800 transition-colors shadow-md">
+        <label className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 flex items-center gap-2 cursor-pointer pointer-events-auto hover:bg-slate-50 transition-colors shadow-sm">
           <input
             type="checkbox"
             checked={showFence}
@@ -386,10 +401,10 @@ export default function BatteryStationVisualizer({
           <button
             type="button"
             onClick={handleCaptureCurrent}
-            className="px-3 py-1.5 bg-slate-800/90 hover:bg-slate-700 text-white text-xs font-bold rounded-xl border border-slate-600 shadow-md flex items-center gap-1.5 transition-all"
+            className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold rounded-xl border border-slate-200 shadow-sm flex items-center gap-1.5 transition-all"
             title="Capturer l'angle courant"
           >
-            <Camera className="w-3.5 h-3.5 text-purple-400" />
+            <Camera className="w-3.5 h-3.5 text-purple-600" />
             <span>Capturer cette vue</span>
           </button>
 

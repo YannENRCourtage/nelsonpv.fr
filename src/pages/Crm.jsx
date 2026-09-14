@@ -120,8 +120,7 @@ import DuplicateProjectModal from '@/components/DuplicateProjectModal.jsx';
 
 export default function Crm() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { projects, setProjects } = useProjects();
+  const { projects, setProjects, refreshProjects } = useProjects();
   const { user, activeTenantId } = useAuth();
 
   // États principaux
@@ -247,6 +246,10 @@ export default function Crm() {
         // Auto-Deduplication silencieuse pour les admins
         if (user?.role === 'admin') {
           handleDeduplicateContacts(true, validContacts, projsData); 
+        }
+
+        if (projsData && projsData.length > 0) {
+          setProjects(projsData);
         }
 
         setContacts(validContacts);

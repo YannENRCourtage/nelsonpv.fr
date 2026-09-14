@@ -69,7 +69,7 @@ export default function Developpement() {
   const { user, activeTenantId } = useAuth();
   const isAcama = activeTenantId === 'acama';
   const isGreenInvest = activeTenantId === 'green-invest' || activeTenantId === 'greeninvest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
-  const isNoBattery = isAcama || isGreenInvest;
+  const isNoBattery = isAcama;
   const [activeSection, setActiveSection] = useState('dossiers');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {

@@ -154,7 +154,7 @@ async function drawCoverPage(doc, project, type, installationType) {
   }
   const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
   const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
-  const isNoBattery = isAcama || isGreenInvest;
+  const isNoBattery = isAcama;
   if (!isNoBattery && !isBattery && project?.batteryStorage?.enabled) {
     installCode += ' + Stockage batterie';
   }

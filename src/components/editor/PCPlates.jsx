@@ -1256,11 +1256,12 @@ export const PlateNotice = (props) => <PlateSectionAndNotice {...props} />;
  */
 export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => {
     const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
-    const sud = safeCaptures.facade_sud || safeCaptures.facades_projet || project?.urbanisme_captures?.facade_sud || project?.captures?.facade_sud || project?.facade_sud;
-    const nord = safeCaptures.facade_nord || project?.urbanisme_captures?.facade_nord || project?.captures?.facade_nord || project?.facade_nord;
-    const est = safeCaptures.facade_est || project?.urbanisme_captures?.facade_est || project?.captures?.facade_est || project?.facade_est;
-    const ouest = safeCaptures.facade_ouest || project?.urbanisme_captures?.facade_ouest || project?.captures?.facade_ouest || project?.facade_ouest;
-    const toiture = safeCaptures.vue_couverture || safeCaptures.toiture || project?.urbanisme_captures?.vue_couverture || project?.captures?.vue_couverture || project?.vue_couverture;
+    const safePhotos = project?.photos || project?.pc_photos || {};
+    const sud = safeCaptures.facade_sud || safeCaptures.facades_projet || safeCaptures.sud || safePhotos.facade_sud || safePhotos.sud || project?.urbanisme_captures?.facade_sud || project?.captures?.facade_sud || project?.facade_sud;
+    const nord = safeCaptures.facade_nord || safeCaptures.nord || safePhotos.facade_nord || safePhotos.nord || project?.urbanisme_captures?.facade_nord || project?.captures?.facade_nord || project?.facade_nord;
+    const est = safeCaptures.facade_est || safeCaptures.est || safePhotos.facade_est || safePhotos.est || project?.urbanisme_captures?.facade_est || project?.captures?.facade_est || project?.facade_est;
+    const ouest = safeCaptures.facade_ouest || safeCaptures.ouest || safePhotos.facade_ouest || safePhotos.ouest || project?.urbanisme_captures?.facade_ouest || project?.captures?.facade_ouest || project?.facade_ouest;
+    const toiture = safeCaptures.vue_couverture || safeCaptures.toiture || safeCaptures.dessus || safeCaptures.section || safePhotos.vue_couverture || safePhotos.dessus || project?.urbanisme_captures?.vue_couverture || project?.captures?.vue_couverture || project?.vue_couverture;
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-facades">

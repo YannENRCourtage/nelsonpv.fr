@@ -60,7 +60,7 @@ function getBuildingCorners(centerLat, centerLng, lengthMeters, widthMeters, rot
  * @param {number} zoom Level de zoom (16-17 pour situation, 19 pour plan de masse)
  * @returns {Promise<string>} Data URL Image JPEG (data:image/jpeg;base64,...)
  */
-export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, buildings = null, showDimensions = true) {
+export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, buildings = null, showDimensions = true, distances = []) {
   return new Promise((resolve) => {
     try {
       const width = 800;
@@ -267,6 +267,72 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
 
             ctx.restore();
           });
+
+          // Rendu des tracés de distance personnalisés (côtes DP2 / PC2)
+          if (distances && Array.isArray(distances) && distances.length > 0) {
+            const nZoom = Math.pow(2, currentZoom);
+            distances.forEach(d => {
+              if (!d.p1 || !d.p2) return;
+              const p1x = ((d.p1[1] + 180) / 360) * nZoom;
+              const rad1 = (d.p1[0] * Math.PI) / 180;
+              const p1y = ((1 - Math.log(Math.tan(rad1) + 1 / Math.cos(rad1)) / Math.PI) / 2) * nZoom;
+
+              const p2x = ((d.p2[1] + 180) / 360) * nZoom;
+              const rad2 = (d.p2[0] * Math.PI) / 180;
+              const p2y = ((1 - Math.log(Math.tan(rad2) + 1 / Math.cos(rad2)) / Math.PI) / 2) * nZoom;
+
+              const pt1 = {
+                x: centerX + (p1x - exactX) * tileSize,
+                y: centerY + (p1y - exactY) * tileSize
+              };
+              const pt2 = {
+                x: centerX + (p2x - exactX) * tileSize,
+                y: centerY + (p2y - exactY) * tileSize
+              };
+
+              const dx = pt2.x - pt1.x;
+              const dy = pt2.y - pt1.y;
+              const len = Math.hypot(dx, dy);
+              if (len > 0) {
+                const nx = -dy / len;
+                const ny = dx / len;
+                const wLen = 3.5;
+
+                ctx.save();
+                ctx.strokeStyle = '#dc2626';
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([5, 4]);
+                ctx.beginPath();
+                ctx.moveTo(pt1.x, pt1.y);
+                ctx.lineTo(pt2.x, pt2.y);
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(pt1.x - nx * wLen, pt1.y - ny * wLen);
+                ctx.lineTo(pt1.x + nx * wLen, pt1.y + ny * wLen);
+                ctx.moveTo(pt2.x - nx * wLen, pt2.y - ny * wLen);
+                ctx.lineTo(pt2.x + nx * wLen, pt2.y + ny * wLen);
+                ctx.stroke();
+
+                const midX = (pt1.x + pt2.x) / 2;
+                const midY = (pt1.y + pt2.y) / 2;
+                const text = `${Number(d.meters).toFixed(1)} m`;
+                ctx.font = 'bold 11px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#ffffff';
+                ctx.strokeText(text, midX, midY);
+
+                ctx.fillStyle = '#dc2626';
+                ctx.fillText(text, midX, midY);
+                ctx.restore();
+              }
+            });
+          }
 
           // Flèche Nord officielle en haut à droite
           drawNorthArrow(ctx, width - 42, 42, 22);

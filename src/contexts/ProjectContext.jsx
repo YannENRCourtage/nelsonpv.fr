@@ -67,19 +67,31 @@ export function ProjectProvider({ children }) {
     });
   }, []);
 
-  // Subscription to real-time updates from Firestore — re-subscribe on tenant change
+  // Subscription to real-time updates from Firestore — re-subscribe on tenant change or auth resolution
   useEffect(() => {
     let unsubscribe = () => { };
+
+    if (!user) {
+      return;
+    }
 
     const setupSubscription = async () => {
       setLoading(true);
       try {
         console.log("Setting up real-time project subscription for tenant:", activeTenantId);
         unsubscribe = await apiService.subscribeToProjects((updatedProjects) => {
-          console.log("Projects updated from Firestore:", updatedProjects.length);
-          setProjects(updatedProjects);
+          console.log("Projects updated from Firestore:", updatedProjects?.length);
+          if (Array.isArray(updatedProjects)) {
+            setProjects(updatedProjects);
+          }
           setLoading(false);
         }, activeTenantId);
+
+        // Fetch direct pour peupler immédiatement la liste
+        const directData = await apiService.getProjects(activeTenantId);
+        if (Array.isArray(directData) && directData.length > 0) {
+          setProjects(directData);
+        }
       } catch (err) {
         console.error("Failed to subscribe to projects:", err);
         setError(err);
@@ -88,7 +100,9 @@ export function ProjectProvider({ children }) {
         // Fallback: try one-time fetch if subscription fails
         try {
           const fallbackData = await apiService.getProjects(activeTenantId);
-          setProjects(fallbackData);
+          if (Array.isArray(fallbackData)) {
+            setProjects(fallbackData);
+          }
         } catch (e) {
           console.error("Fallback fetch failed", e);
         }
@@ -99,9 +113,9 @@ export function ProjectProvider({ children }) {
 
     return () => {
       console.log("Unsubscribing from projects...");
-      unsubscribe();
+      if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, [setProjects, activeTenantId]);
+  }, [setProjects, activeTenantId, user]);
 
   const refreshProjects = useCallback(async () => {
     setLoading(true);
