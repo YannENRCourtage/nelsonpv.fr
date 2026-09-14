@@ -292,12 +292,25 @@ export default function Developpement() {
     setCaptureStep('Initialisation du dossier...');
 
     try {
+      const isBatteryProject = !isNoBattery && (
+        finalProject?.solutionType === 'battery' ||
+        finalProject?.type === 'battery' ||
+        finalProject?.isBattery === true ||
+        finalProject?.isBatteryStandAlone === true ||
+        String(chosenType || '').toLowerCase().includes('batterie') ||
+        String(finalProject?.urbanismeType || '').toLowerCase().includes('batterie')
+      );
+
       const initialProjectToUse = {
         ...selectedProject,
         ...(finalProject || {}),
         selectedPages: selectedPages,
-        type: chosenType || finalProject?.type || selectedProject.type || 'batiment_solaire',
-        installationType: chosenType || finalProject?.installationType || selectedProject.installationType || 'batiment_solaire'
+        type: isBatteryProject ? 'battery' : (chosenType || finalProject?.type || selectedProject.type || 'batiment_solaire'),
+        installationType: isBatteryProject ? 'Station Batteries Stand-Alone' : (chosenType || finalProject?.installationType || selectedProject.installationType || 'batiment_solaire'),
+        urbanismeType: isBatteryProject ? 'Station Batteries Stand-Alone' : (chosenType || finalProject?.urbanismeType || selectedProject.urbanismeType),
+        isBattery: isBatteryProject,
+        isBatteryStandAlone: isBatteryProject,
+        solutionType: isBatteryProject ? 'battery' : (finalProject?.solutionType || selectedProject.solutionType)
       };
 
       // 1. Précharger et convertir toutes les images (Firebase Storage, satellite, cadastres, etc.) en Base64 Data URLs
@@ -720,7 +733,7 @@ export default function Developpement() {
         if (!rawActiveProj) return null;
         const isProjectGreenInvest = isGreenInvest || rawActiveProj?.tenantId === 'green-invest' || rawActiveProj?.tenantId === 'greeninvest' || rawActiveProj?.tenant === 'greeninvest' || rawActiveProj?.tenant === 'green-invest' || Boolean(rawActiveProj?.isGreenInvest);
         const isProjectAcama = isAcama || rawActiveProj?.tenantId === 'acama' || Boolean(rawActiveProj?.isAcama);
-        const isProjectNoBattery = isProjectAcama || isProjectGreenInvest;
+        const isProjectNoBattery = isProjectAcama;
 
         const activeProj = {
           ...rawActiveProj,
@@ -766,40 +779,46 @@ export default function Developpement() {
                 ...(b.photos || {}),
                 ...(b.pc_photos || {}),
               };
-              let bLen = Number(b.length || b.longueur || (isProjectAcama ? 30.0 : 37.5));
-              let bWid = Number(b.width || b.largeur || (isProjectAcama ? 15.0 : 16.4));
-              if (isProjectNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
+              const isThisBattery = !isProjectNoBattery && (activeProj.isBattery || b.isBattery || b.solutionType === 'battery' || (b.buildingType || '').includes('battery'));
+              let bLen = Number(b.length || b.longueur || (isThisBattery ? 6.20 : (isProjectAcama ? 30.0 : 37.5)));
+              let bWid = Number(b.width || b.largeur || (isThisBattery ? 3.20 : (isProjectAcama ? 15.0 : 16.4)));
+              if (isThisBattery) {
+                bLen = 6.20;
+                bWid = 3.20;
+              } else if (isProjectNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
                 bLen = isProjectAcama ? 30.0 : 37.5;
                 bWid = isProjectAcama ? 15.0 : 16.4;
               }
               let bName = b.name;
-              if (isProjectNoBattery) {
+              if (isThisBattery) {
+                bName = 'Station Batteries Stand-Alone';
+              } else if (isProjectNoBattery) {
                 if (isProjectAcama) {
                   bName = `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
                 } else if (bName) {
                   bName = bName.replace(/Station Batteries[^\)]*\)?/gi, 'Ombrière').trim();
                 }
               }
-              let bType = (isProjectNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isProjectAcama ? 'symetrique' : 'ombriere_pl') : (b.buildingType || 'ombriere_pl');
+              let bType = isThisBattery ? 'battery_standalone' : ((isProjectNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isProjectAcama ? 'symetrique' : 'ombriere_pl') : (b.buildingType || 'ombriere_pl'));
 
               const bProj = {
                 ...activeProj,
                 ...b,
-                name: bName || (isProjectAcama ? 'Bâtiment 1' : `Ombrière ${bIdx + 1}`),
+                name: bName || (isThisBattery ? 'Station Batteries Stand-Alone' : (isProjectAcama ? 'Bâtiment 1' : `Ombrière ${bIdx + 1}`)),
                 isAcama: isProjectAcama,
                 isGreenInvest: isProjectGreenInvest,
                 tenantId: activeTenantId,
-                isBattery: isProjectNoBattery ? false : (b.isBattery || false),
+                isBattery: isThisBattery,
                 largeur: String(bWid),
                 longueur: String(bLen),
-                hauteur_egout: String(b.eaveHeight || b.hauteur_egout || 4.0),
-                pente: String(b.roofPitch || b.pente || 15),
+                hauteur_egout: String(isThisBattery ? 2.38 : (b.eaveHeight || b.hauteur_egout || 4.0)),
+                pente: String(isThisBattery ? 0 : (b.roofPitch || b.pente || 15)),
                 buildingType: bType,
-                leftSide: b.leftSide || 'none',
-                rightSide: b.rightSide || 'none',
-                leftWidth: b.leftWidth || 4.0,
-                rightWidth: b.rightWidth || 4.0,
-                buildingName: bName || (isProjectAcama ? `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m` : `Ombrière ${bIdx + 1}`),
+                leftSide: isThisBattery ? 'none' : (b.leftSide || 'none'),
+                rightSide: isThisBattery ? 'none' : (b.rightSide || 'none'),
+                leftWidth: isThisBattery ? 0 : (b.leftWidth || 4.0),
+                rightWidth: isThisBattery ? 0 : (b.rightWidth || 4.0),
+                buildingName: bName || (isThisBattery ? 'Station Batteries Stand-Alone' : (isProjectAcama ? `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m` : `Ombrière ${bIdx + 1}`)),
                 masse_zoom: bEffectiveZoom,
                 masse_zoom_2: bEffectiveZoom2,
                 urbanisme_captures: bCaptures,
@@ -878,40 +897,46 @@ export default function Developpement() {
                 ...(b.photos || {}),
                 ...(b.pc_photos || {}),
               };
-              let bLen = Number(b.length || b.longueur || (isProjectAcama ? 30.0 : 30.0));
-              let bWid = Number(b.width || b.largeur || (isProjectAcama ? 15.0 : 20.0));
-              if (isProjectNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
+              const isThisBattery = !isProjectNoBattery && (activeProj.isBattery || b.isBattery || b.solutionType === 'battery' || (b.buildingType || '').includes('battery'));
+              let bLen = Number(b.length || b.longueur || (isThisBattery ? 6.20 : (isProjectAcama ? 30.0 : 30.0)));
+              let bWid = Number(b.width || b.largeur || (isThisBattery ? 3.20 : (isProjectAcama ? 15.0 : 20.0)));
+              if (isThisBattery) {
+                bLen = 6.20;
+                bWid = 3.20;
+              } else if (isProjectNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
                 bLen = isProjectAcama ? 30.0 : 30.0;
                 bWid = isProjectAcama ? 15.0 : 20.0;
               }
               let bName = b.name;
-              if (isProjectNoBattery) {
+              if (isThisBattery) {
+                bName = 'Station Batteries Stand-Alone';
+              } else if (isProjectNoBattery) {
                 if (isProjectAcama) {
                   bName = `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
                 } else if (bName) {
                   bName = bName.replace(/Station Batteries[^\)]*\)?/gi, 'Bâtiment').trim();
                 }
               }
-              let bType = (isProjectNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isProjectAcama ? 'symetrique' : 'asymetrique_1') : (b.buildingType || 'asymetrique_1');
+              let bType = isThisBattery ? 'battery_standalone' : ((isProjectNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isProjectAcama ? 'symetrique' : 'asymetrique_1') : (b.buildingType || 'asymetrique_1'));
 
               const bProj = {
                 ...activeProj,
                 ...b,
-                name: bName || `Bâtiment ${bIdx + 1}`,
+                name: bName || (isThisBattery ? 'Station Batteries Stand-Alone' : `Bâtiment ${bIdx + 1}`),
                 isAcama: isProjectAcama,
                 isGreenInvest: isProjectGreenInvest,
                 tenantId: activeTenantId,
-                isBattery: isProjectNoBattery ? false : (b.isBattery || false),
+                isBattery: isThisBattery,
                 largeur: String(bWid),
                 longueur: String(bLen),
-                hauteur_egout: String(b.eaveHeight || b.hauteur_egout || 4.0),
-                pente: String(b.roofPitch || b.pente || 15),
+                hauteur_egout: String(isThisBattery ? 2.38 : (b.eaveHeight || b.hauteur_egout || 4.0)),
+                pente: String(isThisBattery ? 0 : (b.roofPitch || b.pente || 15)),
                 buildingType: bType,
-                leftSide: b.leftSide || 'none',
-                rightSide: b.rightSide || 'none',
-                leftWidth: b.leftWidth || 4.0,
-                rightWidth: b.rightWidth || 4.0,
-                buildingName: bName || (isProjectAcama ? `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m` : `Bâtiment ${bIdx + 1}`),
+                leftSide: isThisBattery ? 'none' : (b.leftSide || 'none'),
+                rightSide: isThisBattery ? 'none' : (b.rightSide || 'none'),
+                leftWidth: isThisBattery ? 0 : (b.leftWidth || 4.0),
+                rightWidth: isThisBattery ? 0 : (b.rightWidth || 4.0),
+                buildingName: bName || (isThisBattery ? 'Station Batteries Stand-Alone' : (isProjectAcama ? `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m` : `Bâtiment ${bIdx + 1}`)),
                 masse_zoom: bEffectiveZoom,
                 masse_zoom_2: bEffectiveZoom2,
                 urbanisme_captures: bCaptures,

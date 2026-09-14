@@ -142,8 +142,9 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
           const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 2.0;
 
           bList.forEach((b, bIdx) => {
-            const bLength = Number(b.length || b.longueur || 30);
-            const bWidth = Number(b.totalWidth || b.width || b.largeur || 20);
+            const isBat = b.solutionKey === 'battery' || b.isBattery || (b.buildingType || '').toLowerCase().includes('battery') || (b.name || '').toLowerCase().includes('batterie');
+            const bLength = Number(b.length || b.longueur || (isBat ? 6.20 : 30));
+            const bWidth = Number(b.totalWidth || b.width || b.largeur || (isBat ? 3.20 : 20));
             const bRot = Number(b.rotation || 0);
             const rectW = Math.max(20, bLength * pxPerMeter);
             const rectH = Math.max(12, bWidth * pxPerMeter);

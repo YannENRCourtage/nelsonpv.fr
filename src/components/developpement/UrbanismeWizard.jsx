@@ -194,18 +194,18 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
       const strLng = Number(str.lng || (str.gps ? str.gps.split(',')[1] : null));
       if (!strLat || !strLng || isNaN(strLat) || isNaN(strLng)) return;
 
-      const sLen = Number(str.length || (str.bayCount ? str.bayCount * (str.baySpacing || 7.5) : 30));
-      const sWid = Number(str.width || 15);
-      const extLeft = str.leftSide !== 'none' ? Number(str.leftWidth || (str.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
-      const extRight = str.rightSide !== 'none' ? Number(str.rightWidth || (str.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const isBat = str.solutionKey === 'battery' || str.isBattery || (str.buildingType || '').includes('battery');
+      const isOmb = !isBat && (str.solutionKey === 'ombriere' || (str.buildingType || '').toLowerCase().includes('ombriere'));
+      const sLen = isBat ? Number(str.length || 6.20) : Number(str.length || (str.bayCount ? str.bayCount * (str.baySpacing || 7.5) : 30));
+      const sWid = isBat ? Number(str.width || 3.20) : Number(str.width || 15);
+      const extLeft = !isBat && str.leftSide !== 'none' ? Number(str.leftWidth || (str.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+      const extRight = !isBat && str.rightSide !== 'none' ? Number(str.rightWidth || (str.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
       const totalWid = sWid + extLeft + extRight;
       const sRot = Number(str.rotation || 0);
 
       const corners = getBuildingCorners(strLat, strLng, sLen, totalWid, sRot);
       const pixelCorners = corners.map(([cLat, cLng]) => map.latLngToContainerPoint([cLat, cLng]));
 
-      const isBat = str.solutionKey === 'battery' || str.isBattery;
-      const isOmb = !isBat && (str.solutionKey === 'ombriere' || (str.buildingType || '').toLowerCase().includes('ombriere'));
       const strokeColor = isBat ? '#9333ea' : (isOmb ? '#059669' : '#2563eb');
       const fillColor = isBat ? 'rgba(168, 85, 247, 0.35)' : (isOmb ? 'rgba(16, 185, 129, 0.35)' : 'rgba(59, 130, 246, 0.35)');
 
@@ -1397,11 +1397,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       const nextSol = { ...prev };
       let updated = false;
 
-      ['building', 'ombriere', 'battery'].forEach(solKey => {
+      const solOrder = [solutionType, 'battery', 'ombriere', 'building'].filter((v, i, a) => a.indexOf(v) === i);
+      for (const solKey of solOrder) {
         if (nextSol[solKey]?.buildings) {
           const bIdx = nextSol[solKey].buildings.findIndex(b => {
             const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : (solKey === 'battery' ? 'bat-sa-' : 'bat-')) ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-1`;
-            return b.id === targetId || currentId === targetId;
+            return b.id === targetId || currentId === targetId || (solKey === 'battery' && solutionType === 'battery');
           });
           if (bIdx !== -1) {
             const nextList = [...nextSol[solKey].buildings];
@@ -1412,9 +1413,10 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
             };
             nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
             updated = true;
+            break;
           }
         }
-      });
+      }
 
       return updated ? nextSol : prev;
     });
@@ -1446,11 +1448,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       const nextSol = { ...prev };
       let updated = false;
 
-      ['building', 'ombriere', 'battery'].forEach(solKey => {
+      const solOrder = [solutionType, 'battery', 'ombriere', 'building'].filter((v, i, a) => a.indexOf(v) === i);
+      for (const solKey of solOrder) {
         if (nextSol[solKey]?.buildings) {
           const bIdx = nextSol[solKey].buildings.findIndex(b => {
             const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : (solKey === 'battery' ? 'bat-sa-' : 'bat-')) ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-1`;
-            return b.id === targetId || currentId === targetId;
+            return b.id === targetId || currentId === targetId || (solKey === 'battery' && solutionType === 'battery');
           });
           if (bIdx !== -1) {
             const nextList = [...nextSol[solKey].buildings];
@@ -1465,13 +1468,14 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
             };
             nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
             updated = true;
+            break;
           }
         }
-      });
+      }
 
       return updated ? nextSol : prev;
     });
-  }, []);
+  }, [solutionType]);
 
   // Mise à jour du cadrage (centre et zoom) d'une structure quelconque depuis Carte DP2/PC2 (Vue 1 ou Vue 2)
   const handleMasseMapChange = useCallback((targetId, { centerLat, centerLng, zoom }, viewNum = 1) => {
@@ -1484,11 +1488,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       const nextSol = { ...prev };
       let updated = false;
 
-      ['building', 'ombriere', 'battery'].forEach(solKey => {
+      const solOrder = [solutionType, 'battery', 'ombriere', 'building'].filter((v, i, a) => a.indexOf(v) === i);
+      for (const solKey of solOrder) {
         if (nextSol[solKey]?.buildings) {
           const bIdx = nextSol[solKey].buildings.findIndex(b => {
             const currentId = b.id ? (String(b.id).startsWith(solKey === 'ombriere' ? 'omb-' : (solKey === 'battery' ? 'bat-sa-' : 'bat-')) ? String(b.id) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-${b.id}`) : `${solKey === 'ombriere' ? 'omb' : (solKey === 'battery' ? 'bat-sa' : 'bat')}-1`;
-            return b.id === targetId || currentId === targetId;
+            return b.id === targetId || currentId === targetId || (solKey === 'battery' && solutionType === 'battery');
           });
           if (bIdx !== -1) {
             const nextList = [...nextSol[solKey].buildings];
@@ -1513,13 +1518,14 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
             }
             nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
             updated = true;
+            break;
           }
         }
-      });
+      }
 
       return updated ? nextSol : prev;
     });
-  }, []);
+  }, [solutionType]);
 
   const handleGpsUpdate = useCallback((lat, lng) => {
     setEditedProject(prev => ({ ...prev, lat, lng, gps: `${lat},${lng}` }));
@@ -1860,20 +1866,25 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     // 2. Basculer le type de solution et enregistrer dans le state global du dossier
     setSolutionType(newSolType);
-    setEditedProject(prev => ({
-      ...prev,
-      solutionType: newSolType,
-      urbanisme_solutionType: newSolType,
-      type: newSolType === 'battery' ? 'battery' : (newSolType === 'ombriere' ? 'ombriere' : 'batiment_solaire'),
-      installationType: newSolType === 'battery'
-        ? 'Station Batteries Stand-Alone (500 kW)'
-        : (newSolType === 'ombriere' ? 'Ombrières photovoltaïques' : 'Bâtiment photovoltaïque')
-    }));
 
     if (newSolType === 'battery') {
       const siteCoords = resolveProjectCoordinates(editedProject, project);
       const refLat = outgoingB?.lat || project?.lat || siteCoords.lat;
       const refLng = outgoingB?.lng || project?.lng || siteCoords.lng;
+
+      setEditedProject(prev => ({
+        ...prev,
+        solutionType: 'battery',
+        urbanisme_solutionType: 'battery',
+        type: 'battery',
+        urbanismeType: 'Station Batteries Stand-Alone',
+        typeLabel: 'Station Batteries Stand-Alone',
+        installationType: 'Station Batteries Stand-Alone',
+        isBattery: true,
+        isBatteryStandAlone: true,
+        objet_travaux: "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)",
+        description: "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)",
+      }));
 
       setSolutions(sPrev => {
         const curBat = sPrev.battery?.buildings?.[0];
@@ -1887,6 +1898,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
               name: 'Station Batteries Stand-Alone (500 kW)',
               solutionType: 'battery',
               isBattery: true,
+              buildingType: 'battery_standalone',
               length: 6.20,
               width: 3.20,
               eaveHeight: 2.38,
@@ -1911,10 +1923,46 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         footprint: '6.20m × 3.20m (19.84 m²)'
       }));
       setSelectedStructureIds(['bat-sa-1']);
-    } else {
+    } else if (newSolType === 'ombriere') {
+      const ombCount = solutions.ombriere?.buildings?.length || 1;
+      const ombTypeStr = ombCount > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
+      setEditedProject(prev => ({
+        ...prev,
+        solutionType: 'ombriere',
+        urbanisme_solutionType: 'ombriere',
+        type: 'ombriere',
+        urbanismeType: ombTypeStr,
+        typeLabel: ombTypeStr,
+        installationType: 'Ombrières photovoltaïques',
+        isBattery: false,
+        isBatteryStandAlone: false,
+        objet_travaux: "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire",
+        description: "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire",
+      }));
       setBatteryStorage(prev => ({ ...prev, enabled: false }));
-      const targetSol = solutions[newSolType];
-      const solIds = (targetSol?.buildings || []).map((b, i) => b.id || `${newSolType === 'ombriere' ? 'omb' : 'bat'}-${i + 1}`);
+      const targetSol = solutions.ombriere;
+      const solIds = (targetSol?.buildings || []).map((b, i) => b.id || `omb-${i + 1}`);
+      if (solIds.length > 0) {
+        setSelectedStructureIds(solIds);
+      }
+    } else {
+      const bTypeStr = isAcama ? 'Bâtiment photovoltaïque' : 'Bâtiment et Ombrière';
+      setEditedProject(prev => ({
+        ...prev,
+        solutionType: 'building',
+        urbanisme_solutionType: 'building',
+        type: 'batiment_solaire',
+        urbanismeType: bTypeStr,
+        typeLabel: bTypeStr,
+        installationType: bTypeStr,
+        isBattery: false,
+        isBatteryStandAlone: false,
+        objet_travaux: "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque",
+        description: "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque",
+      }));
+      setBatteryStorage(prev => ({ ...prev, enabled: false }));
+      const targetSol = solutions.building;
+      const solIds = (targetSol?.buildings || []).map((b, i) => b.id || `bat-${i + 1}`);
       if (solIds.length > 0) {
         setSelectedStructureIds(solIds);
       }
@@ -2519,8 +2567,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         lat: defLat,
         lng: defLng,
         gps: `${defLat},${defLng}`,
-        type: isOmbriere ? 'ombriere' : (project.type || 'batiment_solaire'),
-        buildingType: b1?.buildingType || project.buildingType || 'asymetrique_1',
+        type: isBatteryProject ? 'battery' : (isOmbriere ? 'ombriere' : (project.type || 'batiment_solaire')),
+        buildingType: isBatteryProject ? 'battery_standalone' : (b1?.buildingType || project.buildingType || 'asymetrique_1'),
+        isBattery: isBatteryProject,
+        isBatteryStandAlone: isBatteryProject,
         lastName: names.lastName || project.name || '',
         firstName: names.firstName || '',
         demandeur: cleanDemandeur,
@@ -2537,15 +2587,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         kwc: clientKwc,
         projectSize: clientKwc,
         puissance: clientKwc,
-        objet_travaux: project.objet_travaux || project.objetTravaux || shortObjet,
-        description: project.objet_travaux || project.objetTravaux || shortObjet,
+        objet_travaux: isBatteryProject ? shortObjet : (project.objet_travaux || project.objetTravaux || shortObjet),
+        description: isBatteryProject ? shortObjet : (project.objet_travaux || project.objetTravaux || shortObjet),
         noticeText: initialNotice,
-        longueur: String(b1?.length || 37.5),
-        largeur: String(b1?.width || 20.0),
-        hauteur_egout: String(b1?.eaveHeight || 4.0),
-        pente: String(b1?.roofPitch || 10),
-        leftSide: b1?.leftSide || 'none',
-        rightSide: b1?.rightSide || 'none',
+        longueur: isBatteryProject ? '6.20' : String(b1?.length || 37.5),
+        largeur: isBatteryProject ? '3.20' : String(b1?.width || 20.0),
+        hauteur_egout: isBatteryProject ? '2.38' : String(b1?.eaveHeight || 4.0),
+        pente: isBatteryProject ? '0' : String(b1?.roofPitch || 10),
+        leftSide: isBatteryProject ? 'none' : (b1?.leftSide || 'none'),
+        rightSide: isBatteryProject ? 'none' : (b1?.rightSide || 'none'),
         leftWidth: b1?.leftWidth,
         rightWidth: b1?.rightWidth,
         bayCount: b1?.bayCount,
@@ -2554,7 +2604,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         cadastre_surface: project.cadastre_surface || '',
         cadastre_commune: project.cadastre_commune || projCity,
         commune: projCity,
-        urbanismeType: project.urbanismeType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'),
+        urbanismeType: isBatteryProject ? 'Station Batteries Stand-Alone' : (project.urbanismeType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière')),
+        typeLabel: isBatteryProject ? 'Station Batteries Stand-Alone' : (project.typeLabel || project.urbanismeType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière')),
+        installationType: isBatteryProject ? 'Station Batteries Stand-Alone' : (project.installationType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière')),
         pente_terrain: project.pente_terrain || '3',
         cotation_bati: project.cotation_bati || '12.50',
         cotation_voie: project.cotation_voie || '8.00',
@@ -3367,17 +3419,35 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
   };
 
   const prepareProjectPayload = async () => {
-    const isBattery = !isNoBattery && (solutionType === 'battery' || batteryStorage.enabled || (editedProject.type || '').toLowerCase().includes('batterie'));
+    const isBattery = !isNoBattery && (
+      solutionType === 'battery' ||
+      editedProject?.solutionType === 'battery' ||
+      editedProject?.urbanisme_solutionType === 'battery' ||
+      editedProject?.type === 'battery' ||
+      Boolean(editedProject?.isBattery) ||
+      Boolean(editedProject?.isBatteryStandAlone) ||
+      batteryStorage.enabled ||
+      (editedProject?.type || '').toLowerCase().includes('batterie') ||
+      (editedProject?.urbanismeType || '').toLowerCase().includes('batterie')
+    );
     
     // Objet synthétique pour Page 1
     const defaultObjet = isBattery
-      ? "Implantation d'un système de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)"
+      ? "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)"
       : (isDP
         ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
         : (isPC
           ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
           : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque"));
-    const shortObjet = editedProject?.objet_travaux || defaultObjet;
+    
+    let shortObjet = editedProject?.objet_travaux || defaultObjet;
+    if (isBattery) {
+      if (!shortObjet || /ombrière|bâtiment|hangar/i.test(shortObjet)) {
+        shortObjet = defaultObjet;
+      }
+    } else if (isNoBattery || (!isBattery && /batterie/i.test(shortObjet || ''))) {
+      shortObjet = defaultObjet;
+    }
 
     let effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
     if (isNoBattery && effectiveNotice) {
@@ -3393,20 +3463,31 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const allConfigured = scopedStructures;
     
     // Filtrer selon la sélection explicite de l'utilisateur (selectedStructureIds)
-    const candidateBuildings = allConfigured.filter(b => selectedStructureIds.includes(b.id));
-    const structuresToExport = candidateBuildings.length > 0 ? candidateBuildings : (allConfigured.length > 0 ? allConfigured.slice(0, 1) : buildings);
+    const candidateBuildings = isBattery
+      ? allConfigured.filter(b => (b.solutionKey === 'battery' || b.isBattery) && selectedStructureIds.includes(b.id))
+      : allConfigured.filter(b => selectedStructureIds.includes(b.id));
+    const structuresToExport = candidateBuildings.length > 0
+      ? candidateBuildings
+      : (isBattery 
+          ? allConfigured.filter(b => b.solutionKey === 'battery' || b.isBattery).slice(0, 1)
+          : (allConfigured.length > 0 ? allConfigured.slice(0, 1) : buildings));
 
     // Conserver fidèlement chaque structure retenue avec ses propres dimensions et paramètres
     const updatedBuildings = structuresToExport.map((b, idx) => {
-      let bLen = Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (isAcama ? 30 : 37.5)));
-      let bWid = Number(b.width || (isAcama ? 15 : 16.4));
-      if (isNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
+      let bLen = isBattery ? Number(b.length || 6.20) : Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (isAcama ? 30 : 37.5)));
+      let bWid = isBattery ? Number(b.width || 3.20) : Number(b.width || (isAcama ? 15 : 16.4));
+      if (isBattery) {
+        bLen = 6.20;
+        bWid = 3.20;
+      } else if (isNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
         bLen = isAcama ? 30 : 37.5;
         bWid = isAcama ? 15 : 16.4;
       }
       let bName = b.name;
       const isOmb = b.solutionKey === 'ombriere' || (b.buildingType || '').toLowerCase().startsWith('ombriere');
-      if (isNoBattery) {
+      if (isBattery) {
+        bName = 'Station Batteries Stand-Alone (500 kW)';
+      } else if (isNoBattery) {
         if (isAcama) {
           bName = `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
         } else if (bName) {
@@ -3417,29 +3498,34 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         ...b,
         length: bLen,
         width: bWid,
-        eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : (isOmb ? 3.7 : 4.0)),
-        roofPitch: Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : 10),
-        buildingType: (isNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isAcama ? 'symetrique' : (isOmb ? 'ombriere_pl' : 'asymetrique_1')) : (isBattery ? 'battery_standalone' : (b.buildingType || (isOmb ? 'ombriere_pl' : 'asymetrique_1'))),
-        isBattery: isNoBattery ? false : (isBattery || Boolean(b.isBattery)),
-        name: bName || (isOmb ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`),
-        leftSide: b.leftSide || 'none',
-        rightSide: b.rightSide || 'none',
-        leftWidth: b.leftWidth !== undefined ? Number(b.leftWidth) : 0,
-        rightWidth: b.rightWidth !== undefined ? Number(b.rightWidth) : 0,
-        bayCount: Number(b.bayCount || 5),
-        baySpacing: Number(b.baySpacing || 7.5),
+        eaveHeight: isBattery ? 2.38 : Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : (isOmb ? 3.7 : 4.0)),
+        roofPitch: isBattery ? 0 : Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : 10),
+        buildingType: isBattery ? 'battery_standalone' : ((isNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isAcama ? 'symetrique' : (isOmb ? 'ombriere_pl' : 'asymetrique_1')) : (b.buildingType || (isOmb ? 'ombriere_pl' : 'asymetrique_1'))),
+        isBattery: isBattery,
+        name: bName || (isBattery ? 'Station Batteries Stand-Alone (500 kW)' : (isOmb ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`)),
+        leftSide: isBattery ? 'none' : (b.leftSide || 'none'),
+        rightSide: isBattery ? 'none' : (b.rightSide || 'none'),
+        leftWidth: isBattery ? 0 : (b.leftWidth !== undefined ? Number(b.leftWidth) : 0),
+        rightWidth: isBattery ? 0 : (b.rightWidth !== undefined ? Number(b.rightWidth) : 0),
+        bayCount: Number(b.bayCount || (isBattery ? 4 : 5)),
+        baySpacing: Number(b.baySpacing || (isBattery ? 1.15 : 7.5)),
         captures: { ...(b.captures || {}) },
         photos: { ...(b.photos || {}) },
       };
     });
 
-    const isMultiOrOmbriere = updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere'));
+    const isMultiOrOmbriere = !isBattery && (updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere')));
     const defaultTypeLabel = isBattery
-      ? "Système de stockage par batterie Stand-Alone"
+      ? "Station Batteries Stand-Alone"
       : (isDP
         ? (updatedBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque')
         : (isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire')));
-    const finalTypeLabel = editedProject?.urbanismeType || defaultTypeLabel;
+    let finalTypeLabel = defaultTypeLabel;
+    if (isBattery) {
+      finalTypeLabel = "Station Batteries Stand-Alone";
+    } else if (editedProject?.urbanismeType && !editedProject.urbanismeType.toLowerCase().includes('batterie')) {
+      finalTypeLabel = editedProject.urbanismeType;
+    }
 
     // Régénérer les cartes DP1/PC1 et DP2/PC2 avec le dernier GPS et les structures orientées
     const siteCoords = resolveProjectCoordinates(editedProject, project);
@@ -3629,19 +3715,23 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       isGreenInvest,
       cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
       email2: editedProject?.email2 || '',
-      buildingType: b1.buildingType || config.buildingType || 'asymetrique_1',
-      type: editedProject?.type || project?.type || 'Construction',
+      isBattery: isBattery,
+      isBatteryStandAlone: isBattery,
+      solutionType: isBattery ? 'battery' : solutionType,
+      urbanisme_solutionType: isBattery ? 'battery' : solutionType,
+      buildingType: isBattery ? 'battery_standalone' : (b1.buildingType || config.buildingType || 'asymetrique_1'),
+      type: isBattery ? 'battery' : (editedProject?.type || project?.type || 'Construction'),
       urbanismeType: finalTypeLabel,
       installationType: finalTypeLabel,
       typeLabel: finalTypeLabel,
-      largeur: String(b1.width || config.width || 16.4),
-      longueur: String(b1.length || config.length || 37.5),
-      hauteur_egout: String(b1.eaveHeight || (b1.buildingType === 'ombriere_pl' ? 5.08 : (b1.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)))),
-      pente: String(b1.roofPitch || (b1.buildingType?.startsWith('asymetrique') ? 15 : (config.roofPitch || 10))),
-      leftSide: b1.leftSide || config.leftSide || 'none',
-      rightSide: b1.rightSide || config.rightSide || 'none',
-      leftWidth: b1.leftWidth || config.leftWidth,
-      rightWidth: b1.rightWidth || config.rightWidth,
+      largeur: isBattery ? '3.20' : String(b1.width || config.width || 16.4),
+      longueur: isBattery ? '6.20' : String(b1.length || config.length || 37.5),
+      hauteur_egout: isBattery ? '2.38' : String(b1.eaveHeight || (b1.buildingType === 'ombriere_pl' ? 5.08 : (b1.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)))),
+      pente: isBattery ? '0' : String(b1.roofPitch || (b1.buildingType?.startsWith('asymetrique') ? 15 : (config.roofPitch || 10))),
+      leftSide: isBattery ? 'none' : (b1.leftSide || config.leftSide || 'none'),
+      rightSide: isBattery ? 'none' : (b1.rightSide || config.rightSide || 'none'),
+      leftWidth: isBattery ? 0 : (b1.leftWidth || config.leftWidth),
+      rightWidth: isBattery ? 0 : (b1.rightWidth || config.rightWidth),
       bayCount: b1.bayCount || config.bayCount,
       baySpacing: b1.baySpacing || config.baySpacing,
       kwc: preservedKwc,
@@ -3708,6 +3798,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
   if (!isOpen) return null;
 
   const preservedKwc = editedProject?.puissance || editedProject?.kwc || project?.kwc || project?.puissance || project?.projectSize || editedProject?.projectSize || '';
+  const isBatActive = solutionType === 'battery' || editedProject?.solutionType === 'battery' || Boolean(editedProject?.isBattery);
   const summary = buildCerfaDataSummary(
     {
       ...editedProject,
@@ -3715,13 +3806,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       puissance: preservedKwc,
       kwc: preservedKwc,
       projectSize: preservedKwc,
-      type: isAcama ? 'batiment_solaire' : (editedProject?.urbanismeType || (isDP ? (buildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière')),
-      urbanismeType: editedProject?.urbanismeType,
-      typeLabel: editedProject?.urbanismeType,
+      type: isBatActive ? 'battery' : (isAcama ? 'batiment_solaire' : (editedProject?.urbanismeType || (isDP ? (buildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'))),
+      urbanismeType: isBatActive ? 'Station Batteries Stand-Alone' : editedProject?.urbanismeType,
+      typeLabel: isBatActive ? 'Station Batteries Stand-Alone' : editedProject?.urbanismeType,
+      isBattery: isBatActive,
+      isBatteryStandAlone: isBatActive,
       docType: type,
       buildings
     },
-    isAcama ? 'batiment_solaire' : (editedProject.type || (isDP ? 'ombriere' : 'batiment_solaire'))
+    isBatActive ? 'battery' : (isAcama ? 'batiment_solaire' : (editedProject.type || (isDP ? 'ombriere' : 'batiment_solaire')))
   );
   const STEPS = ['Déclarant', isDP ? 'Cartes DP1' : 'Cartes PC1', 'Cotations & Côtes', 'Photos', isDP ? 'Carte DP2' : 'Carte PC2', 'Notice Descriptive', 'Validation'];
 
@@ -5218,11 +5311,19 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   </span>
                                 </div>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMasseRotationUpdate(str.id, Math.max(-180, sRot - 15))}
+                                    className="px-2 py-1 text-[10px] font-extrabold rounded-lg border bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300 transition-all shadow-2xs"
+                                    title="Tourner de -15°"
+                                  >
+                                    -15°
+                                  </button>
                                   <input
                                     type="range"
-                                    min={isBatteryStr ? "-180" : "-90"}
-                                    max={isBatteryStr ? "180" : "90"}
+                                    min="-180"
+                                    max="180"
                                     step="1"
                                     value={sRot}
                                     onChange={(e) => handleMasseRotationUpdate(str.id, Number(e.target.value))}
@@ -5230,11 +5331,19 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   />
                                   <button
                                     type="button"
+                                    onClick={() => handleMasseRotationUpdate(str.id, Math.min(180, sRot + 15))}
+                                    className="px-2 py-1 text-[10px] font-extrabold rounded-lg border bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300 transition-all shadow-2xs"
+                                    title="Tourner de +15°"
+                                  >
+                                    +15°
+                                  </button>
+                                  <button
+                                    type="button"
                                     onClick={() => handleMasseRotationUpdate(str.id, 0)}
-                                    className={`px-2 py-0.5 text-[10px] font-bold rounded border transition-all ${
-                                      sRot === 0 ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                                    className={`px-2 py-1 text-[10px] font-extrabold rounded-lg border transition-all ${
+                                      sRot === 0 ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
                                     }`}
-                                    title="Plein Sud"
+                                    title="Plein Sud (0°)"
                                   >
                                     0°
                                   </button>
@@ -5243,21 +5352,21 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 {/* Raccourcis d'orientation compacts */}
                                 <div className="grid grid-cols-4 gap-1 pt-0.5">
                                   {(isBatteryStr ? [
-                                    { label: 'Sud', val: 0 },
-                                    { label: 'Ouest', val: 90 },
-                                    { label: 'Nord', val: 180 },
-                                    { label: 'Est', val: -90 },
+                                    { label: 'Sud (0°)', val: 0 },
+                                    { label: 'Ouest (90°)', val: 90 },
+                                    { label: 'Nord (180°)', val: 180 },
+                                    { label: 'Est (-90°)', val: -90 },
                                   ] : [
-                                    { label: 'Ouest', val: 90 },
-                                    { label: 'S-O', val: 45 },
-                                    { label: 'S-E', val: -45 },
-                                    { label: 'Est', val: -90 },
+                                    { label: 'Sud (0°)', val: 0 },
+                                    { label: 'Ouest (90°)', val: 90 },
+                                    { label: 'S-O (45°)', val: 45 },
+                                    { label: 'S-E (-45°)', val: -45 },
                                   ]).map(({ label, val }) => (
                                     <button
                                       key={val}
                                       type="button"
                                       onClick={() => handleMasseRotationUpdate(str.id, val)}
-                                      className={`py-0.5 rounded text-[10px] font-bold transition-all border ${
+                                      className={`py-1 rounded-lg text-[10px] font-extrabold transition-all border ${
                                         sRot === val
                                           ? 'bg-[#0e2b4d] text-white border-[#0e2b4d] shadow-2xs'
                                           : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
@@ -5525,7 +5634,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
                                        cabElements.push(
                                          <Polygon
-                                           key={`poly-cab-${str.id}-${ci}`}
+                                           key={`poly-cab-${str.id}-${ci}-${sRot}-${Number(strLat).toFixed(7)}-${Number(strLng).toFixed(7)}`}
                                            positions={[c0, c1, c2, c3]}
                                            pathOptions={{
                                              color: '#7e22ce',
@@ -5545,12 +5654,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                      const dim = getBuildingDimensionLines(strLat, strLng, sLen, totalWid, sRot, 2.8);
                                      const strokeColor = isBatteryStr ? '#9333ea' : (str.solutionKey === 'ombriere' ? '#059669' : '#2563eb');
                                      return (
-                                       <>
+                                       <React.Fragment key={`dims-${str.id}-${sRot}-${Number(strLat).toFixed(7)}-${Number(strLng).toFixed(7)}`}>
                                          {/* Longueur */}
-                                         <Polyline positions={dim.lenLine} pathOptions={{ color: strokeColor, weight: 2 }} />
-                                         <Polyline positions={dim.lenWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
-                                         <Polyline positions={dim.lenWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                         <Polyline key={`pl-len-${str.id}-${sRot}`} positions={dim.lenLine} pathOptions={{ color: strokeColor, weight: 2 }} />
+                                         <Polyline key={`pl-lenw1-${str.id}-${sRot}`} positions={dim.lenWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                         <Polyline key={`pl-lenw2-${str.id}-${sRot}`} positions={dim.lenWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
                                          <Marker
+                                           key={`mk-len-${str.id}-${sRot}`}
                                            position={dim.lenTextPos || dim.lenMid}
                                            icon={L.divIcon({
                                              className: 'bg-transparent',
@@ -5561,10 +5671,11 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                          />
 
                                          {/* Largeur */}
-                                         <Polyline positions={dim.widLine} pathOptions={{ color: strokeColor, weight: 2 }} />
-                                         <Polyline positions={dim.widWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
-                                         <Polyline positions={dim.widWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                         <Polyline key={`pl-wid-${str.id}-${sRot}`} positions={dim.widLine} pathOptions={{ color: strokeColor, weight: 2 }} />
+                                         <Polyline key={`pl-widw1-${str.id}-${sRot}`} positions={dim.widWitness1} pathOptions={{ color: '#94a3b8', weight: 1 }} />
+                                         <Polyline key={`pl-widw2-${str.id}-${sRot}`} positions={dim.widWitness2} pathOptions={{ color: '#94a3b8', weight: 1 }} />
                                          <Marker
+                                           key={`mk-wid-${str.id}-${sRot}`}
                                            position={dim.widTextPos || dim.widMid}
                                            icon={L.divIcon({
                                              className: 'bg-transparent',
@@ -5573,7 +5684,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                            })}
                                            interactive={false}
                                          />
-                                       </>
+                                       </React.Fragment>
                                      );
                                    })()}
 
@@ -5844,8 +5955,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte & synthèse', badge: 'Recommandé', color: 'blue' },
                         { id: 'situation', code: 'PC1', title: 'Plan de situation', desc: 'IGN cartographique & Satellite', badge: 'Obligatoire', color: 'indigo' },
                         { id: 'masse', code: 'PC2', title: 'Plan de masse', desc: 'Emprise de la construction', badge: 'Obligatoire', color: 'indigo' },
-                        { id: 'section_notice', code: 'PC3+PC4', title: 'Coupe & Notice', desc: 'Coupe transversale & notice descriptive', badge: 'Obligatoire', color: 'indigo' },
-                        { id: 'facades', code: 'PC5', title: 'Façades & Toitures', desc: '5 vues 3D (Sud, Nord, Est, Ouest, Toit)', badge: !!captures?.facade_sud ? 'Prêt' : '3D', color: 'emerald' },
+                        { id: 'section_notice', code: 'PC3+PC4', title: 'Coupe & Notice', desc: isBatActive ? 'Coupe transversale & notice descriptive de la station batteries' : 'Coupe transversale & notice descriptive', badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'facades', code: 'PC5', title: 'Façades & Toitures', desc: isBatActive ? '5 vues 3D de la station batteries' : '5 vues 3D (Sud, Nord, Est, Ouest, Toit)', badge: !!captures?.facade_sud ? 'Prêt' : '3D', color: 'emerald' },
                         { id: 'insertion', code: 'PC6', title: 'Insertion paysagère', desc: 'Vue avant / simulation 3D après', badge: (photos?.avant || photos?.apres) ? 'Prêt' : 'Photo 3D', color: 'emerald' },
                         { id: 'env_proche', code: 'PC7', title: 'Environnement proche', desc: 'Photographie dans le paysage proche', badge: (photos?.proche || editedProject?.pc_photos?.proche) ? 'Prêt' : 'Optionnel', color: 'purple' },
                         { id: 'env_lointain', code: 'PC8', title: 'Paysage lointain', desc: 'Photographie dans le paysage lointain', badge: (photos?.lointain || editedProject?.pc_photos?.lointain) ? 'Prêt' : 'Optionnel', color: 'purple' },
@@ -5856,18 +5967,18 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         { id: 'masse', code: 'DP2', title: 'Plan de masse', desc: 'Plan de masse des constructions', badge: 'Obligatoire', color: 'indigo' },
                         { 
                           id: 'section', 
-                          code: buildings.length > 1 ? (selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3') : (selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3'), 
-                          title: buildings.length > 1 ? 'Plans en coupe (Multi-ombrières)' : 'Plan en coupe', 
-                          desc: buildings.length > 1 ? (selectedPages.dp_notice !== false ? "2 coupes superposées & notice descriptive dédiée" : "2 coupes transversales des ombrières superposées") : (selectedPages.dp_notice !== false ? "Coupe transversale & notice descriptive" : "Coupe transversale de l'ombrière"), 
+                          code: isBatActive ? (selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3') : (buildings.length > 1 ? (selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3') : (selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3')), 
+                          title: isBatActive ? 'Plan en coupe' : (buildings.length > 1 ? 'Plans en coupe (Multi-ombrières)' : 'Plan en coupe'), 
+                          desc: isBatActive ? 'Coupe transversale & notice descriptive de la station batteries' : (buildings.length > 1 ? (selectedPages.dp_notice !== false ? "2 coupes superposées & notice descriptive dédiée" : "2 coupes transversales des ombrières superposées") : (selectedPages.dp_notice !== false ? "Coupe transversale & notice descriptive" : "Coupe transversale de l'ombrière")), 
                           badge: 'Obligatoire', 
                           color: 'indigo',
                           subOption: {
                             key: 'dp_notice',
-                            label: buildings.length > 1 ? '+ Notice descriptive (page dédiée)' : '+ Notice descriptive sous la coupe',
+                            label: isBatActive ? '+ Notice descriptive sous la coupe' : (buildings.length > 1 ? '+ Notice descriptive (page dédiée)' : '+ Notice descriptive sous la coupe'),
                             checked: selectedPages.dp_notice !== false
                           }
                         },
-                        { id: 'facades', code: 'DP4', title: 'Façades & Toitures', desc: "5 vues 3D de l'ombrière", badge: '3D', color: 'emerald' },
+                        { id: 'facades', code: 'DP4', title: 'Façades & Toitures', desc: isBatActive ? "5 vues 3D de la station batteries" : "5 vues 3D de l'ombrière", badge: '3D', color: 'emerald' },
                         { id: 'insertion', code: 'DP6', title: 'Insertion paysagère', desc: 'Simulation d\'intégration paysagère', badge: (photos?.avant || photos?.apres) ? 'Prêt' : 'Photo 3D', color: 'emerald' },
                         { id: 'env_proche', code: 'DP7', title: 'Environnement proche', desc: 'Photographie de l\'environnement proche', badge: (photos?.proche || editedProject?.pc_photos?.proche) ? 'Prêt' : 'Optionnel', color: 'purple' },
                         { id: 'env_lointain', code: 'DP8', title: 'Paysage lointain', desc: 'Photographie du paysage lointain', badge: (photos?.lointain || editedProject?.pc_photos?.lointain) ? 'Prêt' : 'Optionnel', color: 'purple' },
@@ -6127,13 +6238,17 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                           <span className="text-gray-500 font-semibold w-24 flex-shrink-0">Type</span>
                           <input
                             type="text"
-                            value={editedProject?.urbanismeType !== undefined ? editedProject.urbanismeType : (editedProject?.typeLabel || summary.type)}
+                            value={
+                              isBatActive
+                                ? ((editedProject?.urbanismeType && !editedProject.urbanismeType.toLowerCase().includes('ombrière') && !editedProject.urbanismeType.toLowerCase().includes('bâtiment')) ? editedProject.urbanismeType : 'Station Batteries Stand-Alone')
+                                : (editedProject?.urbanismeType !== undefined ? editedProject.urbanismeType : (editedProject?.typeLabel || summary.type))
+                            }
                             onChange={(e) => {
                               const val = e.target.value;
                               setEditedProject(prev => ({ ...prev, urbanismeType: val, typeLabel: val, installationType: val }));
                               handleFieldChange('urbanismeType', val);
                             }}
-                            placeholder={isDP ? "Ombrière photovoltaïque" : "Bâtiment et Ombrière"}
+                            placeholder={isBatActive ? "Station Batteries Stand-Alone" : (isDP ? "Ombrière photovoltaïque" : "Bâtiment et Ombrière")}
                             className="flex-1 px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
                           />
                         </div>
@@ -6150,21 +6265,27 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         <span className="text-[10px] text-gray-400 font-medium">Modifiable</span>
                       </div>
                       <textarea
-                        value={editedProject?.objet_travaux !== undefined ? editedProject.objet_travaux : (
-                          (solutionType === 'battery' || (!isNoBattery && batteryStorage?.enabled))
-                            ? "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)"
-                            : (isDP
-                                ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
-                                : (isPC
-                                    ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-                                    : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque"))
-                        )}
+                        value={
+                          isBatActive
+                            ? (
+                                (editedProject?.objet_travaux && !editedProject.objet_travaux.toLowerCase().includes('ombrière') && !editedProject.objet_travaux.toLowerCase().includes('bâtiment') && !editedProject.objet_travaux.toLowerCase().includes('hangar'))
+                                  ? editedProject.objet_travaux
+                                  : "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)"
+                              )
+                            : (editedProject?.objet_travaux !== undefined ? editedProject.objet_travaux : (
+                                isDP
+                                  ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
+                                  : (isPC
+                                      ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+                                      : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque")
+                              ))
+                        }
                         onChange={(e) => {
                           const val = e.target.value;
                           setEditedProject(prev => ({ ...prev, objet_travaux: val, description: val }));
                           handleFieldChange('objet_travaux', val);
                         }}
-                        placeholder={(solutionType === 'battery' || (!isNoBattery && batteryStorage?.enabled)) ? "Ex: Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)" : (isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque")}
+                        placeholder={isBatActive ? "Ex: Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)" : (isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque")}
                         className="w-full flex-1 min-h-[260px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner resize-none"
                       />
                     </div>

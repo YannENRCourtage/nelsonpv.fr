@@ -136,7 +136,7 @@ async function drawCoverPage(doc, project, type, installationType) {
   const puissanceVal = rawKwcVal ? (String(rawKwcVal).includes('kWc') ? String(rawKwcVal) : `${rawKwcVal} kWc`) : '—';
   // Dynamic type label based on configured buildings
   const isDP = type === 'dp';
-  const isBattery = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone) || Boolean(project?.isBattery);
+  const isBattery = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone) || Boolean(project?.isBattery) || project?.solutionType === 'battery' || (project?.urbanismeType || '').toLowerCase().includes('batterie');
   let installCode = project?.urbanismeType || project?.typeLabel || project?.installationType;
   if (isBattery) {
     installCode = 'Station Batteries Stand-Alone';
@@ -162,12 +162,13 @@ async function drawCoverPage(doc, project, type, installationType) {
   const drawLeft = (label, value, yPos) => {
     page.drawText(label.toUpperCase(), { x: 18, y: yPos + 14, size: 7, font: fontR, color: rgb(1,1,1,0.6) });
     const val = (value || '—').trim();
-    const lines = wrapText(val, 18);
+    const lines = wrapText(val, 16);
     if (lines.length > 1) {
-      page.drawText(lines[0], { x: 18, y: yPos + 3, size: 8.5, font: fontB, color: C.white });
-      page.drawText(lines.slice(1).join(' '), { x: 18, y: yPos - 8, size: 8.5, font: fontB, color: C.white });
+      lines.slice(0, 3).forEach((line, lineIdx) => {
+        page.drawText(line, { x: 18, y: yPos + 3 - (lineIdx * 9.5), size: 8, font: fontB, color: C.white });
+      });
     } else {
-      page.drawText(lines[0], { x: 18, y: yPos, size: 9.5, font: fontB, color: C.white });
+      page.drawText(lines[0] || '—', { x: 18, y: yPos, size: 9.5, font: fontB, color: C.white });
     }
   };
 
@@ -276,7 +277,7 @@ async function drawCoverPage(doc, project, type, installationType) {
       ? project.description
       : typeInfo.cerfaText;
 
-  if (isBattery && (!project?.objet_travaux && !project?.objetTravaux)) {
+  if (isBattery && (!project?.objet_travaux && !project?.objetTravaux || /ombrière|bâtiment|hangar/i.test(objetText))) {
     objetText = "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
   }
 

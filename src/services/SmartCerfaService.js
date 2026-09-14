@@ -563,9 +563,10 @@ export function buildCerfaDataSummary(project, installationType) {
   const fullAddress = addressParts.length > 0 ? addressParts.join(' ') : '—';
 
   // Détermination du type
+  const isBatProject = project?.isBattery || project?.isBatteryStandAlone || project?.solutionType === 'battery' || installationType === 'battery' || installationType === 'batterie' || (project?.type || '').toLowerCase().includes('batterie') || (project?.urbanismeType || '').toLowerCase().includes('batterie');
   const isDP = (installationType === 'dp' || project?.type === 'dp' || project?.docType === 'dp' || project?.typeLabel === 'dp' || (project?.type || '').includes('Ombrière'));
-  let typeLabel = project?.urbanismeType || project?.typeLabel || (isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière');
-  if (!project?.urbanismeType && !project?.typeLabel) {
+  let typeLabel = isBatProject ? 'Station Batteries Stand-Alone' : (project?.urbanismeType || project?.typeLabel || (isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière'));
+  if (!isBatProject && !project?.urbanismeType && !project?.typeLabel) {
     const bList = project?.buildings || [];
     if (isDP) {
       typeLabel = bList.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
@@ -575,8 +576,6 @@ export function buildCerfaDataSummary(project, installationType) {
       typeLabel = 'Ombrière photovoltaïque';
     } else if (installationType === 'toiture' || (project?.type || '').includes('toiture')) {
       typeLabel = 'Panneaux en toiture existante';
-    } else if (installationType === 'batterie' || (project?.type || '').includes('batterie')) {
-      typeLabel = 'Système de stockage batterie';
     } else {
       typeLabel = 'Bâtiment et Ombrière';
     }
