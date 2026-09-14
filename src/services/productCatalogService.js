@@ -453,7 +453,7 @@ export const DEFAULT_PRODUCT_CATALOG = [
     {
         id: 'cat-serv-01',
         ref: 'PREST-POSE-PV',
-        marque: 'ENR Courtage Énergie',
+        marque: 'ENR Courtage',
         modele: 'Pose en toiture, calepinage & fixation des modules',
         category: 'service',
         prixUnitaireHt: 180.00,
@@ -465,7 +465,7 @@ export const DEFAULT_PRODUCT_CATALOG = [
     {
         id: 'cat-serv-02',
         ref: 'PREST-ELEC-RACC',
-        marque: 'ENR Courtage Énergie',
+        marque: 'ENR Courtage',
         modele: 'Câblage électrique, raccordement TGBT & mise en service',
         category: 'service',
         prixUnitaireHt: 750.00,
@@ -477,7 +477,7 @@ export const DEFAULT_PRODUCT_CATALOG = [
     {
         id: 'cat-serv-03',
         ref: 'PREST-ADMIN-CONSUEL',
-        marque: 'ENR Courtage Énergie',
+        marque: 'ENR Courtage',
         modele: 'Dossier administratif clé en main (DP, Enedis SGE, Consuel)',
         category: 'service',
         prixUnitaireHt: 450.00,
@@ -598,11 +598,11 @@ export function resetCatalogToDefaults() {
 export function generateDefaultQuoteLines(project = {}) {
     // 1. Détermination de la puissance cible (kWc)
     let powerKwc = 9.0;
-    if (project.projectSize) {
-        const parsed = parseFloat(String(project.projectSize).replace(/[^0-9.]/g, ''));
+    const rawSize = project.projectSize || project.kwc || project.puissanceKwc || project.puissance || project.power;
+    if (rawSize) {
+        const cleaned = String(rawSize).replace(',', '.').replace(/[^0-9.]/g, '');
+        const parsed = parseFloat(cleaned);
         if (!isNaN(parsed) && parsed > 0) powerKwc = parsed;
-    } else if (project.puissanceKwc) {
-        powerKwc = parseFloat(project.puissanceKwc) || 9.0;
     }
 
     // Taux de TVA : Résidentiel ≤ 3kWc = 10%, sinon 20%

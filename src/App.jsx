@@ -179,11 +179,7 @@ function AppContent() {
           />
           <Route
             path="devis"
-            element={
-              <ProtectedRoute>
-                <DevisPage />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/crm" replace />}
           />
           <Route
             path="irve"

@@ -171,20 +171,47 @@ export const deleteProject = async (projectId) => {
     await deleteDoc(doc(db, 'projects', projectId));
 };
 
+export const getTenantVariants = (tId) => {
+    if (!tId) return ['green-invest', 'greeninvest', 'enr-courtage-energie', 'enr-courtage'];
+    const clean = String(tId).toLowerCase().trim();
+    if (clean === 'acama') return ['acama'];
+    if (clean.includes('green') || clean.includes('invest') || clean.includes('enr')) {
+        return ['green-invest', 'greeninvest', 'enr-courtage-energie', 'enr-courtage'];
+    }
+    return [tId];
+};
+
 export const listProjects = async (userId, canViewAll = false, tenantId = 'green-invest') => {
+    const variants = getTenantVariants(tenantId);
     let q;
     if (canViewAll) {
-        q = query(collection(db, 'projects'), where('tenantId', '==', tenantId));
+        q = variants.length === 1
+            ? query(collection(db, 'projects'), where('tenantId', '==', variants[0]))
+            : query(collection(db, 'projects'), where('tenantId', 'in', variants));
     } else {
-        q = query(
-            collection(db, 'projects'),
-            where('tenantId', '==', tenantId),
-            where('createdBy', '==', userId)
-        );
+        q = variants.length === 1
+            ? query(collection(db, 'projects'), where('tenantId', '==', variants[0]), where('createdBy', '==', userId))
+            : query(collection(db, 'projects'), where('tenantId', 'in', variants), where('createdBy', '==', userId));
     }
 
     const projectsSnapshot = await getDocs(q);
-    const projects = projectsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    let projects = projectsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+    // Fallback: inclure les projets sans tenantId s'il s'agit du tenant principal Green Invest / ENR Courtage
+    if (variants.includes('green-invest')) {
+        try {
+            const allSnapshot = await getDocs(collection(db, 'projects'));
+            const untracked = allSnapshot.docs
+                .filter(doc => !doc.data().tenantId)
+                .map(doc => ({ ...doc.data(), id: doc.id }));
+            if (untracked.length > 0) {
+                const existingIds = new Set(projects.map(p => p.id));
+                untracked.forEach(p => {
+                    if (!existingIds.has(p.id)) projects.push(p);
+                });
+            }
+        } catch (_) {}
+    }
 
     // Client-side sorting
     return projects.sort((a, b) => {
@@ -195,15 +222,16 @@ export const listProjects = async (userId, canViewAll = false, tenantId = 'green
 };
 
 export const subscribeToProjects = (userId, canViewAll, callback, tenantId = 'green-invest') => {
+    const variants = getTenantVariants(tenantId);
     let q;
     if (canViewAll) {
-        q = query(collection(db, 'projects'), where('tenantId', '==', tenantId));
+        q = variants.length === 1
+            ? query(collection(db, 'projects'), where('tenantId', '==', variants[0]))
+            : query(collection(db, 'projects'), where('tenantId', 'in', variants));
     } else {
-        q = query(
-            collection(db, 'projects'),
-            where('tenantId', '==', tenantId),
-            where('createdBy', '==', userId)
-        );
+        q = variants.length === 1
+            ? query(collection(db, 'projects'), where('tenantId', '==', variants[0]), where('createdBy', '==', userId))
+            : query(collection(db, 'projects'), where('tenantId', 'in', variants), where('createdBy', '==', userId));
     }
 
     return onSnapshot(q, (snapshot) => {

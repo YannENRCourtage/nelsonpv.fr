@@ -4182,6 +4182,13 @@ export default function BpAcama() {
     setProjectEdits(p => ({ ...p, [id]: { ...(p[id] || {}), [k]: v } }));
   }, []);
 
+  // Synchronisation immédiate des projets CRM dès l'ouverture de la page BP
+  useEffect(() => {
+    if (typeof refreshProjects === 'function') {
+      refreshProjects();
+    }
+  }, [refreshProjects]);
+
   const updateBatEdit = useCallback((id, k, v) => {
     setBatEdits(p => ({ ...p, [id]: { ...(p[id] || {}), [k]: v } }));
   }, []);

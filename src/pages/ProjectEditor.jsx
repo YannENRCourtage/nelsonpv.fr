@@ -2898,6 +2898,17 @@ export default function ProjectEditor() {
           });
         }}
       />
+
+      {/* Pop-up de construction & rédaction de Devis et Proposition Commerciale */}
+      <QuoteEditorModal
+        isOpen={quoteModalOpen}
+        onClose={() => setQuoteModalOpen(false)}
+        project={p}
+        initialQuote={p.lastQuote || null}
+        onQuoteSaved={(savedQuote) => {
+          updateProject({ lastQuote: savedQuote });
+        }}
+      />
     </div >
   );
 }

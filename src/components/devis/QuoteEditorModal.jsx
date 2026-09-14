@@ -17,7 +17,10 @@ import { generateQuoteProposalPdf } from '@/services/QuoteProposalPdfService';
 import ProductCatalogModal from './ProductCatalogModal';
 
 function formatEuro(val) {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(val || 0);
+    const num = Number(val) || 0;
+    const parts = num.toFixed(2).split('.');
+    const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return `${integerPart},${parts[1]} €`;
 }
 
 export default function QuoteEditorModal({ 
@@ -296,16 +299,22 @@ export default function QuoteEditorModal({
         }
     };
 
-    // Génération et fusion du PDF multi-pages complet
-    const handleGeneratePdf = async () => {
+    // Génération et téléchargement PDF : soit Offre complète + Devis + Fiches (onlyQuote = false), soit Devis seul (onlyQuote = true)
+    const handleGeneratePdf = async (onlyQuote = false) => {
         setIsGeneratingPdf(true);
-        setPdfProgress({ percent: 5, message: 'Initialisation de l\'étude et du devis...' });
+        setPdfProgress({ 
+            percent: 10, 
+            message: onlyQuote 
+                ? 'Génération du Devis officiel au format PDF...' 
+                : 'Initialisation de l\'offre commerciale et du devis complet...' 
+        });
 
         try {
             const result = await generateQuoteProposalPdf({
                 project,
                 quoteData,
                 energyTarifs: calculatedTotals.tariffsForPower,
+                onlyQuote,
                 onProgress: ({ percent, message }) => {
                     setPdfProgress({ percent, message });
                 }
@@ -313,15 +322,17 @@ export default function QuoteEditorModal({
 
             if (result.success) {
                 toast({
-                    title: 'Dossier PDF généré !',
-                    description: `Dossier commercial complet téléchargé avec ${result.datasheetsAppended} fiche(s) technique(s) constructeur intégrée(s).`
+                    title: onlyQuote ? 'Devis PDF généré !' : 'Offre commerciale complète générée !',
+                    description: onlyQuote 
+                        ? `Le devis N° ${quoteData.quoteNumber} a été téléchargé avec succès.` 
+                        : `Dossier commercial complet téléchargé avec ${result.datasheetsAppended} fiche(s) technique(s) constructeur intégrée(s).`
                 });
             }
         } catch (error) {
             console.error('Erreur génération PDF:', error);
             toast({
                 title: 'Erreur génération PDF',
-                description: error.message || 'Une erreur est survenue lors de l\'assemblage du PDF.',
+                description: error.message || 'Une erreur est survenue lors de la création du PDF.',
                 variant: 'destructive'
             });
         } finally {
@@ -332,8 +343,8 @@ export default function QuoteEditorModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[55000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed top-[65px] left-0 right-0 bottom-0 z-[9500] bg-black/60 backdrop-blur-xs flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-7xl max-h-[calc(100vh-85px)] my-auto flex flex-col border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
                 
                 {/* Header Barre Supérieure */}
                 <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 text-white rounded-t-2xl">
@@ -384,23 +395,39 @@ export default function QuoteEditorModal({
                             Sauvegarder
                         </Button>
 
+                        {/* Export 1 : Juste le devis */}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isGeneratingPdf}
+                            onClick={() => handleGeneratePdf(true)}
+                            className="bg-slate-800/90 hover:bg-slate-700 text-slate-100 border-slate-600 font-semibold text-xs flex items-center gap-1.5"
+                            title="Télécharger uniquement la page de Devis chiffré officiel"
+                        >
+                            <FileText className="w-4 h-4 text-blue-400" />
+                            Devis uniquement (PDF)
+                        </Button>
+
+                        {/* Export 2 : Offre complète avec Devis */}
                         <Button
                             size="sm"
                             disabled={isGeneratingPdf}
-                            onClick={handleGeneratePdf}
+                            onClick={() => handleGeneratePdf(false)}
                             className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                            title="Télécharger l'offre commerciale complète 3 pages avec fiches techniques fabricants"
                         >
                             {isGeneratingPdf ? (
                                 <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
                             ) : (
                                 <Download className="w-4 h-4 text-slate-950" />
                             )}
-                            Générer Proposition & Devis PDF
+                            Offre complète avec Devis (PDF)
                         </Button>
 
                         <button 
                             onClick={onClose}
                             className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors ml-1"
+                            title="Fermer la fenêtre"
                         >
                             <X className="w-6 h-6" />
                         </button>
@@ -824,21 +851,30 @@ export default function QuoteEditorModal({
                 </div>
 
                 {/* Footer Modal */}
-                <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900 rounded-b-2xl">
+                <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900 rounded-b-2xl">
                     <div className="text-xs text-slate-500">
-                        Offre clé en main • Validité 30 jours • Certification RGE QualiPV
+                        Offre clé en main • Validité {quoteData.validityDays || 30} jours • Certification RGE QualiPV • ENR COURTAGE
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5 flex-wrap">
                         <Button variant="outline" onClick={onClose} className="text-xs">
                             Fermer
                         </Button>
                         <Button 
-                            onClick={handleGeneratePdf} 
+                            variant="outline"
+                            onClick={() => handleGeneratePdf(true)} 
                             disabled={isGeneratingPdf}
-                            className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-2"
+                            className="text-xs font-semibold flex items-center gap-1.5 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                            <FileText className="w-4 h-4 text-blue-600" />
+                            Devis uniquement (PDF)
+                        </Button>
+                        <Button 
+                            onClick={() => handleGeneratePdf(false)} 
+                            disabled={isGeneratingPdf}
+                            className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-md shadow-amber-500/20"
                         >
                             {isGeneratingPdf ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                            Télécharger l'Offre & Fiches PDF
+                            Offre complète avec Devis (PDF)
                         </Button>
                     </div>
                 </div>
@@ -846,7 +882,7 @@ export default function QuoteEditorModal({
 
             {/* Modal de progression de génération PDF */}
             {isGeneratingPdf && (
-                <div className="fixed inset-0 z-[70000] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="fixed top-[65px] left-0 right-0 bottom-0 z-[9600] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center space-y-4">
                         <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 mx-auto flex items-center justify-center animate-pulse">
                             <FileText className="w-8 h-8" />

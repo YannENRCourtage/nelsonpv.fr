@@ -445,10 +445,6 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
               </NavLink>
             )}
 
-            <NavLink to="/devis" className={({ isActive }) => isActive ? 'nav-link active devis' : 'nav-link devis'}>
-              Devis & Offres
-            </NavLink>
-
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessConfigurator) && (
               <NavLink to="/configurateur" className={({ isActive }) => isActive ? 'nav-link active configurateur' : 'nav-link configurateur'}>Configurateur</NavLink>
             )}
@@ -720,14 +716,6 @@ export default function AppLayout() {
                 Editeur de projet
               </NavLink>
             )}
-
-            <NavLink
-              to="/devis"
-              className={({ isActive }) => isActive ? 'mobile-nav-link active devis' : 'mobile-nav-link devis'}
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Devis & Offres
-            </NavLink>
 
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessConfigurator) && (
               <NavLink

@@ -543,7 +543,7 @@ export async function generateCommercialProposalPDF({
         <!-- SIGNATURE OFFICIELLE -->
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 24px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
           <div style="font-size: 8pt; color: #64748b; font-style: italic;">
-            Document d'ingénierie préliminaire confidentiel &bull; ENR Courtage Énergie
+            Document d'ingénierie préliminaire confidentiel &bull; ENR COURTAGE
           </div>
           <div style="text-align: right;">
             <div style="font-size: 11pt; font-weight: 900; color: #0e2b4d;">Yann BARBERIS</div>
