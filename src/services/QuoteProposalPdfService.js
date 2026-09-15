@@ -988,6 +988,7 @@ export async function generateQuoteProposalPdf({
     doc.text(`Date : ${dateStr} — Validité ${validityDays} jours`, pageWidth - margin, 11.5, { align: 'right' });
 
     // Cartouche Émetteur & Destinataire au-dessus du tableau (Devis 1 page et Page 3 du dossier complet)
+    let curY = 22;
     const boxWidth = (contentWidth - 6) / 2;
     const boxH = 28;
 

@@ -574,17 +574,6 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
                 Générer le PDF
               </Button>
 
-              {/* Bouton Devis & Offre */}
-              <Button 
-                onClick={() => setShowQuoteModal(true)} 
-                size="sm"
-                className="h-8 px-2.5 rounded-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shrink-0 shadow-xs"
-                title="Éditeur de Devis & Offre chiffrée avec fiches techniques"
-              >
-                <FileText className="h-3.5 w-3.5 mr-1 shrink-0" />
-                Devis & Offre
-              </Button>
-
               {/* Bouton Transférer */}
               {isTransferAuthorized() && (
                 <Button
