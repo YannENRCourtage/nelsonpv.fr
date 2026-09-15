@@ -58,6 +58,438 @@ function formatNumber(val, decimals = 0) {
 }
 
 /**
+ * Retourne les spécifications techniques complètes, tables et métriques d'un matériel
+ */
+function getProductTechnicalSpecs(ds) {
+    const ref = (ds.ref || '').toUpperCase();
+    const desig = (ds.designation || '').toUpperCase();
+
+    // 1. MODULES PHOTOVOLTAÏQUES
+    if (ref.includes('TSM') || ref.includes('VERTEX') || desig.includes('TRINA') || ref.includes('FLASH') || desig.includes('DUALSUN') || ref.includes('MB-') || desig.includes('MEYER') || ref.includes('JAM') || desig.includes('JA SOLAR') || desig.includes('MODULE') || desig.includes('PANNEAU') || ds.category === 'module') {
+        const is500W = ref.includes('500') || desig.includes('500W');
+        const isDualsun = ref.includes('FLASH') || desig.includes('DUALSUN');
+        const isMeyer = ref.includes('MB-') || desig.includes('MEYER');
+        const isJA = ref.includes('JAM') || desig.includes('JA SOLAR');
+
+        const pmax = is500W ? '500 Wc' : (isDualsun ? '500 Wc' : (isMeyer ? '390 Wc' : (isJA ? '445 Wc' : '440 Wc')));
+        const pmaxNoct = is500W ? '382 W' : (isDualsun ? '380 W' : (isMeyer ? '296 W' : (isJA ? '339 W' : '335 W')));
+        const rendement = is500W ? '22.5 %' : (isDualsun ? '22.2 %' : (isMeyer ? '21.5 %' : (isJA ? '22.3 %' : '22.0 %')));
+        const vmp = is500W ? '38.4 V' : (isDualsun ? '38.2 V' : (isMeyer ? '38.0 V' : (isJA ? '32.1 V' : '32.8 V')));
+        const imp = is500W ? '13.03 A' : (isDualsun ? '13.10 A' : (isMeyer ? '10.27 A' : (isJA ? '13.86 A' : '13.41 A')));
+        const voc = is500W ? '45.8 V' : (isDualsun ? '45.5 V' : (isMeyer ? '44.6 V' : (isJA ? '38.9 V' : '39.5 V')));
+        const isc = is500W ? '13.82 A' : (isDualsun ? '13.90 A' : (isMeyer ? '10.87 A' : (isJA ? '14.52 A' : '14.15 A')));
+        const dims = is500W ? '1961 × 1134 × 30 mm' : (isDualsun ? '1950 × 1134 × 30 mm' : (isMeyer ? '1767 × 1041 × 35 mm' : '1762 × 1134 × 30 mm'));
+        const poids = is500W ? '23.5 kg' : (isDualsun ? '24.0 kg' : (isMeyer ? '19.7 kg' : '21.0 kg'));
+
+        return {
+            type: 'module',
+            categoryBadge: 'MODULE PHOTOVOLTAÏQUE HAUTE PERFORMANCE BI-VERRE',
+            marque: isDualsun ? 'DualSun' : (isMeyer ? 'Meyer Burger' : (isJA ? 'JA Solar' : 'Trina Solar')),
+            modele: ds.designation || 'Vertex S+ 440W Biverre N-Type TopCon',
+            kpis: [
+                { label: 'PUISSANCE CRÊTE (STC)', val: pmax, sub: 'Tolérance positive 0 / +5W' },
+                { label: 'RENDEMENT MODULE', val: rendement, sub: 'Cellules N-Type TopCon' },
+                { label: 'GARANTIE PRODUIT', val: '25 ans', sub: 'Matériaux & Fabrication' },
+                { label: 'GARANTIE LINÉAIRE', val: '30 ans', sub: 'Min. 87.4% à 30 ans' }
+            ],
+            descriptionTitle: 'PRÉSENTATION GÉNÉRALE & ATOUTS CONSTRUCTEUR',
+            descriptionPoints: [
+                'Technologie N-Type TopCon bi-verre à cellules demi-coupées multi-busbars réduisant drastiquement les pertes résistives et le risque de microfissures.',
+                'Double vitrage trempé 1.6 mm / 1.6 mm hautement translucide avec traitement antireflet, garantissant une imperméabilité absolue à l\'humidité et aux agressions chimiques (ammoniac, brouillard salin).',
+                'Coefficient de température optimisé (-0.30 %/°C) garantissant un productible élevé même en période de fortes chaleurs estivales.',
+                'Absence totale de dégradation induite par la lumière (LID) et résistance certifiée à la dégradation induite par le potentiel (PID).'
+            ],
+            tables: [
+                {
+                    title: '1. SPÉCIFICATIONS ÉLECTRIQUES (CONDITIONS NORMALISÉES STC & NOCT)',
+                    cols: [{ label: 'Paramètre Électrique', w: 72 }, { label: 'Valeur STC (1000 W/m² - 25°C)', w: 55 }, { label: 'Valeur NOCT (800 W/m² - 20°C)', w: 55 }],
+                    rows: [
+                        ['Puissance Maximale Crête (Pmax)', pmax, pmaxNoct],
+                        ['Tension au point de puissance max (Vmp)', vmp, '30.8 V'],
+                        ['Courant au point de puissance max (Imp)', imp, '10.88 A'],
+                        ['Tension en circuit ouvert (Voc)', voc, '37.4 V'],
+                        ['Courant de court-circuit (Isc)', isc, '11.42 A'],
+                        ['Rendement surfacique du module', rendement, 'Rendement NOCT : 20.4 %'],
+                        ['Coefficients thermiques', 'Pmax: -0.30 %/°C | Voc: -0.24 %/°C', 'Isc: +0.04 %/°C | NOCT: 43 ± 2°C']
+                    ]
+                },
+                {
+                    title: '2. CARACTÉRISTIQUES MÉCANIQUES & CONCEPTION PHYSIQUE',
+                    cols: [{ label: 'Élément de Conception', w: 72 }, { label: 'Spécification Constructeur', w: 110 }],
+                    rows: [
+                        ['Dimensions du module (L × l × H)', dims],
+                        ['Poids unitaire net', poids],
+                        ['Type & Disposition des cellules', '144 demi-cellules monocristallines N-Type TopCon (6 × 24)'],
+                        ['Face avant & Face arrière', 'Verre trempé thermique double face 1.6 mm / 1.6 mm à haute transmissivité'],
+                        ['Cadre du panneau', 'Alliage d\'aluminium anodisé noir 30 mm avec orifices de drainage'],
+                        ['Boîte de jonction & Câblage', 'Indice IP68 (3 diodes by-pass), câble solaire 4 mm² L=1100 mm, connecteurs MC4-EVO2']
+                    ]
+                },
+                {
+                    title: '3. PARAMÈTRES OPÉRATIONNELS, SÉCURITÉ & RÉSISTANCE MÉCANIQUE',
+                    cols: [{ label: 'Condition Opérationnelle', w: 72 }, { label: 'Valeur Admissible & Normative', w: 110 }],
+                    rows: [
+                        ['Tension maximale du système', '1 500 V DC (Norme IEC 61730-1)'],
+                        ['Calibre maximal du fusible série', '25 A'],
+                        ['Charge mécanique maximale (Neige / Vent)', 'Face avant : 5 400 Pa (550 kg/m²) | Face arrière : 4 000 Pa (400 km/h)'],
+                        ['Plage de température de service', '-40 °C à +85 °C | Résistance grêle : bille de 35 mm à 97 km/h'],
+                        ['Comportement au feu & Sécurité', 'Classe C selon IEC 61730-2 / Classe 1 incendie UTE C15-712-1']
+                    ]
+                }
+            ],
+            certifications: ['IEC 61215:2021', 'IEC 61730:2021', 'Marquage CE', 'ISO 9001 / ISO 14001', 'Agrément RGE QualiPV', 'Éligible EDF OA & Primes'],
+            warrantyText: 'Garantie produit & fabrication : 25 ans | Garantie de puissance linéaire : 30 ans avec dégradation maximale de 1.0% la 1ère année puis ≤ 0.40%/an jusqu\'à 30 ans (87.4% garanti).'
+        };
+    }
+
+    // 2. ONDULEURS & MICRO-ONDULEURS
+    if (ref.includes('SUN2000') || desig.includes('HUAWEI') || ref.includes('IQ8') || desig.includes('ENPHASE') || ref.includes('SG') || desig.includes('SUNGROW') || desig.includes('ONDULEUR') || ds.category === 'inverter') {
+        const is100k = ref.includes('100KTL') || desig.includes('100KW');
+        const is30k = ref.includes('30KTL') || desig.includes('30KW');
+        const is10k = ref.includes('10KTL') || desig.includes('10KW') || ref.includes('SG10');
+        const isEnphase = ref.includes('IQ8') || desig.includes('ENPHASE');
+        const isHuawei = desig.includes('HUAWEI') || ref.includes('SUN2000');
+
+        const nomPac = is100k ? '100 kW' : (is30k ? '30 kW' : (is10k ? '10 kW' : (isEnphase ? '384 VA' : '6 kW')));
+        const maxPac = is100k ? '110 kVA' : (is30k ? '33 kVA' : (is10k ? '11 kVA' : (isEnphase ? '384 VA' : '6.6 kVA')));
+        const nbMppt = is100k ? '10 MPPT' : (is30k ? '4 MPPT' : (is10k ? '2 MPPT' : (isEnphase ? '1 MPPT/module' : '2 MPPT')));
+        const maxEff = is100k ? '98.8 %' : (is30k ? '98.7 %' : (is10k ? '98.6 %' : (isEnphase ? '97.2 %' : '98.4 %')));
+        const euroEff = is100k ? '98.6 %' : (is30k ? '98.4 %' : (is10k ? '98.1 %' : (isEnphase ? '97.0 %' : '98.0 %')));
+        const tensionMax = isEnphase ? '60 V DC' : '1 100 V DC';
+        const dims = is100k ? '1 035 × 700 × 365 mm' : (is30k ? '640 × 530 × 270 mm' : (is10k ? '525 × 470 × 166 mm' : (isEnphase ? '212 × 175 × 30 mm' : '365 × 365 × 156 mm')));
+        const poids = is100k ? '90.0 kg' : (is30k ? '43.0 kg' : (is10k ? '17.0 kg' : (isEnphase ? '1.08 kg' : '12.0 kg')));
+
+        return {
+            type: 'inverter',
+            categoryBadge: isEnphase ? 'MICRO-ONDULEUR INDIVIDUEL HAUT RENDEMENT' : 'ONDULEUR PHOTOVOLTAÏQUE INDUSTRIEL & TERTIAIRE',
+            marque: isEnphase ? 'Enphase Energy' : (isHuawei ? 'Huawei FusionSolar' : 'Sungrow Power'),
+            modele: ds.designation || 'Huawei Onduleur Industriel Triphasé',
+            kpis: [
+                { label: 'PUISSANCE AC NOMINALE', val: nomPac, sub: `Puissance max : ${maxPac}` },
+                { label: 'RENDEMENT MAXIMAL', val: maxEff, sub: `Rendement européen : ${euroEff}` },
+                { label: 'TRACKERS MPPT DÉDIÉS', val: nbMppt, sub: is100k ? '20 entrées DC indépendantes' : 'Multi-orientations' },
+                { label: 'INDICE DE PROTECTION', val: isEnphase ? 'IP67' : 'IP66', sub: 'Parafoudres & AFCI IA' }
+            ],
+            descriptionTitle: 'ARCHITECTURE & FONCTIONNALITÉS INTELLIGENTES',
+            descriptionPoints: [
+                'Rendement de conversion exceptionnel grâce à la topologie brevetée multi-niveaux à découpage haute fréquence.',
+                'Système de détection de défaut d\'arc électrique (AFCI) motorisé par Intelligence Artificielle : coupure automatique du circuit DC en moins de 0.5 seconde pour une sécurité incendie absolue.',
+                'Surveillance intelligente des chaînes avec diagnostic automatique des courbes I-V en ligne (Smart I-V Curve Diagnosis), détectant instantanément les ombrages, salissures ou anomalies de câblage.',
+                'Refroidissement intelligent sans filtre par ventilation redondante Smart Air Cooling, garantissant un fonctionnement continu sans déclassement jusqu\'à 50°C ambiant.'
+            ],
+            tables: [
+                {
+                    title: '1. CARACTÉRISTIQUES ÉLECTRIQUES ENTRÉE (DC) & SORTIE (AC)',
+                    cols: [{ label: 'Spécification Technique', w: 72 }, { label: 'Valeur Côté DC (Photovoltaïque)', w: 55 }, { label: 'Valeur Côté AC (Réseau)', w: 55 }],
+                    rows: [
+                        ['Tension Maximale d\'entrée / Sortie', `Umax DC : ${tensionMax}`, 'Unom AC : 400 V / 480 V (Triphasé 3P+N+PE)'],
+                        ['Plage de tension de fonctionnement', 'MPPT : 200 V à 1 000 V (Plein régime 540-800V)', 'Fréquence : 50 Hz / 60 Hz (±5 Hz)'],
+                        ['Tension de démarrage DC', '200 V DC', `Courant max AC : ${is100k ? '160.4 A' : (is30k ? '48.0 A' : '16.0 A')}`],
+                        ['Entrées et Trackers MPPT', `${nbMppt} (2 entrées par MPPT)`, 'Facteur de puissance : 0.8 cap. à 0.8 ind.'],
+                        ['Courant max d\'entrée par MPPT', '30 A (Courant court-circuit max : 40 A)', 'Distorsion harmonique THDi : < 3 %'],
+                        ['Rendements de conversion', `Rendement Maximal : ${maxEff}`, `Rendement Européen : ${euroEff}`]
+                    ]
+                },
+                {
+                    title: '2. DISPOSITIFS DE SÉCURITÉ, PROTECTIONS & COMMUNICATION',
+                    cols: [{ label: 'Protection / Interface', w: 72 }, { label: 'Spécification Constructeur & Norme', w: 110 }],
+                    rows: [
+                        ['Sectionneur de coupure DC', 'Sectionneur DC intégré sous charge pour chaque tracker MPPT'],
+                        ['Parafoudres intégrés DC & AC', 'Parafoudres Type II remplaçables côté continu (DC) et côté alternatif (AC)'],
+                        ['Protection anti-arc électrique (AFCI)', 'Détection automatique par algorithme IA conforme à la norme UL1699B'],
+                        ['Protection anti-îlotage & Réseau', 'Conforme aux exigences VDE-AR-N 4105, DIN VDE 0126 et UTE C15-712-1'],
+                        ['Contrôle d\'isolement permanent', 'Surveillance des courants de fuite à la terre et résistance d\'isolement Riso'],
+                        ['Interfaces de communication', 'RS485, USB, MBUS (courant porteur), Smart Dongle WLAN / 4G (application mobile)']
+                    ]
+                },
+                {
+                    title: '3. SPÉCIFICATIONS PHYSIQUES & CONDITIONS D\'ENVIRONNEMENT',
+                    cols: [{ label: 'Paramètre Environnemental', w: 72 }, { label: 'Valeur & Tolérance', w: 110 }],
+                    rows: [
+                        ['Dimensions de l\'appareil (L × H × P)', dims],
+                        ['Poids net de l\'onduleur', poids],
+                        ['Indice de protection environnementale', `${isEnphase ? 'IP67' : 'IP66'} (Installation en extérieur sans abri ou local technique)`],
+                        ['Plage de température de fonctionnement', '-25 °C à +60 °C (Refroidissement par ventilation intelligente)'],
+                        ['Altitude maximale de service', '4 000 m (déclassement au-delà de 2 000 m) | Humidité : 0 à 100 %']
+                    ]
+                }
+            ],
+            certifications: ['EN/IEC 62109-1', 'EN/IEC 62109-2', 'UTE C15-712-1', 'VDE-AR-N 4105', 'CEI 0-21 / CEI 0-16', 'Marquage CE & RoHS'],
+            warrantyText: 'Garantie fabricant constructeur : 10 ans (extensible à 15 ou 20 ans selon contrat de maintenance). Supervision gratuite 24/7 sur portail cloud et application mobile.'
+        };
+    }
+
+    // 3. STRUCTURES DE FIXATION & SUPPORTS
+    if (ref.includes('K2') || ref.includes('DOME') || ref.includes('ROOFER') || desig.includes('FIXATION') || desig.includes('STRUCTURE') || desig.includes('SOLIDRAIL') || ds.category === 'mounting') {
+        return {
+            type: 'mounting',
+            categoryBadge: 'SYSTÈME DE STRUCTURE & FIXATION PHOTOVOLTAÏQUE CERTIFIÉ',
+            marque: 'K2 Systems',
+            modele: ds.designation || 'Système K2 SolidRail Surimposé Toiture',
+            kpis: [
+                { label: 'MATÉRIAUX CONSTRUCTEUR', val: 'Alu 6063-T66', sub: 'Visserie Inox A2-70' },
+                { label: 'RÉSISTANCE NEIGE (SL)', val: '5 400 Pa', sub: '550 kg/m² selon Eurocodes' },
+                { label: 'RÉSISTANCE VENT (WL)', val: '4 000 Pa', sub: 'Essais en soufflerie certifiés' },
+                { label: 'GARANTIE FABRICANT', val: '12 ans', sub: 'Avis Technique ETN CSTB' }
+            ],
+            descriptionTitle: 'CONCEPTION, RÉSISTANCE MÉCANIQUE & ÉTANCHÉITÉ',
+            descriptionPoints: [
+                'Système de référence européenne pour toitures inclinées (tuiles mécaniques, canal, plates, ardoises, bac acier et bac fibre-ciment).',
+                'Crochets de toiture CrossHook 4S réglables en trois dimensions pour s\'adapter précisément aux ondulations et déformations de la charpente.',
+                'Préservation intégrale de l\'étanchéité du bâtiment sans meulage excessif des tuiles, renforcée par cales d\'étanchéité EPDM haute résilience.',
+                'Calculs statiques de dimensionnement individualisés selon les normes européennes Eurocode 1 (charges climatiques) et Eurocode 9 (aluminium).'
+            ],
+            tables: [
+                {
+                    title: '1. SPÉCIFICATIONS TECHNIQUES DES COMPOSANTS & MATÉRIAUX',
+                    cols: [{ label: 'Composant du Système', w: 72 }, { label: 'Alliage & Traitement de Surface', w: 110 }],
+                    rows: [
+                        ['Rails porteurs et profilés', 'Alliage d\'aluminium extrudé EN AW-6063 T66 haute résistance mécanique'],
+                        ['Crochets de toiture (CrossHook 4S)', 'Aluminium matricé à chaud haute ductilité avec platine de réglage crantée'],
+                        ['Étriers de fixation modules (Clamps)', 'Aluminium anodisé avec fonction de mise à la terre intégrée (Lightning protection)'],
+                        ['Visserie, boulonnerie et inserts', 'Acier inoxydable austénitique de nuance A2-70 (haute résistance corrosion saline)'],
+                        ['Cales d\'étanchéité et rondelles', 'Élastomère EPDM thermoformé résistant aux rayons UV et aux amplitudes thermiques']
+                    ]
+                },
+                {
+                    title: '2. PARAMÈTRES D\'IMPLANTATION & COMPATIBILITÉ TOITURE',
+                    cols: [{ label: 'Critère de Pose', w: 72 }, { label: 'Tolérance & Spécification', w: 110 }],
+                    rows: [
+                        ['Types de couverture compatibles', 'Tuiles béton, tuiles terre cuite (mécaniques / canal), ardoises, bac acier trapézoïdal'],
+                        ['Orientation des panneaux solaires', 'Pose en mode Portrait ou Paysage selon optimisation du champ photovoltaïque'],
+                        ['Pente de toit admissible', 'De 5° à 75° sans modification structurelle de la charpente'],
+                        ['Liaison équipotentielle intégrée', 'Mise à la terre continue de l\'ensemble du champ photovoltaïque par étriers TeraGrif']
+                    ]
+                }
+            ],
+            certifications: ['Enquête de Technique Nouvelle (ETN)', 'Conforme Eurocode 1 (NF EN 1991-1-4)', 'Conforme Eurocode 9 (NF EN 1999-1-1)', 'Certificat soufflerie Wacker Ingenieure', 'Éligible Garantie Décennale SMABTP'],
+            warrantyText: 'Garantie constructeur K2 Systems : 12 ans. Système certifié pour l\'obtention de la garantie décennale poseur et éligible aux critères d\'assurabilité bâtiment.'
+        };
+    }
+
+    // 4. AUTRE / GÉNÉRIQUE (Batterie, Coffret électrique, Accessoires)
+    return {
+        type: 'equipment',
+        categoryBadge: 'ÉQUIPEMENT ÉLECTRIQUE HOMOLOGUÉ & CERTIFIÉ',
+        marque: ds.marque || 'Équipementier Solaire Partenaire',
+        modele: ds.designation || ds.ref,
+        kpis: [
+            { label: 'RÉFÉRENCE UNIQUE', val: ds.ref.slice(0, 16), sub: 'Matériel homologué' },
+            { label: 'SÉCURITÉ & CONFORMITÉ', val: 'Norme CE', sub: 'Conforme UTE C15-712-1' },
+            { label: 'INDICE DE PROTECTION', val: 'IP65', sub: 'Usage intérieur / extérieur' },
+            { label: 'GARANTIE MATÉRIEL', val: '10 ans', sub: 'Engagement fabricant' }
+        ],
+        descriptionTitle: 'SPÉCIFICATIONS TECHNIQUES & CERTIFICATIONS DU COMPOSANT',
+        descriptionPoints: [
+            ds.details || 'Composant certifié pour installation photovoltaïque raccordée au réseau électrique.',
+            'Conception haute durabilité répondant aux exigences strictes de la norme UTE C15-712-1 et du guide Consuel.',
+            'Matériel rigoureusement testé en laboratoire et sélectionné par ENR COURTAGE pour sa fiabilité éprouvée.'
+        ],
+        tables: [
+            {
+                title: 'SPÉCIFICATIONS DÉTAILLÉES DU MATÉRIEL',
+                cols: [{ label: 'Désignation', w: 80 }, { label: 'Valeur / Spécification', w: 102 }],
+                rows: [
+                    ['Référence constructeur', ds.ref],
+                    ['Désignation commerciale', ds.designation],
+                    ['Spécifications techniques', ds.details || 'Conforme aux spécifications constructeur'],
+                    ['Conformité et normes applicables', 'Directive Basse Tension 2014/35/UE, Marquage CE, UTE C15-712-1'],
+                    ['Garantie constructeur', 'Garantie fabricant pièces et main-d\'œuvre selon conditions générales']
+                ]
+            }
+        ],
+        certifications: ['Marquage CE', 'Conforme UTE C15-712-1', 'Agrément Consuel', 'ISO 9001 Qualité'],
+        warrantyText: 'Matériel certifié et garanti selon les engagements constructeurs officiels. Éligible aux démarches de conformité Consuel et Enedis.'
+    };
+}
+
+/**
+ * Dessine une page A4 complète et riche de Fiche Technique Fabricant & Certification
+ */
+function renderProductDatasheetPage(doc, ds, pageWidth, pageHeight, margin, contentWidth, COLORS) {
+    doc.addPage();
+    const specs = getProductTechnicalSpecs(ds);
+
+    // 1. Bandeau supérieur Constructeur (Bleu nuit)
+    doc.setFillColor(...COLORS.primary);
+    doc.rect(0, 0, pageWidth, 21, 'F');
+
+    // Tag catégorie haut gauche
+    doc.setFillColor(...COLORS.secondary);
+    doc.roundedRect(margin, 4.5, 96, 5.5, 1, 1, 'F');
+    doc.setTextColor(...COLORS.white);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.2);
+    doc.text(specs.categoryBadge.slice(0, 56), margin + 48, 8.2, { align: 'center' });
+
+    // Titre de la page
+    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.white);
+    const titleText = `${specs.marque.toUpperCase()} — ${sanitizePdfText(specs.modele).slice(0, 48)}`;
+    doc.text(titleText, margin, 17);
+
+    // Tag Référence haut droite
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(pageWidth - margin - 58, 4, 58, 13, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.2);
+    doc.setTextColor(...COLORS.gray);
+    doc.text('RÉF. CONSTRUCTEUR', pageWidth - margin - 29, 8, { align: 'center' });
+    doc.setFontSize(7.8);
+    doc.setTextColor(...COLORS.primary);
+    doc.text(sanitizePdfText(ds.ref).slice(0, 22), pageWidth - margin - 29, 13.5, { align: 'center' });
+
+    let curY = 25;
+
+    // 2. 4 Blocs KPI Hero
+    const kpiW = (contentWidth - 9) / 4;
+    const kpiH = 16.5;
+
+    specs.kpis.forEach((kpi, idx) => {
+        const kX = margin + idx * (kpiW + 3);
+        doc.setFillColor(idx === 0 || idx === 1 ? 240 : 248, idx === 0 || idx === 1 ? 248 : 250, idx === 0 || idx === 1 ? 255 : 252);
+        doc.setDrawColor(...(idx === 0 ? COLORS.secondary : (idx === 1 ? COLORS.accent : COLORS.border)));
+        doc.roundedRect(kX, curY, kpiW, kpiH, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.2);
+        doc.setTextColor(...COLORS.gray);
+        doc.text(kpi.label, kX + kpiW / 2, curY + 4.5, { align: 'center' });
+
+        doc.setFontSize(9.5);
+        doc.setTextColor(...(idx === 0 ? COLORS.secondary : (idx === 1 ? COLORS.accent : COLORS.primary)));
+        doc.text(kpi.val, kX + kpiW / 2, curY + 10, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.setTextColor(...COLORS.gray);
+        doc.text(kpi.sub, kX + kpiW / 2, curY + 14, { align: 'center' });
+    });
+
+    curY += kpiH + 5;
+
+    // 3. Présentation générale & Atouts constructeur
+    const descBoxH = 22;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(...COLORS.border);
+    doc.roundedRect(margin, curY, contentWidth, descBoxH, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...COLORS.primary);
+    doc.text(specs.descriptionTitle, margin + 4, curY + 5);
+
+    let pY = curY + 9;
+    specs.descriptionPoints.slice(0, 3).forEach(pt => {
+        doc.setFillColor(...COLORS.secondary);
+        doc.circle(margin + 4, pY - 1, 1, 'F');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.8);
+        doc.setTextColor(...COLORS.dark);
+        const wrapped = doc.splitTextToSize(pt, contentWidth - 10);
+        doc.text(wrapped[0] || pt, margin + 7, pY);
+        pY += 4.5;
+    });
+
+    curY += descBoxH + 4;
+
+    // 4. Tableaux de caractéristiques
+    specs.tables.forEach(tbl => {
+        if (curY > 235) return;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...COLORS.primary);
+        doc.text(tbl.title, margin, curY + 3.5);
+        curY += 5;
+
+        // Entête du tableau
+        doc.setFillColor(...COLORS.primary);
+        doc.rect(margin, curY, contentWidth, 5.5, 'F');
+        doc.setTextColor(...COLORS.white);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+
+        let cX = margin;
+        tbl.cols.forEach(c => {
+            doc.text(c.label, cX + 2.5, curY + 3.8);
+            cX += c.w;
+        });
+        curY += 5.5;
+
+        // Lignes du tableau
+        const rowH = 4.2;
+        tbl.rows.forEach((r, rIdx) => {
+            const isAlt = rIdx % 2 === 1;
+            doc.setFillColor(isAlt ? 248 : 255, isAlt ? 250 : 255, isAlt ? 252 : 255);
+            doc.rect(margin, curY, contentWidth, rowH, 'F');
+
+            let cellX = margin;
+            r.forEach((val, cIdx) => {
+                const colW = tbl.cols[cIdx]?.w || 40;
+                doc.setFont('helvetica', cIdx === 0 ? 'bold' : 'normal');
+                doc.setFontSize(6.5);
+                doc.setTextColor(...COLORS.dark);
+                const textStr = sanitizePdfText(val);
+                doc.text(textStr.slice(0, 65), cellX + 2.5, curY + 3);
+                cellX += colW;
+            });
+            curY += rowH;
+        });
+
+        curY += 3.5;
+    });
+
+    // 5. Badges de Certifications & Homologations
+    if (curY < 240) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...COLORS.primary);
+        doc.text('CERTIFICATIONS OFFICIELLES & NORMES D\'HOMOLOGATION', margin, curY + 3.5);
+        curY += 5;
+
+        const badgeW = (contentWidth - 10) / (specs.certifications.length || 1);
+        specs.certifications.forEach((cert, idx) => {
+            const bX = margin + idx * (badgeW + 2);
+            doc.setFillColor(240, 253, 244);
+            doc.setDrawColor(...COLORS.accent);
+            doc.roundedRect(bX, curY, badgeW, 7, 1.5, 1.5, 'FD');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(5.8);
+            doc.setTextColor(22, 101, 52);
+            doc.text(cert, bX + badgeW / 2, curY + 4.6, { align: 'center' });
+        });
+
+        curY += 10;
+    }
+
+    // 6. Cadre Garantie constructeur & Documentation en ligne
+    if (curY < 265) {
+        const remainH = Math.min(20, pageHeight - 12 - curY);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...COLORS.secondary);
+        doc.roundedRect(margin, curY, contentWidth, remainH, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.2);
+        doc.setTextColor(...COLORS.secondary);
+        doc.text('ENGAGEMENTS DE GARANTIE CONSTRUCTEUR & CONFORMITÉ ENEDIS', margin + 4, curY + 4.8);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(...COLORS.dark);
+        doc.text(specs.warrantyText, margin + 4, curY + 9.5);
+
+        if (ds.url) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(6.4);
+            doc.setTextColor(37, 99, 235);
+            doc.text(`Documentation constructeur officielle en ligne : ${ds.url}`, margin + 4, curY + 14.5);
+        }
+    }
+}
+
+/**
  * Génère le document PDF :
  * - Si onlyQuote = true : génère uniquement le Devis officiel chiffré (avec entête, coordonnées, lignes, récap, échéancier, bon pour accord, signature)
  * - Si onlyQuote = false : génère la Proposition Commerciale complète 3 pages + fiches techniques constructeurs intégrées
@@ -221,37 +653,40 @@ export async function generateQuoteProposalPdf({
         const boxWidth = (contentWidth - 6) / 2;
         const boxHeight = 36;
 
-        // Émetteur
-        doc.setFillColor(...COLORS.lightGray);
+        // Émetteur (fond blanc, sans mention ÉMETTEUR / EXPERT SOLAIRE)
+        doc.setFillColor(255, 255, 255);
         doc.setDrawColor(...COLORS.border);
         doc.roundedRect(margin, curY, boxWidth, boxHeight, 2.5, 2.5, 'FD');
 
-        doc.setTextColor(...COLORS.primary);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.text('ÉMETTEUR / EXPERT SOLAIRE', margin + 5, curY + 7.5);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8.5);
+        doc.setFontSize(10);
         doc.setTextColor(...COLORS.dark);
-        doc.text('ENR COURTAGE', margin + 5, curY + 14);
-        doc.text('Conseil & Ingénierie Photovoltaïque', margin + 5, curY + 19.5);
-        doc.text('Garantie Décennale & Certification RGE QualiPV', margin + 5, curY + 25);
-        doc.text(`Conseiller : ${sanitizePdfText(quoteData.commercialName || 'Pôle Ingénierie Solaire')}`, margin + 5, curY + 30.5);
+        doc.text('ENR COURTAGE', margin + 5, curY + 8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.2);
+        doc.text("Bureau d'Études & Solutions Solaires Photovoltaïques", margin + 5, curY + 14.5);
+        doc.text('Garantie Décennale & Certification RGE QualiPV', margin + 5, curY + 20);
+        doc.text('contact@enr-courtage.fr • www.enr-courtage.fr', margin + 5, curY + 25.5);
+        doc.text(`Conseiller : ${sanitizePdfText(quoteData.commercialName || 'Pôle Ingénierie Solaire')}`, margin + 5, curY + 31);
 
-        // Destinataire
+        // Destinataire / Client (fond blanc et police sombre)
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...COLORS.border);
         doc.roundedRect(margin + boxWidth + 6, curY, boxWidth, boxHeight, 2.5, 2.5, 'FD');
-        doc.setTextColor(...COLORS.primary);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.text('DESTINATAIRE / CLIENT', margin + boxWidth + 11, curY + 7.5);
-        doc.setFont('helvetica', 'normal');
         doc.setFontSize(8.5);
         doc.setTextColor(...COLORS.dark);
-        doc.text(clientName, margin + boxWidth + 11, curY + 14);
-        if (clientAddress) doc.text(clientAddress, margin + boxWidth + 11, curY + 19.5);
-        if (clientZipCity) doc.text(clientZipCity, margin + boxWidth + 11, curY + 25);
+        doc.text('CLIENT / DESTINATAIRE', margin + boxWidth + 11, curY + 8);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(...COLORS.dark);
+        doc.text(clientName, margin + boxWidth + 11, curY + 14.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.2);
+        if (clientAddress) doc.text(clientAddress, margin + boxWidth + 11, curY + 20);
+        if (clientZipCity) doc.text(clientZipCity, margin + boxWidth + 11, curY + 25.5);
         const contactLine = [clientPhone, clientEmail].filter(Boolean).join(' • ');
-        if (contactLine) doc.text(contactLine, margin + boxWidth + 11, curY + 30.5);
+        if (contactLine) doc.text(contactLine, margin + boxWidth + 11, curY + 31);
 
         // Métadonnées
         curY += boxHeight + 6;
@@ -395,11 +830,11 @@ export async function generateQuoteProposalPdf({
         doc.text(`${formatEuro(gainTotalAn1)} / an`, margin + 75, curY + 29);
 
         // Section 2 : Tableau prévisionnel
-        curY += 42;
+        curY += 40;
         doc.setTextColor(...COLORS.primary);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10.5);
-        doc.text('2. PLAN FINANCIER & RETOUR SUR INVESTISSEMENT SUR 25 ANS', margin, curY);
+        doc.text('2. PLAN FINANCIER & RETOUR SUR INVESTISSEMENT SUR 30 ANS', margin, curY);
 
         curY += 5;
         const thCols = [
@@ -411,61 +846,68 @@ export async function generateQuoteProposalPdf({
         ];
 
         doc.setFillColor(...COLORS.primary);
-        doc.rect(margin, curY, contentWidth, 7, 'F');
+        doc.rect(margin, curY, contentWidth, 6, 'F');
         doc.setTextColor(...COLORS.white);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.5);
+        doc.setFontSize(7.2);
 
         let colX = margin;
         thCols.forEach(col => {
-            doc.text(col.label, colX + 3, curY + 4.8);
+            doc.text(col.label, colX + 3, curY + 4.2);
             colX += col.w;
         });
 
-        curY += 7;
+        curY += 6;
         const horizons = [
             { an: 'Année 1', mult: 1, prime: primeAuto },
+            { an: 'Année 2', mult: 2, prime: primeAuto },
+            { an: 'Année 3', mult: 3, prime: primeAuto },
+            { an: 'Année 4', mult: 4, prime: primeAuto },
             { an: 'Année 5', mult: 5, prime: primeAuto },
             { an: 'Année 10', mult: 10, prime: primeAuto },
             { an: 'Année 15', mult: 15, prime: primeAuto },
             { an: 'Année 20', mult: 20, prime: primeAuto },
-            { an: 'Année 25', mult: 25, prime: primeAuto }
+            { an: 'Année 25', mult: 25, prime: primeAuto },
+            { an: 'Année 30', mult: 30, prime: primeAuto }
         ];
 
+        const rowHeight = 4.9;
         horizons.forEach((h, i) => {
             const isOdd = i % 2 === 1;
             doc.setFillColor(isOdd ? 248 : 255, isOdd ? 250 : 255, isOdd ? 252 : 255);
-            doc.rect(margin, curY, contentWidth, 6.5, 'F');
+            doc.rect(margin, curY, contentWidth, rowHeight, 'F');
 
-            const factor = h.mult * 1.02;
+            // Économies sur facture indexées (inflation moyenne énergie 2%/an)
+            const factor = h.mult * (1 + 0.02 * ((h.mult - 1) / 2));
             const ecoFact = Math.round(econoFactureAn * factor);
-            const revOa = Math.round(revenuVenteAn * h.mult);
+            // Revenus EDF OA sur 20 ans de contrat garanti, puis valorisation marché
+            const revOa = Math.round(revenuVenteAn * Math.min(h.mult, 20) + (h.mult > 20 ? (h.mult - 20) * (revenuVenteAn * 0.7) : 0));
             const gainsCumules = ecoFact + revOa + h.prime;
 
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(7.5);
+            doc.setFontSize(7.2);
             doc.setTextColor(...COLORS.dark);
 
             let cellX = margin;
             doc.setFont('helvetica', 'bold');
-            doc.text(h.an, cellX + 3, curY + 4.5);
+            doc.text(h.an, cellX + 3, curY + 3.6);
             cellX += thCols[0].w;
 
             doc.setFont('helvetica', 'normal');
-            doc.text(formatEuro(ecoFact), cellX + 3, curY + 4.5);
+            doc.text(formatEuro(ecoFact), cellX + 3, curY + 3.6);
             cellX += thCols[1].w;
 
-            doc.text(formatEuro(revOa), cellX + 3, curY + 4.5);
+            doc.text(formatEuro(revOa), cellX + 3, curY + 3.6);
             cellX += thCols[2].w;
 
-            doc.text(formatEuro(h.prime), cellX + 3, curY + 4.5);
+            doc.text(formatEuro(h.prime), cellX + 3, curY + 3.6);
             cellX += thCols[3].w;
 
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...COLORS.accent);
-            doc.text(formatEuro(gainsCumules), cellX + 3, curY + 4.5);
+            doc.text(formatEuro(gainsCumules), cellX + 3, curY + 3.6);
 
-            curY += 6.5;
+            curY += rowHeight;
         });
 
         // Section 3 : Bilan Carbone
@@ -545,46 +987,49 @@ export async function generateQuoteProposalPdf({
     doc.setFont('helvetica', 'normal');
     doc.text(`Date : ${dateStr} — Validité ${validityDays} jours`, pageWidth - margin, 11.5, { align: 'right' });
 
-    let curY = 24;
+    // Cartouche Émetteur & Destinataire au-dessus du tableau (Devis 1 page et Page 3 du dossier complet)
+    const boxWidth = (contentWidth - 6) / 2;
+    const boxH = 28;
 
-    // Si on exporte UNIQUEMENT le devis, on insère un cartouche émetteur / client compact en haut
-    if (onlyQuote) {
-        const boxWidth = (contentWidth - 6) / 2;
-        const boxH = 30;
+    // Émetteur (gauche) : fond blanc, sans mention ÉMETTEUR / EXPERT SOLAIRE
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(...COLORS.border);
+    doc.roundedRect(margin, curY, boxWidth, boxH, 2, 2, 'FD');
 
-        // Émetteur
-        doc.setFillColor(...COLORS.lightGray);
-        doc.setDrawColor(...COLORS.border);
-        doc.roundedRect(margin, curY, boxWidth, boxH, 2, 2, 'FD');
-        doc.setTextColor(...COLORS.primary);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        doc.text('ÉMETTEUR / EXPERT SOLAIRE', margin + 4, curY + 6.5);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(...COLORS.dark);
-        doc.text('ENR COURTAGE', margin + 4, curY + 12);
-        doc.text('Conseil & Ingénierie Photovoltaïque • RGE QualiPV', margin + 4, curY + 17);
-        doc.text('contact@enr-courtage.fr • www.enr-courtage.fr', margin + 4, curY + 22);
-        doc.text(`Conseiller : ${sanitizePdfText(quoteData.commercialName || 'Pôle Ingénierie Solaire')}`, margin + 4, curY + 26.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.dark);
+    doc.text('ENR COURTAGE', margin + 4, curY + 6.5);
 
-        // Client
-        doc.roundedRect(margin + boxWidth + 6, curY, boxWidth, boxH, 2, 2, 'FD');
-        doc.setTextColor(...COLORS.primary);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        doc.text('CLIENT / DESTINATAIRE', margin + boxWidth + 10, curY + 6.5);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(...COLORS.dark);
-        doc.text(clientName, margin + boxWidth + 10, curY + 12);
-        if (clientAddress) doc.text(clientAddress, margin + boxWidth + 10, curY + 17);
-        if (clientZipCity) doc.text(clientZipCity, margin + boxWidth + 10, curY + 22);
-        const cliInfo = [clientPhone, prm ? `PRM: ${prm}` : ''].filter(Boolean).join(' • ');
-        if (cliInfo) doc.text(cliInfo, margin + boxWidth + 10, curY + 26.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.8);
+    doc.setTextColor(...COLORS.dark);
+    doc.text('Conseil & Ingénierie Photovoltaïque • RGE QualiPV', margin + 4, curY + 12);
+    doc.text('contact@enr-courtage.fr • www.enr-courtage.fr', margin + 4, curY + 17);
+    doc.text(`Conseiller : ${sanitizePdfText(quoteData.commercialName || 'Pôle Ingénierie Solaire')}`, margin + 4, curY + 22.5);
 
-        curY += boxH + 6;
-    }
+    // Client / Destinataire (droite) : fond blanc et police sombre
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(...COLORS.border);
+    doc.roundedRect(margin + boxWidth + 6, curY, boxWidth, boxH, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...COLORS.dark);
+    doc.text('CLIENT / DESTINATAIRE', margin + boxWidth + 10, curY + 6.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...COLORS.dark);
+    doc.text(clientName, margin + boxWidth + 10, curY + 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.8);
+    if (clientAddress) doc.text(clientAddress, margin + boxWidth + 10, curY + 17);
+    const cliInfo = [clientZipCity, clientPhone, prm ? `PRM: ${prm}` : ''].filter(Boolean).join(' • ');
+    if (cliInfo) doc.text(cliInfo, margin + boxWidth + 10, curY + 22.5);
+
+    curY += boxH + 5;
 
     // Entête du tableau de devis
     doc.setFillColor(...COLORS.primary);
@@ -858,7 +1303,51 @@ export async function generateQuoteProposalPdf({
     doc.text("Conditions : Devis soumis aux conditions générales de vente ENR COURTAGE. Garantie décennale souscrite auprès d'une compagnie habilitée.", margin, curY);
     doc.text("ENR COURTAGE — Bureau d'Études & Solutions Solaires Photovoltaïques — RGE QualiPV", margin, curY + 3.2);
 
-    // Footer
+    // =========================================================================
+    // ÉTAPE 2 : GÉNÉRATION DES FICHES TECHNIQUES FABRICANTS PLEINE PAGE (SI NON ONLY QUOTE)
+    // =========================================================================
+    let datasheetsCount = 0;
+
+    if (!onlyQuote) {
+        const datasheetsToAppend = [];
+        sections.forEach(sec => {
+            (sec.lines || []).forEach(line => {
+                const isRelevantEquipment = line.includeDatasheet || Boolean(line.ficheTechniqueUrl) || 
+                    ['TSM', 'SUN2000', 'K2', 'FLASH', 'MB-', 'JAM', 'IQ8', 'SG10', 'LUNA', 'BYD', 'COF'].some(code => (line.ref || '').toUpperCase().includes(code));
+                
+                if (isRelevantEquipment) {
+                    if (!datasheetsToAppend.some(d => d.ref === line.ref)) {
+                        datasheetsToAppend.push({
+                            ref: sanitizePdfText(line.ref),
+                            designation: sanitizePdfText(line.designation),
+                            url: line.ficheTechniqueUrl || '',
+                            details: sanitizePdfText(line.details),
+                            quantite: line.quantite,
+                            category: line.category
+                        });
+                    }
+                }
+            });
+        });
+
+        datasheetsCount = datasheetsToAppend.length;
+
+        datasheetsToAppend.forEach((ds, idx) => {
+            const progressPercent = 50 + Math.round(((idx + 1) / (datasheetsCount || 1)) * 45);
+            onProgress({
+                step: 3,
+                percent: progressPercent,
+                message: `Génération de la fiche technique fabricant : ${ds.ref}...`
+            });
+
+            // Génération de la fiche technique complète vectorielle
+            renderProductDatasheetPage(doc, ds, pageWidth, pageHeight, margin, contentWidth, COLORS);
+        });
+    }
+
+    // =========================================================================
+    // ÉTAPE 3 : PIED DE PAGE SYNCHRONISÉ SUR TOUTES LES PAGES (1 à N)
+    // =========================================================================
     const totalPagesCount = doc.internal.getNumberOfPages();
     for (let p = 1; p <= totalPagesCount; p++) {
         doc.setPage(p);
@@ -867,138 +1356,17 @@ export async function generateQuoteProposalPdf({
         doc.setTextColor(...COLORS.gray);
         const footerLabel = onlyQuote 
             ? `Page ${p} / ${totalPagesCount} — Devis Officiel Chiffré` 
-            : (p === 1 ? 'Page 1 / 3 — Proposition Commerciale & Présentation' 
-               : (p === 2 ? 'Page 2 / 3 — Étude Technico-Économique & Rentabilité' 
-                  : `Page ${p} / ${totalPagesCount} — Devis Chiffré & Bon pour accord`));
+            : (p === 1 ? `Page 1 / ${totalPagesCount} — Proposition Commerciale & Présentation` 
+               : (p === 2 ? `Page 2 / ${totalPagesCount} — Étude Technico-Économique & Rentabilité (30 ans)` 
+                  : (p === 3 ? `Page 3 / ${totalPagesCount} — Devis Chiffré Détaillé & Bon pour accord`
+                     : `Page ${p} / ${totalPagesCount} — Fiche Technique Fabricant & Certification Officielle`)));
         doc.text(footerLabel, margin, pageHeight - 8);
         doc.text('ENR COURTAGE — Tous droits réservés', pageWidth - margin, pageHeight - 8, { align: 'right' });
     }
 
-    // =========================================================================
-    // ÉTAPE 2 : FUSION MULTI-PAGES & FICHES TECHNIQUES FABRICANTS (SI NON ONLY QUOTE)
-    // =========================================================================
-    onProgress({ step: 2, percent: 50, message: "Assemblage final du fichier PDF..." });
-
-    const initialPdfArrayBuffer = doc.output('arraybuffer');
-    const mergedPdfDoc = await PDFDocument.load(initialPdfArrayBuffer);
-
-    let appendedCount = 0;
-
-    // Si on exporte l'offre complète avec fiches techniques constructeurs
-    if (!onlyQuote) {
-        const datasheetsToAppend = [];
-        sections.forEach(sec => {
-            (sec.lines || []).forEach(line => {
-                if (line.includeDatasheet && line.ficheTechniqueUrl) {
-                    if (!datasheetsToAppend.some(d => d.url === line.ficheTechniqueUrl)) {
-                        datasheetsToAppend.push({
-                            ref: sanitizePdfText(line.ref),
-                            designation: sanitizePdfText(line.designation),
-                            url: line.ficheTechniqueUrl,
-                            details: sanitizePdfText(line.details)
-                        });
-                    }
-                }
-            });
-        });
-
-        const totalDatasheets = datasheetsToAppend.length;
-
-        for (let i = 0; i < totalDatasheets; i++) {
-            const ds = datasheetsToAppend[i];
-            const progressPercent = 50 + Math.round(((i + 1) / totalDatasheets) * 45);
-            onProgress({
-                step: 3,
-                percent: progressPercent,
-                message: `Intégration fiche technique fabricant : ${ds.ref}...`
-            });
-
-            let success = false;
-            try {
-                const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(ds.url)}`;
-                const fetchRes = await fetch(proxyUrl);
-
-                if (fetchRes.ok) {
-                    const pdfBytes = await fetchRes.arrayBuffer();
-                    const dsDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-                    const copiedPages = await mergedPdfDoc.copyPages(dsDoc, dsDoc.getPageIndices());
-                    copiedPages.forEach(page => mergedPdfDoc.addPage(page));
-                    success = true;
-                    appendedCount++;
-                }
-            } catch (fetchErr) {
-                console.warn(`Échec téléchargement fiche technique (${ds.ref}):`, fetchErr.message);
-            }
-
-            // Page de synthèse en cas d'impossibilité de téléchargement direct
-            if (!success) {
-                try {
-                    const fallbackPage = mergedPdfDoc.addPage([595.28, 841.89]);
-                    const fontBold = await mergedPdfDoc.embedFont(StandardFonts.HelveticaBold);
-                    const fontRegular = await mergedPdfDoc.embedFont(StandardFonts.Helvetica);
-
-                    fallbackPage.drawRectangle({
-                        x: 0,
-                        y: 841.89 - 50,
-                        width: 595.28,
-                        height: 50,
-                        color: rgb(30 / 255, 58 / 255, 138 / 255)
-                    });
-
-                    fallbackPage.drawText("FICHE TECHNIQUE FABRICANT — CERTIFICATION", {
-                        x: 35,
-                        y: 841.89 - 30,
-                        size: 13,
-                        font: fontBold,
-                        color: rgb(1, 1, 1)
-                    });
-
-                    fallbackPage.drawText(`RÉFÉRENCE CONSTRUCTEUR : ${ds.ref}`, {
-                        x: 35,
-                        y: 841.89 - 80,
-                        size: 14,
-                        font: fontBold,
-                        color: rgb(30 / 255, 58 / 255, 138 / 255)
-                    });
-
-                    fallbackPage.drawText(`Désignation : ${ds.designation}`, {
-                        x: 35,
-                        y: 841.89 - 105,
-                        size: 11,
-                        font: fontRegular,
-                        color: rgb(30 / 255, 41 / 255, 59 / 255)
-                    });
-
-                    if (ds.details) {
-                        fallbackPage.drawText(`Spécifications : ${ds.details}`, {
-                            x: 35,
-                            y: 841.89 - 130,
-                            size: 9.5,
-                            font: fontRegular,
-                            color: rgb(100 / 255, 116 / 255, 139 / 255)
-                        });
-                    }
-
-                    fallbackPage.drawText(`Documentation officielle en ligne : ${ds.url}`, {
-                        x: 35,
-                        y: 841.89 - 170,
-                        size: 8.5,
-                        font: fontRegular,
-                        color: rgb(37 / 255, 99 / 255, 235 / 255)
-                    });
-
-                    appendedCount++;
-                } catch (fbErr) {
-                    console.warn("Échec page de repli fiche", fbErr);
-                }
-            }
-        }
-    }
-
     onProgress({ step: 4, percent: 98, message: "Finalisation du document PDF..." });
 
-    const finalPdfBytes = await mergedPdfDoc.save();
-    const pdfBlob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+    const pdfBlob = doc.output('blob');
     const pdfUrl = URL.createObjectURL(pdfBlob);
 
     // Nom de fichier adapté
@@ -1021,6 +1389,6 @@ export async function generateQuoteProposalPdf({
         fileName,
         pdfUrl,
         blob: pdfBlob,
-        datasheetsAppended: appendedCount
+        datasheetsAppended: datasheetsCount
     };
 }

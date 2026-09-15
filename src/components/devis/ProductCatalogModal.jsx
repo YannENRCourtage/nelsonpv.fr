@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
     X, Plus, Search, FileText, ExternalLink, Edit2, Trash2, RotateCcw, 
-    Check, Sun, Zap, BatteryCharging, Layers, Cpu, Wrench, Shield, Info
+    Check, Sun, Zap, BatteryCharging, Layers, Cpu, Wrench, Shield, Info,
+    LayoutGrid, List
 } from 'lucide-react';
 import { 
     getProductCatalog, saveCatalogItem, resetCatalogToDefaults, 
@@ -27,6 +28,22 @@ export default function ProductCatalogModal({ isOpen, onClose, onSelectProduct =
     const [searchQuery, setSearchQuery] = useState('');
     const [editingItem, setEditingItem] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
+    const [viewMode, setViewMode] = useState(() => {
+        try {
+            return localStorage.getItem('nelson_catalog_view_mode') || 'grid';
+        } catch {
+            return 'grid';
+        }
+    });
+
+    const handleViewModeChange = (mode) => {
+        setViewMode(mode);
+        try {
+            localStorage.setItem('nelson_catalog_view_mode', mode);
+        } catch (e) {
+            console.warn(e);
+        }
+    };
 
     // Form state
     const [formData, setFormData] = useState({
@@ -216,14 +233,46 @@ export default function ProductCatalogModal({ isOpen, onClose, onSelectProduct =
                         })}
                     </div>
 
-                    <div className="relative w-72">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                        <Input
-                            placeholder="Rechercher par réf, marque, modèle..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 h-9 text-xs bg-white dark:bg-slate-800"
-                        />
+                    <div className="flex items-center gap-3">
+                        {/* Sélecteur de vue : Grille / En ligne */}
+                        <div className="flex items-center bg-slate-200/80 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-300 dark:border-slate-700">
+                            <button
+                                type="button"
+                                onClick={() => handleViewModeChange('grid')}
+                                className={`p-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-all ${
+                                    viewMode === 'grid'
+                                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                                title="Affichage en Grille (Cartes)"
+                            >
+                                <LayoutGrid className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Grille</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleViewModeChange('list')}
+                                className={`p-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-all ${
+                                    viewMode === 'list'
+                                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                                title="Affichage En Ligne (Lignes/Tableau)"
+                            >
+                                <List className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">En Ligne</span>
+                            </button>
+                        </div>
+
+                        <div className="relative w-60 sm:w-72">
+                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                            <Input
+                                placeholder="Rechercher par réf, marque, modèle..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 h-9 text-xs bg-white dark:bg-slate-800"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -397,102 +446,195 @@ export default function ProductCatalogModal({ isOpen, onClose, onSelectProduct =
                             </div>
                         </form>
                     ) : (
-                        /* Liste des articles du catalogue */
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {products.map(item => {
-                                const Icon = CATEGORY_ICONS[item.category] || Sun;
-                                return (
-                                    <div 
-                                        key={item.id || item.ref}
-                                        className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
-                                    >
-                                        <div>
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                                                        <Icon className="w-4 h-4" />
+                        /* Liste des articles du catalogue (Grille ou En ligne) */
+                        viewMode === 'grid' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {products.map(item => {
+                                    const Icon = CATEGORY_ICONS[item.category] || Sun;
+                                    return (
+                                        <div 
+                                            key={item.id || item.ref}
+                                            className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+                                        >
+                                            <div>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                                                            <Icon className="w-4 h-4" />
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                                                                {item.marque}
+                                                            </span>
+                                                            <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1" title={item.modele}>
+                                                                {item.modele}
+                                                            </h4>
+                                                        </div>
                                                     </div>
-                                                    <div>
+                                                    <span className="text-xs font-mono font-semibold bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                                                        {item.ref}
+                                                    </span>
+                                                </div>
+
+                                                {item.description && (
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">
+                                                        {item.description}
+                                                    </p>
+                                                )}
+
+                                                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-xs">
+                                                    {item.puissanceWc && (
+                                                        <span className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-semibold text-[11px]">
+                                                            ⚡ {item.puissanceWc} {item.category === 'battery' ? 'Wh' : (item.puissanceWc > 1000 ? 'W' : 'Wc')}
+                                                        </span>
+                                                    )}
+                                                    {item.garantieAnnees && (
+                                                        <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full font-semibold text-[11px]">
+                                                            🛡️ {item.garantieAnnees} ans
+                                                        </span>
+                                                    )}
+                                                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full font-semibold text-[11px]">
+                                                        TVA {item.tauxTva}%
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                                                <div>
+                                                    <div className="text-[10px] text-slate-400 font-medium">Prix unitaire HT</div>
+                                                    <div className="text-base font-black text-slate-900 dark:text-white">
+                                                        {item.prixUnitaireHt} € <span className="text-xs font-normal text-slate-500">/ {item.unite || 'U'}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5">
+                                                    {item.ficheTechniqueUrl && (
+                                                        <a 
+                                                            href={item.ficheTechniqueUrl} 
+                                                            target="_blank" 
+                                                            rel="noreferrer"
+                                                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors"
+                                                            title="Voir la fiche technique PDF fabricant"
+                                                        >
+                                                            <FileText className="w-4 h-4" />
+                                                        </a>
+                                                    )}
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                        onClick={() => handleOpenEdit(item)}
+                                                        title="Modifier cet article"
+                                                    >
+                                                        <Edit2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                    {onSelectProduct && (
+                                                        <Button 
+                                                            size="sm"
+                                                            onClick={() => onSelectProduct(item)}
+                                                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-3"
+                                                        >
+                                                            Insérer
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            /* Affichage En Ligne (Lignes horizontales / Tableau) */
+                            <div className="divide-y divide-slate-200 dark:divide-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
+                                {products.map(item => {
+                                    const Icon = CATEGORY_ICONS[item.category] || Sun;
+                                    return (
+                                        <div 
+                                            key={item.id || item.ref}
+                                            className="p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs"
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shrink-0">
+                                                    <Icon className="w-4 h-4" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
                                                         <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                                                             {item.marque}
                                                         </span>
-                                                        <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1" title={item.modele}>
-                                                            {item.modele}
-                                                        </h4>
+                                                        <span className="text-xs font-mono font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                            {item.ref}
+                                                        </span>
+                                                        {item.puissanceWc && (
+                                                            <span className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-semibold text-[10.5px]">
+                                                                ⚡ {item.puissanceWc} {item.category === 'battery' ? 'Wh' : (item.puissanceWc > 1000 ? 'W' : 'Wc')}
+                                                            </span>
+                                                        )}
+                                                        {item.garantieAnnees && (
+                                                            <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full font-semibold text-[10.5px]">
+                                                                🛡️ {item.garantieAnnees} ans
+                                                            </span>
+                                                        )}
+                                                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full font-semibold text-[10.5px]">
+                                                            TVA {item.tauxTva}%
+                                                        </span>
+                                                    </div>
+                                                    <h4 className="font-bold text-sm text-slate-900 dark:text-white mt-1 truncate" title={item.modele}>
+                                                        {item.modele}
+                                                    </h4>
+                                                    {item.description && (
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                                                            {item.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
+                                                <div className="text-right">
+                                                    <div className="text-[10px] text-slate-400 font-medium">Prix unitaire HT</div>
+                                                    <div className="text-base font-black text-slate-900 dark:text-white">
+                                                        {item.prixUnitaireHt} € <span className="text-xs font-normal text-slate-500">/ {item.unite || 'U'}</span>
                                                     </div>
                                                 </div>
-                                                <span className="text-xs font-mono font-semibold bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">
-                                                    {item.ref}
-                                                </span>
-                                            </div>
 
-                                            {item.description && (
-                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">
-                                                    {item.description}
-                                                </p>
-                                            )}
-
-                                            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-xs">
-                                                {item.puissanceWc && (
-                                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-semibold text-[11px]">
-                                                        ⚡ {item.puissanceWc} {item.category === 'battery' ? 'Wh' : (item.puissanceWc > 1000 ? 'W' : 'Wc')}
-                                                    </span>
-                                                )}
-                                                {item.garantieAnnees && (
-                                                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-semibold text-[11px]">
-                                                        🛡️ {item.garantieAnnees} ans
-                                                    </span>
-                                                )}
-                                                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-semibold text-[11px]">
-                                                    TVA {item.tauxTva}%
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                                            <div>
-                                                <div className="text-[10px] text-slate-400 font-medium">Prix unitaire HT</div>
-                                                <div className="text-base font-black text-slate-900 dark:text-white">
-                                                    {item.prixUnitaireHt} € <span className="text-xs font-normal text-slate-500">/ {item.unite || 'U'}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    {item.ficheTechniqueUrl && (
+                                                        <a 
+                                                            href={item.ficheTechniqueUrl} 
+                                                            target="_blank" 
+                                                            rel="noreferrer"
+                                                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors"
+                                                            title="Voir la fiche technique PDF fabricant"
+                                                        >
+                                                            <FileText className="w-4 h-4" />
+                                                        </a>
+                                                    )}
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                        onClick={() => handleOpenEdit(item)}
+                                                        title="Modifier cet article"
+                                                    >
+                                                        <Edit2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                    {onSelectProduct && (
+                                                        <Button 
+                                                            size="sm"
+                                                            onClick={() => onSelectProduct(item)}
+                                                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-8 px-3 shadow-xs"
+                                                        >
+                                                            Insérer
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </div>
-
-                                            <div className="flex items-center gap-1.5">
-                                                {item.ficheTechniqueUrl && (
-                                                    <a 
-                                                        href={item.ficheTechniqueUrl} 
-                                                        target="_blank" 
-                                                        rel="noreferrer"
-                                                        className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-blue-600 transition-colors"
-                                                        title="Voir la fiche technique PDF fabricant"
-                                                    >
-                                                        <FileText className="w-4 h-4" />
-                                                    </a>
-                                                )}
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8 text-slate-500 hover:text-slate-900"
-                                                    onClick={() => handleOpenEdit(item)}
-                                                    title="Modifier cet article"
-                                                >
-                                                    <Edit2 className="w-3.5 h-3.5" />
-                                                </Button>
-                                                {onSelectProduct && (
-                                                    <Button 
-                                                        size="sm"
-                                                        onClick={() => onSelectProduct(item)}
-                                                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-3"
-                                                    >
-                                                        Insérer
-                                                    </Button>
-                                                )}
-                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        )
                     )}
                 </div>
 
