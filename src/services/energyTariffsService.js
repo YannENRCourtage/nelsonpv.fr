@@ -29,11 +29,11 @@ export const DEFAULT_ENERGY_TARIFS = {
         surplus: {
             label: "Autoconsommation avec vente du surplus (Arrêté S21)",
             tranches: [
-                { maxKwc: 3, tarifKwh: 0.1269, primeAutoKwc: 300, label: "P ≤ 3 kWc" },
-                { maxKwc: 9, tarifKwh: 0.1269, primeAutoKwc: 230, label: "3 < P ≤ 9 kWc" },
-                { maxKwc: 36, tarifKwh: 0.0761, primeAutoKwc: 200, label: "9 < P ≤ 36 kWc" },
-                { maxKwc: 100, tarifKwh: 0.0761, primeAutoKwc: 100, label: "36 < P ≤ 100 kWc" },
-                { maxKwc: 500, tarifKwh: 0.0570, primeAutoKwc: 0, label: "100 < P ≤ 500 kWc" }
+                { maxKwc: 3, tarifKwh: 0.011, primeAutoKwc: 0, label: "P <= 3 kWc" },
+                { maxKwc: 9, tarifKwh: 0.011, primeAutoKwc: 0, label: "3 < P <= 9 kWc" },
+                { maxKwc: 36, tarifKwh: 0.011, primeAutoKwc: 0, label: "9 < P <= 36 kWc" },
+                { maxKwc: 100, tarifKwh: 0.011, primeAutoKwc: 0, label: "36 < P <= 100 kWc" },
+                { maxKwc: 500, tarifKwh: 0.0570, primeAutoKwc: 0, label: "100 < P <= 500 kWc" }
             ]
         },
         venteTotale: {

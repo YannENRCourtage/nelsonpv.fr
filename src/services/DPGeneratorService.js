@@ -31,7 +31,7 @@ export async function generateDPDossier(project, plates) {
             
             // Signature (placeholder)
             'topmostSubform[0].Page16[0].F9N_nom[0]': `${project.firstName || ''} ${project.lastName || project.name}`,
-            'topmostSubform[0].Page16[0].F9D_date[0]': new Date().toLocaleDateString('fr-FR'),
+            'topmostSubform[0].Page16[0].F9D_date[0]': `${String(new Date().getDate()).padStart(2, '0')}${String(new Date().getMonth() + 1).padStart(2, '0')}${new Date().getFullYear()}`,
         };
 
         // Remplissage effectif

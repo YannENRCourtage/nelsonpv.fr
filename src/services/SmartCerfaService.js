@@ -243,10 +243,13 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     // ── Préparer les données ───────────────────────────────────────
     const names = resolveDemandeurNames(project);
     const lastName  = names.lastName || project?.lastName || project?.name || '';
-    const firstName = names.firstName || project?.firstName || '';
     const birthDate = (project?.birthDate || '').replace(/\D/g, '').slice(0, 8);
     const birthCity = project?.birthCity || ''; // Strict: uniquement lieu de naissance. Si vide, reste vide.
-    const birthDept = project?.birthDept || (project?.zip ? project.zip.substring(0, 2) : '32');
+    let birthDept = project?.birthDepartment || project?.birthDept || '';
+    if (!birthDept && birthCity) {
+      const match = birthCity.match(/\((\d{2,3})\)/) || birthCity.match(/\b(\d{2,3})\b/);
+      if (match) birthDept = match[1];
+    }
     const birthCountry = project?.birthCountry || 'FRANCE';
 
     const rawAddress = project?.address || project?.clientAddress || project?.siteAddress || project?.street || project?.adresse || '';
@@ -488,9 +491,20 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         setCheck(['C6ZL2_metal'], true);
       }
 
-      // 6. Engagement & Signature
+      // 6. Engagement & Signature (date au format strict 8 chiffres JJMMAAAA sans slash)
       setField(fieldMap.sig_lieu,       terrainCity || city || 'FRANCE', 9.5);
-      setField(fieldMap.sig_date,       dateStr, 9.5);
+      setField([
+        'E1D_date',
+        'topmostSubform[0].Page9[0].E1D_date[0]',
+        'topmostSubform[0].Page8[0].E1D_date[0]',
+        'topmostSubform[0].Page10[0].E1D_date[0]',
+        'topmostSubform[0].Page11[0].E1D_date[0]',
+        'topmostSubform[0].Page16[0].F9D_date[0]',
+        'topmostSubform[0].Page19[0].E1D_date[0]',
+        'topmostSubform[0].Page19[0].F9D_date[0]',
+        'F9D_date',
+        'V1D_date'
+      ], dateStr, 9.5);
       setField(['topmostSubform[0].Page9[0].E1S_signature[0]', 'topmostSubform[0].Page11[0].E1S_signature[0]', 'E1S_signature'], fullDeclarantName, 9.5);
 
       // 7. Bordereau des pièces jointes

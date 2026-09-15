@@ -101,7 +101,10 @@ export default function QuoteEditorModal({
                 commercialName: project.user || 'Conseiller ENR Courtage',
                 validityDays: 30,
                 remiseGlobale: 0,
-                autoConsomPercent: 70,
+                autoConsomPercent: project.autoconsommationRate || 70,
+                customTarifRachat: 0.011,
+                customTarifTrv: 0.2516,
+                customPrimeAuto: 0,
                 sections: defaults.sections
             });
         }
@@ -145,10 +148,12 @@ export default function QuoteEditorModal({
 
         const totalTtc = totalNetHt + totalTva;
 
-        // Tarifs EDF OA & Prime
+        // Tarifs EDF OA & Prime (personnalisables)
         const powerKwc = parseFloat(quoteData.powerKwc || 9);
         const tariffsForPower = getTarifsForPower(powerKwc, 'surplus', energyTarifs);
-        const primeAuto = tariffsForPower.primeTotal || 0;
+        const tarifAchatRetenu = quoteData.customTarifRachat !== undefined ? parseFloat(quoteData.customTarifRachat) : tariffsForPower.tarifAchatRetenu;
+        const trvBase = quoteData.customTarifTrv !== undefined ? parseFloat(quoteData.customTarifTrv) : tariffsForPower.trvBase;
+        const primeAuto = quoteData.customPrimeAuto !== undefined ? parseFloat(quoteData.customPrimeAuto) : tariffsForPower.primeTotal;
         const resteACharge = Math.max(0, totalTtc - primeAuto);
 
         return {
@@ -158,7 +163,12 @@ export default function QuoteEditorModal({
             totalTva,
             tvaBreakdown,
             totalTtc,
-            tariffsForPower,
+            tariffsForPower: {
+                ...tariffsForPower,
+                tarifAchatRetenu,
+                trvBase,
+                primeTotal: primeAuto
+            },
             primeAuto,
             resteACharge
         };
@@ -477,65 +487,111 @@ export default function QuoteEditorModal({
                 {/* Corps Principal : Formulaire & Lignes de Devis */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     
-                    {/* Informations Projet & Client */}
-                    <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Nom & Prénom Client</label>
-                            <Input
-                                value={quoteData.clientName}
-                                onChange={e => setQuoteData({ ...quoteData, clientName: e.target.value })}
-                                className="mt-1 h-8 text-xs bg-white dark:bg-slate-900"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Adresse</label>
-                            <Input
-                                value={quoteData.clientAddress}
-                                onChange={e => setQuoteData({ ...quoteData, clientAddress: e.target.value })}
-                                className="mt-1 h-8 text-xs bg-white dark:bg-slate-900"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Ville & Code Postal</label>
-                            <div className="flex gap-1.5 mt-1">
+                    {/* Informations Projet & Client & Paramètres Technico-Économiques */}
+                    <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">Nom & Prénom Client</label>
                                 <Input
-                                    value={quoteData.clientZip}
-                                    placeholder="CP"
-                                    onChange={e => setQuoteData({ ...quoteData, clientZip: e.target.value })}
-                                    className="h-8 w-20 text-xs bg-white dark:bg-slate-900"
+                                    value={quoteData.clientName}
+                                    onChange={e => setQuoteData({ ...quoteData, clientName: e.target.value })}
+                                    className="mt-1 h-8 text-xs bg-white dark:bg-slate-900"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">Adresse</label>
                                 <Input
-                                    value={quoteData.clientCity}
-                                    placeholder="Commune"
-                                    onChange={e => setQuoteData({ ...quoteData, clientCity: e.target.value })}
-                                    className="h-8 flex-1 text-xs bg-white dark:bg-slate-900"
+                                    value={quoteData.clientAddress}
+                                    onChange={e => setQuoteData({ ...quoteData, clientAddress: e.target.value })}
+                                    className="mt-1 h-8 text-xs bg-white dark:bg-slate-900"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">Ville & Code Postal</label>
+                                <div className="flex gap-1.5 mt-1">
+                                    <Input
+                                        value={quoteData.clientZip}
+                                        placeholder="CP"
+                                        onChange={e => setQuoteData({ ...quoteData, clientZip: e.target.value })}
+                                        className="h-8 w-20 text-xs bg-white dark:bg-slate-900"
+                                    />
+                                    <Input
+                                        value={quoteData.clientCity}
+                                        placeholder="Commune"
+                                        onChange={e => setQuoteData({ ...quoteData, clientCity: e.target.value })}
+                                        className="h-8 flex-1 text-xs bg-white dark:bg-slate-900"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">Puissance Installée (kWc)</label>
+                                <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={quoteData.powerKwc}
+                                    onChange={e => setQuoteData({ ...quoteData, powerKwc: parseFloat(e.target.value) || 0 })}
+                                    className="mt-1 h-8 text-xs font-bold text-blue-600 bg-white dark:bg-slate-900"
                                 />
                             </div>
                         </div>
 
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Puissance Installée (kWc)</label>
-                            <Input
-                                type="number"
-                                step="0.1"
-                                value={quoteData.powerKwc}
-                                onChange={e => setQuoteData({ ...quoteData, powerKwc: parseFloat(e.target.value) || 0 })}
-                                className="mt-1 h-8 text-xs font-bold text-blue-600 bg-white dark:bg-slate-900"
-                            />
-                        </div>
+                        {/* Paramètres Technico-Économiques & Tarifs Énergie */}
+                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-white dark:bg-slate-900/60 p-3 rounded-lg border border-blue-100 dark:border-blue-950/40">
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                    <span className="text-amber-500 font-bold">⚡</span> Taux d'Autoconsommation (%)
+                                </label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={quoteData.autoConsomPercent !== undefined ? quoteData.autoConsomPercent : 70}
+                                    onChange={e => setQuoteData({ ...quoteData, autoConsomPercent: parseInt(e.target.value) || 0 })}
+                                    className="mt-1 h-8 text-xs font-semibold text-amber-600 bg-white dark:bg-slate-900"
+                                />
+                            </div>
 
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Taux d'Autoconsommation (%)</label>
-                            <Input
-                                type="number"
-                                min="10"
-                                max="100"
-                                value={quoteData.autoConsomPercent}
-                                onChange={e => setQuoteData({ ...quoteData, autoConsomPercent: parseInt(e.target.value) || 70 })}
-                                className="mt-1 h-8 text-xs bg-white dark:bg-slate-900"
-                            />
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                    <span className="text-emerald-500 font-bold">💶</span> Tarif Rachat Surplus (€/kWh)
+                                </label>
+                                <Input
+                                    type="number"
+                                    step="0.0001"
+                                    value={quoteData.customTarifRachat !== undefined ? quoteData.customTarifRachat : 0.011}
+                                    onChange={e => setQuoteData({ ...quoteData, customTarifRachat: parseFloat(e.target.value) || 0 })}
+                                    className="mt-1 h-8 text-xs font-semibold text-emerald-600 bg-white dark:bg-slate-900"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                    <span className="text-blue-500 font-bold">💡</span> Tarif Électricité TRV (€/kWh)
+                                </label>
+                                <Input
+                                    type="number"
+                                    step="0.0001"
+                                    value={quoteData.customTarifTrv !== undefined ? quoteData.customTarifTrv : 0.2516}
+                                    onChange={e => setQuoteData({ ...quoteData, customTarifTrv: parseFloat(e.target.value) || 0 })}
+                                    className="mt-1 h-8 text-xs bg-white dark:bg-slate-900"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                    <span className="text-purple-500 font-bold">🎁</span> Prime d'État Autoconso (€)
+                                </label>
+                                <Input
+                                    type="number"
+                                    step="10"
+                                    value={quoteData.customPrimeAuto !== undefined ? quoteData.customPrimeAuto : 0}
+                                    onChange={e => setQuoteData({ ...quoteData, customPrimeAuto: parseFloat(e.target.value) || 0 })}
+                                    className="mt-1 h-8 text-xs bg-white dark:bg-slate-900"
+                                />
+                            </div>
                         </div>
                     </div>
 

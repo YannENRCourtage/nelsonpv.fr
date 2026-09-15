@@ -714,14 +714,14 @@ export async function generateQuoteProposalPdf({
     const rawPower = quoteData.powerKwc || project.projectSize || project.kwc || project.puissanceKwc || project.puissance || 9.0;
     const powerKwc = parseFloat(String(rawPower).replace(',', '.').replace(/[^0-9.]/g, '')) || 9.0;
     const annualProductionKwh = Math.round(powerKwc * (parseFloat(project.solarYieldRoof1 || 1150) || 1150));
-    const autoConsomPercent = quoteData.autoConsomPercent || 70;
+    const autoConsomPercent = quoteData.autoConsomPercent !== undefined ? parseFloat(quoteData.autoConsomPercent) : 70;
     const autoConsomKwh = Math.round(annualProductionKwh * (autoConsomPercent / 100));
     const surplusKwh = annualProductionKwh - autoConsomKwh;
 
     // Tarifs énergie
-    const trvKwh = energyTarifs.trvBase || 0.2516;
-    const tarifRachatKwh = energyTarifs.tarifAchatRetenu || 0.1269;
-    const primeAuto = energyTarifs.primeTotal || (powerKwc <= 3 ? 900 : (powerKwc <= 9 ? 2070 : 0));
+    const trvKwh = quoteData.customTarifTrv !== undefined ? parseFloat(quoteData.customTarifTrv) : (energyTarifs.trvBase || 0.2516);
+    const tarifRachatKwh = quoteData.customTarifRachat !== undefined ? parseFloat(quoteData.customTarifRachat) : (energyTarifs.tarifAchatRetenu !== undefined ? parseFloat(energyTarifs.tarifAchatRetenu) : 0.011);
+    const primeAuto = quoteData.customPrimeAuto !== undefined ? parseFloat(quoteData.customPrimeAuto) : (energyTarifs.primeTotal !== undefined ? parseFloat(energyTarifs.primeTotal) : 0);
 
     // Économies financières annuelles estimées
     const econoFactureAn = Math.round(autoConsomKwh * trvKwh);

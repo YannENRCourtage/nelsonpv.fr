@@ -4350,8 +4350,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                       </div>
 
                       <div>
-                        <label className="text-gray-600 font-semibold block mb-1">Date et Lieu de Naissance</label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <label className="text-gray-600 font-semibold block mb-1">Date, Lieu & Dpt de Naissance</label>
+                        <div className="grid grid-cols-12 gap-1.5">
                           <input
                             type="text"
                             maxLength={8}
@@ -4360,15 +4360,40 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                               const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
                               handleFieldChange('birthDate', digits);
                             }}
-                            placeholder="JJMMAAAA (ex: 26121986)"
-                            className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="JJMMAAAA (ex: 17111994)"
+                            title="Date de naissance (format JJMMAAAA)"
+                            className="col-span-4 px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                           />
                           <input
                             type="text"
                             value={editedProject?.birthCity || ''}
-                            onChange={e => handleFieldChange('birthCity', e.target.value)}
-                            placeholder="AUCH (32)"
-                            className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                            onChange={e => {
+                              const val = e.target.value;
+                              handleFieldChange('birthCity', val);
+                              if (!editedProject?.birthDepartment && !editedProject?.birthDept) {
+                                const m = val.match(/\((\d{2,3})\)/) || val.match(/\b(\d{2,3})\b/);
+                                if (m) {
+                                  handleFieldChange('birthDepartment', m[1]);
+                                  handleFieldChange('birthDept', m[1]);
+                                }
+                              }
+                            }}
+                            placeholder="Commune (ex: DAX)"
+                            title="Commune de naissance"
+                            className="col-span-5 px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <input
+                            type="text"
+                            maxLength={3}
+                            value={editedProject?.birthDepartment || editedProject?.birthDept || ''}
+                            onChange={e => {
+                              const digits = e.target.value.replace(/\D/g, '').slice(0, 3);
+                              handleFieldChange('birthDepartment', digits);
+                              handleFieldChange('birthDept', digits);
+                            }}
+                            placeholder="Dpt (40)"
+                            title="Département de naissance"
+                            className="col-span-3 px-2 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500 text-center"
                           />
                         </div>
                       </div>
