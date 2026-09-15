@@ -9,6 +9,8 @@ import {
   Battery, Upload, Shield, Hand, MousePointer
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import WebGLErrorBoundary from '@/components/common/WebGLErrorBoundary';
+import { getSafeGlConfig, attachWebGLContextHandlers, disposeThreeScene } from '@/utils/webglUtils';
 
 /**
  * Three Context Bridge pour l'incrustation paysagère 3D
@@ -19,6 +21,9 @@ function BatteryLandscapeThreeBridge({ onReady, transform, sunAngle, batteryConf
 
   useEffect(() => {
     if (onReady) onReady({ gl, scene, camera });
+    if (gl?.domElement) {
+      return attachWebGLContextHandlers(gl.domElement);
+    }
   }, [gl, scene, camera, onReady]);
 
   // Garantir le dimensionnement WebGL plein écran dès le chargement et à chaque redimensionnement
@@ -140,6 +145,15 @@ export default function BatteryInsertionCompositor({
   useEffect(() => {
     if (initialPhoto) setPhotoSrc(initialPhoto);
   }, [initialPhoto]);
+
+  // Nettoyage WebGL à la fermeture pour libérer les contextes GPU
+  useEffect(() => {
+    return () => {
+      if (threeContextRef.current) {
+        disposeThreeScene(threeContextRef.current.scene, threeContextRef.current.gl);
+      }
+    };
+  }, []);
 
   // Démarrage du glisser
   const handleMouseDown = (e) => {
@@ -368,21 +382,23 @@ export default function BatteryInsertionCompositor({
                   className="absolute inset-0 w-full h-full object-cover pointer-events-none"
                 />
 
-                {/* 2. Scène 3D Three.js transparente superposée sur TOUTE la photo */}
+                {/* 2. Scène 3D Three.js transparente superposée sur TOUTE la photo avec ErrorBoundary */}
                 <div className="absolute inset-0 pointer-events-none">
-                  <Canvas
-                    gl={{ preserveDrawingBuffer: true, antialias: true, alpha: true }}
-                    camera={{ position: [0, 2.5, 14], fov: 40 }}
-                    style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
-                  >
-                    <BatteryLandscapeThreeBridge
-                      onReady={(ctx) => { threeContextRef.current = ctx; }}
-                      transform={transform}
-                      sunAngle={transform.sunAngle}
-                      batteryConfig={batteryConfig}
-                      containerRef={containerRef}
-                    />
-                  </Canvas>
+                  <WebGLErrorBoundary fallbackImage={photoSrc} fallbackTitle="Incrustation 3D batterie temporairement indisponible">
+                    <Canvas
+                      gl={getSafeGlConfig({ preserveDrawingBuffer: true, antialias: true, alpha: true })}
+                      camera={{ position: [0, 2.5, 14], fov: 40 }}
+                      style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+                    >
+                      <BatteryLandscapeThreeBridge
+                        onReady={(ctx) => { threeContextRef.current = ctx; }}
+                        transform={transform}
+                        sunAngle={transform.sunAngle}
+                        batteryConfig={batteryConfig}
+                        containerRef={containerRef}
+                      />
+                    </Canvas>
+                  </WebGLErrorBoundary>
                 </div>
 
                 {/* 3. BARRE FLOTTANTE CENTRALE : BASCULE DE MODE DÉPLACEMENT / ROTATION */}

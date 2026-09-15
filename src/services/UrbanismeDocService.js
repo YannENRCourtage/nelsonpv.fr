@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFName, PDFBool } from 'pdf-lib';
 import html2canvas from 'html2canvas';
 import { smartFillCerfa, resolveDemandeurNames } from './SmartCerfaService';
 import { preloadProjectImages } from '@/utils/imageProxy';
@@ -410,7 +410,7 @@ async function captureplate(doc, elementId, landscape = true) {
 
 export async function generateFullUrbanismePDF({ type, project, installationType, plateIds = [], includeCover = true, includeCerfa = true, customFileName = null, onProgress }) {
   try {
-    const finalDoc = await PDFDocument.create();
+    const platesDoc = await PDFDocument.create();
 
     // S'assurer que toutes les images distantes du projet sont bien en Base64 Data URLs
     const safeProject = await preloadProjectImages(project);
@@ -418,17 +418,19 @@ export async function generateFullUrbanismePDF({ type, project, installationType
     // 1. Page de couverture qualité architecte
     if (includeCover) {
       if (onProgress) onProgress('Génération de la page de couverture...');
-      await drawCoverPage(finalDoc, safeProject, type, installationType || 'batiment_solaire');
+      await drawCoverPage(platesDoc, safeProject, type, installationType || 'batiment_solaire');
     }
 
     // 2. Capture des planches graphiques
     for (let i = 0; i < plateIds.length; i++) {
       const id = plateIds[i];
       if (onProgress) onProgress(`Capture planche ${i + 1}/${plateIds.length}...`);
-      await captureplate(finalDoc, id);
+      await captureplate(platesDoc, id);
     }
 
-    // 3. CERFA pré-rempli via SmartCerfaService (avec fallback robuste)
+    let finalPdfBytes = null;
+
+    // 3. CERFA pré-rempli via SmartCerfaService (avec préservation intégrale des champs AcroForm)
     if (includeCerfa) {
       if (onProgress) onProgress('Pré-remplissage du formulaire CERFA...');
 
@@ -465,21 +467,37 @@ export async function generateFullUrbanismePDF({ type, project, installationType
         const filledCerfaBytes = await smartFillCerfa(cerfaUrl, project, cerfaType, effInstallType, plateIds);
         if (filledCerfaBytes) {
           const cerfaDoc = await PDFDocument.load(filledCerfaBytes);
-          const cerfaPages = await finalDoc.copyPages(cerfaDoc, cerfaDoc.getPageIndices());
-          cerfaPages.forEach(p => finalDoc.addPage(p));
+
+          // Insérer les planches graphiques et la couverture au début du CERFA master
+          // afin de préserver 100% de l'arborescence AcroForm interactive (/Root /AcroForm)
+          if (platesDoc.getPageCount() > 0) {
+            const copiedPlates = await cerfaDoc.copyPages(platesDoc, platesDoc.getPageIndices());
+            for (let pIdx = 0; pIdx < copiedPlates.length; pIdx++) {
+              cerfaDoc.insertPage(pIdx, copiedPlates[pIdx]);
+            }
+          }
+
+          const acroForm = cerfaDoc.catalog.lookup(PDFName.of('AcroForm'));
+          if (acroForm) {
+            acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True);
+          }
+
+          finalPdfBytes = await cerfaDoc.save();
         }
       } catch (cerfaErr) {
         console.warn('[UrbanismeDoc] Erreur pré-remplissage CERFA, continuation avec les planches graphiques:', cerfaErr);
       }
     }
 
-    if (finalDoc.getPageCount() === 0) {
-      throw new Error('Aucune page n\'a pu être générée pour ce document.');
+    if (!finalPdfBytes) {
+      if (platesDoc.getPageCount() === 0) {
+        throw new Error('Aucune page n\'a pu être générée pour ce document.');
+      }
+      finalPdfBytes = await platesDoc.save();
     }
 
     // 4. Finalisation
     if (onProgress) onProgress('Finalisation du PDF...');
-    const finalPdfBytes = await finalDoc.save();
 
     const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);

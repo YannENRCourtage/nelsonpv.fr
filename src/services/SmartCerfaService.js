@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, StandardFonts, PDFName, PDFString } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFName, PDFString, PDFBool } from 'pdf-lib';
 
 /**
  * SmartCerfaService — Moteur de mapping intelligent des CERFA PDF
@@ -145,6 +145,56 @@ export function resolveDemandeurNames(project) {
   }
 }
 
+/**
+ * Décompose une adresse française complète en numéro, voie, code postal et commune
+ */
+export function parseFrenchAddress(addressStr, defaultZip = '', defaultCity = '') {
+  const str = (addressStr || '').trim();
+  if (!str) {
+    return {
+      numero: '',
+      voie: '',
+      codePostal: defaultZip || '',
+      commune: defaultCity || ''
+    };
+  }
+
+  // 1. Détection du code postal (5 chiffres consécutifs)
+  const cpMatch = str.match(/\b(\d{5})\b/);
+  let codePostal = defaultZip || '';
+  let commune = defaultCity || '';
+  let streetPart = str;
+
+  if (cpMatch) {
+    codePostal = cpMatch[1];
+    const cpIndex = cpMatch.index;
+    streetPart = str.substring(0, cpIndex).trim().replace(/,\s*$/, '');
+    const afterCp = str.substring(cpIndex + 5).trim().replace(/^,\s*/, '');
+    if (afterCp) {
+      commune = afterCp;
+    }
+  }
+
+  // 2. Détection du numéro de voie au début
+  let numero = '';
+  let voie = streetPart;
+  const numMatch = streetPart.match(/^(\d+(?:\s*(?:bis|ter|quater|[a-zA-Z]))?)\s*,?\s+(.*)$/i);
+  if (numMatch) {
+    numero = numMatch[1].trim();
+    voie = numMatch[2].trim();
+  } else if (/^\d+$/.test(streetPart)) {
+    numero = streetPart;
+    voie = '';
+  }
+
+  return {
+    numero: numero || '',
+    voie: voie || streetPart || '',
+    codePostal: codePostal || defaultZip || '',
+    commune: (commune || defaultCity || '').trim()
+  };
+}
+
 export function getMissingFields(project, type = 'dp') {
   const required = {
     cu: ['lastName', 'address', 'city', 'zip', 'cadastre_section', 'cadastre_numero', 'email'],
@@ -199,11 +249,18 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const birthDept = project?.birthDept || (project?.zip ? project.zip.substring(0, 2) : '32');
     const birthCountry = project?.birthCountry || 'FRANCE';
 
-    const address   = project?.address || project?.clientAddress || '';
-    const zip       = project?.zip || project?.postalCode || '';
-    const city      = project?.city || project?.commune || project?.cadastre_commune || '';
-    const section   = project?.cadastre_section || '';
-    const parcelle  = project?.cadastre_numero || '';
+    const rawAddress = project?.address || project?.clientAddress || project?.siteAddress || project?.street || project?.adresse || '';
+    const defaultZip = project?.zip || project?.postalCode || project?.code_postal || project?.clientZip || '';
+    const defaultCity = project?.commune || project?.city || project?.cadastre_commune || project?.clientCity || '';
+
+    const parsedAddr = parseFrenchAddress(rawAddress, defaultZip, defaultCity);
+    const addrNum    = project?.adresse_num || project?.street_number || project?.terrain_voie_num || parsedAddr.numero || '';
+    const addrVoie   = project?.adresse_voie || project?.terrain_voie_nom || project?.terrain_voie || parsedAddr.voie || rawAddress;
+    const zip        = project?.terrain_zip || project?.terrain_code_postal || project?.zip || parsedAddr.codePostal || defaultZip || '';
+    const city       = project?.terrain_city || project?.terrain_commune || project?.city || project?.commune || parsedAddr.commune || defaultCity || '';
+
+    const section   = (project?.cadastre_section || project?.terrain_section || '').toUpperCase().trim();
+    const parcelle  = (project?.cadastre_numero || project?.terrain_numero || project?.parcelle || '').trim();
     const rawSurface = project?.cadastre_surface ? String(project.cadastre_surface).replace(/\D/g, '') : '';
     const surface   = rawSurface ? `${rawSurface}` : '';
     const rawKwc    = project?.kwc || project?.projectSize || project?.puissance || project?.power || (project?.solarStats?.power ? Math.round(project.solarStats.power) : '');
@@ -214,7 +271,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       : (project?.email || project?.clientEmail || 'isabelle.dupond@gmail.com');
     const tel       = project?.phone || project?.clientPhone || '';
     const dateStr   = new Date().toLocaleDateString('fr-FR');
-    const lieuStr   = project?.terrain_commune || project?.cadastre_commune || city || 'CONDOM';
+    const lieuStr   = city || 'FRANCE';
 
     let emailLeft = email;
     let emailRight = '';
@@ -259,15 +316,11 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     }
     const isNewConstruction = !['toiture'].includes(installationType);
 
-    const addrParts = address.trim().split(' ');
-    const addrNum   = /^\d+/.test(addrParts[0]) ? addrParts[0] : '';
-    const addrVoie  = addrNum ? addrParts.slice(1).join(' ') : address;
-
-    const terrainNum = project?.terrain_numero || addrNum;
-    const terrainVoie = project?.terrain_voie || addrVoie;
+    const terrainNum = addrNum;
+    const terrainVoie = addrVoie;
     const terrainLieudit = project?.terrain_lieudit || project?.lieudit || '';
-    const terrainCity = project?.terrain_commune || project?.cadastre_commune || city || 'CONDOM';
-    const terrainZip = project?.terrain_code_postal || zip || '32100';
+    const terrainCity = city;
+    const terrainZip = zip;
 
     // ── Remplissage des champs AcroForm ────────────────────────────
     const fieldMap = CERFA_FIELDS[type] || CERFA_FIELDS.dp;
@@ -284,12 +337,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
               let strVal = String(value).trim();
               const max = f.getMaxLength();
               if (max && strVal.length > max) {
-                const digits = strVal.replace(/\D/g, '');
-                if (digits.length <= max && digits.length > 0) {
-                  strVal = digits;
-                } else {
-                  strVal = strVal.substring(0, max);
-                }
+                strVal = strVal.substring(0, max);
               }
               if (fixedFontSize !== null) {
                 try {
@@ -436,7 +484,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       }
 
       // 6. Engagement & Signature
-      setField(fieldMap.sig_lieu,       terrainCity || city || 'CONDOM', 9.5);
+      setField(fieldMap.sig_lieu,       terrainCity || city || 'FRANCE', 9.5);
       setField(fieldMap.sig_date,       dateStr, 9.5);
       setField(['topmostSubform[0].Page9[0].E1S_signature[0]', 'topmostSubform[0].Page11[0].E1S_signature[0]', 'E1S_signature'], fullDeclarantName, 9.5);
 
@@ -536,10 +584,16 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
           PLATE_CHECKBOX_MAP.dpc11.forEach(name => setCheck(name, true));
         }
       }
-
     } catch (e) {
       console.warn('[SmartCerfa] AcroForm fill notice:', e.message);
     }
+
+    try {
+      const acroForm = pdfDoc.catalog.lookup(PDFName.of('AcroForm'));
+      if (acroForm) {
+        acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True);
+      }
+    } catch (_) {}
 
     return await pdfDoc.save();
   } catch (err) {
@@ -555,12 +609,14 @@ export function buildCerfaDataSummary(project, installationType) {
     ? project.email2
     : (project?.email || project?.clientEmail || '—');
 
-  const rawAddress = project?.address || project?.clientAddress || '';
-  const rawZip = project?.zip || project?.postalCode || '';
-  const rawCity = project?.city || project?.commune || project?.cadastre_commune || '';
+  const rawAddress = project?.address || project?.clientAddress || project?.adresse || '';
+  const rawZip = project?.zip || project?.postalCode || project?.code_postal || '';
+  const rawCity = project?.commune || project?.city || project?.cadastre_commune || '';
 
-  const addressParts = [rawAddress, rawZip, rawCity].filter(Boolean);
-  const fullAddress = addressParts.length > 0 ? addressParts.join(' ') : '—';
+  const parsed = parseFrenchAddress(rawAddress, rawZip, rawCity);
+  const fullAddress = parsed.voie
+    ? `${parsed.numero ? parsed.numero + ' ' : ''}${parsed.voie}${parsed.codePostal ? ' ' + parsed.codePostal : ''}${parsed.commune ? ' ' + parsed.commune : ''}`.trim()
+    : (rawAddress || '—');
 
   // Détermination du type
   const isBatProject = project?.isBattery || project?.isBatteryStandAlone || project?.solutionType === 'battery' || installationType === 'battery' || installationType === 'batterie' || (project?.type || '').toLowerCase().includes('batterie') || (project?.urbanismeType || '').toLowerCase().includes('batterie');
@@ -589,7 +645,7 @@ export function buildCerfaDataSummary(project, installationType) {
     email: email,
     adresse: fullAddress,
     cadastre: `Section ${project?.cadastre_section || '—'} n° ${project?.cadastre_numero || '—'} (${project?.cadastre_surface ? project.cadastre_surface + ' m²' : '—'})`,
-    commune: rawCity || '—',
+    commune: parsed.commune || rawCity || '—',
     puissance: displayKwc,
     type: typeLabel,
     siret: project?.siret || '—',

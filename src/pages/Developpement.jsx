@@ -321,6 +321,28 @@ export default function Developpement() {
       setSelectedProject(projectToUse);
       setProjects(prev => prev.map(p => p.id === initialProjectToUse.id ? projectToUse : p));
 
+      if (selectedProject?.id) {
+        handleUpdateProjectData(selectedProject.id, {
+          address: projectToUse.address,
+          clientAddress: projectToUse.address,
+          cadastre_section: projectToUse.cadastre_section,
+          cadastre_numero: projectToUse.cadastre_numero,
+          cadastre_surface: projectToUse.cadastre_surface,
+          city: projectToUse.city,
+          commune: projectToUse.commune,
+          cadastre_commune: projectToUse.commune || projectToUse.city,
+          demandeur: projectToUse.demandeur,
+          lastName: projectToUse.lastName,
+          clientName: projectToUse.clientName,
+          email: projectToUse.email,
+          puissance: projectToUse.puissance,
+          kwc: projectToUse.kwc,
+          description: projectToUse.description,
+          objet_travaux: projectToUse.objet_travaux,
+          noticeText: projectToUse.noticeText,
+        });
+      }
+
       // Laisser le temps à React de monter les planches dans le DOM avec les images en mémoire (Data URLs)
       await new Promise(r => setTimeout(r, 450));
 

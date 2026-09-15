@@ -35,7 +35,9 @@ export async function generateBatitech3DSnapshot({
       canvas,
       antialias: true,
       preserveDrawingBuffer: true,
-      alpha: true
+      alpha: true,
+      powerPreference: 'default',
+      failIfMajorPerformanceCaveat: false
     });
     renderer.setSize(imgWidth, imgHeight);
     renderer.setPixelRatio(2);

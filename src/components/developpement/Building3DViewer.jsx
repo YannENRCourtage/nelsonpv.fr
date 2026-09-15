@@ -5,6 +5,8 @@ import * as THREE from 'three';
 import { Structure } from '@/components/configurator/structure/Structure.jsx';
 import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 import { Camera, RotateCw, Sparkles, Check } from 'lucide-react';
+import WebGLErrorBoundary from '@/components/common/WebGLErrorBoundary';
+import { getSafeGlConfig, attachWebGLContextHandlers, disposeThreeScene } from '@/utils/webglUtils';
 
 /**
  * Camera Controller inside React Three Fiber Canvas
@@ -20,6 +22,9 @@ function SceneCameraController({ activeSlot, onReady, controlsRef }) {
   useEffect(() => {
     if (onReady) {
       onReady({ camera, gl, scene });
+    }
+    if (gl?.domElement) {
+      return attachWebGLContextHandlers(gl.domElement);
     }
   }, [camera, gl, scene, onReady]);
 
@@ -106,6 +111,15 @@ export default function Building3DViewer({
   const controlsRef = useRef(null);
   const config = useConfiguratorValues();
 
+  // Nettoyage WebGL à la fermeture du visualiseur pour libérer les contextes GPU
+  useEffect(() => {
+    return () => {
+      if (threeContextRef.current) {
+        disposeThreeScene(threeContextRef.current.scene, threeContextRef.current.gl);
+      }
+    };
+  }, []);
+
   const length = config.length || 30.0;
   const width = config.width || 20.0;
   const eaveHeight = config.eaveHeight || 4.0;
@@ -168,63 +182,65 @@ export default function Building3DViewer({
 
   return (
     <div className={`relative rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-xs flex flex-col ${className}`} style={{ height }}>
-      {/* Three.js R3F Canvas */}
-      <div className="w-full h-full bg-white flex-1 relative">
-        <Canvas
-          shadows
-          gl={{ preserveDrawingBuffer: true, antialias: true, alpha: true }}
-          style={{ width: '100%', height: '100%', background: '#ffffff' }}
-        >
-          <color attach="background" args={['#ffffff']} />
+      {/* Three.js R3F Canvas sécurisé avec ErrorBoundary */}
+      <WebGLErrorBoundary height={height} fallbackTitle="Modèle 3D du bâtiment temporairement indisponible">
+        <div className="w-full h-full bg-white flex-1 relative">
+          <Canvas
+            shadows
+            gl={getSafeGlConfig({ preserveDrawingBuffer: true, antialias: true, alpha: true })}
+            style={{ width: '100%', height: '100%', background: '#ffffff' }}
+          >
+            <color attach="background" args={['#ffffff']} />
 
-          <ambientLight intensity={0.85} />
-          <directionalLight
-            position={[70, 90, 60]}
-            intensity={2.2}
-            castShadow
-            shadow-mapSize={[2048, 2048]}
-            shadow-bias={-0.0001}
-          />
-          <Environment preset="city" />
+            <ambientLight intensity={0.85} />
+            <directionalLight
+              position={[70, 90, 60]}
+              intensity={2.2}
+              castShadow
+              shadow-mapSize={[2048, 2048]}
+              shadow-bias={-0.0001}
+            />
+            <Environment preset="city" />
 
-          <PerspectiveCamera
-            makeDefault
-            position={[width * 1.5, eaveHeight * 0.8, targetZ]}
-            fov={40}
-            near={0.1}
-            far={2000}
-          />
+            <PerspectiveCamera
+              makeDefault
+              position={[width * 1.5, eaveHeight * 0.8, targetZ]}
+              fov={40}
+              near={0.1}
+              far={2000}
+            />
 
-          <OrbitControls
-            ref={controlsRef}
-            target={[0, eaveHeight * 0.6, targetZ]}
-            maxDistance={300}
-            minDistance={2}
-          />
+            <OrbitControls
+              ref={controlsRef}
+              target={[0, eaveHeight * 0.6, targetZ]}
+              maxDistance={300}
+              minDistance={2}
+            />
 
-          <Structure
-            hideBracing={true}
-            forceHideDimensions={false}
-            viewMode={getViewModeForSlot(activeSlot)}
-            dimensionFontSize={dimensionFontSize || buildingConfig?.dimensionFontSize}
-          />
+            <Structure
+              hideBracing={true}
+              forceHideDimensions={false}
+              viewMode={getViewModeForSlot(activeSlot)}
+              dimensionFontSize={dimensionFontSize || buildingConfig?.dimensionFontSize}
+            />
 
-          <ContactShadows
-            position={[0, 0, targetZ]}
-            scale={Math.max(length * 2, width * 2, 50)}
-            blur={2}
-            opacity={0.45}
-            far={15}
-            color="#000000"
-          />
+            <ContactShadows
+              position={[0, 0, targetZ]}
+              scale={Math.max(length * 2, width * 2, 50)}
+              blur={2}
+              opacity={0.45}
+              far={15}
+              color="#000000"
+            />
 
-          <SceneCameraController
-            activeSlot={activeSlot}
-            onReady={(ctx) => { threeContextRef.current = ctx; }}
-            controlsRef={controlsRef}
-          />
-        </Canvas>
-      </div>
+            <SceneCameraController
+              activeSlot={activeSlot}
+              onReady={(ctx) => { threeContextRef.current = ctx; }}
+              controlsRef={controlsRef}
+            />
+          </Canvas>
+        </div>
+      </WebGLErrorBoundary>
 
       {/* Top Bar Navigation Slots */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none flex-wrap gap-1">

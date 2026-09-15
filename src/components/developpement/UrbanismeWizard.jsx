@@ -8,7 +8,8 @@ import {
   Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus,
   Compass, User, Download, Lock, Unlock, Move
 } from 'lucide-react';
-import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
+import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames, parseFrenchAddress } from '@/services/SmartCerfaService';
+import { downloadPieceDwg } from '@/services/DwgExportService';
 import { cadastreService } from '@/services/CadastreService';
 import { getOrGenerateProjectMaps, generateStaticMapImage } from '@/services/AutoMapService';
 import {
@@ -3697,6 +3698,11 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     const preservedKwc = editedProject?.puissance || editedProject?.kwc || project?.kwc || project?.puissance || project?.projectSize || editedProject?.projectSize || '';
     const b1 = enrichedBuildings[0] || {};
+    const finalAddress = editedProject?.address || summary.adresse || '';
+    const finalCity = editedProject?.city || editedProject?.commune || summary.commune || '';
+    const finalZip = editedProject?.zip || '';
+    const parsedFinalAddr = parseFrenchAddress(finalAddress, finalZip, finalCity);
+
     const finalProject = {
       ...editedProject,
       ...fieldValues,
@@ -3704,13 +3710,28 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       lastName: editedProject?.demandeur || editedProject?.lastName || summary.demandeur,
       clientName: editedProject?.demandeur || editedProject?.clientName || summary.demandeur,
       email: editedProject?.email || summary.email,
-      address: editedProject?.address || summary.adresse,
-      city: editedProject?.city || editedProject?.commune || summary.commune,
-      commune: editedProject?.commune || editedProject?.city || summary.commune,
-      cadastre_section: editedProject?.cadastre_section,
-      cadastre_numero: editedProject?.cadastre_numero,
-      cadastre_surface: editedProject?.cadastre_surface,
-      cadastre: editedProject?.cadastre || summary.cadastre,
+      address: finalAddress,
+      clientAddress: finalAddress,
+      city: finalCity,
+      commune: finalCity,
+      cadastre_commune: finalCity,
+      zip: finalZip || parsedFinalAddr.codePostal || '',
+      cadastre_section: (editedProject?.cadastre_section || '').toUpperCase().trim(),
+      cadastre_numero: (editedProject?.cadastre_numero || '').trim(),
+      cadastre_surface: editedProject?.cadastre_surface || '',
+      cadastre: (editedProject?.cadastre_section && editedProject?.cadastre_numero)
+        ? `${(editedProject.cadastre_section).toUpperCase()} ${(editedProject.cadastre_numero).trim()}`
+        : (editedProject?.cadastre || summary.cadastre),
+      terrain_address: finalAddress,
+      terrain_voie: parsedFinalAddr.voie || finalAddress,
+      terrain_voie_nom: parsedFinalAddr.voie || finalAddress,
+      terrain_voie_num: parsedFinalAddr.numero || '',
+      terrain_city: finalCity || parsedFinalAddr.commune,
+      terrain_commune: finalCity || parsedFinalAddr.commune,
+      terrain_zip: finalZip || parsedFinalAddr.codePostal,
+      terrain_section: (editedProject?.cadastre_section || '').toUpperCase().trim(),
+      terrain_numero: (editedProject?.cadastre_numero || '').trim(),
+      terrain_surface: editedProject?.cadastre_surface || '',
       isAcama,
       isGreenInvest,
       cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
@@ -3792,6 +3813,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     } finally {
       setDownloadingPieceId(null);
       setIsGenerating(false);
+    }
+  };
+
+  const handleDownloadSinglePieceDwg = async (item) => {
+    try {
+      const { finalProject } = await prepareProjectPayload();
+      downloadPieceDwg(item, finalProject, type);
+    } catch (err) {
+      console.error('[UrbanismeWizard] Erreur téléchargement DWG:', err);
     }
   };
 
@@ -6043,30 +6073,47 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 </div>
                               )}
                             </div>
-                            <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                            <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
                               <span className="text-[9.5px] font-bold text-slate-400 truncate">{item.badge}</span>
-                              <button
-                                type="button"
-                                disabled={isGenerating}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDownloadSinglePiece(item);
-                                }}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200/80 hover:border-blue-600 text-[10.5px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none shadow-2xs hover:shadow-xs"
-                                title={`Télécharger uniquement le document ${item.code} (${item.title})`}
-                              >
-                                {downloadingPieceId === item.id ? (
-                                  <>
-                                    <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
-                                    <span>Export...</span>
-                                  </>
-                                ) : (
-                                  <>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  disabled={isGenerating}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownloadSinglePiece(item);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200/80 hover:border-blue-600 text-[10px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none shadow-2xs hover:shadow-xs"
+                                  title={`Télécharger ${item.code} (${item.title}) en format PDF`}
+                                >
+                                  {downloadingPieceId === item.id ? (
+                                    <>
+                                      <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+                                      <span>Export...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Download className="w-3 h-3" />
+                                      <span>PDF</span>
+                                    </>
+                                  )}
+                                </button>
+                                {item.id !== 'cover' && item.id !== 'cerfa' && (
+                                  <button
+                                    type="button"
+                                    disabled={isGenerating}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownloadSinglePieceDwg(item);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200/80 hover:border-emerald-600 text-[10px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none shadow-2xs hover:shadow-xs"
+                                    title={`Télécharger le plan ${item.code} (${item.title}) au format CAO .DWG`}
+                                  >
                                     <Download className="w-3 h-3" />
-                                    <span>Télécharger</span>
-                                  </>
+                                    <span>DWG</span>
+                                  </button>
                                 )}
-                              </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -6134,8 +6181,21 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                             value={editedProject?.address !== undefined ? editedProject.address : (summary.adresse !== '—' ? summary.adresse : '')}
                             onChange={(e) => {
                               const val = e.target.value;
-                              setEditedProject(prev => ({ ...prev, address: val, clientAddress: val }));
+                              const parsed = parseFrenchAddress(val, editedProject?.zip || '', editedProject?.city || editedProject?.commune || '');
+                              setEditedProject(prev => ({
+                                ...prev,
+                                address: val,
+                                clientAddress: val,
+                                terrain_address: val,
+                                terrain_voie: parsed.voie || val,
+                                terrain_voie_nom: parsed.voie || val,
+                                terrain_voie_num: parsed.numero || '',
+                                ...(parsed.codePostal ? { zip: parsed.codePostal, terrain_zip: parsed.codePostal } : {}),
+                                ...(parsed.commune ? { city: parsed.commune, commune: parsed.commune, terrain_city: parsed.commune, cadastre_commune: parsed.commune } : {})
+                              }));
                               handleFieldChange('address', val);
+                              if (parsed.codePostal) handleFieldChange('zip', parsed.codePostal);
+                              if (parsed.commune) handleFieldChange('city', parsed.commune);
                             }}
                             placeholder="Adresse complète du projet"
                             className="flex-1 px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
@@ -6153,8 +6213,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 value={editedProject?.cadastre_section || ''}
                                 onChange={(e) => {
                                   const val = e.target.value.toUpperCase();
-                                  setEditedProject(prev => ({ ...prev, cadastre_section: val }));
+                                  setEditedProject(prev => ({ ...prev, cadastre_section: val, terrain_section: val }));
                                   handleFieldChange('cadastre_section', val);
+                                  handleFieldChange('terrain_section', val);
                                 }}
                                 placeholder="ZI"
                                 className="w-14 px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-center uppercase"
@@ -6167,8 +6228,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                 value={editedProject?.cadastre_numero || ''}
                                 onChange={(e) => {
                                   const val = e.target.value;
-                                  setEditedProject(prev => ({ ...prev, cadastre_numero: val }));
+                                  setEditedProject(prev => ({ ...prev, cadastre_numero: val, terrain_numero: val, parcelle: val }));
                                   handleFieldChange('cadastre_numero', val);
+                                  handleFieldChange('terrain_numero', val);
                                 }}
                                 placeholder="0032"
                                 className="w-16 px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-center"
@@ -6182,8 +6244,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                                   value={editedProject?.cadastre_surface || ''}
                                   onChange={(e) => {
                                     const val = e.target.value;
-                                    setEditedProject(prev => ({ ...prev, cadastre_surface: val }));
+                                    setEditedProject(prev => ({ ...prev, cadastre_surface: val, terrain_surface: val }));
                                     handleFieldChange('cadastre_surface', val);
+                                    handleFieldChange('terrain_surface', val);
                                   }}
                                   placeholder="1352"
                                   className="w-full px-2 py-1.5 pr-6 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
@@ -6202,8 +6265,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                             value={editedProject?.city !== undefined ? editedProject.city : (editedProject?.commune !== undefined ? editedProject.commune : (summary.commune !== '—' ? summary.commune : ''))}
                             onChange={(e) => {
                               const val = e.target.value;
-                              setEditedProject(prev => ({ ...prev, city: val, commune: val, cadastre_commune: val }));
+                              setEditedProject(prev => ({ ...prev, city: val, commune: val, cadastre_commune: val, terrain_city: val, terrain_commune: val }));
                               handleFieldChange('city', val);
+                              handleFieldChange('commune', val);
                             }}
                             placeholder="Commune du projet"
                             className="flex-1 px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"

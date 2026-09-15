@@ -4,6 +4,8 @@ import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import BatteryStation3DModel from './BatteryStation3DModel';
 import { Battery, Camera, Sparkles, Check, RotateCw, Eye, Layers, Compass } from 'lucide-react';
+import WebGLErrorBoundary from '@/components/common/WebGLErrorBoundary';
+import { getSafeGlConfig, attachWebGLContextHandlers, disposeThreeScene } from '@/utils/webglUtils';
 
 /**
  * Contrôleur de Caméra adapté aux 3 modes d'affichage :
@@ -17,6 +19,9 @@ function VisualizerCameraController({ currentMode, onReady, controlsRef, dalleLe
   useEffect(() => {
     if (onReady) {
       onReady({ camera, gl, scene });
+    }
+    if (gl?.domElement) {
+      return attachWebGLContextHandlers(gl.domElement);
     }
   }, [camera, gl, scene, onReady]);
 
@@ -89,6 +94,15 @@ export default function BatteryStationVisualizer({
 
   const threeContextRef = useRef(null);
   const controlsRef = useRef(null);
+
+  // Nettoyage des ressources WebGL au démontage pour libérer les contextes GPU
+  useEffect(() => {
+    return () => {
+      if (threeContextRef.current) {
+        disposeThreeScene(threeContextRef.current.scene, threeContextRef.current.gl);
+      }
+    };
+  }, []);
 
   // Synchronisation avec la prop externe viewMode
   useEffect(() => {
@@ -321,60 +335,62 @@ export default function BatteryStationVisualizer({
         </div>
       )}
 
-      {/* 3. SCÈNE 3D / THREE.JS CANVAS */}
+      {/* 3. SCÈNE 3D / THREE.JS CANVAS SÉCURISÉ AVEC ERROR BOUNDARY */}
       <div className="flex-1 w-full h-full relative">
-        <Canvas
-          shadows
-          gl={{ preserveDrawingBuffer: true, antialias: true, alpha: false }}
-          camera={{ position: [dLen * 0.95, 3.8, dWid * 2.2], fov: 40 }}
-          style={{ width: '100%', height: '100%' }}
-        >
-          <color attach="background" args={['#ffffff']} />
-          <ambientLight intensity={0.9} />
-          <directionalLight
-            position={[40, 50, 30]}
-            intensity={2.2}
-            castShadow
-            shadow-mapSize={[2048, 2048]}
-            shadow-bias={-0.0001}
-          />
-          <directionalLight position={[-30, 20, -20]} intensity={0.8} />
-          <Environment preset="city" />
+        <WebGLErrorBoundary height={height} fallbackTitle="Modèle 3D de la station batterie temporairement indisponible">
+          <Canvas
+            shadows
+            gl={getSafeGlConfig({ preserveDrawingBuffer: true, antialias: true, alpha: false })}
+            camera={{ position: [dLen * 0.95, 3.8, dWid * 2.2], fov: 40 }}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <color attach="background" args={['#ffffff']} />
+            <ambientLight intensity={0.9} />
+            <directionalLight
+              position={[40, 50, 30]}
+              intensity={2.2}
+              castShadow
+              shadow-mapSize={[2048, 2048]}
+              shadow-bias={-0.0001}
+            />
+            <directionalLight position={[-30, 20, -20]} intensity={0.8} />
+            <Environment preset="city" />
 
-          <VisualizerCameraController
-            currentMode={internalMode}
-            onReady={(ctx) => {
-              threeContextRef.current = ctx;
-            }}
-            controlsRef={controlsRef}
-            dalleLength={dLen}
-            dalleWidth={dWid}
-          />
+            <VisualizerCameraController
+              currentMode={internalMode}
+              onReady={(ctx) => {
+                threeContextRef.current = ctx;
+              }}
+              controlsRef={controlsRef}
+              dalleLength={dLen}
+              dalleWidth={dWid}
+            />
 
-          <OrbitControls
-            ref={controlsRef}
-            maxDistance={80}
-            minDistance={3}
-            enableDamping={true}
-            dampingFactor={0.08}
-          />
+            <OrbitControls
+              ref={controlsRef}
+              maxDistance={80}
+              minDistance={3}
+              enableDamping={true}
+              dampingFactor={0.08}
+            />
 
-          <BatteryStation3DModel
-            dalleLength={dLen}
-            dalleWidth={dWid}
-            cabinetCount={qty}
-            showFence={showFence}
-            showSlab={true}
-          />
+            <BatteryStation3DModel
+              dalleLength={dLen}
+              dalleWidth={dWid}
+              cabinetCount={qty}
+              showFence={showFence}
+              showSlab={true}
+            />
 
-          <ContactShadows
-            position={[0, 0, 0]}
-            opacity={0.65}
-            scale={14}
-            blur={1.6}
-            far={4}
-          />
-        </Canvas>
+            <ContactShadows
+              position={[0, 0, 0]}
+              opacity={0.65}
+              scale={14}
+              blur={1.6}
+              far={4}
+            />
+          </Canvas>
+        </WebGLErrorBoundary>
       </div>
 
       {/* 4. BARRE INFÉRIEURE : CONTRÔLES & ACTIONS */}

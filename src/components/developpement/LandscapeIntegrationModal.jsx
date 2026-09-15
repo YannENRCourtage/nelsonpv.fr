@@ -8,6 +8,8 @@ import {
   X, Check, RotateCw, ZoomIn, ZoomOut, Move,
   Sliders, RefreshCw, Eye, Download, Layers, Sparkles, Sun, Compass
 } from 'lucide-react';
+import WebGLErrorBoundary from '@/components/common/WebGLErrorBoundary';
+import { getSafeGlConfig, attachWebGLContextHandlers, disposeThreeScene } from '@/utils/webglUtils';
 
 /**
  * Three Context Bridge to get WebGL rendering context for high-res export
@@ -19,6 +21,9 @@ function LandscapeThreeBridge({ onReady, transform, sunAngle }) {
 
   useEffect(() => {
     if (onReady) onReady({ gl, scene, camera });
+    if (gl?.domElement) {
+      return attachWebGLContextHandlers(gl.domElement);
+    }
   }, [gl, scene, camera, onReady]);
 
   const sunRad = (sunAngle * Math.PI) / 180;
@@ -87,6 +92,15 @@ export default function LandscapeIntegrationModal({
   useEffect(() => {
     if (initialPhoto) setPhotoSrc(initialPhoto);
   }, [initialPhoto]);
+
+  // Nettoyage WebGL à la fermeture de la modal d'insertion
+  useEffect(() => {
+    return () => {
+      if (threeContextRef.current) {
+        disposeThreeScene(threeContextRef.current.scene, threeContextRef.current.gl);
+      }
+    };
+  }, []);
 
   // Direct mouse drag controls on photo
   const handleMouseDown = (e) => {
@@ -229,17 +243,19 @@ export default function LandscapeIntegrationModal({
                 />
 
                 <div className="absolute inset-0 pointer-events-none">
-                  <Canvas
-                    shadows
-                    gl={{ preserveDrawingBuffer: true, antialias: true, alpha: true }}
-                    style={{ width: '100%', height: '100%' }}
-                  >
-                    <LandscapeThreeBridge
-                      onReady={(ctx) => { threeContextRef.current = ctx; }}
-                      transform={transform}
-                      sunAngle={transform.sunAngle}
-                    />
-                  </Canvas>
+                  <WebGLErrorBoundary fallbackImage={photoSrc} fallbackTitle="Incrustation 3D temporairement indisponible">
+                    <Canvas
+                      shadows
+                      gl={getSafeGlConfig({ preserveDrawingBuffer: true, antialias: true, alpha: true })}
+                      style={{ width: '100%', height: '100%' }}
+                    >
+                      <LandscapeThreeBridge
+                        onReady={(ctx) => { threeContextRef.current = ctx; }}
+                        transform={transform}
+                        sunAngle={transform.sunAngle}
+                      />
+                    </Canvas>
+                  </WebGLErrorBoundary>
                 </div>
 
                 <div className="absolute bottom-4 left-4 bg-slate-900/85 backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-slate-700 pointer-events-none flex items-center gap-2">
