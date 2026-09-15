@@ -239,7 +239,7 @@ export const generatePdfForProject = async (projectData) => {
 };
 
 function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized }) {
-  const { logout, user, activeTenantId, isAdmin } = useAuth();
+  const { logout, user, activeTenantId, isAdmin, switchTenant } = useAuth();
   const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
   const isAlexandruMihailov = (user?.firstName?.toLowerCase().includes('alexandru') && user?.lastName?.toLowerCase().includes('mihailov')) || user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr';
   const isRestrictedUser = isLaurentGuyon || isAlexandruMihailov;
@@ -253,10 +253,9 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
 
   const isTransferAuthorized = () => {
     if (!user) return false;
+    if (user.role === 'admin' || user.role === 'Administrator' || user.isAdmin === true) return true;
     const email = user.email?.toLowerCase();
-    const firstName = (user.firstName || user.displayName || '').toLowerCase();
     if (email === 'y.barberis@enr-courtage.fr' || email === 'contact@nelsonpv.fr') return true;
-    if (firstName.includes('vero') || firstName.includes('véro')) return true;
     return false;
   };
 
@@ -617,6 +616,37 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
               Bonjour, {user?.firstName ? user.firstName : (user?.displayName || 'Utilisateur')}
             </span>
           )}
+
+          {/* Indicateur et sélecteur d'interface active */}
+          {isAdmin() ? (
+            <select
+              value={activeTenantId || 'green-invest'}
+              onChange={(e) => switchTenant(e.target.value)}
+              className="text-xs font-bold px-2.5 py-1 rounded-full border bg-white cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-400 outline-none transition-all shrink-0"
+              style={{
+                borderColor: activeTenantId === 'enr-courtage-energie' ? '#f59e0b' : (activeTenantId === 'acama' ? '#3b82f6' : '#10b981'),
+                color: activeTenantId === 'enr-courtage-energie' ? '#b45309' : (activeTenantId === 'acama' ? '#1d4ed8' : '#047857'),
+                backgroundColor: activeTenantId === 'enr-courtage-energie' ? '#fffbeb' : (activeTenantId === 'acama' ? '#eff6ff' : '#ecfdf5')
+              }}
+              title="Basculer entre les interfaces entreprise"
+            >
+              <option value="green-invest">GREEN INVEST</option>
+              <option value="enr-courtage-energie">ENR COURTAGE</option>
+              <option value="acama">ACAMA</option>
+            </select>
+          ) : (
+            <span
+              className="text-xs font-bold px-2.5 py-1 rounded-full border shadow-xs shrink-0"
+              style={{
+                borderColor: activeTenantId === 'enr-courtage-energie' ? '#f59e0b' : (activeTenantId === 'acama' ? '#3b82f6' : '#10b981'),
+                color: activeTenantId === 'enr-courtage-energie' ? '#b45309' : (activeTenantId === 'acama' ? '#1d4ed8' : '#047857'),
+                backgroundColor: activeTenantId === 'enr-courtage-energie' ? '#fffbeb' : (activeTenantId === 'acama' ? '#eff6ff' : '#ecfdf5')
+              }}
+            >
+              {activeTenantId === 'enr-courtage-energie' ? 'ENR COURTAGE' : (activeTenantId === 'acama' ? 'ACAMA' : 'GREEN INVEST')}
+            </span>
+          )}
+
           <NotificationBell />
           {/* Bouton Déconnexion */}
           <Button 

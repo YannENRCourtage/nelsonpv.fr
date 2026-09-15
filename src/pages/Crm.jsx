@@ -174,11 +174,13 @@ export default function Crm() {
     if (!t && email) {
       const em = email.toLowerCase();
       if (em.includes('acama')) return 'acama';
+      if (em.includes('enr') || em.includes('courtage')) return 'enr-courtage-energie';
       return 'green-invest';
     }
     const clean = (t || '').toLowerCase().trim();
     if (clean.includes('acama')) return 'acama';
-    if (clean.includes('green') || clean.includes('invest') || clean.includes('barconniere') || clean.includes('enr')) return 'green-invest';
+    if (clean.includes('enr') || clean.includes('courtage')) return 'enr-courtage-energie';
+    if (clean.includes('green') || clean.includes('invest') || clean.includes('barconniere')) return 'green-invest';
     return clean || 'green-invest';
   };
 
@@ -737,16 +739,9 @@ export default function Crm() {
 
   const isTransferAuthorized = () => {
     if (!user) return false;
-    if (user.role === 'admin' || user.isAdmin === true) return true;
+    if (user.role === 'admin' || user.role === 'Administrator' || user.isAdmin === true) return true;
     const email = user.email?.toLowerCase();
-    const firstName = (user.firstName || user.displayName || '').toLowerCase();
-
-    // Yann et admin Nelson
     if (email === 'y.barberis@enr-courtage.fr' || email === 'contact@nelsonpv.fr') return true;
-
-    // Détection de Véro par son prénom
-    if (firstName.includes('vero') || firstName.includes('véro')) return true;
-
     return false;
   };
 

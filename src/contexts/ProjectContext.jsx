@@ -4,13 +4,13 @@ import { uploadProjectCapture, uploadProjectPhoto } from "../services/firebase/s
 import { createProjectAssignmentNotification } from "../services/firebase/comments.service";
 import { useAuth } from "./AuthContext";
 
-/** Clef LS commune (liste projets) */
-const LS_KEY = "nelson:projects:v1";
+/** Clef LS cloisonnée par tenant */
+const getTenantLSKey = (tId) => `nelson:projects:${tId || 'green-invest'}:v1`;
 
 /* Utils LS */
-function loadAllProjectsFromLS() {
+function loadProjectsFromLS(tenantId) {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(getTenantLSKey(tenantId));
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
     console.warn('localStorage access blocked or unavailable:', e);
@@ -18,9 +18,9 @@ function loadAllProjectsFromLS() {
   }
 }
 
-function saveAllProjectsToLS(list) {
+function saveProjectsToLS(tenantId, list) {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(list));
+    localStorage.setItem(getTenantLSKey(tenantId), JSON.stringify(list));
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('projectsUpdated'));
   } catch (e) {
@@ -37,7 +37,7 @@ const ProjectContext = createContext({
   setProject: () => { },
   updateProject: () => { },
   saveProject: () => { },
-  loadAllProjects: loadAllProjectsFromLS,
+  loadAllProjects: (tenantId) => loadProjectsFromLS(tenantId),
   refreshProjects: async () => { },
   loading: false,
   error: null
@@ -52,7 +52,7 @@ export function ProjectProvider({ children }) {
   const { user, activeTenantId } = useAuth(); // Get current user and active tenant
   const activeTenantIdRef = useRef(activeTenantId);
   useEffect(() => { activeTenantIdRef.current = activeTenantId; }, [activeTenantId]);
-  const [projects, _setProjects] = useState(() => loadAllProjectsFromLS());
+  const [projects, _setProjects] = useState(() => loadProjectsFromLS(activeTenantId));
   const [project, _setProject] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -61,8 +61,8 @@ export function ProjectProvider({ children }) {
   const setProjects = useCallback((updater) => {
     _setProjects((prev) => {
       const newProjects = typeof updater === 'function' ? updater(prev) : updater;
-      // Sync to localStorage immediately
-      saveAllProjectsToLS(newProjects);
+      // Sync to localStorage immediately for the active tenant
+      saveProjectsToLS(activeTenantIdRef.current, newProjects);
       return newProjects;
     });
   }, []);
@@ -74,6 +74,10 @@ export function ProjectProvider({ children }) {
     if (!user) {
       return;
     }
+
+    // Charger immédiatement le cache du tenant actif
+    const cached = loadProjectsFromLS(activeTenantId);
+    _setProjects(cached);
 
     const setupSubscription = async () => {
       setLoading(true);
@@ -133,7 +137,7 @@ export function ProjectProvider({ children }) {
   // Écouter les changements du localStorage (sync entre onglets)
   useEffect(() => {
     const handleStorageChange = () => {
-      const local = loadAllProjectsFromLS();
+      const local = loadProjectsFromLS(activeTenantIdRef.current);
       _setProjects(local); // Use _setProjects to avoid triggering another save
     };
     window.addEventListener('storage', handleStorageChange);
@@ -192,9 +196,11 @@ export function ProjectProvider({ children }) {
       // Ne définir le tenantId que pour les NOUVEAUX projets
       // Pour les projets existants, on conserve leur tenant d'origine pour éviter les fuites
       if (!savedProject.tenantId) {
-        const currentTenantId = activeTenantIdRef.current;
-        if (currentTenantId) {
-          savedProject.tenantId = currentTenantId;
+        const isBat = (savedProject.type || '').toLowerCase().includes('batterie');
+        if (isBat) {
+          savedProject.tenantId = 'enr-courtage-energie';
+        } else {
+          savedProject.tenantId = activeTenantIdRef.current || 'green-invest';
         }
       }
 

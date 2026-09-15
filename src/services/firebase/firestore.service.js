@@ -172,11 +172,14 @@ export const deleteProject = async (projectId) => {
 };
 
 export const getTenantVariants = (tId) => {
-    if (!tId) return ['green-invest', 'greeninvest', 'enr-courtage-energie', 'enr-courtage'];
+    if (!tId) return ['green-invest', 'greeninvest'];
     const clean = String(tId).toLowerCase().trim();
     if (clean === 'acama') return ['acama'];
-    if (clean.includes('green') || clean.includes('invest') || clean.includes('enr')) {
-        return ['green-invest', 'greeninvest', 'enr-courtage-energie', 'enr-courtage'];
+    if (clean.includes('enr') || clean.includes('courtage')) {
+        return ['enr-courtage-energie', 'enr-courtage', 'enr-courtage-énergie'];
+    }
+    if (clean.includes('green') || clean.includes('invest') || clean.includes('barconniere')) {
+        return ['green-invest', 'greeninvest'];
     }
     return [tId];
 };
@@ -197,21 +200,29 @@ export const listProjects = async (userId, canViewAll = false, tenantId = 'green
     const projectsSnapshot = await getDocs(q);
     let projects = projectsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 
-    // Fallback: inclure les projets sans tenantId s'il s'agit du tenant principal Green Invest / ENR Courtage
-    if (variants.includes('green-invest')) {
-        try {
-            const allSnapshot = await getDocs(collection(db, 'projects'));
-            const untracked = allSnapshot.docs
-                .filter(doc => !doc.data().tenantId)
-                .map(doc => ({ ...doc.data(), id: doc.id }));
-            if (untracked.length > 0) {
-                const existingIds = new Set(projects.map(p => p.id));
-                untracked.forEach(p => {
-                    if (!existingIds.has(p.id)) projects.push(p);
-                });
-            }
-        } catch (_) {}
-    }
+    // Fallback: inclure les documents sans tenantId selon la règle d'attribution
+    // (Batterie SA -> ENR Courtage, autres -> Green Invest)
+    try {
+        const allSnapshot = await getDocs(collection(db, 'projects'));
+        const untracked = allSnapshot.docs
+            .filter(doc => !doc.data().tenantId)
+            .map(doc => ({ ...doc.data(), id: doc.id }));
+        if (untracked.length > 0) {
+            const isEnr = variants.includes('enr-courtage-energie') || variants.includes('enr-courtage');
+            const isGreen = variants.includes('green-invest');
+            const existingIds = new Set(projects.map(p => p.id));
+            untracked.forEach(p => {
+                if (!existingIds.has(p.id)) {
+                    const isBat = (p.type || '').toLowerCase().includes('batterie');
+                    if (isBat && isEnr) {
+                        projects.push(p);
+                    } else if (!isBat && isGreen) {
+                        projects.push(p);
+                    }
+                }
+            });
+        }
+    } catch (_) {}
 
     // Client-side sorting
     return projects.sort((a, b) => {

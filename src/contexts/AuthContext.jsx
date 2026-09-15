@@ -43,15 +43,6 @@ export const AuthProvider = ({ children }) => {
     return () => axios.interceptors.request.eject(interceptor);
   }, []);
 
-  const isEnrCourtageAuthorized = useCallback((userData) => {
-    // ... logic ...
-    if (!userData) return false;
-    const email = userData.email?.toLowerCase();
-    const firstName = (userData.firstName || userData.displayName || '').toLowerCase();
-    if (email === 'y.barberis@enr-courtage.fr' || email === 'contact@nelsonpv.fr') return true;
-    if (firstName.includes('vero') || firstName.includes('véro')) return true;
-    return false;
-  }, []);
 
   useEffect(() => {
     // Listen to Firebase auth state changes
@@ -93,18 +84,14 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
 
-        if (userData.role !== 'admin') {
-          let userTenant = userData.tenantId || DEFAULT_TENANT;
-          if (userTenant === 'enr-courtage-energie' && !isEnrCourtageAuthorized(userData)) {
-            userTenant = DEFAULT_TENANT;
-          }
+        const isAdminUser = userData.role === 'admin' || userData.role === 'Administrator' || userData.email === 'y.barberis@enr-courtage.fr' || userData.email === 'contact@nelsonpv.fr';
+
+        if (!isAdminUser) {
+          const userTenant = userData.tenantId || DEFAULT_TENANT;
           setActiveTenantId(userTenant);
           try { localStorage.setItem(TENANT_LS_KEY, userTenant); } catch { }
         } else {
           let stored = (() => { try { return localStorage.getItem(TENANT_LS_KEY); } catch { return null; } })();
-          if (stored === 'enr-courtage-energie' && !isEnrCourtageAuthorized(userData)) {
-            stored = DEFAULT_TENANT;
-          }
           setActiveTenantId(stored || DEFAULT_TENANT);
         }
       } else {
@@ -115,7 +102,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     return () => unsubscribe();
-  }, [isEnrCourtageAuthorized]);
+  }, []);
 
   const login = async (email, password) => {
     try {
@@ -142,12 +129,13 @@ export const AuthProvider = ({ children }) => {
 
   const switchTenant = useCallback((tenantId) => {
     if (!tenantId) return;
-    if (tenantId === 'enr-courtage-energie' && !isEnrCourtageAuthorized(user)) {
+    const isAdminUser = user?.role === 'admin' || user?.role === 'Administrator' || user?.email === 'y.barberis@enr-courtage.fr' || user?.email === 'contact@nelsonpv.fr';
+    if (!isAdminUser) {
       return;
     }
     setActiveTenantId(tenantId);
     try { localStorage.setItem(TENANT_LS_KEY, tenantId); } catch { }
-  }, [user, isEnrCourtageAuthorized]);
+  }, [user]);
 
   const hasPermission = (permission) => {
     if (!user || !user.permissions) return false;
