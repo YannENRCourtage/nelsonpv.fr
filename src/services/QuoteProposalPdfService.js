@@ -29,6 +29,9 @@ function sanitizePdfText(val) {
         .replace(/[\u2018\u2019]/g, "'")
         .replace(/[\u201C\u201D]/g, '"')
         .replace(/\u2013|\u2014/g, '-')
+        .replace(/≤/g, '<=')
+        .replace(/≥/g, '>=')
+        .replace(/×/g, 'x')
         .trim();
 }
 
@@ -138,7 +141,7 @@ function getProductTechnicalSpecs(ds) {
                 }
             ],
             certifications: ['IEC 61215:2021', 'IEC 61730:2021', 'Marquage CE', 'ISO 9001 / ISO 14001', 'Agrément RGE QualiPV', 'Éligible EDF OA & Primes'],
-            warrantyText: 'Garantie produit & fabrication : 25 ans | Garantie de puissance linéaire : 30 ans avec dégradation maximale de 1.0% la 1ère année puis ≤ 0.40%/an jusqu\'à 30 ans (87.4% garanti).'
+            warrantyText: 'Garantie produit & fabrication : 25 ans | Garantie de puissance linéaire : 30 ans avec dégradation maximale de 1.0% la 1ère année puis <= 0.40%/an jusqu\'à 30 ans (87.4% garanti).'
         };
     }
 
@@ -304,6 +307,174 @@ function getProductTechnicalSpecs(ds) {
 }
 
 /**
+ * Dessine une illustration technique / schéma vectoriel du produit selon son type
+ */
+function drawProductIllustration(doc, type, x, y, width, height, COLORS) {
+    // Fond de la boîte d'illustration
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(x, y, width, height, 2, 2, 'F');
+    doc.setDrawColor(...COLORS.secondary);
+    doc.setLineWidth(0.35);
+    doc.roundedRect(x, y, width, height, 2, 2, 'D');
+
+    if (type === 'module') {
+        // Schéma Panneau Solaire Photovoltaïque
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(5.2);
+        doc.setTextColor(...COLORS.primary);
+        doc.text('SCHÉMA MODULE BI-VERRE', x + width / 2, y + 3.8, { align: 'center' });
+
+        const pX = x + 6;
+        const pY = y + 5;
+        const pW = width - 12;
+        const pH = height - 9.5;
+
+        // Cadre extérieur aluminium
+        doc.setFillColor(30, 41, 59);
+        doc.rect(pX, pY, pW, pH, 'F');
+
+        // Cellules solaires (fond bleu nuit profond)
+        doc.setFillColor(15, 23, 42);
+        doc.rect(pX + 0.8, pY + 0.8, pW - 1.6, pH - 1.6, 'F');
+
+        // Quadrillage des cellules (lignes de busbars TopCon)
+        doc.setDrawColor(56, 189, 248);
+        doc.setLineWidth(0.12);
+        for (let c = 1; c < 4; c++) {
+            const cx = pX + 0.8 + (c * (pW - 1.6) / 4);
+            doc.line(cx, pY + 0.8, cx, pY + pH - 0.8);
+        }
+        for (let r = 1; r < 5; r++) {
+            const ry = pY + 0.8 + (r * (pH - 1.6) / 5);
+            doc.line(pX + 0.8, ry, pX + pW - 0.8, ry);
+        }
+
+        // Ligne de reflet verre
+        doc.setDrawColor(245, 158, 11);
+        doc.setLineWidth(0.2);
+        doc.line(pX + 1.5, pY + 1.5, pX + pW - 1.5, pY + pH - 1.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4.6);
+        doc.setTextColor(...COLORS.gray);
+        doc.text('Technologie N-Type TopCon', x + width / 2, y + height - 1.4, { align: 'center' });
+
+    } else if (type === 'inverter') {
+        // Schéma Onduleur Solaire
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(5.2);
+        doc.setTextColor(...COLORS.primary);
+        doc.text('SCHÉMA ONDULEUR SOLAIRE', x + width / 2, y + 3.8, { align: 'center' });
+
+        const invX = x + 7;
+        const invY = y + 5;
+        const invW = width - 14;
+        const invH = height - 9.5;
+
+        // Châssis principal onduleur
+        doc.setFillColor(241, 245, 249);
+        doc.setDrawColor(100, 116, 139);
+        doc.setLineWidth(0.25);
+        doc.roundedRect(invX, invY, invW, invH, 1.2, 1.2, 'FD');
+
+        // Écran LCD
+        doc.setFillColor(15, 23, 42);
+        doc.roundedRect(invX + 2.5, invY + 2, invW - 5, 3.5, 0.6, 0.6, 'F');
+        // LED d'état verte
+        doc.setFillColor(16, 185, 129);
+        doc.circle(invX + invW - 4, invY + 3.8, 0.6, 'F');
+
+        // Ailettes de refroidissement / radiateur
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.2);
+        for (let i = 0; i < 3; i++) {
+            const lineY = invY + 7 + i * 1.5;
+            doc.line(invX + 2.5, lineY, invX + invW - 2.5, lineY);
+        }
+
+        // Connecteurs DC / AC en bas
+        doc.setFillColor(30, 41, 59);
+        doc.rect(invX + 2, invY + invH - 1, 2.5, 1, 'F');
+        doc.rect(invX + invW - 4.5, invY + invH - 1, 2.5, 1, 'F');
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4.6);
+        doc.setTextColor(...COLORS.gray);
+        doc.text('Multi-MPPT & Wi-Fi Intégré', x + width / 2, y + height - 1.4, { align: 'center' });
+
+    } else if (type === 'mounting') {
+        // Schéma Structure de Fixation & Rail
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(5.2);
+        doc.setTextColor(...COLORS.primary);
+        doc.text('SYSTÈME DE SURIMPOSITION', x + width / 2, y + 3.8, { align: 'center' });
+
+        const mX = x + 5;
+        const mY = y + 6;
+        const mW = width - 10;
+
+        // Profil toiture inclinée
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.5);
+        doc.line(mX, mY + 9, mX + mW, mY + 6);
+
+        // Crochet de toiture (CrossHook)
+        doc.setDrawColor(...COLORS.primary);
+        doc.setLineWidth(0.6);
+        doc.line(mX + mW * 0.38, mY + 7.5, mX + mW * 0.38, mY + 3.5);
+        doc.line(mX + mW * 0.38, mY + 3.5, mX + mW * 0.55, mY + 3.5);
+
+        // Rail SolidRail profilé aluminium
+        doc.setFillColor(148, 163, 184);
+        doc.rect(mX + mW * 0.22, mY + 2, mW * 0.55, 1.8, 'F');
+
+        // Étrier clamp de fixation
+        doc.setFillColor(...COLORS.secondary);
+        doc.rect(mX + mW * 0.42, mY + 0.3, 2.8, 1.8, 'F');
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4.6);
+        doc.setTextColor(...COLORS.gray);
+        doc.text('Alu EN AW-6063 & Inox A2', x + width / 2, y + height - 1.4, { align: 'center' });
+
+    } else {
+        // Schéma Équipement / Coffret
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(5.2);
+        doc.setTextColor(...COLORS.primary);
+        doc.text('COFFRET & PROTECTION', x + width / 2, y + 3.8, { align: 'center' });
+
+        const cX = x + 7;
+        const cY = y + 5;
+        const cW = width - 14;
+        const cH = height - 9.5;
+
+        // Coffret IP65
+        doc.setFillColor(241, 245, 249);
+        doc.setDrawColor(100, 116, 139);
+        doc.setLineWidth(0.25);
+        doc.roundedRect(cX, cY, cW, cH, 1.2, 1.2, 'FD');
+
+        // Fenêtre transparente disjoncteurs
+        doc.setFillColor(226, 232, 240);
+        doc.rect(cX + 2, cY + 2, cW - 4, 4.2, 'F');
+
+        // Modules disjoncteur / parafoudre
+        doc.setFillColor(30, 58, 138);
+        doc.rect(cX + 3, cY + 2.6, 2.5, 3, 'F');
+        doc.setFillColor(16, 185, 129);
+        doc.rect(cX + 6.5, cY + 2.6, 2.5, 3, 'F');
+        doc.setFillColor(220, 38, 38);
+        doc.rect(cX + 10, cY + 2.6, 2.5, 3, 'F');
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4.6);
+        doc.setTextColor(...COLORS.gray);
+        doc.text('Protection UTE C15-712-1', x + width / 2, y + height - 1.4, { align: 'center' });
+    }
+}
+
+/**
  * Dessine une page A4 complète et riche de Fiche Technique Fabricant & Certification
  */
 function renderProductDatasheetPage(doc, ds, pageWidth, pageHeight, margin, contentWidth, COLORS) {
@@ -325,7 +496,7 @@ function renderProductDatasheetPage(doc, ds, pageWidth, pageHeight, margin, cont
     // Titre de la page
     doc.setFontSize(10);
     doc.setTextColor(...COLORS.white);
-    const titleText = `${specs.marque.toUpperCase()} — ${sanitizePdfText(specs.modele).slice(0, 48)}`;
+    const titleText = `${specs.marque.toUpperCase()} - ${sanitizePdfText(specs.modele).slice(0, 48)}`;
     doc.text(titleText, margin, 17);
 
     // Tag Référence haut droite
@@ -334,7 +505,7 @@ function renderProductDatasheetPage(doc, ds, pageWidth, pageHeight, margin, cont
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.2);
     doc.setTextColor(...COLORS.gray);
-    doc.text('RÉF. CONSTRUCTEUR', pageWidth - margin - 29, 8, { align: 'center' });
+    doc.text('REF. CONSTRUCTEUR', pageWidth - margin - 29, 8, { align: 'center' });
     doc.setFontSize(7.8);
     doc.setTextColor(...COLORS.primary);
     doc.text(sanitizePdfText(ds.ref).slice(0, 22), pageWidth - margin - 29, 13.5, { align: 'center' });
@@ -368,28 +539,36 @@ function renderProductDatasheetPage(doc, ds, pageWidth, pageHeight, margin, cont
 
     curY += kpiH + 5;
 
-    // 3. Présentation générale & Atouts constructeur
-    const descBoxH = 22;
+    // 3. Présentation générale & Atouts constructeur + Schéma Visuel Produit
+    const descBoxH = 25;
+    const schemaW = 44;
+    const descW = contentWidth - schemaW - 4;
+
+    // Bloc texte gauche
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(...COLORS.border);
-    doc.roundedRect(margin, curY, contentWidth, descBoxH, 2, 2, 'FD');
+    doc.roundedRect(margin, curY, descW, descBoxH, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(...COLORS.primary);
     doc.text(specs.descriptionTitle, margin + 4, curY + 5);
 
-    let pY = curY + 9;
+    let pY = curY + 9.5;
     specs.descriptionPoints.slice(0, 3).forEach(pt => {
         doc.setFillColor(...COLORS.secondary);
         doc.circle(margin + 4, pY - 1, 1, 'F');
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.8);
+        doc.setFontSize(6.5);
         doc.setTextColor(...COLORS.dark);
-        const wrapped = doc.splitTextToSize(pt, contentWidth - 10);
+        const wrapped = doc.splitTextToSize(sanitizePdfText(pt), descW - 10);
         doc.text(wrapped[0] || pt, margin + 7, pY);
-        pY += 4.5;
+        pY += 5;
     });
+
+    // Bloc illustration visuelle droite
+    const sX = margin + descW + 4;
+    drawProductIllustration(doc, specs.type, sX, curY, schemaW, descBoxH, COLORS);
 
     curY += descBoxH + 4;
 
@@ -431,7 +610,8 @@ function renderProductDatasheetPage(doc, ds, pageWidth, pageHeight, margin, cont
                 doc.setFontSize(6.5);
                 doc.setTextColor(...COLORS.dark);
                 const textStr = sanitizePdfText(val);
-                doc.text(textStr.slice(0, 65), cellX + 2.5, curY + 3);
+                const wrapped = doc.splitTextToSize(textStr, colW - 4);
+                doc.text(wrapped[0] || textStr, cellX + 2.5, curY + 3);
                 cellX += colW;
             });
             curY += rowH;
@@ -473,18 +653,20 @@ function renderProductDatasheetPage(doc, ds, pageWidth, pageHeight, margin, cont
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.2);
         doc.setTextColor(...COLORS.secondary);
-        doc.text('ENGAGEMENTS DE GARANTIE CONSTRUCTEUR & CONFORMITÉ ENEDIS', margin + 4, curY + 4.8);
+        doc.text('ENGAGEMENTS DE GARANTIE CONSTRUCTEUR & CONFORMITE ENEDIS', margin + 4, curY + 4.8);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.5);
+        doc.setFontSize(6.4);
         doc.setTextColor(...COLORS.dark);
-        doc.text(specs.warrantyText, margin + 4, curY + 9.5);
+        const wrappedWarranty = doc.splitTextToSize(sanitizePdfText(specs.warrantyText), contentWidth - 8);
+        doc.text(wrappedWarranty, margin + 4, curY + 8.5);
 
         if (ds.url) {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(6.4);
+            doc.setFontSize(6.2);
             doc.setTextColor(37, 99, 235);
-            doc.text(`Documentation constructeur officielle en ligne : ${ds.url}`, margin + 4, curY + 14.5);
+            const wrappedUrl = doc.splitTextToSize(`Documentation constructeur officielle en ligne : ${sanitizePdfText(ds.url)}`, contentWidth - 8);
+            doc.text(wrappedUrl[0], margin + 4, curY + 14.5);
         }
     }
 }
@@ -669,24 +851,20 @@ export async function generateQuoteProposalPdf({
         doc.text('contact@enr-courtage.fr • www.enr-courtage.fr', margin + 5, curY + 25.5);
         doc.text(`Conseiller : ${sanitizePdfText(quoteData.commercialName || 'Pôle Ingénierie Solaire')}`, margin + 5, curY + 31);
 
-        // Destinataire / Client (fond blanc et police sombre)
+        // Destinataire / Client (fond blanc et police sombre, sans titre CLIENT / DESTINATAIRE)
         doc.setFillColor(255, 255, 255);
         doc.setDrawColor(...COLORS.border);
         doc.roundedRect(margin + boxWidth + 6, curY, boxWidth, boxHeight, 2.5, 2.5, 'FD');
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        doc.setTextColor(...COLORS.dark);
-        doc.text('CLIENT / DESTINATAIRE', margin + boxWidth + 11, curY + 8);
-        doc.setFont('helvetica', 'bold');
         doc.setFontSize(9.5);
         doc.setTextColor(...COLORS.dark);
-        doc.text(clientName, margin + boxWidth + 11, curY + 14.5);
+        doc.text(clientName, margin + boxWidth + 11, curY + 8);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8.2);
-        if (clientAddress) doc.text(clientAddress, margin + boxWidth + 11, curY + 20);
-        if (clientZipCity) doc.text(clientZipCity, margin + boxWidth + 11, curY + 25.5);
+        if (clientAddress) doc.text(clientAddress, margin + boxWidth + 11, curY + 14.5);
+        if (clientZipCity) doc.text(clientZipCity, margin + boxWidth + 11, curY + 20);
         const contactLine = [clientPhone, clientEmail].filter(Boolean).join(' • ');
-        if (contactLine) doc.text(contactLine, margin + boxWidth + 11, curY + 31);
+        if (contactLine) doc.text(contactLine, margin + boxWidth + 11, curY + 25.5);
 
         // Métadonnées
         curY += boxHeight + 6;
@@ -771,12 +949,6 @@ export async function generateQuoteProposalPdf({
             doc.text(pt.desc, margin + 10, pY + 4);
             pY += 10;
         });
-
-        // Footer Page 1
-        doc.setFontSize(7.5);
-        doc.setTextColor(...COLORS.gray);
-        doc.text('Page 1 / 3 — Proposition Commerciale & Présentation', margin, pageHeight - 8);
-        doc.text('ENR COURTAGE — Tous droits réservés', pageWidth - margin, pageHeight - 8, { align: 'right' });
 
         // ---------------------------------------------------------------------
         // PAGE 2 : ÉTUDE TECHNICO-ÉCONOMIQUE & BILAN DE RENTABILITÉ
@@ -960,12 +1132,6 @@ export async function generateQuoteProposalPdf({
             aideY += 5.5;
         });
 
-        // Footer Page 2
-        doc.setFontSize(7.5);
-        doc.setTextColor(...COLORS.gray);
-        doc.text('Page 2 / 3 — Étude Technico-Économique & Rentabilité', margin, pageHeight - 8);
-        doc.text('ENR COURTAGE — Tous droits réservés', pageWidth - margin, pageHeight - 8, { align: 'right' });
-
         // Passer à la page 3 pour le Devis chiffré
         doc.addPage();
     }
@@ -1009,7 +1175,7 @@ export async function generateQuoteProposalPdf({
     doc.text('contact@enr-courtage.fr • www.enr-courtage.fr', margin + 4, curY + 17);
     doc.text(`Conseiller : ${sanitizePdfText(quoteData.commercialName || 'Pôle Ingénierie Solaire')}`, margin + 4, curY + 22.5);
 
-    // Client / Destinataire (droite) : fond blanc et police sombre
+    // Client / Destinataire (droite) : fond blanc et police sombre, sans titre CLIENT / DESTINATAIRE
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(...COLORS.border);
     doc.roundedRect(margin + boxWidth + 6, curY, boxWidth, boxH, 2, 2, 'FD');
@@ -1017,18 +1183,13 @@ export async function generateQuoteProposalPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(...COLORS.dark);
-    doc.text('CLIENT / DESTINATAIRE', margin + boxWidth + 10, curY + 6.5);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...COLORS.dark);
-    doc.text(clientName, margin + boxWidth + 10, curY + 12);
+    doc.text(clientName, margin + boxWidth + 10, curY + 6.5);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.8);
-    if (clientAddress) doc.text(clientAddress, margin + boxWidth + 10, curY + 17);
+    if (clientAddress) doc.text(clientAddress, margin + boxWidth + 10, curY + 12);
     const cliInfo = [clientZipCity, clientPhone, prm ? `PRM: ${prm}` : ''].filter(Boolean).join(' • ');
-    if (cliInfo) doc.text(cliInfo, margin + boxWidth + 10, curY + 22.5);
+    if (cliInfo) doc.text(cliInfo, margin + boxWidth + 10, curY + 17);
 
     curY += boxH + 5;
 
@@ -1049,127 +1210,107 @@ export async function generateQuoteProposalPdf({
     curY += 6.5;
 
     // Lignes de devis
-    const lineHeight = 6.2;
-    const sectionHeaderHeight = 4.8;
-
     sections.forEach(sec => {
-        // Vérification saut de page
-        if (curY > 260) {
+        if (!sec.lines || sec.lines.length === 0) return;
+
+        if (curY > pageHeight - 65) {
             doc.addPage();
             doc.setFillColor(...COLORS.primary);
             doc.rect(0, 0, pageWidth, 14, 'F');
             doc.setTextColor(...COLORS.white);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(9.5);
-            doc.text(`DEVIS N° ${quoteNumber} (SUITE)`, margin, 9.5);
+            doc.text(`DEVIS N° ${quoteNumber} — SUITE`, margin, 9.5);
             curY = 20;
 
-            // Répétition entête colonnes
             doc.setFillColor(...COLORS.primary);
             doc.rect(margin, curY, contentWidth, 6.5, 'F');
             doc.setTextColor(...COLORS.white);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(7.2);
-            headerX = margin;
+            let hX = margin;
             devisCols.forEach(col => {
-                const textX = col.align === 'right' ? headerX + col.w - 2 : headerX + 2;
-                doc.text(col.label, textX, curY + 4.5, { align: col.align || 'left' });
-                headerX += col.w;
+                const tX = col.align === 'right' ? hX + col.w - 2 : hX + 2;
+                doc.text(col.label, tX, curY + 4.5, { align: col.align || 'left' });
+                hX += col.w;
             });
             curY += 6.5;
         }
 
-        // Ligne de titre de section
-        doc.setFillColor(...COLORS.primaryLight);
-        doc.rect(margin, curY, contentWidth, sectionHeaderHeight, 'F');
-        doc.setTextColor(...COLORS.primary);
+        // Titre de section
+        doc.setFillColor(241, 245, 249);
+        doc.rect(margin, curY, contentWidth, 5.5, 'F');
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.5);
-        doc.text(sanitizePdfText(sec.title || 'Prestations'), margin + 2, curY + 3.5);
-        curY += sectionHeaderHeight;
+        doc.setTextColor(...COLORS.primary);
+        doc.text(sec.title.toUpperCase(), margin + 3, curY + 4);
+        curY += 5.5;
 
-        (sec.lines || []).forEach((line, lIdx) => {
-            // Vérification saut de page avant impression de ligne
-            if (curY > 260) {
+        sec.lines.forEach((line, lIdx) => {
+            const isAlt = lIdx % 2 === 1;
+            const rowH = line.details ? 8.5 : 5.8;
+
+            if (curY + rowH > pageHeight - 60) {
                 doc.addPage();
                 doc.setFillColor(...COLORS.primary);
                 doc.rect(0, 0, pageWidth, 14, 'F');
                 doc.setTextColor(...COLORS.white);
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(9.5);
-                doc.text(`DEVIS N° ${quoteNumber} (SUITE)`, margin, 9.5);
+                doc.text(`DEVIS N° ${quoteNumber} — SUITE`, margin, 9.5);
                 curY = 20;
-
-                doc.setFillColor(...COLORS.primary);
-                doc.rect(margin, curY, contentWidth, 6.5, 'F');
-                doc.setTextColor(...COLORS.white);
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(7.2);
-                headerX = margin;
-                devisCols.forEach(col => {
-                    const textX = col.align === 'right' ? headerX + col.w - 2 : headerX + 2;
-                    doc.text(col.label, textX, curY + 4.5, { align: col.align || 'left' });
-                    headerX += col.w;
-                });
-                curY += 6.5;
             }
 
-            const qty = parseFloat(line.quantite || 1);
-            const pu = parseFloat(line.prixUnitaireHt || 0);
-            const rem = parseFloat(line.remisePourcent || 0);
-            const lineHt = qty * pu * (1 - rem / 100);
-            const tvaRate = parseFloat(line.tauxTva !== undefined ? line.tauxTva : (powerKwc <= 3 ? 10 : 20));
+            doc.setFillColor(isAlt ? 248 : 255, isAlt ? 250 : 255, isAlt ? 252 : 255);
+            doc.rect(margin, curY, contentWidth, rowH, 'F');
 
-            const isAlt = lIdx % 2 === 1;
-            doc.setFillColor(isAlt ? 250 : 255, isAlt ? 250 : 255, isAlt ? 252 : 255);
-            doc.rect(margin, curY, contentWidth, lineHeight, 'F');
-
+            let cX = margin;
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7.2);
             doc.setTextColor(...COLORS.dark);
 
-            let cellX = margin;
-            // Réf
-            doc.setFont('helvetica', 'bold');
-            doc.text(sanitizePdfText(line.ref || '').slice(0, 16), cellX + 2, curY + 4.2);
-            cellX += devisCols[0].w;
+            // Ref
+            doc.text(sanitizePdfText(line.ref || '-').slice(0, 18), cX + 2, curY + 4);
+            cX += devisCols[0].w;
 
             // Désignation
-            doc.setFont('helvetica', 'normal');
-            const desig = sanitizePdfText(line.designation || '').slice(0, 56);
-            doc.text(desig, cellX + 2, curY + 4.2);
-            cellX += devisCols[1].w;
+            doc.setFont('helvetica', 'bold');
+            doc.text(sanitizePdfText(line.designation).slice(0, 48), cX + 2, curY + 4);
+            if (line.details) {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6.2);
+                doc.setTextColor(...COLORS.gray);
+                doc.text(sanitizePdfText(line.details).slice(0, 60), cX + 2, curY + 7.5);
+                doc.setFontSize(7.2);
+                doc.setTextColor(...COLORS.dark);
+            }
+            cX += devisCols[1].w;
 
             // Qté
-            doc.text(`${formatNumber(qty)} ${sanitizePdfText(line.unite || 'U')}`, cellX + devisCols[2].w - 2, curY + 4.2, { align: 'right' });
-            cellX += devisCols[2].w;
+            doc.setFont('helvetica', 'normal');
+            doc.text(String(line.quantite || 1), cX + devisCols[2].w - 2, curY + 4, { align: 'right' });
+            cX += devisCols[2].w;
 
-            // P.U. HT
-            doc.text(formatEuro(pu), cellX + devisCols[3].w - 2, curY + 4.2, { align: 'right' });
-            cellX += devisCols[3].w;
+            // PU HT
+            doc.text(formatEuro(line.prixUnitaireHt), cX + devisCols[3].w - 2, curY + 4, { align: 'right' });
+            cX += devisCols[3].w;
 
-            // Remise
-            doc.text(rem > 0 ? `${rem}%` : '-', cellX + devisCols[4].w - 2, curY + 4.2, { align: 'right' });
-            cellX += devisCols[4].w;
+            // TVA
+            doc.text(`${line.tva || 20}%`, cX + devisCols[4].w - 2, curY + 4, { align: 'right' });
+            cX += devisCols[4].w;
 
             // Total HT
             doc.setFont('helvetica', 'bold');
-            doc.text(formatEuro(lineHt), cellX + devisCols[5].w - 2, curY + 4.2, { align: 'right' });
-            cellX += devisCols[5].w;
+            doc.text(formatEuro(line.montantHt), cX + devisCols[5].w - 2, curY + 4, { align: 'right' });
 
-            // TVA
-            doc.setFont('helvetica', 'normal');
-            doc.text(`${tvaRate}%`, cellX + devisCols[6].w - 2, curY + 4.2, { align: 'right' });
-
-            curY += lineHeight;
+            curY += rowH;
         });
     });
 
     // =========================================================================
     // RÉCAPITULATIF FINANCIER & BON POUR ACCORD
     // =========================================================================
-    const requiredBottomSpace = 84;
-    if (curY + requiredBottomSpace > (pageHeight - 12)) {
+    if (curY > pageHeight - 75) {
         doc.addPage();
         doc.setFillColor(...COLORS.primary);
         doc.rect(0, 0, pageWidth, 14, 'F');
@@ -1178,14 +1319,12 @@ export async function generateQuoteProposalPdf({
         doc.setFontSize(9.5);
         doc.text(`DEVIS N° ${quoteNumber} — RÉCAPITULATIF & SIGNATURE`, margin, 9.5);
         curY = 22;
-    } else {
-        curY += 5;
     }
 
     const recapY = curY;
     const leftWidth = 98;
     const rightWidth = contentWidth - leftWidth - 5;
-    const recapBoxHeight = 44;
+    const recapBoxHeight = primeAuto > 0 ? 50 : 44;
 
     // Colonne gauche : Ventilation TVA & Modalités de règlement
     doc.setFillColor(248, 250, 252);
@@ -1258,14 +1397,17 @@ export async function generateQuoteProposalPdf({
     doc.setFontSize(10.5);
     doc.text(formatEuro(totalTtc), rValX - 2, totY + 3.5, { align: 'right' });
 
-    // Prime et reste à charge (si prime applicable)
+    // Prime et reste à charge (si prime applicable) sur 2 lignes distinctes
     if (primeAuto > 0) {
-        totY += 12;
+        totY += 10.5;
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.5);
         doc.setTextColor(22, 101, 52);
-        doc.text(`Prime EDF OA déductible : - ${formatEuro(primeAuto)}`, rX, totY);
-        doc.text(`Reste à charge réel : ${formatEuro(resteACharge)}`, rValX, totY, { align: 'right' });
+        doc.text('Prime EDF OA déductible :', rX, totY);
+        doc.text(`- ${formatEuro(primeAuto)}`, rValX, totY, { align: 'right' });
+        totY += 4.5;
+        doc.text('Reste à charge réel :', rX, totY);
+        doc.text(formatEuro(resteACharge), rValX, totY, { align: 'right' });
     }
 
     // Cadre Bon pour Accord & Signature

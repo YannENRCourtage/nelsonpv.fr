@@ -271,7 +271,11 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       ? (project?.email || project?.clientEmail || 'contact@enr-courtage.fr')
       : (project?.email2 || 'contact@enr-courtage.fr');
     const tel       = project?.phone || project?.clientPhone || '';
-    const dateStr   = new Date().toLocaleDateString('fr-FR');
+    const now       = new Date();
+    const dayStr    = String(now.getDate()).padStart(2, '0');
+    const monthStr  = String(now.getMonth() + 1).padStart(2, '0');
+    const yearStr   = String(now.getFullYear());
+    const dateStr   = `${dayStr}${monthStr}${yearStr}`;
     const lieuStr   = city || 'FRANCE';
 
     let emailLeft = email;

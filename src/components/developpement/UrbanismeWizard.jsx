@@ -916,11 +916,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const configActions = useConfiguratorActions();
 
   const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
-  const initialSolType = project?.solutionType || project?.urbanisme_solutionType || (
-    (project?.type === 'battery' || project?.type === 'batterie_standalone' || project?.installationType?.toLowerCase()?.includes('batterie'))
-      ? 'battery'
-      : ((!isAcama && isDP) ? 'ombriere' : 'building')
-  );
+  const initialSolType = project?.urbanisme_solutionType || project?.solutionType || (() => {
+    const raw = String(project?.type || project?.installationType || project?.projectType || project?.type_projet || '').toLowerCase();
+    if (raw.includes('batterie') || raw.includes('battery')) return 'battery';
+    if (raw.includes('construction') || raw.includes('batiment') || raw.includes('bâtiment') || raw.includes('ombriere') || raw.includes('ombrière')) return 'ombriere';
+    return isDP ? 'ombriere' : 'building';
+  })();
   const [solutionType, setSolutionType] = useState(initialSolType); // 'building' | 'ombriere' | 'battery'
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
 
@@ -1860,7 +1861,7 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
 
       if (idx === 0) {
         if (isOmb) {
-          batimentDesc = `Le projet a pour objet l'implantation d'une ombrière photovoltaïque (${sName}) de dimensions ${sL.toFixed(2)}m × ${sTotalW.toFixed(2)}m (surface couverte : ${sSurf} m²), orientée ${rotLabel} (${sRot}°), à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${sPitch}°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire${pwrForStruct ? `, développant une puissance installée de ${pwrForStruct} kWc` : ''}.`;
+          batimentDesc = `Le projet a pour objet l'implantation d'une ombrière photovoltaïque (${sName}) de dimensions ${sL.toFixed(2)}m × ${sTotalW.toFixed(2)}m (surface couverte : ${sSurf} m²), orientée ${rotLabel} (${sRot}°), à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${sPitch}°, permettant d'abriter l'activité de l'exploitant tout en produisant de l'électricité solaire${pwrForStruct ? `, développant une puissance installée de ${pwrForStruct} kWc` : ''}.`;
         } else {
           batimentDesc = `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique (${sName}) de forme rectangulaire (longueur : ${sL.toFixed(2)}m, largeur : ${sTotalW.toFixed(2)}m${extDesc}, hauteur sablière : ${sEave.toFixed(2)}m, surface couverte : ${sSurf} m²), orienté ${rotLabel} (${sRot}°), en structure métallique (RAL 7016 / 7005), composé de ${sBays} travées de ${sSpacing}m d'entraxe. La toiture sera constituée d'une couverture avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${pwrForStruct ? `, développant une puissance installée de ${pwrForStruct} kWc` : ''}.`;
         }
@@ -2326,7 +2327,21 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         String(project?.description || '').toLowerCase().includes('batterie')
       );
 
-    const detectedSolutionType = isNoBattery ? ((!isAcama && isDP) ? 'ombriere' : 'building') : (isBatteryProject ? 'battery' : (isDP ? 'ombriere' : 'building'));
+    let detectedSolutionType;
+    if (savedState?.solutionType) {
+      detectedSolutionType = savedState.solutionType;
+    } else if (isBatteryProject) {
+      detectedSolutionType = 'battery';
+    } else {
+      const rawType = String(project?.type || project?.installationType || project?.projectType || project?.type_projet || '').toLowerCase();
+      if (rawType.includes('batterie') || rawType.includes('battery')) {
+        detectedSolutionType = 'battery';
+      } else if (rawType.includes('construction') || rawType.includes('batiment') || rawType.includes('bâtiment') || rawType.includes('ombriere') || rawType.includes('ombrière')) {
+        detectedSolutionType = 'ombriere';
+      } else {
+        detectedSolutionType = isDP ? 'ombriere' : 'building';
+      }
+    }
     setSolutionType(detectedSolutionType);
 
     let parsedBatteryQty = 4;
@@ -2735,14 +2750,14 @@ En cas de besoin pour la défense extérieure contre l'incendie, un canal est si
     setNoticeText(initialNotice);
     setIsNoticeUserModified(Boolean(savedState?.isNoticeUserModified || savedState?.noticeText || project?.noticeText || isRodierGarons));
 
+    const image4ObjetTravaux = `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire de dimensions 60m x 35.3m soit 2118m² de surface (dont 26.0m principal + 9.30m appentis) ouverte sur les 4 côtés.
+La puissance totale installée en toiture sera de 460 kWc. Le bac acier qui sera installé en toiture sous les modules photovoltaïques sera de RAL7016. Les panneaux photovoltaïques prévus sont noirs avec un encadrement noir.
+Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire de 465 Wc soit 989 panneaux photovoltaïques seront installés en toiture sur les 2 pans de l'ombrière.`;
+
     const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
     const shortObjet = isBatteryProject
       ? "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide"
-      : (isDP
-        ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
-        : (isPC
-          ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-          : "Demande d'urbanisme photovoltaïque"));
+      : (isRodierGarons ? image4ObjetTravaux : (isDP ? image4ObjetTravaux : "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"));
 
     const rawBirthDate = savedState?.editedProject?.birthDate || project.birthDate || '';
     const formattedBirthDate = String(rawBirthDate).replace(/\D/g, '').slice(0, 8);
@@ -4179,8 +4194,8 @@ En cas de besoin pour la défense extérieure contre l'incendie, un canal est si
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-extrabold text-xs text-slate-900 flex items-center gap-2">
-                              <Car className={`w-4 h-4 ${solutionType === 'ombriere' ? 'text-emerald-600' : 'text-slate-500'}`} />
-                              Ombrière de Parking
+                              <Layers className={`w-4 h-4 ${solutionType === 'ombriere' ? 'text-emerald-600' : 'text-slate-500'}`} />
+                              Ombrière
                             </span>
                             <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                               solutionType === 'ombriere' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
@@ -4189,7 +4204,7 @@ En cas de besoin pour la défense extérieure contre l'incendie, un canal est si
                             </div>
                           </div>
                           <p className="text-[11px] text-slate-500 leading-relaxed">
-                            Structure d'ombrage pour véhicules légers ou poids-lourds conforme à la loi APER.
+                            Structure ombrière photovoltaïque autoportante (stockage, parking ou abri).
                           </p>
                         </div>
                       )}
