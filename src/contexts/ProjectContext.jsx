@@ -29,6 +29,18 @@ function saveProjectsToLS(tenantId, list) {
   }
 }
 
+/* Fonctions de compatibilité */
+export function loadAllProjectsFromLS(tenantId) {
+  return loadProjectsFromLS(tenantId);
+}
+
+export function saveAllProjectsToLS(tenantIdOrList, maybeList) {
+  if (Array.isArray(tenantIdOrList)) {
+    return saveProjectsToLS(null, tenantIdOrList);
+  }
+  return saveProjectsToLS(tenantIdOrList, maybeList);
+}
+
 /** Contexte */
 const ProjectContext = createContext({
   projects: [],
@@ -179,7 +191,7 @@ export function ProjectProvider({ children }) {
     isSaving.current = true;
 
     // 1. Sauvegarde optimiste dans LS
-    const all = loadAllProjectsFromLS();
+    const all = loadProjectsFromLS(activeTenantIdRef.current);
     // Si pas d'ID (nouveau projet), on génère un ID temporaire pour le LS si besoin, 
     // ou on attend la réponse API. Ici on suppose que le composant a déjà mis un ID ou non.
     // Si pas d'ID, on ne peut pas vraiment sauvegarder dans LS de manière fiable pour la réhydratation
@@ -342,7 +354,7 @@ export function ProjectProvider({ children }) {
       // On recharge la liste officielle depuis le serveur avec le bon tenant
       const refreshedProjects = await apiService.getProjects(activeTenantIdRef.current);
       setProjects(refreshedProjects);
-      saveAllProjectsToLS(refreshedProjects);
+      saveProjectsToLS(activeTenantIdRef.current, refreshedProjects);
 
       // Feedback succès (si géré par le composant)
       return savedProject;
