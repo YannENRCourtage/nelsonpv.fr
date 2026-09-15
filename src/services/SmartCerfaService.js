@@ -244,7 +244,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const names = resolveDemandeurNames(project);
     const lastName  = names.lastName || project?.lastName || project?.name || '';
     const firstName = names.firstName || project?.firstName || '';
-    const birthDate = project?.birthDate || '';
+    const birthDate = (project?.birthDate || '').replace(/\D/g, '').slice(0, 8);
     const birthCity = project?.birthCity || ''; // Strict: uniquement lieu de naissance. Si vide, reste vide.
     const birthDept = project?.birthDept || (project?.zip ? project.zip.substring(0, 2) : '32');
     const birthCountry = project?.birthCountry || 'FRANCE';
@@ -266,9 +266,10 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const rawKwc    = project?.kwc || project?.projectSize || project?.puissance || project?.power || (project?.solarStats?.power ? Math.round(project.solarStats.power) : '');
     const kwcStr    = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc).trim() : `${rawKwc} kWc`) : '';
     const cleanKwcVal = rawKwc ? String(rawKwc).replace(/kWc/gi, '').trim() : '';
-    const email     = (project?.cerfaEmailChoice === 'email2' && project?.email2)
-      ? project.email2
-      : (project?.email || project?.clientEmail || 'isabelle.dupond@gmail.com');
+    const cerfaChoice = project?.cerfaEmailChoice || 'email2';
+    const email     = (cerfaChoice === 'email1')
+      ? (project?.email || project?.clientEmail || 'contact@enr-courtage.fr')
+      : (project?.email2 || 'contact@enr-courtage.fr');
     const tel       = project?.phone || project?.clientPhone || '';
     const dateStr   = new Date().toLocaleDateString('fr-FR');
     const lieuStr   = city || 'FRANCE';

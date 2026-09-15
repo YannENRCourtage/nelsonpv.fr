@@ -689,6 +689,7 @@ export default function Developpement() {
         type={urbanismeModal.type}
         project={selectedProject}
         onGenerate={handleUrbanismeGenerate}
+        onUpdateProject={handleUpdateProjectData}
       />
 
       {/* 2. Modal Génération Email Mandatement (Huissier, Géomètre, Notaire) */}

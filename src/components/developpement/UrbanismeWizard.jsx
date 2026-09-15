@@ -899,7 +899,7 @@ const DOSSIER_INFO = {
   },
 };
 
-export default function UrbanismeWizard({ isOpen, onClose, type, project, onGenerate }) {
+export default function UrbanismeWizard({ isOpen, onClose, type, project, onGenerate, onUpdateProject }) {
   const isDP = type === 'dp';
   const isPC = type === 'pc'; 
   const hasInitializedRef = React.useRef(false);
@@ -1189,6 +1189,121 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       };
     });
   }, [solutionType]);
+
+  const autoSaveTimerRef = useRef(null);
+
+  const saveWizardState = useCallback((overrides = {}) => {
+    if (!project?.id) return;
+
+    const currentSol = (overrides.solutions || solutions)[overrides.solutionType || solutionType] || (overrides.solutions || solutions).building;
+    const currentBuildings = currentSol?.buildings || [];
+    const mergedEditedProject = {
+      ...editedProject,
+      ...(overrides.editedProject || {})
+    };
+
+    const stateToSave = {
+      step: overrides.step !== undefined ? overrides.step : step,
+      solutionType: overrides.solutionType || solutionType,
+      solutions: overrides.solutions || solutions,
+      editedProject: mergedEditedProject,
+      noticeText: overrides.noticeText !== undefined ? overrides.noticeText : noticeText,
+      isNoticeUserModified: overrides.isNoticeUserModified !== undefined ? overrides.isNoticeUserModified : isNoticeUserModified,
+      selectedStructureIds: overrides.selectedStructureIds || selectedStructureIds,
+      masseDistances: overrides.masseDistances || masseDistances,
+      masseLockedMaps: overrides.masseLockedMaps || masseLockedMaps,
+      selectedPages: overrides.selectedPages || selectedPages,
+      additionalRoof: overrides.additionalRoof || additionalRoof,
+      batteryStorage: overrides.batteryStorage || batteryStorage,
+      updatedAt: Date.now()
+    };
+
+    try {
+      localStorage.setItem(`nelson_urbanisme_state_${project.id}`, JSON.stringify(stateToSave));
+    } catch (e) {
+      console.warn('[UrbanismeWizard] Failed to save localStorage state:', e);
+    }
+
+    if (typeof onUpdateProject === 'function') {
+      const ed = mergedEditedProject;
+      const flatUpdates = {
+        urbanisme_saved_state: stateToSave,
+        demandeur: ed.demandeur || ed.lastName || '',
+        lastName: ed.lastName || ed.demandeur || '',
+        firstName: ed.firstName || '',
+        email: ed.email || '',
+        email2: ed.email2 || 'contact@enr-courtage.fr',
+        cerfaEmailChoice: ed.cerfaEmailChoice || 'email2',
+        address: ed.address || '',
+        clientAddress: ed.address || '',
+        zip: ed.zip || '',
+        city: ed.city || '',
+        commune: ed.city || ed.commune || '',
+        cadastre_commune: ed.cadastre_commune || ed.city || '',
+        phone: ed.phone || '',
+        birthDate: (ed.birthDate || '').replace(/\D/g, '').slice(0, 8),
+        birthCity: ed.birthCity || '',
+        birthDept: ed.birthDept || '',
+        cadastre_section: ed.cadastre_section || '',
+        cadastre_numero: ed.cadastre_numero || '',
+        cadastre_surface: ed.cadastre_surface || '',
+        pente_terrain: ed.pente_terrain || '',
+        cotation_bati: ed.cotation_bati || '',
+        cotation_voie: ed.cotation_voie || '',
+        kwc: ed.kwc || '',
+        puissance: ed.puissance || ed.kwc || '',
+        objet_travaux: ed.objet_travaux || '',
+        description: ed.description || ed.objet_travaux || '',
+        noticeText: stateToSave.noticeText,
+        solutions: stateToSave.solutions,
+        buildings: currentBuildings,
+        selectedStructureIds: stateToSave.selectedStructureIds,
+        masseDistances: stateToSave.masseDistances,
+        urbanisme_solutionType: stateToSave.solutionType,
+        solutionType: stateToSave.solutionType
+      };
+      try {
+        onUpdateProject(project.id, flatUpdates);
+      } catch (err) {
+        console.warn('[UrbanismeWizard] Error calling onUpdateProject:', err);
+      }
+    }
+  }, [project?.id, step, solutionType, solutions, editedProject, noticeText, isNoticeUserModified, selectedStructureIds, masseDistances, masseLockedMaps, selectedPages, additionalRoof, batteryStorage, onUpdateProject]);
+
+  const queueAutoSave = useCallback((overrides = {}) => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    if (project?.id) {
+      try {
+        const minimalState = {
+          step: overrides.step !== undefined ? overrides.step : step,
+          solutionType: overrides.solutionType || solutionType,
+          solutions: overrides.solutions || solutions,
+          editedProject: { ...editedProject, ...(overrides.editedProject || {}) },
+          noticeText: overrides.noticeText !== undefined ? overrides.noticeText : noticeText,
+          isNoticeUserModified: overrides.isNoticeUserModified !== undefined ? overrides.isNoticeUserModified : isNoticeUserModified,
+          selectedStructureIds: overrides.selectedStructureIds || selectedStructureIds,
+          masseDistances: overrides.masseDistances || masseDistances,
+          selectedPages: overrides.selectedPages || selectedPages,
+          updatedAt: Date.now()
+        };
+        localStorage.setItem(`nelson_urbanisme_state_${project.id}`, JSON.stringify(minimalState));
+      } catch (e) {}
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      saveWizardState(overrides);
+    }, 350);
+  }, [project?.id, step, solutionType, solutions, editedProject, noticeText, isNoticeUserModified, selectedStructureIds, masseDistances, selectedPages, saveWizardState]);
+
+  const handleSafeClose = useCallback(() => {
+    try {
+      saveWizardState();
+    } catch (e) {}
+    if (typeof onClose === 'function') {
+      onClose();
+    }
+  }, [saveWizardState, onClose]);
 
   const getBuildingDisplayName = useCallback((buildingItem, idx) => {
     const isOmb = (buildingItem?.solutionType === 'ombriere') || (buildingItem?.buildingType || '').toLowerCase().startsWith('ombriere') || (solutionType === 'ombriere');
@@ -2162,6 +2277,37 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     hasInitializedRef.current = true;
     prevProjectIdRef.current = project.id;
 
+    let savedState = null;
+    try {
+      const localRaw = localStorage.getItem(`nelson_urbanisme_state_${project.id}`);
+      if (localRaw) {
+        savedState = JSON.parse(localRaw);
+      }
+    } catch (e) {
+      console.warn('[UrbanismeWizard] Failed to parse local state:', e);
+    }
+    if (project?.urbanisme_saved_state) {
+      if (!savedState || (project.urbanisme_saved_state.updatedAt && project.urbanisme_saved_state.updatedAt > (savedState.updatedAt || 0))) {
+        savedState = project.urbanisme_saved_state;
+      }
+    }
+
+    if (savedState?.selectedPages) {
+      setSelectedPages(prev => ({ ...prev, ...savedState.selectedPages }));
+    }
+    if (savedState?.masseDistances) {
+      setMasseDistances(savedState.masseDistances);
+    }
+    if (savedState?.masseLockedMaps) {
+      setMasseLockedMaps(savedState.masseLockedMaps);
+    }
+    if (savedState?.additionalRoof) {
+      setAdditionalRoof(savedState.additionalRoof);
+    }
+    if (savedState?.batteryStorage) {
+      setBatteryStorage(savedState.batteryStorage);
+    }
+
     const names = resolveDemandeurNames(project);
     const cleanDemandeur = names.lastName || project.name || '';
     const projEmail = project.email || project.clientEmail || project.contactEmail || project.client_email || 'isabelle.dupond@gmail.com';
@@ -2368,7 +2514,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     // Partitionner et structurer les bâtiments par solution (Bâtiment vs Ombrière vs Battery)
     let loadedSolutions;
-    if (project?.solutions?.building?.buildings && project?.solutions?.ombriere?.buildings) {
+    if (savedState?.solutions?.building?.buildings && savedState?.solutions?.ombriere?.buildings) {
+      loadedSolutions = savedState.solutions;
+    } else if (project?.solutions?.building?.buildings && project?.solutions?.ombriere?.buildings) {
       loadedSolutions = {
         ...project.solutions,
         battery: project.solutions.battery || {
@@ -2528,7 +2676,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     // Initialiser les structures sélectionnées
     hasInitializedSelectionRef.current = true;
-    if (detectedSolutionType === 'battery') {
+    if (savedState?.selectedStructureIds && Array.isArray(savedState.selectedStructureIds) && savedState.selectedStructureIds.length > 0) {
+      setSelectedStructureIds(savedState.selectedStructureIds);
+    } else if (detectedSolutionType === 'battery') {
       const batIds = (loadedSolutions.battery?.buildings || []).map(b => b.id);
       setSelectedStructureIds(batIds.length > 0 ? batIds : ['bat-sa-1']);
     } else if (project?.selectedStructureIds && Array.isArray(project.selectedStructureIds) && project.selectedStructureIds.length > 0) {
@@ -2552,70 +2702,105 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       }
     }
 
-    const initialNotice = project?.noticeText || buildAutoNoticeText();
-      setNoticeText(initialNotice);
-      const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
-      const shortObjet = isBatteryProject
-        ? "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide"
-        : (isDP
-          ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
-          : (isPC
-            ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-            : "Demande d'urbanisme photovoltaïque"));
+    const isRodierGarons = (project?.name || '').toLowerCase().includes('rodier') ||
+                           (project?.clientName || '').toLowerCase().includes('rodier') ||
+                           (cleanDemandeur || '').toLowerCase().includes('rodier') ||
+                           (projCity || '').toLowerCase().includes('garons') ||
+                           (projAddress || '').toLowerCase().includes('garons');
 
-      const initProj = {
-        ...project,
-        lat: defLat,
-        lng: defLng,
-        gps: `${defLat},${defLng}`,
-        type: isBatteryProject ? 'battery' : (isOmbriere ? 'ombriere' : (project.type || 'batiment_solaire')),
-        buildingType: isBatteryProject ? 'battery_standalone' : (b1?.buildingType || project.buildingType || 'asymetrique_1'),
-        isBattery: isBatteryProject,
-        isBatteryStandAlone: isBatteryProject,
-        lastName: names.lastName || project.name || '',
-        firstName: names.firstName || '',
-        demandeur: cleanDemandeur,
-        email: projEmail,
-        email2: project.email2 || '',
-        cerfaEmailChoice: project.cerfaEmailChoice || 'email1',
-        address: projAddress,
-        zip: projZip,
-        city: projCity,
-        phone: project.phone || project.clientPhone || '06 00 00 00 00',
-        birthDate: project.birthDate || '',
-        birthCity: project.birthCity || '',
-        birthDept: project.birthDept || (projZip ? projZip.substring(0, 2) : '32'),
-        kwc: clientKwc,
-        projectSize: clientKwc,
-        puissance: clientKwc,
-        objet_travaux: isBatteryProject ? shortObjet : (project.objet_travaux || project.objetTravaux || shortObjet),
-        description: isBatteryProject ? shortObjet : (project.objet_travaux || project.objetTravaux || shortObjet),
-        noticeText: initialNotice,
-        longueur: isBatteryProject ? '6.20' : String(b1?.length || 37.5),
-        largeur: isBatteryProject ? '3.20' : String(b1?.width || 20.0),
-        hauteur_egout: isBatteryProject ? '2.38' : String(b1?.eaveHeight || 4.0),
-        pente: isBatteryProject ? '0' : String(b1?.roofPitch || 10),
-        leftSide: isBatteryProject ? 'none' : (b1?.leftSide || 'none'),
-        rightSide: isBatteryProject ? 'none' : (b1?.rightSide || 'none'),
-        leftWidth: b1?.leftWidth,
-        rightWidth: b1?.rightWidth,
-        bayCount: b1?.bayCount,
-        cadastre_section: project.cadastre_section || '',
-        cadastre_numero: project.cadastre_numero || '',
-        cadastre_surface: project.cadastre_surface || '',
-        cadastre_commune: project.cadastre_commune || projCity,
-        commune: projCity,
-        urbanismeType: isBatteryProject ? 'Station Batteries Stand-Alone' : (project.urbanismeType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière')),
-        typeLabel: isBatteryProject ? 'Station Batteries Stand-Alone' : (project.typeLabel || project.urbanismeType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière')),
-        installationType: isBatteryProject ? 'Station Batteries Stand-Alone' : (project.installationType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière')),
-        pente_terrain: project.pente_terrain || '3',
-        cotation_bati: project.cotation_bati || '12.50',
-        cotation_voie: project.cotation_voie || '8.00',
-        buildings: initialBuildings,
-      };
-      setEditedProject(initProj);
-      setCaptures(b1?.captures || b1?.urbanisme_captures || project?.urbanisme_captures || project?.captures || {});
-      setPhotos(b1?.photos || b1?.pc_photos || project?.pc_photos || project?.photos || {});
+    const garonsImage5Notice = `NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
+
+1- OBJET DE LA DEMANDE
+La demande de déclaration préalable porte sur la réalisation d'un projet comprenant 1'ombrière photovoltaïque (2118.00 m²).
+
+2- LE SITE
+Le projet se situe sur la commune de GARONS (30128) au Lous Counils 30128 Garons. Le terrain concerné par le projet est cadastré sous le numéro AR 91 (surface : 19917 m²). Le terrain est globalement plat et se trouve à une altitude de 140.62 m au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.
+
+3- LE PROJET
+Le projet a pour objet l'implantation d'une ombrière photovoltaïque (Ombrière 60m × 35.3m) de dimensions 60.00m × 26.00m + 9.3m d'appentis côté Sud (surface couverte : 2118.00 m²), orientée Sud-Ouest (33°), à structure métallique autoportante en Y/V (RAL 7016) avec toiture bipente inclinée à 10°, permettant d'abriter l'activité de l'exploitant tout en produisant de l'électricité solaire, développant une puissance installée de 460 kWc.
+Cette ombrière sera ouverte et non close. Les façades Est, Ouest, Nord et Sud seront ouvertes.
+Un terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.
+Des tranchées drainantes seront réalisées tout autour de l'ombrière projet afin d'évacuer les eaux pluviales par infiltration dans le sol.
+
+4- RACCORDEMENT AUX RESEAUX
+L'ombrière ne sera pas raccordée aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.
+Seule l'électricité produite par la centrale photovoltaïque est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL).
+L'emplacement du point de livraison indiqué dans les pièces graphiques de l'autorisation d'urbanisme n'apparaît qu'à titre indicatif.
+Le positionnement du point de livraison et d'un transformateur (le cas échéant) demeure à l'appréciation finale du gestionnaire de réseau en fonction du site et des équipements déjà existants.
+
+5- SECURITE INCENDIE
+En cas de besoin pour la défense extérieure contre l'incendie, un canal est situé à 300m au Sud du terrain et plusieurs bornes incendie sont installées dans la zone résidentielle à 300m au Nord.`;
+
+    const initialNotice = savedState?.noticeText || project?.noticeText || (isRodierGarons ? garonsImage5Notice : buildAutoNoticeText());
+    setNoticeText(initialNotice);
+    setIsNoticeUserModified(Boolean(savedState?.isNoticeUserModified || savedState?.noticeText || project?.noticeText || isRodierGarons));
+
+    const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
+    const shortObjet = isBatteryProject
+      ? "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide"
+      : (isDP
+        ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
+        : (isPC
+          ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+          : "Demande d'urbanisme photovoltaïque"));
+
+    const rawBirthDate = savedState?.editedProject?.birthDate || project.birthDate || '';
+    const formattedBirthDate = String(rawBirthDate).replace(/\D/g, '').slice(0, 8);
+
+    const initProj = {
+      ...project,
+      ...(savedState?.editedProject || {}),
+      lat: savedState?.editedProject?.lat || defLat,
+      lng: savedState?.editedProject?.lng || defLng,
+      gps: savedState?.editedProject?.gps || `${defLat},${defLng}`,
+      type: isBatteryProject ? 'battery' : (isOmbriere ? 'ombriere' : (project.type || 'batiment_solaire')),
+      buildingType: isBatteryProject ? 'battery_standalone' : (b1?.buildingType || project.buildingType || 'asymetrique_1'),
+      isBattery: isBatteryProject,
+      isBatteryStandAlone: isBatteryProject,
+      lastName: savedState?.editedProject?.lastName || names.lastName || project.name || '',
+      firstName: savedState?.editedProject?.firstName || names.firstName || '',
+      demandeur: savedState?.editedProject?.demandeur || cleanDemandeur,
+      email: savedState?.editedProject?.email || projEmail,
+      email2: savedState?.editedProject?.email2 || project.email2 || 'contact@enr-courtage.fr',
+      cerfaEmailChoice: savedState?.editedProject?.cerfaEmailChoice || project.cerfaEmailChoice || 'email2',
+      address: savedState?.editedProject?.address || projAddress,
+      zip: savedState?.editedProject?.zip || projZip,
+      city: savedState?.editedProject?.city || projCity,
+      phone: savedState?.editedProject?.phone || project.phone || project.clientPhone || '06 00 00 00 00',
+      birthDate: formattedBirthDate,
+      birthCity: savedState?.editedProject?.birthCity || project.birthCity || '',
+      birthDept: savedState?.editedProject?.birthDept || project.birthDept || (projZip ? projZip.substring(0, 2) : '32'),
+      kwc: savedState?.editedProject?.kwc || clientKwc,
+      projectSize: savedState?.editedProject?.projectSize || clientKwc,
+      puissance: savedState?.editedProject?.puissance || clientKwc,
+      objet_travaux: savedState?.editedProject?.objet_travaux || (isBatteryProject ? shortObjet : (project.objet_travaux || project.objetTravaux || shortObjet)),
+      description: savedState?.editedProject?.description || (isBatteryProject ? shortObjet : (project.objet_travaux || project.objetTravaux || shortObjet)),
+      noticeText: initialNotice,
+      longueur: isBatteryProject ? '6.20' : String(b1?.length || 37.5),
+      largeur: isBatteryProject ? '3.20' : String(b1?.width || 20.0),
+      hauteur_egout: isBatteryProject ? '2.38' : String(b1?.eaveHeight || 4.0),
+      pente: isBatteryProject ? '0' : String(b1?.roofPitch || 10),
+      leftSide: isBatteryProject ? 'none' : (b1?.leftSide || 'none'),
+      rightSide: isBatteryProject ? 'none' : (b1?.rightSide || 'none'),
+      leftWidth: b1?.leftWidth,
+      rightWidth: b1?.rightWidth,
+      bayCount: b1?.bayCount,
+      cadastre_section: savedState?.editedProject?.cadastre_section || project.cadastre_section || '',
+      cadastre_numero: savedState?.editedProject?.cadastre_numero || project.cadastre_numero || '',
+      cadastre_surface: savedState?.editedProject?.cadastre_surface || project.cadastre_surface || '',
+      cadastre_commune: savedState?.editedProject?.cadastre_commune || project.cadastre_commune || projCity,
+      commune: savedState?.editedProject?.commune || projCity,
+      urbanismeType: savedState?.editedProject?.urbanismeType || (isBatteryProject ? 'Station Batteries Stand-Alone' : (project.urbanismeType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'))),
+      typeLabel: savedState?.editedProject?.typeLabel || (isBatteryProject ? 'Station Batteries Stand-Alone' : (project.typeLabel || project.urbanismeType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'))),
+      installationType: savedState?.editedProject?.installationType || (isBatteryProject ? 'Station Batteries Stand-Alone' : (project.installationType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'))),
+      pente_terrain: savedState?.editedProject?.pente_terrain || project.pente_terrain || '3',
+      cotation_bati: savedState?.editedProject?.cotation_bati || project.cotation_bati || '12.50',
+      cotation_voie: savedState?.editedProject?.cotation_voie || project.cotation_voie || '8.00',
+      buildings: initialBuildings,
+    };
+    setEditedProject(initProj);
+    setCaptures(b1?.captures || b1?.urbanisme_captures || project?.urbanisme_captures || project?.captures || {});
+    setPhotos(b1?.photos || b1?.pc_photos || project?.pc_photos || project?.photos || {});
 
       // Restaurer fidèlement depuis le cache local IndexedDB pour ne jamais perdre d'images
       if (project?.id) {
@@ -2845,14 +3030,14 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     });
   }, [step, config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.leftWidth, config.rightWidth, config.solarStats, config.bayCount, config.baySpacing, activeBuildingIndex]);
 
-  // Mise à jour automatique de la notice selon les structures retenues (selectedStructureIds) et le projet
+  // Mise à jour automatique de la notice uniquement si aucune notice n'a encore été définie
   useEffect(() => {
-    if (!isNoticeUserModified || !noticeText || noticeText.includes("SAINT ARAILLES") || noticeText.includes("960.00 m²") || noticeText.includes("60m × 16m")) {
+    if (!isNoticeUserModified && !noticeText) {
       const auto = buildAutoNoticeText();
       setNoticeText(auto);
       setEditedProject(prev => ({ ...prev, noticeText: auto }));
     }
-  }, [step, selectedStructureIds, allConfiguredStructures, additionalRoof, batteryStorage, buildAutoNoticeText, isNoticeUserModified]);
+  }, [step, selectedStructureIds, allConfiguredStructures, additionalRoof, batteryStorage, buildAutoNoticeText, isNoticeUserModified, noticeText]);
 
   // Mise à jour de la position GPS individuelle d'un bâtiment (PC2 / DP2)
   const handleBuildingGpsUpdate = (bIdx, newLat, newLng) => {
@@ -3416,7 +3601,11 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
   const handleFieldChange = (field, value) => {
     setFieldValues(prev => ({ ...prev, [field]: value }));
-    setEditedProject(prev => ({ ...prev, [field]: value }));
+    setEditedProject(prev => {
+      const next = { ...prev, [field]: value };
+      queueAutoSave({ editedProject: next });
+      return next;
+    });
   };
 
   const prepareProjectPayload = async () => {
@@ -3793,11 +3982,12 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     if (!onGenerate) return;
     setIsGenerating(true);
     try {
+      saveWizardState();
       const { finalProject, finalTypeLabel } = await prepareProjectPayload();
       await onGenerate(type, finalTypeLabel, finalProject, selectedPages);
     } finally {
       setIsGenerating(false);
-      onClose();
+      handleSafeClose();
     }
   };
 
@@ -3872,7 +4062,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                 <h2 className={`text-xl font-extrabold ${dossierInfo.color}`}>{dossierInfo.title}</h2>
               </div>
               <button
-                onClick={onClose}
+                onClick={handleSafeClose}
                 className="p-2 hover:bg-white/70 rounded-xl transition-colors text-gray-400 hover:text-gray-600 flex-shrink-0"
               >
                 <X className="w-5 h-5" />
@@ -3892,6 +4082,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         if (step === 4 && i !== 4) {
                           await captureAllActiveMasseMaps();
                         }
+                        saveWizardState({ step: i });
                         setStep(i);
                       }}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
@@ -4051,19 +4242,17 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-gray-600 font-semibold truncate">Adresse email *</label>
-                              {editedProject?.email2 && (
-                                <label className="flex items-center gap-1 text-[10px] text-blue-700 font-bold cursor-pointer select-none" title="Faire apparaître cet email dans le CERFA (page 2/15)">
-                                  <input
-                                    type="radio"
-                                    name="cerfaEmailSelection"
-                                    checked={!editedProject?.cerfaEmailChoice || editedProject?.cerfaEmailChoice === 'email1'}
-                                    onChange={() => handleFieldChange('cerfaEmailChoice', 'email1')}
-                                    className="accent-blue-600 cursor-pointer w-3 h-3"
-                                  />
-                                  <span>CERFA</span>
-                                </label>
-                              )}
+                              <label className="text-gray-600 font-semibold truncate text-[11px]">Email 1 (Déclarant)</label>
+                              <label className="flex items-center gap-1 text-[10px] text-blue-700 font-bold cursor-pointer select-none" title="Faire apparaître cet email dans le CERFA (page 2/15)">
+                                <input
+                                  type="radio"
+                                  name="cerfaEmailSelection"
+                                  checked={editedProject?.cerfaEmailChoice === 'email1'}
+                                  onChange={() => handleFieldChange('cerfaEmailChoice', 'email1')}
+                                  className="accent-blue-600 cursor-pointer w-3 h-3"
+                                />
+                                <span>CERFA</span>
+                              </label>
                             </div>
                             <input
                               type="email"
@@ -4076,35 +4265,31 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-gray-600 font-semibold truncate">Email 2 <span className="text-gray-400 font-normal">(facultatif)</span></label>
-                              {editedProject?.email2 && (
-                                <label className="flex items-center gap-1 text-[10px] text-blue-700 font-bold cursor-pointer select-none" title="Faire apparaître cet email dans le CERFA (page 2/15)">
-                                  <input
-                                    type="radio"
-                                    name="cerfaEmailSelection"
-                                    checked={editedProject?.cerfaEmailChoice === 'email2'}
-                                    onChange={() => handleFieldChange('cerfaEmailChoice', 'email2')}
-                                    className="accent-blue-600 cursor-pointer w-3 h-3"
-                                  />
-                                  <span>CERFA</span>
-                                </label>
-                              )}
+                              <label className="text-gray-600 font-semibold truncate text-[11px]">Email 2 (Mandataire / Courtage)</label>
+                              <label className="flex items-center gap-1 text-[10px] text-blue-700 font-bold cursor-pointer select-none" title="Faire apparaître cet email dans le CERFA par défaut (page 2/15)">
+                                <input
+                                  type="radio"
+                                  name="cerfaEmailSelection"
+                                  checked={!editedProject?.cerfaEmailChoice || editedProject?.cerfaEmailChoice === 'email2'}
+                                  onChange={() => handleFieldChange('cerfaEmailChoice', 'email2')}
+                                  className="accent-blue-600 cursor-pointer w-3 h-3"
+                                />
+                                <span>CERFA (Défaut)</span>
+                              </label>
                             </div>
                             <input
                               type="email"
-                              value={editedProject?.email2 || ''}
+                              value={editedProject?.email2 || 'contact@enr-courtage.fr'}
                               onChange={e => handleFieldChange('email2', e.target.value)}
-                              placeholder="Ex: contact.societe@gmail.com"
+                              placeholder="contact@enr-courtage.fr"
                               className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
                         </div>
-                        {editedProject?.email2 && (
-                          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
-                            <span className="font-bold">Email CERFA (page 2/15) :</span>
-                            <span className="font-semibold">{editedProject?.cerfaEmailChoice === 'email2' ? (editedProject.email2 || 'Email 2') : (editedProject.email || 'Email 1')}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+                          <span className="font-bold">Email actif dans le CERFA (page 2/15) :</span>
+                          <span className="font-semibold">{editedProject?.cerfaEmailChoice === 'email1' ? (editedProject?.email || 'Email du déclarant') : (editedProject?.email2 || 'contact@enr-courtage.fr')}</span>
+                        </div>
                       </div>
 
                       <div>
@@ -4154,9 +4339,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                         <div className="grid grid-cols-2 gap-2">
                           <input
                             type="text"
+                            maxLength={8}
                             value={editedProject?.birthDate || ''}
-                            onChange={e => handleFieldChange('birthDate', e.target.value)}
-                            placeholder="14/02/1970"
+                            onChange={e => {
+                              const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+                              handleFieldChange('birthDate', digits);
+                            }}
+                            placeholder="JJMMAAAA (ex: 26121986)"
                             className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                           />
                           <input
@@ -6609,12 +6798,14 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
             <button
               onClick={async () => {
                 if (step === 0) {
-                  onClose();
+                  handleSafeClose();
                 } else {
                   if (step === 4) {
                     await captureAllActiveMasseMaps();
                   }
-                  setStep(s => Math.max(0, s - 1));
+                  const prevStep = Math.max(0, step - 1);
+                  saveWizardState({ step: prevStep });
+                  setStep(prevStep);
                 }
               }}
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all"
@@ -6629,13 +6820,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
                   syncActiveConfigToSolutions();
                   if (step === 4) {
                     await captureAllActiveMasseMaps();
-                    if (!isNoticeUserModified) {
+                    if (!isNoticeUserModified && !noticeText) {
                       const auto = buildAutoNoticeText();
                       setNoticeText(auto);
                       setEditedProject(prev => ({ ...prev, noticeText: auto }));
                     }
                   }
-                  setStep(s => Math.min(STEPS.length - 1, s + 1));
+                  const nextStep = Math.min(STEPS.length - 1, step + 1);
+                  saveWizardState({ step: nextStep });
+                  setStep(nextStep);
                 }}
                 className={`flex items-center gap-2 px-5 py-2 text-xs font-bold text-white rounded-xl transition-all shadow-sm ${dossierInfo.accentColor} hover:opacity-90`}
               >
@@ -6644,7 +6837,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
               </button>
             ) : (
               <button
-                onClick={handleGenerate}
+                onClick={async () => {
+                  saveWizardState();
+                  await handleGenerate();
+                }}
                 disabled={isGenerating}
                 className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md disabled:opacity-60"
               >
