@@ -294,23 +294,32 @@ export default function Developpement() {
     try {
       const isBatteryProject = !isNoBattery && (
         finalProject?.solutionType === 'battery' ||
-        finalProject?.type === 'battery' ||
-        finalProject?.isBattery === true ||
-        finalProject?.isBatteryStandAlone === true ||
-        String(chosenType || '').toLowerCase().includes('batterie') ||
-        String(finalProject?.urbanismeType || '').toLowerCase().includes('batterie')
+        (
+          finalProject?.solutionType !== 'building' &&
+          finalProject?.solutionType !== 'ombriere' &&
+          (
+            finalProject?.type === 'battery' ||
+            finalProject?.isBattery === true ||
+            finalProject?.isBatteryStandAlone === true ||
+            String(chosenType || '').toLowerCase().includes('batterie') ||
+            String(finalProject?.urbanismeType || '').toLowerCase().includes('batterie')
+          )
+        )
       );
+
+      const activeSolutionType = isBatteryProject ? 'battery' : (finalProject?.solutionType || selectedProject?.solutionType || 'building');
 
       const initialProjectToUse = {
         ...selectedProject,
         ...(finalProject || {}),
         selectedPages: selectedPages,
-        type: isBatteryProject ? 'battery' : (chosenType || finalProject?.type || selectedProject.type || 'batiment_solaire'),
-        installationType: isBatteryProject ? 'Station Batteries Stand-Alone' : (chosenType || finalProject?.installationType || selectedProject.installationType || 'batiment_solaire'),
-        urbanismeType: isBatteryProject ? 'Station Batteries Stand-Alone' : (chosenType || finalProject?.urbanismeType || selectedProject.urbanismeType),
+        solutionType: activeSolutionType,
+        urbanisme_solutionType: activeSolutionType,
+        type: isBatteryProject ? 'battery' : (activeSolutionType === 'ombriere' ? 'ombriere' : 'batiment_solaire'),
+        installationType: isBatteryProject ? 'Station Batteries Stand-Alone' : (chosenType || finalProject?.installationType || (activeSolutionType === 'ombriere' ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière')),
+        urbanismeType: isBatteryProject ? 'Station Batteries Stand-Alone' : (chosenType || finalProject?.urbanismeType || (activeSolutionType === 'ombriere' ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière')),
         isBattery: isBatteryProject,
         isBatteryStandAlone: isBatteryProject,
-        solutionType: isBatteryProject ? 'battery' : (finalProject?.solutionType || selectedProject.solutionType)
       };
 
       // 1. Précharger et convertir toutes les images (Firebase Storage, satellite, cadastres, etc.) en Base64 Data URLs
@@ -802,27 +811,34 @@ export default function Developpement() {
                 ...(b.photos || {}),
                 ...(b.pc_photos || {}),
               };
-              const isThisBattery = !isProjectNoBattery && (activeProj.isBattery || b.isBattery || b.solutionType === 'battery' || (b.buildingType || '').includes('battery'));
+              const isThisBattery = !isProjectNoBattery && (
+                activeProj.solutionType === 'battery' ||
+                (b.solutionType === 'battery' && activeProj.solutionType !== 'building' && activeProj.solutionType !== 'ombriere')
+              );
               let bLen = Number(b.length || b.longueur || (isThisBattery ? 6.20 : (isProjectAcama ? 30.0 : 37.5)));
               let bWid = Number(b.width || b.largeur || (isThisBattery ? 3.20 : (isProjectAcama ? 15.0 : 16.4)));
               if (isThisBattery) {
                 bLen = 6.20;
                 bWid = 3.20;
-              } else if (isProjectNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
+              } else if (bWid <= 6.0 || bLen <= 6.0) {
                 bLen = isProjectAcama ? 30.0 : 37.5;
                 bWid = isProjectAcama ? 15.0 : 16.4;
               }
               let bName = b.name;
               if (isThisBattery) {
                 bName = 'Station Batteries Stand-Alone';
-              } else if (isProjectNoBattery) {
-                if (isProjectAcama) {
+              } else {
+                if (isProjectAcama || activeProj.solutionType === 'building') {
                   bName = `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
                 } else if (bName) {
-                  bName = bName.replace(/Station Batteries[^\)]*\)?/gi, 'Ombrière').trim();
+                  bName = bName.replace(/Station Batteries[^\)]*\)?/gi, activeProj.solutionType === 'building' ? 'Bâtiment' : 'Ombrière').trim();
                 }
               }
-              let bType = isThisBattery ? 'battery_standalone' : ((isProjectNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isProjectAcama ? 'symetrique' : 'ombriere_pl') : (b.buildingType || 'ombriere_pl'));
+              let bType = isThisBattery
+                ? 'battery_standalone'
+                : ((b.buildingType === 'battery_standalone' || !b.buildingType)
+                    ? (isProjectAcama ? 'symetrique' : (activeProj.solutionType === 'building' ? 'asymetrique_1' : 'ombriere_pl'))
+                    : b.buildingType);
 
               const bProj = {
                 ...activeProj,

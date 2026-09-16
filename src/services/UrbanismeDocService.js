@@ -136,13 +136,34 @@ async function drawCoverPage(doc, project, type, installationType) {
   const puissanceVal = rawKwcVal ? (String(rawKwcVal).includes('kWc') ? String(rawKwcVal) : `${rawKwcVal} kWc`) : '—';
   // Dynamic type label based on configured buildings
   const isDP = type === 'dp';
-  const isBattery = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone) || Boolean(project?.isBattery) || project?.solutionType === 'battery' || (project?.urbanismeType || '').toLowerCase().includes('batterie');
+  const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
+  const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
+  const isNoBattery = isAcama;
+
+  const isBattery = !isNoBattery && (
+    project?.solutionType === 'battery' ||
+    installationType === 'battery' ||
+    installationType === 'batterie_standalone' ||
+    (
+      project?.solutionType !== 'building' &&
+      project?.solutionType !== 'ombriere' &&
+      (
+        (installationType || project?.type || '').toLowerCase().includes('batterie') ||
+        Boolean(project?.isBatteryStandAlone) ||
+        Boolean(project?.isBattery) ||
+        (project?.urbanismeType || '').toLowerCase().includes('batterie')
+      )
+    )
+  );
+
   let installCode = project?.urbanismeType || project?.typeLabel || project?.installationType;
   if (isBattery) {
     installCode = 'Station Batteries Stand-Alone';
-  } else if (!installCode) {
+  } else if (!installCode || (project?.solutionType === 'building' && /batterie|bess|ombrière/i.test(installCode))) {
     const projectBuildings = project?.buildings || [];
-    if (isDP) {
+    if (project?.solutionType === 'building') {
+      installCode = isAcama ? 'Bâtiment photovoltaïque' : 'Bâtiment et Ombrière';
+    } else if (isDP || project?.solutionType === 'ombriere') {
       installCode = projectBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
     } else if (projectBuildings.length > 1) {
       installCode = 'Bâtiment et Ombrière';
@@ -152,9 +173,7 @@ async function drawCoverPage(doc, project, type, installationType) {
       installCode = 'Bâtiment et Ombrière';
     }
   }
-  const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
-  const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
-  const isNoBattery = isAcama;
+
   if (!isNoBattery && !isBattery && project?.batteryStorage?.enabled) {
     installCode += ' + Stockage batterie';
   }
@@ -193,7 +212,10 @@ async function drawCoverPage(doc, project, type, installationType) {
   page.drawText('Dossier de demande d\'autorisation d\'urbanisme', { x: cx + 16, y: H - 73, size: 8, font: fontR, color: rgb(1,1,1,0.75) });
 
   // Titre du projet
-  const typeInfo = getInstallationTypeInfo(isBattery ? 'batterie' : (installationType || project?.type), project?.kwc || project?.projectSize, isNoBattery);
+  const resolvedType = isBattery
+    ? 'batterie'
+    : (project?.solutionType === 'building' ? 'batiment_solaire' : (project?.solutionType === 'ombriere' ? 'ombriere' : (installationType || project?.type)));
+  const typeInfo = getInstallationTypeInfo(resolvedType, project?.kwc || project?.projectSize, isNoBattery);
   page.drawText(typeInfo.title, { x: cx + 16, y: H - 115, size: 16, font: fontB, color: C.dark });
   page.drawText(typeInfo.subtitle, { x: cx + 16, y: H - 135, size: 10, font: fontR, color: C.gray });
 
@@ -279,6 +301,8 @@ async function drawCoverPage(doc, project, type, installationType) {
 
   if (isBattery && (!project?.objet_travaux && !project?.objetTravaux || /ombrière|bâtiment|hangar/i.test(objetText))) {
     objetText = "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
+  } else if (!isBattery && /batterie|bess|stockage d'énergie/i.test(objetText)) {
+    objetText = typeInfo.cerfaText;
   }
 
   // Largeur maximale : ~108 caractères par ligne sur 550 pt de largeur utile
@@ -460,9 +484,20 @@ export async function generateFullUrbanismePDF({ type, project, installationType
             : '/cerfa_DPC_16702_03.pdf';
         }
 
-        const isBat = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone);
+        const isBat = !isNoBattery && (
+          project?.solutionType === 'battery' ||
+          installationType === 'battery' ||
+          installationType === 'batterie_standalone' ||
+          (
+            project?.solutionType !== 'building' &&
+            project?.solutionType !== 'ombriere' &&
+            ((installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone))
+          )
+        );
         const cerfaType = type === 'cu' ? 'cu' : type === 'pc' ? 'pc' : 'dp';
-        const effInstallType = isBat ? 'batterie_standalone' : (installationType || 'batiment_solaire');
+        const effInstallType = isBat
+          ? 'batterie_standalone'
+          : (project?.solutionType === 'building' ? 'batiment_solaire' : (project?.solutionType === 'ombriere' ? 'ombriere' : (installationType || 'batiment_solaire')));
 
         const filledCerfaBytes = await smartFillCerfa(cerfaUrl, project, cerfaType, effInstallType, plateIds);
         if (filledCerfaBytes) {

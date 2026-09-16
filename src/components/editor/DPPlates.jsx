@@ -161,11 +161,16 @@ export const PlateCover = ({ project, installationType }) => {
                         <div style={{ marginTop: '2mm', fontWeight: 'bold', color: '#00429d' }}>DESCRIPTIF SOMMAIRE :</div>
                         <div style={{ fontSize: '8.5pt', color: '#334155' }}>
                             {(() => {
-                                const isBat = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone) || Boolean(project?.isBattery);
+                                const isBat = !isNoBattery && (project?.solutionType === 'battery' || installationType === 'battery' || installationType === 'batterie_standalone') && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
                                 if (isBat) {
                                     return "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
                                 }
-                                return project?.description || (isNoBattery ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque d'une puissance de ${project?.kwc || 100} kWc.` : `Installation d'une ombrière photovoltaïque en structure métallique d'une puissance de ${project?.kwc || 100} kWc.`);
+                                if (project?.description && !/batterie|bess|stockage d'énergie/i.test(project.description)) {
+                                    return project.description;
+                                }
+                                return (project?.solutionType === 'building' || isNoBattery)
+                                    ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque d'une puissance de ${project?.kwc || 100} kWc.`
+                                    : `Installation d'une ombrière photovoltaïque en structure métallique d'une puissance de ${project?.kwc || 100} kWc.`;
                             })()}
                         </div>
                     </div>
@@ -221,9 +226,9 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
     const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
         ? project.buildings
         : [{
-            name: isNoBattery ? (isAcama ? 'Bâtiment 1' : 'Ombrière 1') : ((project?.isBattery || project?.solutionType === 'battery') ? 'Station Batteries Stand-Alone' : 'Ombrière 1'),
-            length: Number(project?.longueur || (project?.isBattery ? 6.20 : 30)),
-            width: Number(project?.largeur || (project?.isBattery ? 3.20 : 20)),
+            name: isNoBattery ? (isAcama ? 'Bâtiment 1' : 'Ombrière 1') : ((project?.solutionType === 'battery') ? 'Station Batteries Stand-Alone' : (project?.solutionType === 'building' ? 'Bâtiment 1' : 'Ombrière 1')),
+            length: Number(project?.longueur || (project?.solutionType === 'battery' ? 6.20 : 30)),
+            width: Number(project?.largeur || (project?.solutionType === 'battery' ? 3.20 : 20)),
             masse_capture: captures?.masse_projet || captures?.satellite
         }];
 
@@ -249,19 +254,20 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                                 bW = Math.max(bW, 15);
                             }
                             const bArea = Math.round(bLen * bW);
-                            const isBatB = !isNoBattery && (b.isBattery || b.solutionType === 'battery' || project?.isBattery || project?.solutionType === 'battery');
-                            let bDisplayName = b.name || (isAcama ? `Bâtiment ${idx + 1}` : (isBatB ? 'Station Batteries Stand-Alone' : `Ombrière ${idx + 1}`));
-                            if (isNoBattery) {
-                                bDisplayName = bDisplayName.replace(/Station Batteries[^\)]*\)?/gi, isAcama ? 'Bâtiment' : 'Ombrière');
+                            const isBatB = !isNoBattery && (b.solutionType === 'battery' || (project?.solutionType === 'battery' && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere'));
+                            let bDisplayName = b.name || (isAcama ? `Bâtiment ${idx + 1}` : (isBatB ? 'Station Batteries Stand-Alone' : (project?.solutionType === 'building' ? `Bâtiment ${idx + 1}` : `Ombrière ${idx + 1}`)));
+                            if (isNoBattery || project?.solutionType === 'building') {
+                                bDisplayName = bDisplayName.replace(/Station Batteries[^\)]*\)?/gi, 'Bâtiment');
                             }
                             if (!isBatB) {
+                                const targetLabel = (isAcama || project?.solutionType === 'building') ? 'Bâtiment' : 'Ombrière';
                                 bDisplayName = bDisplayName
-                                    .replace(/Bâtiment/gi, isAcama ? 'Bâtiment' : 'Ombrière')
-                                    .replace(/Ombrière/gi, isAcama ? 'Bâtiment' : 'Ombrière')
+                                    .replace(/Bâtiment/gi, targetLabel)
+                                    .replace(/Ombrière/gi, targetLabel)
                                     .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
                                     .trim();
                             }
-                            if (!bDisplayName) bDisplayName = isBatB ? 'Station Batteries Stand-Alone' : (isAcama ? `Bâtiment ${idx + 1}` : `Ombrière ${idx + 1}`);
+                            if (!bDisplayName) bDisplayName = isBatB ? 'Station Batteries Stand-Alone' : ((isAcama || project?.solutionType === 'building') ? `Bâtiment ${idx + 1}` : `Ombrière ${idx + 1}`);
 
                             const bZoomRaw = (viewNumber === 2 ? (b.masse_zoom_2 || project?.masse_zoom_2 || captures?.masse_zoom_2) : null) || b.masse_zoom || project?.masse_zoom || captures?.masse_zoom || (viewNumber === 2 ? 16 : 18);
                             const bZoom = viewNumber === 2 ? bZoomRaw : (Number(bZoomRaw) < 17 ? 18 : bZoomRaw);
@@ -302,19 +308,20 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                         bW = Math.max(bW, 15);
                     }
                     const bArea = Math.round(bLen * bW);
-                    const isBatB = !isNoBattery && (b?.isBattery || b?.solutionType === 'battery' || project?.isBattery || project?.solutionType === 'battery');
-                    let bDisplayName = b?.name || (isAcama ? 'Bâtiment 1' : (isBatB ? 'Station Batteries Stand-Alone' : 'Ombrière 1'));
-                    if (isNoBattery) {
-                        bDisplayName = bDisplayName.replace(/Station Batteries[^\)]*\)?/gi, isAcama ? 'Bâtiment' : 'Ombrière');
+                    const isBatB = !isNoBattery && (b?.solutionType === 'battery' || (project?.solutionType === 'battery' && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere'));
+                    let bDisplayName = b?.name || (isAcama ? 'Bâtiment 1' : (isBatB ? 'Station Batteries Stand-Alone' : (project?.solutionType === 'building' ? 'Bâtiment 1' : 'Ombrière 1')));
+                    if (isNoBattery || project?.solutionType === 'building') {
+                        bDisplayName = bDisplayName.replace(/Station Batteries[^\)]*\)?/gi, 'Bâtiment');
                     }
                     if (!isBatB) {
+                        const targetLabel = (isAcama || project?.solutionType === 'building') ? 'Bâtiment' : 'Ombrière';
                         bDisplayName = bDisplayName
-                            .replace(/Bâtiment/gi, isAcama ? 'Bâtiment' : 'Ombrière')
-                            .replace(/Ombrière/gi, isAcama ? 'Bâtiment' : 'Ombrière')
+                            .replace(/Bâtiment/gi, targetLabel)
+                            .replace(/Ombrière/gi, targetLabel)
                             .replace(/\s*\((Principale|Secondaire|Principal)\)/gi, '')
                             .trim();
                     }
-                    if (!bDisplayName) bDisplayName = isBatB ? 'Station Batteries Stand-Alone' : (isAcama ? 'Bâtiment 1' : 'Ombrière 1');
+                    if (!bDisplayName) bDisplayName = isBatB ? 'Station Batteries Stand-Alone' : ((isAcama || project?.solutionType === 'building') ? 'Bâtiment 1' : 'Ombrière 1');
 
                     const bZoomRaw = (viewNumber === 2 ? (b?.masse_zoom_2 || project?.masse_zoom_2 || captures?.masse_zoom_2) : null) || b?.masse_zoom || project?.masse_zoom || captures?.masse_zoom || (viewNumber === 2 ? 16 : 18);
                     const bZoom = viewNumber === 2 ? bZoomRaw : (Number(bZoomRaw) < 17 ? 18 : bZoomRaw);
@@ -369,7 +376,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     let pente = parseFloat(project?.pente || project?.roofPitch || 15);
     const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
 
-    if (isNoBattery) {
+    if (isNoBattery || project?.solutionType === 'building') {
         if (largeur <= 6.0) largeur = 16.4;
         if (parseFloat(longueur) <= 6.0) longueur = '30.0';
         if (hauteurEgout <= 2.6) hauteurEgout = 4.0;
@@ -377,10 +384,17 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     }
     
     let rawType = (project?.buildingType || '').toLowerCase();
-    if (isNoBattery && (rawType.includes('battery') || rawType.includes('batterie') || rawType === 'battery_standalone')) {
+    if ((isNoBattery || project?.solutionType === 'building') && (rawType.includes('battery') || rawType.includes('batterie') || rawType === 'battery_standalone')) {
         rawType = isAcama ? 'symetrique' : 'asymetrique_1';
     }
-    const isBattery = !isNoBattery && (rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie'));
+    const isBattery = !isNoBattery && (
+        project?.solutionType === 'battery' ||
+        (
+            project?.solutionType !== 'building' &&
+            project?.solutionType !== 'ombriere' &&
+            (rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie'))
+        )
+    );
     
     if (isBattery) {
         const bQty = Number(project?.battery_quantity || project?.batteryStorage?.quantity || 1) || 1;

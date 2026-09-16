@@ -2316,33 +2316,24 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const projZip = project.zip || project.postalCode || project.code_postal || project.clientZip || '';
     const projCity = project.city || project.commune || project.clientCity || project.cadastre_commune || '';
 
-    const isBatteryProject = 
-      !isNoBattery && (
-        project?.isBatteryStandAlone === 'Oui' ||
-        project?.isBatteryStandAlone === true ||
-        String(project?.type || '').toLowerCase().includes('batterie') ||
-        String(project?.project || '').toLowerCase().includes('batterie') ||
-        String(project?.name || '').toLowerCase().includes('batterie') ||
-        String(project?.nom || '').toLowerCase().includes('batterie') ||
-        String(project?.description || '').toLowerCase().includes('batterie')
-      );
-
     let detectedSolutionType;
     if (savedState?.solutionType) {
       detectedSolutionType = savedState.solutionType;
-    } else if (isBatteryProject) {
-      detectedSolutionType = 'battery';
     } else {
-      const rawType = String(project?.type || project?.installationType || project?.projectType || project?.type_projet || '').toLowerCase();
-      if (rawType.includes('batterie') || rawType.includes('battery')) {
+      const rawType = String(project?.type || project?.installationType || project?.projectType || project?.type_projet || project?.urbanismeType || '').toLowerCase();
+      if (!isNoBattery && (rawType.includes('batterie') || rawType.includes('battery') || project?.isBatteryStandAlone === 'Oui' || project?.isBatteryStandAlone === true)) {
         detectedSolutionType = 'battery';
-      } else if (rawType.includes('construction') || rawType.includes('batiment') || rawType.includes('bâtiment') || rawType.includes('ombriere') || rawType.includes('ombrière')) {
+      } else if (rawType.includes('batiment') || rawType.includes('bâtiment') || rawType.includes('hangar')) {
+        detectedSolutionType = 'building';
+      } else if (rawType.includes('ombriere') || rawType.includes('ombrière')) {
         detectedSolutionType = 'ombriere';
       } else {
         detectedSolutionType = isDP ? 'ombriere' : 'building';
       }
     }
     setSolutionType(detectedSolutionType);
+
+    const isBatteryProject = !isNoBattery && detectedSolutionType === 'battery';
 
     let parsedBatteryQty = 4;
     const projectCombinedStr = `${project?.project || ''} ${project?.name || ''} ${project?.nom || ''} ${project?.description || ''}`;
@@ -2755,9 +2746,35 @@ La puissance totale installée en toiture sera de 460 kWc. Le bac acier qui sera
 Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire de 465 Wc soit 989 panneaux photovoltaïques seront installés en toiture sur les 2 pans de l'ombrière.`;
 
     const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
-    const shortObjet = isBatteryProject
+    const isBuildingSolution = detectedSolutionType === 'building';
+    const isOmbriereSolution = detectedSolutionType === 'ombriere';
+    const isBatterySolution = detectedSolutionType === 'battery';
+
+    const defaultObjetBySol = isBatterySolution
       ? "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide"
-      : (isRodierGarons ? image4ObjetTravaux : (isDP ? image4ObjetTravaux : "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"));
+      : (isRodierGarons
+          ? image4ObjetTravaux
+          : (isOmbriereSolution || isDP
+              ? image4ObjetTravaux
+              : "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"));
+
+    let candidateObjet = savedState?.editedProject?.objet_travaux || project.objet_travaux || project.objetTravaux;
+    if ((isBuildingSolution || isOmbriereSolution) && candidateObjet && /batterie|bess|stockage d'énergie/i.test(candidateObjet)) {
+      candidateObjet = null;
+    }
+    if (isBatterySolution && candidateObjet && /ombrière|bâtiment|hangar/i.test(candidateObjet)) {
+      candidateObjet = null;
+    }
+    const finalObjet = candidateObjet || defaultObjetBySol;
+
+    let candidateUrbanismeType = savedState?.editedProject?.urbanismeType || project.urbanismeType;
+    if (isBuildingSolution && (!candidateUrbanismeType || /batterie|bess/i.test(candidateUrbanismeType) || (/ombrière/i.test(candidateUrbanismeType) && !isDP))) {
+      candidateUrbanismeType = isAcama ? 'Bâtiment photovoltaïque' : 'Bâtiment et Ombrière';
+    } else if (isOmbriereSolution && (!candidateUrbanismeType || /batterie|bess/i.test(candidateUrbanismeType))) {
+      candidateUrbanismeType = initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
+    } else if (isBatterySolution) {
+      candidateUrbanismeType = 'Station Batteries Stand-Alone';
+    }
 
     const rawBirthDate = savedState?.editedProject?.birthDate || project.birthDate || '';
     const formattedBirthDate = String(rawBirthDate).replace(/\D/g, '').slice(0, 8);
@@ -2768,10 +2785,12 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       lat: savedState?.editedProject?.lat || defLat,
       lng: savedState?.editedProject?.lng || defLng,
       gps: savedState?.editedProject?.gps || `${defLat},${defLng}`,
-      type: isBatteryProject ? 'battery' : (isOmbriere ? 'ombriere' : (project.type || 'batiment_solaire')),
-      buildingType: isBatteryProject ? 'battery_standalone' : (b1?.buildingType || project.buildingType || 'asymetrique_1'),
-      isBattery: isBatteryProject,
-      isBatteryStandAlone: isBatteryProject,
+      solutionType: detectedSolutionType,
+      urbanisme_solutionType: detectedSolutionType,
+      type: isBatterySolution ? 'battery' : (isOmbriereSolution ? 'ombriere' : (project.type && !project.type.includes('batterie') ? project.type : 'batiment_solaire')),
+      buildingType: isBatterySolution ? 'battery_standalone' : (b1?.buildingType && b1.buildingType !== 'battery_standalone' ? b1.buildingType : (project.buildingType && project.buildingType !== 'battery_standalone' ? project.buildingType : (isOmbriereSolution ? 'ombriere_pl' : 'asymetrique_1'))),
+      isBattery: isBatterySolution,
+      isBatteryStandAlone: isBatterySolution,
       lastName: savedState?.editedProject?.lastName || names.lastName || project.name || '',
       firstName: savedState?.editedProject?.firstName || names.firstName || '',
       demandeur: savedState?.editedProject?.demandeur || cleanDemandeur,
@@ -2788,15 +2807,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       kwc: savedState?.editedProject?.kwc || clientKwc,
       projectSize: savedState?.editedProject?.projectSize || clientKwc,
       puissance: savedState?.editedProject?.puissance || clientKwc,
-      objet_travaux: savedState?.editedProject?.objet_travaux || (isBatteryProject ? shortObjet : (project.objet_travaux || project.objetTravaux || shortObjet)),
-      description: savedState?.editedProject?.description || (isBatteryProject ? shortObjet : (project.objet_travaux || project.objetTravaux || shortObjet)),
+      objet_travaux: finalObjet,
+      description: finalObjet,
       noticeText: initialNotice,
-      longueur: isBatteryProject ? '6.20' : String(b1?.length || 37.5),
-      largeur: isBatteryProject ? '3.20' : String(b1?.width || 20.0),
-      hauteur_egout: isBatteryProject ? '2.38' : String(b1?.eaveHeight || 4.0),
-      pente: isBatteryProject ? '0' : String(b1?.roofPitch || 10),
-      leftSide: isBatteryProject ? 'none' : (b1?.leftSide || 'none'),
-      rightSide: isBatteryProject ? 'none' : (b1?.rightSide || 'none'),
+      longueur: isBatterySolution ? '6.20' : String(b1?.length || (isAcama ? 30 : 37.5)),
+      largeur: isBatterySolution ? '3.20' : String(b1?.width || (isAcama ? 15 : 20.0)),
+      hauteur_egout: isBatterySolution ? '2.38' : String(b1?.eaveHeight || (isOmbriereSolution ? 3.7 : 4.0)),
+      pente: isBatterySolution ? '0' : String(b1?.roofPitch || 10),
+      leftSide: isBatterySolution ? 'none' : (b1?.leftSide || 'none'),
+      rightSide: isBatterySolution ? 'none' : (b1?.rightSide || 'none'),
       leftWidth: b1?.leftWidth,
       rightWidth: b1?.rightWidth,
       bayCount: b1?.bayCount,
@@ -2805,9 +2824,9 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       cadastre_surface: savedState?.editedProject?.cadastre_surface || project.cadastre_surface || '',
       cadastre_commune: savedState?.editedProject?.cadastre_commune || project.cadastre_commune || projCity,
       commune: savedState?.editedProject?.commune || projCity,
-      urbanismeType: savedState?.editedProject?.urbanismeType || (isBatteryProject ? 'Station Batteries Stand-Alone' : (project.urbanismeType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'))),
-      typeLabel: savedState?.editedProject?.typeLabel || (isBatteryProject ? 'Station Batteries Stand-Alone' : (project.typeLabel || project.urbanismeType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'))),
-      installationType: savedState?.editedProject?.installationType || (isBatteryProject ? 'Station Batteries Stand-Alone' : (project.installationType || (isDP ? (initialBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'))),
+      urbanismeType: candidateUrbanismeType,
+      typeLabel: candidateUrbanismeType,
+      installationType: candidateUrbanismeType,
       pente_terrain: savedState?.editedProject?.pente_terrain || project.pente_terrain || '3',
       cotation_bati: savedState?.editedProject?.cotation_bati || project.cotation_bati || '12.50',
       cotation_voie: savedState?.editedProject?.cotation_voie || project.cotation_voie || '8.00',
@@ -3624,17 +3643,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
   };
 
   const prepareProjectPayload = async () => {
-    const isBattery = !isNoBattery && (
-      solutionType === 'battery' ||
-      editedProject?.solutionType === 'battery' ||
-      editedProject?.urbanisme_solutionType === 'battery' ||
-      editedProject?.type === 'battery' ||
-      Boolean(editedProject?.isBattery) ||
-      Boolean(editedProject?.isBatteryStandAlone) ||
-      batteryStorage.enabled ||
-      (editedProject?.type || '').toLowerCase().includes('batterie') ||
-      (editedProject?.urbanismeType || '').toLowerCase().includes('batterie')
-    );
+    const isBattery = !isNoBattery && solutionType === 'battery';
     
     // Objet synthétique pour Page 1
     const defaultObjet = isBattery
@@ -3650,18 +3659,18 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       if (!shortObjet || /ombrière|bâtiment|hangar/i.test(shortObjet)) {
         shortObjet = defaultObjet;
       }
-    } else if (isNoBattery || (!isBattery && /batterie/i.test(shortObjet || ''))) {
+    } else if (isNoBattery || (!isBattery && /batterie|bess|stockage d'énergie/i.test(shortObjet || ''))) {
       shortObjet = defaultObjet;
     }
 
     let effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
-    if (isNoBattery && effectiveNotice) {
+    if ((isNoBattery || !isBattery) && effectiveNotice) {
       effectiveNotice = effectiveNotice
         .replace(/Le système de stockage batterie est[^\n]*\n?/gi, '')
         .replace(/ainsi qu'un système de stockage batterie[^\n,\.]*/gi, '')
         .replace(/Le site sera également équipé d'un système de stockage d'énergie[^\n]*\n?/gi, '')
         .replace(/et le système de stockage batterie/gi, '')
-        .replace(/Station Batteries \([^\)]*\)/gi, isDP ? 'Ombrière' : 'Bâtiment');
+        .replace(/Station Batteries \([^\)]*\)/gi, solutionType === 'building' ? 'Bâtiment' : (isDP ? 'Ombrière' : 'Bâtiment'));
     }
 
     // Rassembler les structures configurées de la solution sélectionnée
@@ -3684,15 +3693,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       if (isBattery) {
         bLen = 6.20;
         bWid = 3.20;
-      } else if (isNoBattery && (bWid <= 6.0 || bLen <= 6.0)) {
+      } else if (bWid <= 6.0 || bLen <= 6.0) {
         bLen = isAcama ? 30 : 37.5;
         bWid = isAcama ? 15 : 16.4;
       }
       let bName = b.name;
-      const isOmb = b.solutionKey === 'ombriere' || (b.buildingType || '').toLowerCase().startsWith('ombriere');
+      const isOmb = solutionType === 'ombriere' || b.solutionKey === 'ombriere' || (b.buildingType || '').toLowerCase().startsWith('ombriere');
       if (isBattery) {
         bName = 'Station Batteries Stand-Alone (500 kW)';
-      } else if (isNoBattery) {
+      } else {
         if (isAcama) {
           bName = `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
         } else if (bName) {
@@ -3701,12 +3710,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       }
       return {
         ...b,
+        solutionKey: isBattery ? 'battery' : solutionType,
+        solutionType: isBattery ? 'battery' : solutionType,
         length: bLen,
         width: bWid,
         eaveHeight: isBattery ? 2.38 : Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : (isOmb ? 3.7 : 4.0)),
         roofPitch: isBattery ? 0 : Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : 10),
-        buildingType: isBattery ? 'battery_standalone' : ((isNoBattery && (b.buildingType === 'battery_standalone' || !b.buildingType)) ? (isAcama ? 'symetrique' : (isOmb ? 'ombriere_pl' : 'asymetrique_1')) : (b.buildingType || (isOmb ? 'ombriere_pl' : 'asymetrique_1'))),
+        buildingType: isBattery ? 'battery_standalone' : ((b.buildingType === 'battery_standalone' || !b.buildingType) ? (isAcama ? 'symetrique' : (isOmb ? 'ombriere_pl' : 'asymetrique_1')) : b.buildingType),
         isBattery: isBattery,
+        isBatteryStandAlone: isBattery,
         name: bName || (isBattery ? 'Station Batteries Stand-Alone (500 kW)' : (isOmb ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`)),
         leftSide: isBattery ? 'none' : (b.leftSide || 'none'),
         rightSide: isBattery ? 'none' : (b.rightSide || 'none'),
@@ -3719,12 +3731,14 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       };
     });
 
-    const isMultiOrOmbriere = !isBattery && (updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere')));
+    const isMultiOrOmbriere = !isBattery && (solutionType === 'ombriere' || updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere')));
     const defaultTypeLabel = isBattery
       ? "Station Batteries Stand-Alone"
-      : (isDP
-        ? (updatedBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque')
-        : (isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire')));
+      : (solutionType === 'building'
+        ? (isAcama ? 'Bâtiment photovoltaïque' : 'Bâtiment et Ombrière')
+        : (isDP
+          ? (updatedBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque')
+          : (isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire'))));
     let finalTypeLabel = defaultTypeLabel;
     if (isBattery) {
       finalTypeLabel = "Station Batteries Stand-Alone";
@@ -4033,7 +4047,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
   if (!isOpen) return null;
 
   const preservedKwc = editedProject?.puissance || editedProject?.kwc || project?.kwc || project?.puissance || project?.projectSize || editedProject?.projectSize || '';
-  const isBatActive = solutionType === 'battery' || editedProject?.solutionType === 'battery' || Boolean(editedProject?.isBattery);
+  const isBatActive = solutionType === 'battery';
   const summary = buildCerfaDataSummary(
     {
       ...editedProject,
@@ -4041,15 +4055,16 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       puissance: preservedKwc,
       kwc: preservedKwc,
       projectSize: preservedKwc,
-      type: isBatActive ? 'battery' : (isAcama ? 'batiment_solaire' : (editedProject?.urbanismeType || (isDP ? (buildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière'))),
-      urbanismeType: isBatActive ? 'Station Batteries Stand-Alone' : editedProject?.urbanismeType,
-      typeLabel: isBatActive ? 'Station Batteries Stand-Alone' : editedProject?.urbanismeType,
+      type: isBatActive ? 'battery' : (solutionType === 'ombriere' ? 'ombriere' : (isAcama ? 'batiment_solaire' : 'batiment_solaire')),
+      urbanismeType: isBatActive ? 'Station Batteries Stand-Alone' : (solutionType === 'building' ? (isAcama ? 'Bâtiment photovoltaïque' : 'Bâtiment et Ombrière') : (editedProject?.urbanismeType || (isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière'))),
+      typeLabel: isBatActive ? 'Station Batteries Stand-Alone' : (solutionType === 'building' ? (isAcama ? 'Bâtiment photovoltaïque' : 'Bâtiment et Ombrière') : (editedProject?.urbanismeType || (isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière'))),
       isBattery: isBatActive,
       isBatteryStandAlone: isBatActive,
+      solutionType: isBatActive ? 'battery' : solutionType,
       docType: type,
       buildings
     },
-    isBatActive ? 'battery' : (isAcama ? 'batiment_solaire' : (editedProject.type || (isDP ? 'ombriere' : 'batiment_solaire')))
+    isBatActive ? 'battery' : (solutionType === 'ombriere' ? 'ombriere' : (isAcama ? 'batiment_solaire' : 'batiment_solaire'))
   );
   const STEPS = ['Déclarant', isDP ? 'Cartes DP1' : 'Cartes PC1', 'Cotations & Côtes', 'Photos', isDP ? 'Carte DP2' : 'Carte PC2', 'Notice Descriptive', 'Validation'];
 
@@ -6214,8 +6229,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte & synthèse', badge: 'Recommandé', color: 'blue' },
                         { id: 'situation', code: 'PC1', title: 'Plan de situation', desc: 'IGN cartographique & Satellite', badge: 'Obligatoire', color: 'indigo' },
                         { id: 'masse', code: 'PC2', title: 'Plan de masse', desc: 'Emprise de la construction', badge: 'Obligatoire', color: 'indigo' },
-                        { id: 'section_notice', code: 'PC3+PC4', title: 'Coupe & Notice', desc: isBatActive ? 'Coupe transversale & notice descriptive de la station batteries' : 'Coupe transversale & notice descriptive', badge: 'Obligatoire', color: 'indigo' },
-                        { id: 'facades', code: 'PC5', title: 'Façades & Toitures', desc: isBatActive ? '5 vues 3D de la station batteries' : '5 vues 3D (Sud, Nord, Est, Ouest, Toit)', badge: !!captures?.facade_sud ? 'Prêt' : '3D', color: 'emerald' },
+                        { id: 'section_notice', code: 'PC3+PC4', title: 'Coupe & Notice', desc: isBatActive ? 'Coupe transversale & notice descriptive de la station batteries' : (solutionType === 'building' ? 'Coupe transversale & notice descriptive du bâtiment' : 'Coupe transversale & notice descriptive'), badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'facades', code: 'PC5', title: 'Façades & Toitures', desc: isBatActive ? '5 vues 3D de la station batteries' : (solutionType === 'building' ? '5 vues 3D du bâtiment (Sud, Nord, Est, Ouest, Toit)' : '5 vues 3D (Sud, Nord, Est, Ouest, Toit)'), badge: !!captures?.facade_sud ? 'Prêt' : '3D', color: 'emerald' },
                         { id: 'insertion', code: 'PC6', title: 'Insertion paysagère', desc: 'Vue avant / simulation 3D après', badge: (photos?.avant || photos?.apres) ? 'Prêt' : 'Photo 3D', color: 'emerald' },
                         { id: 'env_proche', code: 'PC7', title: 'Environnement proche', desc: 'Photographie dans le paysage proche', badge: (photos?.proche || editedProject?.pc_photos?.proche) ? 'Prêt' : 'Optionnel', color: 'purple' },
                         { id: 'env_lointain', code: 'PC8', title: 'Paysage lointain', desc: 'Photographie dans le paysage lointain', badge: (photos?.lointain || editedProject?.pc_photos?.lointain) ? 'Prêt' : 'Optionnel', color: 'purple' },
@@ -6227,17 +6242,17 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         { 
                           id: 'section', 
                           code: isBatActive ? (selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3') : (buildings.length > 1 ? (selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3') : (selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3')), 
-                          title: isBatActive ? 'Plan en coupe' : (buildings.length > 1 ? 'Plans en coupe (Multi-ombrières)' : 'Plan en coupe'), 
-                          desc: isBatActive ? 'Coupe transversale & notice descriptive de la station batteries' : (buildings.length > 1 ? (selectedPages.dp_notice !== false ? "2 coupes superposées & notice descriptive dédiée" : "2 coupes transversales des ombrières superposées") : (selectedPages.dp_notice !== false ? "Coupe transversale & notice descriptive" : "Coupe transversale de l'ombrière")), 
+                          title: isBatActive ? 'Plan en coupe' : (solutionType === 'building' ? 'Plan en coupe du bâtiment' : (buildings.length > 1 ? 'Plans en coupe (Multi-ombrières)' : 'Plan en coupe')), 
+                          desc: isBatActive ? 'Coupe transversale & notice descriptive de la station batteries' : (solutionType === 'building' ? 'Coupe transversale & notice descriptive du bâtiment' : (buildings.length > 1 ? (selectedPages.dp_notice !== false ? "2 coupes superposées & notice descriptive dédiée" : "2 coupes transversales des ombrières superposées") : (selectedPages.dp_notice !== false ? "Coupe transversale & notice descriptive" : "Coupe transversale de l'ombrière"))), 
                           badge: 'Obligatoire', 
                           color: 'indigo',
                           subOption: {
                             key: 'dp_notice',
-                            label: isBatActive ? '+ Notice descriptive sous la coupe' : (buildings.length > 1 ? '+ Notice descriptive (page dédiée)' : '+ Notice descriptive sous la coupe'),
+                            label: isBatActive ? '+ Notice descriptive sous la coupe' : (solutionType === 'building' ? '+ Notice descriptive sous la coupe' : (buildings.length > 1 ? '+ Notice descriptive (page dédiée)' : '+ Notice descriptive sous la coupe')),
                             checked: selectedPages.dp_notice !== false
                           }
                         },
-                        { id: 'facades', code: 'DP4', title: 'Façades & Toitures', desc: isBatActive ? "5 vues 3D de la station batteries" : "5 vues 3D de l'ombrière", badge: '3D', color: 'emerald' },
+                        { id: 'facades', code: 'DP4', title: 'Façades & Toitures', desc: isBatActive ? "5 vues 3D de la station batteries" : (solutionType === 'building' ? "5 vues 3D du bâtiment" : "5 vues 3D de l'ombrière"), badge: '3D', color: 'emerald' },
                         { id: 'insertion', code: 'DP6', title: 'Insertion paysagère', desc: 'Simulation d\'intégration paysagère', badge: (photos?.avant || photos?.apres) ? 'Prêt' : 'Photo 3D', color: 'emerald' },
                         { id: 'env_proche', code: 'DP7', title: 'Environnement proche', desc: 'Photographie de l\'environnement proche', badge: (photos?.proche || editedProject?.pc_photos?.proche) ? 'Prêt' : 'Optionnel', color: 'purple' },
                         { id: 'env_lointain', code: 'DP8', title: 'Paysage lointain', desc: 'Photographie du paysage lointain', badge: (photos?.lointain || editedProject?.pc_photos?.lointain) ? 'Prêt' : 'Optionnel', color: 'purple' },
@@ -6534,14 +6549,14 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                             value={
                               isBatActive
                                 ? ((editedProject?.urbanismeType && !editedProject.urbanismeType.toLowerCase().includes('ombrière') && !editedProject.urbanismeType.toLowerCase().includes('bâtiment')) ? editedProject.urbanismeType : 'Station Batteries Stand-Alone')
-                                : (editedProject?.urbanismeType !== undefined ? editedProject.urbanismeType : (editedProject?.typeLabel || summary.type))
+                                : ((editedProject?.urbanismeType && !/batterie|bess/i.test(editedProject.urbanismeType)) ? editedProject.urbanismeType : (editedProject?.typeLabel || summary.type))
                             }
                             onChange={(e) => {
                               const val = e.target.value;
                               setEditedProject(prev => ({ ...prev, urbanismeType: val, typeLabel: val, installationType: val }));
                               handleFieldChange('urbanismeType', val);
                             }}
-                            placeholder={isBatActive ? "Station Batteries Stand-Alone" : (isDP ? "Ombrière photovoltaïque" : "Bâtiment et Ombrière")}
+                            placeholder={isBatActive ? "Station Batteries Stand-Alone" : (solutionType === 'building' ? (isAcama ? "Bâtiment photovoltaïque" : "Bâtiment et Ombrière") : (isDP ? "Ombrière photovoltaïque" : "Bâtiment et Ombrière"))}
                             className="flex-1 px-2.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-semibold outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
                           />
                         </div>
@@ -6565,20 +6580,26 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                   ? editedProject.objet_travaux
                                   : "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)"
                               )
-                            : (editedProject?.objet_travaux !== undefined ? editedProject.objet_travaux : (
-                                isDP
-                                  ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
-                                  : (isPC
-                                      ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-                                      : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque")
-                              ))
+                            : (
+                                (editedProject?.objet_travaux && !/batterie|bess|stockage d'énergie/i.test(editedProject.objet_travaux))
+                                  ? editedProject.objet_travaux
+                                  : (
+                                      solutionType === 'building'
+                                        ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+                                        : (isDP
+                                            ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
+                                            : (isPC
+                                                ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+                                                : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque"))
+                                    )
+                              )
                         }
                         onChange={(e) => {
                           const val = e.target.value;
                           setEditedProject(prev => ({ ...prev, objet_travaux: val, description: val }));
                           handleFieldChange('objet_travaux', val);
                         }}
-                        placeholder={isBatActive ? "Ex: Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)" : (isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque")}
+                        placeholder={isBatActive ? "Ex: Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)" : (solutionType === 'building' ? "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque" : (isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"))}
                         className="w-full flex-1 min-h-[260px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner resize-none"
                       />
                     </div>

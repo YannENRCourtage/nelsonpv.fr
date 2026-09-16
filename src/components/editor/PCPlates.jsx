@@ -421,10 +421,17 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     
     // Détection stricte du type d'ouvrage
     let rawType = (project?.buildingType || '').toLowerCase();
-    if (isNoBattery && (rawType.includes('battery') || rawType.includes('batterie') || rawType === 'battery_standalone')) {
+    if ((isNoBattery || project?.solutionType === 'building') && (rawType.includes('battery') || rawType.includes('batterie') || rawType === 'battery_standalone')) {
         rawType = isAcama ? 'symetrique' : 'asymetrique_1';
     }
-    const isBattery = !isNoBattery && (rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie'));
+    const isBattery = !isNoBattery && (
+        project?.solutionType === 'battery' ||
+        (
+            project?.solutionType !== 'building' &&
+            project?.solutionType !== 'ombriere' &&
+            (rawType.includes('battery') || rawType.includes('batterie') || Boolean(project?.isBattery) || (project?.isBatteryStandAlone === 'Oui') || (project?.type || '').toLowerCase().includes('batterie'))
+        )
+    );
     
     if (isBattery) {
         const bQty = Number(project?.battery_quantity || project?.batteryStorage?.quantity || 1) || 1;

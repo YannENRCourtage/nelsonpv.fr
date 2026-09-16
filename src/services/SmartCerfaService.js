@@ -307,13 +307,14 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       batterie:         `Installation d'une station de stockage d'énergie par batteries Stand-Alone composée de 4 armoires CESC Mercury 261 (500 kW / 1044 kWh) sur dalle béton (emprise 19.80 m² < 20 m²) ceinturée par un grillage métallique rigide (H 2.00m).`,
     };
 
-    const isBat = (installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone) || Boolean(project?.isBattery);
+    const isBat = (project?.solutionType === 'battery' || installationType === 'battery' || installationType === 'batterie' || installationType === 'batterie_standalone') && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
     let objet = project?.objet_travaux || project?.objetTravaux;
-    if (!objet) {
+    if (!objet || (!isBat && /batterie|bess|stockage d'énergie/i.test(objet))) {
       if (isBat) {
         objet = "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
       } else {
-        objet = project?.description || project?.projectDescription || typeLabels[installationType] || typeLabels[isDP ? 'ombriere' : 'batiment_solaire'];
+        const solType = project?.solutionType || (isDP ? 'ombriere' : 'batiment_solaire');
+        objet = (project?.description && !/batterie|bess/i.test(project.description) ? project.description : null) || typeLabels[solType] || typeLabels[installationType] || typeLabels[isDP ? 'ombriere' : 'batiment_solaire'];
         if (isDP && objet && typeof objet === 'string') {
           objet = objet.replace(/bâtiment\s+agricole/gi, 'ombrière photovoltaïque').replace(/bâtiments/gi, 'ombrières').replace(/bâtiment/gi, 'ombrière').replace(/Bâtiment/g, 'Ombrière');
         }
@@ -638,8 +639,8 @@ export function buildCerfaDataSummary(project, installationType) {
     : (rawAddress || '—');
 
   // Détermination du type
-  const isBatProject = project?.isBattery || project?.isBatteryStandAlone || project?.solutionType === 'battery' || installationType === 'battery' || installationType === 'batterie' || (project?.type || '').toLowerCase().includes('batterie') || (project?.urbanismeType || '').toLowerCase().includes('batterie');
-  const isDP = (installationType === 'dp' || project?.type === 'dp' || project?.docType === 'dp' || project?.typeLabel === 'dp' || (project?.type || '').includes('Ombrière'));
+  const isBatProject = (project?.solutionType === 'battery' || installationType === 'battery' || installationType === 'batterie' || installationType === 'batterie_standalone') && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
+  const isDP = (installationType === 'dp' || project?.type === 'dp' || project?.docType === 'dp' || project?.typeLabel === 'dp' || (project?.type || '').includes('Ombrière') || project?.solutionType === 'ombriere');
   let typeLabel = isBatProject ? 'Station Batteries Stand-Alone' : (project?.urbanismeType || project?.typeLabel || (isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière'));
   if (!isBatProject && !project?.urbanismeType && !project?.typeLabel) {
     const bList = project?.buildings || [];
