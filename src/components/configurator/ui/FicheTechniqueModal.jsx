@@ -751,6 +751,22 @@ export function FicheTechniqueModal({
                                                     <div className="space-y-0.5">
                                                         <h4 className="font-bold text-emerald-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">5. Chiffrage &amp; Ratios</h4>
                                                         <div className="flex justify-between text-slate-400"><span>Structure métal. :</span><strong className="text-white font-bold">{totalBuildingCost.toLocaleString('fr-FR')} € HT</strong></div>
+                                                        {barcMatch?.pricing_ht && (
+                                                            <>
+                                                                {barcMatch.pricing_ht.charpente_base_ht > 0 && (
+                                                                    <div className="flex justify-between text-slate-400 pl-2 text-[8.5px] sm:text-[9.5px]"><span>• Charpente :</span><span className="text-slate-300">{Math.round(barcMatch.pricing_ht.charpente_base_ht).toLocaleString('fr-FR')} € HT</span></div>
+                                                                )}
+                                                                {barcMatch.pricing_ht.fondations_base_ht > 0 && (
+                                                                    <div className="flex justify-between text-slate-400 pl-2 text-[8.5px] sm:text-[9.5px]"><span>• Fondations :</span><span className="text-slate-300">{Math.round(barcMatch.pricing_ht.fondations_base_ht).toLocaleString('fr-FR')} € HT</span></div>
+                                                                )}
+                                                                {barcMatch.pricing_ht.couverture_base_ht > 0 && (
+                                                                    <div className="flex justify-between text-slate-400 pl-2 text-[8.5px] sm:text-[9.5px]"><span>• Couverture :</span><span className="text-slate-300">{Math.round(barcMatch.pricing_ht.couverture_base_ht).toLocaleString('fr-FR')} € HT</span></div>
+                                                                )}
+                                                                {barcMatch.pricing_ht.cout_travee_sup_ht?.total_travee > 0 && (
+                                                                    <div className="flex justify-between text-amber-300/90 pl-2 text-[8.5px] sm:text-[9.5px]"><span>Travée sup. (7.5m) :</span><span>+{Math.round(barcMatch.pricing_ht.cout_travee_sup_ht.total_travee).toLocaleString('fr-FR')} € HT</span></div>
+                                                                )}
+                                                            </>
+                                                        )}
                                                         {isBatitech && <div className="flex justify-between text-slate-400"><span>Système Cogen'Air :</span><strong className="text-amber-400 font-bold">{cogenAirCost.toLocaleString('fr-FR')} € HT</strong></div>}
                                                         {(config.hasSolar || isBatitech) && <div className="flex justify-between text-slate-400"><span>Centrale {isBatitech ? 'Solaire' : 'PV'} :</span><span className="text-slate-200">{pvInstallationCost.toLocaleString('fr-FR')} € HT</span></div>}
                                                         <div className="flex justify-between text-slate-400"><span>Total Projet :</span><strong className="text-emerald-400 font-bold">{totalProjectCost.toLocaleString('fr-FR')} € HT</strong></div>

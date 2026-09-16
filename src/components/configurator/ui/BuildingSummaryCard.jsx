@@ -199,13 +199,31 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
 
             {/* Grid 3 : Chiffrage Structure & Ratios */}
             <div className="space-y-2 border-t border-slate-100 pt-2">
-                <div className="flex items-center justify-between bg-slate-100/80 p-2.5 rounded-xl border border-slate-200">
-                    <span className="text-xs sm:text-sm font-extrabold text-slate-700 flex items-center gap-1.5">
-                        <Coins className="w-4 h-4 text-slate-600" /> Structure métallique :
-                    </span>
-                    <span className="font-black text-blue-900 text-sm sm:text-base">
-                        {totalBuildingCost.toLocaleString('fr-FR')} € HT
-                    </span>
+                <div className="bg-slate-100/80 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs sm:text-sm font-extrabold text-slate-700 flex items-center gap-1.5">
+                            <Coins className="w-4 h-4 text-slate-600" /> Structure métallique :
+                        </span>
+                        <span className="font-black text-blue-900 text-sm sm:text-base">
+                            {totalBuildingCost.toLocaleString('fr-FR')} € HT
+                        </span>
+                    </div>
+                    {!isCustom && barcMatch?.pricing_ht?.charpente_base_ht > 0 && (
+                        <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-slate-200/80 text-[10px] text-slate-600">
+                            <div>
+                                <span className="text-slate-400 block text-[9px]">Charpente</span>
+                                <span className="font-bold text-slate-800">{Math.round(barcMatch.pricing_ht.charpente_base_ht).toLocaleString('fr-FR')} €</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-400 block text-[9px]">Fondations</span>
+                                <span className="font-bold text-slate-800">{Math.round(barcMatch.pricing_ht.fondations_base_ht).toLocaleString('fr-FR')} €</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-400 block text-[9px]">Couverture</span>
+                                <span className="font-bold text-slate-800">{Math.round(barcMatch.pricing_ht.couverture_base_ht).toLocaleString('fr-FR')} €</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* BatiTech : Ligne Total Investissement */}

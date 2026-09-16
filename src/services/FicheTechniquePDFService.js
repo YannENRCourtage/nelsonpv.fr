@@ -425,6 +425,20 @@ export async function generateFicheTechniquePDF({
     if (!isCustom) {
         drawSectionTitle('5. Chiffrage & Ratios', [52, 211, 153]);
         drawRow('Structure métal. :', `${formatNumber(totalBuildingCost)} € HT`, true, [255, 255, 255]);
+        if (barcMatch.pricing_ht) {
+            if (barcMatch.pricing_ht.charpente_base_ht) {
+                drawRow('  • Charpente :', `${formatNumber(barcMatch.pricing_ht.charpente_base_ht)} € HT`, false, [203, 213, 225]);
+            }
+            if (barcMatch.pricing_ht.fondations_base_ht) {
+                drawRow('  • Fondations :', `${formatNumber(barcMatch.pricing_ht.fondations_base_ht)} € HT`, false, [203, 213, 225]);
+            }
+            if (barcMatch.pricing_ht.couverture_base_ht) {
+                drawRow('  • Couverture :', `${formatNumber(barcMatch.pricing_ht.couverture_base_ht)} € HT`, false, [203, 213, 225]);
+            }
+            if (barcMatch.pricing_ht.cout_travee_sup_ht?.total_travee) {
+                drawRow('Travée sup. (7.5m) :', `+${formatNumber(barcMatch.pricing_ht.cout_travee_sup_ht.total_travee)} € HT`, false, [251, 191, 36]);
+            }
+        }
         if (isBatitech) {
             drawRow("Système Cogen'Air :", `${formatNumber(cogenAirCost)} € HT`, true, [251, 191, 36]);
             drawRow('Centrale Solaire :', `${formatNumber(pvInstallationCost)} € HT`, true, [251, 191, 36]);
