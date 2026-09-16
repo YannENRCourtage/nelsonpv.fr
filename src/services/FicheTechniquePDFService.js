@@ -426,17 +426,14 @@ export async function generateFicheTechniquePDF({
         drawSectionTitle('5. Chiffrage & Ratios', [52, 211, 153]);
         drawRow('Structure métal. :', `${formatNumber(totalBuildingCost)} € HT`, true, [255, 255, 255]);
         if (barcMatch.pricing_ht) {
-            if (barcMatch.pricing_ht.charpente_base_ht) {
-                drawRow('  • Charpente :', `${formatNumber(barcMatch.pricing_ht.charpente_base_ht)} € HT`, false, [203, 213, 225]);
+            if (barcMatch.pricing_ht.charpente_base_ht > 0) {
+                drawRow('  • Dont Charpente :', `${formatNumber(barcMatch.pricing_ht.charpente_base_ht)} € HT`, false, [203, 213, 225]);
             }
-            if (barcMatch.pricing_ht.fondations_base_ht) {
-                drawRow('  • Fondations :', `${formatNumber(barcMatch.pricing_ht.fondations_base_ht)} € HT`, false, [203, 213, 225]);
+            if (barcMatch.pricing_ht.fondations_base_ht > 0) {
+                drawRow('  • Dont Fondations :', `${formatNumber(barcMatch.pricing_ht.fondations_base_ht)} € HT`, false, [203, 213, 225]);
             }
-            if (barcMatch.pricing_ht.couverture_base_ht) {
-                drawRow('  • Couverture :', `${formatNumber(barcMatch.pricing_ht.couverture_base_ht)} € HT`, false, [203, 213, 225]);
-            }
-            if (barcMatch.pricing_ht.cout_travee_sup_ht?.total_travee) {
-                drawRow('Travée sup. (7.5m) :', `+${formatNumber(barcMatch.pricing_ht.cout_travee_sup_ht.total_travee)} € HT`, false, [251, 191, 36]);
+            if (barcMatch.pricing_ht.couverture_base_ht > 0) {
+                drawRow('  • Dont Couverture :', `${formatNumber(barcMatch.pricing_ht.couverture_base_ht)} € HT`, false, [203, 213, 225]);
             }
         }
         if (isBatitech) {
@@ -464,14 +461,24 @@ export async function generateFicheTechniquePDF({
         curY += 1.5;
     }
 
-    // --- BLOC 6 : OPTIONS (UNIQUEMENT POUR BATITECH) ---
-    if (isBatitech && batitechModel?.options) {
+    // --- BLOC 6 : OPTIONS ---
+    const traveeSupCost = isBatitech
+        ? (batitechModel?.options?.traveeSupplementaire || 0)
+        : (barcMatch.pricing_ht?.cout_travee_sup_ht?.total_travee || 0);
+
+    const hasOptions = (isBatitech && batitechModel?.options) || (!isCustom && traveeSupCost > 0);
+
+    if (hasOptions) {
         drawSectionTitle('6. Options', [244, 114, 182]);
-        const opts = batitechModel.options;
-        drawRow('Auvent Sud (4m) :', `${formatNumber(opts.auventSud)} € HT`, true, [255, 255, 255]);
-        drawRow('Auvent Nord (4m) :', `${formatNumber(opts.auventNord)} € HT`, true, [255, 255, 255]);
-        drawRow('Auvents N + S :', `${formatNumber(opts.auventNordSud)} € HT`, true, [251, 191, 36]);
-        drawRow('Travée suppl. 6m :', `${formatNumber(opts.traveeSupplementaire)} € HT`, true, [56, 189, 248]);
+        if (!isBatitech && traveeSupCost > 0) {
+            drawRow('Travée sup. (7.5m) :', `+${formatNumber(traveeSupCost)} € HT`, true, [251, 191, 36]);
+        } else if (isBatitech && batitechModel?.options) {
+            const opts = batitechModel.options;
+            drawRow('Auvent Sud (4m) :', `${formatNumber(opts.auventSud)} € HT`, true, [255, 255, 255]);
+            drawRow('Auvent Nord (4m) :', `${formatNumber(opts.auventNord)} € HT`, true, [255, 255, 255]);
+            drawRow('Auvents N + S :', `${formatNumber(opts.auventNordSud)} € HT`, true, [251, 191, 36]);
+            drawRow('Travée suppl. 6m :', `${formatNumber(opts.traveeSupplementaire)} € HT`, true, [56, 189, 248]);
+        }
     }
 
     // --- PRÉ-CHARGEMENT DES IMAGES ---

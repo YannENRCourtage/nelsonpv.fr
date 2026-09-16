@@ -10983,9 +10983,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE GAUCHE",
-    "id": "O3M",
+    "id": "O3M1",
     "code": "OM3",
-    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M)",
+    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M1)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 30,
@@ -10993,8 +10993,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 207.6,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "4 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11014,14 +11014,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "4 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 14673.9,
-      "fondations_base_ht": 7336.95,
-      "couverture_base_ht": 7336.95,
+      "charpente_base_ht": 13597.8,
+      "fondations_base_ht": 15749.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 29347.8,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2625.15,
-        "fondations_travee": 1312.57,
-        "couverture_travee": 1312.57,
+        "charpente_travee": 2432.64,
+        "fondations_travee": 2817.66,
+        "couverture_travee": 0,
         "total_travee": 5250.3
       }
     },
@@ -11032,9 +11032,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE GAUCHE",
-    "id": "O3M",
+    "id": "O3M2",
     "code": "OM3",
-    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M)",
+    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M2)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 37.5,
@@ -11042,8 +11042,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 259.5,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "5 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11063,14 +11063,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "5 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 17299.05,
-      "fondations_base_ht": 8649.53,
-      "couverture_base_ht": 8649.53,
+      "charpente_base_ht": 16118.1,
+      "fondations_base_ht": 18480,
+      "couverture_base_ht": 0,
       "total_base_ht": 34598.1,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2625.15,
-        "fondations_travee": 1312.57,
-        "couverture_travee": 1312.57,
+        "charpente_travee": 2445.94,
+        "fondations_travee": 2804.36,
+        "couverture_travee": 0,
         "total_travee": 5250.3
       }
     },
@@ -11081,9 +11081,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE GAUCHE",
-    "id": "O3M",
+    "id": "O3M3",
     "code": "OM3",
-    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M)",
+    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M3)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 45,
@@ -11091,8 +11091,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 311.4,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "6 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11112,15 +11112,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "6 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 19924.21,
-      "fondations_base_ht": 9962.1,
-      "couverture_base_ht": 9962.1,
+      "charpente_base_ht": 18638.41,
+      "fondations_base_ht": 21210,
+      "couverture_base_ht": 0,
       "total_base_ht": 39848.41,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2625.15,
-        "fondations_travee": 1312.57,
-        "couverture_travee": 1312.57,
-        "total_travee": 5250.3
+        "charpente_travee": 2455.74,
+        "fondations_travee": 2794.57,
+        "couverture_travee": 0,
+        "total_travee": 5250.31
       }
     },
     "ratios": {
@@ -11130,9 +11130,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE GAUCHE",
-    "id": "O3M",
+    "id": "O3M4",
     "code": "OM3",
-    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M)",
+    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M4)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 52.5,
@@ -11140,8 +11140,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 363.3,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "7 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11161,15 +11161,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "7 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 22456.68,
-      "fondations_base_ht": 11228.34,
-      "couverture_base_ht": 11228.34,
+      "charpente_base_ht": 20973.36,
+      "fondations_base_ht": 23940,
+      "couverture_base_ht": 0,
       "total_base_ht": 44913.36,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2625.15,
-        "fondations_travee": 1312.57,
-        "couverture_travee": 1312.57,
-        "total_travee": 5250.3
+        "charpente_travee": 2365.2,
+        "fondations_travee": 2699.75,
+        "couverture_travee": 0,
+        "total_travee": 5064.95
       }
     },
     "ratios": {
@@ -11179,9 +11179,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE GAUCHE",
-    "id": "O3M",
+    "id": "O3M5",
     "code": "OM3",
-    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M)",
+    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M5)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 60,
@@ -11189,8 +11189,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 415.2,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "8 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11210,14 +11210,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "8 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 25081.83,
-      "fondations_base_ht": 12540.92,
-      "couverture_base_ht": 12540.92,
+      "charpente_base_ht": 23493.66,
+      "fondations_base_ht": 26670,
+      "couverture_base_ht": 0,
       "total_base_ht": 50163.66,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2625.15,
-        "fondations_travee": 1312.57,
-        "couverture_travee": 1312.57,
+        "charpente_travee": 2458.93,
+        "fondations_travee": 2791.37,
+        "couverture_travee": 0,
         "total_travee": 5250.3
       }
     },
@@ -11228,9 +11228,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE GAUCHE",
-    "id": "O3M",
+    "id": "O3M6",
     "code": "OM3",
-    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M)",
+    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M6)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 67.5,
@@ -11238,8 +11238,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 467.1,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "9 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11259,15 +11259,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "9 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 27706.99,
-      "fondations_base_ht": 13853.49,
-      "couverture_base_ht": 13853.49,
+      "charpente_base_ht": 26013.97,
+      "fondations_base_ht": 29399.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 55413.97,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2625.15,
-        "fondations_travee": 1312.57,
-        "couverture_travee": 1312.57,
-        "total_travee": 5250.3
+        "charpente_travee": 2464.75,
+        "fondations_travee": 2785.56,
+        "couverture_travee": 0,
+        "total_travee": 5250.31
       }
     },
     "ratios": {
@@ -11277,9 +11277,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE GAUCHE",
-    "id": "O3M",
+    "id": "O3M7",
     "code": "OM3",
-    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M)",
+    "designation": "OMBRIERE VL SIMPLE GAUCHE (O3M7)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 75,
@@ -11287,8 +11287,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 519,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "10 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11308,15 +11308,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "10 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 30239.46,
-      "fondations_base_ht": 15119.73,
-      "couverture_base_ht": 15119.73,
+      "charpente_base_ht": 28348.92,
+      "fondations_base_ht": 32129.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 60478.92,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2625.15,
-        "fondations_travee": 1312.57,
-        "couverture_travee": 1312.57,
-        "total_travee": 5250.3
+        "charpente_travee": 2374.15,
+        "fondations_travee": 2690.8,
+        "couverture_travee": 0,
+        "total_travee": 5064.95
       }
     },
     "ratios": {
@@ -11326,9 +11326,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE DROITE",
-    "id": "O3D",
+    "id": "O3D1",
     "code": "OD3",
-    "designation": "OMBRIERE VL SIMPLE DROITE (O3D)",
+    "designation": "OMBRIERE VL SIMPLE DROITE (O3D1)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 30,
@@ -11336,8 +11336,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 207.6,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "4 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11357,14 +11357,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "4 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 13623.9,
-      "fondations_base_ht": 6811.95,
-      "couverture_base_ht": 6811.95,
+      "charpente_base_ht": 13597.8,
+      "fondations_base_ht": 13650,
+      "couverture_base_ht": 0,
       "total_base_ht": 27247.8,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2415.15,
-        "fondations_travee": 1207.57,
-        "couverture_travee": 1207.57,
+        "charpente_travee": 2410.52,
+        "fondations_travee": 2419.78,
+        "couverture_travee": 0,
         "total_travee": 4830.3
       }
     },
@@ -11375,9 +11375,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE DROITE",
-    "id": "O3D",
+    "id": "O3D2",
     "code": "OD3",
-    "designation": "OMBRIERE VL SIMPLE DROITE (O3D)",
+    "designation": "OMBRIERE VL SIMPLE DROITE (O3D2)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 37.5,
@@ -11385,8 +11385,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 259.5,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "5 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11406,14 +11406,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "5 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 16039.05,
-      "fondations_base_ht": 8019.53,
-      "couverture_base_ht": 8019.53,
+      "charpente_base_ht": 16118.1,
+      "fondations_base_ht": 15959.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 32078.1,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2415.15,
-        "fondations_travee": 1207.57,
-        "couverture_travee": 1207.57,
+        "charpente_travee": 2427.05,
+        "fondations_travee": 2403.25,
+        "couverture_travee": 0,
         "total_travee": 4830.3
       }
     },
@@ -11424,9 +11424,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE DROITE",
-    "id": "O3D",
+    "id": "O3D3",
     "code": "OD3",
-    "designation": "OMBRIERE VL SIMPLE DROITE (O3D)",
+    "designation": "OMBRIERE VL SIMPLE DROITE (O3D3)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 45,
@@ -11434,8 +11434,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 311.4,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "6 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11455,15 +11455,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "6 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 18454.21,
-      "fondations_base_ht": 9227.1,
-      "couverture_base_ht": 9227.1,
+      "charpente_base_ht": 18638.41,
+      "fondations_base_ht": 18270,
+      "couverture_base_ht": 0,
       "total_base_ht": 36908.41,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2415.15,
-        "fondations_travee": 1207.57,
-        "couverture_travee": 1207.57,
-        "total_travee": 4830.3
+        "charpente_travee": 2439.26,
+        "fondations_travee": 2391.05,
+        "couverture_travee": 0,
+        "total_travee": 4830.31
       }
     },
     "ratios": {
@@ -11473,9 +11473,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE DROITE",
-    "id": "O3D",
+    "id": "O3D4",
     "code": "OD3",
-    "designation": "OMBRIERE VL SIMPLE DROITE (O3D)",
+    "designation": "OMBRIERE VL SIMPLE DROITE (O3D4)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 52.5,
@@ -11483,8 +11483,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 363.3,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "7 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11504,15 +11504,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "7 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 20776.68,
-      "fondations_base_ht": 10388.34,
-      "couverture_base_ht": 10388.34,
+      "charpente_base_ht": 20973.36,
+      "fondations_base_ht": 20580,
+      "couverture_base_ht": 0,
       "total_base_ht": 41553.36,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2415.15,
-        "fondations_travee": 1207.57,
-        "couverture_travee": 1207.57,
-        "total_travee": 4830.3
+        "charpente_travee": 2344.46,
+        "fondations_travee": 2300.49,
+        "couverture_travee": 0,
+        "total_travee": 4644.95
       }
     },
     "ratios": {
@@ -11522,9 +11522,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE DROITE",
-    "id": "O3D",
+    "id": "O3D5",
     "code": "OD3",
-    "designation": "OMBRIERE VL SIMPLE DROITE (O3D)",
+    "designation": "OMBRIERE VL SIMPLE DROITE (O3D5)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 60,
@@ -11532,8 +11532,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 415.2,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "8 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11553,14 +11553,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "8 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 23191.83,
-      "fondations_base_ht": 11595.92,
-      "couverture_base_ht": 11595.92,
+      "charpente_base_ht": 23493.66,
+      "fondations_base_ht": 22890,
+      "couverture_base_ht": 0,
       "total_base_ht": 46383.66,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2415.15,
-        "fondations_travee": 1207.57,
-        "couverture_travee": 1207.57,
+        "charpente_travee": 2446.58,
+        "fondations_travee": 2383.72,
+        "couverture_travee": 0,
         "total_travee": 4830.3
       }
     },
@@ -11571,9 +11571,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL SIMPLE DROITE",
-    "id": "O3D",
+    "id": "O3D6",
     "code": "OD3",
-    "designation": "OMBRIERE VL SIMPLE DROITE (O3D)",
+    "designation": "OMBRIERE VL SIMPLE DROITE (O3D6)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 67.5,
@@ -11581,15 +11581,15 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 467.1,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "9 x 7.5m",
     "auventSud": "",
     "auventNord": "",
     "optionApAu": "",
     "kwc": 113,
     "puissance": 113,
-    "tarif": 51231.97,
+    "tarif": 51213.97,
     "ratioKwc": 0.45,
     "ratioM2": 110,
     "dimensions": {
@@ -11602,27 +11602,27 @@ export const BARCONNIERE_CATALOG = [
       "travees": "9 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 25615.99,
-      "fondations_base_ht": 12807.99,
-      "couverture_base_ht": 12807.99,
-      "total_base_ht": 51231.97,
+      "charpente_base_ht": 26013.97,
+      "fondations_base_ht": 25200,
+      "couverture_base_ht": 0,
+      "total_base_ht": 51213.97,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2415.15,
-        "fondations_travee": 1207.57,
-        "couverture_travee": 1207.57,
-        "total_travee": 4830.3
+        "charpente_travee": 2462.68,
+        "fondations_travee": 2385.63,
+        "couverture_travee": 0,
+        "total_travee": 4848.31
       }
     },
     "ratios": {
       "ratio_puissance": 0.45,
-      "ratio_surface": 109.68
+      "ratio_surface": 109.64
     }
   },
   {
     "gamme": "OMBRIERE VL SIMPLE DROITE",
-    "id": "O3D",
+    "id": "O3D7",
     "code": "OD3",
-    "designation": "OMBRIERE VL SIMPLE DROITE (O3D)",
+    "designation": "OMBRIERE VL SIMPLE DROITE (O3D7)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 75,
@@ -11630,8 +11630,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "6.92",
     "surface": 519,
     "poteau": "",
-    "sabliere": "2.93",
-    "faitage": "4.96",
+    "sabliere": "2.93m",
+    "faitage": "4.96m",
     "travees": "10 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11651,15 +11651,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "10 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 27929.46,
-      "fondations_base_ht": 13964.73,
-      "couverture_base_ht": 13964.73,
+      "charpente_base_ht": 28348.92,
+      "fondations_base_ht": 27510,
+      "couverture_base_ht": 0,
       "total_base_ht": 55858.92,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2415.15,
-        "fondations_travee": 1207.57,
-        "couverture_travee": 1207.57,
-        "total_travee": 4830.3
+        "charpente_travee": 2348.22,
+        "fondations_travee": 2278.73,
+        "couverture_travee": 0,
+        "total_travee": 4626.95
       }
     },
     "ratios": {
@@ -11669,24 +11669,24 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE",
-    "id": "O4",
+    "id": "O4A",
     "code": "O4",
-    "designation": "OMBRIERE VL DOUBLE (O4)",
+    "designation": "OMBRIERE VL DOUBLE (O4A)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 30,
     "largeur": 9.14,
     "largeurRaw": "9.14",
-    "surface": 274.20000000000005,
+    "surface": 274.2,
     "poteau": "",
-    "sabliere": "3",
-    "faitage": "4.61",
+    "sabliere": "3m",
+    "faitage": "4.61m",
     "travees": "4 x 7.5m",
     "auventSud": "",
     "auventNord": "",
     "optionApAu": "",
-    "kwc": 66,
-    "puissance": 66,
+    "kwc": 65,
+    "puissance": 65,
     "tarif": 29049.36,
     "ratioKwc": 0.44,
     "ratioM2": 106,
@@ -11700,14 +11700,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "4 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 14524.68,
-      "fondations_base_ht": 7262.34,
-      "couverture_base_ht": 7262.34,
+      "charpente_base_ht": 15399.36,
+      "fondations_base_ht": 13650,
+      "couverture_base_ht": 0,
       "total_base_ht": 29049.36,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2548.61,
-        "fondations_travee": 1274.31,
-        "couverture_travee": 1274.31,
+        "charpente_travee": 2702.09,
+        "fondations_travee": 2395.13,
+        "couverture_travee": 0,
         "total_travee": 5097.22
       }
     },
@@ -11718,9 +11718,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE",
-    "id": "O4",
+    "id": "O4B",
     "code": "O4",
-    "designation": "OMBRIERE VL DOUBLE (O4)",
+    "designation": "OMBRIERE VL DOUBLE (O4B)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 37.5,
@@ -11728,8 +11728,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "9.14",
     "surface": 342.75,
     "poteau": "",
-    "sabliere": "3",
-    "faitage": "4.61",
+    "sabliere": "3m",
+    "faitage": "4.61m",
     "travees": "5 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11749,14 +11749,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "5 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 17073.29,
-      "fondations_base_ht": 8536.65,
-      "couverture_base_ht": 8536.65,
+      "charpente_base_ht": 18186.58,
+      "fondations_base_ht": 15959.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 34146.58,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2548.61,
-        "fondations_travee": 1274.31,
-        "couverture_travee": 1274.31,
+        "charpente_travee": 2714.8,
+        "fondations_travee": 2382.42,
+        "couverture_travee": 0,
         "total_travee": 5097.22
       }
     },
@@ -11767,9 +11767,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE",
-    "id": "O4",
+    "id": "O4C",
     "code": "O4",
-    "designation": "OMBRIERE VL DOUBLE (O4)",
+    "designation": "OMBRIERE VL DOUBLE (O4C)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 45,
@@ -11777,8 +11777,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "9.14",
     "surface": 411.3,
     "poteau": "",
-    "sabliere": "3",
-    "faitage": "4.61",
+    "sabliere": "3m",
+    "faitage": "4.61m",
     "travees": "6 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11798,15 +11798,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "6 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 19621.9,
-      "fondations_base_ht": 9810.95,
-      "couverture_base_ht": 9810.95,
+      "charpente_base_ht": 20973.8,
+      "fondations_base_ht": 18270,
+      "couverture_base_ht": 0,
       "total_base_ht": 39243.8,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2548.61,
-        "fondations_travee": 1274.31,
-        "couverture_travee": 1274.31,
-        "total_travee": 5097.22
+        "charpente_travee": 2724.2,
+        "fondations_travee": 2373.01,
+        "couverture_travee": 0,
+        "total_travee": 5097.21
       }
     },
     "ratios": {
@@ -11816,9 +11816,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE",
-    "id": "O4",
+    "id": "O4D",
     "code": "O4",
-    "designation": "OMBRIERE VL DOUBLE (O4)",
+    "designation": "OMBRIERE VL DOUBLE (O4D)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 52.5,
@@ -11826,8 +11826,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "9.14",
     "surface": 479.85,
     "poteau": "",
-    "sabliere": "3",
-    "faitage": "4.61",
+    "sabliere": "3m",
+    "faitage": "4.61m",
     "travees": "7 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11847,14 +11847,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "7 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 22170.51,
-      "fondations_base_ht": 11085.25,
-      "couverture_base_ht": 11085.25,
+      "charpente_base_ht": 23761.01,
+      "fondations_base_ht": 20580,
+      "couverture_base_ht": 0,
       "total_base_ht": 44341.01,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2548.61,
-        "fondations_travee": 1274.31,
-        "couverture_travee": 1274.31,
+        "charpente_travee": 2731.45,
+        "fondations_travee": 2365.77,
+        "couverture_travee": 0,
         "total_travee": 5097.22
       }
     },
@@ -11865,18 +11865,18 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE",
-    "id": "O4",
+    "id": "O4E",
     "code": "O4",
-    "designation": "OMBRIERE VL DOUBLE (O4)",
+    "designation": "OMBRIERE VL DOUBLE (O4E)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 60,
     "largeur": 9.14,
     "largeurRaw": "9.14",
-    "surface": 548.4000000000001,
+    "surface": 548.4,
     "poteau": "",
-    "sabliere": "3",
-    "faitage": "4.61",
+    "sabliere": "3m",
+    "faitage": "4.61m",
     "travees": "8 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11896,14 +11896,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "8 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 24719.12,
-      "fondations_base_ht": 12359.56,
-      "couverture_base_ht": 12359.56,
+      "charpente_base_ht": 26548.23,
+      "fondations_base_ht": 22890,
+      "couverture_base_ht": 0,
       "total_base_ht": 49438.23,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2548.61,
-        "fondations_travee": 1274.31,
-        "couverture_travee": 1274.31,
+        "charpente_travee": 2737.2,
+        "fondations_travee": 2360.02,
+        "couverture_travee": 0,
         "total_travee": 5097.22
       }
     },
@@ -11914,9 +11914,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE",
-    "id": "O4",
+    "id": "O4F",
     "code": "O4",
-    "designation": "OMBRIERE VL DOUBLE (O4)",
+    "designation": "OMBRIERE VL DOUBLE (O4F)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 67.5,
@@ -11924,8 +11924,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "9.14",
     "surface": 616.95,
     "poteau": "",
-    "sabliere": "3",
-    "faitage": "4.61",
+    "sabliere": "3m",
+    "faitage": "4.61m",
     "travees": "9 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11945,14 +11945,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "9 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 27267.73,
-      "fondations_base_ht": 13633.86,
-      "couverture_base_ht": 13633.86,
+      "charpente_base_ht": 29335.45,
+      "fondations_base_ht": 25200,
+      "couverture_base_ht": 0,
       "total_base_ht": 54535.45,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2548.61,
-        "fondations_travee": 1274.31,
-        "couverture_travee": 1274.31,
+        "charpente_travee": 2741.87,
+        "fondations_travee": 2355.35,
+        "couverture_travee": 0,
         "total_travee": 5097.22
       }
     },
@@ -11963,9 +11963,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE",
-    "id": "O4",
+    "id": "O4G",
     "code": "O4",
-    "designation": "OMBRIERE VL DOUBLE (O4)",
+    "designation": "OMBRIERE VL DOUBLE (O4G)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 75,
@@ -11973,8 +11973,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "9.14",
     "surface": 685.5,
     "poteau": "",
-    "sabliere": "3",
-    "faitage": "4.61",
+    "sabliere": "3m",
+    "faitage": "4.61m",
     "travees": "10 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -11994,15 +11994,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "10 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 29816.33,
-      "fondations_base_ht": 14908.17,
-      "couverture_base_ht": 14908.17,
+      "charpente_base_ht": 32122.66,
+      "fondations_base_ht": 27510,
+      "couverture_base_ht": 0,
       "total_base_ht": 59632.66,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2548.61,
-        "fondations_travee": 1274.31,
-        "couverture_travee": 1274.31,
-        "total_travee": 5097.22
+        "charpente_travee": 2745.74,
+        "fondations_travee": 2351.47,
+        "couverture_travee": 0,
+        "total_travee": 5097.21
       }
     },
     "ratios": {
@@ -12012,9 +12012,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE+",
-    "id": "O5",
+    "id": "O5A",
     "code": "O5",
-    "designation": "OMBRIERE VL DOUBLE+ (O5)",
+    "designation": "OMBRIERE VL DOUBLE+ (O5A)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 30,
@@ -12022,8 +12022,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "11.35",
     "surface": 340.5,
     "poteau": "",
-    "sabliere": "2.8",
-    "faitage": "4.74",
+    "sabliere": "2.8m",
+    "faitage": "4.74m",
     "travees": "4 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12043,14 +12043,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "4 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 16057.69,
-      "fondations_base_ht": 8028.84,
-      "couverture_base_ht": 8028.84,
+      "charpente_base_ht": 18465.37,
+      "fondations_base_ht": 13650,
+      "couverture_base_ht": 0,
       "total_base_ht": 32115.37,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2963.93,
-        "fondations_travee": 1481.97,
-        "couverture_travee": 1481.97,
+        "charpente_travee": 3408.35,
+        "fondations_travee": 2519.52,
+        "couverture_travee": 0,
         "total_travee": 5927.87
       }
     },
@@ -12061,9 +12061,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE+",
-    "id": "O5",
+    "id": "O5B",
     "code": "O5",
-    "designation": "OMBRIERE VL DOUBLE+ (O5)",
+    "designation": "OMBRIERE VL DOUBLE+ (O5B)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 37.5,
@@ -12071,14 +12071,14 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "11.35",
     "surface": 425.625,
     "poteau": "",
-    "sabliere": "2.8",
-    "faitage": "4.74",
+    "sabliere": "2.8m",
+    "faitage": "4.74m",
     "travees": "5 x 7.5m",
     "auventSud": "",
     "auventNord": "",
     "optionApAu": "",
-    "kwc": 113,
-    "puissance": 113,
+    "kwc": 119,
+    "puissance": 119,
     "tarif": 38043.24,
     "ratioKwc": 0.34,
     "ratioM2": 89,
@@ -12092,14 +12092,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "5 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 19021.62,
-      "fondations_base_ht": 9510.81,
-      "couverture_base_ht": 9510.81,
+      "charpente_base_ht": 22083.24,
+      "fondations_base_ht": 15959.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 38043.24,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2963.93,
-        "fondations_travee": 1481.97,
-        "couverture_travee": 1481.97,
+        "charpente_travee": 3441,
+        "fondations_travee": 2486.87,
+        "couverture_travee": 0,
         "total_travee": 5927.87
       }
     },
@@ -12110,9 +12110,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE+",
-    "id": "O5",
+    "id": "O5C",
     "code": "O5",
-    "designation": "OMBRIERE VL DOUBLE+ (O5)",
+    "designation": "OMBRIERE VL DOUBLE+ (O5C)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 45,
@@ -12120,8 +12120,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "11.35",
     "surface": 510.75,
     "poteau": "",
-    "sabliere": "2.8",
-    "faitage": "4.74",
+    "sabliere": "2.8m",
+    "faitage": "4.74m",
     "travees": "6 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12141,15 +12141,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "6 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 21892.88,
-      "fondations_base_ht": 10946.44,
-      "couverture_base_ht": 10946.44,
+      "charpente_base_ht": 25515.75,
+      "fondations_base_ht": 18270,
+      "couverture_base_ht": 0,
       "total_base_ht": 43785.75,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2963.93,
-        "fondations_travee": 1481.97,
-        "couverture_travee": 1481.97,
-        "total_travee": 5927.87
+        "charpente_travee": 3346.4,
+        "fondations_travee": 2396.11,
+        "couverture_travee": 0,
+        "total_travee": 5742.51
       }
     },
     "ratios": {
@@ -12159,9 +12159,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE+",
-    "id": "O5",
+    "id": "O5D",
     "code": "O5",
-    "designation": "OMBRIERE VL DOUBLE+ (O5)",
+    "designation": "OMBRIERE VL DOUBLE+ (O5D)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 52.5,
@@ -12169,8 +12169,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "11.35",
     "surface": 595.875,
     "poteau": "",
-    "sabliere": "2.8",
-    "faitage": "4.74",
+    "sabliere": "2.8m",
+    "faitage": "4.74m",
     "travees": "7 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12190,15 +12190,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "7 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 24764.13,
-      "fondations_base_ht": 12382.06,
-      "couverture_base_ht": 12382.06,
+      "charpente_base_ht": 28948.25,
+      "fondations_base_ht": 20580,
+      "couverture_base_ht": 0,
       "total_base_ht": 49528.25,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2963.93,
-        "fondations_travee": 1481.97,
-        "couverture_travee": 1481.97,
-        "total_travee": 5927.87
+        "charpente_travee": 3356.37,
+        "fondations_travee": 2386.13,
+        "couverture_travee": 0,
+        "total_travee": 5742.5
       }
     },
     "ratios": {
@@ -12208,9 +12208,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE+",
-    "id": "O5",
+    "id": "O5E",
     "code": "O5",
-    "designation": "OMBRIERE VL DOUBLE+ (O5)",
+    "designation": "OMBRIERE VL DOUBLE+ (O5E)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 60,
@@ -12218,8 +12218,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "11.35",
     "surface": 681,
     "poteau": "",
-    "sabliere": "2.8",
-    "faitage": "4.74",
+    "sabliere": "2.8m",
+    "faitage": "4.74m",
     "travees": "8 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12239,15 +12239,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "8 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 27635.38,
-      "fondations_base_ht": 13817.69,
-      "couverture_base_ht": 13817.69,
+      "charpente_base_ht": 32380.76,
+      "fondations_base_ht": 22890,
+      "couverture_base_ht": 0,
       "total_base_ht": 55270.76,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2963.93,
-        "fondations_travee": 1481.97,
-        "couverture_travee": 1481.97,
-        "total_travee": 5927.87
+        "charpente_travee": 3364.29,
+        "fondations_travee": 2378.22,
+        "couverture_travee": 0,
+        "total_travee": 5742.51
       }
     },
     "ratios": {
@@ -12257,9 +12257,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE+",
-    "id": "O5",
+    "id": "O5F",
     "code": "O5",
-    "designation": "OMBRIERE VL DOUBLE+ (O5)",
+    "designation": "OMBRIERE VL DOUBLE+ (O5F)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 67.5,
@@ -12267,8 +12267,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "11.35",
     "surface": 766.125,
     "poteau": "",
-    "sabliere": "2.8",
-    "faitage": "4.74",
+    "sabliere": "2.8m",
+    "faitage": "4.74m",
     "travees": "9 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12288,14 +12288,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "9 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 30599.32,
-      "fondations_base_ht": 15299.66,
-      "couverture_base_ht": 15299.66,
+      "charpente_base_ht": 35998.63,
+      "fondations_base_ht": 25200,
+      "couverture_base_ht": 0,
       "total_base_ht": 61198.63,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2963.93,
-        "fondations_travee": 1481.97,
-        "couverture_travee": 1481.97,
+        "charpente_travee": 3486.93,
+        "fondations_travee": 2440.94,
+        "couverture_travee": 0,
         "total_travee": 5927.87
       }
     },
@@ -12306,9 +12306,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE VL DOUBLE+",
-    "id": "O5",
+    "id": "O5G",
     "code": "O5",
-    "designation": "OMBRIERE VL DOUBLE+ (O5)",
+    "designation": "OMBRIERE VL DOUBLE+ (O5G)",
     "family": "OMBRIERE_VL",
     "category": "Ombrières de parking VL",
     "longueur": 75,
@@ -12316,8 +12316,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "11.35",
     "surface": 851.25,
     "poteau": "",
-    "sabliere": "2.8",
-    "faitage": "4.74",
+    "sabliere": "2.8m",
+    "faitage": "4.74m",
     "travees": "10 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12337,15 +12337,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "10 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 33470.57,
-      "fondations_base_ht": 16735.28,
-      "couverture_base_ht": 16735.28,
+      "charpente_base_ht": 39431.13,
+      "fondations_base_ht": 27510,
+      "couverture_base_ht": 0,
       "total_base_ht": 66941.13,
       "cout_travee_sup_ht": {
-        "charpente_travee": 2963.93,
-        "fondations_travee": 1481.97,
-        "couverture_travee": 1481.97,
-        "total_travee": 5927.87
+        "charpente_travee": 3382.57,
+        "fondations_travee": 2359.93,
+        "couverture_travee": 0,
+        "total_travee": 5742.5
       }
     },
     "ratios": {
@@ -12355,9 +12355,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 16m",
-    "id": "O7",
+    "id": "O7A",
     "code": "O7",
-    "designation": "OMBRIERE PL 16m (O7)",
+    "designation": "OMBRIERE PL 16m (O7A)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 30,
@@ -12365,8 +12365,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "15.8",
     "surface": 474,
     "poteau": "",
-    "sabliere": "5.1",
-    "faitage": "7.86",
+    "sabliere": "5.1m",
+    "faitage": "7.86m",
     "travees": "4 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12386,14 +12386,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "4 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 22099.41,
-      "fondations_base_ht": 11049.7,
-      "couverture_base_ht": 11049.7,
+      "charpente_base_ht": 28798.81,
+      "fondations_base_ht": 15399.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 44198.81,
       "cout_travee_sup_ht": {
-        "charpente_travee": 4229.6,
-        "fondations_travee": 2114.8,
-        "couverture_travee": 2114.8,
+        "charpente_travee": 5511.8,
+        "fondations_travee": 2947.4,
+        "couverture_travee": 0,
         "total_travee": 8459.2
       }
     },
@@ -12404,9 +12404,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 16m",
-    "id": "O7",
+    "id": "O7B",
     "code": "O7",
-    "designation": "OMBRIERE PL 16m (O7)",
+    "designation": "OMBRIERE PL 16m (O7B)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 37.5,
@@ -12414,8 +12414,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "15.8",
     "surface": 592.5,
     "poteau": "",
-    "sabliere": "5.1",
-    "faitage": "7.86",
+    "sabliere": "5.1m",
+    "faitage": "7.86m",
     "travees": "5 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12435,14 +12435,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "5 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 26329.01,
-      "fondations_base_ht": 13164.5,
-      "couverture_base_ht": 13164.5,
+      "charpente_base_ht": 34598.01,
+      "fondations_base_ht": 18060,
+      "couverture_base_ht": 0,
       "total_base_ht": 52658.01,
       "cout_travee_sup_ht": {
-        "charpente_travee": 4229.6,
-        "fondations_travee": 2114.8,
-        "couverture_travee": 2114.8,
+        "charpente_travee": 5557.97,
+        "fondations_travee": 2901.23,
+        "couverture_travee": 0,
         "total_travee": 8459.2
       }
     },
@@ -12453,9 +12453,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 16m",
-    "id": "O7",
+    "id": "O7C",
     "code": "O7",
-    "designation": "OMBRIERE PL 16m (O7)",
+    "designation": "OMBRIERE PL 16m (O7C)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 45,
@@ -12463,8 +12463,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "15.8",
     "surface": 711,
     "poteau": "",
-    "sabliere": "5.1",
-    "faitage": "7.86",
+    "sabliere": "5.1m",
+    "faitage": "7.86m",
     "travees": "6 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12484,15 +12484,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "6 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 30651.29,
-      "fondations_base_ht": 15325.64,
-      "couverture_base_ht": 15325.64,
+      "charpente_base_ht": 40582.57,
+      "fondations_base_ht": 20720,
+      "couverture_base_ht": 0,
       "total_base_ht": 61302.57,
       "cout_travee_sup_ht": {
-        "charpente_travee": 4229.6,
-        "fondations_travee": 2114.8,
-        "couverture_travee": 2114.8,
-        "total_travee": 8459.2
+        "charpente_travee": 5722.74,
+        "fondations_travee": 2921.82,
+        "couverture_travee": 0,
+        "total_travee": 8644.56
       }
     },
     "ratios": {
@@ -12502,9 +12502,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 16m",
-    "id": "O7",
+    "id": "O7D",
     "code": "O7",
-    "designation": "OMBRIERE PL 16m (O7)",
+    "designation": "OMBRIERE PL 16m (O7D)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 52.5,
@@ -12512,8 +12512,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "15.8",
     "surface": 829.5,
     "poteau": "",
-    "sabliere": "5.1",
-    "faitage": "7.86",
+    "sabliere": "5.1m",
+    "faitage": "7.86m",
     "travees": "7 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12533,14 +12533,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "7 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 34880.89,
-      "fondations_base_ht": 17440.44,
-      "couverture_base_ht": 17440.44,
+      "charpente_base_ht": 46381.77,
+      "fondations_base_ht": 23380,
+      "couverture_base_ht": 0,
       "total_base_ht": 69761.77,
       "cout_travee_sup_ht": {
-        "charpente_travee": 4229.6,
-        "fondations_travee": 2114.8,
-        "couverture_travee": 2114.8,
+        "charpente_travee": 5624.18,
+        "fondations_travee": 2835.02,
+        "couverture_travee": 0,
         "total_travee": 8459.2
       }
     },
@@ -12551,9 +12551,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 16m",
-    "id": "O7",
+    "id": "O7E",
     "code": "O7",
-    "designation": "OMBRIERE PL 16m (O7)",
+    "designation": "OMBRIERE PL 16m (O7E)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 60,
@@ -12561,8 +12561,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "15.8",
     "surface": 948,
     "poteau": "",
-    "sabliere": "5.1",
-    "faitage": "7.86",
+    "sabliere": "5.1m",
+    "faitage": "7.86m",
     "travees": "8 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12582,15 +12582,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "8 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 39203.17,
-      "fondations_base_ht": 19601.58,
-      "couverture_base_ht": 19601.58,
+      "charpente_base_ht": 52366.33,
+      "fondations_base_ht": 26040,
+      "couverture_base_ht": 0,
       "total_base_ht": 78406.33,
       "cout_travee_sup_ht": {
-        "charpente_travee": 4229.6,
-        "fondations_travee": 2114.8,
-        "couverture_travee": 2114.8,
-        "total_travee": 8459.2
+        "charpente_travee": 5773.56,
+        "fondations_travee": 2871,
+        "couverture_travee": 0,
+        "total_travee": 8644.56
       }
     },
     "ratios": {
@@ -12600,9 +12600,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 16m",
-    "id": "O7",
+    "id": "O7F",
     "code": "O7",
-    "designation": "OMBRIERE PL 16m (O7)",
+    "designation": "OMBRIERE PL 16m (O7F)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 67.5,
@@ -12610,8 +12610,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "15.8",
     "surface": 1066.5,
     "poteau": "",
-    "sabliere": "5.1",
-    "faitage": "7.86",
+    "sabliere": "5.1m",
+    "faitage": "7.86m",
     "travees": "9 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12631,15 +12631,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "9 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 43852.77,
-      "fondations_base_ht": 21926.38,
-      "couverture_base_ht": 21926.38,
+      "charpente_base_ht": 58005.53,
+      "fondations_base_ht": 28699.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 87705.53,
       "cout_travee_sup_ht": {
-        "charpente_travee": 4229.6,
-        "fondations_travee": 2114.8,
-        "couverture_travee": 2114.8,
-        "total_travee": 8459.2
+        "charpente_travee": 6221.12,
+        "fondations_travee": 3078.08,
+        "couverture_travee": 0,
+        "total_travee": 9299.2
       }
     },
     "ratios": {
@@ -12649,9 +12649,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 16m",
-    "id": "O7",
+    "id": "O7G",
     "code": "O7",
-    "designation": "OMBRIERE PL 16m (O7)",
+    "designation": "OMBRIERE PL 16m (O7G)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 75,
@@ -12659,8 +12659,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "15.8",
     "surface": 1185,
     "poteau": "",
-    "sabliere": "5.1",
-    "faitage": "7.86",
+    "sabliere": "5.1m",
+    "faitage": "7.86m",
     "travees": "10 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12680,15 +12680,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "10 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 48175.04,
-      "fondations_base_ht": 24087.52,
-      "couverture_base_ht": 24087.52,
+      "charpente_base_ht": 64990.08,
+      "fondations_base_ht": 31359.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 96350.08,
       "cout_travee_sup_ht": {
-        "charpente_travee": 4229.6,
-        "fondations_travee": 2114.8,
-        "couverture_travee": 2114.8,
-        "total_travee": 8459.2
+        "charpente_travee": 5830.92,
+        "fondations_travee": 2813.63,
+        "couverture_travee": 0,
+        "total_travee": 8644.55
       }
     },
     "ratios": {
@@ -12698,18 +12698,18 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 20m",
-    "id": "O9",
+    "id": "O9A",
     "code": "O9",
-    "designation": "OMBRIERE PL 20m (O9)",
+    "designation": "OMBRIERE PL 20m (O9A)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 30,
     "largeur": 20.22,
     "largeurRaw": "20.22",
-    "surface": 606.5999999999999,
+    "surface": 606.6,
     "poteau": "",
-    "sabliere": "5.73",
-    "faitage": "9.29",
+    "sabliere": "5.73m",
+    "faitage": "9.29m",
     "travees": "4 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12729,14 +12729,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "4 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 30800.1,
-      "fondations_base_ht": 15400.05,
-      "couverture_base_ht": 15400.05,
+      "charpente_base_ht": 39550.2,
+      "fondations_base_ht": 22050,
+      "couverture_base_ht": 0,
       "total_base_ht": 61600.2,
       "cout_travee_sup_ht": {
-        "charpente_travee": 6065.69,
-        "fondations_travee": 3032.85,
-        "couverture_travee": 3032.85,
+        "charpente_travee": 7788.91,
+        "fondations_travee": 4342.47,
+        "couverture_travee": 0,
         "total_travee": 12131.38
       }
     },
@@ -12747,9 +12747,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 20m",
-    "id": "O9",
+    "id": "O9B",
     "code": "O9",
-    "designation": "OMBRIERE PL 20m (O9)",
+    "designation": "OMBRIERE PL 20m (O9B)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 37.5,
@@ -12757,8 +12757,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "20.22",
     "surface": 758.25,
     "poteau": "",
-    "sabliere": "5.73",
-    "faitage": "9.29",
+    "sabliere": "5.73m",
+    "faitage": "9.29m",
     "travees": "5 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12778,14 +12778,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "5 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 36865.79,
-      "fondations_base_ht": 18432.9,
-      "couverture_base_ht": 18432.9,
+      "charpente_base_ht": 47691.58,
+      "fondations_base_ht": 26040,
+      "couverture_base_ht": 0,
       "total_base_ht": 73731.58,
       "cout_travee_sup_ht": {
-        "charpente_travee": 6065.69,
-        "fondations_travee": 3032.85,
-        "couverture_travee": 3032.85,
+        "charpente_travee": 7846.9,
+        "fondations_travee": 4284.48,
+        "couverture_travee": 0,
         "total_travee": 12131.38
       }
     },
@@ -12796,9 +12796,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 20m",
-    "id": "O9",
+    "id": "O9C",
     "code": "O9",
-    "designation": "OMBRIERE PL 20m (O9)",
+    "designation": "OMBRIERE PL 20m (O9C)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 45,
@@ -12806,8 +12806,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "20.22",
     "surface": 909.9,
     "poteau": "",
-    "sabliere": "5.73",
-    "faitage": "9.29",
+    "sabliere": "5.73m",
+    "faitage": "9.29m",
     "travees": "6 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12827,14 +12827,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "6 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 42931.48,
-      "fondations_base_ht": 21465.74,
-      "couverture_base_ht": 21465.74,
+      "charpente_base_ht": 55832.96,
+      "fondations_base_ht": 30029.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 85862.96,
       "cout_travee_sup_ht": {
-        "charpente_travee": 6065.69,
-        "fondations_travee": 3032.85,
-        "couverture_travee": 3032.85,
+        "charpente_travee": 7888.51,
+        "fondations_travee": 4242.87,
+        "couverture_travee": 0,
         "total_travee": 12131.38
       }
     },
@@ -12845,9 +12845,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 20m",
-    "id": "O9",
+    "id": "O9D",
     "code": "O9",
-    "designation": "OMBRIERE PL 20m (O9)",
+    "designation": "OMBRIERE PL 20m (O9D)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 52.5,
@@ -12855,15 +12855,15 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "20.22",
     "surface": 1061.55,
     "poteau": "",
-    "sabliere": "5.73",
-    "faitage": "9.29",
+    "sabliere": "5.73m",
+    "faitage": "9.29m",
     "travees": "7 x 7.5m",
     "auventSud": "",
     "auventNord": "",
     "optionApAu": "",
     "kwc": 267,
     "puissance": 267,
-    "tarif": 98834.35,
+    "tarif": 98834.34,
     "ratioKwc": 0.37,
     "ratioM2": 93,
     "dimensions": {
@@ -12876,15 +12876,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "7 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 49417.18,
-      "fondations_base_ht": 24708.59,
-      "couverture_base_ht": 24708.59,
-      "total_base_ht": 98834.35,
+      "charpente_base_ht": 64814.34,
+      "fondations_base_ht": 34020,
+      "couverture_base_ht": 0,
+      "total_base_ht": 98834.34,
       "cout_travee_sup_ht": {
-        "charpente_travee": 6065.69,
-        "fondations_travee": 3032.85,
-        "couverture_travee": 3032.85,
-        "total_travee": 12131.38
+        "charpente_travee": 8506.47,
+        "fondations_travee": 4464.91,
+        "couverture_travee": 0,
+        "total_travee": 12971.38
       }
     },
     "ratios": {
@@ -12894,18 +12894,18 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 20m",
-    "id": "O9",
+    "id": "O9E",
     "code": "O9",
-    "designation": "OMBRIERE PL 20m (O9)",
+    "designation": "OMBRIERE PL 20m (O9E)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 60,
     "largeur": 20.22,
     "largeurRaw": "20.22",
-    "surface": 1213.1999999999998,
+    "surface": 1213.2,
     "poteau": "",
-    "sabliere": "5.73",
-    "faitage": "9.29",
+    "sabliere": "5.73m",
+    "faitage": "9.29m",
     "travees": "8 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12925,14 +12925,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "8 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 55482.87,
-      "fondations_base_ht": 27741.43,
-      "couverture_base_ht": 27741.43,
+      "charpente_base_ht": 72955.73,
+      "fondations_base_ht": 38010,
+      "couverture_base_ht": 0,
       "total_base_ht": 110965.73,
       "cout_travee_sup_ht": {
-        "charpente_travee": 6065.69,
-        "fondations_travee": 3032.85,
-        "couverture_travee": 3032.85,
+        "charpente_travee": 7975.92,
+        "fondations_travee": 4155.46,
+        "couverture_travee": 0,
         "total_travee": 12131.38
       }
     },
@@ -12943,9 +12943,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 20m",
-    "id": "O9",
+    "id": "O9F",
     "code": "O9",
-    "designation": "OMBRIERE PL 20m (O9)",
+    "designation": "OMBRIERE PL 20m (O9F)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 67.5,
@@ -12953,8 +12953,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "20.22",
     "surface": 1364.85,
     "poteau": "",
-    "sabliere": "5.73",
-    "faitage": "9.29",
+    "sabliere": "5.73m",
+    "faitage": "9.29m",
     "travees": "9 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -12974,14 +12974,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "9 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 61548.56,
-      "fondations_base_ht": 30774.28,
-      "couverture_base_ht": 30774.28,
+      "charpente_base_ht": 81097.11,
+      "fondations_base_ht": 42000,
+      "couverture_base_ht": 0,
       "total_base_ht": 123097.11,
       "cout_travee_sup_ht": {
-        "charpente_travee": 6065.69,
-        "fondations_travee": 3032.85,
-        "couverture_travee": 3032.85,
+        "charpente_travee": 7992.23,
+        "fondations_travee": 4139.15,
+        "couverture_travee": 0,
         "total_travee": 12131.38
       }
     },
@@ -12992,9 +12992,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 20m",
-    "id": "O9",
+    "id": "O9G",
     "code": "O9",
-    "designation": "OMBRIERE PL 20m (O9)",
+    "designation": "OMBRIERE PL 20m (O9G)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 75,
@@ -13002,15 +13002,15 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "20.22",
     "surface": 1516.5,
     "poteau": "",
-    "sabliere": "5.73",
-    "faitage": "9.29",
+    "sabliere": "5.73m",
+    "faitage": "9.29m",
     "travees": "10 x 7.5m",
     "auventSud": "",
     "auventNord": "",
     "optionApAu": "",
     "kwc": 379,
     "puissance": 379,
-    "tarif": 135413.85,
+    "tarif": 135418.85,
     "ratioKwc": 0.36,
     "ratioM2": 89,
     "dimensions": {
@@ -13023,15 +13023,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "10 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 67706.93,
-      "fondations_base_ht": 33853.46,
-      "couverture_base_ht": 33853.46,
-      "total_base_ht": 135413.85,
+      "charpente_base_ht": 89428.85,
+      "fondations_base_ht": 45990,
+      "couverture_base_ht": 0,
+      "total_base_ht": 135418.85,
       "cout_travee_sup_ht": {
-        "charpente_travee": 6065.69,
-        "fondations_travee": 3032.85,
-        "couverture_travee": 3032.85,
-        "total_travee": 12131.38
+        "charpente_travee": 8133.82,
+        "fondations_travee": 4182.92,
+        "couverture_travee": 0,
+        "total_travee": 12316.74
       }
     },
     "ratios": {
@@ -13041,9 +13041,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 25m",
-    "id": "O11",
+    "id": "O11A",
     "code": "O11",
-    "designation": "OMBRIERE PL 25m (O11)",
+    "designation": "OMBRIERE PL 25m (O11A)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 30,
@@ -13051,8 +13051,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "24.65",
     "surface": 739.5,
     "poteau": "",
-    "sabliere": "5",
-    "faitage": "9.35",
+    "sabliere": "5m",
+    "faitage": "9.35m",
     "travees": "4 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -13072,14 +13072,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "4 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 34482.96,
-      "fondations_base_ht": 17241.48,
-      "couverture_base_ht": 17241.48,
+      "charpente_base_ht": 46915.93,
+      "fondations_base_ht": 22050,
+      "couverture_base_ht": 0,
       "total_base_ht": 68965.93,
       "cout_travee_sup_ht": {
-        "charpente_travee": 7228.37,
-        "fondations_travee": 3614.19,
-        "couverture_travee": 3614.19,
+        "charpente_travee": 9834.59,
+        "fondations_travee": 4622.15,
+        "couverture_travee": 0,
         "total_travee": 14456.74
       }
     },
@@ -13090,9 +13090,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 25m",
-    "id": "O11",
+    "id": "O11B",
     "code": "O11",
-    "designation": "OMBRIERE PL 25m (O11)",
+    "designation": "OMBRIERE PL 25m (O11B)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 37.5,
@@ -13100,8 +13100,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "24.65",
     "surface": 924.375,
     "poteau": "",
-    "sabliere": "5",
-    "faitage": "9.35",
+    "sabliere": "5m",
+    "faitage": "9.35m",
     "travees": "5 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -13121,15 +13121,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "5 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 41711.34,
-      "fondations_base_ht": 20855.67,
-      "couverture_base_ht": 20855.67,
+      "charpente_base_ht": 57382.67,
+      "fondations_base_ht": 26040,
+      "couverture_base_ht": 0,
       "total_base_ht": 83422.67,
       "cout_travee_sup_ht": {
-        "charpente_travee": 7228.37,
-        "fondations_travee": 3614.19,
-        "couverture_travee": 3614.19,
-        "total_travee": 14456.74
+        "charpente_travee": 9944.13,
+        "fondations_travee": 4512.6,
+        "couverture_travee": 0,
+        "total_travee": 14456.73
       }
     },
     "ratios": {
@@ -13139,9 +13139,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 25m",
-    "id": "O11",
+    "id": "O11C",
     "code": "O11",
-    "designation": "OMBRIERE PL 25m (O11)",
+    "designation": "OMBRIERE PL 25m (O11C)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 45,
@@ -13149,8 +13149,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "24.65",
     "surface": 1109.25,
     "poteau": "",
-    "sabliere": "5",
-    "faitage": "9.35",
+    "sabliere": "5m",
+    "faitage": "9.35m",
     "travees": "6 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -13170,15 +13170,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "6 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 49267.03,
-      "fondations_base_ht": 24633.51,
-      "couverture_base_ht": 24633.51,
+      "charpente_base_ht": 68504.05,
+      "fondations_base_ht": 30029.99,
+      "couverture_base_ht": 0,
       "total_base_ht": 98534.05,
       "cout_travee_sup_ht": {
-        "charpente_travee": 7228.37,
-        "fondations_travee": 3614.19,
-        "couverture_travee": 3614.19,
-        "total_travee": 14456.74
+        "charpente_travee": 10505.92,
+        "fondations_travee": 4605.46,
+        "couverture_travee": 0,
+        "total_travee": 15111.38
       }
     },
     "ratios": {
@@ -13188,9 +13188,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 25m",
-    "id": "O11",
+    "id": "O11D",
     "code": "O11",
-    "designation": "OMBRIERE PL 25m (O11)",
+    "designation": "OMBRIERE PL 25m (O11D)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 52.5,
@@ -13198,8 +13198,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "24.65",
     "surface": 1294.125,
     "poteau": "",
-    "sabliere": "5",
-    "faitage": "9.35",
+    "sabliere": "5m",
+    "faitage": "9.35m",
     "travees": "7 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -13219,15 +13219,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "7 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 56495.39,
-      "fondations_base_ht": 28247.7,
-      "couverture_base_ht": 28247.7,
+      "charpente_base_ht": 78970.78,
+      "fondations_base_ht": 34020,
+      "couverture_base_ht": 0,
       "total_base_ht": 112990.78,
       "cout_travee_sup_ht": {
-        "charpente_travee": 7228.37,
-        "fondations_travee": 3614.19,
-        "couverture_travee": 3614.19,
-        "total_travee": 14456.74
+        "charpente_travee": 10104,
+        "fondations_travee": 4352.73,
+        "couverture_travee": 0,
+        "total_travee": 14456.73
       }
     },
     "ratios": {
@@ -13237,9 +13237,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 25m",
-    "id": "O11",
+    "id": "O11E",
     "code": "O11",
-    "designation": "OMBRIERE PL 25m (O11)",
+    "designation": "OMBRIERE PL 25m (O11E)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 60,
@@ -13247,8 +13247,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "24.65",
     "surface": 1479,
     "poteau": "",
-    "sabliere": "5",
-    "faitage": "9.35",
+    "sabliere": "5m",
+    "faitage": "9.35m",
     "travees": "8 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -13268,14 +13268,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "8 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 63723.76,
-      "fondations_base_ht": 31861.88,
-      "couverture_base_ht": 31861.88,
+      "charpente_base_ht": 89437.52,
+      "fondations_base_ht": 38010,
+      "couverture_base_ht": 0,
       "total_base_ht": 127447.52,
       "cout_travee_sup_ht": {
-        "charpente_travee": 7228.37,
-        "fondations_travee": 3614.19,
-        "couverture_travee": 3614.19,
+        "charpente_travee": 10145.16,
+        "fondations_travee": 4311.58,
+        "couverture_travee": 0,
         "total_travee": 14456.74
       }
     },
@@ -13286,9 +13286,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 25m",
-    "id": "O11",
+    "id": "O11F",
     "code": "O11",
-    "designation": "OMBRIERE PL 25m (O11)",
+    "designation": "OMBRIERE PL 25m (O11F)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 67.5,
@@ -13296,8 +13296,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "24.65",
     "surface": 1663.875,
     "poteau": "",
-    "sabliere": "5",
-    "faitage": "9.35",
+    "sabliere": "5m",
+    "faitage": "9.35m",
     "travees": "9 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -13317,15 +13317,15 @@ export const BARCONNIERE_CATALOG = [
       "travees": "9 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 70859.45,
-      "fondations_base_ht": 35429.72,
-      "couverture_base_ht": 35429.72,
+      "charpente_base_ht": 99718.89,
+      "fondations_base_ht": 42000,
+      "couverture_base_ht": 0,
       "total_base_ht": 141718.89,
       "cout_travee_sup_ht": {
-        "charpente_travee": 7228.37,
-        "fondations_travee": 3614.19,
-        "couverture_travee": 3614.19,
-        "total_travee": 14456.74
+        "charpente_travee": 10041.89,
+        "fondations_travee": 4229.48,
+        "couverture_travee": 0,
+        "total_travee": 14271.37
       }
     },
     "ratios": {
@@ -13335,9 +13335,9 @@ export const BARCONNIERE_CATALOG = [
   },
   {
     "gamme": "OMBRIERE PL 25m",
-    "id": "O11",
+    "id": "O11G",
     "code": "O11",
-    "designation": "OMBRIERE PL 25m (O11)",
+    "designation": "OMBRIERE PL 25m (O11G)",
     "family": "OMBRIERE_PL",
     "category": "Ombrières de parking PL",
     "longueur": 75,
@@ -13345,8 +13345,8 @@ export const BARCONNIERE_CATALOG = [
     "largeurRaw": "24.65",
     "surface": 1848.75,
     "poteau": "",
-    "sabliere": "5",
-    "faitage": "9.35",
+    "sabliere": "5m",
+    "faitage": "9.35m",
     "travees": "10 x 7.5m",
     "auventSud": "",
     "auventNord": "",
@@ -13366,14 +13366,14 @@ export const BARCONNIERE_CATALOG = [
       "travees": "10 x 7.5m"
     },
     "pricing_ht": {
-      "charpente_base_ht": 78087.82,
-      "fondations_base_ht": 39043.91,
-      "couverture_base_ht": 39043.91,
+      "charpente_base_ht": 110185.63,
+      "fondations_base_ht": 45990,
+      "couverture_base_ht": 0,
       "total_base_ht": 156175.63,
       "cout_travee_sup_ht": {
-        "charpente_travee": 7228.37,
-        "fondations_travee": 3614.19,
-        "couverture_travee": 3614.19,
+        "charpente_travee": 10199.57,
+        "fondations_travee": 4257.17,
+        "couverture_travee": 0,
         "total_travee": 14456.74
       }
     },

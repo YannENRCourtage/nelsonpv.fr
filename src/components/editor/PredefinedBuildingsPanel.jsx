@@ -478,25 +478,27 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-300 pt-0.5">
+                <div className={`grid ${selectedBuildingData.pricing_ht.couverture_base_ht > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-[11px] text-slate-300 pt-0.5`}>
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Charpente</span>
+                    <span className="text-slate-400 block text-[10px]">Dont Charpente</span>
                     <span className="font-semibold text-white">
                       {formatNumber(selectedBuildingData.pricing_ht.charpente_base_ht)} €
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Fondations</span>
+                    <span className="text-slate-400 block text-[10px]">Dont Fondations</span>
                     <span className="font-semibold text-white">
                       {formatNumber(selectedBuildingData.pricing_ht.fondations_base_ht)} €
                     </span>
                   </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Couverture</span>
-                    <span className="font-semibold text-white">
-                      {formatNumber(selectedBuildingData.pricing_ht.couverture_base_ht)} €
-                    </span>
-                  </div>
+                  {selectedBuildingData.pricing_ht.couverture_base_ht > 0 && (
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">Dont Couverture</span>
+                      <span className="font-semibold text-white">
+                        {formatNumber(selectedBuildingData.pricing_ht.couverture_base_ht)} €
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {selectedBuildingData.pricing_ht.cout_travee_sup_ht?.total_travee > 0 && (

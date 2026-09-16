@@ -754,16 +754,13 @@ export function FicheTechniqueModal({
                                                         {barcMatch?.pricing_ht && (
                                                             <>
                                                                 {barcMatch.pricing_ht.charpente_base_ht > 0 && (
-                                                                    <div className="flex justify-between text-slate-400 pl-2 text-[8.5px] sm:text-[9.5px]"><span>• Charpente :</span><span className="text-slate-300">{Math.round(barcMatch.pricing_ht.charpente_base_ht).toLocaleString('fr-FR')} € HT</span></div>
+                                                                    <div className="flex justify-between text-slate-400 pl-2 text-[8.5px] sm:text-[9.5px]"><span>• Dont Charpente :</span><span className="text-slate-300">{Math.round(barcMatch.pricing_ht.charpente_base_ht).toLocaleString('fr-FR')} € HT</span></div>
                                                                 )}
                                                                 {barcMatch.pricing_ht.fondations_base_ht > 0 && (
-                                                                    <div className="flex justify-between text-slate-400 pl-2 text-[8.5px] sm:text-[9.5px]"><span>• Fondations :</span><span className="text-slate-300">{Math.round(barcMatch.pricing_ht.fondations_base_ht).toLocaleString('fr-FR')} € HT</span></div>
+                                                                    <div className="flex justify-between text-slate-400 pl-2 text-[8.5px] sm:text-[9.5px]"><span>• Dont Fondations :</span><span className="text-slate-300">{Math.round(barcMatch.pricing_ht.fondations_base_ht).toLocaleString('fr-FR')} € HT</span></div>
                                                                 )}
                                                                 {barcMatch.pricing_ht.couverture_base_ht > 0 && (
-                                                                    <div className="flex justify-between text-slate-400 pl-2 text-[8.5px] sm:text-[9.5px]"><span>• Couverture :</span><span className="text-slate-300">{Math.round(barcMatch.pricing_ht.couverture_base_ht).toLocaleString('fr-FR')} € HT</span></div>
-                                                                )}
-                                                                {barcMatch.pricing_ht.cout_travee_sup_ht?.total_travee > 0 && (
-                                                                    <div className="flex justify-between text-amber-300/90 pl-2 text-[8.5px] sm:text-[9.5px]"><span>Travée sup. (7.5m) :</span><span>+{Math.round(barcMatch.pricing_ht.cout_travee_sup_ht.total_travee).toLocaleString('fr-FR')} € HT</span></div>
+                                                                    <div className="flex justify-between text-slate-400 pl-2 text-[8.5px] sm:text-[9.5px]"><span>• Dont Couverture :</span><span className="text-slate-300">{Math.round(barcMatch.pricing_ht.couverture_base_ht).toLocaleString('fr-FR')} € HT</span></div>
                                                                 )}
                                                             </>
                                                         )}
@@ -780,14 +777,21 @@ export function FicheTechniqueModal({
                                                     </div>
                                                 )}
 
-                                                {/* 6. Options (UNIQUEMENT POUR BATITECH) */}
-                                                {isBatitech && batitechModel?.options && (
+                                                {/* 6. Options */}
+                                                {((isBatitech && batitechModel?.options) || (!isCustom && barcMatch?.pricing_ht?.cout_travee_sup_ht?.total_travee > 0)) && (
                                                     <div className="space-y-0.5">
                                                         <h4 className="font-bold text-pink-400 uppercase text-[9px] sm:text-[10.5px] border-b border-slate-700 pb-0.5">6. Options</h4>
-                                                        <div className="flex justify-between text-slate-400"><span>Auvent Sud (4m) :</span><strong className="text-white font-bold">{batitechModel.options.auventSud.toLocaleString('fr-FR')} € HT</strong></div>
-                                                        <div className="flex justify-between text-slate-400"><span>Auvent Nord (4m) :</span><strong className="text-white font-bold">{batitechModel.options.auventNord.toLocaleString('fr-FR')} € HT</strong></div>
-                                                        <div className="flex justify-between text-slate-400"><span>Auvents N + S :</span><strong className="text-amber-400 font-bold">{batitechModel.options.auventNordSud.toLocaleString('fr-FR')} € HT</strong></div>
-                                                        <div className="flex justify-between text-slate-400"><span>Travée suppl. 6m :</span><strong className="text-sky-400 font-bold">{batitechModel.options.traveeSupplementaire.toLocaleString('fr-FR')} € HT</strong></div>
+                                                        {!isBatitech && barcMatch?.pricing_ht?.cout_travee_sup_ht?.total_travee > 0 && (
+                                                            <div className="flex justify-between text-amber-300 font-bold"><span>Travée sup. (7.5m) :</span><span>+{Math.round(barcMatch.pricing_ht.cout_travee_sup_ht.total_travee).toLocaleString('fr-FR')} € HT</span></div>
+                                                        )}
+                                                        {isBatitech && batitechModel?.options && (
+                                                            <>
+                                                                <div className="flex justify-between text-slate-400"><span>Auvent Sud (4m) :</span><strong className="text-white font-bold">{batitechModel.options.auventSud.toLocaleString('fr-FR')} € HT</strong></div>
+                                                                <div className="flex justify-between text-slate-400"><span>Auvent Nord (4m) :</span><strong className="text-white font-bold">{batitechModel.options.auventNord.toLocaleString('fr-FR')} € HT</strong></div>
+                                                                <div className="flex justify-between text-slate-400"><span>Auvents N + S :</span><strong className="text-amber-400 font-bold">{batitechModel.options.auventNordSud.toLocaleString('fr-FR')} € HT</strong></div>
+                                                                <div className="flex justify-between text-slate-400"><span>Travée suppl. 6m :</span><strong className="text-sky-400 font-bold">{batitechModel.options.traveeSupplementaire.toLocaleString('fr-FR')} € HT</strong></div>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 )}
 

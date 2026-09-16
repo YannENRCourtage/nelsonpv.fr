@@ -209,19 +209,21 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                         </span>
                     </div>
                     {!isCustom && barcMatch?.pricing_ht?.charpente_base_ht > 0 && (
-                        <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-slate-200/80 text-[10px] text-slate-600">
+                        <div className={`grid ${barcMatch.pricing_ht.couverture_base_ht > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5 pt-1 border-t border-slate-200/80 text-[10px] text-slate-600`}>
                             <div>
-                                <span className="text-slate-400 block text-[9px]">Charpente</span>
+                                <span className="text-slate-400 block text-[9px]">Dont Charpente</span>
                                 <span className="font-bold text-slate-800">{Math.round(barcMatch.pricing_ht.charpente_base_ht).toLocaleString('fr-FR')} €</span>
                             </div>
                             <div>
-                                <span className="text-slate-400 block text-[9px]">Fondations</span>
+                                <span className="text-slate-400 block text-[9px]">Dont Fondations</span>
                                 <span className="font-bold text-slate-800">{Math.round(barcMatch.pricing_ht.fondations_base_ht).toLocaleString('fr-FR')} €</span>
                             </div>
-                            <div>
-                                <span className="text-slate-400 block text-[9px]">Couverture</span>
-                                <span className="font-bold text-slate-800">{Math.round(barcMatch.pricing_ht.couverture_base_ht).toLocaleString('fr-FR')} €</span>
-                            </div>
+                            {barcMatch.pricing_ht.couverture_base_ht > 0 && (
+                                <div>
+                                    <span className="text-slate-400 block text-[9px]">Dont Couverture</span>
+                                    <span className="font-bold text-slate-800">{Math.round(barcMatch.pricing_ht.couverture_base_ht).toLocaleString('fr-FR')} €</span>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
