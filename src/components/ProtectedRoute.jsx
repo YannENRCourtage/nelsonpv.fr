@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { isShantiOneAuthorized } from '@/services/firebase/auth.service.js';
 
 export const ProtectedRoute = ({ children, requiredRole, requiredPermission }) => {
     const { user, isAuthenticated, loading } = useAuth();
@@ -37,6 +38,10 @@ export const ProtectedRoute = ({ children, requiredRole, requiredPermission }) =
             const userTenant = user?.tenantId || user?.activeTenantId || user?.tenant;
             const isGreenInvest = activeTenantId === 'green-invest' || userTenant === 'green-invest' || !activeTenantId;
             if (!isGreenInvest && !isAdmin) {
+                return <Navigate to="/" replace />;
+            }
+        } else if (requiredPermission === 'canAccessShantiOne') {
+            if (!isShantiOneAuthorized(user)) {
                 return <Navigate to="/" replace />;
             }
         } else {

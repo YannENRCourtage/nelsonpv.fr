@@ -116,6 +116,14 @@ service cloud.firestore {
         allow write: if isAuthenticated();
       }
     }
+
+    // Shanti One collaborative table & updates
+    match /shanti_one_projects/{projectId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /shanti_one_updates/{updateId} {
+      allow read, write: if isAuthenticated();
+    }
     
     // Dev Professionals
     match /dev_professionals/{professionalId} {

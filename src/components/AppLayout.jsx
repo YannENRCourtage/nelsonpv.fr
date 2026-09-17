@@ -4,7 +4,8 @@ import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useProject } from '../contexts/ProjectContext.jsx';
 import { Button } from './ui/button.jsx';
-import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X, Shuffle, List as ListIcon, Activity, Layers, FileText } from 'lucide-react';
+import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X, Shuffle, List as ListIcon, Activity, Layers, FileText, Building2 } from 'lucide-react';
+import { isShantiOneAuthorized } from '@/services/firebase/auth.service.js';
 import { toast } from "@/components/ui/use-toast.js";
 import jsPDF from "jspdf";
 import html2canvas from 'html2canvas';
@@ -522,6 +523,13 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
               </NavLink>
             )}
 
+            {isShantiOneAuthorized(user) && (
+              <NavLink to="/shanti-one" className={({ isActive }) => isActive ? 'nav-link active shanti' : 'nav-link shanti'}>
+                <Building2 className="w-4 h-4 mr-1 inline-block text-emerald-600" />
+                Shanti One
+              </NavLink>
+            )}
+
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessEnedis) && (
               <NavLink to="/enedis-admin" className={({ isActive }) => isActive ? 'nav-link active enedis' : 'nav-link enedis'}>
                 <Activity className="w-4 h-4 mr-1 inline-block" />
@@ -889,6 +897,17 @@ export default function AppLayout() {
               >
                 <ListIcon className="w-4 h-4 mr-2 inline-block" />
                 Suivi dossiers
+              </NavLink>
+            )}
+
+            {isShantiOneAuthorized(user) && (
+              <NavLink
+                to="/shanti-one"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active shanti' : 'mobile-nav-link shanti'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Building2 className="w-4 h-4 mr-2 inline-block text-emerald-600" />
+                Shanti One
               </NavLink>
             )}
 

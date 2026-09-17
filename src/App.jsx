@@ -20,6 +20,7 @@ import Developpement from './pages/Developpement.jsx';
 import AdminEnedis from './pages/AdminEnedis.jsx';
 import IrveSimulator from './pages/IrveSimulator.jsx';
 import DevisPage from './pages/DevisPage.jsx';
+import ShantiOnePage from './pages/ShantiOnePage.jsx';
 
 import MentionsLegales from './pages/Legal/MentionsLegales.jsx';
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy.jsx';
@@ -150,6 +151,14 @@ function AppContent() {
             element={
               <ProtectedRoute requiredPermission="canAccessTracking">
                 <DossierTracking />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="shanti-one"
+            element={
+              <ProtectedRoute requiredPermission="canAccessShantiOne">
+                <ShantiOnePage />
               </ProtectedRoute>
             }
           />

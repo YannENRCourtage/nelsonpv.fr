@@ -235,3 +235,39 @@ export const sendResetPasswordEmail = async (email) => {
         throw error;
     }
 };
+
+/**
+ * Vérification stricte des autorisations pour la page Shanti One :
+ * 1. Yann (y.barberis@enr-courtage.fr / Admin)
+ * 2. Véro (v.dutard@enr-courtage.fr / Admin)
+ * 3. Laurent GUYON
+ * 4. Delphine BARDE (delphine.barde@barconniere.group)
+ */
+export const isShantiOneAuthorized = (user) => {
+    if (!user) return false;
+    const email = (user.email || '').toLowerCase().trim();
+    const firstName = (user.firstName || user.displayName || '').toLowerCase();
+    const lastName = (user.lastName || '').toLowerCase();
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    // 1. Yann Barberis
+    if (email === 'y.barberis@enr-courtage.fr' || email === 'contact@nelsonpv.fr' || email.includes('barberis')) return true;
+    
+    // 2. Véronique Dutard
+    if (email === 'v.dutard@enr-courtage.fr' || fullName.includes('dutard') || fullName.includes('veronique') || fullName.includes('véronique')) return true;
+
+    // 3. Laurent Guyon
+    if (email.includes('guyon') || (fullName.includes('laurent') && fullName.includes('guyon'))) return true;
+
+    // 4. Delphine Barde
+    if (email === 'delphine.barde@barconniere.group' || email.includes('barde') || (fullName.includes('delphine') && fullName.includes('barde'))) return true;
+
+    // Admins généraux
+    if (user.role === 'admin' || user.role === 'Administrator' || user.isAdmin === true) return true;
+
+    // Permission explicite
+    if (user.permissions?.canAccessShantiOne || user.canAccessShantiOne) return true;
+
+    return false;
+};
+
