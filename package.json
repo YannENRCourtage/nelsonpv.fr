@@ -35,6 +35,7 @@
     "@react-leaflet/core": "^2.1.0",
     "@react-three/drei": "^9.88.17",
     "@react-three/fiber": "^8.15.19",
+    "@turf/turf": "^7.3.5",
     "@vercel/analytics": "^1.6.1",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.0",
@@ -53,6 +54,7 @@
     "immer": "^10.0.3",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.1",
+    "jszip": "^3.10.2",
     "leaflet": "^1.9.4",
     "leaflet-control-geocoder": "^2.4.0",
     "leaflet-geometryutil": "^0.10.3",
@@ -80,8 +82,7 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.182.0",
     "xlsx": "^0.18.5",
-    "zustand": "^5.0.9",
-    "@turf/turf": "^7.3.5"
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@babel/generator": "^7.27.0",

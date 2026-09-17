@@ -6,8 +6,12 @@ import {
   Hash, Ruler, Info, RefreshCw, Mail, Phone, FileText,
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
   Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus,
-  Compass, User, Download, Lock, Unlock, Move
+  Compass, User, Download, Lock, Unlock, Move,
+  Landmark, ExternalLink, Copy, CheckCheck
 } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { fetchUrbanismeMairiePortal } from '@/services/urbanismeRoutingService';
+import { exportDossierDepotZip } from '@/services/DPGeneratorService';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames, parseFrenchAddress } from '@/services/SmartCerfaService';
 import { downloadPieceDwg } from '@/services/DwgExportService';
 import { cadastreService } from '@/services/CadastreService';
@@ -991,6 +995,17 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const masseMapInstancesRef = useRef({});
   const captureStructureMasseMapRef = useRef(null);
   const masseRotationDebounceRef = useRef(null);
+
+  // ── Aiguillage Mairie & Téléservice SVE (Étape 7 Validation) ──────────────
+  const [mairieRouting, setMairieRouting] = useState({
+    loading: false,
+    data: null,
+    error: null,
+  });
+  const [popupBlocked, setPopupBlocked] = useState(false);
+  const [isExportingZip, setIsExportingZip] = useState(false);
+  const [zipProgressText, setZipProgressText] = useState('');
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
   // Synchronisation des cotations personnalisées enregistrées sur le projet
   useEffect(() => {
@@ -4044,6 +4059,75 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     }
   };
 
+  // Chargement automatique des informations de la Mairie et du guichet SVE à l'étape 7 (Validation)
+  useEffect(() => {
+    if (step === 6) {
+      const city = editedProject?.city || editedProject?.commune || summary?.commune || project?.city || project?.commune || '';
+      const postcode = editedProject?.zip || editedProject?.codePostal || project?.zip || '';
+      const address = editedProject?.address || project?.address || '';
+      const insee = editedProject?.insee || editedProject?.code_insee || project?.insee || '';
+
+      if (city || postcode || insee) {
+        setMairieRouting(prev => ({ ...prev, loading: true, error: null }));
+        fetchUrbanismeMairiePortal({ insee, postcode, city, address })
+          .then((data) => {
+            setMairieRouting({ loading: false, data, error: null });
+          })
+          .catch((err) => {
+            console.error('[UrbanismeWizard] Erreur routage mairie:', err);
+            setMairieRouting({ loading: false, data: null, error: err.message });
+          });
+      }
+    }
+  }, [step, editedProject?.city, editedProject?.commune, editedProject?.zip, editedProject?.address, editedProject?.insee, project?.city, project?.commune, project?.zip, project?.address, project?.insee]);
+
+  const handleOpenPortalAndDownloadZip = async () => {
+    const portalUrl = mairieRouting?.data?.portal?.url || 'https://www.service-public.fr/particuliers/vosdroits/R52221';
+
+    // 1. Tenter l'ouverture du guichet unique dans un nouvel onglet
+    try {
+      const newWin = window.open(portalUrl, '_blank', 'noopener,noreferrer');
+      if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
+        setPopupBlocked(true);
+      } else {
+        setPopupBlocked(false);
+      }
+    } catch (e) {
+      console.warn('[UrbanismeWizard] Pop-up bloqué par le navigateur:', e);
+      setPopupBlocked(true);
+    }
+
+    // 2. Déclencher le packaging ZIP
+    setIsExportingZip(true);
+    setZipProgressText('Préparation des pièces du dossier...');
+    try {
+      saveWizardState();
+      const { finalProject, finalTypeLabel } = await prepareProjectPayload();
+      await exportDossierDepotZip({
+        project: finalProject,
+        type: type,
+        chosenType: finalTypeLabel,
+        selectedPages: selectedPages,
+        mairieInfo: mairieRouting?.data,
+        onProgress: (msg) => setZipProgressText(msg)
+      });
+      toast({
+        title: 'Dossier de dépôt téléchargé !',
+        description: 'L\'archive ZIP avec les pièces officielles et les instructions est prête pour le dépôt.',
+      });
+    } catch (zipErr) {
+      console.error('[UrbanismeWizard] Erreur export ZIP:', zipErr);
+      toast({
+        title: 'Erreur export ZIP',
+        description: zipErr?.message || 'Une erreur est survenue lors de la création de l\'archive.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExportingZip(false);
+      setZipProgressText('');
+    }
+  };
+
   if (!isOpen) return null;
 
   const preservedKwc = editedProject?.puissance || editedProject?.kwc || project?.kwc || project?.puissance || project?.projectSize || editedProject?.projectSize || '';
@@ -6089,6 +6173,166 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
               {step === 6 && (
                 <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+
+                  {/* Cartouche Dépôt Dématérialisé en Mairie & Portail SVE */}
+                  <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 rounded-2xl p-4 sm:p-5 text-white shadow-md border border-blue-800/40 relative overflow-hidden">
+                    {/* Ruban tricolore officiel */}
+                    <div className="absolute top-0 left-0 right-0 h-1.5 flex">
+                      <div className="flex-1 bg-blue-600"></div>
+                      <div className="flex-1 bg-white"></div>
+                      <div className="flex-1 bg-red-600"></div>
+                    </div>
+
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mt-1">
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-blue-500/20 text-blue-200 border border-blue-400/30">
+                            <Landmark className="w-3 h-3 text-blue-300" />
+                            RÉPUBLIQUE FRANÇAISE &bull; SVE URBANISME
+                          </span>
+                          {mairieRouting.loading ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-blue-300 font-semibold">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Recherche du guichet communal...
+                            </span>
+                          ) : mairieRouting.data?.portal ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              mairieRouting.data.portal.isNationalFallback
+                                ? 'bg-indigo-500/25 text-indigo-200 border border-indigo-400/30'
+                                : 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/30'
+                            }`}>
+                              <CheckCircle2 className="w-3 h-3" />
+                              {mairieRouting.data.portal.isNationalFallback ? "Téléservice National AD'AU" : "Guichet Unique Communal"}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="flex items-baseline gap-2">
+                          <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                            {mairieRouting.data?.nom || `Mairie de ${editedProject?.city || editedProject?.commune || 'la commune'}`}
+                          </h3>
+                          {mairieRouting.data?.codePostal && (
+                            <span className="text-xs text-blue-200 font-bold">({mairieRouting.data.codePostal})</span>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-blue-100/80 leading-snug">
+                          Portail de Saisine par Voie Électronique (SVE) :{' '}
+                          <span className="font-semibold text-white">
+                            {mairieRouting.data?.portal?.name || "AD'AU (Service-Public.fr)"}
+                          </span>
+                        </p>
+
+                        {mairieRouting.data?.portal?.url && (
+                          <div className="flex items-center gap-2 pt-0.5">
+                            <a
+                              href={mairieRouting.data.portal.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-blue-300 hover:text-white underline underline-offset-2 transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Accéder au guichet en direct ({(() => {
+                                try { return new URL(mairieRouting.data.portal.url).hostname; } catch { return 'Lien officiel'; }
+                              })()})
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bouton d'action principal CTA */}
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
+                        <button
+                          type="button"
+                          disabled={isExportingZip}
+                          onClick={handleOpenPortalAndDownloadZip}
+                          className="inline-flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all active:scale-98 disabled:opacity-60 cursor-pointer"
+                          title="Ouvre le guichet de dépôt officiel et télécharge l'ensemble des pièces ordonnées en archive ZIP"
+                        >
+                          {isExportingZip ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin text-white" />
+                              <span>{zipProgressText || 'Génération du ZIP...'}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-4 h-4 text-white" />
+                              <span>Ouvrir le Guichet Unique &amp; Télécharger les pièces (.ZIP)</span>
+                              <ExternalLink className="w-4 h-4 text-blue-200" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Alerte Bloqueur de Pop-up si déclenché */}
+                    {popupBlocked && (
+                      <div className="mt-3.5 p-3 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-100 flex items-start gap-2.5 text-xs animate-fade-in">
+                        <AlertCircle className="w-4 h-4 text-amber-300 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <span className="font-bold">L'ouverture automatique a été bloquée par votre navigateur.</span>{' '}
+                          Cliquez sur ce lien pour accéder directement au guichet :{' '}
+                          <a
+                            href={mairieRouting.data?.portal?.url || 'https://www.service-public.fr/particuliers/vosdroits/R52221'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold underline text-white hover:text-amber-200 ml-1 inline-flex items-center gap-1"
+                          >
+                            Ouvrir le Guichet d'Urbanisme ↗
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bloc Secondaire : Option Dépôt Papier / LRAR */}
+                    <div className="mt-3.5 pt-3 border-t border-blue-900/60 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <Mail className="w-4 h-4 text-blue-300 flex-shrink-0 mt-0.5" />
+                        <div className="text-[11px] leading-snug">
+                          <span className="font-bold text-white">Option Dépôt Papier / LRAR :</span>{' '}
+                          <span className="text-blue-200/90 whitespace-pre-line">
+                            {mairieRouting.data?.adresseLrar
+                              ? mairieRouting.data.adresseLrar.split('\n').slice(0, 3).join(' — ') + '...'
+                              : 'Mairie compétente pour l\'envoi postal recommandé'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {mairieRouting.data?.telephone && (
+                          <span className="text-[11px] text-blue-200/80 hidden sm:inline-flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-blue-400" />
+                            {mairieRouting.data.telephone}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (mairieRouting.data?.adresseLrar) {
+                              navigator.clipboard.writeText(mairieRouting.data.adresseLrar);
+                              setCopiedAddress(true);
+                              setTimeout(() => setCopiedAddress(false), 2000);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-blue-100 text-[10px] font-bold transition-all border border-white/10 cursor-pointer"
+                          title="Copier l'adresse postale formatée pour LRAR"
+                        >
+                          {copiedAddress ? (
+                            <>
+                              <CheckCheck className="w-3 h-3 text-emerald-400" />
+                              <span className="text-emerald-300">Adresse copiée !</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copier l'adresse LRAR</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-900 flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
