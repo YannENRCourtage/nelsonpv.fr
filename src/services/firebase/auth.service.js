@@ -175,14 +175,21 @@ export const createUser = async (email, password, userData) => {
             firstName: userData.firstName || '',
             lastName: userData.lastName || '',
             role: userData.role || 'user',
+            title: userData.title || '',
             tenantId: userData.tenantId || 'green-invest',
             permissions: userData.permissions || {
                 canAccessCRM: false,
                 canAccessEditor: false,
                 canAccessSimulator: false,
-                canAccessConfigurator: false, // Default explicit
-                canAccessOdoo: false,         // Default explicit
-                canAccessCDP: false,          // Default explicit
+                canAccessConfigurator: false,
+                canAccessOdoo: false,
+                canAccessCDP: false,
+                canAccessFinance: false,
+                canAccessBP: false,
+                canAccessMonday: false,
+                canAccessEnedis: false,
+                canAccessDeveloppement: false,
+                canAccessTracking: false,
                 canViewAllProjects: false
             },
             createdAt: new Date(),

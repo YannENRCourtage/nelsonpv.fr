@@ -241,6 +241,7 @@ export const generatePdfForProject = async (projectData) => {
 function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized }) {
   const { logout, user, activeTenantId, isAdmin, switchTenant } = useAuth();
   const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
+  const isDelphineBarde = (user?.firstName?.toLowerCase().includes('delphine') && user?.lastName?.toLowerCase().includes('barde')) || user?.email?.toLowerCase().includes('barde');
   const isAlexandruMihailov = (user?.firstName?.toLowerCase().includes('alexandru') && user?.lastName?.toLowerCase().includes('mihailov')) || user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr';
   const isRestrictedUser = isLaurentGuyon || isAlexandruMihailov;
   const navigate = useNavigate();
@@ -488,7 +489,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
               user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie' ||
               user?.role === 'admin' || user?.role === 'Administrator' ||
-              user?.permissions?.canAccessBP ||
+              user?.permissions?.canAccessBP || user?.canAccessBP || isDelphineBarde ||
               user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr' || isLaurentGuyon) && (
               <NavLink 
                 to="/bp-acama" 
@@ -709,22 +710,32 @@ export default function AppLayout() {
   const isTrackingAuthorized = () => {
     if (!user) return false;
 
-    // Condition impérative : être sur l'interface GREEN INVEST
-    // Même pour les administrateurs
-    if (activeTenantId !== 'green-invest') return false;
-
-    // Admins (Véro, Yann sont admins)
-    if (user.role === 'admin' || user.role === 'Administrator') return true;
+    // Admins ont toujours accès
+    if (user.role === 'admin' || user.role === 'Administrator' || user.isAdmin === true) return true;
 
     const email = user.email?.toLowerCase();
     const firstName = (user.firstName || user.displayName || '').toLowerCase();
     const lastName = (user.lastName || '').toLowerCase();
 
-    // Laurent GUYON
-    if (firstName.includes('laurent') && lastName.includes('guyon')) return true;
-    if (email?.includes('guyon')) return true;
+    // Laurent GUYON ou Delphine BARDE
+    const isLaurent = (firstName.includes('laurent') && lastName.includes('guyon')) || email?.includes('guyon');
+    const isDelphine = (firstName.includes('delphine') && lastName.includes('barde')) || email?.includes('barde');
 
-    return false;
+    // Vérification de la permission Suivi dossiers
+    const hasTrackingPermission = Boolean(
+      user.permissions?.canAccessTracking || 
+      user.canAccessTracking || 
+      isLaurent || 
+      isDelphine
+    );
+
+    if (!hasTrackingPermission) return false;
+
+    // Condition impérative : être sur l'interface GREEN INVEST (ou utilisateur rattaché à Green Invest)
+    const userTenant = user.tenantId || user.activeTenantId || user.tenant;
+    const isGreenInvest = activeTenantId === 'green-invest' || userTenant === 'green-invest' || !activeTenantId;
+
+    return isGreenInvest;
   };
 
   return (
@@ -839,7 +850,7 @@ export default function AppLayout() {
             {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
               user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie' ||
               user?.role === 'admin' || user?.role === 'Administrator' ||
-              user?.permissions?.canAccessBP ||
+              user?.permissions?.canAccessBP || user?.canAccessBP || ((user?.firstName?.toLowerCase().includes('delphine') && user?.lastName?.toLowerCase().includes('barde')) || user?.email?.toLowerCase().includes('barde')) ||
               user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr' || isLaurentGuyon) && (
               <NavLink
                 to="/bp-acama"

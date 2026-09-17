@@ -54,6 +54,7 @@ export default function Admin() {
     firstName: '',
     lastName: '',
     role: 'user',
+    title: '',
     tenantId: 'green-invest',
     permissions: {
       canAccessCRM: false,
@@ -98,6 +99,10 @@ export default function Admin() {
   const handleOpenModal = (user = null) => {
     if (user) {
       setEditingUser(user);
+      const isDelphine = (user.firstName?.toLowerCase().includes('delphine') && user.lastName?.toLowerCase().includes('barde')) || user.email?.toLowerCase().includes('barde');
+      const isLaurent = (user.firstName?.toLowerCase().includes('laurent') && user.lastName?.toLowerCase().includes('guyon')) || user.email?.toLowerCase().includes('guyon');
+      const defaultTitle = isDelphine ? 'Secrétaire Générale' : (isLaurent ? 'Président' : '');
+
       setFormData({
         email: user.email || '',
         password: '',
@@ -105,6 +110,7 @@ export default function Admin() {
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         role: user.role || 'user',
+        title: user.title || defaultTitle,
         tenantId: user.tenantId || 'green-invest',
         permissions: {
           canAccessCRM: user.permissions?.canAccessCRM || false,
@@ -131,6 +137,7 @@ export default function Admin() {
         firstName: '',
         lastName: '',
         role: 'user',
+        title: '',
         tenantId: 'green-invest',
         permissions: {
           canAccessCRM: false,
@@ -181,6 +188,7 @@ export default function Admin() {
           firstName: formData.firstName,
           lastName: formData.lastName,
           role: formData.role,
+          title: formData.title || '',
           tenantId: formData.tenantId,
           permissions: formData.permissions
         };
@@ -402,12 +410,24 @@ export default function Admin() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-green-100 text-green-800'
-                        }`}>
-                        {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
-                      </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin'
+                          ? 'bg-purple-100 text-purple-800'
+                          : 'bg-green-100 text-green-800'
+                          }`}>
+                          {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
+                        </span>
+                        {(() => {
+                          const isDelphine = (user.firstName?.toLowerCase().includes('delphine') && user.lastName?.toLowerCase().includes('barde')) || user.email?.toLowerCase().includes('barde');
+                          const isLaurent = (user.firstName?.toLowerCase().includes('laurent') && user.lastName?.toLowerCase().includes('guyon')) || user.email?.toLowerCase().includes('guyon');
+                          const title = user.title || (isDelphine ? 'Secrétaire Générale' : (isLaurent ? 'Président' : ''));
+                          return title ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                              {title}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.tenantId === 'acama' ? 'bg-blue-100 text-blue-800' :
@@ -520,6 +540,17 @@ export default function Admin() {
                     {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
                   </span>
 
+                  {(() => {
+                    const isDelphine = (user.firstName?.toLowerCase().includes('delphine') && user.lastName?.toLowerCase().includes('barde')) || user.email?.toLowerCase().includes('barde');
+                    const isLaurent = (user.firstName?.toLowerCase().includes('laurent') && user.lastName?.toLowerCase().includes('guyon')) || user.email?.toLowerCase().includes('guyon');
+                    const title = user.title || (isDelphine ? 'Secrétaire Générale' : (isLaurent ? 'Président' : ''));
+                    return title ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                        {title}
+                      </span>
+                    ) : null;
+                  })()}
+
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user.tenantId === 'acama' ? 'bg-blue-100 text-blue-800' :
                     user.tenantId === 'green-invest' ? 'bg-green-100 text-green-800' :
                       'bg-slate-100 text-slate-600'
@@ -597,6 +628,17 @@ export default function Admin() {
             <div className="space-y-2">
               <Label htmlFor="displayName">Nom d'affichage (ex: Pseudo)</Label>
               <Input id="displayName" name="displayName" value={formData.displayName} onChange={handleInputChange} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="title">Titre / Fonction (ex: Secrétaire Générale, Président, Conseiller...)</Label>
+              <Input
+                id="title"
+                name="title"
+                value={formData.title}
+                onChange={handleInputChange}
+                placeholder="ex: Secrétaire Générale, Président, Conseiller..."
+              />
             </div>
 
             <div className="space-y-2">

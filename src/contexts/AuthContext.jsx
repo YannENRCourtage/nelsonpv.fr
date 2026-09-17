@@ -81,6 +81,17 @@ export const AuthProvider = ({ children }) => {
           };
         }
 
+        const isDelphine = (userData.firstName?.toLowerCase().includes('delphine') && userData.lastName?.toLowerCase().includes('barde')) || 
+                           userEmail?.includes('delphine') || userEmail?.includes('barde');
+        if (isDelphine) {
+          userData.title = userData.title || 'Secrétaire Générale';
+          userData.permissions = {
+            ...(userData.permissions || {}),
+            canAccessBP: true,
+            canAccessTracking: true
+          };
+        }
+
         setUser(userData);
         setIsAuthenticated(true);
 

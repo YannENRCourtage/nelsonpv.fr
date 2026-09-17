@@ -11,7 +11,8 @@ const FALLBACK_TEAM = [
   { id: 'team_elodie', displayName: 'Elodie', email: 'elodie@enr-courtage.fr', role: 'Gestion' },
   { id: 'team_jack', displayName: 'Jack', email: 'jack@enr-courtage.fr', role: 'Technique' },
   { id: 'team_laurent', displayName: 'Laurent', email: 'laurent@enr-courtage.fr', role: 'Technique' },
-  { id: 'team_philippe', displayName: 'Philippe', email: 'philippe@enr-courtage.fr', role: 'Partenaire' }
+  { id: 'team_philippe', displayName: 'Philippe', email: 'philippe@enr-courtage.fr', role: 'Partenaire' },
+  { id: 'team_delphine', displayName: 'Delphine BARDE', email: 'delphine.barde@barconniere.group', role: 'Secrétaire Générale' }
 ];
 
 /**

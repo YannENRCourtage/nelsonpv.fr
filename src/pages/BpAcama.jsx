@@ -490,8 +490,8 @@ function computeBatteryProfitability(config) {
   if (!config || config.enabled === false) return null;
   
   const {
-    puissanceDemandee = 125,
-    capaciteStockage = 261,
+    puissanceDemandee = 500,
+    capaciteStockage = 1044,
     disponibilite = 98,
     rendementRoundTrip = 88,
     degradationAnnuelle = 1.5,
@@ -506,14 +506,14 @@ function computeBatteryProfitability(config) {
     turpeStockageTarif = 18, // 18 €/kW/an
     maintenanceTarif = 8, // 8 €/kW/an
     assuranceTarif = 3.5, // 3.5 €/kW/an
-    loyerDalle = 1250, // 1250 €/an par armoire / dalle
+    loyerDalle = 5000, // 1250 €/an par armoire / dalle (4 briques = 5000 €/an)
     inflationAnnuelle = 2.0,
-    batterieBms = 34625,
-    genieCivil = 6000,
-    raccordement = 19900,
-    developpement = 6000,
-    fraisCommerciaux = 5000,
-    tauxEmprunt = 3.9,
+    batterieBms = 140000,
+    genieCivil = 9900,
+    raccordement = 57650,
+    developpement = 7500,
+    fraisCommerciaux = 20000,
+    tauxEmprunt = 4.3,
     dureeEmprunt = 12,
     apport = 0,
     tauxIS = 25,
@@ -1197,7 +1197,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         turpeAn: p * turpeRate,
         assuranceAn: Math.round(p * assurRate),
         dureeEmprunt: prev.batteryConfig?.dureeEmprunt || 12,
-        tauxEmprunt: prev.batteryConfig?.tauxEmprunt || 3.9,
+        tauxEmprunt: prev.batteryConfig?.tauxEmprunt || 4.3,
         degradationAnnuelle: prev.batteryConfig?.degradationAnnuelle || 1.5,
         commissionAgregateur: prev.batteryConfig?.commissionAgregateur || 18,
         disponibilite: dispo,
@@ -4542,29 +4542,33 @@ export default function BpAcama() {
       enabled: false,
       isGlobal: false,
       inflationAnnuelle: 2,
-      degradationAnnuelle: 1,
-      batterieBms: 33625,
+      degradationAnnuelle: 1.5,
+      batteryModelKey: 'cesc_mercury_261',
+      nbBricks: 4,
+      batterieBms: 140000,
       onduleurPcs: 0,
-      genieCivil: 6000,
-      puissanceDemandee: 125,
+      genieCivil: 9900,
+      puissanceDemandee: 500,
+      capaciteStockage: 1044,
       dureeDecharge: 2,
-      raccordement: 9000,
-      developpement: 5000,
-      fraisCommerciaux: 5000,
-      arbitrageEnergie: 3750,
-      reserveFCR: 18750,
-      mecanismeCapacite: 2500,
-      effacement: 2500,
+      raccordement: 57650,
+      developpement: 7500,
+      fraisCommerciaux: 20000,
+      arbitrageEnergie: 15242.4,
+      reserveFCR: 85852.8,
+      mecanismeCapacite: 8750,
+      effacement: 0,
       disponibilite: 98,
       rendementRoundTrip: 88,
-      maintenanceAn: 750,
-      revenuBailleurAn: 1250,
-      gestionChargeAn: 4562.5,
-      assuranceAn: 240,
+      maintenanceAn: 4000,
+      revenuBailleurAn: 5000,
+      loyerDalle: 5000,
+      gestionChargeAn: 0,
+      assuranceAn: 1750,
       commissionAgregateur: 18,
-      turpeAn: 5000,
-      iferAn: 1250,
-      tauxEmprunt: 3.9,
+      turpeAn: 9000,
+      iferAn: 0,
+      tauxEmprunt: 4.3,
       dureeEmprunt: 12,
       apport: 0,
       tauxIS: 25
@@ -4581,31 +4585,33 @@ export default function BpAcama() {
       enabled: false,
       isGlobal: false,
       inflationAnnuelle: 2,
-      degradationAnnuelle: 1,
+      degradationAnnuelle: 1.5,
       batteryModelKey: 'cesc_mercury_261',
-      nbBricks: 1,
-      batterieBms: 34625,
+      nbBricks: 4,
+      batterieBms: 140000,
       onduleurPcs: 0,
-      genieCivil: 6000,
-      puissanceDemandee: 125,
+      genieCivil: 9900,
+      puissanceDemandee: 500,
+      capaciteStockage: 1044,
       dureeDecharge: 2,
-      raccordement: 19900,
-      developpement: 6000,
-      fraisCommerciaux: 5000,
-      arbitrageEnergie: 3750,
-      reserveFCR: 18750,
-      mecanismeCapacite: 2500,
-      effacement: 2500,
+      raccordement: 57650,
+      developpement: 7500,
+      fraisCommerciaux: 20000,
+      arbitrageEnergie: 15242.4,
+      reserveFCR: 85852.8,
+      mecanismeCapacite: 8750,
+      effacement: 0,
       disponibilite: 98,
       rendementRoundTrip: 88,
-      maintenanceAn: 750,
-      revenuBailleurAn: 1250,
-      gestionChargeAn: 4562.5,
-      assuranceAn: 286, // Updated for 34625 base (71525 total * 0.4%)
+      maintenanceAn: 4000,
+      revenuBailleurAn: 5000,
+      loyerDalle: 5000,
+      gestionChargeAn: 0,
+      assuranceAn: 1750,
       commissionAgregateur: 18,
-      turpeAn: 2500,
-      iferAn: 625,
-      tauxEmprunt: 3.9,
+      turpeAn: 9000,
+      iferAn: 0,
+      tauxEmprunt: 4.3,
       dureeEmprunt: 12,
       apport: 0,
       tauxIS: 25
@@ -4633,13 +4639,28 @@ export default function BpAcama() {
         // Also merge any missing properties just in case
         saved.batteryConfig = { ...defaultBatteryConfig, ...saved.batteryConfig };
         
-        // AUTO-MIGRATION: If project has old defaults, update to new standards
-        if (saved.batteryConfig.batterieBms === 33625) saved.batteryConfig.batterieBms = 50209;
-        if (saved.batteryConfig.raccordement === 9000) saved.batteryConfig.raccordement = 19900;
-        if (saved.batteryConfig.developpement === 5000) saved.batteryConfig.developpement = 6000;
-        if (saved.batteryConfig.assuranceAn === 240 || saved.batteryConfig.assuranceAn === 390) saved.batteryConfig.assuranceAn = 353;
-        if (saved.batteryConfig.turpeAn === 5000) saved.batteryConfig.turpeAn = 2500;
-        if (saved.batteryConfig.iferAn === 1250) saved.batteryConfig.iferAn = 625;
+        // AUTO-MIGRATION: Update defaults to 4 bricks and 4.3% credit rate
+        if (saved.batteryConfig.tauxEmprunt === 3.9 || saved.batteryConfig.tauxEmprunt === undefined) {
+          saved.batteryConfig.tauxEmprunt = 4.3;
+        }
+        if (saved.batteryConfig.nbBricks === 1 && (saved.batteryConfig.batterieBms === 34625 || saved.batteryConfig.batterieBms === 33625 || saved.batteryConfig.batterieBms === 50209)) {
+          saved.batteryConfig.nbBricks = 4;
+          saved.batteryConfig.puissanceDemandee = 500;
+          saved.batteryConfig.capaciteStockage = 1044;
+          saved.batteryConfig.batterieBms = 140000;
+          saved.batteryConfig.genieCivil = 9900;
+          saved.batteryConfig.developpement = 7500;
+          saved.batteryConfig.fraisCommerciaux = 20000;
+          saved.batteryConfig.raccordement = 57650;
+          saved.batteryConfig.revenuBailleurAn = 5000;
+          saved.batteryConfig.loyerDalle = 5000;
+          saved.batteryConfig.maintenanceAn = 4000;
+          saved.batteryConfig.turpeAn = 9000;
+          saved.batteryConfig.assuranceAn = 1750;
+          saved.batteryConfig.arbitrageEnergie = 15242.4;
+          saved.batteryConfig.reserveFCR = 85852.8;
+          saved.batteryConfig.mecanismeCapacite = 8750;
+        }
         
         // RECENT UPDATES: revenuBailleur (1250) and commissionAgregateur (18)
         const nbB = saved.batteryConfig.nbBricks || 1;
@@ -4903,9 +4924,11 @@ export default function BpAcama() {
 
 
   // Access Control: 
-  // GREEN INVEST: Admins + Laurent Guyon
-  // ACAMA: Admins + Alexandru
-  const hasAccess = isGreenInvest ? (isAdmin || isLaurentGuyon) : (isAdmin || isAlexandru);
+  // GREEN INVEST: Admins + Laurent Guyon + Delphine Barde + Utilisateurs avec droit Accès BP (canAccessBP)
+  // ACAMA: Admins + Alexandru + Utilisateurs avec droit Accès BP (canAccessBP)
+  const isDelphineBarde = (user?.firstName?.toLowerCase().includes('delphine') && user?.lastName?.toLowerCase().includes('barde')) || user?.email?.toLowerCase().includes('barde');
+  const canAccessBP = Boolean(user?.permissions?.canAccessBP || user?.canAccessBP);
+  const hasAccess = isAdmin || canAccessBP || isDelphineBarde || (isGreenInvest ? isLaurentGuyon : isAlexandru);
 
   if (!hasAccess) {
     return (

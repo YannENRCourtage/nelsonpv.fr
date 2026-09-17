@@ -302,9 +302,12 @@ export default function Crm() {
     return date.toLocaleDateString();
   };
 
+  const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
+  const isDelphineBarde = (user?.firstName?.toLowerCase().includes('delphine') && user?.lastName?.toLowerCase().includes('barde')) || user?.email?.toLowerCase().includes('barde');
+
   const currentUser = {
     name: user?.firstName ? `${user.firstName} ${user.lastName || ''}` : (user?.displayName || 'Utilisateur'),
-    role: user?.title || (user?.role === 'admin' ? 'Administrateur' : ((user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) ? 'Président' : 'Conseiller')),
+    role: user?.title || (user?.role === 'admin' ? 'Administrateur' : (isLaurentGuyon ? 'Président' : (isDelphineBarde ? 'Secrétaire Générale' : 'Conseiller'))),
     avatar: user?.photoURL ? user.photoURL : (user?.firstName?.[0] || user?.displayName?.[0] || 'U').toUpperCase(),
     photoURL: user?.photoURL,
     color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600'

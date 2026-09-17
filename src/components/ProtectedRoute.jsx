@@ -27,11 +27,16 @@ export const ProtectedRoute = ({ children, requiredRole, requiredPermission }) =
         
         // Custom logic for tracking page specifically
         if (requiredPermission === 'canAccessTracking') {
-            if (activeTenantId !== 'green-invest') {
+            const isDelphineBarde = (user?.firstName?.toLowerCase().includes('delphine') && user?.lastName?.toLowerCase().includes('barde')) || user?.email?.toLowerCase().includes('barde');
+            const hasTrackingPerm = Boolean(isAdmin || user?.permissions?.[requiredPermission] === true || user?.[requiredPermission] === true || isLaurentGuyon || isDelphineBarde);
+            
+            if (!hasTrackingPerm) {
                 return <Navigate to="/" replace />;
             }
-            // If on green-invest, check if admin or authorized user
-            if (!isAdmin && !isLaurentGuyon && user?.permissions?.[requiredPermission] !== true) {
+
+            const userTenant = user?.tenantId || user?.activeTenantId || user?.tenant;
+            const isGreenInvest = activeTenantId === 'green-invest' || userTenant === 'green-invest' || !activeTenantId;
+            if (!isGreenInvest && !isAdmin) {
                 return <Navigate to="/" replace />;
             }
         } else {
