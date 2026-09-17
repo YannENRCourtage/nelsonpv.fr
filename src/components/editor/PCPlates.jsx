@@ -697,7 +697,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const scaleStartX = 660 - scaleTotalWidth;
     const scaleY = 172;
 
-    const roofTypeLabel = isOmbriere ? 'monopente (ombrière VL/PL)' : isAsym ? (isAsym2 ? 'double pente asymétrique 2 zones' : 'double pente asymétrique') : isSym ? 'double pente symétrique' : 'photovoltaïque';
+    const roofTypeLabel = (isOmbriere && !(isDouble || isAsym || isSym)) ? 'monopente (ombrière VL/PL)' : isAsym ? (isAsym2 ? 'double pente asymétrique 2 zones' : 'double pente asymétrique') : isSym ? 'double pente symétrique' : 'photovoltaïque';
 
     const asym2LeftDist = 13.1;
     const asym2RightDist = (Math.abs(largeur - 25.5) < 0.8) ? 12.4 : (Math.abs(largeur - 29.1) < 0.8 ? 16.0 : (largeur - 13.1));
@@ -738,7 +738,7 @@ L'emplacement du point de livraison indiqué dans les pièces graphiques de l'au
 Le positionnement du point de livraison et d'un transformateur (le cas échéant) demeure à l'appréciation finale du gestionnaire de réseau en fonction du site et des équipements déjà existants.
 
 5- SECURITE INCENDIE
-Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).`;
+Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées.`;
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-section-notice">
@@ -1242,7 +1242,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                 </div>
                                 <div>
                                     <strong style={{ color: '#0f172a' }}>5- SECURITE INCENDIE</strong>
-                                    <div>Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).</div>
+                                    <div>Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées.</div>
                                 </div>
                             </div>
                         )}

@@ -580,7 +580,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
         else if (isAsym2 && Math.abs(largeur - 29.1) < 0.8) extRightHeight = 3.30;
     }
 
-    const roofTypeLabel = isOmbriere ? 'monopente (ombrière VL/PL)' : isAsym ? (isAsym2 ? 'double pente asymétrique 2 zones' : 'double pente asymétrique') : isSym ? 'double pente symétrique' : 'photovoltaïque';
+    const roofTypeLabel = (isOmbriere && !(isDouble || isAsym || isSym)) ? 'monopente (ombrière VL/PL)' : isAsym ? (isAsym2 ? 'double pente asymétrique 2 zones' : 'double pente asymétrique') : isSym ? 'double pente symétrique' : 'photovoltaïque';
 
     const coupeSvgContent = (
         <svg width="680" height="186" viewBox="0 0 680 186" style={{ width: '100%', height: '100%', maxHeight: isMulti ? '50mm' : '85mm' }}>

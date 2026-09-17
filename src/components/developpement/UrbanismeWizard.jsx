@@ -7,7 +7,7 @@ import {
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
   Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus,
   Compass, User, Download, Lock, Unlock, Move,
-  Landmark, ExternalLink, Copy, CheckCheck
+  Landmark, ExternalLink, Copy, CheckCheck, Save
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { fetchUrbanismeMairiePortal } from '@/services/urbanismeRoutingService';
@@ -1446,6 +1446,16 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           solutionType: 'ombriere'
         }, i);
 
+        const effectiveType = isCurrentActive
+          ? (config.buildingType || b.buildingType || 'ombriere_vl_simple_gauche')
+          : (b.buildingType || 'ombriere_vl_simple_gauche');
+        const effectivePitch = isCurrentActive
+          ? Number(config.roofPitch || b.roofPitch || 10)
+          : Number(b.roofPitch || 10);
+        const effectiveEave = isCurrentActive
+          ? Number(config.eaveHeight || b.eaveHeight || 3.7)
+          : Number(b.eaveHeight || 3.7);
+
         list.push({
           ...b,
           id: oId,
@@ -1453,6 +1463,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           length: effectiveLen,
           width: effectiveWid,
           totalWidth: effectiveWid,
+          buildingType: effectiveType,
+          roofPitch: effectivePitch,
+          eaveHeight: effectiveEave,
           solutionKey: 'ombriere',
           solutionLabel: 'Ombrière PV',
           indexInSol: i
@@ -1853,6 +1866,9 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
       const sBays = Number(s.bayCount || (isOmb ? 6 : 5));
       const sSpacing = Number(s.baySpacing || 7.5);
 
+      const isMono = String(sType).toLowerCase() === 'monopente' || String(sType).toLowerCase().includes('simple') || String(sType).toLowerCase().includes('mono');
+      const roofSlopeType = isMono ? 'toiture monopente' : 'toiture bipente';
+
       let extDesc = '';
       if (extL > 0 && extR > 0) {
         extDesc = ` (dont ${sMainW.toFixed(2)}m principal + ${extL.toFixed(2)}m extension gauche + ${extR.toFixed(2)}m extension droite)`;
@@ -1876,13 +1892,13 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
 
       if (idx === 0) {
         if (isOmb) {
-          batimentDesc = `Le projet a pour objet l'implantation d'une ombrière photovoltaïque (${sName}) de dimensions ${sL.toFixed(2)}m × ${sTotalW.toFixed(2)}m (surface couverte : ${sSurf} m²), orientée ${rotLabel} (${sRot}°), à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${sPitch}°, permettant d'abriter l'activité de l'exploitant tout en produisant de l'électricité solaire${pwrForStruct ? `, développant une puissance installée de ${pwrForStruct} kWc` : ''}.`;
+          batimentDesc = `Le projet a pour objet l'implantation d'une ombrière photovoltaïque (${sName}) de dimensions ${sL.toFixed(2)}m × ${sTotalW.toFixed(2)}m (surface couverte : ${sSurf} m²), orientée ${rotLabel} (${sRot}°), à structure métallique autoportante en Y/V (RAL 7016) avec ${roofSlopeType} inclinée à ${sPitch}°, permettant d'abriter l'activité de l'exploitant tout en produisant de l'électricité solaire${pwrForStruct ? `, développant une puissance installée de ${pwrForStruct} kWc` : ''}.`;
         } else {
-          batimentDesc = `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique (${sName}) de forme rectangulaire (longueur : ${sL.toFixed(2)}m, largeur : ${sTotalW.toFixed(2)}m${extDesc}, hauteur sablière : ${sEave.toFixed(2)}m, surface couverte : ${sSurf} m²), orienté ${rotLabel} (${sRot}°), en structure métallique (RAL 7016 / 7005), composé de ${sBays} travées de ${sSpacing}m d'entraxe. La toiture sera constituée d'une couverture avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${pwrForStruct ? `, développant une puissance installée de ${pwrForStruct} kWc` : ''}.`;
+          batimentDesc = `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique (${sName}) de forme rectangulaire (longueur : ${sL.toFixed(2)}m, largeur : ${sTotalW.toFixed(2)}m${extDesc}, hauteur sablière : ${sEave.toFixed(2)}m, surface couverte : ${sSurf} m²), orienté ${rotLabel} (${sRot}°), en structure métallique (RAL 7016 / 7005), composé de ${sBays} travées de ${sSpacing}m d'entraxe. La toiture sera constituée d'une couverture avec ${roofSlopeType} en bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${pwrForStruct ? `, développant une puissance installée de ${pwrForStruct} kWc` : ''}.`;
         }
       } else {
         if (isOmb) {
-          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque (${sName}) de dimensions ${sL.toFixed(2)}m × ${sTotalW.toFixed(2)}m (surface couverte : ${sSurf} m²), orientée ${rotLabel} (${sRot}°), à structure métallique en Y/V avec toiture monopente inclinée à ${sPitch}°.`;
+          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque (${sName}) de dimensions ${sL.toFixed(2)}m × ${sTotalW.toFixed(2)}m (surface couverte : ${sSurf} m²), orientée ${rotLabel} (${sRot}°), à structure métallique en Y/V avec ${roofSlopeType} inclinée à ${sPitch}°.`;
         } else {
           batimentDesc += `\nIl comprend également la construction d'un bâtiment (${sName}) de dimensions ${sL.toFixed(2)}m × ${sTotalW.toFixed(2)}m${extDesc} d'une emprise au sol de ${sSurf} m² (hauteur sablière : ${sEave.toFixed(2)}m, pente : ${sPitch}°, orienté ${rotLabel} ${sRot}°) en structure métallique similaire.`;
         }
@@ -1906,8 +1922,8 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
       : `Le bâtiment ne sera pas raccordé aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.`;
 
     const p5Details = (!isAcama && isDP)
-      ? `Une bâche à eau de 120m³ sera installée à proximité immédiate de la future ombrière. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf DP 02 - Plan de masse).`
-      : `Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf ${isDP ? 'DP' : 'PC'} 02 - Plan de masse).`;
+      ? `Une bâche à eau de 120m³ sera installée à proximité immédiate de la future ombrière. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées.`
+      : `Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées.`;
 
     return `1- OBJET DE LA DEMANDE
 ${objetDemande}
@@ -2752,7 +2768,14 @@ Le positionnement du point de livraison et d'un transformateur (le cas échéant
 5- SECURITE INCENDIE
 En cas de besoin pour la défense extérieure contre l'incendie, un canal est situé à 300m au Sud du terrain et plusieurs bornes incendie sont installées dans la zone résidentielle à 300m au Nord.`;
 
-    const initialNotice = savedState?.noticeText || project?.noticeText || (isRodierGarons ? garonsImage5Notice : buildAutoNoticeText());
+    const sanitizeNotice = (t) => {
+      if (!t) return t;
+      return t
+        .replace(/permettant d'abriter les véhicules tout en produisant de l'électricité solaire/g, "permettant d'abriter l'activité de l'exploitant tout en produisant de l'électricité solaire")
+        .replace(/\s*\(Cf\s+(?:DP|PC)\s*0?2\s*-\s*Plan\s+de\s+masse\)\.?/gi, '.');
+    };
+
+    const initialNotice = sanitizeNotice(savedState?.noticeText || project?.noticeText || (isRodierGarons ? garonsImage5Notice : buildAutoNoticeText()));
     setNoticeText(initialNotice);
     setIsNoticeUserModified(Boolean(savedState?.isNoticeUserModified || savedState?.noticeText || project?.noticeText || isRodierGarons));
 
@@ -3079,14 +3102,20 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     });
   }, [step, config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.leftWidth, config.rightWidth, config.solarStats, config.bayCount, config.baySpacing, activeBuildingIndex]);
 
-  // Mise à jour automatique de la notice uniquement si aucune notice n'a encore été définie
+  // Mise à jour automatique de la notice selon la configuration ou assainissement des mentions obsolètes
   useEffect(() => {
-    if (!isNoticeUserModified && !noticeText) {
+    if (!isNoticeUserModified) {
       const auto = buildAutoNoticeText();
       setNoticeText(auto);
       setEditedProject(prev => ({ ...prev, noticeText: auto }));
+    } else if (noticeText && (/permettant d'abriter les véhicules/i.test(noticeText) || /\(Cf\s+(?:DP|PC)\s*0?2\s*-\s*Plan\s+de\s+masse\)/i.test(noticeText))) {
+      const cleaned = noticeText
+        .replace(/permettant d'abriter les véhicules tout en produisant de l'électricité solaire/g, "permettant d'abriter l'activité de l'exploitant tout en produisant de l'électricité solaire")
+        .replace(/\s*\(Cf\s+(?:DP|PC)\s*0?2\s*-\s*Plan\s+de\s+masse\)\.?/gi, '.');
+      setNoticeText(cleaned);
+      setEditedProject(prev => ({ ...prev, noticeText: cleaned }));
     }
-  }, [step, selectedStructureIds, allConfiguredStructures, additionalRoof, batteryStorage, buildAutoNoticeText, isNoticeUserModified, noticeText]);
+  }, [step, selectedStructureIds, allConfiguredStructures, additionalRoof, batteryStorage, buildAutoNoticeText, isNoticeUserModified]);
 
   // Mise à jour de la position GPS individuelle d'un bâtiment (PC2 / DP2)
   const handleBuildingGpsUpdate = (bIdx, newLat, newLng) => {
@@ -4031,7 +4060,6 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       await onGenerate(type, finalTypeLabel, finalProject, selectedPages);
     } finally {
       setIsGenerating(false);
-      handleSafeClose();
     }
   };
 
@@ -4158,13 +4186,13 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 pt-14 pb-3 overflow-hidden"
+        className="fixed inset-x-0 bottom-0 top-[65px] bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2.5 sm:p-4 overflow-hidden"
       >
         <motion.div
           initial={{ scale: 0.96, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.96, opacity: 0 }}
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-[1450px] max-h-[85vh] h-[85vh] overflow-hidden flex flex-col mt-2"
+          className="bg-white rounded-3xl shadow-2xl w-full max-w-[1600px] max-h-[calc(100vh-80px)] h-[calc(100vh-80px)] overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className={`${dossierInfo.bgColor} px-6 pt-4 pb-3 border-b ${dossierInfo.borderColor}`}>
@@ -6174,213 +6202,6 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                 <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
 
-                  {/* Cartouche Dépôt Dématérialisé en Mairie & Portail SVE */}
-                  <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 rounded-2xl p-4 sm:p-5 text-white shadow-md border border-blue-800/40 relative overflow-hidden">
-                    {/* Ruban tricolore officiel */}
-                    <div className="absolute top-0 left-0 right-0 h-1.5 flex">
-                      <div className="flex-1 bg-blue-600"></div>
-                      <div className="flex-1 bg-white"></div>
-                      <div className="flex-1 bg-red-600"></div>
-                    </div>
-
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mt-1">
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-blue-500/20 text-blue-200 border border-blue-400/30">
-                            <Landmark className="w-3 h-3 text-blue-300" />
-                            RÉPUBLIQUE FRANÇAISE &bull; SVE URBANISME
-                          </span>
-                          {mairieRouting.loading ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-blue-300 font-semibold">
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              Recherche du guichet communal...
-                            </span>
-                          ) : mairieRouting.data?.portal ? (
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              mairieRouting.data.portal.isNationalFallback
-                                ? 'bg-indigo-500/25 text-indigo-200 border border-indigo-400/30'
-                                : 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/30'
-                            }`}>
-                              <CheckCircle2 className="w-3 h-3" />
-                              {mairieRouting.data.portal.isNationalFallback ? "Téléservice National AD'AU" : "Guichet Unique Communal"}
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <div className="flex items-baseline gap-2">
-                          <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
-                            {mairieRouting.data?.nom || `Mairie de ${editedProject?.city || editedProject?.commune || 'la commune'}`}
-                          </h3>
-                          {mairieRouting.data?.codePostal && (
-                            <span className="text-xs text-blue-200 font-bold">({mairieRouting.data.codePostal})</span>
-                          )}
-                        </div>
-
-                        <p className="text-xs text-blue-100/80 leading-snug">
-                          Portail de Saisine par Voie Électronique (SVE) :{' '}
-                          <span className="font-semibold text-white">
-                            {mairieRouting.data?.portal?.name || "AD'AU (Service-Public.fr)"}
-                          </span>
-                        </p>
-
-                        {mairieRouting.data?.portal?.url && (
-                          <div className="flex items-center gap-2 pt-0.5">
-                            <a
-                              href={mairieRouting.data.portal.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[11px] text-blue-300 hover:text-white underline underline-offset-2 transition-colors"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              Accéder au guichet en direct ({(() => {
-                                try { return new URL(mairieRouting.data.portal.url).hostname; } catch { return 'Lien officiel'; }
-                              })()})
-                            </a>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Bouton d'action principal CTA */}
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
-                        <button
-                          type="button"
-                          disabled={isExportingZip}
-                          onClick={handleOpenPortalAndDownloadZip}
-                          className="inline-flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all active:scale-98 disabled:opacity-60 cursor-pointer"
-                          title="Ouvre le guichet de dépôt officiel et télécharge l'ensemble des pièces ordonnées en archive ZIP"
-                        >
-                          {isExportingZip ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin text-white" />
-                              <span>{zipProgressText || 'Génération du ZIP...'}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Download className="w-4 h-4 text-white" />
-                              <span>Ouvrir le Guichet Unique &amp; Télécharger les pièces (.ZIP)</span>
-                              <ExternalLink className="w-4 h-4 text-blue-200" />
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Alerte Bloqueur de Pop-up si déclenché */}
-                    {popupBlocked && (
-                      <div className="mt-3.5 p-3 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-100 flex items-start gap-2.5 text-xs animate-fade-in">
-                        <AlertCircle className="w-4 h-4 text-amber-300 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <span className="font-bold">L'ouverture automatique a été bloquée par votre navigateur.</span>{' '}
-                          Cliquez sur ce lien pour accéder directement au guichet :{' '}
-                          <a
-                            href={mairieRouting.data?.portal?.url || 'https://www.service-public.fr/particuliers/vosdroits/R52221'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-bold underline text-white hover:text-amber-200 ml-1 inline-flex items-center gap-1"
-                          >
-                            Ouvrir le Guichet d'Urbanisme ↗
-                          </a>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Bloc Secondaire : Option Dépôt Papier / LRAR */}
-                    <div className="mt-3.5 pt-3 border-t border-blue-900/60 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-                      <div className="flex items-start gap-2 flex-1 min-w-0">
-                        <Mail className="w-4 h-4 text-blue-300 flex-shrink-0 mt-0.5" />
-                        <div className="text-[11px] leading-snug">
-                          <span className="font-bold text-white">Option Dépôt Papier / LRAR :</span>{' '}
-                          <span className="text-blue-200/90 whitespace-pre-line">
-                            {mairieRouting.data?.adresseLrar
-                              ? mairieRouting.data.adresseLrar.split('\n').slice(0, 3).join(' — ') + '...'
-                              : 'Mairie compétente pour l\'envoi postal recommandé'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {mairieRouting.data?.telephone && (
-                          <span className="text-[11px] text-blue-200/80 hidden sm:inline-flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-blue-400" />
-                            {mairieRouting.data.telephone}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (mairieRouting.data?.adresseLrar) {
-                              navigator.clipboard.writeText(mairieRouting.data.adresseLrar);
-                              setCopiedAddress(true);
-                              setTimeout(() => setCopiedAddress(false), 2000);
-                            }
-                          }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-blue-100 text-[10px] font-bold transition-all border border-white/10 cursor-pointer"
-                          title="Copier l'adresse postale formatée pour LRAR"
-                        >
-                          {copiedAddress ? (
-                            <>
-                              <CheckCheck className="w-3 h-3 text-emerald-400" />
-                              <span className="text-emerald-300">Adresse copiée !</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3" />
-                              <span>Copier l'adresse LRAR</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-900 flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <h4 className="font-extrabold text-sm text-emerald-950">Dossier prêt pour la génération PDF !</h4>
-                      <p className="text-xs text-emerald-800 mt-0.5">Cochez les pages et pièces graphiques que vous souhaitez inclure dans le fichier PDF final.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPages({
-                          cover: true,
-                          situation: true,
-                          masse: true,
-                          section_notice: true,
-                          section: true,
-                          facades: true,
-                          insertion: true,
-                          env: true,
-                          dp_notice: true,
-                          dp8: true,
-                          cerfa: true,
-                        })}
-                        className="px-2.5 py-1 bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
-                      >
-                        Tout cocher
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPages({
-                          cover: false,
-                          situation: false,
-                          masse: false,
-                          section_notice: false,
-                          section: false,
-                          facades: false,
-                          insertion: false,
-                          env: false,
-                          dp_notice: false,
-                          dp8: false,
-                          cerfa: false,
-                        })}
-                        className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
-                      >
-                        Tout décocher
-                      </button>
-                    </div>
-                  </div>
-
                   {/* Sélection interactive des structures et sous-onglets à inclure dans le dossier PDF */}
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
@@ -6463,10 +6284,52 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
                   {/* Sélection interactive des planches */}
                   <div>
-                    <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <Layers className="w-4 h-4 text-blue-600" />
-                      Sélection des pièces et planches du dossier ({type.toUpperCase()})
-                    </h5>
+                    <div className="flex items-center justify-between mb-2">
+                      <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-blue-600" />
+                        Sélection des pièces et planches du dossier ({type.toUpperCase()})
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPages({
+                            cover: true,
+                            situation: true,
+                            masse: true,
+                            section_notice: true,
+                            section: true,
+                            facades: true,
+                            insertion: true,
+                            env: true,
+                            dp_notice: true,
+                            dp8: true,
+                            cerfa: true,
+                          })}
+                          className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                        >
+                          Tout cocher
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPages({
+                            cover: false,
+                            situation: false,
+                            masse: false,
+                            section_notice: false,
+                            section: false,
+                            facades: false,
+                            insertion: false,
+                            env: false,
+                            dp_notice: false,
+                            dp8: false,
+                            cerfa: false,
+                          })}
+                          className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                        >
+                          Tout décocher
+                        </button>
+                      </div>
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                       {(type === 'pc' ? [
@@ -6848,6 +6711,165 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                       />
                     </div>
                   </div>
+
+                  {/* Cartouche Dépôt Dématérialisé en Mairie & Portail SVE (déplacé sous les 2 cadres) */}
+                  <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 rounded-2xl p-4 sm:p-5 text-white shadow-md border border-blue-800/40 relative overflow-hidden">
+                    {/* Ruban tricolore officiel */}
+                    <div className="absolute top-0 left-0 right-0 h-1.5 flex">
+                      <div className="flex-1 bg-blue-600"></div>
+                      <div className="flex-1 bg-white"></div>
+                      <div className="flex-1 bg-red-600"></div>
+                    </div>
+
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mt-1">
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-blue-500/20 text-blue-200 border border-blue-400/30">
+                            <Landmark className="w-3 h-3 text-blue-300" />
+                            RÉPUBLIQUE FRANÇAISE &bull; SVE URBANISME
+                          </span>
+                          {mairieRouting.loading ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-blue-300 font-semibold">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Recherche du guichet communal...
+                            </span>
+                          ) : mairieRouting.data?.portal ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              mairieRouting.data.portal.isNationalFallback
+                                ? 'bg-indigo-500/25 text-indigo-200 border border-indigo-400/30'
+                                : 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/30'
+                            }`}>
+                              <CheckCircle2 className="w-3 h-3" />
+                              {mairieRouting.data.portal.isNationalFallback ? "Téléservice National AD'AU" : "Guichet Unique Communal"}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="flex items-baseline gap-2">
+                          <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                            {mairieRouting.data?.nom || `Mairie de ${editedProject?.city || editedProject?.commune || 'la commune'}`}
+                          </h3>
+                          {mairieRouting.data?.codePostal && (
+                            <span className="text-xs text-blue-200 font-bold">({mairieRouting.data.codePostal})</span>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-blue-100/80 leading-snug">
+                          Portail de Saisine par Voie Électronique (SVE) :{' '}
+                          <span className="font-semibold text-white">
+                            {mairieRouting.data?.portal?.name || "AD'AU (Service-Public.fr)"}
+                          </span>
+                        </p>
+
+                        {mairieRouting.data?.portal?.url && (
+                          <div className="flex items-center gap-2 pt-0.5">
+                            <a
+                              href={mairieRouting.data.portal.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-blue-300 hover:text-white underline underline-offset-2 transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Accéder au guichet en direct ({(() => {
+                                try { return new URL(mairieRouting.data.portal.url).hostname; } catch { return 'Lien officiel'; }
+                              })()})
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bouton d'action principal CTA */}
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0">
+                        <button
+                          type="button"
+                          disabled={isExportingZip}
+                          onClick={handleOpenPortalAndDownloadZip}
+                          className="inline-flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all active:scale-98 disabled:opacity-60 cursor-pointer"
+                          title="Ouvre le guichet de dépôt officiel et télécharge l'ensemble des pièces ordonnées en archive ZIP"
+                        >
+                          {isExportingZip ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin text-white" />
+                              <span>{zipProgressText || 'Génération du ZIP...'}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-4 h-4 text-white" />
+                              <span>Ouvrir le Guichet Unique &amp; Télécharger les pièces (.ZIP)</span>
+                              <ExternalLink className="w-4 h-4 text-blue-200" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Alerte Bloqueur de Pop-up si déclenché */}
+                    {popupBlocked && (
+                      <div className="mt-3.5 p-3 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-100 flex items-start gap-2.5 text-xs animate-fade-in">
+                        <AlertCircle className="w-4 h-4 text-amber-300 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <span className="font-bold">L'ouverture automatique a été bloquée par votre navigateur.</span>{' '}
+                          Cliquez sur ce lien pour accéder directement au guichet :{' '}
+                          <a
+                            href={mairieRouting.data?.portal?.url || 'https://www.service-public.fr/particuliers/vosdroits/R52221'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold underline text-white hover:text-amber-200 ml-1 inline-flex items-center gap-1"
+                          >
+                            Ouvrir le Guichet d'Urbanisme ↗
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bloc Secondaire : Option Dépôt Papier / LRAR - Entièrement lisible */}
+                    <div className="mt-3.5 pt-3 border-t border-blue-900/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+                      <div className="flex items-start gap-2.5 flex-1 min-w-0 w-full">
+                        <Mail className="w-4 h-4 text-blue-300 flex-shrink-0 mt-0.5" />
+                        <div className="text-[11px] leading-relaxed flex-1">
+                          <span className="font-bold text-white block sm:inline mr-1">Option Dépôt Papier / LRAR :</span>
+                          <span className="text-blue-200/90 font-medium">
+                            {mairieRouting.data?.adresseLrar
+                              ? mairieRouting.data.adresseLrar.split('\n').filter(Boolean).join(' — ')
+                              : 'Mairie compétente pour l\'envoi postal recommandé'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 flex-shrink-0 self-end md:self-center">
+                        {mairieRouting.data?.telephone && (
+                          <span className="text-[11px] text-blue-200/80 inline-flex items-center gap-1 font-medium">
+                            <Phone className="w-3 h-3 text-blue-400" />
+                            {mairieRouting.data.telephone}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (mairieRouting.data?.adresseLrar) {
+                              navigator.clipboard.writeText(mairieRouting.data.adresseLrar);
+                              setCopiedAddress(true);
+                              setTimeout(() => setCopiedAddress(false), 2000);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-blue-100 text-[11px] font-bold transition-all border border-white/10 cursor-pointer"
+                          title="Copier l'adresse postale formatée pour LRAR"
+                        >
+                          {copiedAddress ? (
+                            <>
+                              <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className="text-emerald-300">Adresse copiée !</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Copier l'adresse LRAR</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
               )}
 
@@ -7120,41 +7142,79 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
             </button>
 
             {step < STEPS.length - 1 ? (
-              <button
-                onClick={async () => {
-                  syncActiveConfigToSolutions();
-                  if (step === 4) {
-                    await captureAllActiveMasseMaps();
-                    if (!isNoticeUserModified && !noticeText) {
-                      const auto = buildAutoNoticeText();
-                      setNoticeText(auto);
-                      setEditedProject(prev => ({ ...prev, noticeText: auto }));
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    syncActiveConfigToSolutions();
+                    saveWizardState();
+                    toast({
+                      title: 'Étape sauvegardée',
+                      description: 'Les modifications de cette étape ont bien été enregistrées.'
+                    });
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl transition-all shadow-xs cursor-pointer"
+                  title="Sauvegarder les modifications de cette étape"
+                >
+                  <Save className="w-4 h-4 text-blue-600" />
+                  <span>Sauvegarder</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    syncActiveConfigToSolutions();
+                    if (step === 4) {
+                      await captureAllActiveMasseMaps();
+                      if (!isNoticeUserModified) {
+                        const auto = buildAutoNoticeText();
+                        setNoticeText(auto);
+                        setEditedProject(prev => ({ ...prev, noticeText: auto }));
+                      }
                     }
-                  }
-                  const nextStep = Math.min(STEPS.length - 1, step + 1);
-                  saveWizardState({ step: nextStep });
-                  setStep(nextStep);
-                }}
-                className={`flex items-center gap-2 px-5 py-2 text-xs font-bold text-white rounded-xl transition-all shadow-sm ${dossierInfo.accentColor} hover:opacity-90`}
-              >
-                Suivant
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                    const nextStep = Math.min(STEPS.length - 1, step + 1);
+                    saveWizardState({ step: nextStep });
+                    setStep(nextStep);
+                  }}
+                  className={`flex items-center gap-2 px-5 py-2 text-xs font-bold text-white rounded-xl transition-all shadow-sm ${dossierInfo.accentColor} hover:opacity-90 cursor-pointer`}
+                >
+                  Suivant
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             ) : (
-              <button
-                onClick={async () => {
-                  saveWizardState();
-                  await handleGenerate();
-                }}
-                disabled={isGenerating}
-                className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md disabled:opacity-60"
-              >
-                {isGenerating ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> {downloadingPieceId ? 'Téléchargement en cours...' : 'Génération du PDF...'}</>
-                ) : (
-                  <><FileCheck className="w-4 h-4" /> Générer le dossier PDF</>
-                )}
-              </button>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    syncActiveConfigToSolutions();
+                    saveWizardState();
+                    toast({
+                      title: 'Dossier complet sauvegardé',
+                      description: 'Toutes les informations et contenus de toutes les étapes ont bien été enregistrés.'
+                    });
+                  }}
+                  className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 hover:border-gray-400 rounded-xl transition-all shadow-xs cursor-pointer"
+                  title="Sauvegarder toutes les données du dossier sans générer le PDF"
+                >
+                  <Save className="w-4 h-4 text-emerald-600" />
+                  <span>Sauvegarder le dossier complet</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    saveWizardState();
+                    await handleGenerate();
+                  }}
+                  disabled={isGenerating}
+                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md disabled:opacity-60 cursor-pointer"
+                >
+                  {isGenerating ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> {downloadingPieceId ? 'Téléchargement en cours...' : 'Génération du PDF...'}</>
+                  ) : (
+                    <><FileCheck className="w-4 h-4" /> Générer le dossier PDF</>
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </motion.div>
