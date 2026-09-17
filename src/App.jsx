@@ -162,6 +162,14 @@ function AppContent() {
             }
           />
           <Route
+            path="bp"
+            element={
+              <ProtectedRoute>
+                <BpAcama />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="developpement"
             element={
               <ProtectedRoute requiredPermission="canAccessDeveloppement">

@@ -1,5 +1,6 @@
 // Re-trigger Vercel deployment 2
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { useProjects } from '@/contexts/ProjectContext.jsx';
 import { apiService } from '@/services/api.js';
@@ -9,7 +10,8 @@ import { cn } from '@/lib/utils';
 import {
   BarChart3, FileText, Calculator, TrendingUp, Users, Building,
   FileDown, Save, ChevronDown, Search, X, CheckCircle, AlertCircle,
-  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download, Menu
+  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download, Menu,
+  Sun, BatteryCharging, Zap, Layers
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
@@ -485,45 +487,44 @@ function IRR(values, guess = 0.1) {
 }
 
 function computeBatteryProfitability(config) {
-  if (!config.enabled) return null;
+  if (!config || config.enabled === false) return null;
   
   const {
-    inflationAnnuelle = 2,
-    degradationAnnuelle = 1,
-    batterieBms = 50209,
+    puissanceDemandee = 125,
+    capaciteStockage = 261,
+    disponibilite = 98,
+    rendementRoundTrip = 88,
+    degradationAnnuelle = 1.5,
+    dureeEtude = 12,
+    nbCyclesJour = 1.0,
+    prixFCR = 20, // 20 €/MW/h soit 0.020 €/kW/h
+    facteurDerating = 0.5, // 0.5 pour batterie 2h
+    prixCapacite = 35, // 35 €/kW/an
+    spreadArbitrage = 0.040, // 0.040 €/kWh net
+    coutRecharge = 0.045, // 0.045 €/kWh
+    commissionAgregateur = 18, // 18%
+    turpeStockageTarif = 18, // 18 €/kW/an
+    maintenanceTarif = 8, // 8 €/kW/an
+    assuranceTarif = 3.5, // 3.5 €/kW/an
+    loyerDalle = 1250, // 1250 €/an par armoire / dalle
+    inflationAnnuelle = 2.0,
+    batterieBms = 34625,
     genieCivil = 6000,
     raccordement = 19900,
     developpement = 6000,
-    fraisCommerciaux = 10000,
-    arbitrageEnergie = 7500,
-    reserveFCR = 37500,
-    mecanismeCapacite = 5000,
-    effacement = 5000,
-    disponibilite = 98,
-    rendementRoundTrip = 88,
-    maintenanceAn = 1500,
-    revenuBailleurAn = 1250,
-    gestionChargeAn = 4562.5,
-    assuranceAn = 353,
-    retributionCommAn = 0,
-    commissionAgregateur = 18,
-    turpeAn = 2500,
-    iferAn = 625,
-    tauxEmprunt = 4,
-    dureeEmprunt = 20,
+    fraisCommerciaux = 5000,
+    tauxEmprunt = 3.9,
+    dureeEmprunt = 12,
     apport = 0,
     tauxIS = 25,
-    dureeEtude = 12,
     isInvestPropre = false
   } = config;
 
   // Zero out commercial fees if own investment
   const effectiveFraisComm = isInvestPropre ? 0 : (fraisCommerciaux || 0);
-
-  const capexTotal = batterieBms + genieCivil + raccordement + developpement + effectiveFraisComm;
-  const revenusBrutsAn1 = arbitrageEnergie + reserveFCR + mecanismeCapacite + effacement;
+  const capexTotal = (batterieBms || 0) + (genieCivil || 0) + (raccordement || 0) + (developpement || 0) + effectiveFraisComm;
   
-  const emprunt = Math.max(0, capexTotal - apport);
+  const emprunt = Math.max(0, capexTotal - (apport || 0));
   const annuite = emprunt > 0 ? -PMT(tauxEmprunt / 100, dureeEmprunt, emprunt) : 0;
 
   const cashFlowsProjet = [-capexTotal];
@@ -536,95 +537,131 @@ function computeBatteryProfitability(config) {
   let resY1 = {};
   let totalOpexStudy = 0;
   let totalRevenueStudy = 0;
+  let totalDebtServiceStudy = 0;
+  let totalInterestStudy = 0;
 
   const rows = [];
   const maxYearsLoop = Math.max(20, dureeEtude);
 
-    let totalDebtServiceStudy = 0;
-    let totalInterestStudy = 0;
-    for (let y = 1; y <= maxYearsLoop; y++) {
-        const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
-        const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
+  for (let y = 1; y <= maxYearsLoop; y++) {
+    const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
+    const capDeg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
+    const effCapacity = capaciteStockage * capDeg;
 
-        const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
-        const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + iferAn + gestionChargeAn) * infl;
-        const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
-        
-        const chargesCom = revNet * (commissionAgregateur / 100);
-        const ebe = revNet - (chargesFixes + chargesCom);
+    // Value Stacking:
+    // 1. Réserve Primaire / FCR : Puissance_kW * 8760h * Dispo% * (prixFCR €/MW/h / 1000) * infl
+    const revFCR = puissanceDemandee * 8760 * (disponibilite / 100) * (prixFCR / 1000) * infl;
+    // 2. Marché de Capacité : Puissance_kW * Facteur_Derating * Prix_Capacité * infl
+    const revCapacite = puissanceDemandee * facteurDerating * prixCapacite * infl;
+    // 3. Arbitrage Spot / Intraday : Nombre_Cycles_Jour * 365 * Capacité_effective * Spread_Net * infl
+    const revArbitrage = nbCyclesJour * 365 * effCapacity * spreadArbitrage * infl;
+    
+    const caTotalBrut = revFCR + revCapacite + revArbitrage;
 
-        const interest = y <= dureeEmprunt ? remainingDebt * (tauxEmprunt / 100) : 0;
-        const principal = y <= dureeEmprunt ? annuite - interest : 0;
-        const serviceDette = y <= dureeEmprunt ? annuite : 0;
-        
-        const amortissement = capexTotal / dureeEtude;
-        const ebit = ebe - amortissement - interest;
-        const is = ebit > 0 ? ebit * (tauxIS / 100) : 0;
-        
-        const cashFlow = ebe - interest - principal - is;
-        
-        if (y <= dureeEtude) {
-            if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
-                dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / cashFlow);
-            }
-            runningCashFlow += cashFlow;
-            gainNetEtude += cashFlow;
-            totalOpexStudy += (chargesFixes + chargesCom);
-            totalRevenueStudy += revNet;
-            totalDebtServiceStudy += serviceDette;
-            totalInterestStudy += interest;
+    // OPEX BESS :
+    // 1. Commission Agrégateur : 18% sur total revenus bruts de marché
+    const commAgregateur = caTotalBrut * (commissionAgregateur / 100);
+    // 2. Coût de l'énergie de recharge : Capacité_effective * Cycles * 365 * Coût_Moyen_Recharge * infl
+    const coutRechargeAn = effCapacity * nbCyclesJour * 365 * coutRecharge * infl;
+    // 3. TURPE Stockage : Puissance_kW * 18 €/kW/an * infl
+    const turpe = puissanceDemandee * turpeStockageTarif * infl;
+    // 4. Maintenance constructeur & garantie de capacité : Puissance_kW * 8 €/kW/an * infl
+    const maint = puissanceDemandee * maintenanceTarif * infl;
+    // 5. Assurance RC / Incendie / Risque électrique : Puissance_kW * 3.5 €/kW/an * infl
+    const assur = puissanceDemandee * assuranceTarif * infl;
+    // 6. Loyers terrain / mise à disposition dalle : Forfait annuel négocié * infl
+    const revBailleur = (loyerDalle || 0) * infl;
 
-        // Project Cash Flow (Unlevered): EBE - Tax (without interest shield)
-        const ebitUnlevered = ebe - (capexTotal / dureeEtude);
-        const taxUnlevered = ebitUnlevered > 0 ? ebitUnlevered * (tauxIS / 100) : 0;
-        cashFlowsProjet.push(ebe - taxUnlevered);
-        
-        // Equity Cash Flow (Levered): EBE - Debt Service - Tax (with interest shield)
-        cashFlowsFP.push(cashFlow);
+    const opex = commAgregateur + coutRechargeAn + turpe + maint + assur + revBailleur;
+    const ebe = caTotalBrut - opex;
 
-        const yearLabel = 2026 + y - 1;
-        rows.push({
-          year: yearLabel,
-          arbitrage: arbitrageEnergie * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
-          reserve: reserveFCR * deg * infl * (disponibilite / 100),
-          capacite: mecanismeCapacite * deg * infl * (disponibilite / 100),
-          effacement: effacement * deg * infl * (disponibilite / 100),
-          caTotal: revNet,
-          opex: chargesFixes + chargesCom,
-          maint: maintenanceAn * infl,
-          revBailleur: revenuBailleurAn, // Fixed
-          gestionCharge: gestionChargeAn * infl,
-          assur: assuranceAn * infl,
-          turpe: turpeAn * infl,
-          ifer: iferAn * infl,
-          fraisAgregateur: chargesCom,
-          serviceDette: interest + principal,
-          ebe,
-          interest,
-          principal,
-          tresorerie: cashFlow
-        });
+    const interest = (y <= dureeEmprunt && remainingDebt > 0) ? remainingDebt * (tauxEmprunt / 100) : 0;
+    const serviceDette = y <= dureeEmprunt ? annuite : 0;
+    const principal = y <= dureeEmprunt ? Math.max(0, serviceDette - interest) : 0;
+    
+    const amortissement = capexTotal / dureeEtude;
+    const ebit = ebe - amortissement;
+    const resFiscal = ebit - interest;
+    
+    let is = 0;
+    if (resFiscal > 0) {
+      if (resFiscal < 42500) is = resFiscal * 0.15;
+      else is = (42500 * 0.15) + ((resFiscal - 42500) * (tauxIS / 100));
+    }
+    
+    const cafds = ebe - is;
+    const dscr = serviceDette > 1 ? (cafds / serviceDette) : 9.99;
+    const cashFlow = ebe - interest - principal - is;
+    
+    if (y <= dureeEtude) {
+      if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
+        dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / (cashFlow || 1));
+      }
+      runningCashFlow += cashFlow;
+      gainNetEtude += cashFlow;
+      totalOpexStudy += opex;
+      totalRevenueStudy += caTotalBrut;
+      totalDebtServiceStudy += serviceDette;
+      totalInterestStudy += interest;
 
-        if (y === 1) {
-          resY1 = { revNet, ebe, dscr: annuite > 0 ? ebe / annuite : 9.99 };
-        }
+      // Project Cash Flow (Unlevered): CAFDS
+      cashFlowsProjet.push(cafds);
+      // Equity Cash Flow (Levered): Trésorerie nette
+      cashFlowsFP.push(cashFlow);
+
+      const yearLabel = 2026 + y - 1;
+      rows.push({
+        year: yearLabel,
+        arbitrage: revArbitrage,
+        reserve: revFCR,
+        capacite: revCapacite,
+        caTotal: caTotalBrut,
+        opex,
+        fraisAgregateur: commAgregateur,
+        coutRecharge: coutRechargeAn,
+        turpe,
+        maint,
+        assur,
+        revBailleur,
+        gestionCharge: 0,
+        ebe,
+        ebitda: ebe,
+        amortissement,
+        ebit,
+        interest,
+        principal,
+        serviceDette,
+        resFiscal,
+        is,
+        cafds,
+        dscr,
+        tresorerie: cashFlow
+      });
+
+      if (y === 1) {
+        resY1 = { caTotalBrut, ebe, dscr };
+      }
     }
 
     if (y <= 20) {
-        gainNet20A += cashFlow;
+      gainNet20A += cashFlow;
     }
 
     remainingDebt = Math.max(0, remainingDebt - principal);
   }
 
+  const dscrs = rows.filter(r => r.serviceDette > 1).map(r => r.dscr);
+  const dscrMoyen = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : 0;
+
   return {
     capexTotal,
-    revenuAn1: resY1.revNet,
-    ebeAn1: resY1.ebe,
-    triProjet: IRR(cashFlowsProjet, 0.1),
-    triFP: IRR(cashFlowsFP, 0.1),
-    payback: dynamicPayback || (resY1.ebe > 0 ? capexTotal / resY1.ebe : dureeEtude),
-    dscrAn1: resY1.dscr,
+    revenuAn1: resY1.caTotalBrut || 0,
+    ebeAn1: resY1.ebe || 0,
+    triProjet: IRR(cashFlowsProjet, 0.05),
+    triFP: IRR(cashFlowsFP, 0.05),
+    payback: dynamicPayback !== null ? dynamicPayback : (resY1.ebe > 0 ? capexTotal / resY1.ebe : dureeEtude),
+    dscrAn1: resY1.dscr || 0,
+    dscrMoyen,
     gainNetEtude,
     gainNet20A,
     totalOpexStudy,
@@ -662,7 +699,7 @@ function computeBusinessPlan(params) {
     tauxCredit = 4,
     indexationTarif = 0.006,
     indexationOpex = 0.02,
-    degradation = 0.004,
+    degradation = 0.0045,
     tarifACC = 0.12,
     partACC = 0,
   } = params;
@@ -688,7 +725,10 @@ function computeBusinessPlan(params) {
     const caYear = (prodACC * tarifACC * it) + (new_pb_test * tarifBas * it) + (new_ph_test * tarifHaut * it);
     totalCA += caYear;
 
-    const op = (maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin) * io;
+    let op = (maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin) * io;
+    if (y === 11) {
+      op += (params.onduleurs || ((coutCentrale || 0) * 0.1));
+    }
     totalOpexBaseSum += op;
   }
 
@@ -735,13 +775,13 @@ function computeBusinessPlan(params) {
     const rowGestion = (gestionAdmin || 0) * idxOpex;
     const rowLoyer = actualLoyerOpex * idxOpex;
     
-    // Onduleurs at year 12
+    // MRA Onduleurs : Provisionner le remplacement complet en année 11 (10% de la centrale PV)
     let rowMra = 0;
-    if (i === 12) {
-      rowMra = params.onduleurs || (totalConstruction * 0.1);
+    if (i === 11) {
+      rowMra = params.onduleurs || ((coutCentrale || 0) * 0.1);
     }
 
-    const opex = rowMaint + rowAss + rowLoc + rowTaxes + rowGestion + rowLoyer;
+    const opex = rowMaint + rowAss + rowLoc + rowTaxes + rowGestion + rowLoyer + rowMra;
 
     const ebitda = ca - opex;
     const amortissement = totalConstruction / 20;
@@ -871,12 +911,20 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
       mra: (rB.mra || 0),
       taxes: (rBat.turpe || 0) + (rBat.ifer || 0),
       admin: (rBat.retribComm || 0),
-      revenuBailleur: (rBat.revBailleur || 0)
+      revenuBailleur: (rBat.revBailleur || 0),
+      arbitrage: rBat.arbitrage || 0,
+      reserve: rBat.reserve || 0,
+      capacite: rBat.capacite || 0,
+      effacement: 0,
+      fraisAgregateur: rBat.fraisAgregateur || 0,
+      coutRecharge: rBat.coutRecharge || 0
     });
   }
 
   const totalConsGlobal = bpBuilding.totalConstruction + bpBattery.capexTotal;
   const triProjet = IRR([-totalConsGlobal, ...combinedRows.map(r => r.cafds)], 0.05);
+  const totalApportGlobal = (bpBuilding.apport10 || 0) + (batteryConfig?.apport || 0);
+  const triFP = IRR([-totalApportGlobal, ...combinedRows.map(r => r.tresorerie)], 0.05);
   const sumCA = combinedRows.reduce((acc, r) => acc + r.ca, 0);
   const sumOpex = combinedRows.reduce((acc, r) => acc + r.opex, 0);
 
@@ -884,9 +932,10 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
     ...bpBuilding,
     rows: combinedRows,
     triProjet,
+    triFP,
     totalConstruction: totalConsGlobal,
     totalInvestissement: totalConsGlobal,
-    apport10: bpBuilding.apport10,
+    apport10: totalApportGlobal,
     sumCA,
     sumOpex,
     gains: sumCA - sumOpex - totalConsGlobal
@@ -992,12 +1041,12 @@ function SignatureArea({ data, update }) {
 }
 
 function TableauPrevisionnelBatterie({ rows, detailed }) {
-  const DataRow = ({ label, propName, isCurrency, bold, className, indent }) => (
-    <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className}`}>
-      <td className={`px-2 py-1 font-medium bg-slate-50 text-[11px] border-r border-slate-200 w-[180px] ${bold ? 'font-bold' : ''} ${indent ? 'pl-4 italic text-slate-500' : ''}`}>{label}</td>
+  const DataRow = ({ label, propName, isCurrency, format, bold, className, indent }) => (
+    <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className || ''}`}>
+      <td className={`px-2 py-1 font-medium bg-slate-50 text-[11px] border-r border-slate-200 w-[200px] ${bold ? 'font-bold' : ''} ${indent ? 'pl-4 italic text-slate-500' : ''}`}>{label}</td>
       {rows.map((r, i) => (
-        <td key={i} className={`px-1 py-1 text-right border-r border-slate-200 text-[11px] min-w-[50px] ${bold ? 'font-bold' : ''}`}>
-          {isCurrency ? fmtEur(r[propName]) : fmt(r[propName], 0)}
+        <td key={i} className={`px-1 py-1 text-right border-r border-slate-200 text-[11px] min-w-[55px] ${bold ? 'font-bold' : ''}`}>
+          {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : fmt(r[propName], 0))}
         </td>
       ))}
     </tr>
@@ -1005,12 +1054,12 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
 
   return (
     <div className="mt-6 border-t pt-4 text-slate-900">
-      <h4 className="text-[12px] font-black text-blue-600 uppercase mb-3 px-1">Plan d'Affaires Prévisionnel Batterie</h4>
+      <h4 className="text-[12px] font-black text-blue-600 uppercase mb-3 px-1">Plan d'Affaires Prévisionnel Batterie BESS</h4>
       <div className="overflow-x-auto w-full custom-scrollbar">
         <table className="w-full border-collapse border border-slate-200">
           <thead>
             <tr className="bg-slate-100">
-              <td className="p-2 border-r border-b border-slate-200 text-[11px] font-bold w-[180px]">Indicateurs</td>
+              <td className="p-2 border-r border-b border-slate-200 text-[11px] font-bold w-[200px]">Indicateurs Financiers</td>
               {rows.map((r, i) => (
                 <td key={i} className="p-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[11px]">{r.year}</td>
               ))}
@@ -1018,41 +1067,50 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
           </thead>
           <tbody>
             <tr className="bg-amber-400 font-bold uppercase text-[11px]">
-              <td className="px-2 py-1 border-r border-b border-slate-300">Chiffre d'Affaires (HT)</td>
+              <td className="px-2 py-1 border-r border-b border-slate-300">Revenus de Marché (Value Stacking)</td>
               {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-300"></td>)}
             </tr>
-            <DataRow label="Arbitrage énergie" propName="arbitrage" isCurrency indent />
-            <DataRow label="Réserve (FCR/aFRR)" propName="reserve" isCurrency indent />
-            <DataRow label="Mécanisme de capacité" propName="capacite" isCurrency indent />
-            <DataRow label="Effacement" propName="effacement" isCurrency indent />
-            <DataRow label="TOTAL REVENUS" propName="caTotal" isCurrency bold className="bg-slate-50" />
+            <DataRow label="Réserve Primaire (FCR)" propName="reserve" isCurrency indent />
+            <DataRow label="Marché de Capacité" propName="capacite" isCurrency indent />
+            <DataRow label="Arbitrage Spot / Intraday" propName="arbitrage" isCurrency indent />
+            <DataRow label="TOTAL REVENUS BRUTS" propName="caTotal" isCurrency bold className="bg-slate-50 text-blue-900" />
 
             <tr className="bg-slate-100 font-bold uppercase text-[11px]">
-              <td className="px-2 py-1 border-r border-b border-slate-200">Charges & Résultats</td>
+              <td className="px-2 py-1 border-r border-b border-slate-200">Charges d'Exploitation (OPEX)</td>
               {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-200"></td>)}
             </tr>
             {detailed ? (
               <>
-                <DataRow label="Maintenance" propName="maint" isCurrency indent />
-                <DataRow label="Revenu bailleur" propName="revBailleur" isCurrency indent />
-                <DataRow label="Gestion de la charge" propName="gestionCharge" isCurrency indent />
-                <DataRow label="Rétribution commerciale" propName="retribComm" isCurrency indent />
-                <DataRow label="Assurance" propName="assur" isCurrency indent />
-                <DataRow label="Commission Agrégateur" propName="fraisAgregateur" isCurrency indent />
-                <DataRow label="TURPE" propName="turpe" isCurrency indent />
-                <DataRow label="IFER" propName="ifer" isCurrency indent />
+                <DataRow label="Commission Agrégateur (18%)" propName="fraisAgregateur" isCurrency indent />
+                <DataRow label="Coût Énergie Recharge" propName="coutRecharge" isCurrency indent />
+                <DataRow label="TURPE Stockage" propName="turpe" isCurrency indent />
+                <DataRow label="Maintenance Constructeur" propName="maint" isCurrency indent />
+                <DataRow label="Assurance RC / Risque Élec." propName="assur" isCurrency indent />
+                <DataRow label="Loyer Foncier Dalle" propName="revBailleur" isCurrency indent />
               </>
             ) : (
               <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency />
             )}
             
-            <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
             <DataRow label="EBITDA (EBE)" propName="ebe" isCurrency bold className="bg-blue-50 text-blue-800" />
             
+            {detailed && (
+              <>
+                <DataRow label="Amortissement Linéaire" propName="amortissement" isCurrency indent />
+                <DataRow label="Résultat d'Exploitation (EBIT)" propName="ebit" isCurrency indent />
+                <DataRow label="Intérêts d'Emprunt" propName="interest" isCurrency indent />
+                <DataRow label="Impôt sur les Sociétés (IS)" propName="is" isCurrency indent />
+                <DataRow label="Remboursement Principal Dette" propName="principal" isCurrency indent />
+              </>
+            )}
+
+            <DataRow label="Service de la Dette (Senior)" propName="serviceDette" isCurrency bold />
+            <DataRow label="DSCR Annuel" propName="dscr" format={v => fmt(v, 2)} bold className="bg-slate-50" />
+            
             <tr className="bg-amber-400 font-black text-slate-900 text-[11px]">
-              <td className="px-2 py-1 uppercase border-r border-slate-300">Trésorerie nette annuelle</td>
+              <td className="px-2 py-1 uppercase border-r border-slate-300">Trésorerie Nette Annuelle (Cash-Flow)</td>
               {rows.map((r, i) => (
-                <td key={i} className="px-1 py-1 text-right border-r border-slate-300">
+                <td key={i} className="px-1 py-1 text-right border-r border-slate-300 font-bold">
                   {fmtEur(r.tresorerie)}
                 </td>
               ))}
@@ -1070,29 +1128,18 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
 
   const results = computeBatteryProfitability(config);
   
-  const revenusBruts = (config.arbitrageEnergie || 0) + (config.reserveFCR || 0) + (config.mecanismeCapacite || 0) + (config.effacement || 0);
-  const revNetY1 = revenusBruts * (config.disponibilite || 98) / 100;
-  const commAgregateurMontant = revNetY1 * (config.commissionAgregateur || 0) / 100;
-  
-  const totalOpexAn1 = (config.maintenanceAn || 0) + 
-                       (config.revenuBailleurAn || 0) + 
-                       (config.gestionChargeAn || 0) + 
-                       (config.assuranceAn || 0) + 
-                       commAgregateurMontant + 
-                       (config.turpeAn || 0) + 
-                       (config.iferAn || 0);
-  
   const currentModelKey = config.batteryModelKey || 'cesc_mercury_261';
   const selectedModel = BATTERY_MODELS.find(m => m.id === currentModelKey) || BATTERY_MODELS[0];
   const nbBricks = config.nbBricks || 1;
 
-  const realPower = nbBricks * selectedModel.power;
-  const realEnergy = nbBricks * selectedModel.capacity;
+  const realPower = config.puissanceDemandee || (nbBricks * selectedModel.power);
+  const realEnergy = config.capaciteStockage || (nbBricks * selectedModel.capacity);
 
   const updateBatterySpecs = (modelId, quantity) => {
     const model = BATTERY_MODELS.find(m => m.id === modelId) || selectedModel;
     const qty = quantity;
     const p = qty * model.power;
+    const c = qty * model.capacity;
     const batteryBms = qty * model.price;
     
     const rHT = config.raccordementHT || 100;
@@ -1102,9 +1149,21 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const newDeveloppement = 6000 + (qty - 1) * 500;
     const fraisComm = 40 * p;
     
-    const capexPlusRacc = batteryBms + newGenieCivil + newRaccordement + newDeveloppement + fraisComm;
-    
-    const revBruts = (30 * p) + (150 * p) + (20 * p) + (20 * p);
+    const dispo = config.disponibilite || 98;
+    const prixFCR = config.prixFCR ?? 20; // 20 €/MW/h
+    const derating = config.facteurDerating ?? 0.5;
+    const prixCap = config.prixCapacite ?? 35; // 35 €/kW/an
+    const spread = config.spreadArbitrage ?? 0.040; // 0.040 €/kWh net
+    const cycles = config.nbCyclesJour ?? 1.0;
+    const coutRech = config.coutRecharge ?? 0.045;
+    const turpeRate = config.turpeStockageTarif ?? 18;
+    const maintRate = config.maintenanceTarif ?? 8;
+    const assurRate = config.assuranceTarif ?? 3.5;
+    const loyerD = 1250 * qty;
+
+    const fcr = p * 8760 * (dispo / 100) * (prixFCR / 1000);
+    const cap = p * derating * prixCap;
+    const arb = cycles * 365 * c * spread;
 
     setParams(prev => ({
       ...prev,
@@ -1113,22 +1172,36 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         batteryModelKey: modelId,
         nbBricks: qty,
         puissanceDemandee: p,
+        capaciteStockage: c,
         batterieBms: batteryBms,
         genieCivil: newGenieCivil,
         developpement: newDeveloppement,
         fraisCommerciaux: fraisComm,
         raccordement: newRaccordement,
-        arbitrageEnergie: 30 * p,
-        reserveFCR: 150 * p,
-        mecanismeCapacite: 20 * p,
-        effacement: 20 * p,
-        maintenanceAn: 6 * p,
-        revenuBailleurAn: 1250 * qty,
-        gestionChargeAn: 4562.5 * qty,
-        turpeAn: 20 * p,
-        iferAn: 5 * p,
-        onduleurPcs: 0,
-        assuranceAn: Math.round(capexPlusRacc * 0.004)
+        prixFCR,
+        facteurDerating: derating,
+        prixCapacite: prixCap,
+        spreadArbitrage: spread,
+        nbCyclesJour: cycles,
+        coutRecharge: coutRech,
+        turpeStockageTarif: turpeRate,
+        maintenanceTarif: maintRate,
+        assuranceTarif: assurRate,
+        loyerDalle: loyerD,
+        arbitrageEnergie: arb,
+        reserveFCR: fcr,
+        mecanismeCapacite: cap,
+        effacement: 0,
+        maintenanceAn: p * maintRate,
+        revenuBailleurAn: loyerD,
+        turpeAn: p * turpeRate,
+        assuranceAn: Math.round(p * assurRate),
+        dureeEmprunt: prev.batteryConfig?.dureeEmprunt || 12,
+        tauxEmprunt: prev.batteryConfig?.tauxEmprunt || 3.9,
+        degradationAnnuelle: prev.batteryConfig?.degradationAnnuelle || 1.5,
+        commissionAgregateur: prev.batteryConfig?.commissionAgregateur || 18,
+        disponibilite: dispo,
+        rendementRoundTrip: prev.batteryConfig?.rendementRoundTrip || 88
       }
     }));
   };
@@ -1141,8 +1214,6 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         const rHT = newConfig.raccordementHT || 100;
         const dPriv = newConfig.distancePriv || 100;
         newConfig.raccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
-        const totalCapex = (newConfig.batterieBms || 0) + (newConfig.genieCivil || 0) + newConfig.raccordement + (newConfig.developpement || 0) + (newConfig.fraisCommerciaux || 0);
-        newConfig.assuranceAn = Math.round(totalCapex * 0.004);
       }
       return { ...prev, batteryConfig: newConfig };
     });
@@ -1157,7 +1228,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <img src="/logo-nelson.png" alt="Logo" className="h-16 w-auto object-contain" />
         </div>
         <div className="flex-1 text-center self-center">
-          <span className="text-[22px] font-black text-slate-800 uppercase tracking-widest">{isGreenInvest ? 'BP' : 'Business Plan'}</span>
+          <span className="text-[22px] font-black text-slate-800 uppercase tracking-widest">{isGreenInvest ? 'BP' : 'Business Plan BESS'}</span>
         </div>
         <div className="flex-1 text-right flex flex-col items-end">
           <h1 className="text-sm font-black text-slate-900 uppercase leading-tight">
@@ -1171,7 +1242,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
 
   return (
     <SectionCard 
-      title="RENTABILITÉ BATTERIE STAND-ALONE" 
+      title="RENTABILITÉ BATTERIE STAND-ALONE (BESS)" 
       id="pdf-section-battery" 
       className="bg-white border-t-4 border-t-blue-600 shadow-lg relative pdf-no-top-border"
       data-pdf-hide-header="true"
@@ -1204,7 +1275,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                 onChange={e => updateBatterySpecs(e.target.value, nbBricks)}
               >
                 {BATTERY_MODELS.map(m => (
-                  <option key={m.id} value={m.id}>{m.brand} - {m.model} ({m.power}kW)</option>
+                  <option key={m.id} value={m.id}>{m.brand} - {m.model} ({m.power}kW / {m.capacity}kWh)</option>
                 ))}
               </select>
            </div>
@@ -1224,7 +1295,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
               <div className="text-lg font-bold text-slate-900">{fmt(realEnergy, 0)} kWh</div>
            </div>
            <div className="space-y-1">
-              <label className="text-[11px] text-slate-500 uppercase">Puissance totale</label>
+              <label className="text-[11px] text-slate-500 uppercase">Puissance raccordée</label>
               <div className="text-lg font-bold text-slate-900">{fmt(realPower, 0)} kW</div>
            </div>
         </div>
@@ -1268,67 +1339,43 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         </div>
 
         <div className="space-y-4">
-          <GroupTitle title="Revenus Annuels (An 1)" />
+          <GroupTitle title="Revenus Annuels - Value Stacking" />
           <div className="grid grid-cols-1 gap-2">
-            <Field label="Arbitrage énergie" value={config.arbitrageEnergie} onChange={v => update('arbitrageEnergie', v)} type="number" suffix="€" />
-            <Field label="Réserve (FCR/aFRR)" value={config.reserveFCR} onChange={v => update('reserveFCR', v)} type="number" suffix="€" />
-            <Field label="Méc. capacité" value={config.mecanismeCapacite} onChange={v => update('mecanismeCapacite', v)} type="number" suffix="€" />
-            <Field label="Effacement" value={config.effacement} onChange={v => update('effacement', v)} type="number" suffix="€" />
+            <Field label="Prix Réserve FCR" value={config.prixFCR ?? 20} onChange={v => update('prixFCR', v)} type="number" suffix="€/MW/h" step={1} />
+            <Field label="Prix Capacité" value={config.prixCapacite ?? 35} onChange={v => update('prixCapacite', v)} type="number" suffix="€/kW/an" step={1} />
+            <Field label="Spread Arbitrage" value={config.spreadArbitrage ?? 0.040} onChange={v => update('spreadArbitrage', v)} type="number" suffix="€/kWh" step={0.005} />
+            <Field label="Cycles / Jour" value={config.nbCyclesJour ?? 1.0} onChange={v => update('nbCyclesJour', v)} type="number" suffix="c/j" step={0.1} />
             <div className="pt-2 border-t border-blue-100 flex justify-between items-center px-2 py-1 bg-blue-50/50 rounded">
               <span className="text-[11px] font-black text-blue-700 uppercase">Total Revenus An 1 (Brut)</span>
-              <span className="text-sm font-black text-slate-900">{fmtEur((parseFloat(config.arbitrageEnergie)||0) + (parseFloat(config.reserveFCR)||0) + (parseFloat(config.mecanismeCapacite)||0) + (parseFloat(config.effacement)||0))}</span>
+              <span className="text-sm font-black text-slate-900">{fmtEur(results.revenuAn1)}</span>
             </div>
             <div className="pt-2 border-t border-slate-100 mt-2">
-               <Field label="Disponibilité" value={config.disponibilite} onChange={v => update('disponibilite', v)} type="number" suffix="%" />
-               <Field label="Rendement R-T" value={config.rendementRoundTrip} onChange={v => update('rendementRoundTrip', v)} type="number" suffix="%" />
+               <Field label="Disponibilité" value={config.disponibilite ?? 98} onChange={v => update('disponibilite', v)} type="number" suffix="%" />
+               <Field label="Rendement R-T" value={config.rendementRoundTrip ?? 88} onChange={v => update('rendementRoundTrip', v)} type="number" suffix="%" />
             </div>
           </div>
 
           <div className="pt-2">
-            <GroupTitle title="Financement" />
+            <GroupTitle title="Financement Senior" />
             <div className="grid grid-cols-1 gap-2">
-              <Field label="Durée" value={config.dureeEmprunt || 20} onChange={v => update('dureeEmprunt', v)} type="number" suffix="ans" />
-              <Field label="Taux" value={config.tauxEmprunt || 4} onChange={v => update('tauxEmprunt', v)} type="number" suffix="%" step={0.1} />
+              <Field label="Durée Emprunt" value={config.dureeEmprunt || 12} onChange={v => update('dureeEmprunt', v)} type="number" suffix="ans" />
+              <Field label="Taux Crédit" value={config.tauxEmprunt || 3.9} onChange={v => update('tauxEmprunt', v)} type="number" suffix="%" step={0.1} />
             </div>
           </div>
         </div>
 
         <div className="space-y-4">
-          <GroupTitle title="Charges & Hypothèses - OPEX" />
+          <GroupTitle title="Charges & OPEX BESS" />
           <div className="grid grid-cols-1 gap-2">
-            <Field label="Maintenance /an" value={config.maintenanceAn} onChange={v => update('maintenanceAn', v)} type="number" suffix="€" />
-            <Field label="Revenu bailleur" value={config.revenuBailleurAn} onChange={v => update('revenuBailleurAn', v)} type="number" suffix="€" />
-            <Field label="Gestion de la charge" value={config.gestionChargeAn} onChange={v => update('gestionChargeAn', v)} type="number" suffix="€" />
-            <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
-            <div className="flex items-center gap-2">
-              <label className="text-[13px] text-slate-500 w-32 shrink-0">Comm. Agrégateur</label>
-              <div className="flex items-center gap-1 flex-1">
-                <div className="flex items-center gap-1 w-20 relative">
-                   <input
-                     type="number"
-                     className="border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none bg-white"
-                     value={config.commissionAgregateur ?? 18}
-                     onChange={e => update('commissionAgregateur', parseFloat(e.target.value) || 0)}
-                   />
-                   <span className="text-sm text-slate-500 shrink-0">%</span>
-                </div>
-                <span className="text-[13px] text-slate-400 mx-1">soit</span>
-                <div className="flex items-center gap-1 flex-1 relative">
-                   <input
-                     type="text"
-                     disabled
-                     className="border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none bg-slate-50 text-slate-600 font-bold"
-                     value={fmtEur(commAgregateurMontant)}
-                   />
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
-              <Field label="IFER /an" value={config.iferAn} onChange={v => update('iferAn', v)} type="number" suffix="€" />
-            </div>
+            <Field label="Coût Recharge" value={config.coutRecharge ?? 0.045} onChange={v => update('coutRecharge', v)} type="number" suffix="€/kWh" step={0.005} />
+            <Field label="TURPE Stockage" value={config.turpeStockageTarif ?? 18} onChange={v => update('turpeStockageTarif', v)} type="number" suffix="€/kW/an" step={1} />
+            <Field label="Maintenance" value={config.maintenanceTarif ?? 8} onChange={v => update('maintenanceTarif', v)} type="number" suffix="€/kW/an" step={1} />
+            <Field label="Assurance RC" value={config.assuranceTarif ?? 3.5} onChange={v => update('assuranceTarif', v)} type="number" suffix="€/kW/an" step={0.5} />
+            <Field label="Loyer Foncier Dalle" value={config.loyerDalle ?? (1250 * nbBricks)} onChange={v => update('loyerDalle', v)} type="number" suffix="€/an" />
+            <Field label="Comm. Agrégateur" value={config.commissionAgregateur ?? 18} onChange={v => update('commissionAgregateur', v)} type="number" suffix="%" />
+            
             <div className="pt-1 mt-1 border-t border-slate-100">
-               <Field label="Total OPEX" value={fmtEur(totalOpexAn1)} type="text" disabled className="font-bold text-blue-700" />
+               <Field label="Total OPEX An 1" value={fmtEur(results.rows[0]?.opex || 0)} type="text" disabled className="font-bold text-blue-700" />
             </div>
             <div className="pt-2 border-t border-slate-100 mt-2 space-y-3">
                <div className="flex items-center justify-between">
@@ -1338,12 +1385,12 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                    value={config.dureeEtude || 12}
                    onChange={e => update('dureeEtude', parseInt(e.target.value))}
                  >
-                   {[10, 12, 15, 20, 25, 30].map(v => <option key={v} value={v}>{v} ans</option>)}
+                   {[10, 12, 15, 20].map(v => <option key={v} value={v}>{v} ans</option>)}
                  </select>
                </div>
                <div className="grid grid-cols-2 gap-4">
                   <Field label="Inflation ann." value={config.inflationAnnuelle ?? 2} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" step={0.5} />
-                  <Field label="Dégradation ann." value={config.degradationAnnuelle ?? 1} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.5} />
+                  <Field label="Dégradation ann." value={config.degradationAnnuelle ?? 1.5} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.1} />
                </div>
             </div>
           </div>
@@ -1355,8 +1402,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                 <h4 className="text-[12px] font-black text-blue-400 uppercase tracking-widest border-b border-white/10 pb-2">Indicateurs de Rentabilité</h4>
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">CAPEX TOTAL</span><span className="font-bold text-lg">{fmtEur(results.capexTotal)}</span></div>
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-bold">REVENUS AN 1</span><span className="font-bold text-lg">{fmtEur(results.revenuAn1)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black text-blue-400">EBE AN 1</span><span className="font-bold text-lg text-blue-400">{fmtEur(results.ebeAn1)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black">GAIN NET 20 ANS</span><span className="font-bold text-lg text-green-400">{fmtEur(results.gainNet20A)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black text-blue-400">EBE / EBITDA AN 1</span><span className="font-bold text-lg text-blue-400">{fmtEur(results.ebeAn1)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black">GAIN NET {config.dureeEtude || 12} ANS</span><span className="font-bold text-lg text-green-400">{fmtEur(results.gainNetEtude)}</span></div>
                 
                 <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
                    <div className="text-center">
@@ -1364,12 +1411,12 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                       <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
                    </div>
                    <div className="text-center border-x border-white/10 px-1">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Temps de Retour</div>
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Temps Retour</div>
                       <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
                    </div>
                    <div className="text-center">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Prêt An 1</div>
-                      <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Moyen</div>
+                      <div className="text-lg font-black text-green-400">{fmt(results.dscrMoyen || results.dscrAn1, 2)}</div>
                    </div>
                  </div>
 
@@ -1383,22 +1430,22 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                       <div className="text-[13px] font-black text-orange-500">{fmtEur(results.totalOpexStudy)}</div>
                    </div>
                    <div className="text-center">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total recettes</div>
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total Recettes</div>
                       <div className="text-[13px] font-black text-green-500">{fmtEur(results.totalRevenueStudy)}</div>
                    </div>
                  </div>
 
                  <div className="mt-4 pt-3 border-t border-white/20 space-y-2">
                     <div className="flex justify-between items-center bg-blue-500/10 p-2 rounded">
-                       <span className="text-[11px] opacity-70 uppercase font-black">Bénéfice sur la durée d'étude</span>
+                       <span className="text-[11px] opacity-70 uppercase font-black">Bénéfice sur durée d'étude</span>
                        <span className="text-xl font-black text-white">{fmtEur(results.beneficeSurDureeEtude)}</span>
                     </div>
                     <div className="flex justify-between items-center bg-green-500/20 p-2 rounded border border-green-500/30">
-                       <span className="text-[11px] opacity-90 uppercase font-bold text-green-400 leading-tight">Bénéfice sur durée étude<br/>(avec Financement)</span>
+                       <span className="text-[11px] opacity-90 uppercase font-bold text-green-400 leading-tight">Bénéfice Net Cash<br/>(avec Dette)</span>
                        <span className="text-xl font-black text-white">{fmtEur(results.beneficeAvecFinancement)}</span>
                     </div>
                  </div>
-             </div>
+              </div>
           </div>
         )}
       </div>
@@ -1561,6 +1608,119 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
   );
 }
 
+// ─── Section: SYNTHÈSE HYBRIDE CONSOLIDÉE ────────────────────────────────────
+
+function SectionHybrideConsolidee({ globalBp, bpBuilding, bpBattery, collapsedParams, selectedProject, isGreenInvest }) {
+  if (!globalBp || !globalBp.rows || globalBp.rows.length === 0) return null;
+
+  const PDFHeader = () => (
+    <div className="pdf-header hidden flex flex-row items-start w-full mb-3 pb-2 border-b border-emerald-200">
+      <div className="flex-1">
+        <img src="/logo-nelson.png" alt="Logo" className="h-14 w-auto object-contain" />
+      </div>
+      <div className="flex-1 text-center self-center">
+        <span className="text-[20px] font-black text-emerald-800 uppercase tracking-widest">
+          {isGreenInvest ? 'BP Hybride' : 'Business Plan Hybride (PV + BESS)'}
+        </span>
+      </div>
+      <div className="flex-1 text-right flex flex-col items-end">
+        <h1 className="text-sm font-black text-slate-900 uppercase leading-tight">
+          {selectedProject?.name || selectedProject?.client_name || 'Projet Hybride'}
+        </h1>
+        <p className="text-[10px] font-bold text-slate-500 mt-1">{new Date().toLocaleDateString('fr-FR')}</p>
+      </div>
+    </div>
+  );
+
+  const dscrValues = (globalBp.rows || []).filter(r => r.serviceDette > 1).map(r => r.dscr);
+  const dscrMoyenGlobal = dscrValues.length > 0 ? dscrValues.reduce((a, b) => a + b, 0) / dscrValues.length : 0;
+  const capexPV = bpBuilding?.totalConstruction || 0;
+  const capexBESS = bpBattery?.capexTotal || 0;
+  const capexGlobal = globalBp.totalConstruction || (capexPV + capexBESS);
+  const ebitdaTotal20A = (globalBp.rows || []).reduce((sum, r) => sum + (r.ebitda || 0), 0);
+  const tresorerieTotal20A = (globalBp.rows || []).reduce((sum, r) => sum + (r.tresorerie || 0), 0);
+
+  return (
+    <div id="pdf-section-hybrid" className="pdf-header-container bg-white rounded-xl border-2 border-emerald-400 shadow-md p-4 sm:p-6 space-y-6">
+      <PDFHeader />
+      
+      {/* Banner Title */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200 rounded-xl p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-sm">
+            <Layers className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-extrabold text-emerald-950 uppercase tracking-wide">
+              Synthèse Financière Consolidée (Centrale PV + Stockage BESS)
+            </h3>
+            <p className="text-xs text-emerald-700 font-medium">
+              Agrégation des flux de trésorerie sur 20 ans — Optimisation conjointe du raccordement et de la rentabilité
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+            Modèle Hybride Actif
+          </span>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <div className="text-[11px] font-bold text-slate-500 uppercase">CAPEX Consolidé</div>
+          <div className="text-lg font-black text-slate-900 mt-1">{fmtEur(capexGlobal)}</div>
+          <div className="text-[10px] text-slate-500 mt-1">
+            PV: {fmtEur(capexPV)} <br /> BESS: {fmtEur(capexBESS)}
+          </div>
+        </div>
+
+        <div className="bg-blue-50/60 border border-blue-200 rounded-lg p-3">
+          <div className="text-[11px] font-bold text-blue-700 uppercase">EBITDA Cumulé (20A)</div>
+          <div className="text-lg font-black text-blue-900 mt-1">{fmtEur(ebitdaTotal20A)}</div>
+          <div className="text-[10px] text-blue-600 mt-1">
+            Année 1: {fmtEur(globalBp.rows[0]?.ebitda)}
+          </div>
+        </div>
+
+        <div className="bg-emerald-50/60 border border-emerald-200 rounded-lg p-3">
+          <div className="text-[11px] font-bold text-emerald-700 uppercase">TRI Global</div>
+          <div className="text-lg font-black text-emerald-900 mt-1">{fmtPct(globalBp.triProjet)}</div>
+          <div className="text-[10px] text-emerald-700 mt-1">
+            TRI FP: <span className="font-bold">{fmtPct(globalBp.triFP)}</span>
+          </div>
+        </div>
+
+        <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-3">
+          <div className="text-[11px] font-bold text-amber-700 uppercase">DSCR Moyen</div>
+          <div className="text-lg font-black text-amber-900 mt-1">{fmt(dscrMoyenGlobal, 2)}</div>
+          <div className="text-[10px] text-amber-700 mt-1">
+            Cible: ≥ 1,17
+          </div>
+        </div>
+
+        <div className="bg-purple-50/60 border border-purple-200 rounded-lg p-3">
+          <div className="text-[11px] font-bold text-purple-700 uppercase">Trésorerie Nette 20A</div>
+          <div className="text-lg font-black text-purple-900 mt-1">{fmtEur(tresorerieTotal20A)}</div>
+          <div className="text-[10px] text-purple-700 mt-1">
+            Gains nets totaux
+          </div>
+        </div>
+      </div>
+
+      {/* Tableau Prévisionnel Consolidé */}
+      <div>
+        <h4 className="text-xs font-black text-slate-700 uppercase mb-2 tracking-wider flex items-center gap-1.5">
+          <Zap className="w-4 h-4 text-emerald-600" />
+          Tableau Prévisionnel Consolidé sur 20 Ans (Centrale PV + Stockage BESS)
+        </h4>
+        <TableauPrevisionnel params={collapsedParams} rows={globalBp.rows} apport10={globalBp.apport10} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab: BUSINESS PLAN PROJETS ──────────────────────────────────────────────
 
 function TabBpProjets({ 
@@ -1573,6 +1733,8 @@ function TabBpProjets({
   computeResteACharge, 
   calculateGoalSeekDSCR, 
   bpResults, 
+  globalBp = null,
+  bpBattery = null,
   autoCoeffs,
   totalInvestissement, 
   apport10, 
@@ -1583,7 +1745,11 @@ function TabBpProjets({
   isGreenInvest,
   isEnrCourtage,
   resteACharge,
-  isBatteryStandAlone = selectedProject?.isBatteryStandAlone === 'Oui'
+  isBatteryStandAlone = selectedProject?.isBatteryStandAlone === 'Oui',
+  bpSubTab = 'pv',
+  onBpSubTabChange = () => {},
+  isHybridEnabled = false,
+  setIsHybridEnabled = () => {}
 }) {
   const PDFHeader = () => (
     <div className="pdf-header hidden flex flex-row items-start w-full mb-2 pb-1">
@@ -1786,8 +1952,53 @@ function TabBpProjets({
   const saveBp = async () => {
     if (!selectedProject) return;
     try {
-      await apiService.updateProject(selectedProject.id, { bpAcamaState: params });
-      toast({ title: 'BP Sauvegardé', description: `L'état du business plan pour ${selectedProject.name} a été enregistré.` });
+      const pvData = {
+        buildings: params.buildings,
+        puissanceUnitaire: params.puissanceUnitaire,
+        tarifBas: params.tarifBas,
+        tarifHaut: params.tarifHaut,
+        seuilKwhKwc: params.seuilKwhKwc,
+        maintenance: params.maintenance,
+        locationCompteur: params.locationCompteur,
+        assurance: params.assurance,
+        taxesLocales: params.taxesLocales,
+        gestionAdmin: params.gestionAdmin,
+        dureeEmprunt: params.dureeEmprunt,
+        tauxCredit: params.tauxCredit,
+        indexationTarif: params.indexationTarif,
+        indexationOpex: params.indexationOpex,
+        degradation: params.degradation,
+        loyerCoeff: params.loyerCoeff,
+        soulteCoeff: params.soulteCoeff,
+        raccordement: params.raccordement,
+        frais: params.frais,
+        soulte: params.soulte,
+        targetDSCR: params.targetDSCR,
+        tarifACC: params.tarifACC,
+        partACC: params.partACC,
+        vent: params.vent,
+        neige: params.neige,
+        renteType: params.renteType
+      };
+
+      const bessData = {
+        ...(params.batteryConfig || {}),
+        enabled: isHybridEnabled || bpSubTab === 'bess'
+      };
+
+      await apiService.updateProject(selectedProject.id, { 
+        bp_pv_data: pvData,
+        bp_bess_data: bessData,
+        bp_hybrid_enabled: isHybridEnabled,
+        bpAcamaState: {
+          ...pvData,
+          batteryConfig: bessData
+        }
+      });
+      toast({ 
+        title: 'BP Sauvegardé', 
+        description: `Configuration (${bpSubTab === 'pv' ? 'BP PV' : 'BP BESS'}${isHybridEnabled ? ' + Hybride' : ''}) enregistrée pour ${selectedProject.name}.` 
+      });
     } catch (e) {
       toast({ title: 'Erreur sauvegarde', variant: 'destructive', description: e.message });
     }
@@ -1815,6 +2026,15 @@ function TabBpProjets({
     setSelectedProject(p);
     setShowSearch(false);
     
+    // Auto-switch to BESS tab if project is stand-alone battery and has no PV data saved
+    if (p.isBatteryStandAlone === 'Oui' && !p.bp_pv_data) {
+      onBpSubTabChange('bess');
+    }
+
+    if (p.bp_hybrid_enabled !== undefined) {
+      setIsHybridEnabled(Boolean(p.bp_hybrid_enabled));
+    }
+
     // Extract map features for immediate use
     const features = p.features || p.map_state?.features || p.map_state?.projects || [];
     const buildingFeatures = features.filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
@@ -1824,8 +2044,12 @@ function TabBpProjets({
     const projectTenant = p.tenant || p.bpAcamaState?.tenant || params.tenant;
     const localBatData = projectTenant === 'GREEN INVEST' ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA;
 
-    if (p.bpAcamaState) {
-      const saved = { ...p.bpAcamaState };
+    const savedState = p.bp_pv_data || p.bpAcamaState;
+    if (savedState) {
+      const saved = { ...savedState };
+      if (p.bp_bess_data) {
+        saved.batteryConfig = { ...(saved.batteryConfig || {}), ...p.bp_bess_data };
+      }
       // Enrich saved state with building types, productibles & power
       if (saved.buildings) {
         saved.buildings = saved.buildings.map((b, idx) => {
@@ -1970,6 +2194,60 @@ function TabBpProjets({
 
   return (
     <div id="bp-acama-content" className="flex flex-col gap-4 p-2 sm:p-4 text-slate-900 max-w-full overflow-x-hidden">
+      {/* Upper Navigation: Tabs BP PV vs BP BESS & Hybride Toggle */}
+      <div data-html2canvas-ignore="true" className="flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm">
+        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+          <button
+            type="button"
+            onClick={() => onBpSubTabChange('pv')}
+            className={cn(
+              "flex items-center gap-2.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-bold transition-all",
+              bpSubTab === 'pv'
+                ? "bg-amber-500 text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+            )}
+          >
+            <Sun className="w-4 h-4 text-amber-100" />
+            <div className="text-left leading-tight">
+              <div>BP PV</div>
+              <div className="text-[10px] font-normal opacity-90 hidden sm:block">Photovoltaïque Toiture / Hangar / Ombrière</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onBpSubTabChange('bess')}
+            className={cn(
+              "flex items-center gap-2.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-bold transition-all",
+              bpSubTab === 'bess'
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+            )}
+          >
+            <BatteryCharging className="w-4 h-4 text-blue-100" />
+            <div className="text-left leading-tight">
+              <div>BP BESS</div>
+              <div className="text-[10px] font-normal opacity-90 hidden sm:block">Stockage Stationnaire Batteries Stand-Alone</div>
+            </div>
+          </button>
+        </div>
+
+        <label className="flex items-center gap-2.5 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-100/80 transition-colors">
+          <input
+            type="checkbox"
+            checked={isHybridEnabled}
+            onChange={(e) => setIsHybridEnabled(e.target.checked)}
+            className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+          />
+          <div className="flex items-center gap-1.5">
+            <Layers className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs sm:text-sm font-bold text-slate-700">
+              Activer l'analyse combinée <span className="text-emerald-700 font-extrabold">(Hybride PV + BESS)</span>
+            </span>
+          </div>
+        </label>
+      </div>
+
       {/* Project selector & Actions */}
       <div data-html2canvas-ignore="true" className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center gap-4 max-w-full">
         <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -1988,20 +2266,28 @@ function TabBpProjets({
         {selectedProject && (
           <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => {
-              const sections = ['pdf-section-1'];
-              
-              if (params.batteryConfig?.enabled && !params.batteryConfig?.isGlobal) {
-                sections.push('pdf-section-battery');
+              if (isHybridEnabled) {
+                const sections = ['pdf-section-1', 'pdf-section-battery', 'pdf-section-hybrid', 'pdf-section-2'];
+                generateBpAcamaPDF({ 
+                  elementId: 'bp-acama-content', 
+                  sections,
+                  fileName: `BP_Hybride_${selectedProject?.name || 'Projet'}.pdf` 
+                });
+              } else if (bpSubTab === 'bess') {
+                generateBpAcamaPDF({ 
+                  elementId: 'pdf-section-battery', 
+                  sections: ['pdf-section-battery'],
+                  fileName: `BP_BESS_${selectedProject?.name || 'Projet'}.pdf` 
+                });
+              } else {
+                generateBpAcamaPDF({ 
+                  elementId: 'bp-acama-content', 
+                  sections: ['pdf-section-1', 'pdf-section-2'],
+                  fileName: `BP_PV_${selectedProject?.name || 'Projet'}.pdf` 
+                });
               }
-              sections.push('pdf-section-2');
-              
-              generateBpAcamaPDF({ 
-                elementId: 'bp-acama-content', 
-                sections,
-                fileName: `BP_${selectedProject?.name || 'Projet'}.pdf` 
-              });
             }}>
-              <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
+              <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF {isHybridEnabled ? 'HYBRIDE' : (bpSubTab === 'bess' ? 'BESS' : 'PV')}
             </Button>
             <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-[13px] h-8 px-3">
               <Save className="w-3.5 h-3.5 mr-1.5" /> Sauvegarder
@@ -2010,7 +2296,11 @@ function TabBpProjets({
         )}
       </div>
 
-      <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-2.5 sm:p-4 pt-4 sm:pt-6 relative max-w-full overflow-hidden">
+      {/* BP PV Content (Visible on 'pv' tab, or offscreen in hybrid mode for complete PDF export) */}
+      <div className={cn(
+        bpSubTab === 'pv' ? "flex flex-col gap-4" : (isHybridEnabled ? "fixed -left-[9999px] top-0 w-[1600px] pointer-events-none opacity-0" : "hidden")
+      )} data-pdf-offscreen={bpSubTab !== 'pv' && isHybridEnabled ? "true" : undefined}>
+        <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-2.5 sm:p-4 pt-4 sm:pt-6 relative max-w-full overflow-hidden">
           {isBatteryStandAlone && (
             <div className="mb-4 bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-center gap-2 text-amber-800" data-html2canvas-ignore="true">
               <AlertTriangle className="w-4 h-4" />
@@ -2579,31 +2869,46 @@ function TabBpProjets({
       </div>
     </div>
 
-      {isBatteryStandAlone && params.buildings?.length === 0 && !params.batteryConfig?.enabled && (
-         <div className="pdf-header-container bg-white rounded-lg border border-slate-200 p-4 pt-6 relative overflow-hidden">
-            <PDFHeader selectedProject={selectedProject} />
-            <p className="text-center text-slate-400 italic text-sm py-4 border-t border-slate-100">PROJET BATTERIE STAND-ALONE (SANS BÂTIMENT PV)</p>
-         </div>
-      )}
-      {/* Battery Section (Full Width) */}
-      {params.batteryConfig?.enabled && (
-        <div className="w-full">
-           <BatterySection 
-            config={params.batteryConfig} 
-            setParams={setParams} 
-            isEnrCourtage={isEnrCourtage} 
-            selectedProject={selectedProject}
-            isGreenInvest={isGreenInvest}
-           />
-        </div>
-      )}
-
-      {/* Page 2 (or 3 if battery) */}
+      {/* Page 2: Tableau Prévisionnel PV 20 ans */}
       <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
         <div className="mt-4">
           <TableauPrevisionnel params={collapsedParams} rows={rows} apport10={bpResults.apport10} />
         </div>
       </div>
+    </div>
+
+      {/* Stand-Alone Warning for PV tab if project has no building */}
+      {isBatteryStandAlone && (params.buildings?.length === 0 || !params.buildings) && bpSubTab === 'pv' && (
+        <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg text-center text-amber-800">
+          <p className="font-bold text-sm">Projet configuré comme Batterie Stand-Alone</p>
+          <p className="text-xs text-amber-600 mt-1">Basculez sur l'onglet "BP BESS" en haut pour consulter et piloter le plan d'affaires de stockage stationnaire.</p>
+        </div>
+      )}
+
+      {/* BP BESS Content (Visible on 'bess' tab, or offscreen in hybrid mode for complete PDF export) */}
+      <div className={cn(
+        bpSubTab === 'bess' ? "w-full" : (isHybridEnabled ? "fixed -left-[9999px] top-0 w-[1600px] pointer-events-none opacity-0" : "hidden")
+      )} data-pdf-offscreen={bpSubTab !== 'bess' && isHybridEnabled ? "true" : undefined}>
+        <BatterySection 
+          config={{ ...(params.batteryConfig || {}), enabled: true }} 
+          setParams={setParams} 
+          isEnrCourtage={isEnrCourtage} 
+          selectedProject={selectedProject}
+          isGreenInvest={isGreenInvest}
+        />
+      </div>
+
+      {/* Synthèse Consolidée Hybride (PV + BESS) */}
+      {isHybridEnabled && globalBp && (
+        <SectionHybrideConsolidee 
+          globalBp={globalBp}
+          bpBuilding={bpResults}
+          bpBattery={bpBattery}
+          collapsedParams={collapsedParams}
+          selectedProject={selectedProject}
+          isGreenInvest={isGreenInvest}
+        />
+      )}
     </div>
   );
 }
@@ -4178,6 +4483,17 @@ export default function BpAcama() {
   const [isSavingBat, setIsSavingBat] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const bpSubTab = searchParams.get('tab') === 'bess' ? 'bess' : 'pv';
+  const handleBpSubTabChange = useCallback((newTab) => {
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev);
+      p.set('tab', newTab);
+      return p;
+    }, { replace: true });
+  }, [setSearchParams]);
+  const [isHybridEnabled, setIsHybridEnabled] = useState(false);
+
   const updateProjectEdit = useCallback((id, k, v) => {
     setProjectEdits(p => ({ ...p, [id]: { ...(p[id] || {}), [k]: v } }));
   }, []);
@@ -4210,7 +4526,7 @@ export default function BpAcama() {
     tauxCredit: 4,
     indexationTarif: 0.006,
     indexationOpex: 0.02,
-    degradation: 0.004,
+    degradation: 0.0045,
     loyerCoeff: 2.6366,
     soulteCoeff: 0,
     raccordement: 18300.00,
@@ -4295,9 +4611,20 @@ export default function BpAcama() {
       tauxIS: 25
     };
 
+    if (selectedProject.bp_hybrid_enabled !== undefined) {
+      setIsHybridEnabled(Boolean(selectedProject.bp_hybrid_enabled));
+    }
+    if (selectedProject.isBatteryStandAlone === 'Oui' && !selectedProject.bp_pv_data) {
+      handleBpSubTabChange('bess');
+    }
+
     // 1. If saved state exists, we use it but check if building count matches map
-    if (selectedProject.bpAcamaState) {
-      const saved = { ...selectedProject.bpAcamaState };
+    const savedState = selectedProject.bp_pv_data || selectedProject.bpAcamaState;
+    if (savedState) {
+      const saved = { ...savedState };
+      if (selectedProject.bp_bess_data) {
+        saved.batteryConfig = { ...(saved.batteryConfig || {}), ...selectedProject.bp_bess_data };
+      }
       
       // Ensure batteryConfig is initialized if missing in saved state
       if (!saved.batteryConfig) {
@@ -4494,19 +4821,29 @@ export default function BpAcama() {
   }, [collapsedParams, resteACharge, autoCoeffs, params.loyerCoeff, params.soulteCoeff, isGreenInvest]);
 
   const bpBattery = useMemo(() => {
-    if (params.batteryConfig?.enabled) {
-      return computeBatteryProfitability(params.batteryConfig);
+    const isBessActive = params.batteryConfig?.enabled || bpSubTab === 'bess' || isHybridEnabled;
+    if (isBessActive) {
+      return computeBatteryProfitability({
+        ...(params.batteryConfig || {}),
+        enabled: true
+      });
     }
     return null;
-  }, [params.batteryConfig]);
+  }, [params.batteryConfig, bpSubTab, isHybridEnabled]);
+
+  const globalBp = useMemo(() => {
+    if (isHybridEnabled && bpBuilding && bpBattery) {
+      return mergeGlobalBP(bpBuilding, bpBattery, params.batteryConfig || {});
+    }
+    return null;
+  }, [isHybridEnabled, bpBuilding, bpBattery, params.batteryConfig]);
 
   const bp = useMemo(() => {
-    const isGlobalMode = params.batteryConfig?.enabled && params.batteryConfig?.isGlobal && bpBattery;
-    if (isGlobalMode) {
-      return mergeGlobalBP(bpBuilding, bpBattery, params.batteryConfig);
+    if (isHybridEnabled && globalBp) {
+      return globalBp;
     }
     return bpBuilding;
-  }, [bpBuilding, bpBattery, params.batteryConfig?.enabled, params.batteryConfig?.isGlobal]);
+  }, [isHybridEnabled, globalBp, bpBuilding]);
   const { rows, annuite, emprunt, totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bp;
   const tva = totalConstruction * 0.20;
   const apportSoulte = apport10 + calcSoulte;
@@ -4698,7 +5035,9 @@ export default function BpAcama() {
           computeBusinessPlan={computeBusinessPlan}
           computeResteACharge={computeResteACharge}
           calculateGoalSeekDSCR={calculateGoalSeekDSCR}
-          bpResults={bp}
+          bpResults={bpBuilding}
+          globalBp={globalBp}
+          bpBattery={bpBattery}
           autoCoeffs={autoCoeffs}
           resteACharge={autoCoeffs.resteACharge}
           totalInvestissement={totalInvestissement}
@@ -4709,6 +5048,10 @@ export default function BpAcama() {
           activeSuiviBatData={activeSuiviBatData}
           isGreenInvest={isGreenInvest}
           isEnrCourtage={isEnrCourtage}
+          bpSubTab={bpSubTab}
+          onBpSubTabChange={handleBpSubTabChange}
+          isHybridEnabled={isHybridEnabled}
+          setIsHybridEnabled={setIsHybridEnabled}
         />
       );
       case 'suivi': return <TabSuivi projects={projects || []} projectEdits={projectEdits} updateProjectEdit={updateProjectEdit} />;
@@ -4813,7 +5156,22 @@ export default function BpAcama() {
             "text-sm font-bold rounded px-2 py-0.5",
             (isGreenInvest || isEnrCourtage) ? "bg-green-50 text-green-800" : "text-slate-800"
           )}>
-            {(isGreenInvest || isEnrCourtage) ? 'BP' : (activeTab === 'bp_projets' ? 'BUSINESS PLAN PROJETS' : TABS.find(t => t.id === activeTab)?.label)}
+            {activeTab === 'bp_projets' ? (
+              <span className="flex items-center gap-2">
+                <span>{isGreenInvest || isEnrCourtage ? 'BP' : 'BUSINESS PLAN'}</span>
+                <span className="text-slate-400 font-normal">/</span>
+                <span className={cn(
+                  "px-2 py-0.5 rounded text-xs font-black uppercase tracking-wider",
+                  isHybridEnabled 
+                    ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                    : (bpSubTab === 'bess' ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800")
+                )}>
+                  {isHybridEnabled ? 'HYBRIDE (PV + BESS)' : (bpSubTab === 'bess' ? 'BESS' : 'PV')}
+                </span>
+              </span>
+            ) : (
+              (isGreenInvest || isEnrCourtage) ? 'BP' : TABS.find(t => t.id === activeTab)?.label
+            )}
           </h2>
         </div>
         {renderContent()}

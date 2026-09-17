@@ -149,6 +149,16 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         el.style.setProperty('width', '100%', 'important');
                     });
 
+                    // Déplier les sections hors écran pour html2canvas
+                    clonedDoc.querySelectorAll('[data-pdf-offscreen="true"]').forEach(wrapper => {
+                        wrapper.style.setProperty('position', 'static', 'important');
+                        wrapper.style.setProperty('left', 'auto', 'important');
+                        wrapper.style.setProperty('top', 'auto', 'important');
+                        wrapper.style.setProperty('opacity', '1', 'important');
+                        wrapper.style.setProperty('visibility', 'visible', 'important');
+                        wrapper.style.setProperty('display', 'block', 'important');
+                    });
+
                     const s = clonedDoc.getElementById(id);
                     if (s) {
                         s.style.display = 'block';
@@ -170,7 +180,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                                     s.style.width = '1600px';
                                 }
                             } else {
-                                s.style.width = id === 'pdf-section-2' ? '2200px' : '1600px'; 
+                                s.style.width = (id === 'pdf-section-2' || id === 'pdf-section-hybrid') ? '2200px' : '1600px'; 
                             }
                         }
 
