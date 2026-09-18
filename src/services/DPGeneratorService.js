@@ -265,7 +265,7 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
       }
     }
 
-    // Multi-bâtiments supplémentaires
+    // Multi-bâtiments supplémentaires pour le Plan de Masse (DP2 / PC2)
     if (safeProject.buildings && safeProject.buildings.length > 1) {
       for (let bIdx = 1; bIdx < safeProject.buildings.length; bIdx++) {
         const bId = isPC ? `dev-pc-plate-masse-${bIdx}` : `dev-plate-masse-${bIdx}`;
@@ -275,18 +275,33 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
             zip.file(`${prefix}2_Plan_de_Masse_Batiment_${bIdx + 1}.pdf`, bBytes);
           }
         }
+        const bVue2Id = isPC ? `dev-pc-plate-masse-vue2-${bIdx}` : `dev-plate-masse-vue2-${bIdx}`;
+        if (document.getElementById(bVue2Id)) {
+          const bVue2Bytes = await captureDomElementToPdfBytes(bVue2Id);
+          if (bVue2Bytes) {
+            zip.file(`${prefix}2_Plan_de_Masse_Vue2_Batiment_${bIdx + 1}.pdf`, bVue2Bytes);
+          }
+        }
       }
     }
 
     // C. Plan en Coupe (DP3 / PC3)
     notify('Export de la pièce 3 (Plan en coupe)...');
-    let sectionDomId = isPC ? 'dev-pc-plate-section-notice' : 'dev-plate-section';
-    if (!isPC && document.getElementById('dev-plate-coupe-multi')) {
-      sectionDomId = 'dev-plate-coupe-multi';
-    }
+    const sectionDomId = isPC ? 'dev-pc-plate-section-notice' : 'dev-plate-section';
     const sectionBytes = await captureDomElementToPdfBytes(sectionDomId);
     if (sectionBytes) {
       zip.file(`${prefix}3_Plan_en_Coupe.pdf`, sectionBytes);
+    }
+    if (safeProject.buildings && safeProject.buildings.length > 1) {
+      for (let bIdx = 1; bIdx < safeProject.buildings.length; bIdx++) {
+        const secId = isPC ? `dev-pc-plate-section-notice-${bIdx}` : `dev-plate-section-${bIdx}`;
+        if (document.getElementById(secId)) {
+          const bSecBytes = await captureDomElementToPdfBytes(secId);
+          if (bSecBytes) {
+            zip.file(`${prefix}3_Plan_en_Coupe_Batiment_${bIdx + 1}.pdf`, bSecBytes);
+          }
+        }
+      }
     }
 
     // D. Façades et Toitures (DP4 / PC4 ou PC5)
@@ -296,6 +311,17 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
     if (facadesBytes) {
       zip.file(`${prefix}4_Plans_Facades_Toitures.pdf`, facadesBytes);
     }
+    if (safeProject.buildings && safeProject.buildings.length > 1) {
+      for (let bIdx = 1; bIdx < safeProject.buildings.length; bIdx++) {
+        const facId = isPC ? `dev-pc-plate-facades-${bIdx}` : `dev-plate-facades-${bIdx}`;
+        if (document.getElementById(facId)) {
+          const bFacBytes = await captureDomElementToPdfBytes(facId);
+          if (bFacBytes) {
+            zip.file(`${prefix}4_Plans_Facades_Toitures_Batiment_${bIdx + 1}.pdf`, bFacBytes);
+          }
+        }
+      }
+    }
 
     // E. Insertion Paysagère (DP6 / PC6)
     notify('Export de la pièce 6 (Document d\'insertion paysagère)...');
@@ -303,6 +329,17 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
     const insertionBytes = await captureDomElementToPdfBytes(insertionDomId);
     if (insertionBytes) {
       zip.file(`${prefix}6_Document_Insertion_Paysagere.pdf`, insertionBytes);
+    }
+    if (safeProject.buildings && safeProject.buildings.length > 1) {
+      for (let bIdx = 1; bIdx < safeProject.buildings.length; bIdx++) {
+        const insId = isPC ? `dev-pc-plate-insertion-${bIdx}` : `dev-plate-insertion-${bIdx}`;
+        if (document.getElementById(insId)) {
+          const bInsBytes = await captureDomElementToPdfBytes(insId);
+          if (bInsBytes) {
+            zip.file(`${prefix}6_Document_Insertion_Paysagere_Batiment_${bIdx + 1}.pdf`, bInsBytes);
+          }
+        }
+      }
     }
 
     // F. Environnement Proche (DP7 / PC7)
@@ -312,6 +349,17 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
     if (envProcheBytes) {
       zip.file(`${prefix}7_Environnement_Proche.pdf`, envProcheBytes);
     }
+    if (safeProject.buildings && safeProject.buildings.length > 1) {
+      for (let bIdx = 1; bIdx < safeProject.buildings.length; bIdx++) {
+        const epId = isPC ? `dev-pc-plate-env-proche-${bIdx}` : `dev-plate-env-proche-${bIdx}`;
+        if (document.getElementById(epId)) {
+          const bEpBytes = await captureDomElementToPdfBytes(epId);
+          if (bEpBytes) {
+            zip.file(`${prefix}7_Environnement_Proche_Batiment_${bIdx + 1}.pdf`, bEpBytes);
+          }
+        }
+      }
+    }
 
     // G. Environnement Lointain (DP8 / PC8)
     notify('Export de la pièce 8 (Photographie environnement lointain)...');
@@ -319,6 +367,17 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
     const envLointainBytes = await captureDomElementToPdfBytes(envLointainDomId);
     if (envLointainBytes) {
       zip.file(`${prefix}8_Environnement_Lointain.pdf`, envLointainBytes);
+    }
+    if (safeProject.buildings && safeProject.buildings.length > 1) {
+      for (let bIdx = 1; bIdx < safeProject.buildings.length; bIdx++) {
+        const elId = isPC ? `dev-pc-plate-env-lointain-${bIdx}` : `dev-plate-env-lointain-${bIdx}`;
+        if (document.getElementById(elId)) {
+          const bElBytes = await captureDomElementToPdfBytes(elId);
+          if (bElBytes) {
+            zip.file(`${prefix}8_Environnement_Lointain_Batiment_${bIdx + 1}.pdf`, bElBytes);
+          }
+        }
+      }
     }
 
     // H. Notice Descriptive du Projet

@@ -538,32 +538,34 @@ export async function generateFullUrbanismePDF({ type, project, installationType
 
         const filledCerfaBytes = await smartFillCerfa(cerfaUrl, project, cerfaType, effInstallType, plateIds);
         if (filledCerfaBytes) {
-          const cerfaDoc = await PDFDocument.load(filledCerfaBytes);
+          if (platesDoc.getPageCount() === 0) {
+            finalPdfBytes = filledCerfaBytes;
+          } else {
+            const cerfaDoc = await PDFDocument.load(filledCerfaBytes);
 
-          try {
-            // Insérer les planches graphiques et la couverture au début du CERFA master
-            // afin de préserver 100% de l'arborescence AcroForm interactive (/Root /AcroForm)
-            // et placer ainsi le CERFA officiel immédiatement APRÈS les pièces graphiques
-            if (platesDoc.getPageCount() > 0) {
+            try {
+              // Insérer les planches graphiques et la couverture au début du CERFA master
+              // afin de préserver 100% de l'arborescence AcroForm interactive (/Root /AcroForm)
+              // et placer ainsi le CERFA officiel immédiatement APRÈS les pièces graphiques
               const copiedPlates = await cerfaDoc.copyPages(platesDoc, platesDoc.getPageIndices());
               for (let pIdx = 0; pIdx < copiedPlates.length; pIdx++) {
                 cerfaDoc.insertPage(pIdx, copiedPlates[pIdx]);
               }
-            }
 
-            const acroForm = cerfaDoc.catalog.lookup(PDFName.of('AcroForm'));
-            if (acroForm) {
-              acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True);
-            }
+              const acroForm = cerfaDoc.catalog.lookup(PDFName.of('AcroForm'));
+              if (acroForm) {
+                acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True);
+              }
 
-            finalPdfBytes = await cerfaDoc.save();
-          } catch (mergeErr) {
-            console.warn('[UrbanismeDoc] Échec insertion dans cerfaDoc, fallback ajout des pages CERFA au document:', mergeErr);
-            const copiedCerfa = await platesDoc.copyPages(cerfaDoc, cerfaDoc.getPageIndices());
-            for (const cPage of copiedCerfa) {
-              platesDoc.addPage(cPage);
+              finalPdfBytes = await cerfaDoc.save();
+            } catch (mergeErr) {
+              console.warn('[UrbanismeDoc] Échec insertion dans cerfaDoc, fallback ajout des pages CERFA au document:', mergeErr);
+              const copiedCerfa = await platesDoc.copyPages(cerfaDoc, cerfaDoc.getPageIndices());
+              for (const cPage of copiedCerfa) {
+                platesDoc.addPage(cPage);
+              }
+              finalPdfBytes = await platesDoc.save();
             }
-            finalPdfBytes = await platesDoc.save();
           }
         }
       } catch (cerfaErr) {

@@ -11,6 +11,7 @@
  */
 
 import { CERTITUDE_LEVELS } from '../data/turpe/turpe7Tarifs.js';
+import { getCreSubstationQualification } from './creZonesService.js';
 
 /**
  * Calcul de distance géodésique Haversine entre deux coordonnées (lat/lon) en kilomètres
@@ -76,8 +77,32 @@ export function recommendVoltageDomain(powerKw) {
   };
 }
 
+let cachedCapareseauSubstations = null;
+
 /**
- * Interroge l'API Open Data Enedis/ODRE pour localiser le poste source le plus proche des coordonnées GPS
+ * Charge les données complètes de la cartographie Caparéseau (3 118 postes sources)
+ */
+export async function loadCapareseauData() {
+  if (cachedCapareseauSubstations) return cachedCapareseauSubstations;
+  try {
+    if (typeof window !== 'undefined' && window.fetch) {
+      const res = await fetch('/datas/capareseau_map.json');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          cachedCapareseauSubstations = data;
+          return cachedCapareseauSubstations;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[networkQualificationService] Impossible de charger /datas/capareseau_map.json:', err);
+  }
+  return null;
+}
+
+/**
+ * Localise le poste source le plus proche des coordonnées GPS via Caparéseau / ODRE
  */
 export async function fetchClosestSubstation(lat, lng) {
   if (!lat || !lng) return null;
@@ -87,7 +112,50 @@ export async function fetchClosestSubstation(lat, lng) {
     const lngNum = parseFloat(lng);
     if (isNaN(latNum) || isNaN(lngNum)) return null;
 
-    // Délimitation d'une bounding box de recherche (~35 km autour des coordonnées)
+    // 1. Recherche instantanée dans la base locale Caparéseau (3 118 postes)
+    const localData = await loadCapareseauData();
+    if (localData && localData.length > 0) {
+      let closest = null;
+      let minDist = Infinity;
+
+      for (let i = 0; i < localData.length; i++) {
+        const item = localData[i];
+        const sLat = item.Y ?? item.lat;
+        const sLng = item.X ?? item.lng;
+        if (sLat == null || sLng == null) continue;
+
+        const dist = calculateHaversineDistanceKm(latNum, lngNum, sLat, sLng);
+        if (dist !== null && dist < minDist) {
+          minDist = dist;
+          closest = item;
+        }
+      }
+
+      if (closest) {
+        const creQual = getCreSubstationQualification(closest.name, closest.code);
+        const distKm = Math.round(minDist * 10) / 10;
+        return {
+          id: closest.code || closest.name || 'Poste Source',
+          name: closest.name || 'Poste Source HTA/HTB',
+          code: closest.code || '',
+          voltageLevel: closest.htb_type ? `${closest.htb_type} / 20 kV` : 'HTA / 20 kV',
+          availableCapacityMw: parseFloat(closest.values?.INFO_NA) || 0,
+          reservedCapacityMw: parseFloat(closest.values?.INFO_CR) || 0,
+          quotePartS3REnR: closest.values?.INFO_QP || '—',
+          fileAttenteMw: parseFloat(closest.values?.INFO_FAS3R) || 0,
+          tauxOccupation: closest.values?.INFO_TX || '—',
+          gestionnaire: closest.grd1?.name || 'Enedis',
+          commune: closest.territory_name || '',
+          lat: closest.Y ?? closest.lat,
+          lng: closest.X ?? closest.lng,
+          distanceKm: distKm,
+          estimatedRouteMeters: estimateConnectionRouteMeters(distKm),
+          creQualification: creQual
+        };
+      }
+    }
+
+    // 2. Fallback API distante ODRE si fichier local non chargé
     const deltaLat = 0.35;
     const deltaLng = 0.45;
     const latMax = latNum + deltaLat;
@@ -104,7 +172,6 @@ export async function fetchClosestSubstation(lat, lng) {
     const data = await response.json();
     if (!data || !data.results || data.results.length === 0) return null;
 
-    // Calcul de la distance pour chaque poste trouvé et tri par proximité
     const candidateSubstations = data.results
       .map(item => {
         const itemLat = item.geo_point_2d?.lat || item.latitude;
@@ -112,19 +179,23 @@ export async function fetchClosestSubstation(lat, lng) {
         if (!itemLat || !itemLng) return null;
 
         const distanceKm = calculateHaversineDistanceKm(latNum, lngNum, itemLat, itemLng);
+        const creQual = getCreSubstationQualification(item.nom_du_poste, item.code_poste);
         return {
           id: item.nom_du_poste || item.code_poste || 'Poste Source',
           name: item.nom_du_poste || 'Poste Source HTA/HTB',
+          code: item.code_poste || '',
           voltageLevel: item.niveau_de_tension || '63/20 kV',
-          availableCapacityMw: item.capacite_disponible_mw ?? item.capacite_restante_mw ?? null,
-          reservedCapacityMw: item.capacite_reservee_mw ?? null,
+          availableCapacityMw: item.capacite_disponible_mw ?? item.capacite_restante_mw ?? 0,
+          reservedCapacityMw: item.capacite_reservee_mw ?? 0,
+          quotePartS3REnR: item.quote_part_s3renr || '—',
           gestionnaire: item.gestionnaire || 'Enedis / RTE',
           commune: item.commune || '',
           departement: item.departement || '',
           lat: itemLat,
           lng: itemLng,
           distanceKm: Math.round(distanceKm * 10) / 10,
-          estimatedRouteMeters: estimateConnectionRouteMeters(distanceKm)
+          estimatedRouteMeters: estimateConnectionRouteMeters(distanceKm),
+          creQualification: creQual
         };
       })
       .filter(Boolean)
@@ -168,7 +239,7 @@ export async function qualifyBessProjectSite({
     distanceCertitude = CERTITUDE_LEVELS[4]; // Saisie manuelle utilisateur
   } else if (closestSubstation && closestSubstation.estimatedRouteMeters) {
     distanceMeters = closestSubstation.estimatedRouteMeters;
-    distanceCertitude = CERTITUDE_LEVELS[3]; // Calculé à partir du poste source géolocalisé
+    distanceCertitude = CERTITUDE_LEVELS[2]; // Officiel rapproché ODRE / Caparéseau
   }
 
   // Domaine de tension retenu
@@ -179,6 +250,7 @@ export async function qualifyBessProjectSite({
     capacityKwh: capacity,
     cRate: Math.round((power / (capacity || 1)) * 100) / 100, // C-Rate (ex: 0.48C pour 500kW/1044kWh)
     dischargeDurationHours: Math.round(((capacity * 0.9) / (power || 1)) * 10) / 10, // ex: ~1.9h
+    distancePrivDefault: 10, // 10 m de distance privée par défaut
 
     // Informations géographiques
     gps: {
@@ -192,18 +264,31 @@ export async function qualifyBessProjectSite({
     // Poste source identifié
     substation: closestSubstation ? {
       name: closestSubstation.name,
+      code: closestSubstation.code || '',
       voltageLevel: closestSubstation.voltageLevel,
       availableCapacityMw: closestSubstation.availableCapacityMw,
+      reservedCapacityMw: closestSubstation.reservedCapacityMw,
+      quotePartS3REnR: closestSubstation.quotePartS3REnR,
+      fileAttenteMw: closestSubstation.fileAttenteMw,
+      tauxOccupation: closestSubstation.tauxOccupation,
       gestionnaire: closestSubstation.gestionnaire,
       distanceKm: closestSubstation.distanceKm,
+      estimatedRouteMeters: closestSubstation.estimatedRouteMeters,
+      creQualification: closestSubstation.creQualification || getCreSubstationQualification(closestSubstation.name, closestSubstation.code),
       certitude: CERTITUDE_LEVELS[2], // Officiel rapproché ODRE
       status: 'IDENTIFIÉ'
     } : {
       name: 'Poste Source non géolocalisé',
+      code: '',
       voltageLevel: '20 kV',
       availableCapacityMw: null,
+      reservedCapacityMw: null,
+      quotePartS3REnR: '—',
+      fileAttenteMw: 0,
+      tauxOccupation: '—',
       gestionnaire: 'Enedis',
       distanceKm: null,
+      creQualification: getCreSubstationQualification('', ''),
       certitude: CERTITUDE_LEVELS[4], // À CONFIRMER
       status: 'À CONFIRMER'
     },
@@ -217,7 +302,7 @@ export async function qualifyBessProjectSite({
       domainCertitude: recommendedVoltage.certitude,
       isConfirmed: recommendedVoltage.isConfirmed && !!closestSubstation,
       statusMessage: closestSubstation 
-        ? `Poste source ${closestSubstation.name} identifié à ${closestSubstation.distanceKm} km.`
+        ? `Poste source ${closestSubstation.name} (${closestSubstation.code || ''}) identifié à ${closestSubstation.distanceKm} km.`
         : 'Coordonnées GPS partielles ou non rapprochées — Hypothèse standard HTA 20 kV (À CONFIRMER).'
     }
   };

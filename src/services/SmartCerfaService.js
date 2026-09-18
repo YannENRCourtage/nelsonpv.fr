@@ -126,13 +126,30 @@ const CERFA_16702_03_ALL_BORDEREAU = [
 ];
 
 export function resolveDemandeurNames(project) {
-  const rawName = project?.demandeur || project?.clientName || project?.fullName || project?.lastName || project?.name || '';
-  const cleanName = rawName.trim();
-  
-  if (!cleanName) return { lastName: '', firstName: '' };
+  if (!project) return { lastName: '', firstName: '' };
 
-  if (project?.firstName && !cleanName.toLowerCase().includes(project.firstName.toLowerCase())) {
-    return { lastName: cleanName, firstName: project.firstName };
+  const directLastName = project.lastName || project.client_name || project.clientName || project.nom || project.client_nom || '';
+  const directFirstName = project.firstName || project.client_firstname || project.clientFirstName || project.prenom || project.client_prenom || '';
+
+  if (directLastName && directFirstName) {
+    return { lastName: directLastName.trim(), firstName: directFirstName.trim() };
+  }
+
+  let rawName = directLastName || project.demandeur || project.fullName || project.name || '';
+  let cleanName = String(rawName).trim();
+  if (!cleanName) return { lastName: '', firstName: (directFirstName || '').trim() };
+
+  // Retirer les préfixes de numéro de site éventuels (ex: "29- ", "1- ", "SPV A - ")
+  cleanName = cleanName.replace(/^\d+\s*[-_]\s*/, '').replace(/^SPV\s+[A-Z0-9]+\s*[-_]\s*/i, '').trim();
+
+  // Si cleanName contient le code postal et la ville à la fin (ex: "DAVID 19350 CONCEZE")
+  const postCodeCityMatch = cleanName.match(/^(.*?)\s+\d{5}\s+.*$/);
+  if (postCodeCityMatch && postCodeCityMatch[1].trim()) {
+    cleanName = postCodeCityMatch[1].trim();
+  }
+
+  if (directFirstName) {
+    return { lastName: cleanName, firstName: directFirstName.trim() };
   }
 
   const parts = cleanName.split(/\s+/);
@@ -262,8 +279,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
 
     // ── Préparer les données ───────────────────────────────────────
     const names = resolveDemandeurNames(project);
-    const lastName  = names.lastName || project?.lastName || project?.name || '';
-    const firstName = names.firstName || project?.firstName || '';
+    const lastName  = names.lastName || project?.lastName || project?.client_name || project?.clientName || project?.name || '';
+    const firstName = names.firstName || project?.firstName || project?.client_firstname || project?.clientFirstName || '';
     const birthDate = (project?.birthDate || '').replace(/\D/g, '').slice(0, 8);
     const birthCity = project?.birthCity || ''; // Strict: uniquement lieu de naissance. Si vide, reste vide.
     let birthDept = project?.birthDepartment || project?.birthDept || '';
@@ -273,9 +290,9 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     }
     const birthCountry = project?.birthCountry || 'FRANCE';
 
-    const rawAddress = project?.address || project?.clientAddress || project?.siteAddress || project?.street || project?.adresse || '';
-    const defaultZip = project?.zip || project?.postalCode || project?.code_postal || project?.clientZip || '';
-    const defaultCity = project?.commune || project?.city || project?.cadastre_commune || project?.clientCity || '';
+    const rawAddress = project?.address || project?.clientAddress || project?.client_address || project?.siteAddress || project?.street || project?.adresse || '';
+    const defaultZip = project?.zip || project?.postalCode || project?.code_postal || project?.clientZip || project?.client_zip || '';
+    const defaultCity = project?.commune || project?.city || project?.cadastre_commune || project?.clientCity || project?.client_city || '';
 
     const parsedAddr = parseFrenchAddress(rawAddress, defaultZip, defaultCity);
     const addrNum    = project?.adresse_num || project?.street_number || project?.terrain_voie_num || parsedAddr.numero || '';
@@ -312,9 +329,9 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const cleanKwcVal = rawKwc ? String(rawKwc).replace(/kWc/gi, '').trim() : '';
     const cerfaChoice = project?.cerfaEmailChoice || 'email2';
     const email     = (cerfaChoice === 'email1')
-      ? (project?.email || project?.clientEmail || 'contact@enr-courtage.fr')
+      ? (project?.email || project?.clientEmail || project?.client_email || 'contact@enr-courtage.fr')
       : (project?.email2 || 'contact@enr-courtage.fr');
-    const tel       = project?.phone || project?.clientPhone || '';
+    const tel       = project?.phone || project?.clientPhone || project?.client_phone || '';
     const now       = new Date();
     const dayStr    = String(now.getDate()).padStart(2, '0');
     const monthStr  = String(now.getMonth() + 1).padStart(2, '0');
@@ -705,6 +722,14 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       }
     } catch (e) {
       console.warn('[SmartCerfa] AcroForm fill notice:', e.message);
+    }
+
+    try {
+      const form = pdfDoc.getForm();
+      const formFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      form.updateFieldAppearances(formFont);
+    } catch (fontErr) {
+      console.warn('[SmartCerfa] updateFieldAppearances notice:', fontErr?.message);
     }
 
     try {

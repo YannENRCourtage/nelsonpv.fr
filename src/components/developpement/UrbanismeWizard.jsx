@@ -4455,24 +4455,32 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       setPopupBlocked(true);
     }
 
-    // 2. Déclencher le packaging ZIP
+    // 2. Déclencher le packaging ZIP via le pipeline officiel onGenerate pour synchronisation parfaite du DOM
     setIsExportingZip(true);
     setZipProgressText('Préparation des pièces du dossier...');
     try {
       saveWizardState();
       const { finalProject, finalTypeLabel } = await prepareProjectPayload();
-      await exportDossierDepotZip({
-        project: finalProject,
-        type: type,
-        chosenType: finalTypeLabel,
-        selectedPages: selectedPages,
-        mairieInfo: mairieRouting?.data,
-        onProgress: (msg) => setZipProgressText(msg)
-      });
-      toast({
-        title: 'Dossier de dépôt téléchargé !',
-        description: 'L\'archive ZIP avec les pièces officielles et les instructions est prête pour le dépôt.',
-      });
+      if (typeof onGenerate === 'function') {
+        await onGenerate(type, finalTypeLabel, finalProject, selectedPages, null, {
+          isZip: true,
+          mairieInfo: mairieRouting?.data,
+          onProgress: (msg) => setZipProgressText(msg)
+        });
+      } else {
+        await exportDossierDepotZip({
+          project: finalProject,
+          type: type,
+          chosenType: finalTypeLabel,
+          selectedPages: selectedPages,
+          mairieInfo: mairieRouting?.data,
+          onProgress: (msg) => setZipProgressText(msg)
+        });
+        toast({
+          title: 'Dossier de dépôt téléchargé !',
+          description: 'L\'archive ZIP avec les pièces officielles et les instructions est prête pour le dépôt.',
+        });
+      }
     } catch (zipErr) {
       console.error('[UrbanismeWizard] Erreur export ZIP:', zipErr);
       toast({

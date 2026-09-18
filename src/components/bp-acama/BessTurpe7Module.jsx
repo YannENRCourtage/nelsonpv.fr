@@ -137,10 +137,30 @@ export function NetworkQualificationBanner({
 
           <div className="bg-white p-2.5 rounded border border-slate-200">
             <div className="text-[10px] uppercase font-bold text-slate-500">Poste Source ODRE</div>
-            <div className="font-bold text-slate-800 truncate">{sub?.name || 'À confirmer'}</div>
+            <div className="font-bold text-slate-800 truncate">{sub?.name || 'À confirmer'} {sub?.code ? `(${sub.code})` : ''}</div>
             <div className="text-[11px] text-blue-600 font-semibold">
               {sub?.voltageLevel || 'Tension à qualifier'} ({sub?.gestionnaire || 'Enedis'})
             </div>
+            {sub?.quotePartS3REnR && sub.quotePartS3REnR !== '—' && (
+              <div className="text-[10px] font-bold text-amber-700 mt-1">
+                QP S3REnR : {sub.quotePartS3REnR}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white p-2.5 rounded border border-slate-200">
+            <div className="text-[10px] uppercase font-bold text-slate-500">Capacités Réseau (ODRE)</div>
+            <div className="font-bold text-slate-800">
+              Reste à affecter : <span className="text-emerald-600">{sub?.availableCapacityMw != null ? `${sub.availableCapacityMw} MW` : '—'}</span>
+            </div>
+            <div className="text-[11px] text-slate-600">
+              Réservé : {sub?.reservedCapacityMw != null ? `${sub.reservedCapacityMw} MW` : '—'}
+            </div>
+            {sub?.fileAttenteMw != null && (
+              <div className="text-[10px] text-slate-500">
+                File d'attente : {sub.fileAttenteMw} MW
+              </div>
+            )}
           </div>
 
           <div className="bg-white p-2.5 rounded border border-slate-200">
@@ -149,19 +169,19 @@ export function NetworkQualificationBanner({
               {hasSub ? `${sub.distanceKm} km vol d'oiseau` : 'Non calculée'}
             </div>
             <div className="text-[11px] text-slate-500">
-              {hasSub ? `Tracé voirie estimé : ~${Math.round(sub.distanceKm * 1300)} m` : 'À CONFIRMER avec PTF'}
+              {hasSub ? `Tracé voirie estimé : ~${sub.estimatedRouteMeters || Math.round(sub.distanceKm * 1300)} m` : 'À CONFIRMER avec PTF'}
             </div>
           </div>
 
           <div className="bg-white p-2.5 rounded border border-slate-200">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Régime Tension Suggéré</div>
-            <div className="font-bold text-emerald-700">
-              {qualification?.connection?.domainKey || 'HTA1 (20 kV)'}
+            <div className="text-[10px] uppercase font-bold text-slate-500">Zone CRE 2025-227 (TURPE 7)</div>
+            <div className="font-bold text-indigo-700">
+              {sub?.creQualification?.label || 'Zone standard Enedis'}
             </div>
-            <div className="text-[11px] text-slate-500">
-              {qualification?.powerKw > 250
-                ? 'Obligation HTA (P > 250 kVA)'
-                : 'BT ou HTA selon étude Enedis'}
+            <div className="text-[10px] text-slate-500">
+              {sub?.creQualification?.isIndexed
+                ? 'Signal-prix délibéré — Neutralité stockage garantie'
+                : 'Tarification stockage standard TURPE 7'}
             </div>
           </div>
         </div>

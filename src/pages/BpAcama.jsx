@@ -27,6 +27,7 @@ import {
   Turpe7ComparatorAndSensitivitySection,
   Turpe7SourcesModal
 } from '../components/bp-acama/BessTurpe7Module.jsx';
+import BessPortfolioView from '../components/bp-acama/BessPortfolioView.jsx';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -546,6 +547,7 @@ function computeBatteryProfitability(config) {
   let gainNetEtude = 0;
   let gainNet20A = 0;
   let dynamicPayback = null;
+  let remainingCapex = capexTotal;
   let runningCashFlow = -apport;
   let resY1 = {};
   let totalOpexStudy = 0;
@@ -630,8 +632,12 @@ function computeBatteryProfitability(config) {
     const cashFlow = ebe - interest - principal - is;
     
     if (y <= dureeEtude) {
-      if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
-        dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / (cashFlow || 1));
+      if (dynamicPayback === null) {
+        if (cashFlow >= remainingCapex && cashFlow > 0) {
+          dynamicPayback = (y - 1) + (remainingCapex / cashFlow);
+        } else if (cashFlow > 0) {
+          remainingCapex -= cashFlow;
+        }
       }
       runningCashFlow += cashFlow;
       gainNetEtude += cashFlow;
@@ -1160,7 +1166,8 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
   );
 }
 
-function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isGreenInvest }) {
+function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isGreenInvest, onApplyProject }) {
+  const [bessMode, setBessMode] = useState('single'); // 'single' | 'portfolio'
   const [viewDetailed, setViewDetailed] = useState(false);
   const [networkQualification, setNetworkQualification] = useState(null);
   const [isLoadingNetwork, setIsLoadingNetwork] = useState(false);
@@ -1172,7 +1179,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   
   const currentModelKey = config.batteryModelKey || 'cesc_mercury_261';
   const selectedModel = BATTERY_MODELS.find(m => m.id === currentModelKey) || BATTERY_MODELS[0];
-  const nbBricks = config.nbBricks || 1;
+  const nbBricks = config.nbBricks || 4;
 
   const realPower = config.puissanceDemandee || (nbBricks * selectedModel.power);
   const realEnergy = config.capaciteStockage || (nbBricks * selectedModel.capacity);
@@ -1219,7 +1226,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const batteryBms = qty * model.price;
     
     const rHT = config.raccordementHT || 100;
-    const dPriv = config.distancePriv || 100;
+    const dPriv = config.distancePriv ?? 10;
     const newRaccordement = getHtaCost(p, rHT) + (dPriv * 20);
     const newGenieCivil = 6000 + (qty - 1) * 1300;
     const newDeveloppement = 6000 + (qty - 1) * 500;
@@ -1229,8 +1236,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const prixFCR = config.prixFCR ?? 20; // 20 €/MW/h
     const derating = config.facteurDerating ?? 0.5;
     const prixCap = config.prixCapacite ?? 35; // 35 €/kW/an
-    const spread = config.spreadArbitrage ?? 0.040; // 0.040 €/kWh net
-    const cycles = config.nbCyclesJour ?? 1.0;
+    const spread = config.spreadArbitrage ?? 0.03855; // 0.03855 €/kWh net
+    const cycles = config.nbCyclesJour ?? 2.0;
     const coutRech = config.coutRecharge ?? 0.045;
     const turpeRate = config.turpeStockageTarif ?? 18;
     const maintRate = config.maintenanceTarif ?? 8;
@@ -1317,28 +1324,99 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   );
 
   return (
-    <SectionCard 
-      title="RENTABILITÉ BATTERIE STAND-ALONE (BESS)" 
-      id="pdf-section-battery" 
-      className="bg-white border-t-4 border-t-blue-600 shadow-lg relative pdf-no-top-border"
-      data-pdf-hide-header="true"
-      actions={
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="h-7 gap-1.5 text-[11px] font-bold border-blue-200 text-blue-700 hover:bg-blue-50"
-          onClick={() => generateBpAcamaPDF({ 
-            elementId: 'pdf-section-battery', 
-            fileName: `BP_Batterie_${selectedProject?.name || 'Projet'}.pdf`,
-            orientation: 'landscape'
-          })}
-          data-html2canvas-ignore="true"
+    <div className="space-y-4">
+      {/* Sélecteur de Mode BESS : Projet Unitaire vs Portefeuille 31 Sites */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm" data-html2canvas-ignore="true">
+        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setBessMode('single')}
+            className={cn(
+              "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2",
+              bessMode === 'single'
+                ? "bg-white text-blue-900 shadow-sm border border-slate-200"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+            )}
+          >
+            <BatteryCharging className="w-4 h-4 text-blue-600" />
+            <span>Simulation Unitaire ({selectedProject?.name || 'Projet CRM'})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setBessMode('portfolio')}
+            className={cn(
+              "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2",
+              bessMode === 'portfolio'
+                ? "bg-gradient-to-r from-blue-700 to-indigo-700 text-white shadow-sm font-black"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+            )}
+          >
+            <Layers className="w-4 h-4 text-amber-300" />
+            <span>Portefeuille Multi-Projets (31 sites / 15.5 MW)</span>
+            <span className="ml-1 px-1.5 py-0.5 text-[9px] font-black uppercase rounded-full bg-amber-400 text-slate-900">
+              CRE 2025-227
+            </span>
+          </button>
+        </div>
+
+        <div className="text-xs font-semibold text-slate-500 hidden sm:block">
+          {bessMode === 'portfolio' ? 'Analyse Consolidée 31 Sites • 15.5 MW / 32.36 MWh' : 'Modélisation Financière Détaillée Site Individuel'}
+        </div>
+      </div>
+
+      {bessMode === 'portfolio' ? (
+        <BessPortfolioView
+          onSelectSite={(site) => {
+            if (site && onApplyProject) {
+              onApplyProject({
+                id: site.id,
+                name: site.name,
+                city: site.city,
+                postcode: site.postcode,
+                address: site.address,
+                lat: site.lat,
+                lng: site.lng,
+                isBatteryStandAlone: 'Oui'
+              });
+              setBessMode('single');
+              toast({
+                title: `Site ${site.name} chargé`,
+                description: `Simulation unitaire de 500 kW rattachée au poste source ${site.substation?.name || 'ODRE'}.`
+              });
+            }
+          }}
+          onExportPdf={() => {
+            generateBpAcamaPDF({
+              elementId: 'pdf-section-bess-portfolio',
+              fileName: `Portefeuille_BESS_31_Sites_Investisseur_${new Date().toISOString().slice(0, 10)}.pdf`,
+              orientation: 'landscape'
+            });
+          }}
+        />
+      ) : (
+        <SectionCard 
+          title="RENTABILITÉ BATTERIE STAND-ALONE (BESS)" 
+          id="pdf-section-battery" 
+          className="bg-white border-t-4 border-t-blue-600 shadow-lg relative pdf-no-top-border"
+          data-pdf-hide-header="true"
+          actions={
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="h-7 gap-1.5 text-[11px] font-bold border-blue-200 text-blue-700 hover:bg-blue-50"
+              onClick={() => generateBpAcamaPDF({ 
+                elementId: 'pdf-section-battery', 
+                fileName: `BP_Batterie_${selectedProject?.name || 'Projet'}.pdf`,
+                orientation: 'landscape'
+              })}
+              data-html2canvas-ignore="true"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              PDF BATTERIE
+            </Button>
+          }
         >
-          <FileDown className="w-3.5 h-3.5" />
-          PDF BATTERIE
-        </Button>
-      }
-    >
       <PDFHeader />
       <NetworkQualificationBanner
         qualification={networkQualification}
@@ -1389,7 +1467,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             <GroupTitle title="DONNEES DU PROJET" />
             <div className="grid grid-cols-1 gap-2">
               <Field label="Raccordement HT" value={config.raccordementHT || 100} onChange={v => update('raccordementHT', v)} type="number" suffix="m" />
-              <Field label="Distance privée" value={config.distancePriv || 100} onChange={v => update('distancePriv', v)} type="number" suffix="m" />
+              <Field label="Distance privée" value={config.distancePriv ?? 10} onChange={v => update('distancePriv', v)} type="number" suffix="m" />
             </div>
           </div>
 
@@ -1585,7 +1663,9 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
       </div>
 
       {!config.isGlobal && <TableauPrevisionnelBatterie rows={results.rows} detailed={viewDetailed} />}
-    </SectionCard>
+        </SectionCard>
+      )}
+    </div>
   );
 }
 // ─── Shared Component: Tableau Previsionnel ───────────────────────────────
@@ -2135,7 +2215,6 @@ function TabBpProjets({
     const p = typeof id === 'string' ? (projects || []).find(proj => proj.id === id) : id;
     if (!p) return;
     setSelectedProject(p);
-    setShowSearch(false);
     
     // Auto-switch to BESS tab if project is stand-alone battery and has no PV data saved
     if (p.isBatteryStandAlone === 'Oui' && !p.bp_pv_data) {
@@ -3006,6 +3085,7 @@ function TabBpProjets({
           isEnrCourtage={isEnrCourtage} 
           selectedProject={selectedProject}
           isGreenInvest={isGreenInvest}
+          onApplyProject={applyProject}
         />
       </div>
 

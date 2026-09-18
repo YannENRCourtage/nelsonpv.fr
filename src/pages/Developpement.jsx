@@ -53,6 +53,7 @@ import {
 
 // Services & Data
 import { generateFullUrbanismePDF } from '@/services/UrbanismeDocService';
+import { exportDossierDepotZip } from '@/services/DPGeneratorService';
 import { preloadProjectImages } from '@/utils/imageProxy';
 import {
   getProfessionals, addProfessional, updateProfessional, deleteProfessional
@@ -285,8 +286,8 @@ export default function Developpement() {
     }
   };
 
-  // ── Handlers Génération Document Urbanisme (PDF CERFA) ──────────
-  const handleUrbanismeGenerate = async (docType, chosenType, finalProject, selectedPages, singlePiece = null) => {
+  // ── Handlers Génération Document Urbanisme (PDF CERFA / ZIP Dépot) ──────────
+  const handleUrbanismeGenerate = async (docType, chosenType, finalProject, selectedPages, singlePiece = null, options = {}) => {
     if (!selectedProject) return;
     setIsGenerating(true);
     setCaptureStep('Initialisation du dossier...');
@@ -356,6 +357,26 @@ export default function Developpement() {
 
       // Laisser le temps à React de monter les planches dans le DOM avec les images en mémoire (Data URLs)
       await new Promise(r => setTimeout(r, 450));
+
+      // Gestion spécifique du téléchargement d'archive ZIP pour le guichet unique
+      if (options?.isZip) {
+        await exportDossierDepotZip({
+          project: projectToUse,
+          type: docType,
+          chosenType: chosenType || projectToUse.type || 'batiment_solaire',
+          selectedPages: selectedPages,
+          mairieInfo: options.mairieInfo,
+          onProgress: (msg) => {
+            setCaptureStep(msg);
+            if (typeof options.onProgress === 'function') options.onProgress(msg);
+          }
+        });
+        toast({
+          title: 'Dossier de dépôt téléchargé !',
+          description: 'L\'archive ZIP avec les pièces officielles et les instructions est prête pour le dépôt.',
+        });
+        return;
+      }
 
       const isPC = docType === 'pc';
       const isCU = docType === 'cu';

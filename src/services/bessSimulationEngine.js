@@ -143,6 +143,7 @@ export function simulateBessFinancials(config = {}) {
 
   let remainingDebt = emprunt;
   let runningCashFlow = -apport;
+  let remainingCapex = capexTotal;
   let dynamicPayback = null;
 
   let totalRevenuesStudy = 0;
@@ -262,8 +263,12 @@ export function simulateBessFinancials(config = {}) {
       totalInterestStudy += interest;
       totalNetGainStudy += cashFlow;
 
-      if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
-        dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / (cashFlow || 1));
+      if (dynamicPayback === null) {
+        if (cashFlow >= remainingCapex && cashFlow > 0) {
+          dynamicPayback = (y - 1) + (remainingCapex / cashFlow);
+        } else if (cashFlow > 0) {
+          remainingCapex -= cashFlow;
+        }
       }
       runningCashFlow += cashFlow;
     }
