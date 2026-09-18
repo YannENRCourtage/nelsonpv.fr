@@ -3,7 +3,7 @@ import './Footer.css';
 
 const siteLinks = {
   "enr-courtage.fr": "https://www.enr-courtage.fr/",
-  "enr-courtage-energie.fr": "https://www.enr-courtage-energie.fr/"
+  "enr-courtage-energie.fr": "https://enr-courtage-energie.fr/"
 };
 
 export default function Footer() {
