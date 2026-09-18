@@ -19,6 +19,14 @@ import { generateBpAcamaPDF } from '../components/bp-acama/BpAcamaPDFGenerator.j
 import ProjectSelect from '../components/bp-acama/ProjectSelect.jsx';
 import * as XLSX from 'xlsx';
 import { BATTERY_MODELS } from '../data/batteryModels.js';
+import { calculateTurpe7Details, generateAnnualRechargeProfileMwh } from '../services/turpeCalculationService.js';
+import { qualifyBessProjectSite } from '../services/networkQualificationService.js';
+import {
+  NetworkQualificationBanner,
+  Turpe7ControlCard,
+  Turpe7ComparatorAndSensitivitySection,
+  Turpe7SourcesModal
+} from '../components/bp-acama/BessTurpe7Module.jsx';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -503,7 +511,12 @@ function computeBatteryProfitability(config) {
     spreadArbitrage = 0.040, // 0.040 €/kWh net
     coutRecharge = 0.045, // 0.045 €/kWh
     commissionAgregateur = 18, // 18%
-    turpeStockageTarif = 18, // 18 €/kW/an
+    turpeStockageTarif = 18, // 18 €/kW/an (forfait indicatif)
+    useTurpe7 = true, // Moteur réglementaire TURPE 7 (CRE 2025-78 & 2026-105)
+    tensionDomain = 'HTA1', // 'HTA1' | 'HTA2' | 'BT_SUP_36'
+    tarifOption = 'CU', // 'CU' | 'MU'
+    useStorageOption = true, // Dispositif neutralité stockage CRE 2025-227
+    storageZone = 'ZONE_STANDARD', // 'ZONE_STANDARD' | 'ZONE_INJECTION_SATURATION' | 'ZONE_SOUTIRAGE_TENSION'
     maintenanceTarif = 8, // 8 €/kW/an
     assuranceTarif = 3.5, // 3.5 €/kW/an
     loyerDalle = 5000, // 1250 €/an par armoire / dalle (4 briques = 5000 €/an)
@@ -563,8 +576,31 @@ function computeBatteryProfitability(config) {
     const commAgregateur = caTotalBrut * (commissionAgregateur / 100);
     // 2. Coût de l'énergie de recharge : Capacité_effective * Cycles * 365 * Coût_Moyen_Recharge * infl
     const coutRechargeAn = effCapacity * nbCyclesJour * 365 * coutRecharge * infl;
-    // 3. TURPE Stockage : Puissance_kW * 18 €/kW/an * infl
-    const turpe = puissanceDemandee * turpeStockageTarif * infl;
+    // 3. TURPE Stockage : Calcul TURPE 7 délibéré CRE (ou forfait de fallback)
+    let turpe = 0;
+    let turpeDetailsYear = null;
+    if (useTurpe7) {
+      const rechargeProfile = generateAnnualRechargeProfileMwh({
+        capaciteEffectiveKwh: effCapacity,
+        nbCyclesJour
+      });
+      turpeDetailsYear = calculateTurpe7Details({
+        tensionDomain,
+        tarifOption,
+        pSouscriteSoutirageKw: puissanceDemandee,
+        pSouscriteInjectionKw: puissanceDemandee,
+        rechargeProfileMwh: rechargeProfile,
+        capaciteStockageKwh: effCapacity,
+        nbCyclesJour,
+        rendementRoundTrip: config.rendementRoundTrip || 88,
+        useStorageOption,
+        storageZone,
+        inflationFactor: infl
+      });
+      turpe = turpeDetailsYear.totalTurpe7;
+    } else {
+      turpe = puissanceDemandee * turpeStockageTarif * infl;
+    }
     // 4. Maintenance constructeur & garantie de capacité : Puissance_kW * 8 €/kW/an * infl
     const maint = puissanceDemandee * maintenanceTarif * infl;
     // 5. Assurance RC / Incendie / Risque électrique : Puissance_kW * 3.5 €/kW/an * infl
@@ -639,7 +675,7 @@ function computeBatteryProfitability(config) {
       });
 
       if (y === 1) {
-        resY1 = { caTotalBrut, ebe, dscr };
+        resY1 = { caTotalBrut, ebe, dscr, turpeDetails: turpeDetailsYear };
       }
     }
 
@@ -670,6 +706,8 @@ function computeBatteryProfitability(config) {
     totalInterestStudy,
     beneficeSurDureeEtude: totalRevenueStudy - capexTotal - totalOpexStudy,
     beneficeAvecFinancement: (totalRevenueStudy - capexTotal - totalOpexStudy) - totalInterestStudy,
+    turpeDetails: resY1.turpeDetails || null,
+    turpeAn1: rows[0]?.turpe || 0,
     rows
   };
 }
@@ -1124,6 +1162,10 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
 
 function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isGreenInvest }) {
   const [viewDetailed, setViewDetailed] = useState(false);
+  const [networkQualification, setNetworkQualification] = useState(null);
+  const [isLoadingNetwork, setIsLoadingNetwork] = useState(false);
+  const [showSourcesModal, setShowSourcesModal] = useState(false);
+
   if (!config.enabled) return null;
 
   const results = computeBatteryProfitability(config);
@@ -1134,6 +1176,40 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
 
   const realPower = config.puissanceDemandee || (nbBricks * selectedModel.power);
   const realEnergy = config.capaciteStockage || (nbBricks * selectedModel.capacity);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function runQualification() {
+      if (!selectedProject?.lat && !selectedProject?.lng && !selectedProject?.city && !selectedProject?.address) {
+        setNetworkQualification(null);
+        return;
+      }
+      setIsLoadingNetwork(true);
+      try {
+        const qual = await qualifyBessProjectSite({
+          lat: selectedProject?.lat,
+          lng: selectedProject?.lng,
+          address: selectedProject?.address,
+          city: selectedProject?.city,
+          powerKw: realPower,
+          capacityKwh: realEnergy,
+          voltageDomainOverride: config.tensionDomain,
+          distanceOverrideMeters: config.raccordementHT
+        });
+        if (isMounted) setNetworkQualification(qual);
+      } catch (err) {
+        console.warn('Erreur qualification réseau:', err);
+      } finally {
+        if (isMounted) setIsLoadingNetwork(false);
+      }
+    }
+    runQualification();
+    return () => { isMounted = false; };
+  }, [selectedProject?.lat, selectedProject?.lng, selectedProject?.city, selectedProject?.address, realPower, realEnergy, config.tensionDomain, config.raccordementHT]);
+
+  const handleApplyDistance = (meters) => {
+    update('raccordementHT', meters);
+  };
 
   const updateBatterySpecs = (modelId, quantity) => {
     const model = BATTERY_MODELS.find(m => m.id === modelId) || selectedModel;
@@ -1264,6 +1340,12 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
       }
     >
       <PDFHeader />
+      <NetworkQualificationBanner
+        qualification={networkQualification}
+        isLoading={isLoadingNetwork}
+        selectedProject={selectedProject}
+        onApplyDistance={handleApplyDistance}
+      />
       <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
         <GroupTitle title="Dimensionnement batterie" />
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
@@ -1368,7 +1450,17 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <GroupTitle title="Charges & OPEX BESS" />
           <div className="grid grid-cols-1 gap-2">
             <Field label="Coût Recharge" value={config.coutRecharge ?? 0.045} onChange={v => update('coutRecharge', v)} type="number" suffix="€/kWh" step={0.005} />
-            <Field label="TURPE Stockage" value={config.turpeStockageTarif ?? 18} onChange={v => update('turpeStockageTarif', v)} type="number" suffix="€/kW/an" step={1} />
+            {config.useTurpe7 !== false ? (
+              <div className="flex items-center justify-between border border-blue-200 bg-blue-50/70 rounded px-2 py-1">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-blue-900 uppercase">TURPE 7 Réseau (CRE)</span>
+                  <span className="text-[9px] text-blue-600 font-semibold">{results.turpeDetails?.tensionDomain || 'HTA1'} {results.turpeDetails?.tarifOption || 'CU'}</span>
+                </div>
+                <span className="text-xs font-black text-blue-900">{fmtEur(results.turpeAn1)}/an</span>
+              </div>
+            ) : (
+              <Field label="TURPE Stockage" value={config.turpeStockageTarif ?? 18} onChange={v => update('turpeStockageTarif', v)} type="number" suffix="€/kW/an" step={1} />
+            )}
             <Field label="Maintenance" value={config.maintenanceTarif ?? 8} onChange={v => update('maintenanceTarif', v)} type="number" suffix="€/kW/an" step={1} />
             <Field label="Assurance RC" value={config.assuranceTarif ?? 3.5} onChange={v => update('assuranceTarif', v)} type="number" suffix="€/kW/an" step={0.5} />
             <Field label="Loyer Foncier Dalle" value={config.loyerDalle ?? (1250 * nbBricks)} onChange={v => update('loyerDalle', v)} type="number" suffix="€/an" />
@@ -1449,6 +1541,25 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           </div>
         )}
       </div>
+
+       {/* MODULE TURPE 7 : CONTRÔLE, COMPOSANTES, COMPARATEUR & SENSIBILITÉ */}
+       <div className="mt-6 space-y-4">
+         <Turpe7ControlCard
+           config={config}
+           update={update}
+           turpeDetails={results.turpeDetails}
+           onOpenSources={() => setShowSourcesModal(true)}
+         />
+         <Turpe7ComparatorAndSensitivitySection
+           results={results}
+           config={config}
+         />
+       </div>
+
+       <Turpe7SourcesModal
+         open={showSourcesModal}
+         onClose={() => setShowSourcesModal(false)}
+       />
 
       <div className="flex justify-start mt-6 mb-2 pt-4 border-t border-slate-100">
          <div className="flex bg-slate-100 p-1 rounded-lg">
