@@ -65,6 +65,16 @@ const UpdateBubble = ({ count = 0, onClick }) => {
   );
 };
 
+// Options disponibles pour la colonne Retour Géomètre
+const RETOUR_GEOMETRE_OPTIONS = [
+  '1 - DEMANDE EN COURS',
+  'TRANSMIS GEOMETRE',
+  '3 - DEVIS RECU',
+  '5 - EN COURS GEOMETRE',
+  '6 - PLAN IMPLANT RECU',
+  '7 - DA RECU'
+];
+
 // Formateur de statuts avec badges de couleur
 const StatusBadge = ({ value, type = 'default' }) => {
   if (!value || String(value).trim() === '') return <span className="text-slate-300">-</span>;
@@ -77,8 +87,8 @@ const StatusBadge = ({ value, type = 'default' }) => {
     badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold';
   } else if (lower === 'fait' || lower.includes('devis recu')) {
     badgeClass = 'bg-amber-100 text-amber-800 border-amber-300 font-medium';
-  } else if (lower.includes('transmis') || lower.includes('cours') || lower === 'envoye' || lower === 'envoyé') {
-    badgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
+  } else if (lower.includes('transmis') || lower.includes('cours') || lower === 'envoye' || lower === 'envoyé' || lower.includes('da recu')) {
+    badgeClass = 'bg-blue-100 text-blue-800 border-blue-300 font-medium';
   } else if (lower === 'non' || lower.includes('refus')) {
     badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
   }
@@ -102,6 +112,20 @@ export default function ShantiOnePage() {
   const [selectedProjectForUpdates, setSelectedProjectForUpdates] = useState(null);
   const [editingCell, setEditingCell] = useState(null); // { id, field }
   const [cellEditValue, setCellEditValue] = useState('');
+  const [isCustomRetour, setIsCustomRetour] = useState(false);
+  const [customRetourValue, setCustomRetourValue] = useState('');
+
+  // Gestion de l'annulation par la touche Échap
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setEditingCell(null);
+        setIsCustomRetour(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Vérification RBAC
   const isAuthorized = isShantiOneAuthorized(user);
@@ -278,6 +302,20 @@ export default function ShantiOnePage() {
     try {
       await updateShantiOneProject(id, { [field]: newValue }, user);
     } catch (err) {
+      toast({ title: 'Erreur', description: 'Échec de sauvegarde', variant: 'destructive' });
+    }
+  };
+
+  // Sauvegarde directe (1 clic) pour les sélections de statut (ex: Retour Géomètre)
+  const handleDirectSave = async (id, field, value) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+    setEditingCell(null);
+    setIsCustomRetour(false);
+
+    try {
+      await updateShantiOneProject(id, { [field]: value }, user);
+    } catch (err) {
+      console.error(`[ShantiOne] Erreur mise à jour directe ${field}:`, err);
       toast({ title: 'Erreur', description: 'Échec de sauvegarde', variant: 'destructive' });
     }
   };
@@ -550,14 +588,11 @@ export default function ShantiOnePage() {
                   <th className="px-3 py-3 border-r border-slate-800">Mail</th>
                   <th className="px-3 py-3 border-r border-slate-800">Type Projet</th>
                   <th className="px-3 py-3 border-r border-slate-800 min-w-[180px]">Détail Type</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Accord DP</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Accord PC</th>
-                  <th className="px-3 py-3 border-r border-slate-800">PC</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Pièces C.</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Unité Fonc.</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Fiche Proj.</th>
-                  <th onClick={() => handleSort('retour_geometre')} className="px-3 py-3 border-r border-slate-800 cursor-pointer hover:bg-slate-800">
-                    Retour Géomètre
+                  <th onClick={() => handleSort('retour_geometre')} className="px-3 py-3 border-r border-slate-800 cursor-pointer hover:bg-slate-800 min-w-[200px]">
+                    <div className="flex items-center justify-between">
+                      <span>Retour Géomètre</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                    </div>
                   </th>
                   <th onClick={() => handleSort('geometre')} className="px-3 py-3 border-r border-slate-800 cursor-pointer hover:bg-slate-800">
                     Géomètre
@@ -581,13 +616,13 @@ export default function ShantiOnePage() {
               <tbody className="divide-y divide-slate-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={29} className="py-16 text-center text-slate-400">
+                    <td colSpan={23} className="py-16 text-center text-slate-400">
                       Chargement des projets Shanti One...
                     </td>
                   </tr>
                 ) : filteredProjects.length === 0 ? (
                   <tr>
-                    <td colSpan={29} className="py-16 text-center text-slate-400">
+                    <td colSpan={23} className="py-16 text-center text-slate-400">
                       Aucun projet ne correspond à votre recherche.
                     </td>
                   </tr>
@@ -720,41 +755,142 @@ export default function ShantiOnePage() {
                           {renderEditableCell('type_projet_detail')}
                         </td>
 
-                        {/* ACCORD DP */}
-                        <td className="border-r border-slate-200 text-center">
-                          <StatusBadge value={p.accord_dp} />
-                        </td>
+                        {/* RETOUR GEOMETRE (ÉDITABLE) */}
+                        <td className="border-r border-slate-200 relative p-0">
+                          {editingCell?.id === p.id && editingCell?.field === 'retour_geometre' ? (
+                            <div className="relative p-1">
+                              {/* Backdrop invisible pour fermer en cliquant en dehors */}
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCell(null);
+                                  setIsCustomRetour(false);
+                                }}
+                              />
 
-                        {/* ACCORD PC */}
-                        <td className="border-r border-slate-200 text-center">
-                          <StatusBadge value={p.accord_pc} />
-                        </td>
+                              {/* Menu contextuel de sélection de statut */}
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className={cn(
+                                  "absolute left-2 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 p-2 min-w-[250px] text-left",
+                                  idx > filteredProjects.length - 6 ? "bottom-full mb-1" : "top-full mt-1"
+                                )}
+                              >
+                                {!isCustomRetour ? (
+                                  <div className="space-y-1">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2.5 py-1 flex items-center justify-between border-b border-slate-100 mb-1">
+                                      <span>Retour Géomètre</span>
+                                      <span className="text-[9px] text-slate-400 font-normal">1 clic pour choisir</span>
+                                    </div>
 
-                        {/* PC */}
-                        <td className="border-r border-slate-200 text-center">
-                          <StatusBadge value={p.pc} />
-                        </td>
+                                    <div className="space-y-0.5">
+                                      {RETOUR_GEOMETRE_OPTIONS.map((opt) => {
+                                        const isSelected = p.retour_geometre === opt;
+                                        return (
+                                          <button
+                                            key={opt}
+                                            type="button"
+                                            onClick={() => handleDirectSave(p.id, 'retour_geometre', opt)}
+                                            className={cn(
+                                              "w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between hover:bg-slate-100 transition-colors",
+                                              isSelected && "bg-blue-50/80 ring-1 ring-blue-300 font-bold"
+                                            )}
+                                          >
+                                            <StatusBadge value={opt} />
+                                            {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
 
-                        {/* Pièces Complémentaires */}
-                        <td className="border-r border-slate-200 text-center">
-                          <StatusBadge value={p.pieces_complementaires} />
-                        </td>
+                                    {p.retour_geometre && !RETOUR_GEOMETRE_OPTIONS.includes(p.retour_geometre) && (
+                                      <div className="px-2.5 py-1.5 rounded-lg text-xs bg-slate-50 border border-slate-200 flex items-center justify-between my-1">
+                                        <div className="truncate">
+                                          <span className="text-[10px] text-slate-400 block">Valeur actuelle :</span>
+                                          <span className="font-semibold text-slate-800">{p.retour_geometre}</span>
+                                        </div>
+                                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-2" />
+                                      </div>
+                                    )}
 
-                        {/* Unité Foncière */}
-                        <td className="border-r border-slate-200 text-center">
-                          <StatusBadge value={p.unite_fonciere} />
-                        </td>
-
-                        {/* Fiche Projet Géomètre */}
-                        <td className="border-r border-slate-200 text-center">
-                          <StatusBadge value={p.fiche_projet_geometre} />
-                        </td>
-
-                        {/* RETOUR GEOMETRE */}
-                        <td className="border-r border-slate-200">
-                          <div className="px-3 py-2">
-                            <StatusBadge value={p.retour_geometre} />
-                          </div>
+                                    <div className="border-t border-slate-100 pt-1.5 mt-1.5 flex flex-col gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setIsCustomRetour(true);
+                                          setCustomRetourValue(p.retour_geometre || '');
+                                        }}
+                                        className="w-full text-left px-2.5 py-1.5 rounded text-xs text-blue-700 hover:bg-blue-50 transition-colors flex items-center gap-2 font-medium"
+                                      >
+                                        <span>✏️ Saisie personnalisée...</span>
+                                      </button>
+                                      {p.retour_geometre && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDirectSave(p.id, 'retour_geometre', '')}
+                                          className="w-full text-left px-2.5 py-1 rounded text-[11px] text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2"
+                                        >
+                                          <span>✕ Vider le champ</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2 p-1">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                      Saisie libre retour géomètre
+                                    </div>
+                                    <input
+                                      autoFocus
+                                      type="text"
+                                      value={customRetourValue}
+                                      onChange={(e) => setCustomRetourValue(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault();
+                                          handleDirectSave(p.id, 'retour_geometre', customRetourValue.trim());
+                                        } else if (e.key === 'Escape') {
+                                          setIsCustomRetour(false);
+                                        }
+                                      }}
+                                      placeholder="Ex: 2 - RELANCE GÉOMÈTRE"
+                                      className="w-full text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-blue-500 outline-none"
+                                    />
+                                    <div className="flex items-center justify-end gap-1.5 pt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsCustomRetour(false)}
+                                        className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded"
+                                      >
+                                        Retour
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDirectSave(p.id, 'retour_geometre', customRetourValue.trim())}
+                                        className="px-2.5 py-1 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700 shadow-xs"
+                                      >
+                                        Enregistrer
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              onClick={() => {
+                                setEditingCell({ id: p.id, field: 'retour_geometre' });
+                                setIsCustomRetour(false);
+                                setCustomRetourValue(p.retour_geometre || '');
+                              }}
+                              className="px-3 py-2 cursor-pointer hover:bg-blue-50/60 rounded flex items-center justify-between group/cell transition-colors min-h-[36px]"
+                              title="Cliquer pour modifier le retour géomètre"
+                            >
+                              <StatusBadge value={p.retour_geometre} />
+                              <ChevronDown className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover/cell:opacity-100 transition-opacity ml-1.5 shrink-0" />
+                            </div>
+                          )}
                         </td>
 
                         {/* GEOMETRE */}
@@ -814,7 +950,7 @@ export default function ShantiOnePage() {
                     <td className="px-3 py-3 text-right border-r border-slate-800 text-emerald-400 font-black">
                       {stats.totalKwc.toLocaleString('fr-FR')} kWc
                     </td>
-                    <td colSpan={18} className="px-3 py-3 border-r border-slate-800 text-center text-slate-400 font-normal">
+                    <td colSpan={12} className="px-3 py-3 border-r border-slate-800 text-center text-slate-400 font-normal">
                       Synthèse consolidée des 33 projets
                     </td>
                     <td className="px-3 py-3 text-right border-r border-slate-800 text-emerald-400 font-black">
