@@ -213,44 +213,90 @@ export default function ShantiOnePage() {
   const tableContainerRef = useRef(null);
   const topScrollRef = useRef(null);
   const bottomScrollRef = useRef(null);
-  const isSyncingScroll = useRef(false);
+  const activeScroller = useRef(null);
+  const scrollTimeout = useRef(null);
   const [tableScrollWidth, setTableScrollWidth] = useState(3200);
 
-  // Synchronisation bidirectionnelle du défilement horizontal entre le tableau et les barres
-  const syncScroll = useCallback((source, target1, target2) => {
-    if (isSyncingScroll.current) return;
-    isSyncingScroll.current = true;
-    const scrollLeft = source.scrollLeft;
-    if (target1 && target1.scrollLeft !== scrollLeft) target1.scrollLeft = scrollLeft;
-    if (target2 && target2.scrollLeft !== scrollLeft) target2.scrollLeft = scrollLeft;
-    requestAnimationFrame(() => {
-      isSyncingScroll.current = false;
-    });
+  // Synchronisation bidirectionnelle du défilement horizontal sans coupure d'animation
+  const handleTableScroll = useCallback((e) => {
+    if (activeScroller.current && activeScroller.current !== 'table') return;
+    activeScroller.current = 'table';
+    const left = e.currentTarget.scrollLeft;
+    if (topScrollRef.current && Math.abs(topScrollRef.current.scrollLeft - left) > 1) {
+      topScrollRef.current.scrollLeft = left;
+    }
+    if (bottomScrollRef.current && Math.abs(bottomScrollRef.current.scrollLeft - left) > 1) {
+      bottomScrollRef.current.scrollLeft = left;
+    }
+    clearTimeout(scrollTimeout.current);
+    scrollTimeout.current = setTimeout(() => {
+      activeScroller.current = null;
+    }, 150);
   }, []);
 
-  const handleTableScroll = useCallback((e) => {
-    syncScroll(e.currentTarget, topScrollRef.current, bottomScrollRef.current);
-  }, [syncScroll]);
-
   const handleTopScroll = useCallback((e) => {
-    syncScroll(e.currentTarget, tableContainerRef.current, bottomScrollRef.current);
-  }, [syncScroll]);
+    if (activeScroller.current && activeScroller.current !== 'top') return;
+    activeScroller.current = 'top';
+    const left = e.currentTarget.scrollLeft;
+    if (tableContainerRef.current && Math.abs(tableContainerRef.current.scrollLeft - left) > 1) {
+      tableContainerRef.current.scrollLeft = left;
+    }
+    if (bottomScrollRef.current && Math.abs(bottomScrollRef.current.scrollLeft - left) > 1) {
+      bottomScrollRef.current.scrollLeft = left;
+    }
+    clearTimeout(scrollTimeout.current);
+    scrollTimeout.current = setTimeout(() => {
+      activeScroller.current = null;
+    }, 150);
+  }, []);
 
   const handleBottomScroll = useCallback((e) => {
-    syncScroll(e.currentTarget, tableContainerRef.current, topScrollRef.current);
-  }, [syncScroll]);
-
-  // Défilement direct par bouton ou raccourci
-  const scrollToPosition = useCallback((left) => {
-    if (tableContainerRef.current) {
-      tableContainerRef.current.scrollTo({ left, behavior: 'smooth' });
+    if (activeScroller.current && activeScroller.current !== 'bottom') return;
+    activeScroller.current = 'bottom';
+    const left = e.currentTarget.scrollLeft;
+    if (tableContainerRef.current && Math.abs(tableContainerRef.current.scrollLeft - left) > 1) {
+      tableContainerRef.current.scrollLeft = left;
     }
+    if (topScrollRef.current && Math.abs(topScrollRef.current.scrollLeft - left) > 1) {
+      topScrollRef.current.scrollLeft = left;
+    }
+    clearTimeout(scrollTimeout.current);
+    scrollTimeout.current = setTimeout(() => {
+      activeScroller.current = null;
+    }, 150);
+  }, []);
+
+  // Défilement direct par bouton ou raccourci (Début, Fin, Pas à pas)
+  const handleScrollToStart = useCallback(() => {
+    if (!tableContainerRef.current) return;
+    activeScroller.current = 'table';
+    tableContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    clearTimeout(scrollTimeout.current);
+    scrollTimeout.current = setTimeout(() => {
+      activeScroller.current = null;
+    }, 700);
+  }, []);
+
+  const handleScrollToEnd = useCallback(() => {
+    if (!tableContainerRef.current) return;
+    activeScroller.current = 'table';
+    const container = tableContainerRef.current;
+    const maxScroll = container.scrollWidth || 999999;
+    container.scrollTo({ left: maxScroll, behavior: 'smooth' });
+    clearTimeout(scrollTimeout.current);
+    scrollTimeout.current = setTimeout(() => {
+      activeScroller.current = null;
+    }, 700);
   }, []);
 
   const scrollByDelta = useCallback((delta) => {
-    if (tableContainerRef.current) {
-      tableContainerRef.current.scrollBy({ left: delta, behavior: 'smooth' });
-    }
+    if (!tableContainerRef.current) return;
+    activeScroller.current = 'table';
+    tableContainerRef.current.scrollBy({ left: delta, behavior: 'smooth' });
+    clearTimeout(scrollTimeout.current);
+    scrollTimeout.current = setTimeout(() => {
+      activeScroller.current = null;
+    }, 400);
   }, []);
 
   // Observer la largeur réelle de défilement du tableau
@@ -911,35 +957,35 @@ export default function ShantiOnePage() {
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => scrollToPosition(0)}
-                  className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  onClick={handleScrollToStart}
+                  className="px-3 py-1 rounded-md bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-300 hover:border-blue-300 shadow-2xs transition-all text-xs font-bold flex items-center gap-1 cursor-pointer active:scale-95"
                   title="Revenir au début (1ère colonne)"
                 >
                   <span>⇤ Début</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => scrollByDelta(-400)}
-                  className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  onClick={() => scrollByDelta(-500)}
+                  className="px-3 py-1 rounded-md bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-300 hover:border-blue-300 shadow-2xs transition-all text-xs font-bold flex items-center gap-1 cursor-pointer active:scale-95"
                   title="Faire défiler vers la gauche"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-4 h-4 text-blue-600" />
                   <span>Gauche</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => scrollByDelta(400)}
-                  className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  onClick={() => scrollByDelta(500)}
+                  className="px-3 py-1 rounded-md bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-300 hover:border-blue-300 shadow-2xs transition-all text-xs font-bold flex items-center gap-1 cursor-pointer active:scale-95"
                   title="Faire défiler vers la droite"
                 >
                   <span>Droite</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4 text-blue-600" />
                 </button>
                 <button
                   type="button"
-                  onClick={() => scrollToPosition(tableScrollWidth)}
-                  className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  title="Aller tout à droite (Dernières colonnes)"
+                  onClick={handleScrollToEnd}
+                  className="px-3.5 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 shadow-xs hover:shadow transition-all text-xs font-bold flex items-center gap-1 cursor-pointer active:scale-95"
+                  title="Aller directement tout à la fin (dernières colonnes)"
                 >
                   <span>Fin ⇥</span>
                 </button>
