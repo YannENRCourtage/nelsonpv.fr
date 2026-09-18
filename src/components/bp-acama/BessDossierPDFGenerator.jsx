@@ -15,7 +15,8 @@ import {
   Building2,
   Calendar,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Activity
 } from 'lucide-react';
 import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
