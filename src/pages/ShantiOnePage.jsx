@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   Search, Download, RefreshCw, Plus, Filter, MessageSquare, 
-  CheckCircle2, AlertCircle, ArrowUpDown, ChevronDown, 
+  CheckCircle2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, 
   Building2, Zap, Euro, ShieldCheck, X, FileSpreadsheet, Eye, SlidersHorizontal, Trash2,
-  Clock, Check, Edit2, RotateCcw
+  Clock, Check, Edit2, RotateCcw, ArrowLeftRight, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { isShantiOneAuthorized } from '@/services/firebase/auth.service.js';
@@ -208,6 +208,57 @@ export default function ShantiOnePage() {
   const [cellEditValue, setCellEditValue] = useState('');
   const [isCustomStatus, setIsCustomStatus] = useState(false);
   const [customStatusValue, setCustomStatusValue] = useState('');
+
+  // Refs et états pour la barre de défilement horizontal visible à toute hauteur
+  const tableContainerRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const bottomScrollRef = useRef(null);
+  const isSyncingScroll = useRef(false);
+  const [tableScrollWidth, setTableScrollWidth] = useState(3200);
+
+  // Synchronisation bidirectionnelle du défilement horizontal entre le tableau et les barres
+  const syncScroll = useCallback((source, target1, target2) => {
+    if (isSyncingScroll.current) return;
+    isSyncingScroll.current = true;
+    const scrollLeft = source.scrollLeft;
+    if (target1 && target1.scrollLeft !== scrollLeft) target1.scrollLeft = scrollLeft;
+    if (target2 && target2.scrollLeft !== scrollLeft) target2.scrollLeft = scrollLeft;
+    requestAnimationFrame(() => {
+      isSyncingScroll.current = false;
+    });
+  }, []);
+
+  const handleTableScroll = useCallback((e) => {
+    syncScroll(e.currentTarget, topScrollRef.current, bottomScrollRef.current);
+  }, [syncScroll]);
+
+  const handleTopScroll = useCallback((e) => {
+    syncScroll(e.currentTarget, tableContainerRef.current, bottomScrollRef.current);
+  }, [syncScroll]);
+
+  const handleBottomScroll = useCallback((e) => {
+    syncScroll(e.currentTarget, tableContainerRef.current, topScrollRef.current);
+  }, [syncScroll]);
+
+  // Observer la largeur réelle de défilement du tableau
+  useEffect(() => {
+    const updateScrollWidth = () => {
+      if (tableContainerRef.current) {
+        setTableScrollWidth(tableContainerRef.current.scrollWidth);
+      }
+    };
+    updateScrollWidth();
+    let observer;
+    if (typeof ResizeObserver !== 'undefined' && tableContainerRef.current) {
+      observer = new ResizeObserver(updateScrollWidth);
+      observer.observe(tableContainerRef.current);
+    }
+    window.addEventListener('resize', updateScrollWidth);
+    return () => {
+      if (observer) observer.disconnect();
+      window.removeEventListener('resize', updateScrollWidth);
+    };
+  }, [columns, projects]);
 
   // Calcul des coordonnées sticky (left en px) pour éviter tout chevauchement
   const stickyOffsets = useMemo(() => {
@@ -452,10 +503,13 @@ export default function ShantiOnePage() {
   }, [filteredProjects]);
 
   const handleSort = (key) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-    }));
+    setSortConfig(prev => {
+      if (prev.key === key) {
+        if (prev.direction === 'asc') return { key, direction: 'desc' };
+        return { key: 'rowIdx', direction: 'asc' };
+      }
+      return { key, direction: 'asc' };
+    });
   };
 
   // Édition de cellule générique
@@ -519,7 +573,7 @@ export default function ShantiOnePage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 pb-12 w-full">
+    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 pb-6 w-full">
       {/* ═══ TOP BANNER & METRICS ═══ */}
       <div className="bg-white border-b border-slate-200 px-4 lg:px-6 py-4 shadow-xs w-full">
         <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -784,9 +838,95 @@ export default function ShantiOnePage() {
       </div>
 
       {/* ═══ INTERACTIVE SPREADSHEET TABLE ═══ */}
-      <div className="w-full px-4 lg:px-6 flex-1">
+      <div className="w-full px-4 lg:px-6 flex-1 flex flex-col">
+        <style>{`
+          .shanti-scrollbar::-webkit-scrollbar {
+            height: 9px;
+            width: 8px;
+          }
+          .shanti-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+          }
+          .shanti-scrollbar::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+          }
+          .shanti-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+          }
+          .shanti-dark-scrollbar::-webkit-scrollbar {
+            height: 9px;
+          }
+          .shanti-dark-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+          }
+          .shanti-dark-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+          }
+          .shanti-dark-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+          }
+        `}</style>
+
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-250px)] border-collapse relative">
+          {/* BARRE DE DÉFILEMENT HORIZONTAL SUPÉRIEURE (Accessible immédiatement sans devoir descendre) */}
+          <div className="bg-slate-100/90 border-b border-slate-200 px-3 py-1.5 flex items-center justify-between gap-3 text-slate-600 text-xs select-none">
+            <div className="flex items-center gap-1.5 font-semibold text-slate-700 shrink-0">
+              <ArrowLeftRight className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden sm:inline">Défilement horizontal :</span>
+            </div>
+
+            {/* Piste de défilement horizontal synchronisée */}
+            <div 
+              ref={topScrollRef}
+              onScroll={handleTopScroll}
+              className="flex-1 overflow-x-auto overflow-y-hidden h-3.5 rounded bg-slate-200/80 hover:bg-slate-200 transition-colors cursor-pointer shanti-scrollbar"
+              style={{ scrollbarWidth: 'auto' }}
+              title="Faites glisser cette barre pour faire défiler les colonnes horizontalement"
+            >
+              <div style={{ width: `${tableScrollWidth}px`, height: '1px' }} />
+            </div>
+
+            {/* Boutons de défilement rapide */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (tableContainerRef.current) {
+                    tableContainerRef.current.scrollBy({ left: -350, behavior: 'smooth' });
+                  }
+                }}
+                className="px-2 py-0.5 rounded bg-white hover:bg-slate-200 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-colors flex items-center gap-0.5 text-[11px] font-medium"
+                title="Faire défiler vers la gauche"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Gauche</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (tableContainerRef.current) {
+                    tableContainerRef.current.scrollBy({ left: 350, behavior: 'smooth' });
+                  }
+                }}
+                className="px-2 py-0.5 rounded bg-white hover:bg-slate-200 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-colors flex items-center gap-0.5 text-[11px] font-medium"
+                title="Faire défiler vers la droite"
+              >
+                <span className="hidden md:inline">Droite</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* CONTENEUR DU TABLEAU AVEC DÉFILEMENT BIDIRECTIONNEL */}
+          <div 
+            ref={tableContainerRef}
+            onScroll={handleTableScroll}
+            className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-285px)] min-h-[400px] border-collapse relative shanti-scrollbar"
+          >
             <table className="border-collapse text-left text-xs whitespace-nowrap" style={{ width: 'max-content', minWidth: '100%' }}>
               {/* EN-TÊTES */}
               <thead className="sticky top-0 z-30 bg-slate-900 text-white font-semibold text-[11px] shadow-sm uppercase tracking-wider">
@@ -807,12 +947,8 @@ export default function ShantiOnePage() {
                         }}
                         className={cn(
                           "px-2.5 py-3 border-r border-slate-800 select-none relative group/th bg-slate-900",
-                          col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
-                          col.sortable && !isRenaming && "cursor-pointer hover:bg-slate-800 transition-colors"
+                          col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'
                         )}
-                        onClick={() => {
-                          if (!isRenaming && col.sortable) handleSort(col.id);
-                        }}
                       >
                         <div className="flex items-center justify-between gap-1 overflow-hidden pr-2">
                           {isRenaming ? (
@@ -831,20 +967,55 @@ export default function ShantiOnePage() {
                             />
                           ) : (
                             <span 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!col.fixed) handleStartRename(col);
+                              }}
                               onDoubleClick={(e) => {
                                 e.stopPropagation();
-                                handleStartRename(col);
+                                if (!col.fixed) handleStartRename(col);
                               }}
-                              title="Double-cliquer pour renommer"
-                              className="truncate font-bold"
+                              title={col.fixed ? col.label : "Cliquer pour modifier le titre"}
+                              className={cn(
+                                "truncate font-bold", 
+                                !col.fixed && "cursor-pointer hover:text-blue-300 transition-colors"
+                              )}
                             >
                               {col.label}
                             </span>
                           )}
 
                           <div className="flex items-center gap-1 shrink-0">
+                            {/* Bouton de tri dédié : Le tri ne se déclenche QUE lors du clic sur ce bouton */}
                             {col.sortable && !isRenaming && (
-                              <ArrowUpDown className="w-3 h-3 text-slate-400 shrink-0" />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSort(col.id);
+                                }}
+                                title={
+                                  sortConfig.key === col.id
+                                    ? (sortConfig.direction === 'asc' ? 'Trié croissant (cliquer pour décroissant)' : 'Trié décroissant (cliquer pour annuler le tri)')
+                                    : `Cliquer sur ce symbole pour trier par ${col.label}`
+                                }
+                                className={cn(
+                                  "p-1 rounded transition-colors flex items-center justify-center cursor-pointer",
+                                  sortConfig.key === col.id 
+                                    ? "text-blue-400 bg-slate-800 hover:bg-slate-700 ring-1 ring-blue-500/40" 
+                                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                                )}
+                              >
+                                {sortConfig.key === col.id ? (
+                                  sortConfig.direction === 'asc' ? (
+                                    <ArrowUp className="w-3.5 h-3.5 text-blue-400" />
+                                  ) : (
+                                    <ArrowDown className="w-3.5 h-3.5 text-blue-400" />
+                                  )
+                                ) : (
+                                  <ArrowUpDown className="w-3.5 h-3.5" />
+                                )}
+                              </button>
                             )}
                             
                             {/* Bouton pour renommer au survol */}
@@ -856,7 +1027,7 @@ export default function ShantiOnePage() {
                                   handleStartRename(col);
                                 }}
                                 title="Renommer la colonne"
-                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 hover:text-blue-400"
+                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 hover:text-blue-400 cursor-pointer"
                               >
                                 <Edit2 className="w-2.5 h-2.5" />
                               </button>
@@ -871,7 +1042,7 @@ export default function ShantiOnePage() {
                                   handleDeleteColumn(col.id, col.label);
                                 }}
                                 title="Masquer cette colonne"
-                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 hover:text-rose-400"
+                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 hover:text-rose-400 cursor-pointer"
                               >
                                 <X className="w-3 h-3" />
                               </button>
@@ -1248,6 +1419,17 @@ export default function ShantiOnePage() {
                 </tfoot>
               )}
             </table>
+          </div>
+
+          {/* BARRE DE DÉFILEMENT HORIZONTAL INFÉRIEURE FLOTTANTE / COLLANTE */}
+          <div 
+            ref={bottomScrollRef}
+            onScroll={handleBottomScroll}
+            className="sticky bottom-0 z-35 w-full overflow-x-auto overflow-y-hidden bg-slate-900 border-t border-slate-700 py-1 shadow-md select-none shanti-dark-scrollbar"
+            style={{ height: '14px', scrollbarWidth: 'auto' }}
+            title="Barre de défilement horizontal (synchronisée)"
+          >
+            <div style={{ width: `${tableScrollWidth}px`, height: '1px' }} />
           </div>
         </div>
       </div>
