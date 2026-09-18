@@ -240,6 +240,19 @@ export default function ShantiOnePage() {
     syncScroll(e.currentTarget, tableContainerRef.current, topScrollRef.current);
   }, [syncScroll]);
 
+  // Défilement direct par bouton ou raccourci
+  const scrollToPosition = useCallback((left) => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollTo({ left, behavior: 'smooth' });
+    }
+  }, []);
+
+  const scrollByDelta = useCallback((delta) => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollBy({ left: delta, behavior: 'smooth' });
+    }
+  }, []);
+
   // Observer la largeur réelle de défilement du tableau
   useEffect(() => {
     const updateScrollWidth = () => {
@@ -840,84 +853,113 @@ export default function ShantiOnePage() {
       {/* ═══ INTERACTIVE SPREADSHEET TABLE ═══ */}
       <div className="w-full px-4 lg:px-6 flex-1 flex flex-col">
         <style>{`
+          /* Barre de défilement horizontal et vertical ÉLARGIE */
           .shanti-scrollbar::-webkit-scrollbar {
-            height: 9px;
-            width: 8px;
+            height: 16px; /* Élargi pour un défilement horizontal très simple */
+            width: 14px;  /* Élargi pour le défilement latéral vertical */
           }
           .shanti-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
+            background: #e2e8f0;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
           }
           .shanti-scrollbar::-webkit-scrollbar-thumb {
             background: #94a3b8;
-            border-radius: 4px;
+            border-radius: 8px;
+            border: 3px solid #e2e8f0;
           }
           .shanti-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
+            background: #2563eb; /* Bleu vif interactif au survol */
           }
+          .shanti-scrollbar::-webkit-scrollbar-thumb:active {
+            background: #1d4ed8;
+          }
+
+          /* Barre inférieure flottante élargie */
           .shanti-dark-scrollbar::-webkit-scrollbar {
-            height: 9px;
+            height: 16px;
           }
           .shanti-dark-scrollbar::-webkit-scrollbar-track {
             background: #0f172a;
+            border-radius: 8px;
           }
           .shanti-dark-scrollbar::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 4px;
+            background: #64748b;
+            border-radius: 8px;
+            border: 3px solid #0f172a;
           }
           .shanti-dark-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
+            background: #3b82f6;
           }
         `}</style>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-          {/* BARRE DE DÉFILEMENT HORIZONTAL SUPÉRIEURE (Accessible immédiatement sans devoir descendre) */}
-          <div className="bg-slate-100/90 border-b border-slate-200 px-3 py-1.5 flex items-center justify-between gap-3 text-slate-600 text-xs select-none">
-            <div className="flex items-center gap-1.5 font-semibold text-slate-700 shrink-0">
-              <ArrowLeftRight className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Défilement horizontal :</span>
+          {/* BARRE DE DÉFILEMENT HORIZONTAL SUPÉRIEURE ÉLARGIE ET SIMPLIFIÉE */}
+          <div className="bg-slate-100/95 border-b border-slate-200 px-3 py-2 flex flex-col gap-1.5 select-none">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                <div className="p-1 bg-blue-100 text-blue-700 rounded-md shadow-2xs">
+                  <ArrowLeftRight className="w-4 h-4" />
+                </div>
+                <span>Défilement latéral des colonnes</span>
+                <span className="hidden md:inline-block text-[11px] font-normal text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+                  Glissez la barre ci-dessous ou utilisez les boutons
+                </span>
+              </div>
+
+              {/* Boutons de navigation rapide très simples */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => scrollToPosition(0)}
+                  className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  title="Revenir au début (1ère colonne)"
+                >
+                  <span>⇤ Début</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollByDelta(-400)}
+                  className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  title="Faire défiler vers la gauche"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Gauche</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollByDelta(400)}
+                  className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  title="Faire défiler vers la droite"
+                >
+                  <span>Droite</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToPosition(tableScrollWidth)}
+                  className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  title="Aller tout à droite (Dernières colonnes)"
+                >
+                  <span>Fin ⇥</span>
+                </button>
+              </div>
             </div>
 
-            {/* Piste de défilement horizontal synchronisée */}
+            {/* Piste de défilement horizontal large et très simple à glisser */}
             <div 
               ref={topScrollRef}
               onScroll={handleTopScroll}
-              className="flex-1 overflow-x-auto overflow-y-hidden h-3.5 rounded bg-slate-200/80 hover:bg-slate-200 transition-colors cursor-pointer shanti-scrollbar"
-              style={{ scrollbarWidth: 'auto' }}
-              title="Faites glisser cette barre pour faire défiler les colonnes horizontalement"
+              onWheel={(e) => {
+                if (tableContainerRef.current) {
+                  tableContainerRef.current.scrollLeft += e.deltaY;
+                }
+              }}
+              className="w-full overflow-x-auto overflow-y-hidden rounded-lg bg-slate-200/90 hover:bg-slate-300/60 transition-colors cursor-pointer shanti-scrollbar shadow-inner"
+              style={{ height: '18px', scrollbarWidth: 'auto' }}
+              title="Faites glisser cette barre pour faire défiler le tableau horizontalement"
             >
               <div style={{ width: `${tableScrollWidth}px`, height: '1px' }} />
-            </div>
-
-            {/* Boutons de défilement rapide */}
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  if (tableContainerRef.current) {
-                    tableContainerRef.current.scrollBy({ left: -350, behavior: 'smooth' });
-                  }
-                }}
-                className="px-2 py-0.5 rounded bg-white hover:bg-slate-200 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-colors flex items-center gap-0.5 text-[11px] font-medium"
-                title="Faire défiler vers la gauche"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Gauche</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (tableContainerRef.current) {
-                    tableContainerRef.current.scrollBy({ left: 350, behavior: 'smooth' });
-                  }
-                }}
-                className="px-2 py-0.5 rounded bg-white hover:bg-slate-200 text-slate-700 border border-slate-300 shadow-2xs hover:text-blue-600 transition-colors flex items-center gap-0.5 text-[11px] font-medium"
-                title="Faire défiler vers la droite"
-              >
-                <span className="hidden md:inline">Droite</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
             </div>
           </div>
 
@@ -1421,12 +1463,12 @@ export default function ShantiOnePage() {
             </table>
           </div>
 
-          {/* BARRE DE DÉFILEMENT HORIZONTAL INFÉRIEURE FLOTTANTE / COLLANTE */}
+          {/* BARRE DE DÉFILEMENT HORIZONTAL INFÉRIEURE ÉLARGIE FLOTTANTE / COLLANTE */}
           <div 
             ref={bottomScrollRef}
             onScroll={handleBottomScroll}
-            className="sticky bottom-0 z-35 w-full overflow-x-auto overflow-y-hidden bg-slate-900 border-t border-slate-700 py-1 shadow-md select-none shanti-dark-scrollbar"
-            style={{ height: '14px', scrollbarWidth: 'auto' }}
+            className="sticky bottom-0 z-35 w-full overflow-x-auto overflow-y-hidden bg-slate-900 border-t-2 border-slate-700 py-1 shadow-xl select-none shanti-dark-scrollbar"
+            style={{ height: '20px', scrollbarWidth: 'auto' }}
             title="Barre de défilement horizontal (synchronisée)"
           >
             <div style={{ width: `${tableScrollWidth}px`, height: '1px' }} />
