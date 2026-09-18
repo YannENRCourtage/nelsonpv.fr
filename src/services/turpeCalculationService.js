@@ -28,7 +28,7 @@ import {
  */
 export function generateAnnualRechargeProfileMwh({
   capaciteEffectiveKwh = 1044,
-  nbCyclesJour = 1.0,
+  nbCyclesJour = 2.0,
   repartitionOverride = null
 }) {
   const annualEnergyMwh = (capaciteEffectiveKwh * nbCyclesJour * 365) / 1000;
@@ -56,7 +56,7 @@ export function calculateTurpe7Details({
   pSouscriteInjectionKw = 500,
   rechargeProfileMwh = null,
   capaciteStockageKwh = 1044,
-  nbCyclesJour = 1.0,
+  nbCyclesJour = 2.0,
   rendementRoundTrip = 88, // %
   useStorageOption = true,
   storageZone = 'ZONE_STANDARD',
@@ -74,7 +74,7 @@ export function calculateTurpe7Details({
   // Profil de recharge (MWh/an)
   const profile = rechargeProfileMwh || generateAnnualRechargeProfileMwh({
     capaciteEffectiveKwh: Number(capaciteStockageKwh) || 1044,
-    nbCyclesJour: Number(nbCyclesJour) || 1.0
+    nbCyclesJour: Number(nbCyclesJour) || 2.0
   });
 
   // 1. Composante de Gestion (CG)

@@ -85,7 +85,7 @@ export function simulateBessFinancials(config = {}) {
     rendementRoundTrip = 88, // %
     profondeurDecharge = 90, // DoD %
     degradationAnnuelle = 1.5, // %/an
-    nbCyclesJour = 1.0, // cycles/jour
+    nbCyclesJour = 2.0, // cycles/jour
     dureeEtude = 12, // ans (10, 12, 15, 20)
 
     // Paramètres de marché & Value Stacking

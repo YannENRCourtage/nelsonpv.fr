@@ -28,6 +28,7 @@ import {
   Turpe7SourcesModal
 } from '../components/bp-acama/BessTurpe7Module.jsx';
 import BessPortfolioView from '../components/bp-acama/BessPortfolioView.jsx';
+import BessDossierPDFGenerator from '../components/bp-acama/BessDossierPDFGenerator.jsx';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -505,7 +506,7 @@ function computeBatteryProfitability(config) {
     rendementRoundTrip = 88,
     degradationAnnuelle = 1.5,
     dureeEtude = 12,
-    nbCyclesJour = 1.0,
+    nbCyclesJour = 2.0,
     prixFCR = 20, // 20 €/MW/h soit 0.020 €/kW/h
     facteurDerating = 0.5, // 0.5 pour batterie 2h
     prixCapacite = 35, // 35 €/kW/an
@@ -1172,6 +1173,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   const [networkQualification, setNetworkQualification] = useState(null);
   const [isLoadingNetwork, setIsLoadingNetwork] = useState(false);
   const [showSourcesModal, setShowSourcesModal] = useState(false);
+  const [isDossierPdfOpen, setIsDossierPdfOpen] = useState(false);
+  const [portfolioExportData, setPortfolioExportData] = useState(null);
 
   if (!config.enabled) return null;
 
@@ -1360,8 +1363,15 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           </button>
         </div>
 
-        <div className="text-xs font-semibold text-slate-500 hidden sm:block">
-          {bessMode === 'portfolio' ? 'Analyse Consolidée 31 Sites • 15.5 MW / 32.36 MWh' : 'Modélisation Financière Détaillée Site Individuel'}
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setIsDossierPdfOpen(true)}
+            className="px-4 py-2 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+          >
+            <FileDown className="w-4 h-4 text-emerald-300" />
+            <span>DOSSIER D'ÉTUDE BESS DÉTAILLÉ (MULTIPAGES)</span>
+          </button>
         </div>
       </div>
 
@@ -1386,12 +1396,9 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
               });
             }
           }}
-          onExportPdf={() => {
-            generateBpAcamaPDF({
-              elementId: 'pdf-section-bess-portfolio',
-              fileName: `Portefeuille_BESS_31_Sites_Investisseur_${new Date().toISOString().slice(0, 10)}.pdf`,
-              orientation: 'landscape'
-            });
+          onExportPdf={(data) => {
+            if (data) setPortfolioExportData(data);
+            setIsDossierPdfOpen(true);
           }}
         />
       ) : (
@@ -1400,22 +1407,6 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           id="pdf-section-battery" 
           className="bg-white border-t-4 border-t-blue-600 shadow-lg relative pdf-no-top-border"
           data-pdf-hide-header="true"
-          actions={
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="h-7 gap-1.5 text-[11px] font-bold border-blue-200 text-blue-700 hover:bg-blue-50"
-              onClick={() => generateBpAcamaPDF({ 
-                elementId: 'pdf-section-battery', 
-                fileName: `BP_Batterie_${selectedProject?.name || 'Projet'}.pdf`,
-                orientation: 'landscape'
-              })}
-              data-html2canvas-ignore="true"
-            >
-              <FileDown className="w-3.5 h-3.5" />
-              PDF BATTERIE
-            </Button>
-          }
         >
       <PDFHeader />
       <NetworkQualificationBanner
@@ -1504,7 +1495,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             <Field label="Prix Réserve FCR" value={config.prixFCR ?? 20} onChange={v => update('prixFCR', v)} type="number" suffix="€/MW/h" step={1} />
             <Field label="Prix Capacité" value={config.prixCapacite ?? 35} onChange={v => update('prixCapacite', v)} type="number" suffix="€/kW/an" step={1} />
             <Field label="Spread Arbitrage" value={config.spreadArbitrage ?? 0.040} onChange={v => update('spreadArbitrage', v)} type="number" suffix="€/kWh" step={0.005} />
-            <Field label="Cycles / Jour" value={config.nbCyclesJour ?? 1.0} onChange={v => update('nbCyclesJour', v)} type="number" suffix="c/j" step={0.1} />
+            <Field label="Cycles / Jour" value={config.nbCyclesJour ?? 2.0} onChange={v => update('nbCyclesJour', v)} type="number" suffix="c/j" step={0.1} />
             <div className="pt-2 border-t border-blue-100 flex justify-between items-center px-2 py-1 bg-blue-50/50 rounded">
               <span className="text-[11px] font-black text-blue-700 uppercase">Total Revenus An 1 (Brut)</span>
               <span className="text-sm font-black text-slate-900">{fmtEur(results.revenuAn1)}</span>
@@ -1665,6 +1656,18 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
       {!config.isGlobal && <TableauPrevisionnelBatterie rows={results.rows} detailed={viewDetailed} />}
         </SectionCard>
       )}
+
+      {/* Générateur & Modal du Dossier d'Étude BESS Multipages Pleine Largeur */}
+      <BessDossierPDFGenerator
+        isOpen={isDossierPdfOpen}
+        onClose={() => setIsDossierPdfOpen(false)}
+        mode={bessMode}
+        projectData={selectedProject}
+        batteryConfig={config}
+        batteryResults={results}
+        networkQualification={networkQualification}
+        portfolioData={portfolioExportData}
+      />
     </div>
   );
 }
@@ -4734,6 +4737,7 @@ export default function BpAcama() {
       isGlobal: false,
       inflationAnnuelle: 2,
       degradationAnnuelle: 1.5,
+      nbCyclesJour: 2.0,
       batteryModelKey: 'cesc_mercury_261',
       nbBricks: 4,
       batterieBms: 140000,
@@ -4777,6 +4781,7 @@ export default function BpAcama() {
       isGlobal: false,
       inflationAnnuelle: 2,
       degradationAnnuelle: 1.5,
+      nbCyclesJour: 2.0,
       batteryModelKey: 'cesc_mercury_261',
       nbBricks: 4,
       batterieBms: 140000,
@@ -4875,6 +4880,9 @@ export default function BpAcama() {
         }
         if (saved.batteryConfig.degradationAnnuelle === 2 || saved.batteryConfig.degradationAnnuelle === undefined) {
           saved.batteryConfig.degradationAnnuelle = 1;
+        }
+        if (saved.batteryConfig.nbCyclesJour === undefined || saved.batteryConfig.nbCyclesJour === 1 || saved.batteryConfig.nbCyclesJour === 1.0) {
+          saved.batteryConfig.nbCyclesJour = 2.0;
         }
       }
 

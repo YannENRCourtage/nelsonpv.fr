@@ -291,11 +291,11 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
           </button>
           {onExportPdf && (
             <button
-              onClick={onExportPdf}
+              onClick={() => onExportPdf({ analyzedSites, consolidatedTotals, consolidatedChronique })}
               className="px-3.5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all flex items-center gap-1.5"
             >
               <FileDown className="w-4 h-4" />
-              PDF Dossier Investisseur
+              PDF Dossier Investisseur (Multipages)
             </button>
           )}
         </div>
