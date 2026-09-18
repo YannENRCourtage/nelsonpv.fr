@@ -60,7 +60,7 @@ function getBuildingCorners(centerLat, centerLng, lengthMeters, widthMeters, rot
  * @param {number} zoom Level de zoom (16-17 pour situation, 19 pour plan de masse)
  * @returns {Promise<string>} Data URL Image JPEG (data:image/jpeg;base64,...)
  */
-export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, buildings = null, showDimensions = true, distances = []) {
+export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, buildings = null, showDimensions = true, distances = [], sdisPoint = null) {
   return new Promise((resolve) => {
     try {
       const width = 800;
@@ -333,6 +333,45 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
                 ctx.restore();
               }
             });
+          }
+
+          // Point SDIS si présent
+          if (sdisPoint && sdisPoint.lat && sdisPoint.lng) {
+            const [spx, spy] = latLngToTile(sdisPoint.lat, sdisPoint.lng, zoom);
+            const sdisX = centerX + (spx - exactX) * tileSize;
+            const sdisY = centerY + (spy - exactY) * tileSize;
+
+            ctx.save();
+            const badgeW = 76;
+            const badgeH = 18;
+            const bx = sdisX - badgeW / 2;
+            const by = sdisY - 28;
+
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(sdisX - 1.5, by + badgeH, 3, 10);
+
+            ctx.beginPath();
+            ctx.arc(sdisX, sdisY, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = '#dc2626';
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.roundRect(bx, by, badgeW, badgeH, 4);
+            ctx.fillStyle = '#dc2626';
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🔥 BORNE SDIS', sdisX, by + badgeH / 2);
+            ctx.restore();
           }
 
           // Flèche Nord officielle en haut à droite

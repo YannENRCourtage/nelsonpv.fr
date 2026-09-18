@@ -6,7 +6,7 @@ import {
   Hash, Ruler, Info, RefreshCw, Mail, Phone, FileText,
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
   Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus,
-  Compass, User, Download, Lock, Unlock, Move,
+  Compass, User, Download, Lock, Unlock, Move, Flame,
   Landmark, ExternalLink, Copy, CheckCheck, Save
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -143,7 +143,7 @@ function getOrientationLabel(deg) {
 }
 
 // Capture directe haute fidélité d'une carte Leaflet sans passer par html2canvas sur le SVG (élimine tout décalage)
-async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [], showDimensions = true, distances = []) {
+async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [], showDimensions = true, distances = [], sdisPoint = null) {
   if (!map) return null;
   try {
     const size = map.getSize();
@@ -353,6 +353,42 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
           ctx.restore();
         }
       });
+    }
+
+    // 2c. Rendu du Point SDIS si présent
+    if (sdisPoint && sdisPoint.lat && sdisPoint.lng) {
+      const sdisPt = map.latLngToContainerPoint([sdisPoint.lat, sdisPoint.lng]);
+      ctx.save();
+      const badgeW = 76;
+      const badgeH = 18;
+      const bx = sdisPt.x - badgeW / 2;
+      const by = sdisPt.y - 28;
+
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(sdisPt.x - 1.5, by + badgeH, 3, 10);
+
+      ctx.beginPath();
+      ctx.arc(sdisPt.x, sdisPt.y, 4, 0, 2 * Math.PI);
+      ctx.fillStyle = '#dc2626';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.roundRect(bx, by, badgeW, badgeH, 4);
+      ctx.fillStyle = '#dc2626';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🔥 BORNE SDIS', sdisPt.x, by + badgeH / 2);
+      ctx.restore();
     }
 
     // 3. Flèche Nord officielle en haut à droite
@@ -725,6 +761,58 @@ function MasseDistanceDrawer({ isMeasuring, onAddDistance }) {
   );
 }
 
+function MasseSdisLayer({ sdisPoint, isPlacing, onSetSdisPoint }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (isPlacing) {
+      map.getContainer().style.cursor = 'crosshair';
+      map.dragging.disable();
+    } else {
+      map.getContainer().style.cursor = '';
+      map.dragging.enable();
+    }
+  }, [isPlacing, map]);
+
+  useMapEvents({
+    click(e) {
+      if (!isPlacing) return;
+      L.DomEvent.stopPropagation(e);
+      onSetSdisPoint({ lat: e.latlng.lat, lng: e.latlng.lng });
+    }
+  });
+
+  if (!sdisPoint || !sdisPoint.lat || !sdisPoint.lng) return null;
+
+  return (
+    <Marker
+      position={[sdisPoint.lat, sdisPoint.lng]}
+      draggable={true}
+      eventHandlers={{
+        dragend(e) {
+          const m = e.target;
+          const pos = m.getLatLng();
+          onSetSdisPoint({ lat: pos.lat, lng: pos.lng });
+        }
+      }}
+      icon={L.divIcon({
+        className: 'bg-transparent',
+        html: `
+          <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none;">
+            <div style="background: #dc2626; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: 6px; border: 1.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.35); white-space: nowrap; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px; font-family: sans-serif;">
+              <span style="font-size: 12px; line-height: 1;">🔥</span>
+              <span>POINT SDIS</span>
+            </div>
+            <div style="width: 3px; height: 12px; background: #dc2626; box-shadow: 0 1px 2px rgba(0,0,0,0.3);"></div>
+            <div style="width: 8px; height: 8px; background: #dc2626; border-radius: 50%; border: 1.5px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
+          </div>
+        `,
+        iconSize: [0, 0]
+      })}
+    />
+  );
+}
+
 function DraggableMasseStructure({
   polygonPositions,
   centerLat,
@@ -992,9 +1080,17 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [measuringMasseStrId, setMeasuringMasseStrId] = useState(null); // ID de structure en cours de cotation
   const [masseLockedMaps, setMasseLockedMaps] = useState({}); // { [strId]: boolean } - true par défaut (carte fixe)
   const [masseCapturedToast, setMasseCapturedToast] = useState({}); // { [strId]: string }
+  const [sdisPoint, setSdisPoint] = useState(project?.sdisPoint || null);
+  const [isPlacingSdis, setIsPlacingSdis] = useState(false);
   const masseMapInstancesRef = useRef({});
   const captureStructureMasseMapRef = useRef(null);
   const masseRotationDebounceRef = useRef(null);
+
+  useEffect(() => {
+    if (project?.sdisPoint !== undefined) {
+      setSdisPoint(project.sdisPoint);
+    }
+  }, [project?.id, project?.sdisPoint]);
 
   // ── Aiguillage Mairie & Téléservice SVE (Étape 7 Validation) ──────────────
   const [mairieRouting, setMairieRouting] = useState({
@@ -1952,9 +2048,13 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
       ? `L'ombrière ne sera pas raccordée aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.`
       : `Le bâtiment ne sera pas raccordé aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.`;
 
-    const p5Details = (!isAcama && isDP)
-      ? `Une bâche à eau de 120m³ sera installée à proximité immédiate de la future ombrière. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées.`
-      : `Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées.`;
+    const hasSdis = Boolean(sdisPoint || editedProject?.sdisPoint || project?.sdisPoint);
+
+    const p5Details = hasSdis
+      ? "Une borne SDIS est présente à proximité immédiate du terrain sur lequel est réalisée l'installation (CF. emplacement carte DP2)."
+      : ((!isAcama && isDP)
+          ? `Une bâche à eau de 120m³ sera installée à proximité immédiate de la future ombrière. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées.`
+          : `Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées.`);
 
     return `1- OBJET DE LA DEMANDE
 ${objetDemande}
@@ -1974,7 +2074,48 @@ Le positionnement du point de livraison et d'un transformateur (le cas échéant
 
 5- SECURITE INCENDIE
 ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
-  }, [editedProject, project, config, buildings, additionalRoof, batteryStorage, isDP, solutionType, getBuildingDisplayName, isNoBattery, isAcama]);
+  }, [editedProject, project, config, buildings, additionalRoof, batteryStorage, isDP, solutionType, getBuildingDisplayName, isNoBattery, isAcama, sdisPoint]);
+
+  // Générateur dynamique du texte détaillé pour "Objet des travaux" (Page de garde)
+  const defaultObjetTravauxText = useMemo(() => {
+    if (isBatActive) {
+      return "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS) sur dalle béton avec clôture rigide de sécurité, intégrant 4 armoires techniques de stockage, dispositifs de sécurité incendie conformes aux prescriptions SDIS et raccordement au réseau public de distribution.";
+    }
+
+    const retainedStructures = allConfiguredStructures.filter(s => selectedStructureIds.includes(s.id));
+    const activeList = retainedStructures.length > 0 ? retainedStructures : (allConfiguredStructures.length > 0 ? allConfiguredStructures : buildings);
+    const s0 = activeList[0] || {};
+
+    const sL = Number(s0.length || (s0.bayCount ? s0.bayCount * (s0.baySpacing || 7.5) : (config.length || 75)));
+    const sMainW = Number(s0.width || config.width || 22.3);
+    const extL = (s0.leftSide && s0.leftSide !== 'none') ? Number(s0.leftWidth || (s0.leftSide === 'appentis' ? 9.3 : 4.0)) : 0;
+    const extR = (s0.rightSide && s0.rightSide !== 'none') ? Number(s0.rightWidth || (s0.rightSide === 'appentis' ? 9.3 : 4.0)) : 0;
+    const extTotal = extL + extR;
+    const sTotalW = s0.totalWidth || (sMainW + extTotal);
+    const sSurf = Math.round(sL * sTotalW) || 2370;
+
+    let extDetail = '';
+    if (extL > 0 && extR > 0) {
+      extDetail = ` (dont ${sMainW.toFixed(2).replace(/\.00$/, '')}m principal + ${extL.toFixed(2).replace(/\.00$/, '')}m appentis gauche + ${extR.toFixed(2).replace(/\.00$/, '')}m appentis droit)`;
+    } else if (extTotal > 0) {
+      extDetail = ` (dont ${sMainW.toFixed(2).replace(/\.00$/, '')}m principal + ${extTotal.toFixed(2).replace(/\.00$/, '')}m appentis)`;
+    }
+
+    const rawKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || project?.kwc || project?.puissance || project?.projectSize || 499;
+    const kwc = Number(rawKwc) > 0 ? Number(rawKwc) : 499;
+
+    const panelWatt = 465;
+    const panelCount = editedProject?.panelCount || Math.round((kwc * 1000) / panelWatt) || 1073;
+    const panelDim = "1762 x 1134 mm";
+
+    const isOmb = solutionType === 'ombriere' || (s0.buildingType || '').toLowerCase().includes('ombriere') || isDP;
+
+    if (isOmb) {
+      return `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire de dimensions ${sL.toFixed(1).replace(/\.0$/, '')}m x ${sTotalW.toFixed(1).replace(/\.0$/, '')}m soit ${sSurf}m² de surface${extDetail} ouverte sur les 4 côtés.\nLa puissance totale installée en toiture sera de ${kwc} kWc. Le bac acier qui sera installé en toiture sous les modules photovoltaïques sera de RAL7016. Les panneaux photovoltaïques prévus sont noirs avec un encadrement noir.\nLes dimensions des panneaux sont de ${panelDim} pour une puissance unitaire de ${panelWatt} Wc soit ${panelCount} panneaux photovoltaïques seront installés en toiture sur les 2 pans de l'ombrière.`;
+    } else {
+      return `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque de dimensions ${sL.toFixed(1).replace(/\.0$/, '')}m x ${sTotalW.toFixed(1).replace(/\.0$/, '')}m soit ${sSurf}m² de surface couverte${extDetail}.\nLa puissance totale installée en toiture sera de ${kwc} kWc. Le bac acier qui sera installé en toiture sous les modules photovoltaïques sera de RAL7016. Les panneaux photovoltaïques prévus sont noirs avec un encadrement noir.\nLes dimensions des panneaux sont de ${panelDim} pour une puissance unitaire de ${panelWatt} Wc soit ${panelCount} panneaux photovoltaïques seront installés en toiture sur les 2 pans du bâtiment.`;
+    }
+  }, [isBatActive, allConfiguredStructures, selectedStructureIds, buildings, config, editedProject, project, solutionType, isDP]);
 
   // Mise à jour explicite du bâtiment actif (Single Source of Truth par onglet)
   const updateActiveBuilding = useCallback((updates) => {
@@ -3296,13 +3437,13 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     // 1. Tenter la capture directe instantanée sur le conteneur Leaflet si la vue affichée correspond
     if (map && isCurrentViewOnScreen) {
       const strDistances = masseDistances[strId] || targetStr?.masseDistances || [];
-      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim, strDistances);
+      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim, strDistances, sdisPoint);
     }
 
     // 2. Fallback de haute précision : génération statique sans faille (AutoMapService)
     if (!dataUrl) {
       const strDistances = masseDistances[strId] || targetStr?.masseDistances || [];
-      dataUrl = await generateStaticMapImage(cLat, cLng, 'map', cZoom, activeList, showDim, strDistances);
+      dataUrl = await generateStaticMapImage(cLat, cLng, 'map', cZoom, activeList, showDim, strDistances, sdisPoint);
     }
 
     if (dataUrl) {
@@ -3310,7 +3451,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       return dataUrl;
     }
     return null;
-  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs, masseDistances]);
+  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs, masseDistances, sdisPoint]);
 
   useEffect(() => {
     captureStructureMasseMapRef.current = captureStructureMasseMap;
@@ -3988,7 +4129,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       const strDistances1 = masseDistances[b.id] || b.masseDistances || [];
       let masse1 = null;
       if (isView1OnMap) {
-        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances1);
+        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances1, sdisPoint);
       }
       if (!masse1 && b.masse_capture) {
         // Conserver la capture active si elle existe (contient les tracés de cotes réalisés à l'étape Carte)
@@ -4004,7 +4145,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         masse1 = editedProject.masse_capture;
       }
       if (!masse1) {
-        masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, updatedBuildings, bShowDim, strDistances1);
+        masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'map', bZoom, updatedBuildings, bShowDim, strDistances1, sdisPoint);
       }
 
       // --- VUE 2 (si demandée) ---
@@ -4021,7 +4162,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
           bZoom2 = Number(map.getZoom() || bZoom2);
           bCenterLat2 = Number(map.getCenter().lat || bCenterLat2);
           bCenterLng2 = Number(map.getCenter().lng || bCenterLng2);
-          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances2);
+          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances2, sdisPoint);
         }
         if (!masse2 && b.masse_capture_2) {
           masse2 = b.masse_capture_2;
@@ -4033,7 +4174,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
           masse2 = editedProject.urbanisme_captures.masse_projet_2;
         }
         if (!masse2) {
-          masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'map', bZoom2, updatedBuildings, bShowDim, strDistances2);
+          masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'map', bZoom2, updatedBuildings, bShowDim, strDistances2, sdisPoint);
         }
       }
 
@@ -4060,7 +4201,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       ? Boolean(masseShowDimensions[buildingsWithMasse[0]?.id])
       : (buildingsWithMasse[0]?.masse_show_dimensions !== false);
     const b1Distances = masseDistances[buildingsWithMasse[0]?.id] || buildingsWithMasse[0]?.masseDistances || [];
-    const masseMap = buildingsWithMasse[0]?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 18, updatedBuildings, firstShowDim, b1Distances);
+    const masseMap = buildingsWithMasse[0]?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 18, updatedBuildings, firstShowDim, b1Distances, sdisPoint);
     const masseMap2 = buildingsWithMasse[0]?.masse_capture_2 || null;
 
     const allBuildingsCaptures = updatedBuildings.reduce((acc, b) => ({
@@ -4128,20 +4269,35 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
     const preservedKwc = editedProject?.puissance || editedProject?.kwc || project?.kwc || project?.puissance || project?.projectSize || editedProject?.projectSize || '';
     const b1 = enrichedBuildings[0] || {};
-    const finalAddress = editedProject?.address || summary.adresse || '';
-    const finalCity = editedProject?.city || editedProject?.commune || summary.commune || '';
-    const finalZip = editedProject?.zip || '';
+    const resolvedClientNames = resolveDemandeurNames(editedProject || project);
+    const resolvedLastName = (editedProject?.lastName || project?.lastName || resolvedClientNames.lastName || '').trim();
+    const resolvedFirstName = (editedProject?.firstName || project?.firstName || resolvedClientNames.firstName || '').trim();
+    const resolvedDemandeur = (editedProject?.demandeur || project?.demandeur || `${resolvedLastName} ${resolvedFirstName}`.trim() || resolvedLastName || 'Demandeur').trim();
+    const fallbackEmail = editedProject?.email || project?.email || project?.clientEmail || 'contact@enr-courtage.fr';
+    const finalAddress = editedProject?.address || project?.address || project?.clientAddress || '';
+    const finalCity = editedProject?.city || editedProject?.commune || project?.city || project?.commune || '';
+    const finalZip = editedProject?.zip || project?.zip || '';
     const parsedFinalAddr = parseFrenchAddress(finalAddress, finalZip, finalCity);
+
+    const effectiveObjet = (editedProject?.objet_travaux && editedProject.objet_travaux.trim().length > 30)
+      ? editedProject.objet_travaux
+      : (defaultObjetTravauxText || shortObjet);
 
     const finalProject = {
       ...editedProject,
       ...fieldValues,
       parcelles: activeParcellesForNotice,
       cadastre_parcelles: activeParcellesForNotice,
-      demandeur: editedProject?.demandeur || summary.demandeur,
-      lastName: editedProject?.demandeur || editedProject?.lastName || summary.demandeur,
-      clientName: editedProject?.demandeur || editedProject?.clientName || summary.demandeur,
-      email: editedProject?.email || summary.email,
+      demandeur: resolvedDemandeur,
+      lastName: resolvedLastName,
+      firstName: resolvedFirstName,
+      clientName: resolvedDemandeur,
+      birthDate: (editedProject?.birthDate || project?.birthDate || '').replace(/\D/g, '').slice(0, 8),
+      birthCity: editedProject?.birthCity || project?.birthCity || '',
+      birthDept: editedProject?.birthDepartment || editedProject?.birthDept || project?.birthDepartment || project?.birthDept || '',
+      birthCountry: editedProject?.birthCountry || project?.birthCountry || 'FRANCE',
+      phone: editedProject?.phone || project?.phone || project?.clientPhone || '',
+      email: fallbackEmail,
       address: finalAddress,
       clientAddress: finalAddress,
       city: finalCity,
@@ -4155,7 +4311,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         ? activeParcellesForNotice.map(p => `${p.section ? `${p.section} ` : ''}${p.numero || ''}`.trim()).filter(Boolean).join(', ')
         : ((editedProject?.cadastre_section && editedProject?.cadastre_numero)
           ? `${(editedProject.cadastre_section).toUpperCase()} ${(editedProject.cadastre_numero).trim()}`
-          : (editedProject?.cadastre || summary.cadastre)),
+          : (editedProject?.cadastre || project?.cadastre || '—')),
       terrain_address: finalAddress,
       terrain_voie: parsedFinalAddr.voie || finalAddress,
       terrain_voie_nom: parsedFinalAddr.voie || finalAddress,
@@ -4166,6 +4322,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       terrain_section: (activeParcellesForNotice[0]?.section || editedProject?.cadastre_section || '').toUpperCase().trim(),
       terrain_numero: (activeParcellesForNotice[0]?.numero || editedProject?.cadastre_numero || '').trim(),
       terrain_surface: activeParcellesForNotice.length > 1 ? String(totalNoticeSurfaceVal) : (activeParcellesForNotice[0]?.surface || editedProject?.cadastre_surface || ''),
+      sdisPoint: sdisPoint || editedProject?.sdisPoint || project?.sdisPoint || null,
       isAcama,
       isGreenInvest,
       cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
@@ -4192,8 +4349,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       kwc: preservedKwc,
       projectSize: preservedKwc,
       puissance: preservedKwc,
-      objet_travaux: shortObjet,
-      description: shortObjet,
+      objet_travaux: effectiveObjet,
+      description: effectiveObjet,
       noticeText: effectiveNotice,
       noticeAgricole: effectiveNotice,
       pc_notice: effectiveNotice,
@@ -6072,6 +6229,38 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                      </button>
                                    )}
 
+                                   {/* Outil de placement Borne SDIS */}
+                                   <button
+                                     type="button"
+                                     onClick={() => setIsPlacingSdis(!isPlacingSdis)}
+                                     className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
+                                       isPlacingSdis
+                                         ? 'bg-red-600 text-white border-red-700 shadow-xs animate-pulse'
+                                         : sdisPoint
+                                           ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                     }`}
+                                     title="Placer ou déplacer la borne incendie SDIS sur la carte"
+                                   >
+                                     <Flame className={`w-3.5 h-3.5 ${isPlacingSdis || sdisPoint ? 'text-red-500' : 'text-slate-500'}`} />
+                                     <span>{isPlacingSdis ? 'Cliquer carte...' : (sdisPoint ? 'Borne SDIS' : 'Borne SDIS')}</span>
+                                   </button>
+
+                                   {sdisPoint && (
+                                     <button
+                                       type="button"
+                                       onClick={() => {
+                                         setSdisPoint(null);
+                                         setIsPlacingSdis(false);
+                                         setEditedProject(prev => ({ ...prev, sdisPoint: null }));
+                                       }}
+                                       className="p-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                                       title="Supprimer la borne SDIS"
+                                     >
+                                       <X className="w-3 h-3" />
+                                     </button>
+                                   )}
+
                                    {/* Bouton manuel de capture avec feedback */}
                                    {masseCapturedToast[str.id] && (
                                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 animate-fade-in">
@@ -6150,6 +6339,17 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                      onGpsUpdate={(newLat, newLng) => handleMasseGpsUpdate(str.id, newLat, newLng)}
                                      isLocked={masseLockedMaps[str.id] !== false}
                                      isMeasuring={measuringMasseStrId === str.id}
+                                   />
+
+                                   {/* Point Borne SDIS interactif et déplaçable */}
+                                   <MasseSdisLayer
+                                     sdisPoint={sdisPoint}
+                                     isPlacing={isPlacingSdis}
+                                     onSetSdisPoint={(pt) => {
+                                       setSdisPoint(pt);
+                                       setIsPlacingSdis(false);
+                                       setEditedProject(prev => ({ ...prev, sdisPoint: pt }));
+                                     }}
                                    />
 
                                    {/* Tracés de distance / côtes manuelles enregistrées et outil de tracé interactif */}
@@ -6919,17 +7119,9 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                   : "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)"
                               )
                             : (
-                                (editedProject?.objet_travaux && !/batterie|bess|stockage d'énergie/i.test(editedProject.objet_travaux))
+                                (editedProject?.objet_travaux && editedProject.objet_travaux.trim().length > 30 && !/batterie|bess|stockage d'énergie/i.test(editedProject.objet_travaux))
                                   ? editedProject.objet_travaux
-                                  : (
-                                      solutionType === 'building'
-                                        ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-                                        : (isDP
-                                            ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
-                                            : (isPC
-                                                ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-                                                : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque"))
-                                    )
+                                  : defaultObjetTravauxText
                               )
                         }
                         onChange={(e) => {

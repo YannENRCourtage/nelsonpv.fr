@@ -3,7 +3,7 @@ import {
   Search, Download, RefreshCw, Plus, Filter, MessageSquare, 
   CheckCircle2, AlertCircle, ArrowUpDown, ChevronDown, 
   Building2, Zap, Euro, ShieldCheck, X, FileSpreadsheet, Eye, SlidersHorizontal, Trash2,
-  Clock, Check
+  Clock, Check, Edit2, RotateCcw
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { isShantiOneAuthorized } from '@/services/firebase/auth.service.js';
@@ -65,18 +65,48 @@ const UpdateBubble = ({ count = 0, onClick }) => {
   );
 };
 
-// Options disponibles pour la colonne Retour Géomètre
-const RETOUR_GEOMETRE_OPTIONS = [
-  '1 - DEMANDE EN COURS',
-  'TRANSMIS GEOMETRE',
-  '3 - DEVIS RECU',
-  '5 - EN COURS GEOMETRE',
-  '6 - PLAN IMPLANT RECU',
-  '7 - DA RECU'
-];
+// Options de statuts prédéfinis pour les badges
+const STATUS_PRESETS = {
+  retour_geometre: [
+    '1 - DEMANDE EN COURS',
+    'TRANSMIS GEOMETRE',
+    '3 - DEVIS RECU',
+    '5 - EN COURS GEOMETRE',
+    '6 - PLAN IMPLANT RECU',
+    '7 - DA RECU'
+  ],
+  devis_valide: [
+    'VALIDE',
+    'FAIT',
+    'EN ATTENTE',
+    'NON',
+    'A RELANCER'
+  ],
+  plan_pc: [
+    'OK',
+    'FAIT',
+    'EN COURS',
+    'A FAIRE',
+    'NON'
+  ],
+  enr_courtage: [
+    'VALIDE',
+    'FAIT',
+    'EN COURS',
+    'NON',
+    'OK'
+  ],
+  geometre_ab6: [
+    'VALIDE',
+    'FAIT',
+    'EN COURS',
+    'EN ATTENTE',
+    'NON'
+  ]
+};
 
 // Formateur de statuts avec badges de couleur
-const StatusBadge = ({ value, type = 'default' }) => {
+const StatusBadge = ({ value }) => {
   if (!value || String(value).trim() === '') return <span className="text-slate-300">-</span>;
   const str = String(value).trim();
   const lower = str.toLowerCase();
@@ -100,6 +130,33 @@ const StatusBadge = ({ value, type = 'default' }) => {
   );
 };
 
+// Configuration par défaut des colonnes du tableau
+const DEFAULT_COLUMNS = [
+  { id: 'no', label: 'N°', width: 48, minWidth: 40, sticky: true, fixed: true },
+  { id: 'maj', label: 'MAJ', width: 56, minWidth: 50, sticky: true, fixed: true },
+  { id: 'projet', label: 'PROJET', width: 170, minWidth: 120, sticky: true, fixed: true, sortable: true },
+  { id: 'spv', label: 'SPV', width: 120, minWidth: 80, sortable: true, editable: true, type: 'text' },
+  { id: 'puissance_kwc', label: 'kWc', width: 85, minWidth: 60, sortable: true, editable: true, type: 'number', align: 'right' },
+  { id: 'enr_courtage', label: 'ENR C.', width: 95, minWidth: 70, editable: true, type: 'badge_enr', align: 'center' },
+  { id: 'courtier', label: 'Courtier', width: 110, minWidth: 80, editable: true, type: 'text' },
+  { id: 'adresse_projet', label: 'Adresse Projet', width: 230, minWidth: 150, editable: true, type: 'text' },
+  { id: 'modele_base', label: 'Modèle', width: 100, minWidth: 80, editable: true, type: 'text' },
+  { id: 'plan_pc', label: 'Plan PC/DP', width: 110, minWidth: 80, editable: true, type: 'badge_plan', align: 'center' },
+  { id: 'gps', label: 'GPS', width: 130, minWidth: 90, editable: true, type: 'text' },
+  { id: 'tel', label: 'Tél', width: 110, minWidth: 80, editable: true, type: 'text' },
+  { id: 'mail', label: 'Mail', width: 180, minWidth: 100, editable: true, type: 'text' },
+  { id: 'type_projet_categorie', label: 'Type Projet', width: 120, minWidth: 90, editable: true, type: 'text' },
+  { id: 'type_projet_detail', label: 'Détail Type', width: 170, minWidth: 120, editable: true, type: 'text' },
+  { id: 'retour_geometre', label: 'Retour Géomètre', width: 210, minWidth: 150, sortable: true, editable: true, type: 'badge_geometre' },
+  { id: 'geometre', label: 'Géomètre', width: 130, minWidth: 90, sortable: true, editable: true, type: 'text' },
+  { id: 'mtt_ht_devis_geometre', label: 'Devis Géomètre HT', width: 140, minWidth: 100, sortable: true, editable: true, type: 'number', align: 'right' },
+  { id: 'devis_valide', label: 'Devis Validé', width: 115, minWidth: 90, sortable: true, editable: true, type: 'badge_devis', align: 'center' },
+  { id: 'geometre_ab6', label: 'Géomètre AB6', width: 115, minWidth: 90, editable: true, type: 'badge_ab6', align: 'center' },
+  { id: 'montant_ht_ab6', label: 'Montant AB6 HT', width: 125, minWidth: 95, sortable: true, editable: true, type: 'number', align: 'right' },
+  { id: 'observ_geometre', label: 'Observ Géomètre', width: 230, minWidth: 140, editable: true, type: 'text' },
+  { id: 'notaire', label: 'Notaire', width: 140, minWidth: 90, editable: true, type: 'text' },
+];
+
 export default function ShantiOnePage() {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
@@ -110,17 +167,69 @@ export default function ShantiOnePage() {
   const [devisFilter, setDevisFilter] = useState('ALL');
   const [sortConfig, setSortConfig] = useState({ key: 'rowIdx', direction: 'asc' });
   const [selectedProjectForUpdates, setSelectedProjectForUpdates] = useState(null);
-  const [editingCell, setEditingCell] = useState(null); // { id, field }
-  const [cellEditValue, setCellEditValue] = useState('');
-  const [isCustomRetour, setIsCustomRetour] = useState(false);
-  const [customRetourValue, setCustomRetourValue] = useState('');
 
-  // Gestion de l'annulation par la touche Échap
+  // Configuration dynamique des colonnes
+  const [columns, setColumns] = useState(() => {
+    try {
+      const saved = localStorage.getItem('shanti_one_columns_config_v3');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(c => {
+            const def = DEFAULT_COLUMNS.find(d => d.id === c.id);
+            return def ? { ...def, ...c } : c;
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[ShantiOne] Erreur chargement config colonnes:', e);
+    }
+    return DEFAULT_COLUMNS;
+  });
+
+  // Sauvegarde persistante des colonnes
+  useEffect(() => {
+    try {
+      localStorage.setItem('shanti_one_columns_config_v3', JSON.stringify(columns));
+    } catch (_) {}
+  }, [columns]);
+
+  // État pour renommage de colonne
+  const [renamingColId, setRenamingColId] = useState(null);
+  const [renameInputVal, setRenameInputVal] = useState('');
+
+  // État pour ajout d'une colonne
+  const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
+  const [newColName, setNewColName] = useState('');
+  const [newColType, setNewColType] = useState('text');
+
+  // État pour édition de cellule
+  const [editingCell, setEditingCell] = useState(null); // { id, field, type }
+  const [cellEditValue, setCellEditValue] = useState('');
+  const [isCustomStatus, setIsCustomStatus] = useState(false);
+  const [customStatusValue, setCustomStatusValue] = useState('');
+
+  // Calcul des coordonnées sticky (left en px) pour éviter tout chevauchement
+  const stickyOffsets = useMemo(() => {
+    const offsets = {};
+    let currentLeft = 0;
+    columns.forEach(col => {
+      if (col.sticky) {
+        offsets[col.id] = currentLeft;
+        currentLeft += (col.width || 100);
+      }
+    });
+    return offsets;
+  }, [columns]);
+
+  // Gestion de la touche Échap
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setEditingCell(null);
-        setIsCustomRetour(false);
+        setIsCustomStatus(false);
+        setRenamingColId(null);
+        setIsAddColumnOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -149,6 +258,77 @@ export default function ShantiOnePage() {
 
     return () => unsubscribe();
   }, [isAuthorized]);
+
+  // Redimensionnement de colonne au curseur (drag handle)
+  const handleMouseDownResize = (e, colId, currentWidth) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+
+    const onMouseMove = (moveEvent) => {
+      const diff = moveEvent.clientX - startX;
+      const newWidth = Math.max(45, Math.round(currentWidth + diff));
+      setColumns(prev => prev.map(c => c.id === colId ? { ...c, width: newWidth } : c));
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Renommage d'une colonne
+  const handleStartRename = (col) => {
+    setRenamingColId(col.id);
+    setRenameInputVal(col.label);
+  };
+
+  const handleSaveRename = () => {
+    if (renamingColId && renameInputVal.trim()) {
+      setColumns(prev => prev.map(c => c.id === renamingColId ? { ...c, label: renameInputVal.trim() } : c));
+      toast({ title: 'Colonne renommée', description: `Nouveau titre : ${renameInputVal.trim()}` });
+    }
+    setRenamingColId(null);
+  };
+
+  // Suppression d'une colonne
+  const handleDeleteColumn = (colId, colLabel) => {
+    if (!window.confirm(`Masquer la colonne "${colLabel}" ?`)) return;
+    setColumns(prev => prev.filter(c => c.id !== colId));
+    toast({ title: 'Colonne masquée', description: `La colonne "${colLabel}" a été masquée du tableau.` });
+  };
+
+  // Réinitialisation des colonnes par défaut
+  const handleResetColumns = () => {
+    if (!window.confirm('Rétablir la disposition et la largeur d\'origine de toutes les colonnes ?')) return;
+    localStorage.removeItem('shanti_one_columns_config_v3');
+    setColumns(DEFAULT_COLUMNS);
+    toast({ title: 'Colonnes réinitialisées', description: 'Configuration d\'origine rétablie.' });
+  };
+
+  // Ajout d'une nouvelle colonne
+  const handleAddColumnSubmit = (e) => {
+    e.preventDefault();
+    if (!newColName.trim()) return;
+    const colId = 'col_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+    const newCol = {
+      id: colId,
+      label: newColName.trim(),
+      width: 150,
+      minWidth: 80,
+      editable: true,
+      type: newColType,
+      removable: true
+    };
+    setColumns(prev => [...prev, newCol]);
+    setIsAddColumnOpen(false);
+    setNewColName('');
+    setNewColType('text');
+    toast({ title: 'Colonne ajoutée', description: `La colonne "${newCol.label}" a été ajoutée.` });
+  };
 
   // Si non autorisé : Affichage 403 propre
   if (!isAuthorized) {
@@ -276,19 +456,22 @@ export default function ShantiOnePage() {
     }));
   };
 
-  const handleCellClick = (id, field, currentValue) => {
-    setEditingCell({ id, field });
+  // Édition de cellule générique
+  const handleCellClick = (id, field, currentValue, type) => {
+    setEditingCell({ id, field, type });
     setCellEditValue(currentValue ?? '');
+    setIsCustomStatus(false);
+    setCustomStatusValue(currentValue ?? '');
   };
 
   const handleCellSave = async () => {
     if (!editingCell) return;
-    const { id, field } = editingCell;
+    const { id, field, type } = editingCell;
     const project = projects.find(p => p.id === id);
     if (!project) return;
 
     let newValue = cellEditValue;
-    if (['puissance_kwc', 'mtt_ht_devis_geometre', 'montant_ht_ab6'].includes(field)) {
+    if (type === 'number' || ['puissance_kwc', 'mtt_ht_devis_geometre', 'montant_ht_ab6'].includes(field)) {
       if (newValue !== '') {
         const num = parseFloat(String(newValue).replace(',', '.'));
         if (!isNaN(num)) newValue = num;
@@ -306,11 +489,11 @@ export default function ShantiOnePage() {
     }
   };
 
-  // Sauvegarde directe (1 clic) pour les sélections de statut (ex: Retour Géomètre)
+  // Sauvegarde directe (1 clic) pour les sélections de statuts / badges
   const handleDirectSave = async (id, field, value) => {
     setProjects(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
     setEditingCell(null);
-    setIsCustomRetour(false);
+    setIsCustomStatus(false);
 
     try {
       await updateShantiOneProject(id, { [field]: value }, user);
@@ -359,11 +542,32 @@ export default function ShantiOnePage() {
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => exportShantiOneToExcel(filteredProjects)}
+              onClick={() => setIsAddColumnOpen(true)}
+              className="text-xs font-semibold h-9 border-slate-300 text-slate-700 hover:bg-slate-50"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1 text-blue-600" />
+              + Colonne
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetColumns}
+              title="Rétablir colonnes par défaut"
+              className="text-xs font-medium h-9 border-slate-200 text-slate-600 hover:bg-slate-50"
+            >
+              <RotateCcw className="w-3.5 h-3.5 mr-1 text-slate-400" />
+              Colonnes par défaut
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportShantiOneToExcel(filteredProjects, columns)}
               className="text-xs font-semibold h-9 border-slate-300 text-slate-700 hover:bg-slate-50"
             >
               <Download className="w-4 h-4 mr-1.5 text-emerald-600" />
@@ -463,7 +667,7 @@ export default function ShantiOnePage() {
             </div>
           </div>
 
-          {/* Boutons pour les 3 statuts de devis (au lieu du menu déroulant) */}
+          {/* Boutons pour les 3 statuts de devis */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs font-semibold text-slate-500 mr-1 hidden sm:inline">Statut :</span>
 
@@ -553,62 +757,107 @@ export default function ShantiOnePage() {
       <div className="w-full px-4 lg:px-6 flex-1">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-250px)] border-collapse relative">
-            <table className="w-full border-collapse text-left text-xs whitespace-nowrap min-w-full">
+            <table className="border-collapse text-left text-xs whitespace-nowrap" style={{ width: 'max-content', minWidth: '100%' }}>
               {/* EN-TÊTES */}
               <thead className="sticky top-0 z-30 bg-slate-900 text-white font-semibold text-[11px] shadow-sm uppercase tracking-wider">
                 <tr>
-                  <th className="px-3 py-3 w-12 text-center sticky left-0 z-40 bg-slate-900 border-r border-slate-800">
-                    N°
-                  </th>
-                  <th className="px-2 py-3 w-16 text-center sticky left-12 z-40 bg-slate-900 border-r border-slate-800">
-                    MAJ
-                  </th>
-                  <th 
-                    onClick={() => handleSort('projet')} 
-                    className="px-3 py-3 w-36 sticky left-28 z-40 bg-slate-900 border-r border-slate-800 cursor-pointer hover:bg-slate-800 transition-colors select-none"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>PROJET</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th onClick={() => handleSort('spv')} className="px-3 py-3 border-r border-slate-800 cursor-pointer hover:bg-slate-800">
-                    SPV
-                  </th>
-                  <th onClick={() => handleSort('puissance_kwc')} className="px-3 py-3 text-right border-r border-slate-800 cursor-pointer hover:bg-slate-800">
-                    kWc
-                  </th>
-                  <th className="px-3 py-3 border-r border-slate-800">ENR C.</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Courtier</th>
-                  <th className="px-3 py-3 border-r border-slate-800 min-w-[220px]">Adresse Projet</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Modèle</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Plan PC/DP</th>
-                  <th className="px-3 py-3 border-r border-slate-800">GPS</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Tél</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Mail</th>
-                  <th className="px-3 py-3 border-r border-slate-800">Type Projet</th>
-                  <th className="px-3 py-3 border-r border-slate-800 min-w-[180px]">Détail Type</th>
-                  <th onClick={() => handleSort('retour_geometre')} className="px-3 py-3 border-r border-slate-800 cursor-pointer hover:bg-slate-800 min-w-[200px]">
-                    <div className="flex items-center justify-between">
-                      <span>Retour Géomètre</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th onClick={() => handleSort('geometre')} className="px-3 py-3 border-r border-slate-800 cursor-pointer hover:bg-slate-800">
-                    Géomètre
-                  </th>
-                  <th onClick={() => handleSort('mtt_ht_devis_geometre')} className="px-3 py-3 text-right border-r border-slate-800 cursor-pointer hover:bg-slate-800">
-                    Devis Géomètre HT
-                  </th>
-                  <th onClick={() => handleSort('devis_valide')} className="px-3 py-3 text-center border-r border-slate-800 cursor-pointer hover:bg-slate-800">
-                    Devis Validé
-                  </th>
-                  <th className="px-3 py-3 border-r border-slate-800">Géomètre AB6</th>
-                  <th onClick={() => handleSort('montant_ht_ab6')} className="px-3 py-3 text-right border-r border-slate-800 cursor-pointer hover:bg-slate-800">
-                    Montant AB6 HT
-                  </th>
-                  <th className="px-3 py-3 border-r border-slate-800 min-w-[240px]">Observ Géomètre</th>
-                  <th className="px-3 py-3 border-r border-slate-800 min-w-[140px]">Notaire</th>
+                  {columns.map(col => {
+                    const isSticky = Boolean(col.sticky);
+                    const leftPos = isSticky ? stickyOffsets[col.id] : undefined;
+                    const isRenaming = renamingColId === col.id;
+
+                    return (
+                      <th
+                        key={col.id}
+                        style={{
+                          width: `${col.width}px`,
+                          minWidth: `${col.width}px`,
+                          maxWidth: `${col.width}px`,
+                          ...(isSticky ? { position: 'sticky', left: `${leftPos}px`, zIndex: 40 } : {})
+                        }}
+                        className={cn(
+                          "px-2.5 py-3 border-r border-slate-800 select-none relative group/th bg-slate-900",
+                          col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
+                          col.sortable && !isRenaming && "cursor-pointer hover:bg-slate-800 transition-colors"
+                        )}
+                        onClick={() => {
+                          if (!isRenaming && col.sortable) handleSort(col.id);
+                        }}
+                      >
+                        <div className="flex items-center justify-between gap-1 overflow-hidden pr-2">
+                          {isRenaming ? (
+                            <input
+                              autoFocus
+                              type="text"
+                              value={renameInputVal}
+                              onChange={(e) => setRenameInputVal(e.target.value)}
+                              onBlur={handleSaveRename}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveRename();
+                                if (e.key === 'Escape') setRenamingColId(null);
+                              }}
+                              className="w-full bg-slate-800 text-white px-1.5 py-0.5 rounded text-[11px] border border-blue-400 outline-none"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span 
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                handleStartRename(col);
+                              }}
+                              title="Double-cliquer pour renommer"
+                              className="truncate font-bold"
+                            >
+                              {col.label}
+                            </span>
+                          )}
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            {col.sortable && !isRenaming && (
+                              <ArrowUpDown className="w-3 h-3 text-slate-400 shrink-0" />
+                            )}
+                            
+                            {/* Bouton pour renommer au survol */}
+                            {!isRenaming && !col.fixed && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartRename(col);
+                                }}
+                                title="Renommer la colonne"
+                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 hover:text-blue-400"
+                              >
+                                <Edit2 className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+
+                            {/* Bouton pour masquer/supprimer au survol */}
+                            {!col.fixed && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteColumn(col.id, col.label);
+                                }}
+                                title="Masquer cette colonne"
+                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 hover:text-rose-400"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Poignée de redimensionnement de la colonne */}
+                        <div
+                          onMouseDown={(e) => handleMouseDownResize(e, col.id, col.width)}
+                          className="absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize hover:bg-emerald-500/70 select-none z-50 transition-colors"
+                          title="Glisser pour redimensionner"
+                        />
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
 
@@ -616,13 +865,13 @@ export default function ShantiOnePage() {
               <tbody className="divide-y divide-slate-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={23} className="py-16 text-center text-slate-400">
+                    <td colSpan={columns.length} className="py-16 text-center text-slate-400">
                       Chargement des projets Shanti One...
                     </td>
                   </tr>
                 ) : filteredProjects.length === 0 ? (
                   <tr>
-                    <td colSpan={23} className="py-16 text-center text-slate-400">
+                    <td colSpan={columns.length} className="py-16 text-center text-slate-400">
                       Aucun projet ne correspond à votre recherche.
                     </td>
                   </tr>
@@ -632,301 +881,263 @@ export default function ShantiOnePage() {
                     const isEven = idx % 2 === 0;
                     const rowBg = isEven ? 'bg-white' : 'bg-slate-50/70';
 
-                    // Helper pour cellule éditable
-                    const renderEditableCell = (field, className = '', isNum = false) => {
-                      const isEditing = editingCell?.id === p.id && editingCell?.field === field;
-                      const rawVal = p[field] ?? '';
-
-                      if (isEditing) {
-                        return (
-                          <input
-                            autoFocus
-                            value={cellEditValue}
-                            onChange={(e) => setCellEditValue(e.target.value)}
-                            onBlur={handleCellSave}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleCellSave();
-                              if (e.key === 'Escape') setEditingCell(null);
-                            }}
-                            className={cn('w-full h-full px-2 py-1 bg-blue-50 border border-blue-400 text-xs rounded outline-none', className)}
-                          />
-                        );
-                      }
-
-                      let display = rawVal;
-                      if (isNum && typeof rawVal === 'number') {
-                        display = rawVal.toLocaleString('fr-FR');
-                      }
-
-                      return (
-                        <div
-                          onClick={() => handleCellClick(p.id, field, rawVal)}
-                          className={cn('px-3 py-2 cursor-pointer hover:bg-blue-50/50 transition-colors truncate min-h-[36px] flex items-center', className)}
-                          title={String(rawVal)}
-                        >
-                          {rawVal !== '' ? display : <span className="text-slate-300">-</span>}
-                        </div>
-                      );
-                    };
-
                     return (
                       <tr key={p.id} className={cn(rowBg, 'hover:bg-blue-50/30 transition-colors group')}>
-                        {/* 1. N° */}
-                        <td className={cn('px-2 py-2 text-center text-slate-400 text-[11px] sticky left-0 z-20 border-r border-slate-200', rowBg)}>
-                          {idx + 1}
-                        </td>
+                        {columns.map(col => {
+                          const isSticky = Boolean(col.sticky);
+                          const leftPos = isSticky ? stickyOffsets[col.id] : undefined;
+                          const cellStyle = {
+                            width: `${col.width}px`,
+                            minWidth: `${col.width}px`,
+                            maxWidth: `${col.width}px`,
+                            ...(isSticky ? { position: 'sticky', left: `${leftPos}px`, zIndex: 20 } : {})
+                          };
 
-                        {/* 2. MAJ BUBBLE */}
-                        <td className={cn('px-1 py-1 text-center sticky left-12 z-20 border-r border-slate-200 select-none', rowBg)}>
-                          <div className="flex items-center justify-center">
-                            <UpdateBubble
-                              count={updateCount}
-                              onClick={() => setSelectedProjectForUpdates(p)}
-                            />
-                          </div>
-                        </td>
-
-                        {/* 3. PROJET (STICKY) */}
-                        <td className={cn('px-3 py-2 font-black text-slate-900 sticky left-28 z-20 border-r border-slate-200 shadow-xs', rowBg)}>
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="truncate">{p.projet}</span>
-                          </div>
-                        </td>
-
-                        {/* SPV */}
-                        <td className="border-r border-slate-200">
-                          <div className="px-3 py-2 font-semibold text-blue-700">
-                            {p.spv || <span className="text-slate-300">-</span>}
-                          </div>
-                        </td>
-
-                        {/* Puissance (kWc) */}
-                        <td className="border-r border-slate-200 text-right">
-                          {renderEditableCell('puissance_kwc', 'text-right font-medium', true)}
-                        </td>
-
-                        {/* ENR Courtage */}
-                        <td className="border-r border-slate-200 text-center">
-                          <StatusBadge value={p.enr_courtage} />
-                        </td>
-
-                        {/* Courtier */}
-                        <td className="border-r border-slate-200">
-                          {renderEditableCell('courtier')}
-                        </td>
-
-                        {/* Adresse Projet */}
-                        <td className="border-r border-slate-200 max-w-[280px]">
-                          {renderEditableCell('adresse_projet')}
-                        </td>
-
-                        {/* Modèle de base */}
-                        <td className="border-r border-slate-200 font-mono text-[11px]">
-                          {renderEditableCell('modele_base')}
-                        </td>
-
-                        {/* Plan PC / DP */}
-                        <td className="border-r border-slate-200 text-center">
-                          <StatusBadge value={p.plan_pc} />
-                        </td>
-
-                        {/* GPS */}
-                        <td className="border-r border-slate-200 font-mono text-[10.5px] text-slate-500">
-                          {renderEditableCell('gps')}
-                        </td>
-
-                        {/* Tél */}
-                        <td className="border-r border-slate-200 text-slate-600 font-medium">
-                          {renderEditableCell('tel')}
-                        </td>
-
-                        {/* Mail */}
-                        <td className="border-r border-slate-200 text-slate-600">
-                          {renderEditableCell('mail')}
-                        </td>
-
-                        {/* Type Projet */}
-                        <td className="border-r border-slate-200">
-                          {renderEditableCell('type_projet_categorie')}
-                        </td>
-
-                        {/* Détail Type */}
-                        <td className="border-r border-slate-200">
-                          {renderEditableCell('type_projet_detail')}
-                        </td>
-
-                        {/* RETOUR GEOMETRE (ÉDITABLE) */}
-                        <td className="border-r border-slate-200 relative p-0">
-                          {editingCell?.id === p.id && editingCell?.field === 'retour_geometre' ? (
-                            <div className="relative p-1">
-                              {/* Backdrop invisible pour fermer en cliquant en dehors */}
-                              <div
-                                className="fixed inset-0 z-40"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingCell(null);
-                                  setIsCustomRetour(false);
-                                }}
-                              />
-
-                              {/* Menu contextuel de sélection de statut */}
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className={cn(
-                                  "absolute left-2 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 p-2 min-w-[250px] text-left",
-                                  idx > filteredProjects.length - 6 ? "bottom-full mb-1" : "top-full mt-1"
-                                )}
+                          // 1. Colonne N°
+                          if (col.id === 'no') {
+                            return (
+                              <td
+                                key={col.id}
+                                style={cellStyle}
+                                className={cn("px-2 py-2 text-center text-slate-400 text-[11px] border-r border-slate-200", rowBg)}
                               >
-                                {!isCustomRetour ? (
-                                  <div className="space-y-1">
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2.5 py-1 flex items-center justify-between border-b border-slate-100 mb-1">
-                                      <span>Retour Géomètre</span>
-                                      <span className="text-[9px] text-slate-400 font-normal">1 clic pour choisir</span>
-                                    </div>
+                                {idx + 1}
+                              </td>
+                            );
+                          }
 
-                                    <div className="space-y-0.5">
-                                      {RETOUR_GEOMETRE_OPTIONS.map((opt) => {
-                                        const isSelected = p.retour_geometre === opt;
-                                        return (
-                                          <button
-                                            key={opt}
-                                            type="button"
-                                            onClick={() => handleDirectSave(p.id, 'retour_geometre', opt)}
-                                            className={cn(
-                                              "w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between hover:bg-slate-100 transition-colors",
-                                              isSelected && "bg-blue-50/80 ring-1 ring-blue-300 font-bold"
+                          // 2. Colonne MAJ Bubble
+                          if (col.id === 'maj') {
+                            return (
+                              <td
+                                key={col.id}
+                                style={cellStyle}
+                                className={cn("px-1 py-1 text-center border-r border-slate-200 select-none", rowBg)}
+                              >
+                                <div className="flex items-center justify-center">
+                                  <UpdateBubble
+                                    count={updateCount}
+                                    onClick={() => setSelectedProjectForUpdates(p)}
+                                  />
+                                </div>
+                              </td>
+                            );
+                          }
+
+                          // 3. Colonne Projet (Sticky)
+                          if (col.id === 'projet') {
+                            return (
+                              <td
+                                key={col.id}
+                                style={cellStyle}
+                                className={cn("px-3 py-2 font-black text-slate-900 border-r border-slate-200 shadow-xs", rowBg)}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="truncate" title={p.projet}>{p.projet}</span>
+                                </div>
+                              </td>
+                            );
+                          }
+
+                          // 4. Colonnes de type Statut / Badge (retour_geometre, devis_valide, plan_pc, enr_courtage, etc.)
+                          const isBadgeCol = col.type?.startsWith('badge_') || ['retour_geometre', 'devis_valide', 'plan_pc', 'enr_courtage', 'geometre_ab6'].includes(col.id);
+                          if (isBadgeCol) {
+                            const isEditing = editingCell?.id === p.id && editingCell?.field === col.id;
+                            const presets = STATUS_PRESETS[col.id] || STATUS_PRESETS.retour_geometre;
+                            const rawVal = p[col.id];
+
+                            return (
+                              <td
+                                key={col.id}
+                                style={cellStyle}
+                                className="border-r border-slate-200 relative p-0"
+                              >
+                                {isEditing ? (
+                                  <div className="relative p-1">
+                                    {/* Backdrop invisible pour fermer au clic en dehors */}
+                                    <div
+                                      className="fixed inset-0 z-40"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingCell(null);
+                                        setIsCustomStatus(false);
+                                      }}
+                                    />
+
+                                    {/* Menu contextuel de sélection de statut */}
+                                    <div
+                                      onClick={(e) => e.stopPropagation()}
+                                      className={cn(
+                                        "absolute left-2 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 p-2 min-w-[250px] text-left",
+                                        idx > filteredProjects.length - 6 ? "bottom-full mb-1" : "top-full mt-1"
+                                      )}
+                                    >
+                                      {!isCustomStatus ? (
+                                        <div className="space-y-1">
+                                          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2.5 py-1 flex items-center justify-between border-b border-slate-100 mb-1">
+                                            <span>{col.label}</span>
+                                            <span className="text-[9px] text-slate-400 font-normal">1 clic pour choisir</span>
+                                          </div>
+
+                                          <div className="space-y-0.5 max-h-56 overflow-y-auto">
+                                            {presets.map((opt) => {
+                                              const isSelected = String(rawVal || '').toLowerCase() === String(opt).toLowerCase();
+                                              return (
+                                                <button
+                                                  key={opt}
+                                                  type="button"
+                                                  onClick={() => handleDirectSave(p.id, col.id, opt)}
+                                                  className={cn(
+                                                    "w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between hover:bg-slate-100 transition-colors",
+                                                    isSelected && "bg-blue-50/80 ring-1 ring-blue-300 font-bold"
+                                                  )}
+                                                >
+                                                  <StatusBadge value={opt} />
+                                                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+
+                                          {rawVal && !presets.map(o => o.toLowerCase()).includes(String(rawVal).toLowerCase()) && (
+                                            <div className="px-2.5 py-1.5 rounded-lg text-xs bg-slate-50 border border-slate-200 flex items-center justify-between my-1">
+                                              <div className="truncate">
+                                                <span className="text-[10px] text-slate-400 block">Valeur actuelle :</span>
+                                                <span className="font-semibold text-slate-800">{rawVal}</span>
+                                              </div>
+                                              <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-2" />
+                                            </div>
+                                          )}
+
+                                          <div className="border-t border-slate-100 pt-1.5 mt-1.5 flex flex-col gap-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setIsCustomStatus(true);
+                                                setCustomStatusValue(rawVal || '');
+                                              }}
+                                              className="w-full text-left px-2.5 py-1.5 rounded text-xs text-blue-700 hover:bg-blue-50 transition-colors flex items-center gap-2 font-medium"
+                                            >
+                                              <span>✏️ Saisie personnalisée...</span>
+                                            </button>
+                                            {rawVal && (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleDirectSave(p.id, col.id, '')}
+                                                className="w-full text-left px-2.5 py-1 rounded text-[11px] text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2"
+                                              >
+                                                <span>✕ Vider le champ</span>
+                                              </button>
                                             )}
-                                          >
-                                            <StatusBadge value={opt} />
-                                            {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-
-                                    {p.retour_geometre && !RETOUR_GEOMETRE_OPTIONS.includes(p.retour_geometre) && (
-                                      <div className="px-2.5 py-1.5 rounded-lg text-xs bg-slate-50 border border-slate-200 flex items-center justify-between my-1">
-                                        <div className="truncate">
-                                          <span className="text-[10px] text-slate-400 block">Valeur actuelle :</span>
-                                          <span className="font-semibold text-slate-800">{p.retour_geometre}</span>
+                                          </div>
                                         </div>
-                                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-2" />
-                                      </div>
-                                    )}
-
-                                    <div className="border-t border-slate-100 pt-1.5 mt-1.5 flex flex-col gap-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setIsCustomRetour(true);
-                                          setCustomRetourValue(p.retour_geometre || '');
-                                        }}
-                                        className="w-full text-left px-2.5 py-1.5 rounded text-xs text-blue-700 hover:bg-blue-50 transition-colors flex items-center gap-2 font-medium"
-                                      >
-                                        <span>✏️ Saisie personnalisée...</span>
-                                      </button>
-                                      {p.retour_geometre && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDirectSave(p.id, 'retour_geometre', '')}
-                                          className="w-full text-left px-2.5 py-1 rounded text-[11px] text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2"
-                                        >
-                                          <span>✕ Vider le champ</span>
-                                        </button>
+                                      ) : (
+                                        <div className="space-y-2 p-1">
+                                          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                            Saisie libre {col.label}
+                                          </div>
+                                          <input
+                                            autoFocus
+                                            type="text"
+                                            value={customStatusValue}
+                                            onChange={(e) => setCustomStatusValue(e.target.value)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleDirectSave(p.id, col.id, customStatusValue.trim());
+                                              } else if (e.key === 'Escape') {
+                                                setIsCustomStatus(false);
+                                              }
+                                            }}
+                                            placeholder="Ex: TRANSMIS / RELANCE"
+                                            className="w-full text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-blue-500 outline-none"
+                                          />
+                                          <div className="flex items-center justify-end gap-1.5 pt-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => setIsCustomStatus(false)}
+                                              className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded"
+                                            >
+                                              Retour
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDirectSave(p.id, col.id, customStatusValue.trim())}
+                                              className="px-2.5 py-1 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700 shadow-xs"
+                                            >
+                                              Enregistrer
+                                            </button>
+                                          </div>
+                                        </div>
                                       )}
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="space-y-2 p-1">
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                      Saisie libre retour géomètre
-                                    </div>
-                                    <input
-                                      autoFocus
-                                      type="text"
-                                      value={customRetourValue}
-                                      onChange={(e) => setCustomRetourValue(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          e.preventDefault();
-                                          handleDirectSave(p.id, 'retour_geometre', customRetourValue.trim());
-                                        } else if (e.key === 'Escape') {
-                                          setIsCustomRetour(false);
-                                        }
-                                      }}
-                                      placeholder="Ex: 2 - RELANCE GÉOMÈTRE"
-                                      className="w-full text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-blue-500 outline-none"
-                                    />
-                                    <div className="flex items-center justify-end gap-1.5 pt-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => setIsCustomRetour(false)}
-                                        className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded"
-                                      >
-                                        Retour
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDirectSave(p.id, 'retour_geometre', customRetourValue.trim())}
-                                        className="px-2.5 py-1 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700 shadow-xs"
-                                      >
-                                        Enregistrer
-                                      </button>
-                                    </div>
+                                  <div
+                                    onClick={() => handleCellClick(p.id, col.id, rawVal, col.type)}
+                                    className={cn(
+                                      "px-3 py-2 cursor-pointer hover:bg-blue-50/60 rounded flex items-center group/cell transition-colors min-h-[36px]",
+                                      col.align === 'center' ? 'justify-center' : 'justify-between'
+                                    )}
+                                    title="Cliquer pour modifier"
+                                  >
+                                    <StatusBadge value={rawVal} />
+                                    {col.align !== 'center' && (
+                                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover/cell:opacity-100 transition-opacity ml-1.5 shrink-0" />
+                                    )}
                                   </div>
                                 )}
-                              </div>
-                            </div>
-                          ) : (
-                            <div
-                              onClick={() => {
-                                setEditingCell({ id: p.id, field: 'retour_geometre' });
-                                setIsCustomRetour(false);
-                                setCustomRetourValue(p.retour_geometre || '');
-                              }}
-                              className="px-3 py-2 cursor-pointer hover:bg-blue-50/60 rounded flex items-center justify-between group/cell transition-colors min-h-[36px]"
-                              title="Cliquer pour modifier le retour géomètre"
+                              </td>
+                            );
+                          }
+
+                          // 5. Autres colonnes textuelles ou numériques éditables
+                          const isEditing = editingCell?.id === p.id && editingCell?.field === col.id;
+                          const rawVal = p[col.id] ?? '';
+
+                          if (isEditing) {
+                            return (
+                              <td key={col.id} style={cellStyle} className="border-r border-slate-200 p-0">
+                                <input
+                                  autoFocus
+                                  type={col.type === 'number' ? 'number' : 'text'}
+                                  step="any"
+                                  value={cellEditValue}
+                                  onChange={(e) => setCellEditValue(e.target.value)}
+                                  onBlur={handleCellSave}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleCellSave();
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  className="w-full h-full px-2.5 py-2 bg-blue-50 border-2 border-blue-500 text-xs rounded outline-none font-medium text-slate-900"
+                                />
+                              </td>
+                            );
+                          }
+
+                          let displayVal = rawVal;
+                          if (col.type === 'number' && typeof rawVal === 'number') {
+                            displayVal = rawVal.toLocaleString('fr-FR');
+                          }
+
+                          return (
+                            <td
+                              key={col.id}
+                              style={cellStyle}
+                              onClick={() => handleCellClick(p.id, col.id, rawVal, col.type)}
+                              className={cn(
+                                "border-r border-slate-200 px-3 py-2 cursor-pointer hover:bg-blue-50/50 transition-colors min-h-[36px]",
+                                col.align === 'right' ? 'text-right font-medium' : col.align === 'center' ? 'text-center' : 'text-left',
+                                col.id === 'spv' && 'font-semibold text-blue-700'
+                              )}
+                              title={String(rawVal)}
                             >
-                              <StatusBadge value={p.retour_geometre} />
-                              <ChevronDown className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover/cell:opacity-100 transition-opacity ml-1.5 shrink-0" />
-                            </div>
-                          )}
-                        </td>
-
-                        {/* GEOMETRE */}
-                        <td className="border-r border-slate-200 font-semibold text-slate-800">
-                          {renderEditableCell('geometre')}
-                        </td>
-
-                        {/* MTT HT DEVIS GEOMETRE */}
-                        <td className="border-r border-slate-200 text-right font-medium">
-                          {renderEditableCell('mtt_ht_devis_geometre', 'text-right font-bold text-slate-900', true)}
-                        </td>
-
-                        {/* DEVIS VALIDE */}
-                        <td className="border-r border-slate-200 text-center">
-                          <StatusBadge value={p.devis_valide} />
-                        </td>
-
-                        {/* Géomètre AB6 */}
-                        <td className="border-r border-slate-200 text-center">
-                          <StatusBadge value={p.geometre_ab6} />
-                        </td>
-
-                        {/* Montant HT AB6 */}
-                        <td className="border-r border-slate-200 text-right font-medium">
-                          {renderEditableCell('montant_ht_ab6', 'text-right', true)}
-                        </td>
-
-                        {/* Observ Géomètre */}
-                        <td className="border-r border-slate-200 text-slate-600 italic">
-                          {renderEditableCell('observ_geometre')}
-                        </td>
-
-                        {/* Notaire */}
-                        <td className="border-r border-slate-200 font-medium">
-                          {renderEditableCell('notaire')}
-                        </td>
+                              <div className="truncate">
+                                {rawVal !== '' ? displayVal : <span className="text-slate-300">-</span>}
+                              </div>
+                            </td>
+                          );
+                        })}
                       </tr>
                     );
                   })
@@ -937,33 +1148,72 @@ export default function ShantiOnePage() {
               {filteredProjects.length > 0 && (
                 <tfoot className="sticky bottom-0 z-30 bg-slate-900 text-white font-bold text-xs shadow-md">
                   <tr>
-                    <td className="px-3 py-3 text-center sticky left-0 z-40 bg-slate-900 border-r border-slate-800">
-                      ∑
-                    </td>
-                    <td className="px-2 py-3 sticky left-12 z-40 bg-slate-900 border-r border-slate-800 text-center text-slate-400">
-                      -
-                    </td>
-                    <td className="px-3 py-3 sticky left-28 z-40 bg-slate-900 border-r border-slate-800 font-black">
-                      TOTAL ({filteredProjects.length})
-                    </td>
-                    <td className="px-3 py-3 border-r border-slate-800">-</td>
-                    <td className="px-3 py-3 text-right border-r border-slate-800 text-emerald-400 font-black">
-                      {stats.totalKwc.toLocaleString('fr-FR')} kWc
-                    </td>
-                    <td colSpan={12} className="px-3 py-3 border-r border-slate-800 text-center text-slate-400 font-normal">
-                      Synthèse consolidée des 33 projets
-                    </td>
-                    <td className="px-3 py-3 text-right border-r border-slate-800 text-emerald-400 font-black">
-                      {stats.totalDevisGeometre.toLocaleString('fr-FR', { minimumFractionDigits: 0 })} € HT
-                    </td>
-                    <td className="px-3 py-3 text-center border-r border-slate-800 text-emerald-300">
-                      {stats.validCount} validés
-                    </td>
-                    <td className="px-3 py-3 border-r border-slate-800">-</td>
-                    <td className="px-3 py-3 text-right border-r border-slate-800 text-emerald-400 font-black">
-                      {stats.totalAb6.toLocaleString('fr-FR', { minimumFractionDigits: 0 })} € HT
-                    </td>
-                    <td colSpan={2} className="px-3 py-3 border-r border-slate-800">-</td>
+                    {columns.map(col => {
+                      const isSticky = Boolean(col.sticky);
+                      const leftPos = isSticky ? stickyOffsets[col.id] : undefined;
+                      const cellStyle = {
+                        width: `${col.width}px`,
+                        minWidth: `${col.width}px`,
+                        maxWidth: `${col.width}px`,
+                        ...(isSticky ? { position: 'sticky', left: `${leftPos}px`, zIndex: 40 } : {})
+                      };
+
+                      if (col.id === 'no') {
+                        return (
+                          <td key={col.id} style={cellStyle} className="px-3 py-3 text-center bg-slate-900 border-r border-slate-800">
+                            ∑
+                          </td>
+                        );
+                      }
+                      if (col.id === 'maj') {
+                        return (
+                          <td key={col.id} style={cellStyle} className="px-2 py-3 text-center text-slate-400 bg-slate-900 border-r border-slate-800">
+                            -
+                          </td>
+                        );
+                      }
+                      if (col.id === 'projet') {
+                        return (
+                          <td key={col.id} style={cellStyle} className="px-3 py-3 font-black bg-slate-900 border-r border-slate-800">
+                            TOTAL ({filteredProjects.length})
+                          </td>
+                        );
+                      }
+                      if (col.id === 'puissance_kwc') {
+                        return (
+                          <td key={col.id} style={cellStyle} className="px-3 py-3 text-right text-emerald-400 font-black border-r border-slate-800">
+                            {stats.totalKwc.toLocaleString('fr-FR')} kWc
+                          </td>
+                        );
+                      }
+                      if (col.id === 'mtt_ht_devis_geometre') {
+                        return (
+                          <td key={col.id} style={cellStyle} className="px-3 py-3 text-right text-emerald-400 font-black border-r border-slate-800">
+                            {stats.totalDevisGeometre.toLocaleString('fr-FR', { minimumFractionDigits: 0 })} € HT
+                          </td>
+                        );
+                      }
+                      if (col.id === 'montant_ht_ab6') {
+                        return (
+                          <td key={col.id} style={cellStyle} className="px-3 py-3 text-right text-emerald-400 font-black border-r border-slate-800">
+                            {stats.totalAb6.toLocaleString('fr-FR', { minimumFractionDigits: 0 })} € HT
+                          </td>
+                        );
+                      }
+                      if (col.id === 'devis_valide') {
+                        return (
+                          <td key={col.id} style={cellStyle} className="px-3 py-3 text-center text-emerald-300 font-bold border-r border-slate-800">
+                            {stats.validCount} validés
+                          </td>
+                        );
+                      }
+
+                      return (
+                        <td key={col.id} style={cellStyle} className="px-3 py-3 text-center text-slate-400 border-r border-slate-800">
+                          -
+                        </td>
+                      );
+                    })}
                   </tr>
                 </tfoot>
               )}
@@ -971,6 +1221,80 @@ export default function ShantiOnePage() {
           </div>
         </div>
       </div>
+
+      {/* ═══ MODAL AJOUT DE COLONNE ═══ */}
+      {isAddColumnOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm p-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <h3 className="font-black text-slate-800 text-sm">Ajouter une colonne</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddColumnOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddColumnSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Nom de la colonne
+                </label>
+                <input
+                  autoFocus
+                  type="text"
+                  required
+                  placeholder="Ex: Date dépôt mairie, Référence client..."
+                  value={newColName}
+                  onChange={(e) => setNewColName(e.target.value)}
+                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Type de données
+                </label>
+                <select
+                  value={newColType}
+                  onChange={(e) => setNewColType(e.target.value)}
+                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-blue-500 bg-white"
+                >
+                  <option value="text">Texte libre</option>
+                  <option value="number">Nombre / Montant</option>
+                  <option value="badge_select">Statut / Badge de couleur</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsAddColumnOpen(false)}
+                  className="text-xs"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Ajouter au tableau
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ═══ TIROIR LATÉRAL DE MISES À JOUR (DRAWER MONDAY) ═══ */}
       {selectedProjectForUpdates && (

@@ -130,8 +130,43 @@ async function drawCoverPage(doc, project, type, installationType) {
   // ── Informations du projet (colonne gauche) ───────────────────
   const clientName = project?.demandeur || `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Demandeur';
   const communeName = project?.commune || project?.city || project?.cadastre_commune || '—';
-  const sectionVal = (project?.cadastre_section || project?.section) ? `${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : (project?.cadastre || '—');
-  const surfaceVal = (project?.cadastre_surface || project?.surface) ? `${project.cadastre_surface || project.surface} m²` : '—';
+
+  // Extraction propre des parcelles multiples ou uniques
+  const activeParcelles = (Array.isArray(project?.parcelles) && project.parcelles.length > 0)
+    ? project.parcelles
+    : (Array.isArray(project?.cadastre_parcelles) && project.cadastre_parcelles.length > 0)
+      ? project.cadastre_parcelles
+      : [{
+          section: project?.cadastre_section || project?.section || '',
+          numero: project?.cadastre_numero || project?.numero || '',
+          surface: project?.cadastre_surface || project?.surface || ''
+        }];
+
+  let totalSurfaceCalc = 0;
+  if (activeParcelles.length > 1) {
+    totalSurfaceCalc = activeParcelles.reduce((sum, p) => {
+      const s = Number(String(p?.surface || '').replace(/\D/g, ''));
+      return sum + (isNaN(s) ? 0 : s);
+    }, 0);
+  }
+  const surfaceVal = totalSurfaceCalc > 0
+    ? `${totalSurfaceCalc.toLocaleString('fr-FR')} m²`
+    : ((project?.cadastre_surface || project?.surface) ? `${project.cadastre_surface || project.surface} m²` : '—');
+
+  // Lignes de références cadastrales (ex: Ligne 1: "Section 0G n° 0852", Ligne 2: "Section B n° 331")
+  const refCadastraleLines = activeParcelles.map(p => {
+    const s = (p.section || '').trim();
+    const n = (p.numero || '').trim();
+    if (s || n) {
+      return `Section ${s || '—'} n° ${n || '—'}`;
+    }
+    return (project?.cadastre || '—');
+  });
+
+  const sectionVal = activeParcelles.length > 1
+    ? activeParcelles.map(p => `${(p.section || '').trim()} n° ${(p.numero || '').trim()}`).filter(Boolean).join(' / ')
+    : ((project?.cadastre_section || project?.section) ? `${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : (project?.cadastre || '—'));
+
   const rawKwcVal = project?.puissance || project?.kwc || project?.projectSize || '';
   const puissanceVal = rawKwcVal ? (String(rawKwcVal).includes('kWc') ? String(rawKwcVal) : `${rawKwcVal} kWc`) : '—';
   // Dynamic type label based on configured buildings
@@ -221,13 +256,13 @@ async function drawCoverPage(doc, project, type, installationType) {
 
   page.drawRectangle({ x: cx + 16, y: H - 145, width: 60, height: 3, color: typeColor });
 
-  // ── Tableau récapitulatif (avec wrap propre de l'adresse sur 2-3 lignes) ──
+  // ── Tableau récapitulatif (avec multi-parcelles et surface totale terrain) ──
   const tableY = H - 200;
   const fullAddress = project?.address || `${project?.adresse || '—'}, ${project?.zip || project?.zipCode || ''} ${project?.city || project?.commune || ''}`.trim().replace(/^,\s*/, '');
   const cols = [
     { label: 'Adresse du terrain', value: fullAddress, isAddress: true },
-    { label: 'Référence cadastrale', value: (project?.cadastre_section || project?.section) ? `Section ${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : (project?.cadastre || '—') },
-    { label: 'Surface terrain', value: surfaceVal },
+    { label: 'Référence cadastrale', isMultiLine: true, lines: refCadastraleLines },
+    { label: 'Surface totale terrain', value: surfaceVal },
     { label: 'Puissance installée', value: puissanceVal },
   ];
 
@@ -242,6 +277,16 @@ async function drawCoverPage(doc, project, type, installationType) {
     if (col.isAddress) {
       const addrLines = wrapText(col.value, 22);
       addrLines.slice(0, 3).forEach((line, lineIdx) => {
+        page.drawText(line, {
+          x: colX + 6,
+          y: tableY - 14 - (lineIdx * 11),
+          size: 8.5,
+          font: fontB,
+          color: C.dark
+        });
+      });
+    } else if (col.isMultiLine) {
+      col.lines.slice(0, 4).forEach((line, lineIdx) => {
         page.drawText(line, {
           x: colX + 6,
           y: tableY - 14 - (lineIdx * 11),
@@ -295,7 +340,7 @@ async function drawCoverPage(doc, project, type, installationType) {
   // Utiliser le texte personnalisé saisi ou synthétique
   let objetText = (project?.objet_travaux || project?.objetTravaux)
     ? (project.objet_travaux || project.objetTravaux)
-    : (project?.description && !project.description.includes("NOTICE D'INSERTION") && !project.description.includes('1- OBJET') && project.description.length < 350)
+    : (project?.description && !project.description.includes("NOTICE D'INSERTION") && !project.description.includes('1- OBJET') && project.description.length < 500)
       ? project.description
       : typeInfo.cerfaText;
 
@@ -305,21 +350,26 @@ async function drawCoverPage(doc, project, type, installationType) {
     objetText = typeInfo.cerfaText;
   }
 
-  // Largeur maximale : ~108 caractères par ligne sur 550 pt de largeur utile
-  const descLines = wrapText(objetText, 108);
-  const isLong = descLines.length > 10;
-  const fontSize = isLong ? 8.5 : 9.5;
-  const lineHeight = isLong ? 12.5 : 14.5;
+  // Largeur maximale et gestion des retours à la ligne \n
+  const descLines = String(objetText || '')
+    .split(/\r?\n/)
+    .flatMap(p => p.trim() === '' ? [''] : wrapText(p, 105));
+
+  const isLong = descLines.length > 8;
+  const fontSize = isLong ? 8 : 9;
+  const lineHeight = isLong ? 11.5 : 13.5;
   const maxAvailableLines = Math.floor((cardH - 34) / lineHeight);
 
   descLines.slice(0, maxAvailableLines).forEach((line, i) => {
-    page.drawText(line, {
-      x: cardX + 14,
-      y: cardBottom + cardH - 33 - (i * lineHeight),
-      size: fontSize,
-      font: fontR,
-      color: C.dark,
-    });
+    if (line) {
+      page.drawText(line, {
+        x: cardX + 14,
+        y: cardBottom + cardH - 33 - (i * lineHeight),
+        size: fontSize,
+        font: fontR,
+        color: C.dark,
+      });
+    }
   });
 
   // ── Encart Réglementaire Déclaration Préalable (Article R.421-9 du Code de l'Urbanisme) ──
@@ -465,23 +515,8 @@ export async function generateFullUrbanismePDF({ type, project, installationType
         } else if (type === 'cu') {
           cerfaUrl = '/templates/cerfa_16702-02.pdf';
         } else {
-          // Déclaration Préalable (DP) : Routage dynamique Cerfa 13703 (Résidentiel) vs Cerfa 16702 (Agricole / Tertiaire / Pro)
-          const isResidential =
-            String(project?.category || '').toLowerCase().includes('resid') ||
-            String(project?.category || '').toLowerCase().includes('maison') ||
-            String(project?.segment || '').toLowerCase().includes('resid') ||
-            String(project?.segment || '').toLowerCase().includes('particulier') ||
-            String(project?.type || '').toLowerCase().includes('resid') ||
-            String(project?.type || '').toLowerCase().includes('maison') ||
-            String(project?.clientCategory || '').toLowerCase().includes('resid') ||
-            String(project?.clientCategory || '').toLowerCase().includes('particulier') ||
-            String(project?.typologie || '').toLowerCase().includes('resid') ||
-            String(project?.typologie || '').toLowerCase().includes('maison') ||
-            String(project?.destination || '').toLowerCase().includes('maison') ||
-            String(project?.destination || '').toLowerCase().includes('resid') ||
-            project?.cerfaModel === '13703';
-
-          cerfaUrl = isResidential
+          // Déclaration Préalable (DP) : CERFA 16702*03 (DPC) officiel par défaut
+          cerfaUrl = project?.cerfaModel === '13703'
             ? '/templates/cerfa_13703.pdf'
             : '/cerfa_DPC_16702_03.pdf';
         }

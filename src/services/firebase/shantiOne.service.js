@@ -216,33 +216,58 @@ export const deleteShantiOneUpdate = async (project, updateId) => {
 /**
  * Export au format Excel (.xlsx)
  */
-export const exportShantiOneToExcel = (projects, filename = 'SUIVI_SHANTI_ONE.xlsx') => {
+export const exportShantiOneToExcel = (projects, columnsOrFilename = null, optionalFilename = 'SUIVI_SHANTI_ONE.xlsx') => {
   try {
-    const rowsForExport = projects.map((p, idx) => ({
-      'N°': idx + 1,
-      'PROJET': p.projet || '',
-      'SPV': p.spv || '',
-      'PUISSANCE (kWc)': p.puissance_kwc ?? '',
-      'ENR COURTAGE': p.enr_courtage || '',
-      'Courtier': p.courtier || '',
-      'Adresse Projet': p.adresse_projet || '',
-      'Modèle de base': p.modele_base || '',
-      'PLAN PC DP': p.plan_pc || '',
-      'GPS': p.gps || '',
-      'Tel': p.tel || '',
-      'Mail': p.mail || '',
-      'Type de projet': p.type_projet_categorie || '',
-      'Type projet détail': p.type_projet_detail || '',
-      'RETOUR GEOMETRE': p.retour_geometre || '',
-      'GEOMETRE': p.geometre || '',
-      'MTT HT DEVIS GEOMETRE': p.mtt_ht_devis_geometre ?? '',
-      'DEVIS VALIDE': p.devis_valide || '',
-      'Géomètre AB6': p.geometre_ab6 || '',
-      'Montant HT AB6': p.montant_ht_ab6 ?? '',
-      'Observ Géomètre': p.observ_geometre || '',
-      'NOTAIRE': p.notaire || '',
-      'Nombre de MAJ': Array.isArray(p.__updates) ? p.__updates.length : 0
-    }));
+    let columns = null;
+    let filename = optionalFilename;
+    if (typeof columnsOrFilename === 'string') {
+      filename = columnsOrFilename;
+    } else if (Array.isArray(columnsOrFilename)) {
+      columns = columnsOrFilename;
+    }
+
+    let rowsForExport;
+    if (columns && columns.length > 0) {
+      rowsForExport = projects.map((p, idx) => {
+        const row = {};
+        columns.forEach((col) => {
+          if (col.id === 'no') {
+            row[col.label || 'N°'] = idx + 1;
+          } else if (col.id === 'maj') {
+            row[col.label || 'Nombre de MAJ'] = Array.isArray(p.__updates) ? p.__updates.length : 0;
+          } else {
+            row[col.label || col.id] = p[col.id] ?? '';
+          }
+        });
+        return row;
+      });
+    } else {
+      rowsForExport = projects.map((p, idx) => ({
+        'N°': idx + 1,
+        'PROJET': p.projet || '',
+        'SPV': p.spv || '',
+        'PUISSANCE (kWc)': p.puissance_kwc ?? '',
+        'ENR COURTAGE': p.enr_courtage || '',
+        'Courtier': p.courtier || '',
+        'Adresse Projet': p.adresse_projet || '',
+        'Modèle de base': p.modele_base || '',
+        'PLAN PC DP': p.plan_pc || '',
+        'GPS': p.gps || '',
+        'Tel': p.tel || '',
+        'Mail': p.mail || '',
+        'Type de projet': p.type_projet_categorie || '',
+        'Type projet détail': p.type_projet_detail || '',
+        'RETOUR GEOMETRE': p.retour_geometre || '',
+        'GEOMETRE': p.geometre || '',
+        'MTT HT DEVIS GEOMETRE': p.mtt_ht_devis_geometre ?? '',
+        'DEVIS VALIDE': p.devis_valide || '',
+        'Géomètre AB6': p.geometre_ab6 || '',
+        'Montant HT AB6': p.montant_ht_ab6 ?? '',
+        'Observ Géomètre': p.observ_geometre || '',
+        'NOTAIRE': p.notaire || '',
+        'Nombre de MAJ': Array.isArray(p.__updates) ? p.__updates.length : 0
+      }));
+    }
 
     const worksheet = XLSX.utils.json_to_sheet(rowsForExport);
     const workbook = XLSX.utils.book_new();

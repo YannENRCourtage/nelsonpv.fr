@@ -538,8 +538,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       // Superficie totale du terrain (en m²)
       setField(['topmostSubform[0].Page3[0].D5T_total[0]', 'D5T_total', 'topmostSubform[0].Page10[0].D5T_total[0]', 'F1TS1_totale'], totalSurface, 9.5);
 
-      // Section 3.2 : Situation juridique du terrain — Cocher "Je ne sais pas" sur toutes les lignes
-      setCheck(['topmostSubform[0].Page3[0].T3B_CUnc[0]', 'T3B_CUnc'], true);
+      // Section 3.2 : Situation juridique du terrain — Non pour CU, Je ne sais pas pour le reste (conforme image dossier)
+      setCheck(['topmostSubform[0].Page3[0].T3H_CUnon[0]', 'T3H_CUnon'], true);
       setCheck(['topmostSubform[0].Page3[0].T3S_lotnc[0]', 'T3S_lotnc'], true);
       setCheck(['topmostSubform[0].Page3[0].T3T_ZACnc[0]', 'T3T_ZACnc'], true);
       setCheck(['topmostSubform[0].Page3[0].T3E_AFUnc[0]', 'T3E_AFUnc'], true);
@@ -558,23 +558,44 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       }
       setField(fieldMap.description,    objet, 9.5);
 
-      // 5. Puissance crête (ex: 500 kW) & Matériaux
+      // 5. Puissance crête (ex: 499 kW), Destination, Matériaux, Fondations, Emprise au sol
+      const kwcValue = cleanKwcVal || (isBat ? '500' : '499');
       if (isBat) {
         setField(['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'], '500', 9.5);
         setField(['topmostSubform[0].Page5[0].C2ZP1_crete[0]', 'C2ZP1_crete'], '500', 9.5);
-        setCheck(['C6ZL2_metal'], true);
-        setCheck(['C6ZL5_beton'], true);
-      } else if (cleanKwcVal) {
-        setField(['topmostSubform[0].Page5[0].C2ZP1_crete[0]', 'C2ZP1_crete'], cleanKwcVal, 9.5);
-        setField(['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'], cleanKwcVal, 9.5);
-      }
-      // Cocher "Métal" pour les structures ombrières métalliques ou containers
-      if (isDP || isBat || installationType === 'ombriere' || installationType === 'batiment_solaire') {
-        setCheck(['C6ZL2_metal'], true);
+        setField(['topmostSubform[0].Page5[0].C2ZR1_destination[0]', 'C2ZR1_destination'], 'Injection réseau', 9.5);
+        setCheck(['C6ZL2_metal', 'topmostSubform[0].Page7[0].C6ZL2_metal[0]'], true);
+        setCheck(['C6ZL5_beton', 'topmostSubform[0].Page7[0].C6ZL5_beton[0]'], true);
+        setCheck(['C6ZM1_classique', 'topmostSubform[0].Page7[0].C6ZM1_classique[0]'], true);
+      } else {
+        setField(['topmostSubform[0].Page5[0].C2ZP1_crete[0]', 'C2ZP1_crete'], kwcValue, 9.5);
+        setField(['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'], kwcValue, 9.5);
+        setField(['topmostSubform[0].Page5[0].C2ZR1_destination[0]', 'C2ZR1_destination'], project?.destination_energie || 'Revente totale', 9.5);
+        setCheck(['C6ZL2_metal', 'topmostSubform[0].Page7[0].C6ZL2_metal[0]'], true);
+        setCheck(['C6ZM1_classique', 'topmostSubform[0].Page7[0].C6ZM1_classique[0]'], true);
       }
 
-      // 6. Engagement & Signature (date au format strict 8 chiffres JJMMAAAA sans slash)
-      setField(fieldMap.sig_lieu,       terrainCity || city || 'FRANCE', 9.5);
+      // Emprise au sol créée (Section 4.3)
+      let empriseCreee = project?.emprise || project?.emprise_creee || project?.surface_emprise || '';
+      if (!empriseCreee) {
+        const b0 = (Array.isArray(project?.buildings) && project.buildings[0]) || {};
+        const bL = Number(b0.length || project?.longueur || 75);
+        const bW = Number(b0.totalWidth || b0.width || project?.largeur || 31.6);
+        empriseCreee = String(Math.round(bL * bW) || 2370);
+      }
+      setField(['W3ES2_creee', 'S1I_emprise', 'topmostSubform[0].Page7[0].W3ES2_creee[0]'], String(empriseCreee), 9.5);
+
+      // 6. Engagement & Signature (page 9/18 du CERFA : Ville, Date JJMMAAAA, Prénom & Nom)
+      const sigLieu = terrainCity || city || project?.commune || project?.city || 'FRANCE';
+      setField(fieldMap.sig_lieu, sigLieu, 9.5);
+      setField([
+        'E1L_lieu',
+        'topmostSubform[0].Page9[0].E1L_lieu[0]',
+        'topmostSubform[0].Page8[0].E1L_lieu[0]',
+        'topmostSubform[0].Page10[0].E1L_lieu[0]',
+        'topmostSubform[0].Page11[0].E1L_lieu[0]'
+      ], sigLieu, 9.5);
+
       setField([
         'E1D_date',
         'topmostSubform[0].Page9[0].E1D_date[0]',
@@ -587,9 +608,20 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         'F9D_date',
         'V1D_date'
       ], dateStr, 9.5);
-      setField(['topmostSubform[0].Page9[0].E1S_signature[0]', 'topmostSubform[0].Page11[0].E1S_signature[0]', 'E1S_signature'], fullDeclarantName, 9.5);
 
-      // 7. Bordereau des pièces jointes
+      const clientSignatureName = (firstName && lastName)
+        ? `${firstName} ${lastName}`
+        : (fullDeclarantName || `${lastName} ${firstName}`.trim() || 'Le déclarant');
+
+      setField([
+        'E1S_signature',
+        'topmostSubform[0].Page9[0].E1S_signature[0]',
+        'topmostSubform[0].Page11[0].E1S_signature[0]',
+        'topmostSubform[0].Page8[0].E1S_signature[0]'
+      ], clientSignatureName, 9.5);
+
+      // 7. Bordereau des pièces jointes (pages 11/18, 12/18 et 13/18)
+      // Par défaut : DPC1, DPC2, DPC3, DPC4, DPC6, DPC7 et DPC8
       const plateList = Array.isArray(plateIds) ? plateIds : [];
 
       let isCerfa13703 = false;
@@ -600,40 +632,26 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       if (isCerfa16702_03) {
         CERFA_16702_03_ALL_BORDEREAU.forEach(name => setCheck(name, false));
 
-        // DPC1 : Plan de situation
-        if (plateList.some(id => id.includes('situation')) || plateList.length > 0) {
-          setCheck('P5PA2', true);
-        }
-        // DPC2 : Plan de masse
-        if (plateList.some(id => id.includes('masse')) || plateList.length > 0) {
-          setCheck('P5PB1', true);
-        }
-        // DPC3 : Plan en coupe
-        if (plateList.some(id => id.includes('section') || id.includes('coupe'))) {
-          setCheck('P3GE1', true);
-        }
-        // DPC4 : Plan des façades et des toitures
-        if (plateList.some(id => id.includes('facades') || id.includes('toiture'))) {
-          setCheck('P3GD1', true);
-        }
-        // DPC5 : Représentation de l'aspect extérieur
+        // DPC1 : Plan de situation (Page 11/18)
+        setCheck('P5PA2', true);
+        // DPC2 : Plan de masse (Page 11/18)
+        setCheck('P5PB1', true);
+        // DPC3 : Plan en coupe (Page 11/18)
+        setCheck('P3GE1', true);
+        // DPC4 : Plan des façades et des toitures (Page 12/18)
+        setCheck('P3GD1', true);
+        // DPC5 : Représentation de l'aspect extérieur (si demandé)
         if (plateList.some(id => id.includes('aspect') || id.includes('materiaux'))) {
           setCheck('P5PC1', true);
         }
-        // DPC6 : Insertion paysagère dans son environnement
-        if (plateList.some(id => id.includes('insertion') || id.includes('dp6') || id.includes('pc6'))) {
-          setCheck('P3GF1', true);
-        }
-        // DPC7 : Environnement proche
-        if (plateList.some(id => id.includes('env-proche') || id.includes('dp7') || id.includes('pc7') || (id.includes('env') && !id.includes('env-lointain')))) {
-          setCheck('P3GG1', true);
-        }
-        // DPC8 : Paysage lointain
-        if (plateList.some(id => id.includes('env-lointain') || id.includes('dp8') || id.includes('pc8') || (id.includes('env') && !id.includes('env-proche')))) {
-          setCheck('P3GH1', true);
-        }
-        // DPC11 : Notice descriptive
-        if (plateList.some(id => id.includes('notice') || id.includes('dp11') || id.includes('pc11'))) {
+        // DPC6 : Insertion paysagère dans son environnement (Page 12/18)
+        setCheck('P3GF1', true);
+        // DPC7 : Environnement proche (Page 12/18)
+        setCheck('P3GG1', true);
+        // DPC8 : Paysage lointain (Page 12/18)
+        setCheck('P3GH1', true);
+        // DPC11 : Notice descriptive (Page 12/18)
+        if (plateList.some(id => id.includes('notice') || id.includes('dp11') || id.includes('pc11')) || plateList.length === 0) {
           setCheck('P4CD1', true);
         }
       } else if (isCerfa13703) {
