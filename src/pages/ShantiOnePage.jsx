@@ -446,7 +446,9 @@ export default function ShantiOnePage() {
       if (String(p.devis_valide || '').toUpperCase() === 'VALIDE' || String(p.devis_valide || '').toUpperCase() === 'VALIDÉ') validCount++;
     });
 
-    return { totalKwc, totalDevisGeometre, totalAb6, validCount };
+    const totalGeometresHT = totalDevisGeometre + totalAb6;
+
+    return { totalKwc, totalDevisGeometre, totalAb6, totalGeometresHT, validCount };
   }, [filteredProjects]);
 
   const handleSort = (key) => {
@@ -586,34 +588,62 @@ export default function ShantiOnePage() {
           </div>
         </div>
 
-        {/* KPI Mini-Cards */}
-        <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-slate-100">
-          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Puissance totale</span>
-            <div className="text-lg font-black text-slate-800 mt-0.5">
-              {stats.totalKwc.toLocaleString('fr-FR')} <span className="text-xs font-normal text-slate-500">kWc</span>
+        {/* KPI Cards avec couleurs de fond et regroupement des géomètres (AB6 inclus) */}
+        <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-3 pt-3 border-t border-slate-100">
+          {/* 1. Puissance Totale */}
+          <div className="bg-gradient-to-br from-amber-50/90 via-orange-50/50 to-amber-100/40 border border-amber-200/90 rounded-xl p-3.5 shadow-xs flex flex-col justify-between transition-all hover:shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Puissance totale</span>
+              <div className="p-1.5 bg-amber-100 text-amber-700 rounded-lg shadow-2xs">
+                <Zap className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-amber-950 mt-1">
+              {stats.totalKwc.toLocaleString('fr-FR')} <span className="text-xs font-bold text-amber-700 ml-0.5">kWc</span>
+            </div>
+            <div className="text-[11px] font-medium text-amber-700/85 mt-1.5 flex items-center justify-between">
+              <span>{filteredProjects.length} projet{filteredProjects.length > 1 ? 's' : ''} suivi{filteredProjects.length > 1 ? 's' : ''}</span>
+              {filteredProjects.length > 0 && (
+                <span className="font-semibold">Moy. {(stats.totalKwc / filteredProjects.length).toFixed(0)} kWc</span>
+              )}
             </div>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Devis Géomètre HT</span>
-            <div className="text-lg font-black text-slate-800 mt-0.5">
-              {stats.totalDevisGeometre.toLocaleString('fr-FR', { minimumFractionDigits: 0 })} <span className="text-xs font-normal text-slate-500">€ HT</span>
+          {/* 2. Total Devis Géomètres HT (AB6 + autres géomètres regroupés) */}
+          <div className="bg-gradient-to-br from-blue-50/90 via-indigo-50/50 to-sky-100/40 border border-blue-200/90 rounded-xl p-3.5 shadow-xs flex flex-col justify-between transition-all hover:shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800">Total Devis Géomètres HT</span>
+              <div className="p-1.5 bg-blue-100 text-blue-700 rounded-lg shadow-2xs">
+                <Euro className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-blue-950 mt-1">
+              {stats.totalGeometresHT.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} <span className="text-xs font-bold text-blue-700 ml-0.5">€ HT</span>
+            </div>
+            <div className="text-[11px] font-medium text-blue-700/85 mt-1.5 flex items-center justify-between gap-1">
+              <span>AB6 & tous géomètres</span>
+              <span className="text-[10.5px] bg-blue-100/90 text-blue-800 px-1.5 py-0.5 rounded font-semibold whitespace-nowrap">
+                Dont AB6 : {stats.totalAb6.toLocaleString('fr-FR', { minimumFractionDigits: 0 })} €
+              </span>
             </div>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Montant AB6 HT</span>
-            <div className="text-lg font-black text-slate-800 mt-0.5">
-              {stats.totalAb6.toLocaleString('fr-FR', { minimumFractionDigits: 0 })} <span className="text-xs font-normal text-slate-500">€ HT</span>
+          {/* 3. Devis Validés */}
+          <div className="bg-gradient-to-br from-emerald-50/90 via-teal-50/50 to-emerald-100/40 border border-emerald-200/90 rounded-xl p-3.5 shadow-xs flex flex-col justify-between transition-all hover:shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Devis Validés</span>
+              <div className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg shadow-2xs">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-
-          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Devis Validés</span>
-            <div className="text-lg font-black text-emerald-700 mt-0.5 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 inline" />
-              {stats.validCount} <span className="text-xs font-normal text-slate-500">dossiers</span>
+            <div className="text-xl sm:text-2xl font-black text-emerald-950 mt-1 flex items-center gap-1.5">
+              {stats.validCount} <span className="text-xs font-bold text-emerald-700">dossier{stats.validCount > 1 ? 's' : ''}</span>
+            </div>
+            <div className="text-[11px] font-medium text-emerald-700/85 mt-1.5 flex items-center justify-between gap-1">
+              <span>Taux de validation</span>
+              <span className="text-[10.5px] bg-emerald-100/90 text-emerald-800 px-1.5 py-0.5 rounded font-semibold whitespace-nowrap">
+                {filteredProjects.length > 0 ? Math.round((stats.validCount / filteredProjects.length) * 100) : 0}% des projets
+              </span>
             </div>
           </div>
         </div>
