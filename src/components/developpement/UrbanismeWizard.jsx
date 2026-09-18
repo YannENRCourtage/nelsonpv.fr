@@ -1015,6 +1015,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     return isDP ? 'ombriere' : 'building';
   })();
   const [solutionType, setSolutionType] = useState(initialSolType); // 'building' | 'ombriere' | 'battery'
+  const isBatActive = solutionType === 'battery';
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT' | '2D_TOP'
 
   const [editedProject, setEditedProject] = useState(project || {});
@@ -4488,7 +4489,6 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
   if (!isOpen) return null;
 
   const preservedKwc = editedProject?.puissance || editedProject?.kwc || project?.kwc || project?.puissance || project?.projectSize || editedProject?.projectSize || '';
-  const isBatActive = solutionType === 'battery';
   const summary = buildCerfaDataSummary(
     {
       ...editedProject,

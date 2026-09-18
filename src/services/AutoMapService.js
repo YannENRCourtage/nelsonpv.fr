@@ -337,9 +337,11 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
 
           // Point SDIS si présent
           if (sdisPoint && sdisPoint.lat && sdisPoint.lng) {
-            const [spx, spy] = latLngToTile(sdisPoint.lat, sdisPoint.lng, zoom);
-            const sdisX = centerX + (spx - exactX) * tileSize;
-            const sdisY = centerY + (spy - exactY) * tileSize;
+            const sdisRad = (Number(sdisPoint.lat) * Math.PI) / 180;
+            const sdisExactX = ((Number(sdisPoint.lng) + 180) / 360) * n;
+            const sdisExactY = ((1 - Math.log(Math.tan(sdisRad) + 1 / Math.cos(sdisRad)) / Math.PI) / 2) * n;
+            const sdisX = centerX + (sdisExactX - exactX) * tileSize;
+            const sdisY = centerY + (sdisExactY - exactY) * tileSize;
 
             ctx.save();
             const badgeW = 76;
