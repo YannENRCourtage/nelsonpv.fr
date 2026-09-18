@@ -1777,9 +1777,40 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const projectAddress = editedProject?.address || editedProject?.clientAddress || editedProject?.siteAddress || editedProject?.street || editedProject?.adresse || project?.address || project?.clientAddress || project?.siteAddress || project?.street || project?.adresse || '2069 Route de la Catine';
     const rawSection = editedProject?.cadastre_section || editedProject?.cadastreSection || project?.cadastre_section || '';
     const rawNumero = editedProject?.cadastre_numero || editedProject?.cadastreNumero || editedProject?.cadastre_parcel || editedProject?.parcelle || project?.cadastre_numero || '000 B 633';
-    const projectCadastre = `${rawSection ? `${rawSection} ` : ''}${rawNumero}`.trim();
-    const projectSurface = editedProject?.surface_terrain ? `${editedProject.surface_terrain} m²` : (editedProject?.cadastre_surface ? `${editedProject.cadastre_surface} m²` : (project?.surface_terrain ? `${project.surface_terrain} m²` : '18 384 m²'));
     const projectAltitude = editedProject?.altitude || project?.altitude || '140.62 m';
+
+    const activeParcelles = (Array.isArray(editedProject?.parcelles) && editedProject.parcelles.length > 0)
+      ? editedProject.parcelles
+      : (Array.isArray(editedProject?.cadastre_parcelles) && editedProject.cadastre_parcelles.length > 0)
+        ? editedProject.cadastre_parcelles
+        : [{
+            section: rawSection,
+            numero: rawNumero,
+            surface: editedProject?.cadastre_surface || project?.cadastre_surface || (editedProject?.surface_terrain || project?.surface_terrain || '18 384')
+          }];
+
+    const totalCalculatedSurface = activeParcelles.reduce((sum, p) => {
+      const s = Number(String(p?.surface || '').replace(/\D/g, ''));
+      return sum + (isNaN(s) ? 0 : s);
+    }, 0);
+    const totalSurfaceDisplay = totalCalculatedSurface > 0 ? `${totalCalculatedSurface} m²` : (activeParcelles[0]?.surface ? `${activeParcelles[0].surface} m²` : '18 384 m²');
+
+    let cadastreNoticeTextBattery = '';
+    let cadastreNoticeTextSolar = '';
+
+    if (activeParcelles.length > 1) {
+      const formattedList = activeParcelles.map(p => `${p.section ? `section ${p.section} ` : ''}n° ${p.numero || '—'}${p.surface ? ` (${p.surface} m²)` : ''}`).join(', ');
+      cadastreNoticeTextBattery = `Références cadastrales : sections/parcelles ${formattedList} (surface totale : ${totalSurfaceDisplay}, altitude : ${projectAltitude})`;
+      cadastreNoticeTextSolar = `Le terrain concerné par le projet concerne les parcelles cadastrées ${formattedList} (surface totale : ${totalSurfaceDisplay})`;
+    } else {
+      const p0 = activeParcelles[0] || {};
+      const sec = (p0.section || rawSection).trim();
+      const num = (p0.numero || rawNumero).trim();
+      const refCad = `${sec ? `section ${sec} ` : ''}n° ${num || '—'}`.trim();
+      const pSurf = p0.surface ? `${p0.surface} m²` : totalSurfaceDisplay;
+      cadastreNoticeTextBattery = `Références cadastrales : Section/Parcelle ${refCad} (surface de la parcelle : ${pSurf}, altitude : ${projectAltitude})`;
+      cadastreNoticeTextSolar = `Le terrain concerné par le projet est cadastré sous le numéro ${refCad} (surface : ${pSurf})`;
+    }
 
     // Cas particulier : Projet de stockage d'énergie par batterie Stand-Alone (BESS)
     if (!isAcama && solutionType === 'battery') {
@@ -1795,7 +1826,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 La présente demande porte sur l'installation d'une station de stockage d'énergie par batteries Stand-Alone (Puissance nominale : ${pPower} kW) sur dalle béton avec clôture rigide, d'une capacité de ${pCap} kWh (${pQty} armoires ${pModel}). L'emprise au sol totale est strictement inférieure à 20 m² (${pFootprintArea} m²), soumise au régime de la Déclaration Préalable de travaux (DP).
 
 2- LE SITE
-Le projet s'implante sur la commune de ${projectCity} (${projectZip}), à l'adresse : ${projectAddress}. Références cadastrales : Section/Parcelle ${projectCadastre} (surface de la parcelle : ${projectSurface}, altitude : ${projectAltitude}).
+Le projet s'implante sur la commune de ${projectCity} (${projectZip}), à l'adresse : ${projectAddress}. ${cadastreNoticeTextBattery}.
 Le site dispose d'un accès sécurisé pour les interventions techniques et les services d'incendie et de secours (SDIS).
 
 3- LE PROJET
@@ -1929,7 +1960,7 @@ L'installation intègre tous les dispositifs de sécurité et répond strictemen
 ${objetDemande}
 
 2- LE SITE
-Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}). Le terrain est globalement plat et se trouve à une altitude de ${projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.
+Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. ${cadastreNoticeTextSolar}. Le terrain est globalement plat et se trouve à une altitude de ${projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.
 
 3- LE PROJET
 ${batimentDesc}
@@ -3686,6 +3717,96 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     });
   };
 
+  // ── Multi-Parcelles Cadastrales (Étape 7 Validation) ─────────────────────
+  const projectParcelles = useMemo(() => {
+    if (Array.isArray(editedProject?.parcelles) && editedProject.parcelles.length > 0) {
+      return editedProject.parcelles;
+    }
+    if (Array.isArray(editedProject?.cadastre_parcelles) && editedProject.cadastre_parcelles.length > 0) {
+      return editedProject.cadastre_parcelles;
+    }
+    return [{
+      section: editedProject?.cadastre_section || project?.cadastre_section || '',
+      numero: editedProject?.cadastre_numero || project?.cadastre_numero || '',
+      surface: editedProject?.cadastre_surface || project?.cadastre_surface || '',
+    }];
+  }, [
+    editedProject?.parcelles,
+    editedProject?.cadastre_parcelles,
+    editedProject?.cadastre_section,
+    editedProject?.cadastre_numero,
+    editedProject?.cadastre_surface,
+    project?.cadastre_section,
+    project?.cadastre_numero,
+    project?.cadastre_surface
+  ]);
+
+  const handleParcelleChange = (index, field, value) => {
+    const current = [...projectParcelles];
+    if (!current[index]) {
+      current[index] = { section: '', numero: '', surface: '' };
+    }
+    current[index] = { ...current[index], [field]: value };
+
+    const updates = {
+      parcelles: current,
+      cadastre_parcelles: current
+    };
+
+    if (index === 0) {
+      if (field === 'section') {
+        updates.cadastre_section = value;
+        updates.terrain_section = value;
+        handleFieldChange('cadastre_section', value);
+        handleFieldChange('terrain_section', value);
+      } else if (field === 'numero') {
+        updates.cadastre_numero = value;
+        updates.terrain_numero = value;
+        updates.parcelle = value;
+        handleFieldChange('cadastre_numero', value);
+        handleFieldChange('terrain_numero', value);
+      } else if (field === 'surface') {
+        updates.cadastre_surface = value;
+        updates.terrain_surface = value;
+        handleFieldChange('cadastre_surface', value);
+        handleFieldChange('terrain_surface', value);
+      }
+    }
+
+    setEditedProject(prev => {
+      const next = { ...prev, ...updates };
+      queueAutoSave({ editedProject: next });
+      return next;
+    });
+  };
+
+  const handleAddParcelle = () => {
+    const updated = [...projectParcelles, { section: '', numero: '', surface: '' }];
+    setEditedProject(prev => {
+      const next = {
+        ...prev,
+        parcelles: updated,
+        cadastre_parcelles: updated
+      };
+      queueAutoSave({ editedProject: next });
+      return next;
+    });
+  };
+
+  const handleRemoveParcelle = (indexToRemove) => {
+    if (indexToRemove === 0) return;
+    const updated = projectParcelles.filter((_, idx) => idx !== indexToRemove);
+    setEditedProject(prev => {
+      const next = {
+        ...prev,
+        parcelles: updated,
+        cadastre_parcelles: updated
+      };
+      queueAutoSave({ editedProject: next });
+      return next;
+    });
+  };
+
   const prepareProjectPayload = async () => {
     const isBattery = !isNoBattery && solutionType === 'battery';
     
@@ -3715,6 +3836,53 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         .replace(/Le site sera également équipé d'un système de stockage d'énergie[^\n]*\n?/gi, '')
         .replace(/et le système de stockage batterie/gi, '')
         .replace(/Station Batteries \([^\)]*\)/gi, solutionType === 'building' ? 'Bâtiment' : (isDP ? 'Ombrière' : 'Bâtiment'));
+    }
+
+    // ── Synchronisation dynamique des parcelles dans la Notice Descriptive lors du clic Générer
+    const activeParcellesForNotice = (Array.isArray(editedProject?.parcelles) && editedProject.parcelles.length > 0)
+      ? editedProject.parcelles
+      : (Array.isArray(editedProject?.cadastre_parcelles) && editedProject.cadastre_parcelles.length > 0)
+        ? editedProject.cadastre_parcelles
+        : projectParcelles;
+
+    const totalNoticeSurfaceVal = activeParcellesForNotice.reduce((sum, p) => {
+      const s = Number(String(p?.surface || '').replace(/\D/g, ''));
+      return sum + (isNaN(s) ? 0 : s);
+    }, 0);
+    const totalNoticeSurfaceStr = totalNoticeSurfaceVal > 0 ? `${totalNoticeSurfaceVal} m²` : (activeParcellesForNotice[0]?.surface ? `${activeParcellesForNotice[0].surface} m²` : '18 384 m²');
+    const noticeAltitude = editedProject?.altitude || project?.altitude || '140.62 m';
+
+    let updatedCadastreSentence = '';
+    if (activeParcellesForNotice.length > 1) {
+      const formattedList = activeParcellesForNotice.map(p => `${p.section ? `section ${p.section} ` : ''}n° ${p.numero || '—'}${p.surface ? ` (${p.surface} m²)` : ''}`).join(', ');
+      updatedCadastreSentence = isBattery
+        ? `Références cadastrales : sections/parcelles ${formattedList} (surface totale : ${totalNoticeSurfaceStr}, altitude : ${noticeAltitude})`
+        : `Le terrain concerné par le projet concerne les parcelles cadastrées ${formattedList} (surface totale : ${totalNoticeSurfaceStr})`;
+    } else {
+      const p0 = activeParcellesForNotice[0] || {};
+      const sec = (p0.section || editedProject?.cadastre_section || '').trim();
+      const num = (p0.numero || editedProject?.cadastre_numero || '000 B 633').trim();
+      const refCad = `${sec ? `section ${sec} ` : ''}n° ${num || '—'}`.trim();
+      const pSurf = p0.surface ? `${p0.surface} m²` : totalNoticeSurfaceStr;
+      updatedCadastreSentence = isBattery
+        ? `Références cadastrales : Section/Parcelle ${refCad} (surface de la parcelle : ${pSurf}, altitude : ${noticeAltitude})`
+        : `Le terrain concerné par le projet est cadastré sous le numéro ${refCad} (surface : ${pSurf})`;
+    }
+
+    if (effectiveNotice) {
+      if (isBattery) {
+        if (/Références cadastrales\s*:[^\n\.]*(\([^\)]*\))?/i.test(effectiveNotice)) {
+          effectiveNotice = effectiveNotice.replace(/Références cadastrales\s*:[^\n\.]*(\([^\)]*\))?/i, updatedCadastreSentence);
+        }
+      } else {
+        if (/Le terrain concerné par le projet (?:est cadastré sous le numéro|concerne les parcelles cadastrées)[^\.]*\./i.test(effectiveNotice)) {
+          effectiveNotice = effectiveNotice.replace(/Le terrain concerné par le projet (?:est cadastré sous le numéro|concerne les parcelles cadastrées)[^\.]*\./i, `${updatedCadastreSentence}.`);
+        } else if (/Références cadastrales\s*:[^\n\.]*(\([^\)]*\))?/i.test(effectiveNotice)) {
+          effectiveNotice = effectiveNotice.replace(/Références cadastrales\s*:[^\n\.]*(\([^\)]*\))?/i, `${updatedCadastreSentence}.`);
+        }
+      }
+      setNoticeText(effectiveNotice);
+      setEditedProject(prev => ({ ...prev, noticeText: effectiveNotice }));
     }
 
     // Rassembler les structures configurées de la solution sélectionnée
@@ -3968,6 +4136,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const finalProject = {
       ...editedProject,
       ...fieldValues,
+      parcelles: activeParcellesForNotice,
+      cadastre_parcelles: activeParcellesForNotice,
       demandeur: editedProject?.demandeur || summary.demandeur,
       lastName: editedProject?.demandeur || editedProject?.lastName || summary.demandeur,
       clientName: editedProject?.demandeur || editedProject?.clientName || summary.demandeur,
@@ -3978,12 +4148,14 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       commune: finalCity,
       cadastre_commune: finalCity,
       zip: finalZip || parsedFinalAddr.codePostal || '',
-      cadastre_section: (editedProject?.cadastre_section || '').toUpperCase().trim(),
-      cadastre_numero: (editedProject?.cadastre_numero || '').trim(),
-      cadastre_surface: editedProject?.cadastre_surface || '',
-      cadastre: (editedProject?.cadastre_section && editedProject?.cadastre_numero)
-        ? `${(editedProject.cadastre_section).toUpperCase()} ${(editedProject.cadastre_numero).trim()}`
-        : (editedProject?.cadastre || summary.cadastre),
+      cadastre_section: (activeParcellesForNotice[0]?.section || editedProject?.cadastre_section || '').toUpperCase().trim(),
+      cadastre_numero: (activeParcellesForNotice[0]?.numero || editedProject?.cadastre_numero || '').trim(),
+      cadastre_surface: activeParcellesForNotice.length > 1 ? String(totalNoticeSurfaceVal) : (activeParcellesForNotice[0]?.surface || editedProject?.cadastre_surface || ''),
+      cadastre: activeParcellesForNotice.length > 1
+        ? activeParcellesForNotice.map(p => `${p.section ? `${p.section} ` : ''}${p.numero || ''}`.trim()).filter(Boolean).join(', ')
+        : ((editedProject?.cadastre_section && editedProject?.cadastre_numero)
+          ? `${(editedProject.cadastre_section).toUpperCase()} ${(editedProject.cadastre_numero).trim()}`
+          : (editedProject?.cadastre || summary.cadastre)),
       terrain_address: finalAddress,
       terrain_voie: parsedFinalAddr.voie || finalAddress,
       terrain_voie_nom: parsedFinalAddr.voie || finalAddress,
@@ -3991,9 +4163,9 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       terrain_city: finalCity || parsedFinalAddr.commune,
       terrain_commune: finalCity || parsedFinalAddr.commune,
       terrain_zip: finalZip || parsedFinalAddr.codePostal,
-      terrain_section: (editedProject?.cadastre_section || '').toUpperCase().trim(),
-      terrain_numero: (editedProject?.cadastre_numero || '').trim(),
-      terrain_surface: editedProject?.cadastre_surface || '',
+      terrain_section: (activeParcellesForNotice[0]?.section || editedProject?.cadastre_section || '').toUpperCase().trim(),
+      terrain_numero: (activeParcellesForNotice[0]?.numero || editedProject?.cadastre_numero || '').trim(),
+      terrain_surface: activeParcellesForNotice.length > 1 ? String(totalNoticeSurfaceVal) : (activeParcellesForNotice[0]?.surface || editedProject?.cadastre_surface || ''),
       isAcama,
       isGreenInvest,
       cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
@@ -6553,59 +6725,118 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                           />
                         </div>
 
-                        {/* 4. Cadastre (Section, N°, Surface) */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 font-semibold w-24 flex-shrink-0">Cadastre</span>
-                          <div className="flex items-center gap-1.5 flex-1">
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-gray-400 font-bold">Sec.</span>
-                              <input
-                                type="text"
-                                value={editedProject?.cadastre_section || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value.toUpperCase();
-                                  setEditedProject(prev => ({ ...prev, cadastre_section: val, terrain_section: val }));
-                                  handleFieldChange('cadastre_section', val);
-                                  handleFieldChange('terrain_section', val);
-                                }}
-                                placeholder="ZI"
-                                className="w-14 px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-center uppercase"
-                              />
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-gray-400 font-bold">N°</span>
-                              <input
-                                type="text"
-                                value={editedProject?.cadastre_numero || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setEditedProject(prev => ({ ...prev, cadastre_numero: val, terrain_numero: val, parcelle: val }));
-                                  handleFieldChange('cadastre_numero', val);
-                                  handleFieldChange('terrain_numero', val);
-                                }}
-                                placeholder="0032"
-                                className="w-16 px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-center"
-                              />
-                            </div>
-                            <div className="flex items-center gap-1 flex-1">
-                              <span className="text-[10px] text-gray-400 font-bold">Surf.</span>
-                              <div className="relative flex-1">
+                        {/* 4. Cadastre (Section, N°, Surface) & Multi-parcelles */}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 font-semibold w-24 flex-shrink-0">Cadastre</span>
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-gray-400 font-bold">Sec.</span>
                                 <input
                                   type="text"
-                                  value={editedProject?.cadastre_surface || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setEditedProject(prev => ({ ...prev, cadastre_surface: val, terrain_surface: val }));
-                                    handleFieldChange('cadastre_surface', val);
-                                    handleFieldChange('terrain_surface', val);
-                                  }}
-                                  placeholder="1352"
-                                  className="w-full px-2 py-1.5 pr-6 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                                  value={projectParcelles[0]?.section || editedProject?.cadastre_section || ''}
+                                  onChange={(e) => handleParcelleChange(0, 'section', e.target.value.toUpperCase())}
+                                  placeholder="ZI"
+                                  className="w-14 px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-center uppercase"
                                 />
-                                <span className="absolute right-2 top-1.5 text-[10px] text-gray-400 font-medium pointer-events-none">m²</span>
                               </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-gray-400 font-bold">N°</span>
+                                <input
+                                  type="text"
+                                  value={projectParcelles[0]?.numero || editedProject?.cadastre_numero || ''}
+                                  onChange={(e) => handleParcelleChange(0, 'numero', e.target.value)}
+                                  placeholder="0032"
+                                  className="w-16 px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-center"
+                                />
+                              </div>
+                              <div className="flex items-center gap-1 flex-1">
+                                <span className="text-[10px] text-gray-400 font-bold">Surf.</span>
+                                <div className="relative flex-1">
+                                  <input
+                                    type="text"
+                                    value={projectParcelles[0]?.surface || editedProject?.cadastre_surface || ''}
+                                    onChange={(e) => handleParcelleChange(0, 'surface', e.target.value)}
+                                    placeholder="1352"
+                                    className="w-full px-2 py-1.5 pr-6 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                                  />
+                                  <span className="absolute right-2 top-1.5 text-[10px] text-gray-400 font-medium pointer-events-none">m²</span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleAddParcelle}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-200 hover:border-blue-600 transition-all active:scale-95 shadow-2xs flex-shrink-0"
+                                title="Ajouter une autre parcelle cadastrale"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
+
+                          {/* Lignes de parcelles additionnelles sous la ligne Cadastre */}
+                          {projectParcelles.slice(1).map((p, pIdx) => {
+                            const actualIdx = pIdx + 1;
+                            return (
+                              <div key={actualIdx} className="flex items-center gap-2">
+                                <span className="text-[10px] text-blue-600 font-semibold w-24 flex-shrink-0 text-right pr-2">
+                                  + Parcelle {actualIdx + 1}
+                                </span>
+                                <div className="flex items-center gap-1.5 flex-1">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-gray-400 font-bold">Sec.</span>
+                                    <input
+                                      type="text"
+                                      value={p.section || ''}
+                                      onChange={(e) => handleParcelleChange(actualIdx, 'section', e.target.value.toUpperCase())}
+                                      placeholder="ZI"
+                                      className="w-14 px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-center uppercase"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-gray-400 font-bold">N°</span>
+                                    <input
+                                      type="text"
+                                      value={p.numero || ''}
+                                      onChange={(e) => handleParcelleChange(actualIdx, 'numero', e.target.value)}
+                                      placeholder="0033"
+                                      className="w-16 px-2 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-center"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-1">
+                                    <span className="text-[10px] text-gray-400 font-bold">Surf.</span>
+                                    <div className="relative flex-1">
+                                      <input
+                                        type="text"
+                                        value={p.surface || ''}
+                                        onChange={(e) => handleParcelleChange(actualIdx, 'surface', e.target.value)}
+                                        placeholder="1200"
+                                        className="w-full px-2 py-1.5 pr-6 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                                      />
+                                      <span className="absolute right-2 top-1.5 text-[10px] text-gray-400 font-medium pointer-events-none">m²</span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveParcelle(actualIdx)}
+                                    className="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-red-50 hover:bg-red-600 text-red-500 hover:text-white border border-red-200 hover:border-red-600 transition-all active:scale-95 shadow-2xs flex-shrink-0"
+                                    title={`Supprimer la parcelle ${actualIdx + 1}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {projectParcelles.length > 1 && (
+                            <div className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-blue-50/70 border border-blue-100 text-[11px] text-blue-800 font-medium">
+                              <span>Superficie totale ({projectParcelles.length} parcelles) :</span>
+                              <span className="font-bold">
+                                {projectParcelles.reduce((sum, p) => sum + (Number(String(p?.surface || '').replace(/\D/g, '')) || 0), 0)} m²
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* 5. Commune */}

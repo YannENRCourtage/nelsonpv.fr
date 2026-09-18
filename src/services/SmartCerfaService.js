@@ -233,16 +233,37 @@ export function getMissingFields(project, type = 'dp') {
  */
 export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationType = 'batiment_solaire', plateIds = []) {
   try {
-    const cerfaBuffer = await fetch(pdfUrl).then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${pdfUrl}`);
-      return res.arrayBuffer();
-    });
+    let cerfaBuffer = null;
+    const urlsToTry = [
+      pdfUrl,
+      pdfUrl.startsWith('/templates/') ? pdfUrl.replace('/templates/', '/') : `/templates${pdfUrl}`,
+      pdfUrl.startsWith('/') ? pdfUrl.substring(1) : `/${pdfUrl}`
+    ];
+    for (const u of urlsToTry) {
+      try {
+        const res = await fetch(u);
+        if (res.ok) {
+          const buf = await res.arrayBuffer();
+          const header = new Uint8Array(buf.slice(0, 5));
+          const headerStr = String.fromCharCode(...header);
+          if (headerStr.startsWith('%PDF')) {
+            cerfaBuffer = buf;
+            break;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!cerfaBuffer) {
+      throw new Error(`Impossible de charger le template PDF valide depuis ${pdfUrl}`);
+    }
 
     const pdfDoc = await PDFDocument.load(cerfaBuffer, { ignoreEncryption: true });
 
     // ── Préparer les données ───────────────────────────────────────
     const names = resolveDemandeurNames(project);
     const lastName  = names.lastName || project?.lastName || project?.name || '';
+    const firstName = names.firstName || project?.firstName || '';
     const birthDate = (project?.birthDate || '').replace(/\D/g, '').slice(0, 8);
     const birthCity = project?.birthCity || ''; // Strict: uniquement lieu de naissance. Si vide, reste vide.
     let birthDept = project?.birthDepartment || project?.birthDept || '';
@@ -262,10 +283,30 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const zip        = project?.terrain_zip || project?.terrain_code_postal || project?.zip || parsedAddr.codePostal || defaultZip || '';
     const city       = project?.terrain_city || project?.terrain_commune || project?.city || project?.commune || parsedAddr.commune || defaultCity || '';
 
-    const section   = (project?.cadastre_section || project?.terrain_section || '').toUpperCase().trim();
-    const parcelle  = (project?.cadastre_numero || project?.terrain_numero || project?.parcelle || '').trim();
-    const rawSurface = project?.cadastre_surface ? String(project.cadastre_surface).replace(/\D/g, '') : '';
+    // Liste des parcelles (mono ou multi-parcelles)
+    const parcellesList = (Array.isArray(project?.parcelles) && project.parcelles.length > 0)
+      ? project.parcelles
+      : (Array.isArray(project?.cadastre_parcelles) && project.cadastre_parcelles.length > 0)
+        ? project.cadastre_parcelles
+        : [{
+            prefixe: project?.cadastre_prefixe || '',
+            section: (project?.cadastre_section || project?.terrain_section || '').toUpperCase().trim(),
+            numero: (project?.cadastre_numero || project?.terrain_numero || project?.parcelle || '').trim(),
+            surface: project?.cadastre_surface ? String(project.cadastre_surface).replace(/\D/g, '') : '',
+          }];
+
+    const p0 = parcellesList[0] || {};
+    const section   = (p0.section || project?.cadastre_section || project?.terrain_section || '').toUpperCase().trim();
+    const parcelle  = (p0.numero || project?.cadastre_numero || project?.terrain_numero || project?.parcelle || '').trim();
+    const rawSurface = p0.surface ? String(p0.surface).replace(/\D/g, '') : (project?.cadastre_surface ? String(project.cadastre_surface).replace(/\D/g, '') : '');
     const surface   = rawSurface ? `${rawSurface}` : '';
+
+    const totalSurfaceVal = parcellesList.reduce((acc, p) => {
+      const s = Number(String(p?.surface || '').replace(/\D/g, ''));
+      return acc + (isNaN(s) ? 0 : s);
+    }, 0);
+    const totalSurface = totalSurfaceVal > 0 ? String(totalSurfaceVal) : (surface || '');
+
     const rawKwc    = project?.kwc || project?.projectSize || project?.puissance || project?.power || (project?.solarStats?.power ? Math.round(project.solarStats.power) : '');
     const kwcStr    = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc).trim() : `${rawKwc} kWc`) : '';
     const cleanKwcVal = rawKwc ? String(rawKwc).replace(/kWc/gi, '').trim() : '';
@@ -450,12 +491,52 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       setField(['topmostSubform[0].Page3[0].T2C_code[0]', 'T2C_code'], terrainZip, 9.5);
 
       // Références cadastrales (Section 2.2)
-      setField(fieldMap.prefixe,        project?.cadastre_prefixe || '', 9);
+      // Ligne 1
+      setField(fieldMap.prefixe,        p0.prefixe || project?.cadastre_prefixe || '', 9);
       setField(fieldMap.section,        section, 9.5);
       setField(fieldMap.parcelle,       parcelle, 9.5);
       setField(fieldMap.surface,        surface, 9.5);
+
+      // Ligne 2 (si 2ème parcelle présente)
+      if (parcellesList.length > 1 && parcellesList[1]) {
+        const p1 = parcellesList[1];
+        setField(['topmostSubform[0].Page3[0].T2FP2_prefixe[0]', 'T2FP2_prefixe'], p1.prefixe || '', 9);
+        setField(['topmostSubform[0].Page3[0].T2SP2_section[0]', 'T2SP2_section'], (p1.section || '').toUpperCase().trim(), 9.5);
+        setField(['topmostSubform[0].Page3[0].T2NP2_numero[0]', 'T2NP2_numero'], (p1.numero || '').trim(), 9.5);
+        const p1Surf = p1.surface ? String(p1.surface).replace(/\D/g, '') : '';
+        setField(['topmostSubform[0].Page3[0].T2TP2_superficie[0]', 'T2TP2_superficie'], p1Surf, 9.5);
+      }
+
+      // Ligne 3 (si 3ème parcelle ou cumul des suivantes)
+      if (parcellesList.length > 2 && parcellesList[2]) {
+        const p2 = parcellesList[2];
+        setField(['topmostSubform[0].Page3[0].T2FP3_prefixe[0]', 'T2FP3_prefixe'], p2.prefixe || '', 9);
+        const p2Sec = (parcellesList.length > 3)
+          ? parcellesList.slice(2).map(p => (p.section || '').toUpperCase().trim()).filter(Boolean).join(', ')
+          : (p2.section || '').toUpperCase().trim();
+        const p2Num = (parcellesList.length > 3)
+          ? parcellesList.slice(2).map(p => (p.numero || '').trim()).filter(Boolean).join(', ')
+          : (p2.numero || '').trim();
+        const p2SurfSum = parcellesList.slice(2).reduce((acc, p) => acc + (Number(String(p.surface || '').replace(/\D/g, '')) || 0), 0);
+        setField(['topmostSubform[0].Page3[0].T2SP3_section[0]', 'T2SP3_section'], p2Sec, 9.5);
+        setField(['topmostSubform[0].Page3[0].T2NP3_numero[0]', 'T2NP3_numero'], p2Num, 9.5);
+        setField(['topmostSubform[0].Page3[0].T2TP3_superficie[0]', 'T2TP3_superficie'], p2SurfSum > 0 ? String(p2SurfSum) : '', 9.5);
+      }
+
+      // Si formulaire à ligne unique (ex: 13404 ou 13703) et parcelles multiples, concaténer les numéros
+      if (parcellesList.length > 1) {
+        try {
+          if (!form.getTextField('T2SP2_section') && !form.getTextField('topmostSubform[0].Page3[0].T2SP2_section[0]')) {
+            const allSec = [...new Set(parcellesList.map(p => (p.section || '').toUpperCase().trim()).filter(Boolean))].join(', ');
+            const allNum = parcellesList.map(p => (p.numero || '').trim()).filter(Boolean).join(', ');
+            if (allSec) setField(fieldMap.section, allSec, 9);
+            if (allNum) setField(fieldMap.parcelle, allNum, 9);
+          }
+        } catch (_) {}
+      }
+
       // Superficie totale du terrain (en m²)
-      setField(['topmostSubform[0].Page3[0].D5T_total[0]', 'D5T_total'], surface, 9.5);
+      setField(['topmostSubform[0].Page3[0].D5T_total[0]', 'D5T_total', 'topmostSubform[0].Page10[0].D5T_total[0]', 'F1TS1_totale'], totalSurface, 9.5);
 
       // Section 3.2 : Situation juridique du terrain — Cocher "Je ne sais pas" sur toutes les lignes
       setCheck(['topmostSubform[0].Page3[0].T3B_CUnc[0]', 'T3B_CUnc'], true);
@@ -660,11 +741,29 @@ export function buildCerfaDataSummary(project, installationType) {
   const rawKwc = project?.puissance || project?.kwc || project?.projectSize || '';
   const displayKwc = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc) : `${rawKwc} kWc`) : '—';
 
+  const pList = (Array.isArray(project?.parcelles) && project.parcelles.length > 0)
+    ? project.parcelles
+    : (Array.isArray(project?.cadastre_parcelles) && project.cadastre_parcelles.length > 0)
+      ? project.cadastre_parcelles
+      : [{
+          section: project?.cadastre_section || '',
+          numero: project?.cadastre_numero || '',
+          surface: project?.cadastre_surface || '',
+        }];
+
+  let cadastreDisplay = '';
+  if (pList.length > 1) {
+    const totalSurf = pList.reduce((acc, p) => acc + (Number(String(p.surface || '').replace(/\D/g, '')) || 0), 0);
+    cadastreDisplay = `Parcelles : ${pList.map(p => `${p.section ? `${p.section} ` : ''}n° ${p.numero || '—'}${p.surface ? ` (${p.surface} m²)` : ''}`).join(', ')}${totalSurf > 0 ? ` (Total : ${totalSurf} m²)` : ''}`;
+  } else {
+    cadastreDisplay = `Section ${project?.cadastre_section || pList[0]?.section || '—'} n° ${project?.cadastre_numero || pList[0]?.numero || '—'} (${project?.cadastre_surface ? project.cadastre_surface + ' m²' : (pList[0]?.surface ? pList[0].surface + ' m²' : '—')})`;
+  }
+
   return {
     demandeur: fullName,
     email: email,
     adresse: fullAddress,
-    cadastre: `Section ${project?.cadastre_section || '—'} n° ${project?.cadastre_numero || '—'} (${project?.cadastre_surface ? project.cadastre_surface + ' m²' : '—'})`,
+    cadastre: cadastreDisplay,
     commune: parsed.commune || rawCity || '—',
     puissance: displayKwc,
     type: typeLabel,

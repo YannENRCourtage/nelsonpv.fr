@@ -337,6 +337,8 @@ export default function Developpement() {
           cadastre_section: projectToUse.cadastre_section,
           cadastre_numero: projectToUse.cadastre_numero,
           cadastre_surface: projectToUse.cadastre_surface,
+          parcelles: projectToUse.parcelles || [],
+          cadastre_parcelles: projectToUse.cadastre_parcelles || [],
           city: projectToUse.city,
           commune: projectToUse.commune,
           cadastre_commune: projectToUse.commune || projectToUse.city,

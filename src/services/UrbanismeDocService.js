@@ -462,6 +462,8 @@ export async function generateFullUrbanismePDF({ type, project, installationType
         let cerfaUrl;
         if (type === 'pc') {
           cerfaUrl = '/templates/cerfa_13404.pdf';
+        } else if (type === 'cu') {
+          cerfaUrl = '/templates/cerfa_16702-02.pdf';
         } else {
           // Déclaration Préalable (DP) : Routage dynamique Cerfa 13703 (Résidentiel) vs Cerfa 16702 (Agricole / Tertiaire / Pro)
           const isResidential =
@@ -503,24 +505,47 @@ export async function generateFullUrbanismePDF({ type, project, installationType
         if (filledCerfaBytes) {
           const cerfaDoc = await PDFDocument.load(filledCerfaBytes);
 
-          // Insérer les planches graphiques et la couverture au début du CERFA master
-          // afin de préserver 100% de l'arborescence AcroForm interactive (/Root /AcroForm)
-          if (platesDoc.getPageCount() > 0) {
-            const copiedPlates = await cerfaDoc.copyPages(platesDoc, platesDoc.getPageIndices());
-            for (let pIdx = 0; pIdx < copiedPlates.length; pIdx++) {
-              cerfaDoc.insertPage(pIdx, copiedPlates[pIdx]);
+          try {
+            // Insérer les planches graphiques et la couverture au début du CERFA master
+            // afin de préserver 100% de l'arborescence AcroForm interactive (/Root /AcroForm)
+            // et placer ainsi le CERFA officiel immédiatement APRÈS les pièces graphiques
+            if (platesDoc.getPageCount() > 0) {
+              const copiedPlates = await cerfaDoc.copyPages(platesDoc, platesDoc.getPageIndices());
+              for (let pIdx = 0; pIdx < copiedPlates.length; pIdx++) {
+                cerfaDoc.insertPage(pIdx, copiedPlates[pIdx]);
+              }
             }
-          }
 
-          const acroForm = cerfaDoc.catalog.lookup(PDFName.of('AcroForm'));
-          if (acroForm) {
-            acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True);
-          }
+            const acroForm = cerfaDoc.catalog.lookup(PDFName.of('AcroForm'));
+            if (acroForm) {
+              acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True);
+            }
 
-          finalPdfBytes = await cerfaDoc.save();
+            finalPdfBytes = await cerfaDoc.save();
+          } catch (mergeErr) {
+            console.warn('[UrbanismeDoc] Échec insertion dans cerfaDoc, fallback ajout des pages CERFA au document:', mergeErr);
+            const copiedCerfa = await platesDoc.copyPages(cerfaDoc, cerfaDoc.getPageIndices());
+            for (const cPage of copiedCerfa) {
+              platesDoc.addPage(cPage);
+            }
+            finalPdfBytes = await platesDoc.save();
+          }
         }
       } catch (cerfaErr) {
-        console.warn('[UrbanismeDoc] Erreur pré-remplissage CERFA, continuation avec les planches graphiques:', cerfaErr);
+        console.error('[UrbanismeDoc] Erreur pré-remplissage CERFA, tentative fallback template brut:', cerfaErr);
+        try {
+          const fallbackUrl = type === 'pc' ? '/templates/cerfa_13404.pdf' : (type === 'cu' ? '/templates/cerfa_16702-02.pdf' : '/cerfa_DPC_16702_03.pdf');
+          const rawRes = await fetch(fallbackUrl);
+          if (rawRes.ok) {
+            const rawBuf = await rawRes.arrayBuffer();
+            const rawDoc = await PDFDocument.load(rawBuf, { ignoreEncryption: true });
+            const copiedPages = await platesDoc.copyPages(rawDoc, rawDoc.getPageIndices());
+            for (const p of copiedPages) {
+              platesDoc.addPage(p);
+            }
+            finalPdfBytes = await platesDoc.save();
+          }
+        } catch (_) {}
       }
     }
 
