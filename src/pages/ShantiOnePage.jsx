@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { 
   Search, Download, RefreshCw, Plus, Filter, MessageSquare, 
   CheckCircle2, AlertCircle, ArrowUpDown, ChevronDown, 
-  Building2, Zap, Euro, ShieldCheck, X, FileSpreadsheet, Eye, SlidersHorizontal, Trash2
+  Building2, Zap, Euro, ShieldCheck, X, FileSpreadsheet, Eye, SlidersHorizontal, Trash2,
+  Clock, Check
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { isShantiOneAuthorized } from '@/services/firebase/auth.service.js';
@@ -117,7 +118,7 @@ export default function ShantiOnePage() {
         setLoading(false);
       },
       (err) => {
-        toast({ title: 'Erreur', description: 'Erreur de chargement des projets Shanti One', variant: 'destructive' });
+        console.warn('[ShantiOne] Notice de souscription Firestore (fallback local actif):', err);
         setLoading(false);
       }
     );
@@ -175,10 +176,17 @@ export default function ShantiOnePage() {
       // Filtre Géomètre
       if (geometreFilter !== 'ALL' && p.geometre !== geometreFilter) return false;
 
-      // Filtre Devis
-      if (devisFilter === 'VALIDE' && (p.devis_valide !== 'VALIDE' && p.devis_valide !== 'VALIDÉ')) return false;
-      if (devisFilter === 'FAIT' && p.devis_valide !== 'FAIT') return false;
-      if (devisFilter === 'ATTENTE' && p.devis_valide) return false;
+      // Filtre Devis / Statuts
+      if (devisFilter === 'VALIDE') {
+        const val = String(p.devis_valide || '').toUpperCase();
+        if (val !== 'VALIDE' && val !== 'VALIDÉ') return false;
+      } else if (devisFilter === 'FAIT') {
+        const val = String(p.devis_valide || '').toUpperCase();
+        if (val !== 'FAIT') return false;
+      } else if (devisFilter === 'ATTENTE') {
+        const val = String(p.devis_valide || '').toUpperCase();
+        if (val === 'VALIDE' || val === 'VALIDÉ' || val === 'FAIT') return false;
+      }
 
       return true;
     }).sort((a, b) => {
@@ -199,6 +207,24 @@ export default function ShantiOnePage() {
     });
   }, [projects, searchQuery, spvFilter, geometreFilter, devisFilter, sortConfig]);
 
+  // Comptage par statut pour les boutons de filtre
+  const statusCounts = useMemo(() => {
+    let valide = 0;
+    let fait = 0;
+    let attente = 0;
+    projects.forEach(p => {
+      const val = String(p.devis_valide || '').toUpperCase();
+      if (val === 'VALIDE' || val === 'VALIDÉ') {
+        valide++;
+      } else if (val === 'FAIT') {
+        fait++;
+      } else {
+        attente++;
+      }
+    });
+    return { valide, fait, attente };
+  }, [projects]);
+
   // Totaux calculés dynamiquement
   const stats = useMemo(() => {
     let totalKwc = 0;
@@ -213,7 +239,7 @@ export default function ShantiOnePage() {
       totalKwc += kwc;
       totalDevisGeometre += devis;
       totalAb6 += ab6;
-      if (String(p.devis_valide || '').toUpperCase() === 'VALIDE') validCount++;
+      if (String(p.devis_valide || '').toUpperCase() === 'VALIDE' || String(p.devis_valide || '').toUpperCase() === 'VALIDÉ') validCount++;
     });
 
     return { totalKwc, totalDevisGeometre, totalAb6, validCount };
@@ -270,10 +296,10 @@ export default function ShantiOnePage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 pb-16">
+    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 pb-12 w-full">
       {/* ═══ TOP BANNER & METRICS ═══ */}
-      <div className="bg-white border-b border-slate-200 px-4 lg:px-8 py-5 shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white border-b border-slate-200 px-4 lg:px-6 py-4 shadow-xs w-full">
+        <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
               <div className="p-2 bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-xl shadow-md">
@@ -319,7 +345,7 @@ export default function ShantiOnePage() {
         </div>
 
         {/* KPI Mini-Cards */}
-        <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-100">
+        <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-slate-100">
           <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Puissance totale</span>
             <div className="text-lg font-black text-slate-800 mt-0.5">
@@ -352,89 +378,144 @@ export default function ShantiOnePage() {
       </div>
 
       {/* ═══ FILTER & SEARCH TOOLBAR ═══ */}
-      <div className="max-w-7xl w-full mx-auto px-4 lg:px-8 py-4">
-        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-3">
-          {/* Recherche globale */}
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input
-              type="text"
-              placeholder="Rechercher par projet, géomètre, commune, SPV..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9 text-xs bg-slate-50 border-slate-200 focus:bg-white"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                <X className="w-3.5 h-3.5" />
-              </button>
+      <div className="w-full px-4 lg:px-6 py-3">
+        <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[300px]">
+            {/* Recherche globale */}
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                type="text"
+                placeholder="Rechercher par projet, géomètre, commune, SPV..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-8 text-xs bg-slate-50 border-slate-200 focus:bg-white"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filtre SPV */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-500">SPV:</span>
+              <select
+                value={spvFilter}
+                onChange={(e) => setSpvFilter(e.target.value)}
+                className="text-xs font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500 h-8"
+              >
+                <option value="ALL">Toutes les SPV</option>
+                {spvOptions.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
+            {/* Filtre Géomètre */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-500">Géomètre:</span>
+              <select
+                value={geometreFilter}
+                onChange={(e) => setGeometreFilter(e.target.value)}
+                className="text-xs font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500 h-8"
+              >
+                <option value="ALL">Tous les géomètres</option>
+                {geometreOptions.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Boutons pour les 3 statuts de devis (au lieu du menu déroulant) */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs font-semibold text-slate-500 mr-1 hidden sm:inline">Statut :</span>
+
+            <Button
+              type="button"
+              variant={devisFilter === 'ALL' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setDevisFilter('ALL')}
+              className={cn(
+                "h-8 px-2.5 text-xs gap-1.5 border-slate-200 transition-all",
+                devisFilter === 'ALL'
+                  ? "bg-slate-800 hover:bg-slate-900 text-white border-slate-800 font-bold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 bg-white"
+              )}
+            >
+              Tous ({projects.length})
+            </Button>
+
+            <Button
+              type="button"
+              variant={devisFilter === 'VALIDE' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setDevisFilter(prev => prev === 'VALIDE' ? 'ALL' : 'VALIDE')}
+              className={cn(
+                "h-8 px-2.5 text-xs gap-1.5 border-slate-200 transition-all",
+                devisFilter === 'VALIDE'
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 font-bold shadow-xs"
+                  : "text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 bg-white"
+              )}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              Validé ({statusCounts.valide})
+            </Button>
+
+            <Button
+              type="button"
+              variant={devisFilter === 'FAIT' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setDevisFilter(prev => prev === 'FAIT' ? 'ALL' : 'FAIT')}
+              className={cn(
+                "h-8 px-2.5 text-xs gap-1.5 border-slate-200 transition-all",
+                devisFilter === 'FAIT'
+                  ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500 font-bold shadow-xs"
+                  : "text-amber-700 hover:bg-amber-50 hover:border-amber-300 bg-white"
+              )}
+            >
+              <Check className="w-3.5 h-3.5 text-amber-500" />
+              Fait ({statusCounts.fait})
+            </Button>
+
+            <Button
+              type="button"
+              variant={devisFilter === 'ATTENTE' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setDevisFilter(prev => prev === 'ATTENTE' ? 'ALL' : 'ATTENTE')}
+              className={cn(
+                "h-8 px-2.5 text-xs gap-1.5 border-slate-200 transition-all",
+                devisFilter === 'ATTENTE'
+                  ? "bg-slate-600 hover:bg-slate-700 text-white border-slate-600 font-bold shadow-xs"
+                  : "text-slate-600 hover:bg-slate-100 hover:border-slate-300 bg-white"
+              )}
+            >
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              En attente ({statusCounts.attente})
+            </Button>
+
+            {(searchQuery || spvFilter !== 'ALL' || geometreFilter !== 'ALL' || devisFilter !== 'ALL') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSpvFilter('ALL');
+                  setGeometreFilter('ALL');
+                  setDevisFilter('ALL');
+                }}
+                className="text-xs text-rose-600 hover:text-rose-700 h-8 px-2 hover:bg-rose-50 ml-1"
+              >
+                Effacer filtres
+              </Button>
             )}
           </div>
-
-          {/* Filtre SPV */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-slate-500">SPV:</span>
-            <select
-              value={spvFilter}
-              onChange={(e) => setSpvFilter(e.target.value)}
-              className="text-xs font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="ALL">Toutes les SPV</option>
-              {spvOptions.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          {/* Filtre Géomètre */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-slate-500">Géomètre:</span>
-            <select
-              value={geometreFilter}
-              onChange={(e) => setGeometreFilter(e.target.value)}
-              className="text-xs font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="ALL">Tous les géomètres</option>
-              {geometreOptions.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
-          </div>
-
-          {/* Filtre Devis */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-slate-500">Devis:</span>
-            <select
-              value={devisFilter}
-              onChange={(e) => setDevisFilter(e.target.value)}
-              className="text-xs font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="ALL">Tous statuts</option>
-              <option value="VALIDE">Validé</option>
-              <option value="FAIT">Fait</option>
-              <option value="ATTENTE">En attente</option>
-            </select>
-          </div>
-
-          {(searchQuery || spvFilter !== 'ALL' || geometreFilter !== 'ALL' || devisFilter !== 'ALL') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchQuery('');
-                setSpvFilter('ALL');
-                setGeometreFilter('ALL');
-                setDevisFilter('ALL');
-              }}
-              className="text-xs text-rose-600 hover:text-rose-700 h-8 px-2 hover:bg-rose-50"
-            >
-              Effacer filtres
-            </Button>
-          )}
         </div>
       </div>
 
       {/* ═══ INTERACTIVE SPREADSHEET TABLE ═══ */}
-      <div className="max-w-7xl w-full mx-auto px-4 lg:px-8">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="overflow-x-auto overflow-y-auto max-h-[72vh] border-collapse relative">
-            <table className="w-full border-collapse text-left text-xs whitespace-nowrap">
+      <div className="w-full px-4 lg:px-6 flex-1">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-250px)] border-collapse relative">
+            <table className="w-full border-collapse text-left text-xs whitespace-nowrap min-w-full">
               {/* EN-TÊTES */}
               <thead className="sticky top-0 z-30 bg-slate-900 text-white font-semibold text-[11px] shadow-sm uppercase tracking-wider">
                 <tr>

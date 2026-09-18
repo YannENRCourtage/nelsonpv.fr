@@ -29,7 +29,12 @@ export const subscribeToShantiOneProjects = (callback, onError) => {
       async (snapshot) => {
         if (snapshot.empty) {
           console.log('[ShantiOne] Collection vide, déclenchement du seeding initial...');
-          await seedShantiOneProjects();
+          try {
+            await seedShantiOneProjects();
+          } catch (seedErr) {
+            console.warn('[ShantiOne] Seeding Firestore non bloquant, utilisation des données locales:', seedErr);
+            callback(initialProjectsData.filter((r) => !r.isTotal));
+          }
           return;
         }
 
@@ -43,17 +48,17 @@ export const subscribeToShantiOneProjects = (callback, onError) => {
         callback(projects);
       },
       (error) => {
-        console.error('[ShantiOne] Erreur onSnapshot Firestore:', error);
-        if (onError) onError(error);
-        // Fallback avec les données initiales locales
+        console.warn('[ShantiOne] onSnapshot Firestore notice (utilisation du fallback):', error);
+        // Fallback transparent avec les données initiales locales
         callback(initialProjectsData.filter((r) => !r.isTotal));
+        if (onError) onError(error);
       }
     );
     return unsubscribe;
   } catch (err) {
-    console.error('[ShantiOne] Exception lors de la souscription:', err);
-    if (onError) onError(err);
+    console.warn('[ShantiOne] Exception lors de la souscription:', err);
     callback(initialProjectsData.filter((r) => !r.isTotal));
+    if (onError) onError(err);
     return () => {};
   }
 };
