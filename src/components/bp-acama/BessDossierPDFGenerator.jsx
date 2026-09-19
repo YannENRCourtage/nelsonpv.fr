@@ -220,6 +220,10 @@ export default function BessDossierPDFGenerator({
         const page = pages[i];
         setProgressStep(`Rendu vectoriel & capture planche ${i + 1} / ${pages.length}...`);
 
+        // S'assurer que la planche est bien positionnée
+        page.scrollIntoView({ block: 'start', inline: 'nearest' });
+        await new Promise(r => setTimeout(r, 60));
+
         const canvas = await html2canvas(page, {
           scale: 2,
           useCORS: true,
@@ -227,13 +231,29 @@ export default function BessDossierPDFGenerator({
           backgroundColor: '#ffffff',
           width: 1380,
           height: 940,
-          windowWidth: 1380,
-          windowHeight: 940,
           allowTaint: true,
-          scrollX: 0,
-          scrollY: 0,
           onclone: (clonedDoc) => {
-            // Repositionnement parfait des calques Leaflet (SVG/Canvas/Panes) dans html2canvas
+            // 1. Isoler strictement la planche courante (i) en masquant tous les autres conteneurs
+            const allContainers = clonedDoc.querySelectorAll('[id^="bess-planche-container-"]');
+            allContainers.forEach((container, idx) => {
+              if (idx !== i) {
+                container.style.display = 'none';
+              } else {
+                container.style.display = 'flex';
+                container.style.margin = '0';
+                container.style.padding = '0';
+              }
+            });
+
+            // Réinitialiser les marges et scrolls du conteneur parent
+            const scrollBox = clonedDoc.querySelector('[class*="overflow-y-auto"]');
+            if (scrollBox) {
+              scrollBox.style.padding = '0';
+              scrollBox.style.margin = '0';
+              scrollBox.scrollTop = 0;
+            }
+
+            // 2. Repositionnement parfait des calques Leaflet (SVG/Canvas/Panes) dans html2canvas
             const leafletNodes = clonedDoc.querySelectorAll(
               '.leaflet-map-pane, .leaflet-tile-pane, .leaflet-overlay-pane, .leaflet-zoom-animated, .leaflet-pane svg, .leaflet-pane canvas'
             );
@@ -779,16 +799,7 @@ export default function BessDossierPDFGenerator({
                       <tr className="bg-emerald-50/60 font-black text-slate-900">
                         <td className="p-2.5 uppercase">Total Facture Annuelle TURPE Réseau</td>
                         <td className="p-2.5 text-red-600 font-bold">
-                          <span
-                            className="relative inline-block text-red-600 font-bold"
-                            style={{
-                              textDecoration: 'line-through',
-                              textDecorationColor: '#dc2626',
-                              textDecorationThickness: '2.5px'
-                            }}
-                          >
-                            {isPort ? '697 500 € / an' : '22 500 € / an'}
-                          </span>
+                          {isPort ? '697 500 € / an' : '22 500 € / an'}
                         </td>
                         <td className="p-2.5 text-emerald-800 text-sm">{isPort ? '257 827 € / an' : '8 317 € / an'}</td>
                         <td className="p-2.5 text-right text-emerald-700 text-sm font-black">{isPort ? '+439 673 € / an' : '+14 183 € / an'}</td>
@@ -1209,7 +1220,12 @@ export default function BessDossierPDFGenerator({
                 </div>
                 <div className="flex items-center gap-4 text-xs font-bold bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl shrink-0">
                   <span className="flex items-center gap-2 text-blue-700 shrink-0">
-                    <span className="w-3.5 h-3.5 rounded-xs bg-blue-600 shrink-0"></span> EBITDA Net d'Exploitation
+                    <span className="w-3.5 h-3.5 rounded-xs bg-blue-600 shrink-0"></span>
+                    <span className="leading-tight text-left">
+                      <span className="whitespace-nowrap">EBITDA Net</span>
+                      <br />
+                      <span className="text-[10px] text-slate-500 font-semibold whitespace-nowrap">d'Exploitation</span>
+                    </span>
                   </span>
                   <span className="flex items-center gap-2 text-cyan-700 shrink-0">
                     <span className="w-3.5 h-3.5 rounded-xs bg-cyan-500 shrink-0"></span>
@@ -1355,8 +1371,10 @@ export default function BessDossierPDFGenerator({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-black">
-                    Emprise Dalle 19.84 m² (&lt; 20 m² DP)
+                  <span className="px-3.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-black text-center leading-tight">
+                    <span className="whitespace-nowrap">Emprise Dalle 19.84 m²</span>
+                    <br />
+                    <span className="text-[10px] font-bold text-emerald-700 whitespace-nowrap">(&lt; 20 m² DP)</span>
                   </span>
 
                 </div>
