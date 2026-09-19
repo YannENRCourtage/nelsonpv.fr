@@ -6,7 +6,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Saint-Éloy-les-Tuileries",
     "address": "19210 Saint-Éloy-les-Tuileries",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.458446,
     "lng": 1.284627,
     "substation": {
@@ -30,7 +30,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Grisolles",
     "address": "82170 Grisolles",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 43.820389,
     "lng": 1.293516,
     "substation": {
@@ -54,7 +54,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Meuzac",
     "address": "87380 Meuzac",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.548952,
     "lng": 1.417756,
     "substation": {
@@ -78,7 +78,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Port-de-Lanne",
     "address": "40300 Port-de-Lanne",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 43.561118,
     "lng": -1.184031,
     "substation": {
@@ -102,7 +102,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Vendays-Montalivet",
     "address": "33930 Vendays-Montalivet",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.34446,
     "lng": -1.089784,
     "substation": {
@@ -126,7 +126,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Brantôme en Périgord",
     "address": "24310 Brantôme en Périgord",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.372246,
     "lng": 0.662133,
     "substation": {
@@ -150,7 +150,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Mongauzy",
     "address": "32220 Mongauzy",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 43.5072,
     "lng": 0.808096,
     "substation": {
@@ -174,7 +174,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Saint-Julien-le-Vendômois",
     "address": "19210 Saint-Julien-le-Vendômois",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.454773,
     "lng": 1.313675,
     "substation": {
@@ -198,7 +198,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Val-de-Livenne",
     "address": "33820 Val-de-Livenne",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.275598,
     "lng": -0.506839,
     "substation": {
@@ -222,7 +222,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Duras",
     "address": "47120 Duras",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 44.678615,
     "lng": 0.196581,
     "substation": {
@@ -246,7 +246,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Saint-Martin-de-Fressengeas",
     "address": "24800 Saint-Martin-de-Fressengeas",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.455635,
     "lng": 0.834728,
     "substation": {
@@ -270,7 +270,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Saint-Saud-Lacoussière",
     "address": "24470 Saint-Saud-Lacoussière",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.537286,
     "lng": 0.832955,
     "substation": {
@@ -294,7 +294,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Leyrat",
     "address": "23600 Leyrat",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 46.360924,
     "lng": 2.293981,
     "substation": {
@@ -318,7 +318,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Mansan",
     "address": "65140 Mansan",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 43.339838,
     "lng": 0.193437,
     "substation": {
@@ -342,7 +342,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Juillac",
     "address": "33890 Juillac",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 44.814913,
     "lng": 0.054852,
     "substation": {
@@ -366,7 +366,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Argences-en-Aubrac",
     "address": "12420 Argences-en-Aubrac",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 44.802013,
     "lng": 2.759214,
     "substation": {
@@ -390,7 +390,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Monestier",
     "address": "24240 Monestier",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 44.774889,
     "lng": 0.311438,
     "substation": {
@@ -414,7 +414,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Saint-Éloy-les-Tuileries",
     "address": "19210 Saint-Éloy-les-Tuileries",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.458446,
     "lng": 1.284627,
     "substation": {
@@ -438,7 +438,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Beychac-et-Caillau",
     "address": "33750 Beychac-et-Caillau",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 44.874311,
     "lng": -0.375722,
     "substation": {
@@ -462,7 +462,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Maisonnisses",
     "address": "23150 Maisonnisses",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 46.056502,
     "lng": 1.907133,
     "substation": {
@@ -486,7 +486,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Saint-Eutrope-de-Born",
     "address": "47210 Saint-Eutrope-de-Born",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 44.577018,
     "lng": 0.708187,
     "substation": {
@@ -510,7 +510,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Saint-Paul-Lizonne",
     "address": "24320 Saint-Paul-Lizonne",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.316192,
     "lng": 0.279422,
     "substation": {
@@ -534,7 +534,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Mourioux-Vieilleville",
     "address": "23210 Mourioux-Vieilleville",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 46.076804,
     "lng": 1.644819,
     "substation": {
@@ -558,7 +558,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Mourioux-Vieilleville",
     "address": "23210 Mourioux-Vieilleville",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 46.076804,
     "lng": 1.644819,
     "substation": {
@@ -582,7 +582,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Montlieu-la-Garde",
     "address": "17210 Montlieu-la-Garde",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.231412,
     "lng": -0.254689,
     "substation": {
@@ -608,7 +608,7 @@ export const BESS_PORTFOLIO_SITES = [
     "lat": 44.12374,
     "lng": 1.564486,
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "substation": {
       "name": "LERE",
       "code": "LERE ",
@@ -630,7 +630,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Monteils",
     "address": "82300 Monteils",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 44.172643,
     "lng": 1.566018,
     "substation": {
@@ -654,7 +654,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Ségur-le-Château",
     "address": "19210 Ségur-le-Château",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.44336,
     "lng": 1.326375,
     "substation": {
@@ -678,7 +678,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Concèze",
     "address": "19350 Concèze",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 45.363896,
     "lng": 1.3365,
     "substation": {
@@ -702,7 +702,7 @@ export const BESS_PORTFOLIO_SITES = [
     "city": "Montaigu-de-Quercy",
     "address": "82150 Montaigu-de-Quercy",
     "spv": "SPV A",
-    "rent": 5000,
+    "rent": 3000,
     "lat": 44.345573,
     "lng": 1.031583,
     "substation": {
@@ -728,7 +728,7 @@ export const BESS_PORTFOLIO_SITES = [
     "lat": 45.847811,
     "lng": 0.852996,
     "spv": "SPV B",
-    "rent": 4000,
+    "rent": 3000,
     "substation": {
       "name": "PLAUD",
       "code": "PLAUD",

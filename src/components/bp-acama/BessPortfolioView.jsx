@@ -64,7 +64,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
       const turpeStockage = 8500; // TURPE 7 HTA stockage neutralité CRE
       const maintenance = unitPower * 8; // 4 000 €
       const assurance = unitPower * 3.5; // 1 750 €
-      const loyerDalle = site.rent || 5000; // 5 000 €
+      const loyerDalle = site.rent || 3000; // 3 000 €
       const opexAnnuel = commAgregateur + coutRecharge + turpeStockage + maintenance + assurance + loyerDalle;
 
       const ebitda = caAnnuel - opexAnnuel;
@@ -139,7 +139,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
     const totalCaAn1 = sites.reduce((sum, s) => sum + s.caAnnuel, 0);
     const totalOpexAn1 = sites.reduce((sum, s) => sum + s.opexAnnuel, 0);
     const totalEbitdaAn1 = sites.reduce((sum, s) => sum + s.ebitda, 0);
-    const totalLoyersAn1 = sites.reduce((sum, s) => sum + (s.rent || 5000), 0);
+    const totalLoyersAn1 = sites.reduce((sum, s) => sum + (s.rent || 3000), 0);
 
     // Chronique consolidée 15 ans
     const chronique = [];
@@ -234,7 +234,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
       'EBITDA An 1 (€)': Math.round(s.ebitda),
       'TRI Projet (%)': (s.triProjet || 0).toFixed(2),
       'Payback (ans)': (s.payback || 0).toFixed(1),
-      'Loyer Dalle (€/an)': s.rent || 5000
+      'Loyer Dalle (€/an)': s.rent || 3000
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataRows);

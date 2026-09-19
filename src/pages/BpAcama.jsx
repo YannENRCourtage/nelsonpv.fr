@@ -505,7 +505,7 @@ function computeBatteryProfitability(config) {
     disponibilite = 98,
     rendementRoundTrip = 88,
     degradationAnnuelle = 1.5,
-    dureeEtude = 12,
+    dureeEtude = 20,
     nbCyclesJour = 2.0,
     prixFCR = 20, // 20 €/MW/h soit 0.020 €/kW/h
     facteurDerating = 0.5, // 0.5 pour batterie 2h
@@ -521,7 +521,7 @@ function computeBatteryProfitability(config) {
     storageZone = 'ZONE_STANDARD', // 'ZONE_STANDARD' | 'ZONE_INJECTION_SATURATION' | 'ZONE_SOUTIRAGE_TENSION'
     maintenanceTarif = 8, // 8 €/kW/an
     assuranceTarif = 3.5, // 3.5 €/kW/an
-    loyerDalle = 5000, // 1250 €/an par armoire / dalle (4 briques = 5000 €/an)
+    loyerDalle = 3000, // 750 €/an par armoire / dalle (4 briques = 3000 €/an sur 20 ans)
     inflationAnnuelle = 2.0,
     batterieBms = 140000,
     genieCivil = 9900,
@@ -1245,7 +1245,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const turpeRate = config.turpeStockageTarif ?? 18;
     const maintRate = config.maintenanceTarif ?? 8;
     const assurRate = config.assuranceTarif ?? 3.5;
-    const loyerD = 1250 * qty;
+    const loyerD = 750 * qty; // 750 € / 125 kW / an = 3 000 € pour 4 briques sur 20 ans
 
     const fcr = p * 8760 * (dispo / 100) * (prixFCR / 1000);
     const cap = p * derating * prixCap;
@@ -2243,6 +2243,18 @@ function TabBpProjets({
       if (p.bp_bess_data) {
         saved.batteryConfig = { ...(saved.batteryConfig || {}), ...p.bp_bess_data };
       }
+      // Standardisation stricte 4 briques CESC Mercury 261 (500 kW / 1044 kWh) et loyer 3 000 €/an sur 20 ans
+      saved.batteryConfig = {
+        ...(saved.batteryConfig || {}),
+        batteryModelKey: 'cesc_mercury_261',
+        nbBricks: 4,
+        puissanceDemandee: 500,
+        capaciteStockage: 1044,
+        batterieBms: 140000,
+        loyerDalle: 3000,
+        revenuBailleurAn: 3000,
+        dureeEtude: 20
+      };
       // Enrich saved state with building types, productibles & power
       if (saved.buildings) {
         saved.buildings = saved.buildings.map((b, idx) => {
@@ -2368,7 +2380,18 @@ function TabBpProjets({
         renteType: 'none',
         targetDSCR: prev.targetDSCR || 1.17,
         tarifACC: prev.tarifACC || 0.14,
-        partACC: prev.partACC !== undefined ? prev.partACC : 0
+        partACC: prev.partACC !== undefined ? prev.partACC : 0,
+        batteryConfig: {
+          ...(prev.batteryConfig || {}),
+          batteryModelKey: 'cesc_mercury_261',
+          nbBricks: 4,
+          puissanceDemandee: 500,
+          capaciteStockage: 1044,
+          batterieBms: 140000,
+          loyerDalle: 3000,
+          revenuBailleurAn: 3000,
+          dureeEtude: 20
+        }
       }));
     }
   };
@@ -4756,8 +4779,8 @@ export default function BpAcama() {
       disponibilite: 98,
       rendementRoundTrip: 88,
       maintenanceAn: 4000,
-      revenuBailleurAn: 5000,
-      loyerDalle: 5000,
+      revenuBailleurAn: 3000,
+      loyerDalle: 3000,
       gestionChargeAn: 0,
       assuranceAn: 1750,
       commissionAgregateur: 18,
@@ -4765,6 +4788,7 @@ export default function BpAcama() {
       iferAn: 0,
       tauxEmprunt: 4.3,
       dureeEmprunt: 12,
+      dureeEtude: 20,
       apport: 0,
       tauxIS: 25
     }
@@ -4800,8 +4824,8 @@ export default function BpAcama() {
       disponibilite: 98,
       rendementRoundTrip: 88,
       maintenanceAn: 4000,
-      revenuBailleurAn: 5000,
-      loyerDalle: 5000,
+      revenuBailleurAn: 3000,
+      loyerDalle: 3000,
       gestionChargeAn: 0,
       assuranceAn: 1750,
       commissionAgregateur: 18,
@@ -4809,6 +4833,7 @@ export default function BpAcama() {
       iferAn: 0,
       tauxEmprunt: 4.3,
       dureeEmprunt: 12,
+      dureeEtude: 20,
       apport: 0,
       tauxIS: 25
     };
@@ -4839,50 +4864,30 @@ export default function BpAcama() {
         if (saved.batteryConfig.tauxEmprunt === 3.9 || saved.batteryConfig.tauxEmprunt === undefined) {
           saved.batteryConfig.tauxEmprunt = 4.3;
         }
-        if (saved.batteryConfig.nbBricks === 1 && (saved.batteryConfig.batterieBms === 34625 || saved.batteryConfig.batterieBms === 33625 || saved.batteryConfig.batterieBms === 50209)) {
-          saved.batteryConfig.nbBricks = 4;
-          saved.batteryConfig.puissanceDemandee = 500;
-          saved.batteryConfig.capaciteStockage = 1044;
-          saved.batteryConfig.batterieBms = 140000;
-          saved.batteryConfig.genieCivil = 9900;
-          saved.batteryConfig.developpement = 7500;
-          saved.batteryConfig.fraisCommerciaux = 20000;
-          saved.batteryConfig.raccordement = 57650;
-          saved.batteryConfig.revenuBailleurAn = 5000;
-          saved.batteryConfig.loyerDalle = 5000;
-          saved.batteryConfig.maintenanceAn = 4000;
-          saved.batteryConfig.turpeAn = 9000;
-          saved.batteryConfig.assuranceAn = 1750;
-          saved.batteryConfig.arbitrageEnergie = 15242.4;
-          saved.batteryConfig.reserveFCR = 85852.8;
-          saved.batteryConfig.mecanismeCapacite = 8750;
-        }
-        
-        // RECENT UPDATES: revenuBailleur (1250) and commissionAgregateur (18)
-        const nbB = saved.batteryConfig.nbBricks || 1;
-        if (saved.batteryConfig.revenuBailleurAn === 2500 * nbB || saved.batteryConfig.revenuBailleurAn === 2000 * nbB) {
-          saved.batteryConfig.revenuBailleurAn = 1250 * nbB;
-        }
-        if (saved.batteryConfig.commissionAgregateur === 20 || saved.batteryConfig.commissionAgregateur === undefined) {
-          saved.batteryConfig.commissionAgregateur = 18;
-        }
+        // Standardisation stricte : 4 briques CESC Mercury 261 (500 kW / 1044 kWh) et loyer 3 000 €/an sur 20 ans
+        saved.batteryConfig.batteryModelKey = 'cesc_mercury_261';
+        saved.batteryConfig.nbBricks = 4;
+        saved.batteryConfig.puissanceDemandee = 500;
+        saved.batteryConfig.capaciteStockage = 1044;
+        saved.batteryConfig.batterieBms = 140000;
+        saved.batteryConfig.genieCivil = 9900;
+        saved.batteryConfig.developpement = 7500;
+        saved.batteryConfig.fraisCommerciaux = 20000;
+        saved.batteryConfig.raccordement = 57650;
+        saved.batteryConfig.revenuBailleurAn = 3000;
+        saved.batteryConfig.loyerDalle = 3000;
+        saved.batteryConfig.dureeEtude = 20;
+        saved.batteryConfig.maintenanceAn = 4000;
+        saved.batteryConfig.turpeAn = 9000;
+        saved.batteryConfig.assuranceAn = 1750;
+        saved.batteryConfig.commissionAgregateur = 18;
+        saved.batteryConfig.degradationAnnuelle = 1;
+        saved.batteryConfig.nbCyclesJour = 2.0;
         if (saved.batteryConfig.gestionChargeAn === undefined) {
-          saved.batteryConfig.gestionChargeAn = 4562.5 * nbB;
+          saved.batteryConfig.gestionChargeAn = 4562.5 * 4;
         }
-
-        // UPDATED STANDARDS: fraisCommerciaux (40€/kW) and degradationAnnuelle (1)
-        if (saved.batteryConfig.fraisCommerciaux === 2500 || saved.batteryConfig.fraisCommerciaux === 6250 || saved.batteryConfig.fraisCommerciaux === 12500) {
-          saved.batteryConfig.fraisCommerciaux = 40 * (saved.batteryConfig.puissanceDemandee || 125);
-        }
-        // Always clear retribution if present
         if (saved.batteryConfig.retributionCommAn !== undefined) {
           delete saved.batteryConfig.retributionCommAn;
-        }
-        if (saved.batteryConfig.degradationAnnuelle === 2 || saved.batteryConfig.degradationAnnuelle === undefined) {
-          saved.batteryConfig.degradationAnnuelle = 1;
-        }
-        if (saved.batteryConfig.nbCyclesJour === undefined || saved.batteryConfig.nbCyclesJour === 1 || saved.batteryConfig.nbCyclesJour === 1.0) {
-          saved.batteryConfig.nbCyclesJour = 2.0;
         }
       }
 
