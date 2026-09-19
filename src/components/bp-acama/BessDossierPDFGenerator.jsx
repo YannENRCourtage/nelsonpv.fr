@@ -16,99 +16,136 @@ import {
   Calendar,
   Sparkles,
   ArrowRight,
-  Activity
+  Activity,
+  Printer,
+  X
 } from 'lucide-react';
 import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
 
-// Formatters monétaires
+// Base de données des 31 sites
+const SITES_DATABASE = [
+  { id: 1, name: "PAILLOT", client: "PAILLOT Noël", address: "5 ZA des Plats", cp: "87600", city: "Rochechouart", gps: "45.847811, 0.852996", substation: "PLAUD", dist: "6.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 2, name: "BATIOT", client: "BATIOT Olivier", address: "72 Chemin du Campas", cp: "32220", city: "Mongausy", gps: "43.496370, 0.834241", substation: "SEMEZIES", dist: "5.9 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 3, name: "DOMERGUE MEUZAC", client: "DOMERGUE David", address: "1725 Route du Grand Pré", cp: "87380", city: "Meuzac", gps: "45.566247, 1.397687", substation: "LE REPAIRE", dist: "8.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 4, name: "CUBERTAFON", client: "CUBERTAFON René", address: "8 Route de la Barrière", cp: "19210", city: "Saint-Julien-le-Vendômois", gps: "45.460274, 1.298160", substation: "LUBERSAC", dist: "8.3 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 5, name: "PLANTE", client: "PLANTE Jean-Pierre", address: "581 Route Départementale 817", cp: "40300", city: "Port-de-Lanne", gps: "43.558940, -1.199501", substation: "GUICHE", dist: "4.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 6, name: "PRAVIE", client: "PRAVIE Clémence", address: "336 Chemin de Falieres", cp: "82170", city: "Grisolles", gps: "43.806232, 1.295833", substation: "LESQUIVE 2", dist: "2.3 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 7, name: "LATOURNERIE", client: "LATOURNERIE Franck", address: "467 Chemin des Terres Vieilles", cp: "24310", city: "Brantôme en Périgord", gps: "45.328888, 0.651040", substation: "BRANTOME", dist: "3.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 8, name: "DAVID", client: "DAVID Louis", address: "1053 route de saint-cyr les champagnes", cp: "19350", city: "Concèze", gps: "45.353329, 1.314195", substation: "LUBERSAC", dist: "8.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 9, name: "GRANGER", client: "GRANGER BRUNO", address: "3 Route des Forges", cp: "19210", city: "Saint-Éloy-les-Tuileries", gps: "45.442533, 1.267710", substation: "LUBERSAC", dist: "10.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 10, name: "CASTEBRUNET 2", client: "CASTEBRUNET 2 Jérémy", address: "763 Chemin de Calsos", cp: "82300", city: "Caussade", gps: "44.123740, 1.564486", substation: "LERE", dist: "5.7 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 11, name: "BERTRANDIE", client: "BERTRANDIE Sébastien", address: "301 Route de la Roche", cp: "24240", city: "Monestier", gps: "44.773569, 0.300107", substation: "STE-FOY-LA-GRANDE", dist: "9.0 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 12, name: "GIOT", client: "GIOT Joachim", address: "2 Le Cluzeau", cp: "23600", city: "Leyrat", gps: "46.360561, 2.306566", substation: "BOUSSAC", dist: "5.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 13, name: "ARBOIN", client: "ARBOIN Régis", address: "47 Chemin de piquemole", cp: "47120", city: "Duras", gps: "44.659496, 0.222735", substation: "LA SAUVETAT", dist: "11.8 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 14, name: "MISSAULT LACOUSSIÈRE", client: "MISSAULT David", address: "1348 Route des Bouleaux", cp: "24470", city: "Saint-Saud-Lacoussière", gps: "45.558769, 0.804488", substation: "NONTRON", dist: "13.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 15, name: "MEILLAT 1", client: "MEILLAT 1 Maxime", address: "1a La Ribiere", cp: "23210", city: "Mourioux-Vieilleville", gps: "46.082964, 1.638518", substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 16, name: "SOULIGNAC", client: "SOULIGNAC Thierry", address: "Route de Lombardie", cp: "33860", city: "Val-de-Livenne", gps: "45.264357, -0.550408", substation: "ETAULIERS", dist: "7.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 17, name: "CHAUFFAILLE", client: "CHAUFFAILLE Franck", address: "2 Route de Saint Yrieix", cp: "24270", city: "PAYZAC", gps: "45.436230, 1.288720", substation: "LUBERSAC", dist: "6.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 18, name: "CIROLI", client: "CIROLI", address: "66 Lieu Dit Pinasse", cp: "33890", city: "Juillac", gps: "44.809547, 0.037304", substation: "AURIOLLES", dist: "7.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 19, name: "BOURDETTES", client: "BOURDETTES Sandrine", address: "10 Route de la Bohème", cp: "65140", city: "Mansan", gps: "43.343730, 0.194628", substation: "VIC-EN-BIGORRE", dist: "10.8 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 20, name: "CASTEBRUNET 1", client: "CASTEBRUNET Jérémy", address: "1074 Chemin de Guillounet", cp: "82300", city: "Caussade", gps: "44.117157, 1.566758", substation: "LERE", dist: "5.5 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 21, name: "FRECHEVILLE", client: "FRECHEVILLE Mathieu", address: "45 Cluzelou-haut", cp: "47210", city: "SAINT EUTROPE DE BORN", gps: "44.588327, 0.665431", substation: "CANCON", dist: "7.2 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 22, name: "CASTEBRUNET 3", client: "CASTEBRUNET 3 Jérémy", address: "93 Chemin des Peyrières", cp: "82300", city: "Monteils", gps: "44.165754, 1.564963", substation: "LERE", dist: "3.6 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 23, name: "DOUMENS", client: "DOUMENS Morgan", address: "4 Route de Salleboeuf", cp: "33750", city: "Beychac-et-Caillau", gps: "44.870054, -0.397698", substation: "POMPIGNAC", dist: "4.0 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 24, name: "HOUSSAIT-YOUNG", client: "HOUSSAIT-YOUNG Jérôme", address: "94 Route d'Hourtin", cp: "33930", city: "Vendays-Montalivet", gps: "45.338321, -1.071016", substation: "ST-VIVIEN", dist: "9.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 25, name: "MISSAULT FRESSENGEAS", client: "MISSAULT David", address: "Route de la Baine", cp: "24800", city: "Saint-Martin-de-Fressengeas", gps: "45.438589, 0.815692", substation: "THIVIERS", dist: "6.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 26, name: "LARDY", client: "LARDY Michel", address: "Outrelaigue", cp: "23150", city: "Maisonnisses", gps: "46.067915, 1.907318", substation: "LAVAUD", dist: "10.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 27, name: "CELERIE", client: "CELERIE Thomas", address: "301 route de la Valade", cp: "19230", city: "Beyssenac", gps: "45.400772, 1.284338", substation: "LUBERSAC", dist: "7.1 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 28, name: "MEILLAT 2", client: "MEILLAT 2 Maxime", address: "1a la Ribiére", cp: "23210", city: "Mourioux-Vieilleville", gps: "46.081523, 1.633909", substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 29, name: "DOMERGUE ARGENCES", client: "DOMERGUE David", address: "1 Route de Plagnes", cp: "12420", city: "Argences en Aubrac", gps: "44.807528, 2.790446", substation: "RUEYRES", dist: "5.9 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 30, name: "COMBY", client: "COMBY Fabrice", address: "14 Route de Besse", cp: "19210", city: "Saint-Éloy-les-Tuileries", gps: "45.452807, 1.284563", substation: "LUBERSAC", dist: "10.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" },
+  { id: 31, name: "CASTEBRUNET 4", client: "CASTEBRUNET 4 Jérémy", address: "3750 Route de Bioule", cp: "82300", city: "Saint-Cirq", gps: "44.124392, 1.583302", substation: "LERE", dist: "6.2 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", ebitda: "48 299 €", payback: "4.8 ans" }
+];
+
+// Matrice Financière 15 ans
+const YEARS_15 = [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038, 2039, 2040];
+const FINANCIAL_MATRIX = {
+  revFcr: [85848, 87565, 89316, 91103, 92925, 94783, 96679, 98612, 100585, 102596, 104648, 106741, 108876, 111054, 113275],
+  revCapa: [8750, 8925, 9104, 9286, 9471, 9661, 9854, 10051, 10252, 10457, 10666, 10880, 11097, 11319, 11545],
+  revArb: [29380, 29668, 29958, 30252, 30548, 30848, 31150, 31455, 31764, 32075, 32390, 32707, 33027, 33351, 33678],
+  opexTurpe: [8317, 8483, 8653, 8826, 9003, 9183, 9366, 9554, 9745, 9940, 10139, 10341, 10548, 10759, 10974],
+  opexRecharge: [34295, 34981, 35681, 36394, 37122, 37865, 38622, 39394, 40182, 40986, 41806, 42642, 43495, 44365, 45252],
+  opexAgregateur: [22316, 22762, 23217, 23682, 24155, 24639, 25131, 25634, 26147, 26670, 27203, 27747, 28302, 28868, 29446],
+  opexAutres: [10750, 10885, 11023, 11163, 11306, 11453, 11602, 11754, 11909, 12067, 12229, 12393, 12561, 12732, 12907],
+  debtService: [25288, 25288, 25288, 25288, 25288, 25288, 25288, 25288, 25288, 25288, 25288, 25288, 0, 0, 0]
+};
+
+// Formatters
 const fmtEur = (val) => {
   if (val === null || val === undefined || isNaN(val)) return '— €';
   return Math.round(val).toLocaleString('fr-FR') + ' €';
 };
 
-const fmtK = (val) => {
-  if (val === null || val === undefined || isNaN(val)) return '— k€';
-  return (val / 1000).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' k€';
-};
-
-const fmtM = (val) => {
-  if (val === null || val === undefined || isNaN(val)) return '— M€';
-  return (val / 1000000).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' M€';
-};
-
 /**
- * Composant Modal & Générateur du Dossier d'Étude BESS Multipages Pleine Largeur
+ * Composant Modal & Générateur PDF Haute Précision inspiré fidèlement de dossier_investissement_bess_turpe_7_enr_courtage.html
  */
 export default function BessDossierPDFGenerator({
   isOpen,
   onClose,
-  mode = 'single', // 'single' | 'portfolio'
+  mode: initialMode = 'portfolio', // 'single' | 'portfolio'
   projectData = null,
   batteryConfig = null,
   batteryResults = null,
-  networkQualification = null,
-  portfolioData = null
+  networkQualification = null
 }) {
+  const [activeMode, setActiveMode] = useState(initialMode || 'portfolio');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressStep, setProgressStep] = useState('');
 
   if (!isOpen) return null;
 
-  // Calcul ou fallback des données unitaires
-  const unitConfig = batteryConfig || {};
-  const unitResults = batteryResults || {};
-  const unitProject = projectData || {};
-  const unitNet = networkQualification || {};
+  const mult = activeMode === 'portfolio' ? 31 : 1;
+  const isPort = activeMode === 'portfolio';
 
-  // Données de base unitaire
-  const unitPower = unitConfig.puissanceDemandee || 500;
-  const unitCapacity = unitConfig.capaciteStockage || 1044;
-  const unitCapex = unitResults.capexTotal || 235050;
-  const unitCaAn1 = unitResults.revenuAn1 || 77500;
-  const unitEbitdaAn1 = unitResults.ebeAn1 || 35000;
-  const unitPayback = unitResults.payback || 7.4;
-  const unitTriProjet = unitResults.triProjet || 10.5;
-  const unitTriFP = unitResults.triFP || 14.8;
-  const unitTurpeAn1 = unitResults.turpeAn1 || 9000;
-  const unitLoyer = unitConfig.loyerDalle || 5000;
-  const unitRows = unitResults.rows || [];
-
-  // Données consolidées portefeuille
-  const portTotals = portfolioData?.consolidatedTotals || {
-    totalSites: 31,
-    totalPowerMw: 15.5,
-    totalCapacityMwh: 32.36,
-    totalCapex: 7286550,
-    totalCaAn1: 2402500,
-    totalOpexAn1: 1317500,
-    totalEbitdaAn1: 1085000,
-    totalLoyersAn1: 155000,
-    triConsolide: 10.8,
-    paybackConsol: 7.3
+  // Métriques KPI
+  const kpi = {
+    irrProject: isPort ? '19.8%' : '20.1%',
+    irrEquity: isPort ? 'TRI Equity : 35.2%' : 'TRI Equity : 36.8%',
+    payback: '4.8 ans',
+    paybackEquity: isPort ? 'Sur Fonds Propres : 2.3 ans' : 'Sur Fonds Propres : 2.4 ans',
+    ebitda: isPort ? '1.50 M€' : '48 299 €',
+    ebitdaSub: isPort ? 'EBITDA consolidé net (31 sites)' : 'Marge opérationnelle ~39.0%',
+    revenue: isPort ? '3.84 M€' : '123 978 €',
+    revenueSub: isPort ? 'Value Stacking 31 sites (2 c/j)' : '2 cycles journaliers (24h)',
+    capex: isPort ? '7.23 M€' : '233 250 €',
+    capexSub: isPort ? '~233 k€ / site raccordé clé en main' : '466 € / kW installé',
+    turpeGain: isPort ? '+439 673 €' : '+14 183 €',
+    turpeSub: isPort ? 'Gain annuel réseau consolidé' : 'Économie directe vs barème',
+    fcr: isPort ? '2 661 288 € / an' : '85 848 € / an',
+    arb: isPort ? '910 780 € / an' : '29 380 € / an',
+    capa: isPort ? '271 250 € / an' : '8 750 € / an',
+    totalRevDonut: isPort ? '3 843 318 € / an' : '123 978 € / an',
+    totalRevSub: isPort ? 'Portefeuille Consolidé 15.5 MW' : 'Unité 500 kW / 1 044 kWh',
+    tableTitle: isPort ? "Plan d'Affaires Prévisionnel Consolidé sur 15 Ans (31 Sites)" : "Plan d'Affaires Prévisionnel sur 15 Ans (Unitaire 500 kW)",
+    badgePaybackSmall: isPort ? "4.8 ans (Projet) / 2.3 ans (Equity)" : "4.8 ans (Projet) / 2.4 ans (Equity)",
+    dscrMoyenBadge: isPort ? "DSCR Portefeuille : 1.94x (Excellence bancaire)" : "DSCR Moyen : 1.94x (Min bancaire 1.15x)",
+    techConfig: isPort ? "124 armoires extérieures réparties sur 31 sites" : "4 armoires extérieures (1.15m x 1.44m x 2.38m)",
+    techPowerCap: isPort ? "15.5 MW / 32.36 MWh consolidés" : "500 kW / 1 044 kWh (Ratio 2h de décharge)"
   };
-  const portChronique = portfolioData?.consolidatedChronique || [];
-  const portSites = portfolioData?.analyzedSites || BESS_PORTFOLIO_SITES.map((s, idx) => ({
-    ...s,
-    index: idx + 1,
-    powerKw: 500,
-    capacityKwh: 1044,
-    capexTotal: 235050,
-    caAnnuel: 77500,
-    ebitda: 35000,
-    triProjet: 10.5,
-    payback: 7.4,
-    creQualification: getCreSubstationQualification(s.substation?.name, s.substation?.code)
-  }));
 
-  // Séparation des sites en 2 pages pour le portefeuille
-  const sitesPage1 = portSites.slice(0, 16);
-  const sitesPage2 = portSites.slice(16);
+  // Répartition des sites sur Planche 5 et 6 pour le portefeuille
+  const sitesP1 = SITES_DATABASE.slice(0, 16);
+  const sitesP2 = SITES_DATABASE.slice(16);
 
-  // Fonction de génération du PDF pleine largeur multipages
+  // Recherche d'un site unitaire
+  const selectedSite = SITES_DATABASE.find(s => s.name.toUpperCase() === (projectData?.name || '').toUpperCase()) || SITES_DATABASE[7]; // Défaut DAVID (#8)
+
+  // Données de graphique
+  const maxEbitda = isPort ? 2000000 : 65000;
+  const chartBars = YEARS_15.map((y, i) => {
+    const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
+    const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+    const ebitda = rev - opex;
+    const debt = FINANCIAL_MATRIX.debtService[i] * mult;
+    const cf = ebitda - debt;
+    return { year: y, ebitda, cf };
+  });
+
+  // Générateur PDF A4 Paysage Pleine Largeur
   const handleGeneratePdf = async () => {
     setIsGenerating(true);
-    setProgressStep('Initialisation du dossier multipages...');
+    setProgressStep('Initialisation du moteur d’impression...');
 
     try {
       const pdf = new jsPDF({
@@ -120,1287 +157,1035 @@ export default function BessDossierPDFGenerator({
       const pdfWidth = pdf.internal.pageSize.getWidth(); // 297 mm
       const pdfHeight = pdf.internal.pageSize.getHeight(); // 210 mm
 
-      const pageElements = document.querySelectorAll('.bess-dossier-page');
-      const totalPages = pageElements.length;
+      const pages = document.querySelectorAll('.bess-render-page');
+      const totalPages = pages.length;
 
       for (let i = 0; i < totalPages; i++) {
-        setProgressStep(`Capture haute définition de la page ${i + 1} / ${totalPages}...`);
-        const el = pageElements[i];
+        setProgressStep(`Capture vectorielle haute définition - Planche ${i + 1} / ${totalPages}...`);
+        const pageEl = pages[i];
 
-        const canvas = await html2canvas(el, {
+        const canvas = await html2canvas(pageEl, {
           scale: 2,
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff'
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgData = canvas.toDataURL('image/jpeg', 0.96);
 
         if (i > 0) {
           pdf.addPage();
         }
 
-        // Pleine largeur exacte (0 marge pour full-bleed A4 landscape)
+        // Full-bleed A4 Paysage exact (0 mm de marge pour occuper 100% de la page)
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
       }
 
-      const fileName = mode === 'portfolio'
-        ? `Dossier_Etude_BESS_Portefeuille_31_Sites_15.5MW_${new Date().toISOString().slice(0, 10)}.pdf`
-        : `Dossier_Etude_BESS_StandAlone_${unitProject.name || 'Projet'}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const fileDate = new Date().toISOString().slice(0, 10);
+      const fileName = isPort
+        ? `Dossier_Investissement_BESS_Portefeuille_15.5MW_TURPE7_${fileDate}.pdf`
+        : `Dossier_Investissement_BESS_${projectData?.name || 'Unitaire_500kW'}_TURPE7_${fileDate}.pdf`;
 
-      setProgressStep('Sauvegarde du document PDF...');
+      setProgressStep('Finalisation et enregistrement du document...');
       pdf.save(fileName);
       setIsGenerating(false);
       onClose();
     } catch (err) {
-      console.error('Erreur lors de la génération du dossier PDF BESS:', err);
+      console.error('Erreur lors de la génération du dossier PDF:', err);
       alert('Une erreur est survenue lors de la création du PDF. Veuillez réessayer.');
       setIsGenerating(false);
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 overflow-y-auto">
-      {/* Modal Dialog */}
-      <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
-        {/* Header Modal */}
-        <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
-              <FileText className="w-6 h-6 text-blue-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black tracking-tight">
-                  {mode === 'portfolio'
-                    ? 'Dossier d’Étude Complet — Portefeuille BESS (31 Sites / 15.5 MW)'
-                    : `Dossier d’Étude Complet — BESS Stand-Alone (${unitProject.name || 'Projet'})`}
-                </h3>
-                <span className="px-2 py-0.5 text-[10px] font-black uppercase rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300">
-                  A4 Paysage • Pleine Largeur
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+      {/* Conteneur Modal Global */}
+      <div className="relative w-full max-w-7xl bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden my-4 flex flex-col max-h-[96vh]">
+        
+        {/* BARRE SUPÉRIEURE DE NAVIGATION ET EXPORT (FOND BLANC PUR ET STYLES DE LA PAGE MODÈLE) */}
+        <header className="sticky top-0 z-50 bg-white border-b border-slate-200 px-6 py-3.5 shadow-sm flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-6">
+            {/* Logo ENR Courtage existant */}
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo-enr-courtage-inline.png"
+                alt="ENR COURTAGE"
+                className="h-10 w-auto object-contain"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+              <div className="flex flex-col">
+                <span className="text-lg font-black tracking-tight text-[#0b192c] leading-none">
+                  ENR<span className="text-[#0284c7] font-extrabold ml-1">COURTAGE</span>
+                </span>
+                <span className="text-[10px] tracking-wider uppercase font-bold text-slate-500 mt-0.5">
+                  Mémorandum d'Investissement BESS • TURPE 7
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-1">
-                Génération d’un document d’investissement institutionnel multipages complet avec analyse TURPE 7, Value Stacking à 2 cycles/jour et business plan détaillé sur 15 ans.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            disabled={isGenerating}
-            className="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Corps descriptif du modal */}
-        <div className="p-6 space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/50 space-y-1.5">
-              <div className="text-[11px] font-bold text-blue-900 uppercase flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-blue-600" /> Cadre Régul. TURPE 7
-              </div>
-              <p className="text-xs text-slate-600">
-                Note d'analyse de la délibération CRE 2025-227, neutralité de stockage et signaux-prix locaux des postes sources.
-              </p>
             </div>
 
-            <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/50 space-y-1.5">
-              <div className="text-[11px] font-bold text-indigo-900 uppercase flex items-center gap-1.5">
-                <BatteryCharging className="w-4 h-4 text-indigo-600" /> Value Stacking 2 c/j
-              </div>
-              <p className="text-xs text-slate-600">
-                Optimisation 2 cycles/jour : Réserve FCR 50 Hz, Capacité, et Arbitrage Day-Ahead & Intraday EPEX SPOT.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/50 space-y-1.5">
-              <div className="text-[11px] font-bold text-emerald-900 uppercase flex items-center gap-1.5">
-                <TrendingUp className="w-4 h-4 text-emerald-600" /> Plan 15 Ans Pleine Largeur
-              </div>
-              <p className="text-xs text-slate-600">
-                Chronique financière détaillée (CA, OPEX, EBITDA, dette, cash-flows nets et DSCR) étalée sur 100% de la largeur A4.
-              </p>
+            {/* Commutateur interactif Unitaire vs Portefeuille */}
+            <div className="flex items-center bg-slate-100 border border-slate-300 rounded-xl p-1 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setActiveMode('single')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  !isPort
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Centrale Unitaire (500 kW / 1 044 kWh)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMode('portfolio')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  isPort
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                Portefeuille Consolidé (31 Sites / 15.5 MW)
+              </button>
             </div>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 space-y-2">
-            <div className="font-bold text-slate-800 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Garantie de conformité & mise en page optimale :
-            </div>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Mise en page A4 Paysage haute définition (200 DPI) sans bande blanche latérale.</li>
-              <li>{mode === 'portfolio' ? '6 pages complètes (incluant les 31 sites scindés sur 2 pages pleine largeur).' : '4 pages complètes (Garde & KPI, Note TURPE 7, Note Value Stacking, Business Plan 15 ans).'}</li>
-              <li>Prise en compte des 2 cycles quotidiens et de la neutralité de taxe d’acheminement TURPE 7.</li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Footer Modal avec Bouton de téléchargement */}
-        <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-          <div className="text-xs text-slate-500">
-            {isGenerating ? (
-              <span className="flex items-center gap-2 text-blue-700 font-bold">
-                <Loader2 className="w-4 h-4 animate-spin" /> {progressStep}
-              </span>
-            ) : (
-              <span>Prêt pour l'exportation du dossier investisseur</span>
-            )}
-          </div>
-
+          {/* Actions : Badge Conformité, Impression & Export PDF */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={onClose}
-              disabled={isGenerating}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-all"
-            >
-              Annuler
-            </button>
+            <span className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              CRE 2025-227 & TURPE 7 Conforme
+            </span>
+
             <button
               onClick={handleGeneratePdf}
               disabled={isGenerating}
-              className="px-6 py-2.5 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-cyan-600/20 transition-all active:scale-95 disabled:opacity-50"
             >
               {isGenerating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Génération en cours...
+                  <span>{progressStep}</span>
                 </>
               ) : (
                 <>
                   <FileDown className="w-4 h-4" />
-                  GÉNÉRER LE DOSSIER DÉTAILLÉ (PDF)
+                  <span>Imprimer / Exporter en PDF (A4 Paysage)</span>
                 </>
               )}
             </button>
-          </div>
-        </div>
-      </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          CONTENEUR DES PAGES HTML OFF-SCREEN POUR CAPTURE PLEINE LARGEUR (1414 x 1000 px)
-          Ratio 1.414 strict = A4 Paysage exact sans distorsion ni bandes blanches
-      ══════════════════════════════════════════════════════════════════════ */}
-      <div
-        id="bess-dossier-hidden-render"
-        style={{
-          position: 'fixed',
-          left: '-99999px',
-          top: 0,
-          zIndex: -100,
-          width: '1414px',
-          opacity: 0,
-          pointerEvents: 'none'
-        }}
-      >
-        {mode === 'portfolio' ? (
-          /* ── PAGES DU PORTEFEUILLE 31 SITES ─────────────────────────────── */
-          <>
-            {/* PAGE 1 : Page de Garde & Executive Summary Portefeuille */}
-            <div
-              className="bess-dossier-page"
-              style={{
-                width: '1414px',
-                height: '1000px',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-                padding: '40px 48px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+              title="Fermer"
             >
-              {/* Header Page */}
-              <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-900 text-white font-black text-xl flex items-center justify-center">
-                    N
-                  </div>
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </header>
+
+        {/* CONTENEUR DE PRÉVISUALISATION SCROLLABLE AVEC LES PLANCHES DU DOSSIER */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-8 bg-slate-200">
+          <div className="text-center text-xs text-slate-500 font-semibold mb-2">
+            Aperçu fidèle des {isPort ? '6' : '5'} planches A4 Paysage plein écran • Fonds blancs • Prêt pour export
+          </div>
+
+          {/* ========================================================================= */}
+          {/* PLANCHE 1 : SYNTHÈSE EXÉCUTIVE & CHIFFRES CLÉS (FOND BLANC) */}
+          {/* ========================================================================= */}
+          <section className="bess-render-page mx-auto bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md flex flex-col justify-between" style={{ width: '1380px', minHeight: '940px', boxSizing: 'border-box' }}>
+            <div>
+              {/* En-tête de planche */}
+              <div className="flex items-center justify-between border-b border-slate-200 pb-5 mb-5">
+                <div className="flex items-center gap-4">
+                  <img
+                    src="/logo-enr-courtage-inline.png"
+                    alt="ENR COURTAGE"
+                    className="h-12 w-auto object-contain"
+                  />
                   <div>
-                    <div className="text-base font-black text-slate-900 tracking-wider">NELSON ENERGY • ENR COURTAGE</div>
-                    <div className="text-[11px] text-slate-500 font-semibold">Plateforme d'Ingénierie & d'Investissement BESS Stationnaire</div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
+                        Stockage Stationnaire BESS HTA
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Régime Délibéré CRE 2025-227
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+                        2 Cycles / Jour
+                      </span>
+                    </div>
+                    <h1 className="text-2xl sm:text-3xl font-black text-[#0b192c] tracking-tight mt-1.5">
+                      {isPort ? 'Portefeuille BESS Stand-Alone 15.5 MW / 32.36 MWh' : `Centrale BESS Stand-Alone 500 kW / 1 044 kWh (${projectData?.name || selectedSite.name})`}
+                    </h1>
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 mt-0.5 max-w-3xl">
+                      {isPort
+                        ? 'Grappe territoriale consolidée de 31 unités standardisées (500 kW / 1 044 kWh) raccordées au réseau HTA Enedis dans le Sud-Ouest. Programme d\'investissement souverain optimisé TURPE 7.'
+                        : `Unité de stockage stationnaire autonome par batterie LFP raccordée au réseau HTA 20 kV Enedis (${selectedSite.substation} - ${selectedSite.dist}). Monétisation optimisée en Value Stacking sous le nouveau barème TURPE 7.`}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="px-3 py-1 bg-blue-50 border border-blue-200 text-blue-900 rounded-full text-xs font-black uppercase">
-                    DOSSIER D'INVESTISSEMENT BESS
-                  </span>
-                  <div className="text-[11px] text-slate-400 mt-1 font-medium">
-                    Édition du {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                  </div>
+                  <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold block">Édition d'Analyse</span>
+                  <span className="text-sm font-extrabold text-[#0b192c]">{new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+                  <span className="text-xs font-bold text-cyan-600 block mt-0.5">ENR COURTAGE • M&A Infrastructure</span>
                 </div>
               </div>
 
-              {/* Titre & Encart Portefeuille */}
-              <div className="my-2 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white p-6 rounded-2xl shadow-md flex items-center justify-between">
-                <div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-black uppercase">
-                    RÉGULATION TURPE 7 CRE 2025-227
-                  </span>
-                  <h1 className="text-2xl font-black mt-2 tracking-tight">
-                    PORTEFEUILLE MULTI-PROJETS BESS (31 SITES / 15.5 MW)
-                  </h1>
-                  <p className="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
-                    Programme d'investissement territorial de 31 unités de stockage par batterie stand-alone (500 kW / 1 044 kWh) raccordées au réseau public de distribution HTA Enedis. Valorisation optimisée en Value Stacking (2 cycles/j) sous le nouveau cadre réglementaire TURPE 7.
-                  </p>
+              {/* Les 6 grands chiffres clés visuels */}
+              <div className="grid grid-cols-6 gap-3.5 mb-6">
+                <div className="bg-white border-2 border-purple-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-indigo-600"></div>
+                  <div className="text-[10px] uppercase tracking-wider font-extrabold text-purple-700">TRI Projet & Equity</div>
+                  <div className="text-2xl font-black text-purple-900 mt-1">{kpi.irrProject}</div>
+                  <div className="text-[11px] font-bold text-purple-600 mt-0.5">{kpi.irrEquity}</div>
                 </div>
-                <div className="text-right bg-white/10 border border-white/20 p-4 rounded-xl">
-                  <div className="text-[10px] text-slate-300 uppercase font-bold">Investissement Global</div>
-                  <div className="text-2xl font-black text-emerald-400 mt-0.5">{fmtM(portTotals.totalCapex)}</div>
-                  <div className="text-[10px] text-slate-300 mt-0.5">31 unités clés en main</div>
+
+                <div className="bg-white border-2 border-emerald-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+                  <div className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700">Temps de Retour Net</div>
+                  <div className="text-2xl font-black text-emerald-600 mt-1">{kpi.payback}</div>
+                  <div className="text-[11px] font-bold text-emerald-700 mt-0.5">{kpi.paybackEquity}</div>
+                </div>
+
+                <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 to-orange-500"></div>
+                  <div className="text-[10px] uppercase tracking-wider font-extrabold text-amber-700">EBITDA Net An 1</div>
+                  <div className="text-2xl font-black text-amber-900 mt-1">{kpi.ebitda}</div>
+                  <div className="text-[11px] font-bold text-amber-700 mt-0.5">{kpi.ebitdaSub}</div>
+                </div>
+
+                <div className="bg-white border-2 border-blue-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-cyan-500"></div>
+                  <div className="text-[10px] uppercase tracking-wider font-extrabold text-blue-700">Chiffre d'Affaires Brut</div>
+                  <div className="text-2xl font-black text-blue-900 mt-1">{kpi.revenue}</div>
+                  <div className="text-[11px] font-bold text-blue-600 mt-0.5">{kpi.revenueSub}</div>
+                </div>
+
+                <div className="bg-white border-2 border-slate-300 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-400 to-slate-600"></div>
+                  <div className="text-[10px] uppercase tracking-wider font-extrabold text-slate-600">CAPEX Clé en main</div>
+                  <div className="text-2xl font-black text-slate-900 mt-1">{kpi.capex}</div>
+                  <div className="text-[11px] font-bold text-slate-500 mt-0.5">{kpi.capexSub}</div>
+                </div>
+
+                <div className="bg-white border-2 border-cyan-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
+                  <div className="text-[10px] uppercase tracking-wider font-extrabold text-cyan-700">Gain Annuel TURPE 7</div>
+                  <div className="text-2xl font-black text-cyan-800 mt-1">{kpi.turpeGain}</div>
+                  <div className="text-[11px] font-bold text-cyan-600 mt-0.5">{kpi.turpeSub}</div>
                 </div>
               </div>
 
-              {/* Cartouches 6 KPIs Clés Consolidés */}
-              <div className="grid grid-cols-6 gap-3.5 my-1">
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">Puissance Totale</div>
-                  <div className="text-xl font-black text-slate-900 mt-1">15.5 MW</div>
-                  <div className="text-[10px] font-bold text-blue-600 mt-0.5">31 × 500 kW HTA</div>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">Capacité Énergie</div>
-                  <div className="text-xl font-black text-slate-900 mt-1">32.36 MWh</div>
-                  <div className="text-[10px] font-bold text-indigo-600 mt-0.5">31 × 1 044 kWh LFP</div>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">CA Consolidé An 1</div>
-                  <div className="text-xl font-black text-blue-900 mt-1">{fmtM(portTotals.totalCaAn1)}</div>
-                  <div className="text-[10px] font-bold text-slate-500 mt-0.5">2 cycles / jour net</div>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">EBITDA An 1</div>
-                  <div className="text-xl font-black text-emerald-700 mt-1">{fmtM(portTotals.totalEbitdaAn1)}</div>
-                  <div className="text-[10px] font-bold text-slate-500 mt-0.5">Marge 45.2%</div>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">TRI Projet</div>
-                  <div className="text-xl font-black text-indigo-700 mt-1">{(portTotals.triConsolide || 10.8).toFixed(1)} %</div>
-                  <div className="text-[10px] font-bold text-emerald-600 mt-0.5">Payback {(portTotals.paybackConsol || 7.3).toFixed(1)} ans</div>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">Loyers Bailleurs</div>
-                  <div className="text-xl font-black text-amber-700 mt-1">{fmtK(portTotals.totalLoyersAn1)}/an</div>
-                  <div className="text-[10px] font-bold text-slate-500 mt-0.5">5 000 €/site/an</div>
-                </div>
-              </div>
-
-              {/* Fiche Technique Sommaire & Répartition Géographique */}
-              <div className="grid grid-cols-2 gap-4 my-2">
-                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                  <div className="text-xs font-black text-slate-900 uppercase flex items-center gap-2 mb-2">
-                    <BatteryCharging className="w-4 h-4 text-blue-600" />
-                    Architecture Technique Standardisée (CESC Mercury 261)
+              {/* Deux blocs comparatifs techniques & fonciers */}
+              <div className="grid grid-cols-2 gap-5">
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-blue-900 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                      Spécifications Techniques Matériel (CESC Mercury 261)
+                    </h3>
+                    <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">LiFePO4 certifié</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-slate-500">Technologie :</span> <b className="text-slate-800">LFP (Lithium Fer Phosphate)</b></div>
-                    <div><span className="text-slate-500">Armoires par site :</span> <b className="text-slate-800">4 × 261 kWh / 125 kW</b></div>
-                    <div><span className="text-slate-500">Refroidissement :</span> <b className="text-slate-800">Liquide intégré (HVAC)</b></div>
-                    <div><span className="text-slate-500">Rendement Round-Trip :</span> <b className="text-slate-800">88.0 %</b></div>
-                    <div><span className="text-slate-500">Sécurité incendie :</span> <b className="text-slate-800">Aérosol auto & NFPA 855</b></div>
-                    <div><span className="text-slate-500">Garantie constructeur :</span> <b className="text-slate-800">15 ans de capacité</b></div>
-                  </div>
+                  <ul className="text-xs space-y-2.5 text-slate-700 font-medium">
+                    <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span className="text-slate-500">Configuration :</span>
+                      <span className="font-bold text-slate-900">{kpi.techConfig}</span>
+                    </li>
+                    <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span className="text-slate-500">Puissance & Capacité :</span>
+                      <span className="font-bold text-slate-900">{kpi.techPowerCap}</span>
+                    </li>
+                    <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span className="text-slate-500">Emprise au sol totale :</span>
+                      <span className="font-bold text-emerald-700">&lt; 20 m² sur dalle béton (Déclaration Préalable DP)</span>
+                    </li>
+                    <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span className="text-slate-500">Rendement Round-Trip (AC-AC) :</span>
+                      <span className="font-bold text-slate-900">88.0% certifié en cycles nominaux</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span className="text-slate-500">Refroidissement & Sécurité Incendie :</span>
+                      <span className="font-bold text-slate-900">Liquide HVAC + Aérosol NFPA 855 asservi</span>
+                    </li>
+                  </ul>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                  <div className="text-xs font-black text-slate-900 uppercase flex items-center gap-2 mb-2">
-                    <MapPin className="w-4 h-4 text-emerald-600" />
-                    Insertion Réseau & Postes Sources ODRE
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-emerald-900 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                      Insertion Réseau Enedis & Sécurisation Foncière
+                    </h3>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">Bail notarié 30 ans</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-slate-500">Raccordement :</span> <b className="text-slate-800">HTA 20 kV direct Enedis</b></div>
-                    <div><span className="text-slate-500">Distance moy. poste :</span> <b className="text-slate-800">4.8 km</b></div>
-                    <div><span className="text-slate-500">Qualification TURPE 7 :</span> <b className="text-slate-800">CRE 2025-227 validée</b></div>
-                    <div><span className="text-slate-500">Quote-part S3REnR moy. :</span> <b className="text-slate-800">~68 k€/MW</b></div>
-                    <div><span className="text-slate-500">Agrégation centralisée :</span> <b className="text-slate-800">RTE FCR / EPEX SPOT</b></div>
-                    <div><span className="text-slate-500">Durée d'exploitation :</span> <b className="text-slate-800">15 ans prévisionnels</b></div>
-                  </div>
+                  <ul className="text-xs space-y-2.5 text-slate-700 font-medium">
+                    <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span className="text-slate-500">Domaine de tension de livraison :</span>
+                      <span className="font-bold text-slate-900">HTA 20 000 V (Option HTA1 Courte Utilisation)</span>
+                    </li>
+                    <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span className="text-slate-500">Distance privée raccordement :</span>
+                      <span className="font-bold text-blue-700">10 mètres optimisés (Minimisation du génie civil)</span>
+                    </li>
+                    <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span className="text-slate-500">Sécurisation foncière du site :</span>
+                      <span className="font-bold text-slate-900">Promesse de bail notariée (5 000 €/an/site indexé)</span>
+                    </li>
+                    <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span className="text-slate-500">Protocoles de communication :</span>
+                      <span className="font-bold text-slate-900">IEC 61850 & Conformité téléaction RTE / PICASSO</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span className="text-slate-500">Délai prévisionnel de COD :</span>
+                      <span className="font-bold text-cyan-700">6 à 9 mois post-purges administratives de la DP</span>
+                    </li>
+                  </ul>
                 </div>
-              </div>
-
-              {/* Footer Page */}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-[10px] text-slate-400 font-medium">
-                <span>NELSON ENERGY • Dossier d'Investissement Portefeuille BESS (31 Sites / 15.5 MW)</span>
-                <span>Document Confidentiel — Strictement réservé aux investisseurs habilités</span>
-                <span className="font-bold text-slate-700">Page 1 / 6</span>
               </div>
             </div>
 
-            {/* PAGE 2 : Note Réglementaire TURPE 7 & CRE 2025-227 */}
-            <div
-              className="bess-dossier-page"
-              style={{
-                width: '1414px',
-                height: '1000px',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-                padding: '40px 48px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}
-            >
-              {/* Header Page */}
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                <div className="text-xs font-black text-slate-900 tracking-wider">NELSON ENERGY • CADRE RÉGLEMENTAIRE</div>
-                <div className="text-xs font-bold text-blue-700">DÉLIBÉRATION CRE 2025-227 & TURPE 7</div>
+            {/* Cartouche bas de page */}
+            <div className="border-t border-slate-200 pt-3 flex justify-between items-center text-[11px] text-slate-500 font-medium">
+              <span>ENR COURTAGE SAS • Dossier d'Investissement Institutionnel BESS</span>
+              <span>Modèle certifié Délibération CRE 2025-227</span>
+              <span className="font-bold text-slate-700">Planche 1 / {isPort ? '6' : '5'} (Paysage)</span>
+            </div>
+          </section>
+
+          {/* ========================================================================= */}
+          {/* PLANCHE 2 : DÉCRYPTAGE RÉGLEMENTAIRE TURPE 7 & DÉLIBÉRATION CRE 2025-227 */}
+          {/* ========================================================================= */}
+          <section className="bess-render-page mx-auto bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md flex flex-col justify-between" style={{ width: '1380px', minHeight: '940px', boxSizing: 'border-box' }}>
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-5">
+                <div className="flex items-center gap-4">
+                  <img src="/logo-enr-courtage-inline.png" alt="ENR COURTAGE" className="h-10 w-auto object-contain" />
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider text-cyan-700 bg-cyan-50 px-2.5 py-0.5 rounded-md border border-cyan-200">
+                      Levier Réglementaire & Juridique
+                    </span>
+                    <h2 className="text-2xl font-black text-[#0b192c] tracking-tight mt-1">
+                      TURPE 7 & Délibération CRE 2025–227 : Le Pivot de Rentabilité du BESS
+                    </h2>
+                    <p className="text-xs font-medium text-slate-600 mt-0.5">
+                      Comment les nouvelles règles tarifaires de la Commission de Régulation de l'Énergie décuplent les rendements du stockage en France.
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-300">
+                    {isPort ? '+439 673 € / an de marge brute' : '+14 183 € / an de marge brute'}
+                  </span>
+                </div>
               </div>
 
-              {/* Titre de section */}
-              <div>
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black uppercase">
-                  NOTE D'ANALYSE RÉGLEMENTAIRE
-                </span>
-                <h2 className="text-xl font-black text-slate-900 mt-1">
-                  TURPE 7 & DÉLIBÉRATION CRE 2025-227 : LE CATALYSEUR DU STOCKAGE BESS
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Analyse des leviers juridiques et tarifaires entrés en vigueur au 1er novembre 2025 pour les actifs de stockage raccordés en HTA.
-                </p>
-              </div>
-
-              {/* 4 Blocs d'analyse réglementaire */}
-              <div className="grid grid-cols-2 gap-4 my-2">
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-blue-900 uppercase flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-blue-600" />
-                    1. Fin de la Double Imposition Réseau (Neutralité Stockage)
+              {/* Les 4 Piliers en cartes blanches avec bordures de couleur */}
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="bg-white border-2 border-cyan-200 rounded-2xl p-4 shadow-sm relative">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-800 flex items-center justify-center font-black text-sm mb-2.5">
+                    01
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Historiquement, le stockage stationnaire subissait le tarif d'acheminement réseau (TURPE) deux fois : lors du soutirage de l'électricité puis lors de sa réinjection. La Délibération de la Commission de Régulation de l'Énergie (CRE 2025-78 et CRE 2025-227) consacre le <b>principe fondamental de neutralité</b> : l'énergie soutirée pour être réinjectée ultérieurement sur le réseau public est totalement exemptée de la composante de soutirage variable. Seules les pertes de conversion physique (rendement de cycle de 88 %) supportent la taxe d'acheminement.
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-1">Fin du Double Péage Réseau</h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed text-justify">
+                    La CRE neutralise totalement la part variable d'acheminement sur l'électricité soutirée dès lors qu'elle est réinjectée. Seules les pertes de conversion physique (12% pour un rendement de 88%) supportent la part variable.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-indigo-900 uppercase flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-indigo-600" />
-                    2. Grille HTA1 Courte Utilisation (CU) Optimisée
+                <div className="bg-white border-2 border-blue-200 rounded-2xl p-4 shadow-sm relative">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-black text-sm mb-2.5">
+                    02
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Les 31 unités du portefeuille sont raccordées sous l'option <b>HTA1 Courte Utilisation (CU)</b>. Ce barème applique une composante fixe de puissance modérée (kp = 13,20 €/kW/an) complétée par les composantes annuelles de gestion (CG = 264,96 €/an) et de comptage 4 quadrants télé-relevé (CC = 396,00 €/an). Ce dispositif remplace avantageusement les tarifs pénalisants sans abattement et stabilise l'OPEX réseau prévisionnel à ~18 €/kW/an.
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-1">Tarif HTA1 Courte Utilisation</h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed text-justify">
+                    Application d'une composante fixe de puissance modérée (13.20 €/kW/an) et de gestion/comptage 4 quadrants télé-relevé, plafonnant le coût d'accès réseau à seulement ~8 317 € par unité de 500 kW.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-emerald-900 uppercase flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-emerald-600" />
-                    3. Signaux-Prix Géographiques & Postes Sources (Annexe 2025-227)
+                <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm relative">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-black text-sm mb-2.5">
+                    03
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    L'Annexe officielle de la délibération CRE 2025-227 répertorie <b>3 357 postes sources</b> en métropole. Chaque poste est qualifié selon ses contraintes locales d'injection ou de soutirage. Le portefeuille bénéficie d'une cartographie précise des postes sources ODRE, garantissant que les recharges nocturnes et méridiennes s'effectuent sans créer de congestion et en bénéficiant de conditions tarifaires privilégiées.
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-1">Signaux-Prix Géographiques</h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed text-justify">
+                    L'Annexe CRE 2025-227 cartographie les 3 357 postes sources. Dans le Sud (zones d'injection solaire), le stockage absorbe la saturation photovoltaïque à midi et bénéficie d'une valorisation accrue de flexibilité.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-amber-900 uppercase flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-amber-600" />
-                    4. Impact Économique Massif sur l'EBITDA du Portefeuille
+                <div className="bg-white border-2 border-purple-200 rounded-2xl p-4 shadow-sm relative">
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center font-black text-sm mb-2.5">
+                    04
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    La neutralité du TURPE 7 permet d'économiser plus de <b>27 €/kW/an</b> par rapport aux anciennes grilles de consommation industrielle, soit un gain direct de plus de <b>420 000 €/an d'EBITDA net</b> à l'échelle du portefeuille de 15.5 MW. Ce cadre réglementaire sécurise la bancabilité du projet auprès des bailleurs de fonds seniors et booste le TRI equity au-delà de 14 %.
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-1">Impact Direct sur le TRI</h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed text-justify">
+                    L'économie de plus de 14 000 €/an par tranche de 500 kW gonfle directement l'EBITDA distribuable, ramenant le temps de retour sur investissement sous la barre des 5 ans sans effet de levier (et 2.3 ans avec dette).
                   </p>
                 </div>
               </div>
 
               {/* Tableau comparatif Avant / Après */}
-              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm my-1">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-900 text-white font-bold uppercase text-[10px]">
-                    <tr>
-                      <th className="p-2.5">Composante Tarifaire</th>
-                      <th className="p-2.5">Régime Historique (Sans Délibération)</th>
-                      <th className="p-2.5 bg-blue-900">Régime TURPE 7 CRE 2025-227 (Appliqué)</th>
-                      <th className="p-2.5 text-right">Gain Net pour 15.5 MW</th>
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700 font-extrabold uppercase tracking-wider border-b border-slate-200">
+                      <th className="py-3 px-4">Composante Tarifaire d'Acheminement</th>
+                      <th className="py-3 px-4 text-rose-700">Ancien Régime (Sans Neutralité)</th>
+                      <th className="py-3 px-4 text-emerald-700">Régime TURPE 7 Délibération CRE 2025-227</th>
+                      <th className="py-3 px-4 text-right">Gain Annuel Net {isPort ? '(Consolidé 31 Sites)' : '(Par 500 kW)'}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 text-slate-700 bg-white">
-                    <tr>
-                      <td className="p-2 font-bold">Taxation de l'énergie réinjectée</td>
-                      <td className="p-2 text-red-600 font-semibold">Double taxation (soutirage + injection)</td>
-                      <td className="p-2 font-black text-emerald-700 bg-emerald-50/50">Neutralité totale (Exonération part variable)</td>
-                      <td className="p-2 text-right font-black text-emerald-600">+ 310 k€ / an</td>
+                  <tbody className="divide-y divide-slate-100 text-slate-800 font-medium">
+                    <tr className="hover:bg-slate-50 transition-colors">
+                      <td className="py-2.5 px-4 font-bold text-[#0b192c]">Composante de Soutirage Variable (CS)</td>
+                      <td className="py-2.5 px-4 text-rose-600">Plein tarif sur 100% de l'énergie chargée</td>
+                      <td className="py-2.5 px-4 font-semibold text-emerald-700">Exonération totale sur les 88% d'énergie réinjectée</td>
+                      <td className="py-2.5 px-4 text-right font-black text-emerald-600">+{isPort ? '347 200 € / an' : '11 200 € / an'}</td>
                     </tr>
-                    <tr>
-                      <td className="p-2 font-bold">Postes Horosaisonniers (P / HPH / HCH)</td>
-                      <td className="p-2">Facturation plein tarif sans distinction de cycle</td>
-                      <td className="p-2 font-black text-emerald-700 bg-emerald-50/50">Abattement proportionnel au rendement (88%)</td>
-                      <td className="p-2 text-right font-black text-emerald-600">+ 110 k€ / an</td>
+                    <tr className="hover:bg-slate-50 transition-colors">
+                      <td className="py-2.5 px-4 font-bold text-[#0b192c]">Composante Fixe de Puissance (CS Fixe)</td>
+                      <td className="py-2.5 px-4 text-slate-500">Tarification longue utilisation rigide</td>
+                      <td className="py-2.5 px-4 font-semibold text-emerald-700">Formule HTA1 Courte Utilisation (13.20 €/kW/an)</td>
+                      <td className="py-2.5 px-4 text-right font-black text-emerald-600">+{isPort ? '55 800 € / an' : '1 800 € / an'}</td>
                     </tr>
-                    <tr>
-                      <td className="p-2 font-bold">Coût global annuel par kW</td>
-                      <td className="p-2 text-slate-500">~45.00 € / kW / an</td>
-                      <td className="p-2 font-black text-blue-900 bg-blue-50/50">~18.00 € / kW / an (HTA1 CU)</td>
-                      <td className="p-2 text-right font-black text-blue-900">+ 420 k€ / an</td>
+                    <tr className="hover:bg-slate-50 transition-colors">
+                      <td className="py-2.5 px-4 font-bold text-[#0b192c]">Pertes Réseau non récupérables</td>
+                      <td className="py-2.5 px-4 text-slate-500">Double taxation cumulée</td>
+                      <td className="py-2.5 px-4 font-semibold text-emerald-700">Strictement limitée aux 12% de conversion de cycle</td>
+                      <td className="py-2.5 px-4 text-right font-black text-emerald-600">+{isPort ? '17 050 € / an' : '550 € / an'}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50 transition-colors">
+                      <td className="py-2.5 px-4 font-bold text-[#0b192c]">Composantes de Gestion & Comptage (CG/CC)</td>
+                      <td className="py-2.5 px-4 text-slate-500">Forfaits conventionnels</td>
+                      <td className="py-2.5 px-4 font-semibold text-emerald-700">Comptage 4 quadrants télé-relevé Enedis (661 €/an/site)</td>
+                      <td className="py-2.5 px-4 text-right font-black text-emerald-600">+{isPort ? '19 623 € / an' : '633 € / an'}</td>
+                    </tr>
+                    <tr className="bg-cyan-50/70 border-t-2 border-cyan-300 font-bold">
+                      <td className="py-3 px-4 text-[#0b192c] text-sm">TOTAL FACTURE ANNUELLE TURPE RÉSEAU</td>
+                      <td className="py-3 px-4 text-rose-600 line-through text-sm">~{isPort ? '697 500 € / an' : '22 500 € / an'}</td>
+                      <td className="py-3 px-4 text-cyan-800 text-sm font-black">{isPort ? '257 827 € / an' : '8 317 € / an'}</td>
+                      <td className="py-3 px-4 text-right text-emerald-700 text-sm font-black">+{isPort ? '439 673 € / an' : '14 183 € / an'} économisés</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-
-              {/* Footer Page */}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-[10px] text-slate-400 font-medium">
-                <span>NELSON ENERGY • Note d'Analyse Réglementaire TURPE 7</span>
-                <span>Délibération CRE n° 2025-227 & Journal Officiel de la République Française</span>
-                <span className="font-bold text-slate-700">Page 2 / 6</span>
-              </div>
             </div>
 
-            {/* PAGE 3 : Note Technique & Économique Stand-Alone & Value Stacking 2 c/j */}
-            <div
-              className="bess-dossier-page"
-              style={{
-                width: '1414px',
-                height: '1000px',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-                padding: '40px 48px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}
-            >
-              {/* Header Page */}
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                <div className="text-xs font-black text-slate-900 tracking-wider">NELSON ENERGY • MODÈLE ÉCONOMIQUE</div>
-                <div className="text-xs font-bold text-indigo-700">BESS STAND-ALONE & VALUE STACKING (2 CYCLES / JOUR)</div>
-              </div>
-
-              {/* Titre de section */}
-              <div>
-                <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-black uppercase">
-                  INGÉNIERIE DE MARCHÉ & DISPATCH
-                </span>
-                <h2 className="text-xl font-black text-slate-900 mt-1">
-                  RENTABILITÉ OPTIMISÉE : LE TRIPLE FLUX DU VALUE STACKING À 2 CYCLES / JOUR
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Pourquoi le stockage Stand-Alone autonome et un profil opérationnel à 2 cycles quotidiens maximisent la valeur marchande.
-                </p>
-              </div>
-
-              {/* 3 flux de valeur + Stratégie 2 cycles */}
-              <div className="grid grid-cols-3 gap-4 my-2">
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-blue-900 uppercase flex items-center gap-1.5">
-                    <Activity className="w-4 h-4 text-blue-600" />
-                    1. Réserve FCR 50 Hz & aFRR
-                  </div>
-                  <div className="text-lg font-black text-slate-900">~20 € / MW / h</div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Rémunération de la mise à disposition de puissance symétrique en temps réel. Piloté par le BMS, le système réagit en moins de 500 millisecondes aux fluctuations de la fréquence européenne, assurant une rente socle stable et indépendante des cours spot.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-amber-900 uppercase flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-amber-600" />
-                    2. Mécanisme de Capacité
-                  </div>
-                  <div className="text-lg font-black text-slate-900">~35 € / kW / an</div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Certification de la puissance garantie disponible lors des pointes hivernales (jours PP2 fixés par RTE). Les certificats de capacité sont cédés aux fournisseurs obligés, constituant un revenu récurrent contractuel et dérisqué.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-emerald-900 uppercase flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    3. Arbitrage Spot à 2 Cycles/J
-                  </div>
-                  <div className="text-lg font-black text-slate-900">Spread ~40 € / MWh net</div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Exploitation de la volatilité horaire des prix EPEX SPOT (Day-Ahead & Intraday). La modélisation à <b>2 cycles complets par jour</b> double le volume d'énergie traité tout en restant sous les seuils de garantie thermique LFP.
-                  </p>
-                </div>
-              </div>
-
-              {/* Chronologie journalière des 2 cycles */}
-              <div className="bg-gradient-to-r from-slate-900 to-blue-950 text-white p-4 rounded-xl space-y-2 my-1">
-                <div className="text-xs font-black uppercase text-amber-300 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  Chronologie Opérationnelle des 2 Cycles Quotidiens (24h)
-                </div>
-                <div className="grid grid-cols-4 gap-3 text-xs">
-                  <div className="bg-white/10 p-2.5 rounded-lg border border-white/15">
-                    <div className="text-emerald-300 font-bold">01h00 - 05h00 • RECHARGE 1</div>
-                    <div className="text-[11px] text-slate-300 mt-1">Recharge nocturne au creux de prix (surproduction éolienne, bas coût d'achat spot).</div>
-                  </div>
-                  <div className="bg-white/10 p-2.5 rounded-lg border border-white/15">
-                    <div className="text-amber-300 font-bold">07h30 - 09h30 • DÉCHARGE 1</div>
-                    <div className="text-[11px] text-slate-300 mt-1">Décharge lors de la pointe matinale d'activité industrielle et résidentielle.</div>
-                  </div>
-                  <div className="bg-white/10 p-2.5 rounded-lg border border-white/15">
-                    <div className="text-emerald-300 font-bold">12h00 - 15h00 • RECHARGE 2</div>
-                    <div className="text-[11px] text-slate-300 mt-1">Recharge méridienne lors du creux solaire (prix spot bas voire négatifs).</div>
-                  </div>
-                  <div className="bg-white/10 p-2.5 rounded-lg border border-white/15">
-                    <div className="text-amber-300 font-bold">18h30 - 21h00 • DÉCHARGE 2</div>
-                    <div className="text-[11px] text-slate-300 mt-1">Décharge lors de la pointe du soir à fort spread tarifaire pour RTE et le marché.</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Rôle de l'Agrégateur */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-center justify-between">
-                <div>
-                  <b className="text-slate-900">Agrégation & Dispatch Temps Réel :</b> Supervision 24/7 par un agrégateur certifié RTE avec algorithmes de prédiction météo et prix spot.
-                </div>
-                <span className="px-3 py-1 bg-blue-100 text-blue-900 font-bold rounded-lg text-[11px]">
-                  Commission à la performance : 18 % du CA Brut
-                </span>
-              </div>
-
-              {/* Footer Page */}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-[10px] text-slate-400 font-medium">
-                <span>NELSON ENERGY • Analyse Économique & Value Stacking</span>
-                <span>Optimisation Algorithmique 2 Cycles/Jour • EPEX SPOT & RTE</span>
-                <span className="font-bold text-slate-700">Page 3 / 6</span>
-              </div>
+            <div className="border-t border-slate-200 pt-3 flex justify-between items-center text-[11px] text-slate-500 font-medium">
+              <span>ENR COURTAGE SAS • Direction Juridique & Régulation Énergie</span>
+              <span>Arrêté CRE 2025-78 & Délibération 2025-227</span>
+              <span className="font-bold text-slate-700">Planche 2 / {isPort ? '6' : '5'} (Paysage)</span>
             </div>
+          </section>
 
-            {/* PAGE 4 : Modèle Financier Consolidé 15 Ans Pleine Largeur */}
-            <div
-              className="bess-dossier-page"
-              style={{
-                width: '1414px',
-                height: '1000px',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-                padding: '36px 44px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}
-            >
-              {/* Header Page */}
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <div className="text-xs font-black text-slate-900 tracking-wider">NELSON ENERGY • MODÈLE PRÉVISIONNEL CONSOLIDÉ</div>
-                <div className="text-xs font-bold text-blue-700">CHRONIQUE FINANCIÈRE 15 ANS (15.5 MW / 32.36 MWh)</div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-black text-slate-900">
-                  PLAN D'AFFAIRES PRÉVISIONNEL CONSOLIDÉ SUR 15 ANS
-                </h2>
-                <p className="text-[11px] text-slate-500">
-                  Montants cumulés pour les 31 sites (en euros constants avec inflation 2%/an et dégradation de capacité 1.5%/an).
-                </p>
-              </div>
-
-              {/* Grand tableau 15 ans pleine largeur */}
-              <div className="border border-slate-300 rounded-xl overflow-hidden shadow-sm my-1">
-                <table className="w-full text-[10px] text-right border-collapse">
-                  <thead className="bg-slate-900 text-white font-bold uppercase text-[9px]">
-                    <tr>
-                      <th className="p-1.5 text-left">Poste (€)</th>
-                      {portChronique.map(c => (
-                        <th key={c.year} className="p-1.5 text-center">A{c.year}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 text-slate-700 bg-white">
-                    <tr className="bg-blue-50/40 font-bold">
-                      <td className="p-1.5 text-left text-blue-950">Chiffre d'Affaires Brut</td>
-                      {portChronique.map(c => (
-                        <td key={c.year} className="p-1.5 text-blue-900 font-bold">{Math.round(c.ca / 1000)}k</td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <td className="p-1.5 text-left text-slate-600 pl-3">Total OPEX (TURPE, Maint, Comm, Recharge)</td>
-                      {portChronique.map(c => (
-                        <td key={c.year} className="p-1.5 text-red-600">-{Math.round(c.opex / 1000)}k</td>
-                      ))}
-                    </tr>
-                    <tr className="bg-emerald-50/60 font-black">
-                      <td className="p-1.5 text-left text-emerald-950">EBITDA Consolidé</td>
-                      {portChronique.map(c => (
-                        <td key={c.year} className="p-1.5 text-emerald-800 font-black">{Math.round(c.ebitda / 1000)}k</td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <td className="p-1.5 text-left text-slate-600 pl-3">Service de la Dette (12 ans @ 4.3%)</td>
-                      {portChronique.map(c => (
-                        <td key={c.year} className="p-1.5 text-amber-700">{c.serviceDette > 0 ? `-${Math.round(c.serviceDette / 1000)}k` : '—'}</td>
-                      ))}
-                    </tr>
-                    <tr className="bg-slate-100 font-bold">
-                      <td className="p-1.5 text-left text-slate-900">Cash-Flow Net Annuel</td>
-                      {portChronique.map(c => (
-                        <td key={c.year} className="p-1.5 text-slate-900 font-bold">{Math.round(c.cfNet / 1000)}k</td>
-                      ))}
-                    </tr>
-                    <tr className="bg-indigo-50 font-black">
-                      <td className="p-1.5 text-left text-indigo-950">Trésorerie Nette Cumulée</td>
-                      {portChronique.map(c => (
-                        <td key={c.year} className="p-1.5 text-indigo-900 font-black">{Math.round(c.cumulCf / 1000)}k</td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Ratios & Hypothèses */}
-              <div className="grid grid-cols-4 gap-3 my-1">
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Investissement Initial</span>
-                  <b className="text-slate-900 text-sm">{fmtM(portTotals.totalCapex)}</b>
-                </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">TRI Projet 15 Ans</span>
-                  <b className="text-emerald-700 text-sm">{(portTotals.triConsolide || 10.8).toFixed(1)} %</b>
-                </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Payback Prorata Temporis</span>
-                  <b className="text-blue-700 text-sm">{(portTotals.paybackConsol || 7.3).toFixed(1)} ans</b>
-                </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Trésorerie Générée 15 ans</span>
-                  <b className="text-indigo-700 text-sm">{fmtM(portChronique[portChronique.length - 1]?.cumulCf || 7850000)}</b>
-                </div>
-              </div>
-
-              {/* Footer Page */}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-[10px] text-slate-400 font-medium">
-                <span>NELSON ENERGY • Modèle Financier 15 Ans Consolidé</span>
-                <span>Modélisation certifiée • Taux actualisation 6.0% • Fiscalité IS 25%</span>
-                <span className="font-bold text-slate-700">Page 4 / 6</span>
-              </div>
-            </div>
-
-            {/* PAGE 5 : Tableau des Sites (1 à 16) Pleine Largeur */}
-            <div
-              className="bess-dossier-page"
-              style={{
-                width: '1414px',
-                height: '1000px',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-                padding: '36px 44px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <div className="text-xs font-black text-slate-900 tracking-wider">NELSON ENERGY • RÉPERTOIRE TECHNIQUE SITES (PARTIE 1)</div>
-                <div className="text-xs font-bold text-blue-700">SITES 1 À 16 SUR 31 • QUALIFICATION ENEDIS & CRE 2025-227</div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-black text-slate-900">
-                  RÉPERTOIRE GÉOGRAPHIQUE & RÉSEAU DES PROJETS (1/2)
-                </h2>
-                <p className="text-[11px] text-slate-500">
-                  Chaque site dispose d'une emprise dédiée de 500 kW / 1 044 kWh avec rattachement ODRE au poste source le plus proche.
-                </p>
-              </div>
-
-              {/* Table pleine largeur des 16 premiers sites */}
-              <div className="border border-slate-300 rounded-xl overflow-hidden shadow-sm my-1">
-                <table className="w-full text-[10px] text-left border-collapse">
-                  <thead className="bg-slate-900 text-white font-bold uppercase text-[9px]">
-                    <tr>
-                      <th className="p-1.5 text-center">N°</th>
-                      <th className="p-1.5">Site</th>
-                      <th className="p-1.5">Commune</th>
-                      <th className="p-1.5">SPV</th>
-                      <th className="p-1.5">Poste Source ODRE</th>
-                      <th className="p-1.5 text-right">Dist.</th>
-                      <th className="p-1.5 text-right">S3REnR</th>
-                      <th className="p-1.5">Zone CRE 2025-227</th>
-                      <th className="p-1.5 text-right">CAPEX</th>
-                      <th className="p-1.5 text-right">EBITDA A1</th>
-                      <th className="p-1.5 text-right">TRI</th>
-                      <th className="p-1.5 text-right">Payback</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 text-slate-700 bg-white">
-                    {sitesPage1.map((s, idx) => (
-                      <tr key={s.id || idx} className={idx % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}>
-                        <td className="p-1.5 text-center font-bold text-slate-400">{s.index || idx + 1}</td>
-                        <td className="p-1.5 font-bold text-slate-900">{s.name}</td>
-                        <td className="p-1.5 text-slate-600">{s.city} ({s.postcode})</td>
-                        <td className="p-1.5"><span className="px-1 py-0.5 bg-blue-50 text-blue-800 rounded font-semibold text-[9px]">{s.spv}</span></td>
-                        <td className="p-1.5 font-semibold text-slate-800">{s.substation?.name || 'Poste ODRE'}</td>
-                        <td className="p-1.5 text-right text-slate-600">{s.substation?.distanceKm || 0} km</td>
-                        <td className="p-1.5 text-right text-slate-600">{s.substation?.quotePartS3renr || '—'}</td>
-                        <td className="p-1.5">
-                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-emerald-100 text-emerald-800">
-                            {s.creQualification?.label || 'Zone Standard'}
-                          </span>
-                        </td>
-                        <td className="p-1.5 text-right font-bold text-slate-800">{Math.round(s.capexTotal / 1000)} k€</td>
-                        <td className="p-1.5 text-right font-black text-emerald-700">{Math.round(s.ebitda / 1000)} k€</td>
-                        <td className="p-1.5 text-right font-bold text-indigo-700">{(s.triProjet || 10.5).toFixed(1)}%</td>
-                        <td className="p-1.5 text-right font-semibold text-slate-700">{(s.payback || 7.4).toFixed(1)} a</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Footer Page */}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-[10px] text-slate-400 font-medium">
-                <span>NELSON ENERGY • Répertoire Portefeuille (1/2)</span>
-                <span>31 Unités Standardisées CESC Mercury 261 (500 kW / 1044 kWh)</span>
-                <span className="font-bold text-slate-700">Page 5 / 6</span>
-              </div>
-            </div>
-
-            {/* PAGE 6 : Tableau des Sites (17 à 31) & Consolidation Pleine Largeur */}
-            <div
-              className="bess-dossier-page"
-              style={{
-                width: '1414px',
-                height: '1000px',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-                padding: '36px 44px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <div className="text-xs font-black text-slate-900 tracking-wider">NELSON ENERGY • RÉPERTOIRE TECHNIQUE SITES (PARTIE 2)</div>
-                <div className="text-xs font-bold text-blue-700">SITES 17 À 31 SUR 31 & SYNTHÈSE GLOBALE</div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-black text-slate-900">
-                  RÉPERTOIRE GÉOGRAPHIQUE & RÉSEAU DES PROJETS (2/2)
-                </h2>
-                <p className="text-[11px] text-slate-500">
-                  Détail opérationnel des 15 derniers sites et ligne de consolidation globale du portefeuille de 15.5 MW.
-                </p>
-              </div>
-
-              {/* Table pleine largeur des sites 17 à 31 */}
-              <div className="border border-slate-300 rounded-xl overflow-hidden shadow-sm my-1">
-                <table className="w-full text-[10px] text-left border-collapse">
-                  <thead className="bg-slate-900 text-white font-bold uppercase text-[9px]">
-                    <tr>
-                      <th className="p-1.5 text-center">N°</th>
-                      <th className="p-1.5">Site</th>
-                      <th className="p-1.5">Commune</th>
-                      <th className="p-1.5">SPV</th>
-                      <th className="p-1.5">Poste Source ODRE</th>
-                      <th className="p-1.5 text-right">Dist.</th>
-                      <th className="p-1.5 text-right">S3REnR</th>
-                      <th className="p-1.5">Zone CRE 2025-227</th>
-                      <th className="p-1.5 text-right">CAPEX</th>
-                      <th className="p-1.5 text-right">EBITDA A1</th>
-                      <th className="p-1.5 text-right">TRI</th>
-                      <th className="p-1.5 text-right">Payback</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 text-slate-700 bg-white">
-                    {sitesPage2.map((s, idx) => (
-                      <tr key={s.id || idx} className={idx % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}>
-                        <td className="p-1.5 text-center font-bold text-slate-400">{s.index || idx + 17}</td>
-                        <td className="p-1.5 font-bold text-slate-900">{s.name}</td>
-                        <td className="p-1.5 text-slate-600">{s.city} ({s.postcode})</td>
-                        <td className="p-1.5"><span className="px-1 py-0.5 bg-blue-50 text-blue-800 rounded font-semibold text-[9px]">{s.spv}</span></td>
-                        <td className="p-1.5 font-semibold text-slate-800">{s.substation?.name || 'Poste ODRE'}</td>
-                        <td className="p-1.5 text-right text-slate-600">{s.substation?.distanceKm || 0} km</td>
-                        <td className="p-1.5 text-right text-slate-600">{s.substation?.quotePartS3renr || '—'}</td>
-                        <td className="p-1.5">
-                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-emerald-100 text-emerald-800">
-                            {s.creQualification?.label || 'Zone Standard'}
-                          </span>
-                        </td>
-                        <td className="p-1.5 text-right font-bold text-slate-800">{Math.round(s.capexTotal / 1000)} k€</td>
-                        <td className="p-1.5 text-right font-black text-emerald-700">{Math.round(s.ebitda / 1000)} k€</td>
-                        <td className="p-1.5 text-right font-bold text-indigo-700">{(s.triProjet || 10.5).toFixed(1)}%</td>
-                        <td className="p-1.5 text-right font-semibold text-slate-700">{(s.payback || 7.4).toFixed(1)} a</td>
-                      </tr>
-                    ))}
-                    {/* Ligne Totaux Consolidés */}
-                    <tr className="bg-gradient-to-r from-slate-900 to-blue-950 text-white font-black text-[10px]">
-                      <td colSpan={8} className="p-2 text-left uppercase tracking-wider">
-                        TOTAL CONSOLIDÉ PORTEFEUILLE (31 SITES • 15.5 MW / 32.36 MWh)
-                      </td>
-                      <td className="p-2 text-right text-emerald-400 font-black">{fmtM(portTotals.totalCapex)}</td>
-                      <td className="p-2 text-right text-emerald-400 font-black">{fmtM(portTotals.totalEbitdaAn1)}</td>
-                      <td className="p-2 text-right text-amber-300 font-black">{(portTotals.triConsolide || 10.8).toFixed(1)}%</td>
-                      <td className="p-2 text-right text-white font-black">{(portTotals.paybackConsol || 7.3).toFixed(1)} a</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Cartouche d'engagement institutionnel */}
-              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-xs flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-900">Validité des Raccordements & Données Réseau :</div>
-                  <div className="text-slate-500 text-[11px]">Données synchronisées avec les bases de données Caparéseau / ODRE Enedis et la Délibération CRE 2025-227.</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">Contact Projet</div>
-                  <div className="text-xs font-black text-blue-900">contact@enr-courtage-energie.fr</div>
-                </div>
-              </div>
-
-              {/* Footer Page */}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-[10px] text-slate-400 font-medium">
-                <span>NELSON ENERGY • Répertoire Portefeuille (2/2)</span>
-                <span>Document d'Ingénierie Financière • Tous droits réservés</span>
-                <span className="font-bold text-slate-700">Page 6 / 6</span>
-              </div>
-            </div>
-          </>
-        ) : (
-          /* ── PAGES DU PROJET INDIVIDUEL (UNITAIRE) ─────────────────────── */
-          <>
-            {/* PAGE 1 : Page de Garde & Executive Summary Unitaire */}
-            <div
-              className="bess-dossier-page"
-              style={{
-                width: '1414px',
-                height: '1000px',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-                padding: '40px 48px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-900 text-white font-black text-xl flex items-center justify-center">
-                    N
-                  </div>
+          {/* ========================================================================= */}
+          {/* PLANCHE 3 : VALUE STACKING & 2 CYCLES / JOUR (FOND BLANC) */}
+          {/* ========================================================================= */}
+          <section className="bess-render-page mx-auto bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md flex flex-col justify-between" style={{ width: '1380px', minHeight: '940px', boxSizing: 'border-box' }}>
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-5">
+                <div className="flex items-center gap-4">
+                  <img src="/logo-enr-courtage-inline.png" alt="ENR COURTAGE" className="h-10 w-auto object-contain" />
                   <div>
-                    <div className="text-base font-black text-slate-900 tracking-wider">NELSON ENERGY • ENR COURTAGE</div>
-                    <div className="text-[11px] text-slate-500 font-semibold">Étude Technico-Économique BESS Stand-Alone</div>
+                    <span className="text-xs font-black uppercase tracking-wider text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-md border border-purple-200">
+                      Valorisation Marché & Trading Algorithmique
+                    </span>
+                    <h2 className="text-2xl font-black text-[#0b192c] tracking-tight mt-1">
+                      L'Empilement de Valeur (Value Stacking) à 2 Cycles Quotidiens
+                    </h2>
+                    <p className="text-xs font-medium text-slate-600 mt-0.5">
+                      Monétisation 24h/24 combinant réserve primaire 50 Hz, réserve rapide aFRR PICASSO, capacité RTE et arbitrage spot.
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="px-3 py-1 bg-blue-50 border border-blue-200 text-blue-900 rounded-full text-xs font-black uppercase">
-                    DOSSIER D'INVESTISSEMENT INDIVIDUEL
+                  <span className="text-xs font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-300">
+                    Chiffre d'Affaires Brut : {isPort ? '3 843 318 € / an' : '123 978 € / an'}
                   </span>
-                  <div className="text-[11px] text-slate-400 mt-1 font-medium">
-                    Édition du {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                  </div>
                 </div>
               </div>
 
-              {/* Titre Projet */}
-              <div className="my-2 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white p-6 rounded-2xl shadow-md flex items-center justify-between">
-                <div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-black uppercase">
-                    CADRE TURPE 7 CRE 2025-227
-                  </span>
-                  <h1 className="text-2xl font-black mt-2 tracking-tight">
-                    PROJET : {unitProject.name || 'CENTRALE BESS STAND-ALONE'}
-                  </h1>
-                  <p className="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
-                    Unité de stockage stationnaire de {unitPower} kW / {unitCapacity} kWh (2h LFP) • Raccordement HTA Enedis • Valorisation optimisée en Value Stacking (2 cycles/j).
-                  </p>
-                </div>
-                <div className="text-right bg-white/10 border border-white/20 p-4 rounded-xl">
-                  <div className="text-[10px] text-slate-300 uppercase font-bold">Investissement CAPEX</div>
-                  <div className="text-2xl font-black text-emerald-400 mt-0.5">{fmtEur(unitCapex)}</div>
-                  <div className="text-[10px] text-slate-300 mt-0.5">{Math.round(unitCapex / unitPower)} € / kW</div>
-                </div>
-              </div>
-
-              {/* 6 Cartouches KPI Unitaire */}
-              <div className="grid grid-cols-6 gap-3.5 my-1">
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">Puissance</div>
-                  <div className="text-xl font-black text-slate-900 mt-1">{unitPower} kW</div>
-                  <div className="text-[10px] font-bold text-blue-600 mt-0.5">Poste HTA 20 kV</div>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">Capacité</div>
-                  <div className="text-xl font-black text-slate-900 mt-1">{unitCapacity} kWh</div>
-                  <div className="text-[10px] font-bold text-indigo-600 mt-0.5">4 Armoires 261 kWh</div>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">CA Brut An 1</div>
-                  <div className="text-xl font-black text-blue-900 mt-1">{fmtEur(unitCaAn1)}</div>
-                  <div className="text-[10px] font-bold text-slate-500 mt-0.5">2 cycles / jour</div>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">EBITDA An 1</div>
-                  <div className="text-xl font-black text-emerald-700 mt-1">{fmtEur(unitEbitdaAn1)}</div>
-                  <div className="text-[10px] font-bold text-slate-500 mt-0.5">Marge ~45%</div>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">TRI Projet</div>
-                  <div className="text-xl font-black text-indigo-700 mt-1">{(unitTriProjet || 10.5).toFixed(1)} %</div>
-                  <div className="text-[10px] font-bold text-emerald-600 mt-0.5">Payback {(unitPayback || 7.4).toFixed(1)} ans</div>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">Loyer Foncier</div>
-                  <div className="text-xl font-black text-amber-700 mt-1">{fmtEur(unitLoyer)}/an</div>
-                  <div className="text-[10px] font-bold text-slate-500 mt-0.5">Versé au bailleur</div>
-                </div>
-              </div>
-
-              {/* Fiche Technique & Fiche Raccordement */}
-              <div className="grid grid-cols-2 gap-4 my-2">
-                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                  <div className="text-xs font-black text-slate-900 uppercase flex items-center gap-2 mb-2">
-                    <BatteryCharging className="w-4 h-4 text-blue-600" />
-                    Spécifications Techniques de l'Installation
+              {/* Deux colonnes : 3 Flux + Donut & 2 Cycles */}
+              <div className="grid grid-cols-3 gap-5 items-start mb-4">
+                <div className="col-span-2 space-y-3">
+                  <div className="bg-white border-2 border-blue-200 rounded-2xl p-4 flex items-start gap-4 shadow-sm">
+                    <div className="p-2.5 rounded-xl bg-blue-50 text-blue-700 font-black text-sm shrink-0 border border-blue-200">
+                      69.2%
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-xs font-black text-[#0b192c] uppercase tracking-wider">
+                          1. Réserve Primaire 50 Hz (FCR) & PICASSO (aFRR Réglage Secondaire)
+                        </h4>
+                        <span className="text-xs font-black text-blue-700">{kpi.fcr}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 font-medium mt-1 leading-relaxed text-justify">
+                        Rémunération de la mise à disposition de puissance symétrique à la milliseconde pour stabiliser le réseau européen. Temps de réponse &lt; 400 ms certifié par CESC, bien supérieur à la norme de 4s exigée pour les enchères européennes PICASSO.
+                      </p>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-slate-500">Marque / Modèle :</span> <b className="text-slate-800">CESC Mercury 261</b></div>
-                    <div><span className="text-slate-500">Chimie :</span> <b className="text-slate-800">LFP (Lithium Fer Phosphate)</b></div>
-                    <div><span className="text-slate-500">Rendement Round-Trip :</span> <b className="text-slate-800">88.0 %</b></div>
-                    <div><span className="text-slate-500">Disponibilité :</span> <b className="text-slate-800">98.0 %</b></div>
-                    <div><span className="text-slate-500">Emprise au sol :</span> <b className="text-slate-800">~45 m² sur dalle béton</b></div>
-                    <div><span className="text-slate-500">Garantie constructeur :</span> <b className="text-slate-800">15 ans</b></div>
+
+                  <div className="bg-white border-2 border-cyan-200 rounded-2xl p-4 flex items-start gap-4 shadow-sm">
+                    <div className="p-2.5 rounded-xl bg-cyan-50 text-cyan-700 font-black text-sm shrink-0 border border-cyan-200">
+                      23.7%
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-xs font-black text-[#0b192c] uppercase tracking-wider">
+                          2. Arbitrage Spot EPEX (Day-Ahead & Intraday — 2 Cycles / Jour)
+                        </h4>
+                        <span className="text-xs font-black text-cyan-700">{kpi.arb}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 font-medium mt-1 leading-relaxed text-justify">
+                        Exploitation de la volatilité horaire des prix de gros. Exécution de 2 cycles complets par jour : recharge nocturne (surproduction éolienne) et recharge méridienne (surproduction solaire à prix négatifs), restitués aux pics du matin et du soir.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border-2 border-emerald-200 rounded-2xl p-4 flex items-start gap-4 shadow-sm">
+                    <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-700 font-black text-sm shrink-0 border border-emerald-200">
+                      7.1%
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-xs font-black text-[#0b192c] uppercase tracking-wider">
+                          3. Marché de Capacité RTE (Garantie de Puissance Pointes Hiver)
+                        </h4>
+                        <span className="text-xs font-black text-emerald-700">{kpi.capa}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 font-medium mt-1 leading-relaxed text-justify">
+                        Certification de disponibilité lors des jours de tension réseau PP2 (RTE). Cession de garanties de capacité aux fournisseurs obligés, constituant une rente contractuelle annuelle dérisquée.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                  <div className="text-xs font-black text-slate-900 uppercase flex items-center gap-2 mb-2">
-                    <MapPin className="w-4 h-4 text-emerald-600" />
-                    Raccordement Réseau ODRE & Enedis
+                {/* Donut Chart SVG et Chronologie des 2 Cycles */}
+                <div className="bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-wider text-slate-900 mb-2 text-center">
+                      Structure des Revenus An 1
+                    </div>
+
+                    {/* Donut SVG Vectoriel */}
+                    <div className="relative w-36 h-36 mx-auto my-2">
+                      <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+                        {/* FCR 69.2% - stroke #0284c7 */}
+                        <circle cx="18" cy="18" r="14" fill="transparent" stroke="#0284c7" strokeWidth="5" strokeDasharray="69.2 30.8" strokeDashoffset="0"></circle>
+                        {/* Arbitrage 23.7% - stroke #06b6d4 */}
+                        <circle cx="18" cy="18" r="14" fill="transparent" stroke="#06b6d4" strokeWidth="5" strokeDasharray="23.7 76.3" strokeDashoffset="-69.2"></circle>
+                        {/* Capacité 7.1% - stroke #059669 */}
+                        <circle cx="18" cy="18" r="14" fill="transparent" stroke="#059669" strokeWidth="5" strokeDasharray="7.1 92.9" strokeDashoffset="-92.9"></circle>
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">Total</span>
+                        <span className="text-xs font-black text-slate-900">{isPort ? '3.84 M€' : '124 k€'}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-center">
+                      <div className="text-sm font-black text-[#0b192c]">{kpi.totalRevDonut}</div>
+                      <div className="text-[11px] font-bold text-slate-500">{kpi.totalRevSub}</div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-slate-500">Poste Source :</span> <b className="text-slate-800">{unitNet.substationName || unitProject.substation?.name || 'LUBERSAC'}</b></div>
-                    <div><span className="text-slate-500">Tension de livraison :</span> <b className="text-slate-800">HTA 20 kV (HTA1)</b></div>
-                    <div><span className="text-slate-500">Distance linéaire :</span> <b className="text-slate-800">{unitNet.distanceKm ? `${unitNet.distanceKm} km` : '10 m (privée)'}</b></div>
-                    <div><span className="text-slate-500">Quote-Part S3REnR :</span> <b className="text-slate-800">{unitNet.quotePartS3renr || '92.73 k€/MW'}</b></div>
-                    <div><span className="text-slate-500">Qualification CRE :</span> <b className="text-slate-800">{unitNet.creQualification?.label || 'Zone Standard'}</b></div>
-                    <div><span className="text-slate-500">TURPE An 1 délibéré :</span> <b className="text-slate-800">{fmtEur(unitTurpeAn1)}/an</b></div>
+
+                  {/* Chronologie 2 Cycles */}
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-2 text-center">
+                      Cycle Quotidien Standardisé (2 Cycles / Jour)
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      <div className="p-2 rounded-lg bg-blue-50 border border-blue-200 text-center">
+                        <span className="font-black text-blue-800 block">01h - 05h : Charge 1</span>
+                        <span className="text-slate-600 font-medium">Creux éolien de nuit</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-center">
+                        <span className="font-black text-amber-800 block">07h30 - 09h30 : Décharge 1</span>
+                        <span className="text-slate-600 font-medium">Pointe du matin</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-blue-50 border border-blue-200 text-center">
+                        <span className="font-black text-blue-800 block">12h - 15h : Charge 2</span>
+                        <span className="text-slate-600 font-medium">Pic solaire à midi</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-center">
+                        <span className="font-black text-amber-800 block">18h30 - 21h : Décharge 2</span>
+                        <span className="text-slate-600 font-medium">Pointe du soir</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-[10px] text-slate-400 font-medium">
-                <span>NELSON ENERGY • Dossier d'Étude BESS Stand-Alone ({unitProject.name || 'Projet'})</span>
-                <span>Document Confidentiel — Strictement réservé aux investisseurs habilités</span>
-                <span className="font-bold text-slate-700">Page 1 / 4</span>
               </div>
             </div>
 
-            {/* PAGE 2 : Note Réglementaire TURPE 7 Unitaire */}
-            <div
-              className="bess-dossier-page"
-              style={{
-                width: '1414px',
-                height: '1000px',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-                padding: '40px 48px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                <div className="text-xs font-black text-slate-900 tracking-wider">NELSON ENERGY • CADRE RÉGLEMENTAIRE</div>
-                <div className="text-xs font-bold text-blue-700">DÉLIBÉRATION CRE 2025-227 & TURPE 7</div>
-              </div>
-
-              <div>
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black uppercase">
-                  APPLICATION AU PROJET {unitProject.name || ''}
-                </span>
-                <h2 className="text-xl font-black text-slate-900 mt-1">
-                  CADRE RÉGLEMENTAIRE TURPE 7 : NEUTRALITÉ & ABATTEMENT DU STOCKAGE
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Principes fondamentaux de la décision de la CRE applicables à l'installation de stockage {unitPower} kW raccordée en HTA.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 my-2">
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-blue-900 uppercase flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-blue-600" />
-                    1. Fin du Double Péage Réseau pour le Stockage
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Avant la décision de la CRE (2025-78 et 2025-227), les batteries devaient payer la composante de soutirage pour charger l'électricité, puis la taxe d'injection pour la restituer. Le dispositif consacre la <b>neutralité totale du stockage</b> : l'électricité absorbée qui est réinjectée ultérieurement sur le réseau n'est plus assujettie à la composante variable de soutirage. Seules les pertes de conversion (12% pour un rendement de 88%) supportent la part variable.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-indigo-900 uppercase flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-indigo-600" />
-                    2. Option HTA1 Courte Utilisation (CU)
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Le projet bénéficie de la grille HTA1 CU. La prime fixe de puissance (kp = 13,20 €/kW/an) et les composantes fixes de gestion (264,96 €/an) et comptage télé-relevé (396,00 €/an) constituent la quasi-totalité de l'OPEX TURPE, fixant le coût d'acheminement réseau à <b>~{fmtEur(unitTurpeAn1)} / an</b> au lieu de plus de 22 500 €/an sous les anciens tarifs non abattus.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-emerald-900 uppercase flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-emerald-600" />
-                    3. Qualification du Poste Source ({unitNet.substationName || 'ODRE'})
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Selon l'Annexe CRE 2025-227, le poste source de rattachement est répertorié avec sa qualification réseau spécifique ({unitNet.creQualification?.label || 'Zone Standard'}). L'installation participe activement à la flexibilité locale en absorbant les excédents d'énergie aux heures creuses et en réinjectant lors des pointes de demande.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-amber-900 uppercase flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-amber-600" />
-                    4. Sécurisation de la Rentabilité sur 15 Ans
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    L'économie annuelle de plus de 13 500 €/an par rapport aux tarifs historiques permet d'augmenter le TRI de plus de <b>2.5 points de pourcentage</b> et de réduire le temps de retour sur investissement à {unitPayback.toFixed(1)} ans, assurant un profil de risque bancaire conforme aux exigences de financement senior.
-                  </p>
-                </div>
-              </div>
-
-              {/* Bilan chiffré TURPE de l'unité */}
-              <div className="border border-slate-200 rounded-xl p-4 bg-blue-50/50 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-black text-blue-950 uppercase">Facture TURPE 7 Annuelle Estimée pour {unitPower} kW HTA</div>
-                  <div className="text-xs text-slate-600 mt-0.5">CG (265 €) + CC (396 €) + CS fixe ({unitPower} kW × 13.20 €) + Pertes réseau (12% non abattu)</div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xl font-black text-blue-900">{fmtEur(unitTurpeAn1)} / an</span>
-                  <span className="block text-[10px] text-emerald-700 font-bold">Économie de ~13 500 €/an vs tarif standard</span>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-[10px] text-slate-400 font-medium">
-                <span>NELSON ENERGY • Note Réglementaire TURPE 7</span>
-                <span>Délibération CRE n° 2025-227</span>
-                <span className="font-bold text-slate-700">Page 2 / 4</span>
-              </div>
+            <div className="border-t border-slate-200 pt-3 flex justify-between items-center text-[11px] text-slate-500 font-medium">
+              <span>ENR COURTAGE SAS • Trading Algorithmique & Réserves Rapides</span>
+              <span>Compatible Plateforme PICASSO (RTE)</span>
+              <span className="font-bold text-slate-700">Planche 3 / {isPort ? '6' : '5'} (Paysage)</span>
             </div>
+          </section>
 
-            {/* PAGE 3 : Note Technique & Value Stacking 2 c/j Unitaire */}
-            <div
-              className="bess-dossier-page"
-              style={{
-                width: '1414px',
-                height: '1000px',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-                padding: '40px 48px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                <div className="text-xs font-black text-slate-900 tracking-wider">NELSON ENERGY • MODÈLE MARCHÉ</div>
-                <div className="text-xs font-bold text-indigo-700">VALUE STACKING & 2 CYCLES / JOUR</div>
-              </div>
-
-              <div>
-                <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-black uppercase">
-                  EMPILEMENT DES REVENUS OPÉRATIONNELS
-                </span>
-                <h2 className="text-xl font-black text-slate-900 mt-1">
-                  LE TRIPTYQUE VALUE STACKING DU BESS STAND-ALONE
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Combinaison optimale de la régulation de fréquence RTE, du mécanisme de capacité et de l'arbitrage spot sur 2 cycles quotidiens.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 my-2">
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-blue-900 uppercase flex items-center gap-1.5">
-                    <Activity className="w-4 h-4 text-blue-600" />
-                    1. Réserve FCR 50 Hz
-                  </div>
-                  <div className="text-base font-black text-slate-900">~20 € / MW / h • {fmtEur((unitResults.rows?.[0]?.reserve || 85850))} / an</div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Rémunération de la mise à disposition de puissance symétrique en temps réel. Piloté par le BMS, le système réagit en moins de 500 millisecondes aux fluctuations de la fréquence européenne, assurant une rente socle stable et indépendante des cours spot.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-amber-900 uppercase flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-amber-600" />
-                    2. Marché de Capacité
-                  </div>
-                  <div className="text-base font-black text-slate-900">~35 € / kW / an • {fmtEur((unitResults.rows?.[0]?.capacite || 8750))} / an</div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Certification de la puissance garantie disponible lors des pointes hivernales (jours PP2 fixés par RTE). Les certificats de capacité sont cédés aux fournisseurs obligés, constituant un revenu récurrent contractuel et dérisqué.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-xs font-black text-emerald-900 uppercase flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    3. Arbitrage Spot à 2 c/j
-                  </div>
-                  <div className="text-base font-black text-slate-900">Spread 40 € / MWh • {fmtEur((unitResults.rows?.[0]?.arbitrage || 30485))} / an</div>
-                  <p className="text-xs text-slate-600 leading-relaxed text-justify">
-                    Exploitation des 2 cycles quotidiens : recharge nocturne (creux éolien) et recharge méridienne (surproduction solaire) ; décharge lors des pointes matinales et du soir. Ce rythme maximise le chiffre d'affaires tout en restant dans les limites de garantie constructeur 15 ans.
-                  </p>
-                </div>
-              </div>
-
-              {/* Détail Chiffre d'Affaires Brut An 1 */}
-              <div className="bg-gradient-to-r from-slate-900 to-blue-950 text-white p-4 rounded-xl flex items-center justify-between my-1">
-                <div>
-                  <div className="text-xs font-bold text-slate-300 uppercase">Chiffre d'Affaires Brut An 1 (2 Cycles / Jour)</div>
-                  <div className="text-2xl font-black text-emerald-400 mt-0.5">{fmtEur(unitCaAn1)}</div>
-                </div>
-                <div className="flex gap-4 text-right text-xs">
+          {/* ========================================================================= */}
+          {/* PLANCHE 4 : PLAN D'AFFAIRES PRÉVISIONNEL SUR 15 ANS (FOND BLANC & 15 ANS VISIBLES) */}
+          {/* ========================================================================= */}
+          <section className="bess-render-page mx-auto bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md flex flex-col justify-between" style={{ width: '1380px', minHeight: '940px', boxSizing: 'border-box' }}>
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
+                <div className="flex items-center gap-4">
+                  <img src="/logo-enr-courtage-inline.png" alt="ENR COURTAGE" className="h-10 w-auto object-contain" />
                   <div>
-                    <span className="text-slate-400 block text-[10px] uppercase">FCR 50Hz</span>
-                    <b className="text-white font-black">{fmtEur(unitResults.rows?.[0]?.reserve || 85850)}</b>
+                    <span className="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                      Modélisation Financière Certifiée
+                    </span>
+                    <h2 className="text-xl font-black text-[#0b192c] tracking-tight mt-0.5">
+                      {kpi.tableTitle}
+                    </h2>
+                    <p className="text-xs font-medium text-slate-600">
+                      Projection intégrant inflation (2%/an), dégradation LFP (1.5%/an) et dette senior (12 ans @ 4.3%).
+                    </p>
                   </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase">Capacité</span>
-                    <b className="text-white font-black">{fmtEur(unitResults.rows?.[0]?.capacite || 8750)}</b>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold block">Temps de Retour Réel</span>
+                    <span className="text-sm font-black text-emerald-700">{kpi.badgePaybackSmall}</span>
                   </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase">Arbitrage 2 c/j</span>
-                    <b className="text-emerald-300 font-black">{fmtEur(unitResults.rows?.[0]?.arbitrage || 30485)}</b>
+                  <div className="text-right pl-4 border-l border-slate-200">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold block">Couverture de Dette</span>
+                    <span className="text-sm font-black text-blue-700">{kpi.dscrMoyenBadge}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Pilotage Agrégateur */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-center justify-between">
-                <div>
-                  <b className="text-slate-900">Agrégation & Optimisation Algorithmique :</b> Rémunération de l'agrégateur tiers fixée à 18% sur le CA brut de marché (déduite des flux nets).
-                </div>
-                <span className="px-3 py-1 bg-indigo-100 text-indigo-900 font-bold rounded-lg text-[11px]">
-                  Frais Agrégateur An 1 : {fmtEur(unitResults.rows?.[0]?.fraisAgregateur || (unitCaAn1 * 0.18))}
-                </span>
-              </div>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-[10px] text-slate-400 font-medium">
-                <span>NELSON ENERGY • Ingénierie Financière & Value Stacking</span>
-                <span>Optimisation Algorithmique 2 Cycles/Jour</span>
-                <span className="font-bold text-slate-700">Page 3 / 4</span>
-              </div>
-            </div>
-
-            {/* PAGE 4 : Plan d'Affaires Prévisionnel Détaillé 15 Ans Unitaire */}
-            <div
-              className="bess-dossier-page"
-              style={{
-                width: '1414px',
-                height: '1000px',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-                padding: '36px 44px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <div className="text-xs font-black text-slate-900 tracking-wider">NELSON ENERGY • PLAN D'AFFAIRES DÉTAILLÉ</div>
-                <div className="text-xs font-bold text-blue-700">CHRONIQUE 15 ANS DU PROJET {unitProject.name || ''}</div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-black text-slate-900">
-                  MODÈLE FINANCIER PRÉVISIONNEL SUR 15 ANS (P&L & CASH-FLOWS)
-                </h2>
-                <p className="text-[11px] text-slate-500">
-                  Projection annuelle complète intégrant l'inflation (2%/an), la dégradation de capacité (1.5%/an) et le service de dette senior (12 ans @ 4.3%).
-                </p>
-              </div>
-
-              {/* Grand tableau 15 ans unitaire pleine largeur */}
-              <div className="border border-slate-300 rounded-xl overflow-hidden shadow-sm my-1">
-                <table className="w-full text-[10px] text-right border-collapse">
-                  <thead className="bg-slate-900 text-white font-bold uppercase text-[9px]">
-                    <tr>
-                      <th className="p-1.5 text-left">Poste (€)</th>
-                      {unitRows.slice(0, 15).map((r, idx) => (
-                        <th key={r.year || idx} className="p-1.5 text-center">A{idx + 1}</th>
+              {/* TABLEAU FINANCIER COMPLET SUR 15 ANS (15 COLONNES NETTES) */}
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm mb-3">
+                <table className="w-full text-left text-[11px] whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-black uppercase tracking-wider">
+                      <th className="py-2 px-2.5 text-left">Poste / Année (€)</th>
+                      {YEARS_15.map(y => (
+                        <th key={y} className="py-2 px-2 text-right">{y}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 text-slate-700 bg-white">
-                    <tr className="bg-blue-50/40 font-bold">
-                      <td className="p-1.5 text-left text-blue-950">Chiffre d'Affaires Brut (2 c/j)</td>
-                      {unitRows.slice(0, 15).map((r, idx) => (
-                        <td key={idx} className="p-1.5 text-blue-900 font-bold">{Math.round((r.caTotal || 0) / 1000)}k</td>
-                      ))}
+                  <tbody className="divide-y divide-slate-100 text-slate-800 font-medium">
+                    <tr className="font-black bg-blue-50/60 text-[#0b192c]">
+                      <td className="py-1.5 px-2.5 text-blue-800">CHIFFRE D'AFFAIRES BRUT (VALUE STACKING)</td>
+                      {YEARS_15.map((y, i) => {
+                        const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
+                        return <td key={y} className="py-1.5 px-2 text-right text-blue-800 font-extrabold">{Math.round(rev).toLocaleString('fr-FR')} €</td>;
+                      })}
                     </tr>
                     <tr>
-                      <td className="p-1.5 text-left text-slate-600 pl-3">Total OPEX (TURPE, Maint, Comm, Recharge)</td>
-                      {unitRows.slice(0, 15).map((r, idx) => (
-                        <td key={idx} className="p-1.5 text-red-600">-{Math.round((r.opex || 0) / 1000)}k</td>
-                      ))}
-                    </tr>
-                    <tr className="bg-emerald-50/60 font-black">
-                      <td className="p-1.5 text-left text-emerald-950">EBITDA (EBE)</td>
-                      {unitRows.slice(0, 15).map((r, idx) => (
-                        <td key={idx} className="p-1.5 text-emerald-800 font-black">{Math.round((r.ebitda || 0) / 1000)}k</td>
-                      ))}
+                      <td className="py-1 px-2.5 text-slate-600 pl-5 text-[10px]">• Réserve Fréquence 50 Hz (FCR / aFRR)</td>
+                      {YEARS_15.map((y, i) => <td key={y} className="py-1 px-2 text-right text-[10px]">{Math.round(FINANCIAL_MATRIX.revFcr[i] * mult).toLocaleString('fr-FR')} €</td>)}
                     </tr>
                     <tr>
-                      <td className="p-1.5 text-left text-slate-600 pl-3">Service de la Dette (12 ans @ 4.3%)</td>
-                      {unitRows.slice(0, 15).map((r, idx) => (
-                        <td key={idx} className="p-1.5 text-amber-700">{(r.serviceDette || 0) > 0 ? `-${Math.round((r.serviceDette || 0) / 1000)}k` : '—'}</td>
-                      ))}
+                      <td className="py-1 px-2.5 text-slate-600 pl-5 text-[10px]">• Marché de Capacité RTE (PP2)</td>
+                      {YEARS_15.map((y, i) => <td key={y} className="py-1 px-2 text-right text-[10px]">{Math.round(FINANCIAL_MATRIX.revCapa[i] * mult).toLocaleString('fr-FR')} €</td>)}
                     </tr>
-                    <tr className="bg-slate-100 font-bold">
-                      <td className="p-1.5 text-left text-slate-900">Cash-Flow Net Annuel</td>
-                      {unitRows.slice(0, 15).map((r, idx) => (
-                        <td key={idx} className="p-1.5 text-slate-900 font-bold">{Math.round((r.tresorerie || 0) / 1000)}k</td>
-                      ))}
+                    <tr>
+                      <td className="py-1 px-2.5 text-slate-600 pl-5 text-[10px]">• Arbitrage Spot EPEX (2 cycles/j)</td>
+                      {YEARS_15.map((y, i) => <td key={y} className="py-1 px-2 text-right text-[10px]">{Math.round(FINANCIAL_MATRIX.revArb[i] * mult).toLocaleString('fr-FR')} €</td>)}
                     </tr>
-                    <tr className="bg-indigo-50 font-black">
-                      <td className="p-1.5 text-left text-indigo-950">Ratio DSCR</td>
-                      {unitRows.slice(0, 15).map((r, idx) => (
-                        <td key={idx} className="p-1.5 text-indigo-900 font-black">{(r.serviceDette || 0) > 1 ? (r.dscr || 1.35).toFixed(2) : '—'}</td>
-                      ))}
+
+                    <tr className="font-black bg-rose-50/50 text-[#0b192c]">
+                      <td className="py-1.5 px-2.5 text-rose-800">TOTAL CHARGES OPÉRATIONNELLES (OPEX)</td>
+                      {YEARS_15.map((y, i) => {
+                        const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+                        return <td key={y} className="py-1.5 px-2 text-right text-rose-700 font-extrabold">-{Math.round(opex).toLocaleString('fr-FR')} €</td>;
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-2.5 text-slate-600 pl-5 text-[10px]">• Énergie de Recharge (Achat creux)</td>
+                      {YEARS_15.map((y, i) => <td key={y} className="py-1 px-2 text-right text-[10px] text-rose-600">-{Math.round(FINANCIAL_MATRIX.opexRecharge[i] * mult).toLocaleString('fr-FR')} €</td>)}
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-2.5 text-slate-600 pl-5 text-[10px]">• Commission Agrégateur (18% CA)</td>
+                      {YEARS_15.map((y, i) => <td key={y} className="py-1 px-2 text-right text-[10px] text-rose-600">-{Math.round(FINANCIAL_MATRIX.opexAgregateur[i] * mult).toLocaleString('fr-FR')} €</td>)}
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-2.5 text-slate-600 pl-5 text-[10px]">• TURPE 7 Réseau HTA1 CU (Abattu)</td>
+                      {YEARS_15.map((y, i) => <td key={y} className="py-1 px-2 text-right text-[10px] font-bold text-cyan-700">-{Math.round(FINANCIAL_MATRIX.opexTurpe[i] * mult).toLocaleString('fr-FR')} €</td>)}
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-2.5 text-slate-600 pl-5 text-[10px]">• Loyer Dalle, Maintenance, Assurances</td>
+                      {YEARS_15.map((y, i) => <td key={y} className="py-1 px-2 text-right text-[10px] text-rose-600">-{Math.round(FINANCIAL_MATRIX.opexAutres[i] * mult).toLocaleString('fr-FR')} €</td>)}
+                    </tr>
+
+                    <tr className="font-black bg-amber-50/70 text-slate-900 border-t-2 border-amber-300">
+                      <td className="py-1.5 px-2.5 text-amber-900 font-black">EBITDA OPÉRATIONNEL NET (EBE)</td>
+                      {YEARS_15.map((y, i) => {
+                        const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
+                        const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+                        return <td key={y} className="py-1.5 px-2 text-right text-amber-900 font-black">{Math.round(rev - opex).toLocaleString('fr-FR')} €</td>;
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-2.5 text-slate-600 text-[10px]">Service Dette Senior (12 ans @ 4.3%)</td>
+                      {YEARS_15.map((y, i) => <td key={y} className="py-1 px-2 text-right text-[10px] text-slate-700">-{Math.round(FINANCIAL_MATRIX.debtService[i] * mult).toLocaleString('fr-FR')} €</td>)}
+                    </tr>
+                    <tr className="font-black bg-emerald-50 text-slate-900 border-t border-emerald-300">
+                      <td className="py-1.5 px-2.5 text-emerald-800 font-black">CASH-FLOW NET ANNUEL (FLUX DISPONIBLE)</td>
+                      {YEARS_15.map((y, i) => {
+                        const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
+                        const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+                        const debt = FINANCIAL_MATRIX.debtService[i] * mult;
+                        return <td key={y} className="py-1.5 px-2 text-right text-emerald-700 font-black">{Math.round(rev - opex - debt).toLocaleString('fr-FR')} €</td>;
+                      })}
+                    </tr>
+                    <tr className="text-[10px] text-slate-600 font-bold bg-slate-50">
+                      <td className="py-1 px-2.5">Ratio de Couverture Dette (DSCR)</td>
+                      {YEARS_15.map((y, i) => {
+                        if (FINANCIAL_MATRIX.debtService[i] === 0) return <td key={y} className="py-1 px-2 text-right text-slate-400">—</td>;
+                        const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]);
+                        const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]);
+                        const dscr = (rev - opex) / FINANCIAL_MATRIX.debtService[i];
+                        return <td key={y} className="py-1 px-2 text-right font-extrabold text-blue-700">{dscr.toFixed(2)}x</td>;
+                      })}
                     </tr>
                   </tbody>
                 </table>
               </div>
 
-              {/* Ratios & Hypothèses */}
-              <div className="grid grid-cols-4 gap-3 my-1">
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">CAPEX Total</span>
-                  <b className="text-slate-900 text-sm">{fmtEur(unitCapex)}</b>
+              {/* GRAPHIQUE EN BARRES SVG 15 ANS (EBITDA EN BLEU ET CASHFLOW EN VERT) */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                <div className="flex justify-between items-center mb-1.5">
+                  <div className="text-xs font-black uppercase tracking-wider text-slate-900">
+                    Chronique de Trésorerie Nette & Capacité d'Autofinancement (15 Ans)
+                  </div>
+                  <div className="flex items-center gap-4 text-xs font-bold">
+                    <span className="flex items-center gap-1.5 text-blue-700">
+                      <span className="w-3 h-3 rounded-sm bg-[#0284c7]"></span> EBITDA Net
+                    </span>
+                    <span className="flex items-center gap-1.5 text-emerald-700">
+                      <span className="w-3 h-3 rounded-sm bg-[#059669]"></span> Cash-Flow Net (Flux Libre)
+                    </span>
+                  </div>
                 </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">TRI Projet 15 Ans</span>
-                  <b className="text-emerald-700 text-sm">{(unitTriProjet || 10.5).toFixed(1)} %</b>
+
+                {/* SVG Bar Chart */}
+                <div className="h-32 w-full">
+                  <svg viewBox="0 0 1200 130" className="w-full h-full">
+                    {/* Lignes de repère */}
+                    <line x1="40" y1="20" x2="1180" y2="20" stroke="#f1f5f9" strokeWidth="1" />
+                    <line x1="40" y1="60" x2="1180" y2="60" stroke="#f1f5f9" strokeWidth="1" />
+                    <line x1="40" y1="100" x2="1180" y2="100" stroke="#cbd5e1" strokeWidth="1" />
+
+                    {/* Barres pour les 15 ans */}
+                    {chartBars.map((b, idx) => {
+                      const xBase = 60 + idx * 74;
+                      const hEbitda = Math.min(80, Math.max(10, (b.ebitda / maxEbitda) * 80));
+                      const hCf = Math.min(80, Math.max(10, (b.cf / maxEbitda) * 80));
+                      return (
+                        <g key={b.year}>
+                          {/* Barre EBITDA (Bleu) */}
+                          <rect
+                            x={xBase}
+                            y={100 - hEbitda}
+                            width="22"
+                            height={hEbitda}
+                            fill="#0284c7"
+                            rx="2"
+                          />
+                          {/* Barre Cash-Flow (Vert) */}
+                          <rect
+                            x={xBase + 24}
+                            y={100 - hCf}
+                            width="22"
+                            height={hCf}
+                            fill="#059669"
+                            rx="2"
+                          />
+                          {/* Label Année */}
+                          <text
+                            x={xBase + 23}
+                            y="118"
+                            fontSize="10"
+                            fontWeight="bold"
+                            fill="#64748b"
+                            textAnchor="middle"
+                          >
+                            {b.year}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
                 </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Temps de Retour (Payback)</span>
-                  <b className="text-blue-700 text-sm">{(unitPayback || 7.4).toFixed(1)} ans</b>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200 pt-3 flex justify-between items-center text-[11px] text-slate-500 font-medium">
+              <span>ENR COURTAGE SAS • Modélisation Financière 15 Ans</span>
+              <span>Hypothèse de dette senior 80% • Fiscalité IS 15–25%</span>
+              <span className="font-bold text-slate-700">Planche 4 / {isPort ? '6' : '5'} (Paysage)</span>
+            </div>
+          </section>
+
+          {/* ========================================================================= */}
+          {/* PLANCHES 5 & 6 : RÉPERTOIRE DES SITES (TOUS LES 31 SITES VISIBLES) */}
+          {/* ========================================================================= */}
+          {isPort ? (
+            <>
+              {/* PLANCHE 5 : SITES 1 À 16 */}
+              <section className="bess-render-page mx-auto bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md flex flex-col justify-between" style={{ width: '1380px', minHeight: '940px', boxSizing: 'border-box' }}>
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                    <div className="flex items-center gap-4">
+                      <img src="/logo-enr-courtage-inline.png" alt="ENR COURTAGE" className="h-10 w-auto object-contain" />
+                      <div>
+                        <span className="text-xs font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200">
+                          Pipeline Foncier Sécurisé (Partie 1/2)
+                        </span>
+                        <h2 className="text-xl font-black text-[#0b192c] tracking-tight mt-1">
+                          Répertoire Foncier & Réseau des 31 Projets BESS — Sites #1 à #16
+                        </h2>
+                        <p className="text-xs font-medium text-slate-600">
+                          Grappe de sites sécurisés par promesse de bail notariée, raccordement HTA Enedis et emprise &lt; 20 m² en DP.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                        16 Unités • 8.0 MW / 16.7 MWh
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tableau des 16 premiers sites */}
+                  <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-xs whitespace-nowrap">
+                      <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-black uppercase tracking-wider text-[10px]">
+                        <tr>
+                          <th className="py-2.5 px-3">#</th>
+                          <th className="py-2.5 px-3">Nom Projet</th>
+                          <th className="py-2.5 px-3">Commune & CP</th>
+                          <th className="py-2.5 px-3">Coordonnées GPS</th>
+                          <th className="py-2.5 px-3">Poste Source ODRE</th>
+                          <th className="py-2.5 px-3">Dist. Réseau</th>
+                          <th className="py-2.5 px-3">Quote-Part S3REnR</th>
+                          <th className="py-2.5 px-3">Puissance / Capacité</th>
+                          <th className="py-2.5 px-3 text-right">EBITDA An 1</th>
+                          <th className="py-2.5 px-3 text-right">Payback</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-800 font-medium text-[11px]">
+                        {sitesP1.map((s) => (
+                          <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-2 px-3 font-bold text-slate-400">{s.id}</td>
+                            <td className="py-2 px-3 font-extrabold text-[#0b192c]">{s.name}</td>
+                            <td className="py-2 px-3 text-slate-700">{s.city} ({s.cp})</td>
+                            <td className="py-2 px-3 font-mono text-[10px] text-blue-700">{s.gps}</td>
+                            <td className="py-2 px-3 font-bold text-emerald-700">{s.substation}</td>
+                            <td className="py-2 px-3 text-slate-600">{s.dist}</td>
+                            <td className="py-2 px-3 text-slate-700">{s.s3renr}</td>
+                            <td className="py-2 px-3 font-semibold text-slate-900">{s.power} / {s.cap}</td>
+                            <td className="py-2 px-3 text-right font-black text-amber-700">{s.ebitda}</td>
+                            <td className="py-2 px-3 text-right font-black text-emerald-600">{s.payback}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">DSCR Moyen Dette</span>
-                  <b className="text-indigo-700 text-sm">{(unitResults.dscrMoyen || 1.38).toFixed(2)}</b>
+
+                <div className="border-t border-slate-200 pt-3 flex justify-between items-center text-[11px] text-slate-500 font-medium">
+                  <span>ENR COURTAGE SAS • 7 Rue Gutenberg, 33700 Mérignac • contact@enr-courtage.fr</span>
+                  <span>Plateforme Transactionnelle M&A • Strictement Confidentiel</span>
+                  <span className="font-bold text-slate-700">Planche 5 / 6 (Paysage)</span>
+                </div>
+              </section>
+
+              {/* PLANCHE 6 : SITES 17 À 31 & TOTAL CONSOLIDÉ */}
+              <section className="bess-render-page mx-auto bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md flex flex-col justify-between" style={{ width: '1380px', minHeight: '940px', boxSizing: 'border-box' }}>
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                    <div className="flex items-center gap-4">
+                      <img src="/logo-enr-courtage-inline.png" alt="ENR COURTAGE" className="h-10 w-auto object-contain" />
+                      <div>
+                        <span className="text-xs font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200">
+                          Pipeline Foncier Sécurisé (Partie 2/2)
+                        </span>
+                        <h2 className="text-xl font-black text-[#0b192c] tracking-tight mt-1">
+                          Répertoire Foncier & Réseau des 31 Projets BESS — Sites #17 à #31
+                        </h2>
+                        <p className="text-xs font-medium text-slate-600">
+                          Consolidation exhaustive des 31 unités prêtes à construire (15.5 MW / 32.36 MWh).
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-300">
+                        Total 31 Unités • 15.5 MW Consolidés
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tableau des 15 derniers sites et ligne de consolidation */}
+                  <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-xs whitespace-nowrap">
+                      <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-black uppercase tracking-wider text-[10px]">
+                        <tr>
+                          <th className="py-2.5 px-3">#</th>
+                          <th className="py-2.5 px-3">Nom Projet</th>
+                          <th className="py-2.5 px-3">Commune & CP</th>
+                          <th className="py-2.5 px-3">Coordonnées GPS</th>
+                          <th className="py-2.5 px-3">Poste Source ODRE</th>
+                          <th className="py-2.5 px-3">Dist. Réseau</th>
+                          <th className="py-2.5 px-3">Quote-Part S3REnR</th>
+                          <th className="py-2.5 px-3">Puissance / Capacité</th>
+                          <th className="py-2.5 px-3 text-right">EBITDA An 1</th>
+                          <th className="py-2.5 px-3 text-right">Payback</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-800 font-medium text-[11px]">
+                        {sitesP2.map((s) => (
+                          <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-2 px-3 font-bold text-slate-400">{s.id}</td>
+                            <td className="py-2 px-3 font-extrabold text-[#0b192c]">{s.name}</td>
+                            <td className="py-2 px-3 text-slate-700">{s.city} ({s.cp})</td>
+                            <td className="py-2 px-3 font-mono text-[10px] text-blue-700">{s.gps}</td>
+                            <td className="py-2 px-3 font-bold text-emerald-700">{s.substation}</td>
+                            <td className="py-2 px-3 text-slate-600">{s.dist}</td>
+                            <td className="py-2 px-3 text-slate-700">{s.s3renr}</td>
+                            <td className="py-2 px-3 font-semibold text-slate-900">{s.power} / {s.cap}</td>
+                            <td className="py-2 px-3 text-right font-black text-amber-700">{s.ebitda}</td>
+                            <td className="py-2 px-3 text-right font-black text-emerald-600">{s.payback}</td>
+                          </tr>
+                        ))}
+
+                        {/* Ligne Total Consolidé 31 Sites */}
+                        <tr className="bg-gradient-to-r from-slate-900 to-blue-950 text-white font-black text-xs">
+                          <td colSpan={7} className="py-3 px-3 uppercase tracking-wider text-emerald-300">
+                            TOTAL CONSOLIDÉ PORTEFEUILLE (31 SITES • 15.5 MW / 32.36 MWh)
+                          </td>
+                          <td className="py-3 px-3 font-extrabold text-white">15.5 MW / 32.36 MWh</td>
+                          <td className="py-3 px-3 text-right text-amber-300 font-black">1.50 M€</td>
+                          <td className="py-3 px-3 text-right text-emerald-400 font-black">4.8 ans</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 pt-3 flex justify-between items-center text-[11px] text-slate-500 font-medium">
+                  <span>ENR COURTAGE SAS • 7 Rue Gutenberg, 33700 Mérignac • contact@enr-courtage.fr</span>
+                  <span>Plateforme Transactionnelle M&A • Strictement Confidentiel</span>
+                  <span className="font-bold text-slate-700">Planche 6 / 6 (Paysage)</span>
+                </div>
+              </section>
+            </>
+          ) : (
+            /* PLANCHE 5 : FICHE FONCIER & RÉSEAU DU SITE INDIVIDUEL */
+            <section className="bess-render-page mx-auto bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md flex flex-col justify-between" style={{ width: '1380px', minHeight: '940px', boxSizing: 'border-box' }}>
+              <div>
+                <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-5">
+                  <div className="flex items-center gap-4">
+                    <img src="/logo-enr-courtage-inline.png" alt="ENR COURTAGE" className="h-10 w-auto object-contain" />
+                    <div>
+                      <span className="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                        Fiche Foncier & Raccordement Projet
+                      </span>
+                      <h2 className="text-2xl font-black text-[#0b192c] tracking-tight mt-1">
+                        Qualification Réseau & Droits Fonciers — {projectData?.name || selectedSite.name}
+                      </h2>
+                      <p className="text-xs font-medium text-slate-600">
+                        Localisation précise, rattachement ODRE Enedis et conformité de la promesse de bail notariée.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-extrabold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                      Site #8 • Concèze (19)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Données de localisation et d'insertion réseau */}
+                <div className="grid grid-cols-2 gap-5 mb-5">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2">
+                      Localisation & Données Foncières du Projet
+                    </h3>
+                    <ul className="text-xs space-y-2 text-slate-700 font-medium">
+                      <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                        <span className="text-slate-500">Nom du site :</span>
+                        <span className="font-bold text-slate-900">{projectData?.name || selectedSite.name}</span>
+                      </li>
+                      <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                        <span className="text-slate-500">Commune & Code Postal :</span>
+                        <span className="font-bold text-slate-900">{selectedSite.city} ({selectedSite.cp})</span>
+                      </li>
+                      <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                        <span className="text-slate-500">Adresse d'implantation :</span>
+                        <span className="font-bold text-slate-900">{selectedSite.address}</span>
+                      </li>
+                      <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                        <span className="text-slate-500">Coordonnées GPS WGS84 :</span>
+                        <span className="font-mono font-bold text-blue-700">{selectedSite.gps}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span className="text-slate-500">Sécurisation foncière :</span>
+                        <span className="font-bold text-emerald-700">Promesse de bail notariée 30 ans (5 000 €/an indexé)</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2">
+                      Poste Source ODRE & Caractéristiques Réseau
+                    </h3>
+                    <ul className="text-xs space-y-2 text-slate-700 font-medium">
+                      <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                        <span className="text-slate-500">Poste Source Enedis :</span>
+                        <span className="font-bold text-emerald-700">{selectedSite.substation}</span>
+                      </li>
+                      <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                        <span className="text-slate-500">Distance réseau à vol d'oiseau :</span>
+                        <span className="font-bold text-slate-900">{selectedSite.dist}</span>
+                      </li>
+                      <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                        <span className="text-slate-500">Quote-Part S3REnR :</span>
+                        <span className="font-bold text-slate-900">{selectedSite.s3renr}</span>
+                      </li>
+                      <li className="flex justify-between border-b border-slate-100 pb-1.5">
+                        <span className="text-slate-500">Qualification TURPE 7 CRE 2025-227 :</span>
+                        <span className="font-bold text-cyan-700">Zone Standard (Économie +14 183 €/an)</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span className="text-slate-500">Raccordement HTA :</span>
+                        <span className="font-bold text-blue-700">HTA 20 kV (10 m de distance privée)</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Insertion dans la grappe des 31 projets */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs">
+                  <div className="font-bold text-slate-900 mb-1">Synergies d'Échelle & Agrégation Territoriale :</div>
+                  <p className="text-slate-600 leading-relaxed">
+                    Ce projet fait partie intégrante du programme territorial de 31 centrales BESS pilotées par ENR COURTAGE. Il bénéficie de contrats-cadres négociés pour l'achat matériel (CESC Mercury 261), les polices d'assurance tous risques et l'agrégation de marché RTE / EPEX SPOT (commission préférentielle de 18% sur le CA brut).
+                  </p>
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-[10px] text-slate-400 font-medium">
-                <span>NELSON ENERGY • Plan d'Affaires Prévisionnel 15 Ans ({unitProject.name || 'Projet'})</span>
-                <span>Modèle Financier Certifié BESS Stand-Alone • Page 4 / 4</span>
-                <span className="font-bold text-slate-700">Page 4 / 4</span>
+              <div className="border-t border-slate-200 pt-3 flex justify-between items-center text-[11px] text-slate-500 font-medium">
+                <span>ENR COURTAGE SAS • Fiche Foncier & Raccordement Projet</span>
+                <span>Audit d'Implantation HTA Enedis • Confidentiel</span>
+                <span className="font-bold text-slate-700">Planche 5 / 5 (Paysage)</span>
               </div>
-            </div>
-          </>
-        )}
+            </section>
+          )}
+
+        </div>
       </div>
     </div>
   );
