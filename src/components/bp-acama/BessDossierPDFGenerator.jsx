@@ -102,7 +102,7 @@ export default function BessDossierPDFGenerator({
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressStep, setProgressStep] = useState('');
   const [activePageIndex, setActivePageIndex] = useState(0);
-  const [viewMode, setViewMode] = useState('all');
+
   const scrollContainerRef = useRef(null);
 
   const isPort = activeMode === 'portfolio';
@@ -158,9 +158,9 @@ export default function BessDossierPDFGenerator({
     capa: isPort ? '271 250 € / an' : '8 750 € / an',
     totalRevDonut: isPort ? '3 843 318 € / an' : '123 978 € / an',
     totalRevSub: isPort ? 'Portefeuille Consolidé 15.5 MW' : 'Unité 500 kW / 1 044 kWh',
-    tableTitle: isPort ? "Plan d'Affaires Prévisionnel Consolidé sur 15 Ans (31 Sites / 15.5 MW)" : "Plan d'Affaires Prévisionnel sur 15 Ans (Unitaire 500 kW / 1 044 kWh)",
-    badgePaybackSmall: isPort ? "4.6 ans (Projet) / 2.2 ans (Equity)" : "4.6 ans (Projet) / 2.2 ans (Equity)",
-    dscrMoyenBadge: isPort ? "DSCR Portefeuille : 1.98x (Excellence bancaire)" : "DSCR Moyen : 1.98x (Min bancaire 1.15x)",
+    tableTitle: isPort ? (<>Plan d'Affaires Prévisionnel Consolidé sur 15 Ans<br />(31 Sites / 15.5 MW)</>) : (<>Plan d'Affaires Prévisionnel sur 15 Ans<br />(Unitaire 500 kW / 1 044 kWh)</>),
+    badgePaybackSmall: isPort ? (<>4.6 ans (Projet) /<br />2.2 ans (Equity)</>) : (<>4.6 ans (Projet) /<br />2.2 ans (Equity)</>),
+    dscrMoyenBadge: isPort ? (<>DSCR Portefeuille : 1.98<br />(Excellence bancaire)</>) : (<>DSCR Moyen : 1.98<br />(Min bancaire 1.15x)</>),
     techConfig: isPort ? "124 armoires extérieures réparties sur 31 sites" : "4 armoires extérieures CESC Mercury 261 (1.15m x 1.44m x 2.38m)",
     techPowerCap: isPort ? "15.5 MW / 32.36 MWh consolidés" : "500 kW / 1 044 kWh (Ratio 2h de décharge)"
   };
@@ -316,42 +316,13 @@ export default function BessDossierPDFGenerator({
             </div>
           </div>
 
-          {/* Actions : Badge Conformité, Impression & Bouton Fermer Haut */}
+          {/* Actions réservées au bas de page */}
           <div className="flex items-center gap-3">
-
-
-            <button
-              onClick={handleGeneratePdf}
-              disabled={isGenerating}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-cyan-600/20 transition-all active:scale-95 disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{progressStep}</span>
-                </>
-              ) : (
-                <>
-                  <FileDown className="w-4 h-4" />
-                  <span>Imprimer / Exporter en PDF (A4 Paysage)</span>
-                </>
-              )}
-            </button>
-
-            {/* Bouton Fermer Haut Droit */}
-            <button
-              onClick={onClose}
-              className="px-3 py-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-bold"
-              title="Fermer la visionneuse"
-            >
-              <X className="w-4 h-4 text-slate-500" />
-              <span>Fermer</span>
-            </button>
           </div>
         </header>
 
         {/* ========================================================================= */}
-        {/* BARRE DE CONTRÔLE ET NAVIGATION MULTI-PAGES */}
+        {/* BARRE DE NAVIGATION RAPIDE MULTI-PAGES */}
         {/* ========================================================================= */}
         <div className="bg-slate-50 border-b border-slate-200 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-xs shrink-0" data-html2canvas-ignore="true">
           <div className="flex items-center gap-2">
@@ -360,9 +331,7 @@ export default function BessDossierPDFGenerator({
               onClick={() => {
                 const nextIdx = Math.max(0, activePageIndex - 1);
                 setActivePageIndex(nextIdx);
-                if (viewMode === 'all') {
-                  document.getElementById('bess-planche-container-' + (nextIdx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                document.getElementById('bess-planche-container-' + (nextIdx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
               disabled={activePageIndex === 0}
               className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs transition-all"
@@ -380,9 +349,7 @@ export default function BessDossierPDFGenerator({
               onClick={() => {
                 const nextIdx = Math.min(totalPagesCount - 1, activePageIndex + 1);
                 setActivePageIndex(nextIdx);
-                if (viewMode === 'all') {
-                  document.getElementById('bess-planche-container-' + (nextIdx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                document.getElementById('bess-planche-container-' + (nextIdx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
               disabled={activePageIndex === totalPagesCount - 1}
               className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs transition-all"
@@ -392,17 +359,15 @@ export default function BessDossierPDFGenerator({
             </button>
           </div>
 
-          {/* Accès rapide par planche */}
-          <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto py-0.5">
+          {/* Accès direct rapide par planche */}
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
             {plancheTitles.map((title, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => {
                   setActivePageIndex(idx);
-                  if (viewMode === 'all') {
-                    document.getElementById('bess-planche-container-' + (idx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
+                  document.getElementById('bess-planche-container-' + (idx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }}
                 className={'px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ' + (
                   activePageIndex === idx
@@ -414,32 +379,6 @@ export default function BessDossierPDFGenerator({
                 P{idx + 1} : {title}
               </button>
             ))}
-          </div>
-
-          {/* Commutateur de mode : Toutes les planches vs Planche unique */}
-          <div className="flex items-center bg-slate-200/90 p-1 rounded-xl border border-slate-300">
-            <button
-              type="button"
-              onClick={() => setViewMode('all')}
-              className={'px-3 py-1 rounded-lg text-xs font-bold transition-all ' + (
-                viewMode === 'all'
-                  ? 'bg-white text-slate-900 shadow-sm font-black'
-                  : 'text-slate-600 hover:text-slate-900'
-              )}
-            >
-              Toutes les Planches ({totalPagesCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('single')}
-              className={'px-3 py-1 rounded-lg text-xs font-bold transition-all ' + (
-                viewMode === 'single'
-                  ? 'bg-white text-slate-900 shadow-sm font-black'
-                  : 'text-slate-600 hover:text-slate-900'
-              )}
-            >
-              Vue par Planche
-            </button>
           </div>
         </div>
 
@@ -456,7 +395,7 @@ export default function BessDossierPDFGenerator({
           {/* ========================================================================= */}
           <div
             id="bess-planche-container-1"
-            style={{ display: (viewMode === 'all' || activePageIndex === 0 || isGenerating) ? 'flex' : 'none' }}
+            style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
@@ -467,25 +406,6 @@ export default function BessDossierPDFGenerator({
                 <span className="font-bold text-slate-800 text-sm">
                   {plancheTitles[0]}
                 </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => { setActivePageIndex(0); setViewMode('single'); }}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
-                  >
-                    Voir cette planche seule →
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('all')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
-                  >
-                    Afficher toutes les planches ({totalPagesCount})
-                  </button>
-                )}
               </div>
             </div>
             <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -689,7 +609,7 @@ export default function BessDossierPDFGenerator({
           {/* ========================================================================= */}
           <div
             id="bess-planche-container-2"
-            style={{ display: (viewMode === 'all' || activePageIndex === 1 || isGenerating) ? 'flex' : 'none' }}
+            style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
@@ -700,25 +620,6 @@ export default function BessDossierPDFGenerator({
                 <span className="font-bold text-slate-800 text-sm">
                   {plancheTitles[1]}
                 </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => { setActivePageIndex(1); setViewMode('single'); }}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
-                  >
-                    Voir cette planche seule →
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('all')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
-                  >
-                    Afficher toutes les planches ({totalPagesCount})
-                  </button>
-                )}
               </div>
             </div>
             <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -732,9 +633,7 @@ export default function BessDossierPDFGenerator({
                     className="h-12 w-auto object-contain"
                   />
                   <div>
-                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Levier Réglementaire &amp; Juridique
-                    </span>
+
                     <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight mt-1 leading-snug">
                       TURPE 7 &amp; Délibération CRE 2025–227 :<br />
                       Le Pivot de Rentabilité du BESS
@@ -833,12 +732,20 @@ export default function BessDossierPDFGenerator({
                       <tr>
                         <td className="p-2.5 font-semibold text-slate-900">Composantes de Gestion &amp; Comptage (CG/CC)</td>
                         <td className="p-2.5 text-slate-500">Forfaits conventionnels</td>
-                        <td className="p-2.5 text-slate-800">Comptage 4 quadrants télé-relevé Enedis (661 €/an/site)</td>
+                        <td className="p-2.5 text-slate-800 leading-tight">Comptage 4 quadrants télé-relevé Enedis<br />(661 €/an/site)</td>
                         <td className="p-2.5 text-right font-bold text-slate-400">Neutre</td>
                       </tr>
                       <tr className="bg-emerald-50/60 font-black text-slate-900">
                         <td className="p-2.5 uppercase">Total Facture Annuelle TURPE Réseau</td>
-                        <td className="p-2.5 text-red-600 line-through">{isPort ? '697 500 € / an' : '22 500 € / an'}</td>
+                        <td className="p-2.5 text-red-600 font-bold">
+                        <span className="relative inline-block">
+                          <span>{isPort ? '697 500 € / an' : '22 500 € / an'}</span>
+                          <span
+                            className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] bg-red-600 pointer-events-none"
+                            style={{ height: '2px', top: '50%', transform: 'translateY(-50%)' }}
+                          />
+                        </span>
+                      </td>
                         <td className="p-2.5 text-emerald-800 text-sm">{isPort ? '257 827 € / an' : '8 317 € / an'}</td>
                         <td className="p-2.5 text-right text-emerald-700 text-sm font-black">{isPort ? '+439 673 € / an' : '+14 183 € / an'}</td>
                       </tr>
@@ -850,7 +757,7 @@ export default function BessDossierPDFGenerator({
 
             {/* Pied de page institutionnel sans "(Paysage)" */}
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <div>ENR COURTAGE SAS • Direction Juridique &amp; Régulation Énergie</div>
+              <div>ENR COURTAGE SAS • Levier Réglementaire &amp; Juridique</div>
               <div className="font-semibold text-slate-600">Arrêté CRE 2025-78 &amp; Délibération 2025-227</div>
               <div className="font-bold text-[#0b192c]">Planche 2 / {totalPagesCount}</div>
             </div>
@@ -862,7 +769,7 @@ export default function BessDossierPDFGenerator({
           {/* ========================================================================= */}
           <div
             id="bess-planche-container-3"
-            style={{ display: (viewMode === 'all' || activePageIndex === 2 || isGenerating) ? 'flex' : 'none' }}
+            style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
@@ -873,25 +780,6 @@ export default function BessDossierPDFGenerator({
                 <span className="font-bold text-slate-800 text-sm">
                   {plancheTitles[2]}
                 </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => { setActivePageIndex(2); setViewMode('single'); }}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
-                  >
-                    Voir cette planche seule →
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('all')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
-                  >
-                    Afficher toutes les planches ({totalPagesCount})
-                  </button>
-                )}
               </div>
             </div>
             <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -905,9 +793,7 @@ export default function BessDossierPDFGenerator({
                     className="h-12 w-auto object-contain"
                   />
                   <div>
-                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
-                      Valorisation Marché &amp; Trading Algorithmique
-                    </span>
+
                     <h2 className="text-2xl sm:text-3xl font-black text-[#0b192c] tracking-tight mt-1">
                       L'Empilement de Valeur (Value Stacking) à 2 Cycles Quotidiens
                     </h2>
@@ -1058,7 +944,7 @@ export default function BessDossierPDFGenerator({
 
             {/* Pied de page institutionnel sans "(Paysage)" */}
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <div>ENR COURTAGE SAS • Trading &amp; Optimisation Marchés de Flexibilité</div>
+              <div>ENR COURTAGE SAS • Valorisation Marché &amp; Trading Algorithmique</div>
               <div className="font-semibold text-slate-600">Algorithme d'agrégation certifié 2 cycles quotidiens</div>
               <div className="font-bold text-[#0b192c]">Planche 3 / {totalPagesCount}</div>
             </div>
@@ -1070,7 +956,7 @@ export default function BessDossierPDFGenerator({
           {/* ========================================================================= */}
           <div
             id="bess-planche-container-4"
-            style={{ display: (viewMode === 'all' || activePageIndex === 3 || isGenerating) ? 'flex' : 'none' }}
+            style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
@@ -1081,25 +967,6 @@ export default function BessDossierPDFGenerator({
                 <span className="font-bold text-slate-800 text-sm">
                   {plancheTitles[3]}
                 </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => { setActivePageIndex(3); setViewMode('single'); }}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
-                  >
-                    Voir cette planche seule →
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('all')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
-                  >
-                    Afficher toutes les planches ({totalPagesCount})
-                  </button>
-                )}
               </div>
             </div>
             <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -1113,9 +980,7 @@ export default function BessDossierPDFGenerator({
                     className="h-11 w-auto object-contain"
                   />
                   <div>
-                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
-                      Modélisation Financière Analytique
-                    </span>
+
                     <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight mt-1">
                       {kpi.tableTitle}
                     </h2>
@@ -1252,7 +1117,7 @@ export default function BessDossierPDFGenerator({
 
             {/* Pied de page institutionnel sans "(Paysage)" */}
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <div>ENR COURTAGE SAS • Direction Financière &amp; Modélisation d'Actifs</div>
+              <div>ENR COURTAGE SAS • Modélisation Financière Analytique</div>
               <div className="font-semibold text-slate-600">Plan d'affaires audité 15 ans • Inflation 2.0%</div>
               <div className="font-bold text-[#0b192c]">Planche 4 / {totalPagesCount}</div>
             </div>
@@ -1264,7 +1129,7 @@ export default function BessDossierPDFGenerator({
           {/* ========================================================================= */}
           <div
             id="bess-planche-container-5"
-            style={{ display: (viewMode === 'all' || activePageIndex === 4 || isGenerating) ? 'flex' : 'none' }}
+            style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
@@ -1275,25 +1140,6 @@ export default function BessDossierPDFGenerator({
                 <span className="font-bold text-slate-800 text-sm">
                   {plancheTitles[4]}
                 </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => { setActivePageIndex(4); setViewMode('single'); }}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
-                  >
-                    Voir cette planche seule →
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('all')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
-                  >
-                    Afficher toutes les planches ({totalPagesCount})
-                  </button>
-                )}
               </div>
             </div>
             <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -1307,11 +1153,9 @@ export default function BessDossierPDFGenerator({
                     className="h-11 w-auto object-contain"
                   />
                   <div>
-                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
-                      Visualisation Graphique Haute Résolution
-                    </span>
+
                     <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight mt-1">
-                      Trajectoire Financière 15 Ans (2026 à 2040) • EBITDA vs Cash-Flow Disponible
+                      Trajectoire Financière 15 Ans (2026 à 2040)<br />EBITDA vs Cash-Flow Disponible
                     </h2>
                     <p className="text-xs font-medium text-slate-600 mt-0.5">
                       Comparaison dynamique annuelle entre la rentabilité opérationnelle brute (EBITDA) et les flux nets de trésorerie après service de la dette senior.
@@ -1323,7 +1167,7 @@ export default function BessDossierPDFGenerator({
                     <span className="w-3.5 h-3.5 rounded-xs bg-blue-600"></span> EBITDA Net d'Exploitation
                   </span>
                   <span className="flex items-center gap-2 text-cyan-700">
-                    <span className="w-3.5 h-3.5 rounded-xs bg-cyan-500"></span> Cash-Flow Net (Post-Dette)
+                    <span className="w-3.5 h-3.5 rounded-xs bg-cyan-500"></span> <span className="leading-tight">Cash-Flow Net<br />(Post-Dette)</span>
                   </span>
                 </div>
               </div>
@@ -1391,7 +1235,7 @@ export default function BessDossierPDFGenerator({
 
             {/* Pied de page institutionnel sans "(Paysage)" */}
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <div>ENR COURTAGE SAS • Direction Financière &amp; Modélisation d'Actifs</div>
+              <div>ENR COURTAGE SAS • Visualisation Graphique Haute Résolution</div>
               <div className="font-semibold text-slate-600">Trajectoire pluriannuelle certifiée • Cash-Flow post-dette</div>
               <div className="font-bold text-[#0b192c]">Planche 5 / {totalPagesCount}</div>
             </div>
@@ -1403,7 +1247,7 @@ export default function BessDossierPDFGenerator({
           {/* ========================================================================= */}
           <div
             id="bess-planche-container-6"
-            style={{ display: (viewMode === 'all' || activePageIndex === 5 || isGenerating) ? 'flex' : 'none' }}
+            style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
@@ -1414,25 +1258,6 @@ export default function BessDossierPDFGenerator({
                 <span className="font-bold text-slate-800 text-sm">
                   {plancheTitles[5]}
                 </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => { setActivePageIndex(5); setViewMode('single'); }}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
-                  >
-                    Voir cette planche seule →
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('all')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
-                  >
-                    Afficher toutes les planches ({totalPagesCount})
-                  </button>
-                )}
               </div>
             </div>
             <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -1446,13 +1271,13 @@ export default function BessDossierPDFGenerator({
                     className="h-11 w-auto object-contain"
                   />
                   <div>
-                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
-                      Implantation Territoriale &amp; Ingénierie Pré-Construction
-                    </span>
+
                     <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight mt-0.5">
-                      {isPort
-                        ? "Cartographie des Implantations & Visuel Technique de la Station BESS 500 kW"
-                        : `Cartographie & Rendu Architectural de la Station (${selectedSite.name})`}
+                      {isPort ? (
+                        <>Cartographie des Implantations &amp;<br />Visuel Technique de la Station BESS 500 kW</>
+                      ) : (
+                        <>Cartographie &amp;<br />Rendu Architectural de la Station ({selectedSite.name})</>
+                      )}
                     </h2>
                     <p className="text-xs font-medium text-slate-600 mt-0.5">
                       {isPort
@@ -1465,51 +1290,27 @@ export default function BessDossierPDFGenerator({
                   <span className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-black">
                     Emprise Dalle 19.84 m² (&lt; 20 m² DP)
                   </span>
-                  <span className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-300 text-xs font-black">
-                    Clôture Rigide Vert RAL 6005
-                  </span>
+
                 </div>
               </div>
 
               {/* Contenu double volet : Cartographie VOLTA à gauche + Rendu 3D de l'installation à droite */}
               <div className="grid grid-cols-12 gap-5 items-stretch">
                 
-                {/* 1. CÔTÉ GAUCHE (6/12) : CARTOGRAPHIE DES IMPLANTATIONS IDENTIQUE À L'IMAGE 5 (VOLTA) */}
+                {/* 1. CÔTÉ GAUCHE (6/12) : CARTE DES IMPLANTATIONS DU PORTEFEUILLE (SANS BARRE HAUTE NI FILIGRANE API) */}
                 <div className="col-span-6 bg-slate-900 text-white rounded-2xl overflow-hidden border border-slate-700 shadow-md flex flex-col justify-between" style={{ height: '480px' }}>
-                  {/* Barre supérieure identique à Image 5 */}
-                  <div className="bg-slate-900 px-4 py-2.5 border-b border-slate-800 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-cyan-400"></div>
-                      <span className="text-xs font-extrabold text-white">Cartographie des Implantations</span>
-                      <span className="text-[11px] text-slate-400 font-medium">• Grand Sud-Ouest (Nouvelle-Aquitaine &amp; Occitanie)</span>
-                    </div>
-
-                    {/* Filtres identiques à Image 5 */}
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold">
-                      <span className="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 hover:text-white cursor-pointer">
-                        Tous les sites
-                      </span>
-                      <span className="px-2.5 py-1 rounded-md text-amber-400 bg-amber-950/40 border border-amber-800/60 flex items-center gap-1 cursor-pointer">
-                        ☀ PV (HÉLIOS)
-                      </span>
-                      <span className="px-2.5 py-1 rounded-md text-cyan-300 bg-cyan-950/60 border border-cyan-800 flex items-center gap-1 cursor-pointer">
-                        ● BESS (VOLTA)
-                      </span>
-                    </div>
-                  </div>
-
                   {/* Carte Interactive Leaflet Grand Sud-Ouest */}
-                  <div className="relative w-full flex-1 bg-slate-800">
+                  <div className="relative w-full flex-1 bg-slate-800 h-full">
                     <MapContainer
                       center={[44.75, 0.6]}
                       zoom={7}
                       scrollWheelZoom={false}
                       zoomControl={true}
-                      style={{ width: '100%', height: '100%', minHeight: '380px' }}
+                      style={{ width: '100%', height: '100%', minHeight: '480px' }}
                     >
                       <TileLayer
-                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                        attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                         crossOrigin="anonymous"
                       />
                       {/* Affichage des pins BESS bleus / cyan avec contour blanc */}
@@ -1536,18 +1337,11 @@ export default function BessDossierPDFGenerator({
                       ))}
                     </MapContainer>
 
-                    {/* Légende noire identique à Image 5 en bas à gauche */}
+                    {/* Légende épurée dédiée exclusivement au stockage BESS */}
                     <div className="absolute bottom-3 left-3 z-[1000] bg-slate-950/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-800 shadow-lg text-[10px] text-white">
-                      <span className="font-extrabold text-slate-300 block mb-1">Légende</span>
-                      <div className="flex flex-col gap-1 font-semibold">
-                        <div className="flex items-center gap-2 text-amber-400">
-                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-                          <span>Portefeuille PV HÉLIOS</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-cyan-400">
-                          <span className="w-2.5 h-2.5 rounded-full bg-[#00a2e8]"></span>
-                          <span>Stockage BESS VOLTA (31 sites)</span>
-                        </div>
+                      <div className="flex items-center gap-2 font-bold text-cyan-400">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#00a2e8]"></span>
+                        <span>{isPort ? 'Stockage Stationnaire BESS (31 Sites HTA)' : `Centrale BESS ${selectedSite.name} (500 kW)`}</span>
                       </div>
                     </div>
                   </div>
@@ -1565,6 +1359,8 @@ export default function BessDossierPDFGenerator({
                     viewMode="3D"
                     showDimensions={false}
                     showCaptureButtons={false}
+                    showTopBar={false}
+                    showFenceToggle={false}
                     height="100%"
                     className="w-full h-full"
                   />
@@ -1579,7 +1375,7 @@ export default function BessDossierPDFGenerator({
                 </div>
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-center">
                   <span className="font-black text-slate-800 block">Clôture Treillis Soudé</span>
-                  <span className="text-slate-500 font-bold">Vert RAL 6005 (Hauteur 2.00 m)</span>
+                  <span className="text-slate-500 font-bold">Hauteur 2.00 m Sécurisée</span>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-center">
                   <span className="font-black text-slate-800 block">Sécurité Incendie &amp; Rétention</span>
@@ -1594,7 +1390,7 @@ export default function BessDossierPDFGenerator({
 
             {/* Pied de page institutionnel sans "(Paysage)" */}
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <div>ENR COURTAGE SAS • Ingénierie &amp; Raccordement Haute Tension Enedis</div>
+              <div>ENR COURTAGE SAS • Implantation Territoriale &amp; Ingénierie Pré-Construction</div>
               <div className="font-semibold text-slate-600">Cartographie VOLTA • Standard technique DP certifié</div>
               <div className="font-bold text-[#0b192c]">Planche 6 / {totalPagesCount}</div>
             </div>
@@ -1607,7 +1403,7 @@ export default function BessDossierPDFGenerator({
           {isPort && (
           <div
             id="bess-planche-container-7"
-            style={{ display: (viewMode === 'all' || activePageIndex === 6 || isGenerating) ? 'flex' : 'none' }}
+            style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
@@ -1618,25 +1414,6 @@ export default function BessDossierPDFGenerator({
                 <span className="font-bold text-slate-800 text-sm">
                   {plancheTitles[6]}
                 </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => { setActivePageIndex(6); setViewMode('single'); }}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
-                  >
-                    Voir cette planche seule →
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('all')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
-                  >
-                    Afficher toutes les planches ({totalPagesCount})
-                  </button>
-                )}
               </div>
             </div>
               <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -1650,9 +1427,7 @@ export default function BessDossierPDFGenerator({
                     className="h-11 w-auto object-contain"
                   />
                   <div>
-                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
-                      Audit Foncier &amp; Raccordement HTA (Partie 1)
-                    </span>
+
                     <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight mt-0.5">
                       {isPort
                         ? "Répertoire Foncier & Réseau des 31 Projets BESS (Sites #1 à #16)"
@@ -1710,7 +1485,7 @@ export default function BessDossierPDFGenerator({
                         <td className="py-1.5 px-2 text-center font-semibold text-slate-600">{s.dist}</td>
                         <td className="py-1.5 px-2 text-right font-semibold text-slate-600">{s.s3renr}</td>
                         <td className="py-1.5 px-2 text-center font-bold text-slate-900">
-                          <span className="px-1 py-0.5 rounded-md bg-blue-50 text-blue-700">{s.power} / {s.cap}</span>
+                          <span className="px-1 py-0.5 rounded-md bg-blue-50 text-blue-700 block leading-tight">{s.power} /<br />{s.cap}</span>
                         </td>
                         <td className="py-1.5 px-2 text-right font-extrabold text-amber-700">{s.rent}</td>
                         <td className="py-1.5 px-2 text-right font-black text-emerald-700">{s.ebitda}</td>
@@ -1724,7 +1499,7 @@ export default function BessDossierPDFGenerator({
 
             {/* Pied de page institutionnel sans "(Paysage)" */}
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <div>ENR COURTAGE SAS • Répertoire Juridique &amp; Foncier Sécurisé</div>
+              <div>ENR COURTAGE SAS • Audit Foncier &amp; Raccordement HTA (Partie 1)</div>
               <div className="font-semibold text-slate-600">31 Promesses de Baux Notariées 20 Ans • Raccordements HTA Identifiés</div>
               <div className="font-bold text-[#0b192c]">Planche 7 / {totalPagesCount}</div>
             </div>
@@ -1738,7 +1513,7 @@ export default function BessDossierPDFGenerator({
           {isPort && (
           <div
             id="bess-planche-container-8"
-            style={{ display: (viewMode === 'all' || activePageIndex === 7 || isGenerating) ? 'flex' : 'none' }}
+            style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
@@ -1749,25 +1524,6 @@ export default function BessDossierPDFGenerator({
                 <span className="font-bold text-slate-800 text-sm">
                   {plancheTitles[7]}
                 </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => { setActivePageIndex(7); setViewMode('single'); }}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
-                  >
-                    Voir cette planche seule →
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('all')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
-                  >
-                    Afficher toutes les planches ({totalPagesCount})
-                  </button>
-                )}
               </div>
             </div>
               <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -1837,7 +1593,7 @@ export default function BessDossierPDFGenerator({
                           <td className="py-1 px-2 text-center font-semibold text-slate-600">{s.dist}</td>
                           <td className="py-1 px-2 text-right font-semibold text-slate-600">{s.s3renr}</td>
                           <td className="py-1 px-2 text-center font-bold text-slate-900">
-                            <span className="px-1 py-0.5 rounded-md bg-blue-50 text-blue-700">{s.power} / {s.cap}</span>
+                            <span className="px-1 py-0.5 rounded-md bg-blue-50 text-blue-700 block leading-tight">{s.power} /<br />{s.cap}</span>
                           </td>
                           <td className="py-1 px-2 text-right font-extrabold text-amber-700">{s.rent}</td>
                           <td className="py-1 px-2 text-right font-black text-emerald-700">{s.ebitda}</td>
@@ -1847,14 +1603,14 @@ export default function BessDossierPDFGenerator({
 
                       {/* LIGNE DE TOTAL CONSOLIDÉ 31 SITES */}
                       <tr className="bg-gradient-to-r from-blue-900 via-indigo-950 to-[#0b192c] text-white font-black text-[11px]">
-                        <td className="py-2 px-2 text-center text-amber-300 font-black">TOT</td>
-                        <td className="py-2 px-2 uppercase tracking-wider text-amber-300">Total Consolidé (31 Projets)</td>
+                        <td className="py-2 px-2 text-center text-amber-300 font-black"></td>
+                        <td className="py-2 px-2 uppercase tracking-wider text-amber-300 leading-tight">Total Consolidé<br />(31 Projets)</td>
                         <td className="py-2 px-2 text-slate-300">Grand Sud-Ouest</td>
                         <td className="py-2 px-2 font-mono text-[9.5px] text-cyan-300">Grappe Nouvelle-Aquitaine / Occitanie</td>
                         <td className="py-2 px-2 text-emerald-300 font-extrabold">31 Postes HTA</td>
                         <td className="py-2 px-2 text-center text-slate-300">7.2 km moy.</td>
                         <td className="py-2 px-2 text-right text-slate-300">90.1 k€ moy.</td>
-                        <td className="py-2 px-2 text-center text-cyan-300 font-extrabold">15.5 MW / 32.36 MWh</td>
+                        <td className="py-2 px-2 text-center text-cyan-300 font-extrabold leading-tight">15.5 MW /<br />32.36 MWh</td>
                         <td className="py-2 px-2 text-right text-amber-300 font-black">93 000 €/an</td>
                         <td className="py-2 px-2 text-right text-emerald-400 font-black text-xs">1.56 M€</td>
                         <td className="py-2 px-2 text-center text-emerald-300 font-black">4.6 ans</td>
@@ -1866,7 +1622,7 @@ export default function BessDossierPDFGenerator({
 
               {/* Pied de page institutionnel sans "(Paysage)" garanti 100% visible */}
               <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                <div>ENR COURTAGE SAS • Synthèse Globale du Portefeuille M&amp;A</div>
+                <div>ENR COURTAGE SAS • Audit Foncier &amp; Raccordement HTA (Partie 2)</div>
                 <div className="font-semibold text-slate-600">Consolidation Complète 31 Sites • 15.50 MW / 32.36 MWh</div>
                 <div className="font-bold text-[#0b192c]">Planche 8 / {totalPagesCount}</div>
               </div>

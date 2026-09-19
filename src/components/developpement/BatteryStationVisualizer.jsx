@@ -80,6 +80,8 @@ export default function BatteryStationVisualizer({
   viewMode = '3D', // '3D' | '2D_FRONT' | '2D_TOP'
   showDimensions = true,
   showCaptureButtons = true,
+  showTopBar = true,
+  showFenceToggle = true,
   onCaptureViews = null,
   onCaptureSnapshot = null,
   onCapture = null,
@@ -233,60 +235,62 @@ export default function BatteryStationVisualizer({
       style={{ height: typeof height === 'number' ? `${height}px` : (height || '100%') }}
     >
       {/* 1. BARRE SUPÉRIEURE : SÉLECTEUR DE MODE 3D / 2D FAÇADE / PLAN DE MASSE */}
-      <div className="absolute top-2.5 left-2.5 right-2.5 z-30 flex items-center justify-between pointer-events-none">
-        {/* Badge informatif */}
-        <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 shadow-md flex items-center gap-2 pointer-events-auto">
-          <div className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
-          <span className="text-[11px] font-extrabold text-slate-800">
-            {internalMode === '3D' && 'Vue 3D Libre (Rotation 360°)'}
-            {internalMode === '2D_FRONT' && 'Vue 2D Façade Sud (Élévation technique)'}
-            {internalMode === '2D_TOP' && 'Plan de masse (Vue zénithale / Emprise sol)'}
-          </span>
-          <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
-            {dLen}m × {dWid}m ({dArea} m²)
-          </span>
-        </div>
+      {showTopBar && (
+        <div className="absolute top-2.5 left-2.5 right-2.5 z-30 flex items-center justify-between pointer-events-none">
+          {/* Badge informatif */}
+          <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 shadow-md flex items-center gap-2 pointer-events-auto">
+            <div className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
+            <span className="text-[11px] font-extrabold text-slate-800">
+              {internalMode === '3D' && 'Vue 3D Libre (Rotation 360°)'}
+              {internalMode === '2D_FRONT' && 'Vue 2D Façade Sud (Élévation technique)'}
+              {internalMode === '2D_TOP' && 'Plan de masse (Vue zénithale / Emprise sol)'}
+            </span>
+            <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+              {dLen}m × {dWid}m ({dArea} m²)
+            </span>
+          </div>
 
-        {/* Boutons de bascule des 3 modes */}
-        <div className="flex gap-1 bg-white/95 backdrop-blur-md p-1 rounded-xl border border-slate-200 shadow-md pointer-events-auto">
-          <button
-            type="button"
-            onClick={() => setInternalMode('3D')}
-            className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${
-              internalMode === '3D'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <RotateCw className="w-3 h-3" />
-            <span>Vue 3D</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setInternalMode('2D_FRONT')}
-            className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${
-              internalMode === '2D_FRONT'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Eye className="w-3 h-3" />
-            <span>Façade Sud</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setInternalMode('2D_TOP')}
-            className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${
-              internalMode === '2D_TOP'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Layers className="w-3 h-3" />
-            <span>Plan Masse</span>
-          </button>
+          {/* Boutons de bascule des 3 modes */}
+          <div className="flex gap-1 bg-white/95 backdrop-blur-md p-1 rounded-xl border border-slate-200 shadow-md pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => setInternalMode('3D')}
+              className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${
+                internalMode === '3D'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <RotateCw className="w-3 h-3" />
+              <span>Vue 3D</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInternalMode('2D_FRONT')}
+              className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${
+                internalMode === '2D_FRONT'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Eye className="w-3 h-3" />
+              <span>Façade Sud</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInternalMode('2D_TOP')}
+              className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 ${
+                internalMode === '2D_TOP'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Layers className="w-3 h-3" />
+              <span>Plan Masse</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 2. OVERLAYS TECHNIQUES SPÉCIFIQUES SELON LE MODE */}
       {/* MODE 2D_FRONT : COTATIONS DE HAUTEUR ET LARGEUR SUR LA FAÇADE */}
@@ -396,15 +400,17 @@ export default function BatteryStationVisualizer({
       {/* 4. BARRE INFÉRIEURE : CONTRÔLES & ACTIONS */}
       <div className="absolute bottom-2.5 left-2.5 right-2.5 z-30 flex items-center justify-between pointer-events-none">
         {/* Toggle Clôture */}
-        <label className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 flex items-center gap-2 cursor-pointer pointer-events-auto hover:bg-slate-50 transition-colors shadow-sm">
-          <input
-            type="checkbox"
-            checked={showFence}
-            onChange={(e) => setShowFence(e.target.checked)}
-            className="w-3.5 h-3.5 accent-purple-600 rounded"
-          />
-          <span>Clôture rigide vert RAL 6005</span>
-        </label>
+        {showFenceToggle && (
+          <label className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 flex items-center gap-2 cursor-pointer pointer-events-auto hover:bg-slate-50 transition-colors shadow-sm">
+            <input
+              type="checkbox"
+              checked={showFence}
+              onChange={(e) => setShowFence(e.target.checked)}
+              className="w-3.5 h-3.5 accent-purple-600 rounded"
+            />
+            <span>Clôture rigide vert RAL 6005</span>
+          </label>
+        )}
 
         {/* Boutons de capture */}
         {showCaptureButtons && (
