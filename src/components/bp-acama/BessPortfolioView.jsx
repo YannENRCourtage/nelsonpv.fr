@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Layers,
   TrendingUp,
@@ -13,7 +13,10 @@ import {
   CheckCircle2,
   ShieldCheck,
   Building2,
-  Table as TableIcon
+  Table as TableIcon,
+  Landmark,
+  Percent,
+  Calendar
 } from 'lucide-react';
 import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
@@ -25,10 +28,14 @@ const fmtK = (v) => `${(v / 1000).toFixed(0)} k€`;
 const fmtM = (v) => `${(v / 1000000).toFixed(2)} M€`;
 const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
 
-export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
+export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataChange }) {
   const [selectedSpv, setSelectedSpv] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedChronique, setExpandedChronique] = useState(false);
+
+  // Paramètres de dette senior modifiables
+  const [debtDuration, setDebtDuration] = useState(12); // en années (e.g. 10, 12, 15, 20)
+  const [debtRate, setDebtRate] = useState(4.30); // en % (e.g. 3.80, 4.00, 4.30, 4.50, 5.00)
 
   // Modèle unitaire standardisé (4 armoires CESC Mercury 261 = 500 kW / 1044 kWh)
   const unitPower = 500; // kW
@@ -36,8 +43,11 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
   const nbCyclesJour = 2.0; // 2 cycles/jour
   const studyYears = 15;
 
-  // Calcul financier de chaque site et agrégation
+  // Calcul financier de chaque site et agrégation avec dette dynamique
   const { analyzedSites, consolidatedTotals, consolidatedChronique } = useMemo(() => {
+    const rateDecimal = (debtRate || 4.30) / 100;
+    const durationYears = debtDuration || 12;
+
     const sites = BESS_PORTFOLIO_SITES.map((site, index) => {
       const distKm = site.substation?.distanceKm || 5.0;
       const raccordementHTCost = Math.round(15000 + (distKm * 1000 * 0.035 * 1000)); // HTA standardisé
@@ -69,9 +79,9 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
 
       const ebitda = caAnnuel - opexAnnuel;
 
-      // Emprunt 12 ans à 4.3%
+      // Emprunt dynamique (durée et taux configurables)
       const emprunt = capexTotal;
-      const annuiteDette = Math.abs(calculatePmt(0.043, 12, emprunt));
+      const annuiteDette = Math.abs(calculatePmt(rateDecimal, durationYears, emprunt));
 
       // Calcul des cash-flows 15 ans
       const cfProjet = [-capexTotal];
@@ -86,10 +96,10 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
         const opexY = opexAnnuel * infl;
         const ebeY = caY - opexY;
         const amort = capexTotal / studyYears;
-        const interest = y <= 12 ? (emprunt * (1 - (y - 1) / 12) * 0.043) : 0;
+        const interest = y <= durationYears ? (emprunt * (1 - (y - 1) / durationYears) * rateDecimal) : 0;
         const resFisc = Math.max(0, ebeY - amort - interest);
         const is = resFisc * 0.25;
-        const servDette = y <= 12 ? annuiteDette : 0;
+        const servDette = y <= durationYears ? annuiteDette : 0;
         const cfNet = ebeY - servDette - is;
 
         cfProjet.push(ebeY - is);
@@ -140,6 +150,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
     const totalOpexAn1 = sites.reduce((sum, s) => sum + s.opexAnnuel, 0);
     const totalEbitdaAn1 = sites.reduce((sum, s) => sum + s.ebitda, 0);
     const totalLoyersAn1 = sites.reduce((sum, s) => sum + (s.rent || 3000), 0);
+    const totalAnnuite = sites.reduce((sum, s) => sum + Math.abs(calculatePmt(rateDecimal, durationYears, s.capexTotal)), 0);
 
     // Chronique consolidée 15 ans
     const chronique = [];
@@ -183,6 +194,10 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
 
     const triConsolide = calculateIrr(consolidatedCfProjet, 0.08);
 
+    // Calcul du DSCR moyen portefeuille pendant la période de dette
+    const dscrArray = chronique.filter(c => c.serviceDette > 0).map(c => c.ebitda / c.serviceDette);
+    const avgDscr = dscrArray.length > 0 ? dscrArray.reduce((a, b) => a + b, 0) / dscrArray.length : 1.98;
+
     return {
       analyzedSites: sites,
       consolidatedTotals: {
@@ -194,12 +209,29 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
         totalOpexAn1,
         totalEbitdaAn1,
         totalLoyersAn1,
+        totalAnnuite,
+        avgDscr,
+        debtDuration: durationYears,
+        debtRate: debtRate,
         triConsolide,
         paybackConsol: paybackConsol || 7.3
       },
       consolidatedChronique: chronique
     };
-  }, []);
+  }, [debtDuration, debtRate]);
+
+  // Propagation des données mises à jour au parent
+  useEffect(() => {
+    if (onDataChange) {
+      onDataChange({
+        debtDuration,
+        debtRate,
+        analyzedSites,
+        consolidatedTotals,
+        consolidatedChronique
+      });
+    }
+  }, [debtDuration, debtRate, analyzedSites, consolidatedTotals, consolidatedChronique, onDataChange]);
 
   // Filtrage des sites
   const filteredSites = useMemo(() => {
@@ -247,14 +279,14 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
       'CA Consolidé (€)': Math.round(c.ca),
       'OPEX Consolidés (€)': Math.round(c.opex),
       'EBITDA Consolidé (€)': Math.round(c.ebitda),
-      'Service Dette (€)': Math.round(c.serviceDette),
+      [`Service Dette (${debtDuration} ans à ${debtRate.toFixed(2)}%) (€)`]: Math.round(c.serviceDette),
       'Cash-Flow Net (€)': Math.round(c.cfNet),
       'Cumul Trésorerie (€)': Math.round(c.cumulCf)
     }));
     const wsChrono = XLSX.utils.json_to_sheet(chronoRows);
     XLSX.utils.book_append_sheet(wb, wsChrono, 'Modele_Financier_15_Ans');
 
-    XLSX.writeFile(wb, `Portefeuille_BESS_31_Sites_Consolide_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `Portefeuille_BESS_31_Sites_Consolide_${debtDuration}ans_${debtRate}pct_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   return (
@@ -286,6 +318,169 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
             <Download className="w-4 h-4 text-emerald-400" />
             Excel Consolidé
           </button>
+        </div>
+      </div>
+
+      {/* ── Paramètres de Financement Dette Sénior (Durée & Taux Modifiables) ── */}
+      <div className="bg-white rounded-xl border-2 border-blue-200/80 shadow-md p-4 sm:p-5 relative overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-black">
+              <Landmark className="w-5 h-5 text-blue-700" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                  STRUCTURE & PARAMÈTRES DE FINANCEMENT (DETTE SÉNIOR)
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
+                  Simulation Interactive
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Ajustez la durée et le taux d'intérêt bancaire pour recalculer en temps réel le cash-flow, le DSCR, le payback et le dossier PDF.
+              </p>
+            </div>
+          </div>
+
+          {onExportPdf && (
+            <button
+              onClick={() => onExportPdf({
+                debtDuration,
+                debtRate,
+                analyzedSites,
+                consolidatedTotals,
+                consolidatedChronique
+              })}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-black rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+              data-html2canvas-ignore="true"
+            >
+              <FileDown className="w-4 h-4 text-emerald-300" />
+              <span>Dossier PDF Multipages</span>
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Contrôle Durée de la Dette */}
+          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                Durée d'Amortissement
+              </label>
+              <span className="text-xs font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">
+                {debtDuration} ans
+              </span>
+            </div>
+            
+            {/* Pills de sélection rapide */}
+            <div className="grid grid-cols-4 gap-1.5 mb-2.5">
+              {[10, 12, 15, 20].map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDebtDuration(d)}
+                  className={`py-1 text-xs font-bold rounded-lg border transition-all ${
+                    debtDuration === d
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {d} ans
+                </button>
+              ))}
+            </div>
+
+            {/* Slider / Range */}
+            <input
+              type="range"
+              min="5"
+              max="20"
+              step="1"
+              value={debtDuration}
+              onChange={e => setDebtDuration(parseInt(e.target.value, 10))}
+              className="w-full accent-blue-600 cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] text-slate-400 font-semibold mt-1">
+              <span>5 ans</span>
+              <span>12 ans (Standard)</span>
+              <span>20 ans</span>
+            </div>
+          </div>
+
+          {/* Contrôle Taux d'Intérêt */}
+          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                <Percent className="w-3.5 h-3.5 text-indigo-600" />
+                Taux d'Intérêt Bancaire
+              </label>
+              <span className="text-xs font-black text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-md">
+                {debtRate.toFixed(2)} %
+              </span>
+            </div>
+
+            {/* Pills de sélection rapide */}
+            <div className="grid grid-cols-5 gap-1 mb-2.5">
+              {[3.80, 4.00, 4.30, 4.50, 5.00].map(r => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setDebtRate(r)}
+                  className={`py-1 text-[11px] font-bold rounded-lg border transition-all ${
+                    debtRate === r
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {r.toFixed(2)}%
+                </button>
+              ))}
+            </div>
+
+            {/* Slider / Range */}
+            <input
+              type="range"
+              min="2.0"
+              max="8.0"
+              step="0.05"
+              value={debtRate}
+              onChange={e => setDebtRate(parseFloat(e.target.value))}
+              className="w-full accent-indigo-600 cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] text-slate-400 font-semibold mt-1">
+              <span>2.00%</span>
+              <span>4.30% (Standard)</span>
+              <span>8.00%</span>
+            </div>
+          </div>
+
+          {/* Métrique Annuité Portefeuille */}
+          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200 flex flex-col justify-between">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Annuité Totale Portefeuille
+            </div>
+            <div className="text-lg font-black text-slate-900 mt-1">
+              {fmtEur(consolidatedTotals.totalAnnuite)} <span className="text-xs font-medium text-slate-500">/ an</span>
+            </div>
+            <div className="text-[10px] font-semibold text-blue-700 mt-1 bg-blue-50/80 px-2 py-1 rounded border border-blue-100">
+              ~{fmtEur(consolidatedTotals.totalAnnuite / 31)} / an / site ({debtDuration} ans)
+            </div>
+          </div>
+
+          {/* Métrique DSCR Portefeuille */}
+          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200 flex flex-col justify-between">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Ratio DSCR Moyen
+            </div>
+            <div className="text-lg font-black text-emerald-700 mt-1">
+              {consolidatedTotals.avgDscr.toFixed(2)}x
+            </div>
+            <div className="text-[10px] font-semibold text-emerald-800 mt-1 bg-emerald-50/80 px-2 py-1 rounded border border-emerald-100">
+              Couverture dette bancaire ({debtDuration} ans)
+            </div>
+          </div>
         </div>
       </div>
 
@@ -371,7 +566,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
                   {consolidatedChronique.map(c => <td key={c.year} className="p-2">{fmtEur(c.ebitda)}</td>)}
                 </tr>
                 <tr className="text-slate-600">
-                  <td className="p-2 text-left">Service de la Dette (12 ans)</td>
+                  <td className="p-2 text-left">Service de la Dette ({debtDuration} ans à {debtRate.toFixed(2)}%)</td>
                   {consolidatedChronique.map(c => <td key={c.year} className="p-2 text-slate-500">{c.serviceDette > 0 ? `-${fmtEur(c.serviceDette)}` : '—'}</td>)}
                 </tr>
                 <tr className="font-bold bg-amber-50/50 text-amber-800">

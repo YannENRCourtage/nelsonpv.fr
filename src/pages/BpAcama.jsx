@@ -1400,6 +1400,9 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             if (data) setPortfolioExportData(data);
             setIsDossierPdfOpen(true);
           }}
+          onDataChange={(data) => {
+            setPortfolioExportData(data);
+          }}
         />
       ) : (
         <SectionCard 

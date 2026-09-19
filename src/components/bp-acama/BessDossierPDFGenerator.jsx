@@ -28,6 +28,7 @@ import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import BatteryStationVisualizer from '../developpement/BatteryStationVisualizer.jsx';
 import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
+import { calculatePmt } from '../../services/bessSimulationEngine.js';
 
 // Base de données consolidée des 31 sites BESS (15.5 MW / 32.36 MWh)
 const SITES_DATABASE = [
@@ -137,6 +138,25 @@ export default function BessDossierPDFGenerator({
     ? "Grappe territoriale de 31 unités standardisées (500 kW / 1 044 kWh) raccordées au réseau HTA 20 kV Enedis dans le Grand Sud-Ouest (Nouvelle-Aquitaine & Occitanie). Monétisation agrégée en Value Stacking sous le régime TURPE 7 délibéré CRE 2025-227."
     : `Unité de stockage stationnaire autonome par batterie LFP (4 armoires CESC Mercury 261) raccordée au réseau HTA 20 kV Enedis (${selectedSite.substation} - ${selectedSite.dist}). Monétisation optimisée en Value Stacking sous le barème TURPE 7.`;
 
+  // Paramètres de dette senior dynamiques
+  const debtDuration = portfolioData?.debtDuration ?? 12;
+  const debtRate = portfolioData?.debtRate ?? 4.30;
+  const unitCapex = 233250;
+  const unitAnnuity = Math.abs(calculatePmt((debtRate || 4.30) / 100, debtDuration || 12, unitCapex));
+  const dynamicDebtService = YEARS_15.map((_, i) => (i < (debtDuration || 12) ? unitAnnuity : 0));
+
+  // Calcul dynamique du DSCR moyen
+  const dscrArray = YEARS_15.map((_, i) => {
+    const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
+    const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+    const ebitda = rev - opex;
+    const debtVal = dynamicDebtService[i] * mult;
+    if (debtVal === 0) return null;
+    return ebitda / debtVal;
+  });
+  const validDscr = dscrArray.filter(v => v !== null);
+  const avgDscr = validDscr.length > 0 ? (validDscr.reduce((a, b) => a + b, 0) / validDscr.length) : 1.98;
+
   // Métriques KPI institutionnelles
   const kpi = {
     irrProject: isPort ? '20.5%' : '20.8%',
@@ -168,13 +188,13 @@ export default function BessDossierPDFGenerator({
     ),
     dscrMoyenBadge: isPort ? (
       <>
-        <span className="whitespace-nowrap">DSCR Portefeuille : 1.98</span>
+        <span className="whitespace-nowrap">DSCR Portefeuille : {avgDscr.toFixed(2)}</span>
         <br />
         <span className="whitespace-nowrap text-[10px] font-bold text-blue-700">(Excellence bancaire)</span>
       </>
     ) : (
       <>
-        <span className="whitespace-nowrap">DSCR Moyen : 1.98</span>
+        <span className="whitespace-nowrap">DSCR Moyen : {avgDscr.toFixed(2)}</span>
         <br />
         <span className="whitespace-nowrap text-[10px] font-bold text-blue-700">(Min bancaire 1.15x)</span>
       </>
@@ -193,7 +213,7 @@ export default function BessDossierPDFGenerator({
     const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
     const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
     const ebitda = rev - opex;
-    const debt = FINANCIAL_MATRIX.debtService[i] * mult;
+    const debt = dynamicDebtService[i] * mult;
     const cf = ebitda - debt;
     return { year: y, ebitda, cf };
   });
@@ -1040,7 +1060,7 @@ export default function BessDossierPDFGenerator({
                       {kpi.tableTitle}
                     </h2>
                     <p className="text-xs font-medium text-slate-600 mt-0.5 leading-snug">
-                      Chronique 15 ans détaillée : Dette senior 12 ans à 4.30% • Inflation 2.0%/an • Dégradation batterie 1.0%/an<br />
+                      Chronique 15 ans détaillée : Dette senior {debtDuration} ans à {debtRate.toFixed(2)}% • Inflation 2.0%/an • Dégradation batterie 1.0%/an<br />
                       Loyer foncier 3 000 €/an/site sur 20 ans.
                     </p>
                   </div>
@@ -1121,9 +1141,9 @@ export default function BessDossierPDFGenerator({
                     </tr>
 
                     <tr className="text-slate-600 text-[9.5px]">
-                      <td className="p-1.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap">4. Service Dette Senior (12 ans)</td>
+                      <td className="p-1.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap">4. Service Dette Senior ({debtDuration} ans à {debtRate.toFixed(2)}%)</td>
                       {YEARS_15.map((_, i) => {
-                        const val = FINANCIAL_MATRIX.debtService[i] * mult;
+                        const val = dynamicDebtService[i] * mult;
                         return <td key={i} className="p-1.5 whitespace-nowrap">{val > 0 ? `-${fmtEur(val)}` : '0 €'}</td>;
                       })}
                     </tr>
@@ -1134,7 +1154,7 @@ export default function BessDossierPDFGenerator({
                         const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
                         const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
                         const ebitda = rev - opex;
-                        const debt = FINANCIAL_MATRIX.debtService[i] * mult;
+                        const debt = dynamicDebtService[i] * mult;
                         return <td key={i} className="p-2 text-cyan-800 whitespace-nowrap">{fmtEur(ebitda - debt)}</td>;
                       })}
                     </tr>
@@ -1142,7 +1162,7 @@ export default function BessDossierPDFGenerator({
                     <tr className="bg-slate-50 text-[9.5px] font-bold text-slate-800">
                       <td className="p-2 text-left sticky left-0 bg-slate-50 z-10 whitespace-nowrap">Ratio DSCR de Dette Senior</td>
                       {YEARS_15.map((_, i) => {
-                        const val = FINANCIAL_MATRIX.debtService[i] * mult;
+                        const val = dynamicDebtService[i] * mult;
                         if (val === 0) return <td key={i} className="p-1.5 text-slate-400 whitespace-nowrap">—</td>;
                         const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
                         const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
@@ -1301,12 +1321,12 @@ export default function BessDossierPDFGenerator({
                 </div>
                 <div className="bg-white border-2 border-cyan-200 rounded-xl p-3.5 text-center shadow-xs">
                   <span className="text-[10px] font-extrabold text-cyan-700 uppercase block">Fin Dette Senior</span>
-                  <span className="text-xl font-black text-cyan-900 mt-0.5 block">Année 12 (2037)</span>
+                  <span className="text-xl font-black text-cyan-900 mt-0.5 block">Année {debtDuration} ({2025 + debtDuration})</span>
                   <span className="text-[10px] text-slate-500 mt-0.5 block">Dette 100% amortie</span>
                 </div>
                 <div className="bg-white border-2 border-emerald-200 rounded-xl p-3.5 text-center shadow-xs">
                   <span className="text-[10px] font-extrabold text-emerald-700 uppercase block">DSCR Moyen Portefeuille</span>
-                  <span className="text-xl font-black text-emerald-900 mt-0.5 block">1.98x</span>
+                  <span className="text-xl font-black text-emerald-900 mt-0.5 block">{avgDscr.toFixed(2)}x</span>
                   <span className="text-[10px] text-slate-500 mt-0.5 block">Seuil bancaire min. 1.15x</span>
                 </div>
                 <div className="bg-white border-2 border-purple-200 rounded-xl p-3.5 text-center shadow-xs">
