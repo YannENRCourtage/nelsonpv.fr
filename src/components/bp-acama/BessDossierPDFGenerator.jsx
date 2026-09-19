@@ -159,8 +159,26 @@ export default function BessDossierPDFGenerator({
     totalRevDonut: isPort ? '3 843 318 € / an' : '123 978 € / an',
     totalRevSub: isPort ? 'Portefeuille Consolidé 15.5 MW' : 'Unité 500 kW / 1 044 kWh',
     tableTitle: isPort ? (<>Plan d'Affaires Prévisionnel Consolidé sur 15 Ans<br />(31 Sites / 15.5 MW)</>) : (<>Plan d'Affaires Prévisionnel sur 15 Ans<br />(Unitaire 500 kW / 1 044 kWh)</>),
-    badgePaybackSmall: isPort ? (<>4.6 ans (Projet) /<br />2.2 ans (Equity)</>) : (<>4.6 ans (Projet) /<br />2.2 ans (Equity)</>),
-    dscrMoyenBadge: isPort ? (<>DSCR Portefeuille : 1.98<br />(Excellence bancaire)</>) : (<>DSCR Moyen : 1.98<br />(Min bancaire 1.15x)</>),
+    badgePaybackSmall: (
+      <>
+        <span className="whitespace-nowrap">4.6 ans (Projet)</span>
+        <br />
+        <span className="whitespace-nowrap text-[10px] font-bold text-emerald-700">2.2 ans (Equity)</span>
+      </>
+    ),
+    dscrMoyenBadge: isPort ? (
+      <>
+        <span className="whitespace-nowrap">DSCR Portefeuille : 1.98</span>
+        <br />
+        <span className="whitespace-nowrap text-[10px] font-bold text-blue-700">(Excellence bancaire)</span>
+      </>
+    ) : (
+      <>
+        <span className="whitespace-nowrap">DSCR Moyen : 1.98</span>
+        <br />
+        <span className="whitespace-nowrap text-[10px] font-bold text-blue-700">(Min bancaire 1.15x)</span>
+      </>
+    ),
     techConfig: isPort ? "124 armoires extérieures réparties sur 31 sites" : "4 armoires extérieures CESC Mercury 261 (1.15m x 1.44m x 2.38m)",
     techPowerCap: isPort ? "15.5 MW / 32.36 MWh consolidés" : "500 kW / 1 044 kWh (Ratio 2h de décharge)"
   };
@@ -211,7 +229,30 @@ export default function BessDossierPDFGenerator({
           height: 940,
           windowWidth: 1380,
           windowHeight: 940,
-          allowTaint: true
+          allowTaint: true,
+          scrollX: 0,
+          scrollY: 0,
+          onclone: (clonedDoc) => {
+            // Repositionnement parfait des calques Leaflet (SVG/Canvas/Panes) dans html2canvas
+            const leafletNodes = clonedDoc.querySelectorAll(
+              '.leaflet-map-pane, .leaflet-tile-pane, .leaflet-overlay-pane, .leaflet-zoom-animated, .leaflet-pane svg, .leaflet-pane canvas'
+            );
+            leafletNodes.forEach((node) => {
+              const transform = node.style.transform;
+              if (transform && transform !== 'none') {
+                const match = transform.match(/translate(?:3d)?\(\s*([-\d.]+)px,\s*([-\d.]+)px/);
+                if (match) {
+                  const tx = parseFloat(match[1]);
+                  const ty = parseFloat(match[2]);
+                  const curL = parseFloat(node.style.left || 0);
+                  const curT = parseFloat(node.style.top || 0);
+                  node.style.left = `${curL + tx}px`;
+                  node.style.top = `${curT + ty}px`;
+                  node.style.transform = 'none';
+                }
+              }
+            });
+          }
         });
 
         const imgData = canvas.toDataURL('image/jpeg', 0.98);
@@ -738,14 +779,17 @@ export default function BessDossierPDFGenerator({
                       <tr className="bg-emerald-50/60 font-black text-slate-900">
                         <td className="p-2.5 uppercase">Total Facture Annuelle TURPE Réseau</td>
                         <td className="p-2.5 text-red-600 font-bold">
-                        <span className="relative inline-block">
-                          <span>{isPort ? '697 500 € / an' : '22 500 € / an'}</span>
                           <span
-                            className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] bg-red-600 pointer-events-none"
-                            style={{ height: '2px', top: '50%', transform: 'translateY(-50%)' }}
-                          />
-                        </span>
-                      </td>
+                            className="relative inline-block text-red-600 font-bold"
+                            style={{
+                              textDecoration: 'line-through',
+                              textDecorationColor: '#dc2626',
+                              textDecorationThickness: '2.5px'
+                            }}
+                          >
+                            {isPort ? '697 500 € / an' : '22 500 € / an'}
+                          </span>
+                        </td>
                         <td className="p-2.5 text-emerald-800 text-sm">{isPort ? '257 827 € / an' : '8 317 € / an'}</td>
                         <td className="p-2.5 text-right text-emerald-700 text-sm font-black">{isPort ? '+439 673 € / an' : '+14 183 € / an'}</td>
                       </tr>
@@ -984,16 +1028,17 @@ export default function BessDossierPDFGenerator({
                     <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight mt-1">
                       {kpi.tableTitle}
                     </h2>
-                    <p className="text-xs font-medium text-slate-600 mt-0.5">
-                      Chronique 15 ans détaillée : Dette senior 12 ans à 4.30% • Inflation 2.0%/an • Dégradation batterie 1.0%/an • Loyer foncier 3 000 €/an/site sur 20 ans.
+                    <p className="text-xs font-medium text-slate-600 mt-0.5 leading-snug">
+                      Chronique 15 ans détaillée : Dette senior 12 ans à 4.30% • Inflation 2.0%/an • Dégradation batterie 1.0%/an<br />
+                      Loyer foncier 3 000 €/an/site sur 20 ans.
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-black">
+                  <span className="px-3.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-black text-center whitespace-nowrap leading-tight">
                     {kpi.badgePaybackSmall}
                   </span>
-                  <span className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-300 text-xs font-black">
+                  <span className="px-3.5 py-1.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-300 text-xs font-black text-center whitespace-nowrap leading-tight">
                     {kpi.dscrMoyenBadge}
                   </span>
                 </div>
@@ -1162,19 +1207,24 @@ export default function BessDossierPDFGenerator({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs font-bold bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl">
-                  <span className="flex items-center gap-2 text-blue-700">
-                    <span className="w-3.5 h-3.5 rounded-xs bg-blue-600"></span> EBITDA Net d'Exploitation
+                <div className="flex items-center gap-4 text-xs font-bold bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl shrink-0">
+                  <span className="flex items-center gap-2 text-blue-700 shrink-0">
+                    <span className="w-3.5 h-3.5 rounded-xs bg-blue-600 shrink-0"></span> EBITDA Net d'Exploitation
                   </span>
-                  <span className="flex items-center gap-2 text-cyan-700">
-                    <span className="w-3.5 h-3.5 rounded-xs bg-cyan-500"></span> <span className="leading-tight">Cash-Flow Net<br />(Post-Dette)</span>
+                  <span className="flex items-center gap-2 text-cyan-700 shrink-0">
+                    <span className="w-3.5 h-3.5 rounded-xs bg-cyan-500 shrink-0"></span>
+                    <span className="leading-tight text-left">
+                      <span className="whitespace-nowrap">Cash-Flow Net</span>
+                      <br />
+                      <span className="text-[10px] text-slate-500 font-semibold whitespace-nowrap">(Post-Dette)</span>
+                    </span>
                   </span>
                 </div>
               </div>
 
               {/* Grand Graphique Vectoriel Pleine Page 15 Ans */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-6">
-                <div className="h-80 flex items-end justify-between gap-3 pt-6 px-4 border-b-2 border-slate-300 relative">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-4 shadow-xs">
+                <div className="h-[430px] flex items-end justify-between gap-3 pt-12 pb-1 px-4 border-b-2 border-slate-300 relative">
                   {/* Lignes de repères horizontales */}
                   <div className="absolute inset-x-0 top-1/4 border-b border-slate-200 border-dashed pointer-events-none"></div>
                   <div className="absolute inset-x-0 top-2/4 border-b border-slate-200 border-dashed pointer-events-none"></div>
@@ -1183,25 +1233,43 @@ export default function BessDossierPDFGenerator({
                   {chartBars.map((b) => {
                     const hEbitda = Math.min(100, Math.max(12, (b.ebitda / maxEbitda) * 100));
                     const hCf = Math.min(100, Math.max(6, (b.cf / maxEbitda) * 100));
+                    const fmtBarEbitda = isPort ? `${(b.ebitda / 1000000).toFixed(2)}M` : `${Math.round(b.ebitda / 1000)}k`;
+                    const fmtBarCf = isPort ? `${(b.cf / 1000000).toFixed(2)}M` : `${Math.round(b.cf / 1000)}k`;
+
                     return (
-                      <div key={b.year} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group z-10">
-                        {/* Valeur affichée au dessus de la barre */}
-                        <div className="text-[9px] font-black text-slate-600 opacity-80 mb-0.5 whitespace-nowrap">
-                          {isPort ? `${(b.ebitda / 1000000).toFixed(2)}M` : `${Math.round(b.ebitda / 1000)}k`}
-                        </div>
-                        <div className="w-full flex items-end justify-center gap-1.5 h-full">
+                      <div key={b.year} className="flex-1 flex flex-col items-center h-full justify-end group z-10">
+                        <div className="w-full flex items-end justify-center gap-1.5 h-full relative">
+                          {/* Barre EBITDA (Bleu) */}
                           <div
-                            className="w-1/2 bg-gradient-to-t from-blue-700 to-blue-500 rounded-t-sm transition-all hover:brightness-110 shadow-xs"
+                            className="w-1/2 bg-gradient-to-t from-blue-700 to-blue-500 rounded-t-sm transition-all hover:brightness-110 shadow-xs relative flex justify-center"
                             style={{ height: `${hEbitda}%` }}
                             title={`EBITDA ${b.year}: ${fmtEur(b.ebitda)}`}
-                          ></div>
+                          >
+                            {/* Chiffre EBITDA - Niveau Haut (décalé au-dessus) */}
+                            <div
+                              className="absolute left-1/2 -translate-x-1/2 text-[9px] font-black text-blue-900 bg-blue-50/95 border border-blue-200 px-1 py-0.5 rounded shadow-2xs whitespace-nowrap"
+                              style={{ bottom: 'calc(100% + 18px)' }}
+                            >
+                              {fmtBarEbitda}
+                            </div>
+                          </div>
+
+                          {/* Barre Cash-Flow Net (Cyan) */}
                           <div
-                            className="w-1/2 bg-gradient-to-t from-cyan-600 to-cyan-400 rounded-t-sm transition-all hover:brightness-110 shadow-xs"
+                            className="w-1/2 bg-gradient-to-t from-cyan-600 to-cyan-400 rounded-t-sm transition-all hover:brightness-110 shadow-xs relative flex justify-center"
                             style={{ height: `${hCf}%` }}
                             title={`Cash-Flow ${b.year}: ${fmtEur(b.cf)}`}
-                          ></div>
+                          >
+                            {/* Chiffre Cash-Flow Net - Niveau Bas (décalé juste au-dessus de sa barre) */}
+                            <div
+                              className="absolute left-1/2 -translate-x-1/2 text-[9px] font-black text-cyan-900 bg-cyan-50/95 border border-cyan-200 px-1 py-0.5 rounded shadow-2xs whitespace-nowrap"
+                              style={{ bottom: 'calc(100% + 2px)' }}
+                            >
+                              {fmtBarCf}
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-xs font-extrabold text-slate-800 mt-1">{b.year}</span>
+                        <span className="text-xs font-extrabold text-slate-800 mt-2">{b.year}</span>
                       </div>
                     );
                   })}
@@ -1210,22 +1278,22 @@ export default function BessDossierPDFGenerator({
 
               {/* 4 Blocs d'analyse financière pluriannuelle sous le grand graphique */}
               <div className="grid grid-cols-4 gap-4">
-                <div className="bg-white border-2 border-blue-200 rounded-xl p-4 text-center shadow-xs">
+                <div className="bg-white border-2 border-blue-200 rounded-xl p-3.5 text-center shadow-xs">
                   <span className="text-[10px] font-extrabold text-blue-700 uppercase block">Marge Opérationnelle</span>
                   <span className="text-xl font-black text-blue-900 mt-0.5 block">~40.6%</span>
                   <span className="text-[10px] text-slate-500 mt-0.5 block">Excellence opérationnelle</span>
                 </div>
-                <div className="bg-white border-2 border-cyan-200 rounded-xl p-4 text-center shadow-xs">
+                <div className="bg-white border-2 border-cyan-200 rounded-xl p-3.5 text-center shadow-xs">
                   <span className="text-[10px] font-extrabold text-cyan-700 uppercase block">Fin Dette Senior</span>
                   <span className="text-xl font-black text-cyan-900 mt-0.5 block">Année 12 (2037)</span>
                   <span className="text-[10px] text-slate-500 mt-0.5 block">Dette 100% amortie</span>
                 </div>
-                <div className="bg-white border-2 border-emerald-200 rounded-xl p-4 text-center shadow-xs">
+                <div className="bg-white border-2 border-emerald-200 rounded-xl p-3.5 text-center shadow-xs">
                   <span className="text-[10px] font-extrabold text-emerald-700 uppercase block">DSCR Moyen Portefeuille</span>
                   <span className="text-xl font-black text-emerald-900 mt-0.5 block">1.98x</span>
                   <span className="text-[10px] text-slate-500 mt-0.5 block">Seuil bancaire min. 1.15x</span>
                 </div>
-                <div className="bg-white border-2 border-purple-200 rounded-xl p-4 text-center shadow-xs">
+                <div className="bg-white border-2 border-purple-200 rounded-xl p-3.5 text-center shadow-xs">
                   <span className="text-[10px] font-extrabold text-purple-700 uppercase block">TRI Projet / Equity</span>
                   <span className="text-xl font-black text-purple-900 mt-0.5 block">{kpi.irrProject} / 37.4%</span>
                   <span className="text-[10px] text-slate-500 mt-0.5 block">Effet de levier optimisé</span>
@@ -1302,6 +1370,7 @@ export default function BessDossierPDFGenerator({
                   {/* Carte Interactive Leaflet Grand Sud-Ouest */}
                   <div className="relative w-full flex-1 bg-slate-800 h-full">
                     <MapContainer
+                      preferCanvas={true}
                       center={[44.75, 0.6]}
                       zoom={7}
                       scrollWheelZoom={false}
@@ -1537,9 +1606,6 @@ export default function BessDossierPDFGenerator({
                       className="h-11 w-auto object-contain"
                     />
                     <div>
-                      <span className="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
-                        Audit Foncier &amp; Raccordement HTA (Partie 2)
-                      </span>
                       <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight mt-0.5">
                         Répertoire Foncier &amp; Réseau des 31 Projets BESS (Sites #17 à #31)
                       </h2>
