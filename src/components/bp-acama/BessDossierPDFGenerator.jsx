@@ -105,6 +105,9 @@ export default function BessDossierPDFGenerator({
   const [viewMode, setViewMode] = useState('all');
   const scrollContainerRef = useRef(null);
 
+  const isPort = activeMode === 'portfolio';
+  const totalPagesCount = isPort ? 8 : 6;
+
   // Synchronisation dynamique du mode lorsque les props changent
   useEffect(() => {
     if (initialMode) {
@@ -112,9 +115,14 @@ export default function BessDossierPDFGenerator({
     }
   }, [initialMode, isOpen]);
 
+  useEffect(() => {
+    if (activePageIndex >= totalPagesCount) {
+      setActivePageIndex(0);
+    }
+  }, [totalPagesCount, activePageIndex]);
+
   if (!isOpen) return null;
 
-  const isPort = activeMode === 'portfolio';
   const mult = isPort ? 31 : 1;
 
   // Recherche du site unitaire
@@ -230,14 +238,6 @@ export default function BessDossierPDFGenerator({
       setIsGenerating(false);
     }
   };
-
-  const totalPagesCount = isPort ? 8 : 6;
-
-  useEffect(() => {
-    if (activePageIndex >= totalPagesCount) {
-      setActivePageIndex(0);
-    }
-  }, [totalPagesCount, activePageIndex]);
 
   const plancheTitles = isPort ? [
     "Synthèse Exécutive & Chiffres Clés",
