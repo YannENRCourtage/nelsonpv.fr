@@ -20,7 +20,9 @@ import {
   Printer,
   X,
   Compass,
-  Maximize2
+  Maximize2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -99,6 +101,9 @@ export default function BessDossierPDFGenerator({
   const [activeMode, setActiveMode] = useState(initialMode || 'portfolio');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressStep, setProgressStep] = useState('');
+  const [activePageIndex, setActivePageIndex] = useState(0);
+  const [viewMode, setViewMode] = useState('all');
+  const scrollContainerRef = useRef(null);
 
   // Synchronisation dynamique du mode lorsque les props changent
   useEffect(() => {
@@ -171,6 +176,7 @@ export default function BessDossierPDFGenerator({
   const handleGeneratePdf = async () => {
     setIsGenerating(true);
     setProgressStep('Initialisation du moteur d’impression...');
+    await new Promise(r => setTimeout(r, 250));
 
     try {
       const pdf = new jsPDF({
@@ -226,6 +232,30 @@ export default function BessDossierPDFGenerator({
   };
 
   const totalPagesCount = isPort ? 8 : 6;
+
+  useEffect(() => {
+    if (activePageIndex >= totalPagesCount) {
+      setActivePageIndex(0);
+    }
+  }, [totalPagesCount, activePageIndex]);
+
+  const plancheTitles = isPort ? [
+    "Synthèse Exécutive & Chiffres Clés",
+    "Cadre Réglementaire & Barème TURPE 7",
+    "Value Stacking & 2 Cycles Quotidiens",
+    "Plan d'Affaires Prévisionnel 15 Ans",
+    "Trajectoire EBITDA vs Cash-Flow Disponible",
+    "Standard Technique DP & Cartographie Volta",
+    "Répertoire Foncier & Réseau (Sites #1 à #16)",
+    "Répertoire Foncier & Réseau (Sites #17 à #31 & Total)"
+  ] : [
+    "Synthèse Exécutive & Chiffres Clés",
+    "Cadre Réglementaire & Barème TURPE 7",
+    "Value Stacking & 2 Cycles Quotidiens",
+    "Plan d'Affaires Prévisionnel 15 Ans",
+    "Trajectoire EBITDA vs Cash-Flow Disponible",
+    "Standard Technique DP & Implantation Site"
+  ];
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-[60px] z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200">
@@ -288,10 +318,7 @@ export default function BessDossierPDFGenerator({
 
           {/* Actions : Badge Conformité, Impression & Bouton Fermer Haut */}
           <div className="flex items-center gap-3">
-            <span className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              CRE 2025-227 & TURPE 7 Conforme
-            </span>
+
 
             <button
               onClick={handleGeneratePdf}
@@ -324,17 +351,144 @@ export default function BessDossierPDFGenerator({
         </header>
 
         {/* ========================================================================= */}
+        {/* BARRE DE CONTRÔLE ET NAVIGATION MULTI-PAGES */}
+        {/* ========================================================================= */}
+        <div className="bg-slate-50 border-b border-slate-200 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-xs shrink-0" data-html2canvas-ignore="true">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const nextIdx = Math.max(0, activePageIndex - 1);
+                setActivePageIndex(nextIdx);
+                if (viewMode === 'all') {
+                  document.getElementById('bess-planche-container-' + (nextIdx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }}
+              disabled={activePageIndex === 0}
+              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs transition-all"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Précédente</span>
+            </button>
+
+            <span className="px-3.5 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-black tracking-wide shadow-2xs">
+              Planche {activePageIndex + 1} / {totalPagesCount}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => {
+                const nextIdx = Math.min(totalPagesCount - 1, activePageIndex + 1);
+                setActivePageIndex(nextIdx);
+                if (viewMode === 'all') {
+                  document.getElementById('bess-planche-container-' + (nextIdx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }}
+              disabled={activePageIndex === totalPagesCount - 1}
+              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs transition-all"
+            >
+              <span>Suivante</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Accès rapide par planche */}
+          <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto py-0.5">
+            {plancheTitles.map((title, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => {
+                  setActivePageIndex(idx);
+                  if (viewMode === 'all') {
+                    document.getElementById('bess-planche-container-' + (idx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }}
+                className={'px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ' + (
+                  activePageIndex === idx
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                )}
+                title={title}
+              >
+                P{idx + 1} : {title}
+              </button>
+            ))}
+          </div>
+
+          {/* Commutateur de mode : Toutes les planches vs Planche unique */}
+          <div className="flex items-center bg-slate-200/90 p-1 rounded-xl border border-slate-300">
+            <button
+              type="button"
+              onClick={() => setViewMode('all')}
+              className={'px-3 py-1 rounded-lg text-xs font-bold transition-all ' + (
+                viewMode === 'all'
+                  ? 'bg-white text-slate-900 shadow-sm font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Toutes les Planches ({totalPagesCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('single')}
+              className={'px-3 py-1 rounded-lg text-xs font-bold transition-all ' + (
+                viewMode === 'single'
+                  ? 'bg-white text-slate-900 shadow-sm font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Vue par Planche
+            </button>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
         {/* CONTENEUR DE PRÉVISUALISATION SCROLLABLE AVEC LES PLANCHES DU DOSSIER */}
         {/* ========================================================================= */}
-        <div className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-6 space-y-8 bg-slate-200/90 flex flex-col items-center">
-          <div className="text-center text-xs text-slate-600 font-bold bg-white/80 px-4 py-1.5 rounded-full border border-slate-300 shadow-xs">
-            Aperçu fidèle des {totalPagesCount} planches A4 Paysage • Pleine largeur 297 × 210 mm • Fonds blancs • Prêt pour export
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-6 bg-slate-200/90 flex flex-col items-center">
+          <div className="text-center text-xs text-slate-600 font-bold bg-white/80 px-4 py-1.5 rounded-full border border-slate-300 shadow-xs mb-6 shrink-0" data-html2canvas-ignore="true">
+            Dossier d'Étude BESS • {totalPagesCount} Planches A4 Paysage Indépendantes • Pleine Largeur 297 × 210 mm • Fonds Blancs
           </div>
 
           {/* ========================================================================= */}
           {/* PLANCHE 1 : SYNTHÈSE EXÉCUTIVE & CHIFFRES CLÉS (FOND BLANC) */}
           {/* ========================================================================= */}
-          <section className="bess-render-page bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-md flex flex-col justify-between" style={{ width: '1380px', height: '940px', maxHeight: '940px', overflow: 'hidden', boxSizing: 'border-box' }}>
+          <div
+            id="bess-planche-container-1"
+            style={{ display: (viewMode === 'all' || activePageIndex === 0 || isGenerating) ? 'flex' : 'none' }}
+            className="w-full flex flex-col items-center shrink-0 mb-8"
+          >
+            <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
+                  Planche 1 sur {totalPagesCount}
+                </span>
+                <span className="font-bold text-slate-800 text-sm">
+                  {plancheTitles[0]}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setActivePageIndex(0); setViewMode('single'); }}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
+                  >
+                    Voir cette planche seule →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('all')}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
+                  >
+                    Afficher toutes les planches ({totalPagesCount})
+                  </button>
+                )}
+              </div>
+            </div>
+            <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
             <div>
               {/* En-tête de planche sans les bulles supérieures (déplacées en bas) */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
@@ -527,12 +681,47 @@ export default function BessDossierPDFGenerator({
               <div className="font-semibold text-slate-600">Modèle certifié Délibération CRE 2025-227 • TURPE 7</div>
               <div className="font-bold text-[#0b192c]">Planche 1 / {totalPagesCount}</div>
             </div>
-          </section>
+            </section>
+          </div>
 
           {/* ========================================================================= */}
           {/* PLANCHE 2 : DÉCRYPTAGE RÉGLEMENTAIRE TURPE 7 (CRE 2025-227) */}
           {/* ========================================================================= */}
-          <section className="bess-render-page bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-md flex flex-col justify-between" style={{ width: '1380px', height: '940px', maxHeight: '940px', overflow: 'hidden', boxSizing: 'border-box' }}>
+          <div
+            id="bess-planche-container-2"
+            style={{ display: (viewMode === 'all' || activePageIndex === 1 || isGenerating) ? 'flex' : 'none' }}
+            className="w-full flex flex-col items-center shrink-0 mb-8"
+          >
+            <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
+                  Planche 2 sur {totalPagesCount}
+                </span>
+                <span className="font-bold text-slate-800 text-sm">
+                  {plancheTitles[1]}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setActivePageIndex(1); setViewMode('single'); }}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
+                  >
+                    Voir cette planche seule →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('all')}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
+                  >
+                    Afficher toutes les planches ({totalPagesCount})
+                  </button>
+                )}
+              </div>
+            </div>
+            <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
             <div>
               {/* En-tête de planche avec retour à la ligne dans le titre et cadre élargi sur une seule ligne à droite */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
@@ -665,12 +854,47 @@ export default function BessDossierPDFGenerator({
               <div className="font-semibold text-slate-600">Arrêté CRE 2025-78 &amp; Délibération 2025-227</div>
               <div className="font-bold text-[#0b192c]">Planche 2 / {totalPagesCount}</div>
             </div>
-          </section>
+            </section>
+          </div>
 
           {/* ========================================================================= */}
           {/* PLANCHE 3 : VALUE STACKING & 2 CYCLES / JOUR (FOND BLANC) */}
           {/* ========================================================================= */}
-          <section className="bess-render-page bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-md flex flex-col justify-between" style={{ width: '1380px', height: '940px', maxHeight: '940px', overflow: 'hidden', boxSizing: 'border-box' }}>
+          <div
+            id="bess-planche-container-3"
+            style={{ display: (viewMode === 'all' || activePageIndex === 2 || isGenerating) ? 'flex' : 'none' }}
+            className="w-full flex flex-col items-center shrink-0 mb-8"
+          >
+            <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
+                  Planche 3 sur {totalPagesCount}
+                </span>
+                <span className="font-bold text-slate-800 text-sm">
+                  {plancheTitles[2]}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setActivePageIndex(2); setViewMode('single'); }}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
+                  >
+                    Voir cette planche seule →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('all')}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
+                  >
+                    Afficher toutes les planches ({totalPagesCount})
+                  </button>
+                )}
+              </div>
+            </div>
+            <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
             <div>
               {/* En-tête de planche */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
@@ -838,12 +1062,47 @@ export default function BessDossierPDFGenerator({
               <div className="font-semibold text-slate-600">Algorithme d'agrégation certifié 2 cycles quotidiens</div>
               <div className="font-bold text-[#0b192c]">Planche 3 / {totalPagesCount}</div>
             </div>
-          </section>
+            </section>
+          </div>
 
           {/* ========================================================================= */}
           {/* PLANCHE 4 : PLAN D'AFFAIRES PRÉVISIONNEL SUR 15 ANS (TABLEAU SEUL, FOND BLANC) */}
           {/* ========================================================================= */}
-          <section className="bess-render-page bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-md flex flex-col justify-between" style={{ width: '1380px', height: '940px', maxHeight: '940px', overflow: 'hidden', boxSizing: 'border-box' }}>
+          <div
+            id="bess-planche-container-4"
+            style={{ display: (viewMode === 'all' || activePageIndex === 3 || isGenerating) ? 'flex' : 'none' }}
+            className="w-full flex flex-col items-center shrink-0 mb-8"
+          >
+            <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
+                  Planche 4 sur {totalPagesCount}
+                </span>
+                <span className="font-bold text-slate-800 text-sm">
+                  {plancheTitles[3]}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setActivePageIndex(3); setViewMode('single'); }}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
+                  >
+                    Voir cette planche seule →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('all')}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
+                  >
+                    Afficher toutes les planches ({totalPagesCount})
+                  </button>
+                )}
+              </div>
+            </div>
+            <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
             <div>
               {/* En-tête de planche */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
@@ -997,12 +1256,47 @@ export default function BessDossierPDFGenerator({
               <div className="font-semibold text-slate-600">Plan d'affaires audité 15 ans • Inflation 2.0%</div>
               <div className="font-bold text-[#0b192c]">Planche 4 / {totalPagesCount}</div>
             </div>
-          </section>
+            </section>
+          </div>
 
           {/* ========================================================================= */}
           {/* PLANCHE 5 (NOUVELLE PLANCHE DÉDIÉE) : TRAJECTOIRE FINANCIÈRE 15 ANS (BAR-CHART) */}
           {/* ========================================================================= */}
-          <section className="bess-render-page bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-md flex flex-col justify-between" style={{ width: '1380px', height: '940px', maxHeight: '940px', overflow: 'hidden', boxSizing: 'border-box' }}>
+          <div
+            id="bess-planche-container-5"
+            style={{ display: (viewMode === 'all' || activePageIndex === 4 || isGenerating) ? 'flex' : 'none' }}
+            className="w-full flex flex-col items-center shrink-0 mb-8"
+          >
+            <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
+                  Planche 5 sur {totalPagesCount}
+                </span>
+                <span className="font-bold text-slate-800 text-sm">
+                  {plancheTitles[4]}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setActivePageIndex(4); setViewMode('single'); }}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
+                  >
+                    Voir cette planche seule →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('all')}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
+                  >
+                    Afficher toutes les planches ({totalPagesCount})
+                  </button>
+                )}
+              </div>
+            </div>
+            <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
             <div>
               {/* En-tête de planche */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
@@ -1101,12 +1395,47 @@ export default function BessDossierPDFGenerator({
               <div className="font-semibold text-slate-600">Trajectoire pluriannuelle certifiée • Cash-Flow post-dette</div>
               <div className="font-bold text-[#0b192c]">Planche 5 / {totalPagesCount}</div>
             </div>
-          </section>
+            </section>
+          </div>
 
           {/* ========================================================================= */}
           {/* PLANCHE 6 : CARTOGRAPHIE VOLTA (IMAGE 5) & VISUEL DALLE BÉTON DP (IMAGE 4) */}
           {/* ========================================================================= */}
-          <section className="bess-render-page bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-md flex flex-col justify-between" style={{ width: '1380px', height: '940px', maxHeight: '940px', overflow: 'hidden', boxSizing: 'border-box' }}>
+          <div
+            id="bess-planche-container-6"
+            style={{ display: (viewMode === 'all' || activePageIndex === 5 || isGenerating) ? 'flex' : 'none' }}
+            className="w-full flex flex-col items-center shrink-0 mb-8"
+          >
+            <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
+                  Planche 6 sur {totalPagesCount}
+                </span>
+                <span className="font-bold text-slate-800 text-sm">
+                  {plancheTitles[5]}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setActivePageIndex(5); setViewMode('single'); }}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
+                  >
+                    Voir cette planche seule →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('all')}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
+                  >
+                    Afficher toutes les planches ({totalPagesCount})
+                  </button>
+                )}
+              </div>
+            </div>
+            <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
             <div>
               {/* En-tête de planche */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
@@ -1269,12 +1598,48 @@ export default function BessDossierPDFGenerator({
               <div className="font-semibold text-slate-600">Cartographie VOLTA • Standard technique DP certifié</div>
               <div className="font-bold text-[#0b192c]">Planche 6 / {totalPagesCount}</div>
             </div>
-          </section>
+            </section>
+          </div>
 
           {/* ========================================================================= */}
           {/* PLANCHE 7 : RÉPERTOIRE FONCIER & RÉSEAU DES PROJETS (SITES 1 À 16) */}
           {/* ========================================================================= */}
-          <section className="bess-render-page bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-md flex flex-col justify-between" style={{ width: '1380px', height: '940px', maxHeight: '940px', overflow: 'hidden', boxSizing: 'border-box' }}>
+          {isPort && (
+          <div
+            id="bess-planche-container-7"
+            style={{ display: (viewMode === 'all' || activePageIndex === 6 || isGenerating) ? 'flex' : 'none' }}
+            className="w-full flex flex-col items-center shrink-0 mb-8"
+          >
+            <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
+                  Planche 7 sur {totalPagesCount}
+                </span>
+                <span className="font-bold text-slate-800 text-sm">
+                  {plancheTitles[6]}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setActivePageIndex(6); setViewMode('single'); }}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
+                  >
+                    Voir cette planche seule →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('all')}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
+                  >
+                    Afficher toutes les planches ({totalPagesCount})
+                  </button>
+                )}
+              </div>
+            </div>
+              <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
             <div>
               {/* En-tête de planche */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
@@ -1363,13 +1728,49 @@ export default function BessDossierPDFGenerator({
               <div className="font-semibold text-slate-600">31 Promesses de Baux Notariées 20 Ans • Raccordements HTA Identifiés</div>
               <div className="font-bold text-[#0b192c]">Planche 7 / {totalPagesCount}</div>
             </div>
-          </section>
+              </section>
+            </div>
+          )}
 
           {/* ========================================================================= */}
           {/* PLANCHE 8 : RÉPERTOIRE FONCIER & RÉSEAU DES PROJETS (SITES 17 À 31 + TOTAL) */}
           {/* ========================================================================= */}
           {isPort && (
-            <section className="bess-render-page bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-md flex flex-col justify-between" style={{ width: '1380px', height: '940px', maxHeight: '940px', overflow: 'hidden', boxSizing: 'border-box' }}>
+          <div
+            id="bess-planche-container-8"
+            style={{ display: (viewMode === 'all' || activePageIndex === 7 || isGenerating) ? 'flex' : 'none' }}
+            className="w-full flex flex-col items-center shrink-0 mb-8"
+          >
+            <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
+                  Planche 8 sur {totalPagesCount}
+                </span>
+                <span className="font-bold text-slate-800 text-sm">
+                  {plancheTitles[7]}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setActivePageIndex(7); setViewMode('single'); }}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-blue-700 hover:bg-blue-50 transition-all shadow-2xs"
+                  >
+                    Voir cette planche seule →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('all')}
+                    className="px-2.5 py-1 text-xs font-bold rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
+                  >
+                    Afficher toutes les planches ({totalPagesCount})
+                  </button>
+                )}
+              </div>
+            </div>
+              <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
               <div>
                 {/* En-tête de planche */}
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
@@ -1469,7 +1870,8 @@ export default function BessDossierPDFGenerator({
                 <div className="font-semibold text-slate-600">Consolidation Complète 31 Sites • 15.50 MW / 32.36 MWh</div>
                 <div className="font-bold text-[#0b192c]">Planche 8 / {totalPagesCount}</div>
               </div>
-            </section>
+              </section>
+            </div>
           )}
         </div>
 

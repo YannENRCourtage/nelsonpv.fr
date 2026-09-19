@@ -270,9 +270,6 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
               <h2 className="text-lg sm:text-xl font-black tracking-tight">
                 PORTEFEUILLE MULTI-PROJETS BESS (31 SITES / 15.5 MW)
               </h2>
-              <span className="px-2.5 py-0.5 text-[10px] font-black uppercase rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300">
-                TURPE 7 CRE 2025-227
-              </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
               Consolidation globale de 31 unités de 500 kW / 1044 kWh (CESC Mercury 261) • Raccordements ODRE réels • Modèle 15 ans
@@ -289,15 +286,6 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf }) {
             <Download className="w-4 h-4 text-emerald-400" />
             Excel Consolidé
           </button>
-          {onExportPdf && (
-            <button
-              onClick={() => onExportPdf({ analyzedSites, consolidatedTotals, consolidatedChronique })}
-              className="px-3.5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all flex items-center gap-1.5"
-            >
-              <FileDown className="w-4 h-4" />
-              PDF Dossier Investisseur (Multipages)
-            </button>
-          )}
         </div>
       </div>
 
