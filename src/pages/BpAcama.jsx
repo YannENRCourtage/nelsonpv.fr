@@ -545,8 +545,9 @@ function computeBatteryProfitability(config) {
   // Allocation temporelle FCR : déduction du temps de charge/décharge active
   const rDecimal = Math.max(0.01, (rendementRoundTrip || 88) / 100);
   const dureeCycle1C = (capaciteStockage / Math.max(1, puissanceDemandee));
-  const activeHoursCycleJour = nbCyclesJour * dureeCycle1C * (1 + 1 / rDecimal);
-  const heuresFcrJour = Math.max(0, Math.min(24, 24 - activeHoursCycleJour));
+  const heuresActiveCycleJour = nbCyclesJour * dureeCycle1C * (1 + 1 / rDecimal);
+  const activeHoursCycleJour = heuresActiveCycleJour;
+  const heuresFcrJour = Math.max(0, Math.min(24, 24 - heuresActiveCycleJour));
   const heuresFcrAn = heuresFcrJour * 365;
 
   const cashFlowsProjet = [-capexTotal];
