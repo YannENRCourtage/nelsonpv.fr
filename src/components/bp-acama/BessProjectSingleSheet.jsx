@@ -13,7 +13,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { calculateTurpe7Details, generateAnnualRechargeProfileMwh } from '../../services/turpeCalculationService.js';
-import { calculateIrr, calculatePmt } from '../../services/bessSimulationEngine.js';
+import { calculateIrr, calculatePmt, calculateProjectPayback, calculateEquityPayback } from '../../services/bessSimulationEngine.js';
 
 const fmtNum = (n, dec = 0) => (n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const fmtEur = (n) => `${fmtNum(n, 0)} €`;
@@ -134,14 +134,6 @@ export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 3
     totalOpexCumul += opexY;
     totalCashFlow += cfNet;
 
-    if (payback === null) {
-      if (cfNet >= remainingCapex && cfNet > 0) {
-        payback = i + (remainingCapex / cfNet);
-      } else if (cfNet > 0) {
-        remainingCapex -= cfNet;
-      }
-    }
-
     const dscr = servDette > 0 ? ebitdaY / servDette : null;
 
     tableRows.push({
@@ -160,6 +152,7 @@ export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 3
   });
 
   const triProjet = calculateIrr(cfProjet, 0.08) * 100;
+  const paybackProjet = calculateProjectPayback(capexTotal, tableRows.map(r => r.ebitda));
   const dscrValid = tableRows.filter(r => r.dscr !== null).map(r => r.dscr);
   const avgDscr = dscrValid.length > 0 ? (dscrValid.reduce((a, b) => a + b, 0) / dscrValid.length) : 2.14;
   const beneficeSurEtude = totalRecettes - totalOpexCumul - capexTotal;

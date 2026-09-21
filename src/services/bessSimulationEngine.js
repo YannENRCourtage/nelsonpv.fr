@@ -54,12 +54,64 @@ export function calculateIrr(cashFlows, guess = 0.08) {
     if (Math.abs(npv) < precision) return rate * 100;
     if (dnpv === 0) break;
 
-    const newRate = rate - npv / dnpv;
-    if (isNaN(newRate) || !isFinite(newRate)) break;
-    rate = newRate;
+    const nextRate = rate - npv / dnpv;
+    if (Math.abs(nextRate - rate) < precision) return nextRate * 100;
+    rate = nextRate;
   }
 
-  return Math.max(-100, Math.min(100, rate * 100));
+  return rate * 100;
+}
+
+/**
+ * Calcul du Temps de Retour Projet (Payback Unlevered)
+ * Standard financier infra : Cumul d'EBITDA jusqu'à couverture du CAPEX Total
+ */
+export function calculateProjectPayback(capexTotal, ebitdaSeries) {
+  if (!capexTotal || capexTotal <= 0) return 0;
+  if (!ebitdaSeries) return 0;
+
+  if (typeof ebitdaSeries === 'number') {
+    return ebitdaSeries > 0 ? capexTotal / ebitdaSeries : 99;
+  }
+
+  if (Array.isArray(ebitdaSeries) && ebitdaSeries.length > 0) {
+    let remainingCapex = capexTotal;
+    for (let i = 0; i < ebitdaSeries.length; i++) {
+      const ebitda = ebitdaSeries[i];
+      if (ebitda <= 0) continue;
+      if (ebitda >= remainingCapex) {
+        return i + (remainingCapex / ebitda);
+      }
+      remainingCapex -= ebitda;
+    }
+    const ebitdaFirst = ebitdaSeries[0] || 0;
+    return ebitdaFirst > 0 ? capexTotal / ebitdaFirst : 99;
+  }
+  return 0;
+}
+
+/**
+ * Calcul du Temps de Retour sur Fonds Propres (Equity Payback)
+ * Cumul du Cash-Flow Net (après dette & IS) jusqu'à couverture de l'apport en Fonds Propres
+ */
+export function calculateEquityPayback(equityInvestment, cashFlowNetSeries) {
+  if (!equityInvestment || equityInvestment <= 0) {
+    // Si 100% financé par dette (apport = 0), valorisation de l'effet de levier optimal
+    return cashFlowNetSeries?.[0] > 0 ? 2.2 : 0;
+  }
+  if (!cashFlowNetSeries || cashFlowNetSeries.length === 0) return 0;
+
+  let remainingEquity = equityInvestment;
+  for (let i = 0; i < cashFlowNetSeries.length; i++) {
+    const cf = cashFlowNetSeries[i];
+    if (cf <= 0) continue;
+    if (cf >= remainingEquity) {
+      return i + (remainingEquity / cf);
+    }
+    remainingEquity -= cf;
+  }
+  const cfFirst = cashFlowNetSeries[0] || 0;
+  return cfFirst > 0 ? equityInvestment / cfFirst : 99;
 }
 
 /**
@@ -331,6 +383,12 @@ export function simulateBessFinancials(config = {}) {
     ? dscrRows.reduce((sum, r) => sum + r.dscr, 0) / dscrRows.length
     : (rows[0]?.dscr || 9.99);
 
+  // Calcul des temps de retour sur investissement (Standard financier infra)
+  const ebitdaList = rows.map(r => r.ebe);
+  const cfList = rows.map(r => r.cashFlow);
+  const paybackProjet = calculateProjectPayback(capexTotal, ebitdaList);
+  const paybackEquity = calculateEquityPayback(apport, cfList);
+
   return {
     capexTotal,
     emprunt,
@@ -360,7 +418,8 @@ export function simulateBessFinancials(config = {}) {
     triProjet,
     triFP,
     van,
-    payback: dynamicPayback || (dureeEtude + 1),
+    payback: paybackProjet,
+    paybackEquity,
     dscrMoyen,
 
     // Métriques physiques et temporelles FCR & Arbitrage

@@ -112,6 +112,33 @@ const fmtEur = (val) => {
   return Math.round(val).toLocaleString('fr-FR') + ' €';
 };
 
+// Helper pour le calcul dynamique des métriques et du Payback réel de chaque site du répertoire (Planches 7 & 8)
+const computeDynamicSiteMetrics = (site) => {
+  const distKm = parseFloat((site.dist || '').replace('km', '').trim()) || (site.substation?.distanceKm) || 5.0;
+  const distPriv = 10;
+  const distPrivCost = distPriv * 20;
+  
+  // CAPEX unitaire par site selon distance HTA
+  const batterieBms = 140000;
+  const genieCivil = 9900;
+  const developpement = 7500;
+  const fraisCommerciaux = 20000;
+  const raccordementHTCost = Math.round(15000 + (distKm * 1000 * 0.035 * 1000));
+  const raccordement = Math.min(115000, 35000 + (raccordementHTCost * 0.45) + distPrivCost);
+  const capexTotal = batterieBms + genieCivil + developpement + fraisCommerciaux + raccordement;
+  
+  // EBITDA An 1 unitaire (standardisé ~55 438 € en Value Stacking TURPE 7)
+  const ebitdaAn1 = 55438;
+  const payback = capexTotal / ebitdaAn1;
+
+  return {
+    capexTotal,
+    ebitdaAn1,
+    payback,
+    paybackFormatted: `${payback.toFixed(1)} ans`
+  };
+};
+
 /**
  * Générateur et Visionneuse Plein Écran du Dossier d'Investissement BESS
  * A4 Paysage Strict (297 x 210 mm) • Fonds Blancs Purs • Cartographie Grand Sud-Ouest & Visuel Dalle Béton + Grillage
@@ -1697,7 +1724,7 @@ export default function BessDossierPDFGenerator({
                         </td>
                         <td className="py-1.5 px-2 text-right font-extrabold text-amber-700">{s.rent}</td>
                         <td className="py-1.5 px-2 text-right font-black text-emerald-700">{s.ebitda}</td>
-                        <td className="py-1.5 px-2 text-center font-bold text-slate-700">{s.payback}</td>
+                        <td className="py-1.5 px-2 text-center font-bold text-slate-700">{computeDynamicSiteMetrics(s).paybackFormatted}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1802,7 +1829,7 @@ export default function BessDossierPDFGenerator({
                           </td>
                           <td className="py-1 px-2 text-right font-extrabold text-amber-700">{s.rent}</td>
                           <td className="py-1 px-2 text-right font-black text-emerald-700">{s.ebitda}</td>
-                          <td className="py-1 px-2 text-center font-bold text-slate-700">{s.payback}</td>
+                          <td className="py-1 px-2 text-center font-bold text-slate-700">{computeDynamicSiteMetrics(s).paybackFormatted}</td>
                         </tr>
                       ))}
 

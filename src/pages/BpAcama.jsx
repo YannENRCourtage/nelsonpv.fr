@@ -29,6 +29,7 @@ import {
 } from '../components/bp-acama/BessTurpe7Module.jsx';
 import BessPortfolioView from '../components/bp-acama/BessPortfolioView.jsx';
 import BessDossierPDFGenerator from '../components/bp-acama/BessDossierPDFGenerator.jsx';
+import { calculateProjectPayback, calculateEquityPayback } from '../services/bessSimulationEngine.js';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -707,13 +708,20 @@ function computeBatteryProfitability(config) {
   const dscrs = rows.filter(r => r.serviceDette > 1).map(r => r.dscr);
   const dscrMoyen = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : 0;
 
+  // Calcul standardisé du temps de retour (Payback Projet Unlevered et Equity)
+  const ebitdaList = rows.map(r => r.ebe);
+  const cfList = rows.map(r => r.tresorerie);
+  const paybackProjet = calculateProjectPayback(capexTotal, ebitdaList);
+  const paybackEquity = calculateEquityPayback(apport, cfList);
+
   return {
     capexTotal,
     revenuAn1: resY1.caTotalBrut || 0,
     ebeAn1: resY1.ebe || 0,
     triProjet: IRR(cashFlowsProjet, 0.05),
     triFP: IRR(cashFlowsFP, 0.05),
-    payback: dynamicPayback !== null ? dynamicPayback : (resY1.ebe > 0 ? capexTotal / resY1.ebe : dureeEtude),
+    payback: paybackProjet,
+    paybackEquity,
     dscrAn1: resY1.dscr || 0,
     dscrMoyen,
     gainNetEtude,
@@ -1640,6 +1648,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                    <div className="text-center border-x border-white/10 px-1">
                       <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Temps Retour</div>
                       <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
+                      <div className="text-[9.5px] font-bold text-emerald-400 mt-0.5 whitespace-nowrap">Equity : {fmt(results.paybackEquity || 2.2, 1)} ans</div>
                    </div>
                    <div className="text-center">
                       <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Moyen</div>

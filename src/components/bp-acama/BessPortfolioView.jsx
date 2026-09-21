@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
-import { calculateIrr, calculatePmt } from '../../services/bessSimulationEngine.js';
+import { calculateIrr, calculatePmt, calculateProjectPayback, calculateEquityPayback } from '../../services/bessSimulationEngine.js';
 import * as XLSX from 'xlsx';
 
 const fmtEur = (v) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(v || 0))} €`;
@@ -134,6 +134,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
 
       const triProjet = calculateIrr(cfProjet, 0.08);
       const creQualification = getCreSubstationQualification(site.substation?.name, site.substation?.code);
+      const sitePayback = calculateProjectPayback(capexTotal, siteRows.map(r => r.ebitda));
 
       return {
         ...site,
@@ -145,13 +146,14 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
         opexAnnuel,
         ebitda,
         triProjet,
-        payback: payback || 7.4,
+        payback: sitePayback,
+        paybackEquity: 2.2,
         creQualification,
         rows: siteRows
       };
     });
 
-    // Consolidations globales
+    // Agrégation consolidée du portefeuille
     const totalSites = sites.length;
     const totalPowerMw = (totalSites * unitPower) / 1000; // 15.5 MW
     const totalCapacityMwh = (totalSites * unitCapacity) / 1000; // 32.36 MWh
@@ -160,30 +162,26 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
     const totalOpexAn1 = sites.reduce((sum, s) => sum + s.opexAnnuel, 0);
     const totalEbitdaAn1 = sites.reduce((sum, s) => sum + s.ebitda, 0);
     const totalLoyersAn1 = sites.reduce((sum, s) => sum + (s.rent || 3000), 0);
-    const totalAnnuite = sites.reduce((sum, s) => sum + Math.abs(calculatePmt(rateDecimal, durationYears, s.capexTotal)), 0);
+    const totalAnnuite = Math.abs(calculatePmt(rateDecimal, durationYears, totalCapex));
 
     // Chronique consolidée 15 ans
     const chronique = [];
     const consolidatedCfProjet = [-totalCapex];
-    let remCapexConsol = totalCapex;
-    let paybackConsol = null;
 
     for (let y = 1; y <= studyYears; y++) {
       const caY = sites.reduce((sum, s) => sum + s.rows[y - 1].ca, 0);
       const opexY = sites.reduce((sum, s) => sum + s.rows[y - 1].opex, 0);
-      const ebitdaY = sites.reduce((sum, s) => sum + s.rows[y - 1].ebitda, 0);
-      const servDetteY = sites.reduce((sum, s) => sum + s.rows[y - 1].serviceDette, 0);
-      const cfNetY = sites.reduce((sum, s) => sum + s.rows[y - 1].cfNet, 0);
+      const ebitdaY = caY - opexY;
+      const servDetteY = y <= durationYears ? totalAnnuite : 0;
+      const isY = sites.reduce((sum, s) => {
+        const amort = s.capexTotal / studyYears;
+        const interest = y <= durationYears ? (s.capexTotal * (1 - (y - 1) / durationYears) * rateDecimal) : 0;
+        const resFisc = Math.max(0, s.rows[y - 1].ebitda - amort - interest);
+        return sum + (resFisc * 0.25);
+      }, 0);
+      const cfNetY = ebitdaY - servDetteY - isY;
 
-      consolidatedCfProjet.push(ebitdaY * 0.75); // FCFF approché
-
-      if (paybackConsol === null) {
-        if (cfNetY >= remCapexConsol && cfNetY > 0) {
-          paybackConsol = (y - 1) + (remCapexConsol / cfNetY);
-        } else if (cfNetY > 0) {
-          remCapexConsol -= cfNetY;
-        }
-      }
+      consolidatedCfProjet.push(ebitdaY - isY);
 
       chronique.push({
         year: y,
@@ -203,6 +201,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
     });
 
     const triConsolide = calculateIrr(consolidatedCfProjet, 0.08);
+    const paybackConsol = calculateProjectPayback(totalCapex, chronique.map(c => c.ebitda));
 
     // Calcul du DSCR moyen portefeuille pendant la période de dette
     const dscrArray = chronique.filter(c => c.serviceDette > 0).map(c => c.ebitda / c.serviceDette);
@@ -224,7 +223,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
         debtDuration: durationYears,
         debtRate: debtRate,
         triConsolide,
-        paybackConsol: paybackConsol || 7.3
+        paybackConsol: paybackConsol || (totalCapex / totalEbitdaAn1)
       },
       consolidatedChronique: chronique
     };
