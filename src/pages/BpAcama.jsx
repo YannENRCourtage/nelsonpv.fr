@@ -504,14 +504,14 @@ function computeBatteryProfitability(config) {
     capaciteStockage = 1044,
     disponibilite = 98,
     rendementRoundTrip = 88,
-    degradationAnnuelle = 1.5,
+    degradationAnnuelle = (config.nbCyclesJour === undefined || config.nbCyclesJour >= 2) ? 2.2 : 1.5,
     dureeEtude = 20,
     nbCyclesJour = 2.0,
     prixFCR = 20, // 20 €/MW/h soit 0.020 €/kW/h
     facteurDerating = 0.5, // 0.5 pour batterie 2h
     prixCapacite = 35, // 35 €/kW/an
     spreadArbitrage = 0.040, // 0.040 €/kWh net
-    coutRecharge = 0.045, // 0.045 €/kWh
+    coutRecharge = 0.030, // 0.030 €/kWh (heures creuses)
     commissionAgregateur = 18, // 18%
     turpeStockageTarif = 18, // 18 €/kW/an (forfait indicatif)
     useTurpe7 = true, // Moteur réglementaire TURPE 7 (CRE 2025-78 & 2026-105)
@@ -542,6 +542,13 @@ function computeBatteryProfitability(config) {
   const emprunt = Math.max(0, capexTotal - (apport || 0));
   const annuite = emprunt > 0 ? -PMT(tauxEmprunt / 100, dureeEmprunt, emprunt) : 0;
 
+  // Allocation temporelle FCR : déduction du temps de charge/décharge active
+  const rDecimal = Math.max(0.01, (rendementRoundTrip || 88) / 100);
+  const dureeCycle1C = (capaciteStockage / Math.max(1, puissanceDemandee));
+  const activeHoursCycleJour = nbCyclesJour * dureeCycle1C * (1 + 1 / rDecimal);
+  const heuresFcrJour = Math.max(0, Math.min(24, 24 - activeHoursCycleJour));
+  const heuresFcrAn = heuresFcrJour * 365;
+
   const cashFlowsProjet = [-capexTotal];
   const cashFlowsFP = [-apport];
   let remainingDebt = emprunt;
@@ -565,20 +572,23 @@ function computeBatteryProfitability(config) {
     const effCapacity = capaciteStockage * capDeg;
 
     // Value Stacking:
-    // 1. Réserve Primaire / FCR : Puissance_kW * 8760h * Dispo% * (prixFCR €/MW/h / 1000) * infl
-    const revFCR = puissanceDemandee * 8760 * (disponibilite / 100) * (prixFCR / 1000) * infl;
+    // 1. Réserve Primaire / FCR : Puissance_kW * Heures_Éligibles_FCR * Dispo% * (prixFCR €/MW/h / 1000) * infl
+    const revFCR = puissanceDemandee * heuresFcrAn * (disponibilite / 100) * (prixFCR / 1000) * infl;
     // 2. Marché de Capacité : Puissance_kW * Facteur_Derating * Prix_Capacité * infl
     const revCapacite = puissanceDemandee * facteurDerating * prixCapacite * infl;
-    // 3. Arbitrage Spot / Intraday : Nombre_Cycles_Jour * 365 * Capacité_effective * Spread_Net * infl
-    const revArbitrage = nbCyclesJour * 365 * effCapacity * spreadArbitrage * infl;
+    // 3. Arbitrage Spot / Intraday : Énergie Déchargée (kWh) * Spread_Net (€/kWh) * infl
+    const energieDechargeeAn = effCapacity * nbCyclesJour * 365;
+    const revArbitrage = energieDechargeeAn * spreadArbitrage * infl;
     
     const caTotalBrut = revFCR + revCapacite + revArbitrage;
 
     // OPEX BESS :
     // 1. Commission Agrégateur : 18% sur total revenus bruts de marché
     const commAgregateur = caTotalBrut * (commissionAgregateur / 100);
-    // 2. Coût de l'énergie de recharge : Capacité_effective * Cycles * 365 * Coût_Moyen_Recharge * infl
-    const coutRechargeAn = effCapacity * nbCyclesJour * 365 * coutRecharge * infl;
+    // 2. Coût de l'énergie de recharge : UNIQUEMENT pertes de cycle (inertes/rendement) non réinjectées
+    const energieSoutireeAn = energieDechargeeAn / rDecimal;
+    const pertesEnergieAn = energieSoutireeAn * (1 - rDecimal);
+    const coutRechargeAn = pertesEnergieAn * coutRecharge * infl;
     // 3. TURPE Stockage : Calcul TURPE 7 délibéré CRE (ou forfait de fallback)
     let turpe = 0;
     let turpeDetailsYear = null;
@@ -715,6 +725,9 @@ function computeBatteryProfitability(config) {
     beneficeAvecFinancement: (totalRevenueStudy - capexTotal - totalOpexStudy) - totalInterestStudy,
     turpeDetails: resY1.turpeDetails || null,
     turpeAn1: rows[0]?.turpe || 0,
+    heuresFcrJour,
+    heuresActiveCycleJour,
+    heuresFcrAn,
     rows
   };
 }
@@ -1127,7 +1140,7 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
             {detailed ? (
               <>
                 <DataRow label="Commission Agrégateur (18%)" propName="fraisAgregateur" isCurrency indent />
-                <DataRow label="Coût Énergie Recharge" propName="coutRecharge" isCurrency indent />
+                <DataRow label="Coût Énergie Recharge (Pertes de cycle non réinjectées)" propName="coutRecharge" isCurrency indent />
                 <DataRow label="TURPE Stockage" propName="turpe" isCurrency indent />
                 <DataRow label="Maintenance Constructeur" propName="maint" isCurrency indent />
                 <DataRow label="Assurance RC / Risque Élec." propName="assur" isCurrency indent />
@@ -1239,17 +1252,22 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const prixFCR = config.prixFCR ?? 20; // 20 €/MW/h
     const derating = config.facteurDerating ?? 0.5;
     const prixCap = config.prixCapacite ?? 35; // 35 €/kW/an
-    const spread = config.spreadArbitrage ?? 0.03855; // 0.03855 €/kWh net
+    const spread = config.spreadArbitrage ?? 0.040; // 0.040 €/kWh net
     const cycles = config.nbCyclesJour ?? 2.0;
-    const coutRech = config.coutRecharge ?? 0.045;
+    const coutRech = config.coutRecharge ?? 0.030;
     const turpeRate = config.turpeStockageTarif ?? 18;
     const maintRate = config.maintenanceTarif ?? 8;
     const assurRate = config.assuranceTarif ?? 3.5;
     const loyerD = 750 * qty; // 750 € / 125 kW / an = 3 000 € pour 4 briques sur 20 ans
 
-    const fcr = p * 8760 * (dispo / 100) * (prixFCR / 1000);
+    // Mobilisation temporelle FCR
+    const rDecimal = (config.rendementRoundTrip || 88) / 100;
+    const activeHours = cycles * (c / Math.max(1, p)) * (1 + 1 / rDecimal);
+    const fcrHoursDay = Math.max(0, Math.min(24, 24 - activeHours));
+    const fcr = p * (fcrHoursDay * 365) * (dispo / 100) * (prixFCR / 1000);
     const cap = p * derating * prixCap;
     const arb = cycles * 365 * c * spread;
+    const degAnnuelle = cycles >= 2 ? 2.2 : (prev.batteryConfig?.degradationAnnuelle || 1.5);
 
     setParams(prev => ({
       ...prev,
@@ -1284,7 +1302,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         assuranceAn: Math.round(p * assurRate),
         dureeEmprunt: prev.batteryConfig?.dureeEmprunt || 12,
         tauxEmprunt: prev.batteryConfig?.tauxEmprunt || 4.3,
-        degradationAnnuelle: prev.batteryConfig?.degradationAnnuelle || 1.5,
+        degradationAnnuelle: degAnnuelle,
         commissionAgregateur: prev.batteryConfig?.commissionAgregateur || 18,
         disponibilite: dispo,
         rendementRoundTrip: prev.batteryConfig?.rendementRoundTrip || 88
@@ -1499,6 +1517,18 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             <Field label="Prix Capacité" value={config.prixCapacite ?? 35} onChange={v => update('prixCapacite', v)} type="number" suffix="€/kW/an" step={1} />
             <Field label="Spread Arbitrage" value={config.spreadArbitrage ?? 0.040} onChange={v => update('spreadArbitrage', v)} type="number" suffix="€/kWh" step={0.005} />
             <Field label="Cycles / Jour" value={config.nbCyclesJour ?? 2.0} onChange={v => update('nbCyclesJour', v)} type="number" suffix="c/j" step={0.1} />
+            
+            {/* Badge d'allocation physique et temporelle FCR */}
+            <div className="flex items-center justify-between px-2.5 py-1.5 bg-indigo-50/80 border border-indigo-200 rounded-lg text-indigo-900 text-xs mt-1">
+              <span className="font-bold flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                Allocation FCR :
+              </span>
+              <span className="font-black text-[11.5px]">
+                {results?.heuresFcrJour != null ? results.heuresFcrJour.toFixed(1) : '15.6'} h/j ({Math.round(((results?.heuresFcrJour || 15.6) / 24) * 100)}% dispo)
+              </span>
+            </div>
+
             <div className="pt-2 border-t border-blue-100 flex justify-between items-center px-2 py-1 bg-blue-50/50 rounded">
               <span className="text-[11px] font-black text-blue-700 uppercase">Total Revenus An 1 (Brut)</span>
               <span className="text-sm font-black text-slate-900">{fmtEur(results.revenuAn1)}</span>
@@ -1521,7 +1551,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         <div className="space-y-4">
           <GroupTitle title="Charges & OPEX BESS" />
           <div className="grid grid-cols-1 gap-2">
-            <Field label="Coût Recharge" value={config.coutRecharge ?? 0.045} onChange={v => update('coutRecharge', v)} type="number" suffix="€/kWh" step={0.005} />
+            <Field label="Coût Recharge (Pertes)" value={config.coutRecharge ?? 0.030} onChange={v => update('coutRecharge', v)} type="number" suffix="€/kWh" step={0.005} />
             {config.useTurpe7 !== false ? (
               <div className="flex items-center justify-between border border-blue-200 bg-blue-50/70 rounded px-2 py-1">
                 <div className="flex flex-col">
@@ -1554,8 +1584,14 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                </div>
                <div className="grid grid-cols-2 gap-4">
                   <Field label="Inflation ann." value={config.inflationAnnuelle ?? 2} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" step={0.5} />
-                  <Field label="Dégradation ann." value={config.degradationAnnuelle ?? 1.5} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.1} />
+                  <Field label="Dégradation ann." value={config.degradationAnnuelle ?? ((config.nbCyclesJour ?? 2.0) >= 2 ? 2.2 : 1.5)} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.1} />
                </div>
+               {((config.nbCyclesJour ?? 2.0) >= 2 && (config.degradationAnnuelle ?? 2.2) < 1.8) && (
+                 <div className="text-[10px] text-amber-800 bg-amber-50 border border-amber-300 p-2 rounded-lg leading-tight flex items-start gap-1.5">
+                   <span className="font-bold shrink-0">⚠️ Note :</span>
+                   <span>Pour {config.nbCyclesJour || 2} cycles/j (730 c/an), une dégradation &lt; 1.8%/an est optimiste (2.0% à 2.5%/an recommandés sur 15–20 ans).</span>
+                 </div>
+               )}
             </div>
           </div>
         </div>
@@ -4762,7 +4798,7 @@ export default function BpAcama() {
       enabled: false,
       isGlobal: false,
       inflationAnnuelle: 2,
-      degradationAnnuelle: 1.5,
+      degradationAnnuelle: 2.2,
       nbCyclesJour: 2.0,
       batteryModelKey: 'cesc_mercury_261',
       nbBricks: 4,
@@ -4775,8 +4811,13 @@ export default function BpAcama() {
       raccordement: 57650,
       developpement: 7500,
       fraisCommerciaux: 20000,
-      arbitrageEnergie: 15242.4,
-      reserveFCR: 85852.8,
+      coutRecharge: 0.030,
+      spreadArbitrage: 0.040,
+      prixFCR: 20,
+      prixCapacite: 35,
+      facteurDerating: 0.5,
+      arbitrageEnergie: 29380,
+      reserveFCR: 55801,
       mecanismeCapacite: 8750,
       effacement: 0,
       disponibilite: 98,

@@ -62,15 +62,24 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
       const raccordement = Math.min(115000, 35000 + (raccordementHTCost * 0.45) + distancePrivCost);
       const capexTotal = batterieBms + genieCivil + developpement + fraisCommerciaux + raccordement;
 
-      // Chiffre d'Affaires annuel Year 1 (~121 423 €)
-      const revFCR = unitPower * 8760 * 0.95 * (20 / 1000); // 83 220 €
+      // Chiffre d'Affaires annuel Year 1 (Stacking physique : FCR résiduel ~15.6h/j + Arbitrage 2 c/j)
+      const rDecimal = 0.88;
+      const activeHoursCycleJour = nbCyclesJour * (unitCapacity / unitPower) * (1 + 1 / rDecimal);
+      const heuresFcrJour = Math.max(0, Math.min(24, 24 - activeHoursCycleJour));
+      const heuresFcrAn = heuresFcrJour * 365;
+
+      const revFCR = unitPower * heuresFcrAn * 0.95 * (20 / 1000); // ~54 093 €
       const revCapacite = unitPower * 0.5 * 35; // 8 750 €
-      const revArbitrage = nbCyclesJour * 365 * unitCapacity * 0.03855; // ~29 453 €
-      const caAnnuel = revFCR + revCapacite + revArbitrage; // 121 423 €
+      const energieDechargeeAn = unitCapacity * nbCyclesJour * 365; // 762 120 kWh
+      const revArbitrage = energieDechargeeAn * 0.03855; // ~29 380 €
+      const caAnnuel = revFCR + revCapacite + revArbitrage; // ~92 223 €
 
       // OPEX annuel Year 1
-      const commAgregateur = caAnnuel * 0.18; // 21 856 €
-      const coutRecharge = unitCapacity * nbCyclesJour * 365 * 0.045; // ~34 295 €
+      const commAgregateur = caAnnuel * 0.18; // 18% sur CA brut
+      // Coût recharge : UNIQUEMENT les pertes de cycle (inertes/rendement 88%) non réinjectées
+      const energieSoutireeAn = energieDechargeeAn / rDecimal;
+      const pertesEnergieAn = energieSoutireeAn * (1 - rDecimal);
+      const coutRecharge = pertesEnergieAn * 0.030; // ~3 118 € (au lieu de 34 295 € auparavant)
       const turpeStockage = 8500; // TURPE 7 HTA stockage neutralité CRE
       const maintenance = unitPower * 8; // 4 000 €
       const assurance = unitPower * 3.5; // 1 750 €
@@ -83,7 +92,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
       const emprunt = capexTotal;
       const annuiteDette = Math.abs(calculatePmt(rateDecimal, durationYears, emprunt));
 
-      // Calcul des cash-flows 15 ans
+      // Calcul des cash-flows 15 ans (avec dégradation 2.2%/an à 2 c/j)
       const cfProjet = [-capexTotal];
       let remainingCapex = capexTotal;
       let payback = null;
@@ -91,7 +100,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
 
       for (let y = 1; y <= studyYears; y++) {
         const infl = Math.pow(1.02, y - 1);
-        const deg = Math.pow(0.985, y - 1);
+        const deg = Math.pow(1 - 0.022, y - 1);
         const caY = caAnnuel * infl * deg;
         const opexY = opexAnnuel * infl;
         const ebeY = caY - opexY;

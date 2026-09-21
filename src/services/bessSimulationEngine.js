@@ -84,7 +84,7 @@ export function simulateBessFinancials(config = {}) {
     disponibilite = 98, // %
     rendementRoundTrip = 88, // %
     profondeurDecharge = 90, // DoD %
-    degradationAnnuelle = 1.5, // %/an
+    degradationAnnuelle = (config.nbCyclesJour === undefined || config.nbCyclesJour >= 2) ? 2.2 : 1.5, // %/an (2.2% si >=2 c/j)
     nbCyclesJour = 2.0, // cycles/jour
     dureeEtude = 12, // ans (10, 12, 15, 20)
 
@@ -94,7 +94,7 @@ export function simulateBessFinancials(config = {}) {
     facteurDerating = 0.5, // 0.5 pour batterie 2h
     prixCapacite = 35, // €/kW/an
     spreadArbitrage = 0.040, // €/kWh net
-    coutRecharge = 0.045, // €/kWh spot/fournisseur
+    coutRecharge = 0.030, // €/kWh spot/fournisseur (heures creuses)
     commissionAgregateur = 18, // % sur CA marché brut
 
     // Paramètres Réseau & TURPE 7
@@ -108,7 +108,7 @@ export function simulateBessFinancials(config = {}) {
     // Charges OPEX BESS
     maintenanceTarif = 8, // €/kW/an
     assuranceTarif = 3.5, // €/kW/an
-    loyerDalle = 5000, // €/an
+    loyerDalle = 3000, // €/an (3 000 € pour 4 briques sur 20 ans)
     inflationAnnuelle = 2.0, // %/an
 
     // Investissement CAPEX BESS
@@ -134,6 +134,13 @@ export function simulateBessFinancials(config = {}) {
   // Emprunt et Annuité
   const emprunt = Math.max(0, capexTotal - (apport || 0));
   const annuite = emprunt > 0 ? -calculatePmt(tauxEmprunt / 100, dureeEmprunt, emprunt) : 0;
+
+  // Calcul du temps actif de cyclage et du temps résiduel alloué à la réserve FCR
+  const rDecimal = Math.max(0.01, (rendementRoundTrip || 88) / 100);
+  const dureeCycle1C = (capaciteStockage / Math.max(1, puissanceDemandee));
+  const activeHoursCycleJour = nbCyclesJour * dureeCycle1C * (1 + 1 / rDecimal);
+  const heuresFcrJour = Math.max(0, Math.min(24, 24 - activeHoursCycleJour));
+  const heuresFcrAn = heuresFcrJour * 365;
 
   // Durée d'analyse
   const maxYearsLoop = Math.max(20, dureeEtude);
@@ -170,8 +177,8 @@ export function simulateBessFinancials(config = {}) {
     const computeArb = modeFonctionnement === 'VALUE_STACKING' || modeFonctionnement === 'ARBITRAGE_ONLY';
 
     if (computeFCR) {
-      // P_kW * 8760h * Dispo * (prixFCR €/MW/h / 1000)
-      revFCR = puissanceDemandee * 8760 * (disponibilite / 100) * (prixFCR / 1000) * infl;
+      // P_kW * Heures_Éligibles_FCR * Dispo * (prixFCR €/MW/h / 1000) * infl
+      revFCR = puissanceDemandee * heuresFcrAn * (disponibilite / 100) * (prixFCR / 1000) * infl;
     }
 
     if (computeCap) {
@@ -179,9 +186,12 @@ export function simulateBessFinancials(config = {}) {
       revCapacite = puissanceDemandee * facteurDerating * prixCapacite * infl;
     }
 
+    // Énergie annuelle déchargée (kWh)
+    const energieDechargeeAn = effCapacity * nbCyclesJour * 365;
+
     if (computeArb) {
-      // Cycles * 365 * CapacitéEffective * SpreadNet
-      revArbitrage = nbCyclesJour * 365 * effCapacity * spreadArbitrage * infl;
+      // Énergie Déchargée (kWh) * Spread Net (€/kWh) * infl
+      revArbitrage = energieDechargeeAn * spreadArbitrage * infl;
     }
 
     const caTotalBrut = revFCR + revCapacite + revArbitrage;
@@ -190,8 +200,10 @@ export function simulateBessFinancials(config = {}) {
     // Commission agrégateur sur flux de marché
     const commAgregateur = caTotalBrut * (commissionAgregateur / 100);
 
-    // Coût d'achat de l'énergie de recharge auprès du fournisseur d'énergie
-    const coutRechargeAn = effCapacity * nbCyclesJour * 365 * coutRecharge * infl;
+    // Coût d'énergie de recharge : UNIQUEMENT les pertes de cycle (inertes/rendement) non réinjectées
+    const energieSoutireeAn = energieDechargeeAn / rDecimal;
+    const pertesEnergieAn = energieSoutireeAn * (1 - rDecimal);
+    const coutRechargeAn = pertesEnergieAn * coutRecharge * infl;
 
     // Calcul du TURPE 7 (CRE délibéré ou fallback)
     let turpeAn = 0;
@@ -350,6 +362,13 @@ export function simulateBessFinancials(config = {}) {
     van,
     payback: dynamicPayback || (dureeEtude + 1),
     dscrMoyen,
+
+    // Métriques physiques et temporelles FCR & Arbitrage
+    heuresFcrJour,
+    heuresActiveCycleJour: activeHoursCycleJour,
+    heuresFcrAn,
+    energieDechargeeAn1: rows[0]?.effectiveCapacityKwh * nbCyclesJour * 365,
+    coutPertesRechargeAn1: rows[0]?.coutRechargeAn || 0,
 
     // Détail TURPE 7 pour affichage UI et traçabilité
     turpeDetails: year1TurpeDetails,

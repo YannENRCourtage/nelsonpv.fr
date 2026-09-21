@@ -32,52 +32,78 @@ import { calculatePmt } from '../../services/bessSimulationEngine.js';
 
 // Base de données consolidée des 31 sites BESS (15.5 MW / 32.36 MWh)
 const SITES_DATABASE = [
-  { id: 1, name: "PAILLOT", client: "PAILLOT Noël", address: "5 ZA des Plats", cp: "87600", city: "Rochechouart", dept: "87", gps: "45.847811, 0.852996", lat: 45.847811, lng: 0.852996, substation: "PLAUD", dist: "6.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 2, name: "BATIOT", client: "BATIOT Olivier", address: "72 Chemin du Campas", cp: "32220", city: "Mongausy", dept: "32", gps: "43.496370, 0.834241", lat: 43.496370, lng: 0.834241, substation: "SEMEZIES", dist: "5.9 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 3, name: "DOMERGUE MEUZAC", client: "DOMERGUE David", address: "1725 Route du Grand Pré", cp: "87380", city: "Meuzac", dept: "87", gps: "45.566247, 1.397687", lat: 45.566247, lng: 1.397687, substation: "LE REPAIRE", dist: "8.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 4, name: "CUBERTAFON", client: "CUBERTAFON René", address: "8 Route de la Barrière", cp: "19210", city: "Saint-Julien-le-Vendômois", dept: "19", gps: "45.460274, 1.298160", lat: 45.460274, lng: 1.298160, substation: "LUBERSAC", dist: "8.3 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 5, name: "PLANTE", client: "PLANTE Jean-Pierre", address: "581 Route Départementale 817", cp: "40300", city: "Port-de-Lanne", dept: "40", gps: "43.558940, -1.199501", lat: 43.558940, lng: -1.199501, substation: "GUICHE", dist: "4.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 6, name: "PRAVIE", client: "PRAVIE Clémence", address: "336 Chemin de Falieres", cp: "82170", city: "Grisolles", dept: "82", gps: "43.806232, 1.295833", lat: 43.806232, lng: 1.295833, substation: "LESQUIVE 2", dist: "2.3 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 7, name: "LATOURNERIE", client: "LATOURNERIE Franck", address: "467 Chemin des Terres Vieilles", cp: "24310", city: "Brantôme en Périgord", dept: "24", gps: "45.328888, 0.651040", lat: 45.328888, lng: 0.651040, substation: "BRANTOME", dist: "3.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 8, name: "DAVID", client: "DAVID Louis", address: "1053 route de saint-cyr les champagnes", cp: "19350", city: "Concèze", dept: "19", gps: "45.353329, 1.314195", lat: 45.353329, lng: 1.314195, substation: "LUBERSAC", dist: "8.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 9, name: "GRANGER", client: "GRANGER BRUNO", address: "3 Route des Forges", cp: "19210", city: "Saint-Éloy-les-Tuileries", dept: "19", gps: "45.442533, 1.267710", lat: 45.442533, lng: 1.267710, substation: "LUBERSAC", dist: "10.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 10, name: "CASTEBRUNET 2", client: "CASTEBRUNET 2 Jérémy", address: "763 Chemin de Calsos", cp: "82300", city: "Caussade", dept: "82", gps: "44.123740, 1.564486", lat: 44.123740, lng: 1.564486, substation: "LERE", dist: "5.7 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 11, name: "BERTRANDIE", client: "BERTRANDIE Sébastien", address: "301 Route de la Roche", cp: "24240", city: "Monestier", dept: "24", gps: "44.773569, 0.300107", lat: 44.773569, lng: 0.300107, substation: "STE-FOY-LA-GRANDE", dist: "9.0 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 12, name: "GIOT", client: "GIOT Joachim", address: "2 Le Cluzeau", cp: "23600", city: "Leyrat", dept: "23", gps: "46.360561, 2.306566", lat: 46.360561, lng: 2.306566, substation: "BOUSSAC", dist: "5.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 13, name: "ARBOIN", client: "ARBOIN Régis", address: "47 Chemin de piquemole", cp: "47120", city: "Duras", dept: "47", gps: "44.659496, 0.222735", lat: 44.659496, lng: 0.222735, substation: "LA SAUVETAT", dist: "11.8 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 14, name: "MISSAULT LACOUSSIÈRE", client: "MISSAULT David", address: "1348 Route des Bouleaux", cp: "24470", city: "Saint-Saud-Lacoussière", dept: "24", gps: "45.558769, 0.804488", lat: 45.558769, lng: 0.804488, substation: "NONTRON", dist: "13.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 15, name: "MEILLAT 1", client: "MEILLAT 1 Maxime", address: "1a La Ribiere", cp: "23210", city: "Mourioux-Vieilleville", dept: "23", gps: "46.082964, 1.638518", lat: 46.082964, lng: 1.638518, substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 16, name: "SOULIGNAC", client: "SOULIGNAC Thierry", address: "Route de Lombardie", cp: "33860", city: "Val-de-Livenne", dept: "33", gps: "45.264357, -0.550408", lat: 45.264357, lng: -0.550408, substation: "ETAULIERS", dist: "7.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 17, name: "CHAUFFAILLE", client: "CHAUFFAILLE Franck", address: "2 Route de Saint Yrieix", cp: "24270", city: "PAYZAC", dept: "24", gps: "45.436230, 1.288720", lat: 45.436230, lng: 1.288720, substation: "LUBERSAC", dist: "6.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 18, name: "CIROLI", client: "CIROLI", address: "66 Lieu Dit Pinasse", cp: "33890", city: "Juillac", dept: "33", gps: "44.809547, 0.037304", lat: 44.809547, lng: 0.037304, substation: "AURIOLLES", dist: "7.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 19, name: "BOURDETTES", client: "BOURDETTES Sandrine", address: "10 Route de la Bohème", cp: "65140", city: "Mansan", dept: "65", gps: "43.343730, 0.194628", lat: 43.343730, lng: 0.194628, substation: "VIC-EN-BIGORRE", dist: "10.8 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 20, name: "CASTEBRUNET 1", client: "CASTEBRUNET Jérémy", address: "1074 Chemin de Guillounet", cp: "82300", city: "Caussade", dept: "82", gps: "44.117157, 1.566758", lat: 44.117157, lng: 1.566758, substation: "LERE", dist: "5.5 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 21, name: "FRECHEVILLE", client: "FRECHEVILLE Mathieu", address: "45 Cluzelou-haut", cp: "47210", city: "SAINT EUTROPE DE BORN", dept: "47", gps: "44.588327, 0.665431", lat: 44.588327, lng: 0.665431, substation: "CANCON", dist: "7.2 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 22, name: "CASTEBRUNET 3", client: "CASTEBRUNET 3 Jérémy", address: "93 Chemin des Peyrières", cp: "82300", city: "Monteils", dept: "82", gps: "44.165754, 1.564963", lat: 44.165754, lng: 1.564963, substation: "LERE", dist: "3.6 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 23, name: "DOUMENS", client: "DOUMENS Morgan", address: "4 Route de Salleboeuf", cp: "33750", city: "Beychac-et-Caillau", dept: "33", gps: "44.870054, -0.397698", lat: 44.870054, lng: -0.397698, substation: "POMPIGNAC", dist: "4.0 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 24, name: "HOUSSAIT-YOUNG", client: "HOUSSAIT-YOUNG Jérôme", address: "94 Route d'Hourtin", cp: "33930", city: "Vendays-Montalivet", dept: "33", gps: "45.338321, -1.071016", lat: 45.338321, lng: -1.071016, substation: "ST-VIVIEN", dist: "9.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 25, name: "MISSAULT FRESSENGEAS", client: "MISSAULT David", address: "Route de la Baine", cp: "24800", city: "Saint-Martin-de-Fressengeas", dept: "24", gps: "45.438589, 0.815692", lat: 45.438589, lng: 0.815692, substation: "THIVIERS", dist: "6.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 26, name: "LARDY", client: "LARDY Michel", address: "Outrelaigue", cp: "23150", city: "Maisonnisses", dept: "23", gps: "46.067915, 1.907318", lat: 46.067915, lng: 1.907318, substation: "LAVAUD", dist: "10.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 27, name: "CELERIE", client: "CELERIE Thomas", address: "301 route de la Valade", cp: "19230", city: "Beyssenac", dept: "19", gps: "45.400772, 1.284338", lat: 45.400772, lng: 1.284338, substation: "LUBERSAC", dist: "7.1 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 28, name: "MEILLAT 2", client: "MEILLAT 2 Maxime", address: "1a la Ribiére", cp: "23210", city: "Mourioux-Vieilleville", dept: "23", gps: "46.081523, 1.633909", lat: 46.081523, lng: 1.633909, substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 29, name: "DOMERGUE ARGENCES", client: "DOMERGUE David", address: "1 Route de Plagnes", cp: "12420", city: "Argences en Aubrac", dept: "12", gps: "44.807528, 2.790446", lat: 44.807528, lng: 2.790446, substation: "RUEYRES", dist: "5.9 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 30, name: "COMBY", client: "COMBY Fabrice", address: "14 Route de Besse", cp: "19210", city: "Saint-Éloy-les-Tuileries", dept: "19", gps: "45.452807, 1.284563", lat: 45.452807, lng: 1.284563, substation: "LUBERSAC", dist: "10.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" },
-  { id: 31, name: "CASTEBRUNET 4", client: "CASTEBRUNET 4 Jérémy", address: "3750 Route de Bioule", cp: "82300", city: "Saint-Cirq", dept: "82", gps: "44.124392, 1.583302", lat: 44.124392, lng: 1.583302, substation: "LERE", dist: "6.2 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "50 300 €", payback: "4.6 ans" }
+  { id: 1, name: "PAILLOT", client: "PAILLOT Noël", address: "5 ZA des Plats", cp: "87600", city: "Rochechouart", dept: "87", gps: "45.847811, 0.852996", lat: 45.847811, lng: 0.852996, substation: "PLAUD", dist: "6.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 2, name: "BATIOT", client: "BATIOT Olivier", address: "72 Chemin du Campas", cp: "32220", city: "Mongausy", dept: "32", gps: "43.496370, 0.834241", lat: 43.496370, lng: 0.834241, substation: "SEMEZIES", dist: "5.9 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 3, name: "DOMERGUE MEUZAC", client: "DOMERGUE David", address: "1725 Route du Grand Pré", cp: "87380", city: "Meuzac", dept: "87", gps: "45.566247, 1.397687", lat: 45.566247, lng: 1.397687, substation: "LE REPAIRE", dist: "8.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 4, name: "CUBERTAFON", client: "CUBERTAFON René", address: "8 Route de la Barrière", cp: "19210", city: "Saint-Julien-le-Vendômois", dept: "19", gps: "45.460274, 1.298160", lat: 45.460274, lng: 1.298160, substation: "LUBERSAC", dist: "8.3 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 5, name: "PLANTE", client: "PLANTE Jean-Pierre", address: "581 Route Départementale 817", cp: "40300", city: "Port-de-Lanne", dept: "40", gps: "43.558940, -1.199501", lat: 43.558940, lng: -1.199501, substation: "GUICHE", dist: "4.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 6, name: "PRAVIE", client: "PRAVIE Clémence", address: "336 Chemin de Falieres", cp: "82170", city: "Grisolles", dept: "82", gps: "43.806232, 1.295833", lat: 43.806232, lng: 1.295833, substation: "LESQUIVE 2", dist: "2.3 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 7, name: "LATOURNERIE", client: "LATOURNERIE Franck", address: "467 Chemin des Terres Vieilles", cp: "24310", city: "Brantôme en Périgord", dept: "24", gps: "45.328888, 0.651040", lat: 45.328888, lng: 0.651040, substation: "BRANTOME", dist: "3.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 8, name: "DAVID", client: "DAVID Louis", address: "1053 route de saint-cyr les champagnes", cp: "19350", city: "Concèze", dept: "19", gps: "45.353329, 1.314195", lat: 45.353329, lng: 1.314195, substation: "LUBERSAC", dist: "8.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 9, name: "GRANGER", client: "GRANGER BRUNO", address: "3 Route des Forges", cp: "19210", city: "Saint-Éloy-les-Tuileries", dept: "19", gps: "45.442533, 1.267710", lat: 45.442533, lng: 1.267710, substation: "LUBERSAC", dist: "10.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 10, name: "CASTEBRUNET 2", client: "CASTEBRUNET 2 Jérémy", address: "763 Chemin de Calsos", cp: "82300", city: "Caussade", dept: "82", gps: "44.123740, 1.564486", lat: 44.123740, lng: 1.564486, substation: "LERE", dist: "5.7 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 11, name: "BERTRANDIE", client: "BERTRANDIE Sébastien", address: "301 Route de la Roche", cp: "24240", city: "Monestier", dept: "24", gps: "44.773569, 0.300107", lat: 44.773569, lng: 0.300107, substation: "STE-FOY-LA-GRANDE", dist: "9.0 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 12, name: "GIOT", client: "GIOT Joachim", address: "2 Le Cluzeau", cp: "23600", city: "Leyrat", dept: "23", gps: "46.360561, 2.306566", lat: 46.360561, lng: 2.306566, substation: "BOUSSAC", dist: "5.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 13, name: "ARBOIN", client: "ARBOIN Régis", address: "47 Chemin de piquemole", cp: "47120", city: "Duras", dept: "47", gps: "44.659496, 0.222735", lat: 44.659496, lng: 0.222735, substation: "LA SAUVETAT", dist: "11.8 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 14, name: "MISSAULT LACOUSSIÈRE", client: "MISSAULT David", address: "1348 Route des Bouleaux", cp: "24470", city: "Saint-Saud-Lacoussière", dept: "24", gps: "45.558769, 0.804488", lat: 45.558769, lng: 0.804488, substation: "NONTRON", dist: "13.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 15, name: "MEILLAT 1", client: "MEILLAT 1 Maxime", address: "1a La Ribiere", cp: "23210", city: "Mourioux-Vieilleville", dept: "23", gps: "46.082964, 1.638518", lat: 46.082964, lng: 1.638518, substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 16, name: "SOULIGNAC", client: "SOULIGNAC Thierry", address: "Route de Lombardie", cp: "33860", city: "Val-de-Livenne", dept: "33", gps: "45.264357, -0.550408", lat: 45.264357, lng: -0.550408, substation: "ETAULIERS", dist: "7.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 17, name: "CHAUFFAILLE", client: "CHAUFFAILLE Franck", address: "2 Route de Saint Yrieix", cp: "24270", city: "PAYZAC", dept: "24", gps: "45.436230, 1.288720", lat: 45.436230, lng: 1.288720, substation: "LUBERSAC", dist: "6.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 18, name: "CIROLI", client: "CIROLI", address: "66 Lieu Dit Pinasse", cp: "33890", city: "Juillac", dept: "33", gps: "44.809547, 0.037304", lat: 44.809547, lng: 0.037304, substation: "AURIOLLES", dist: "7.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 19, name: "BOURDETTES", client: "BOURDETTES Sandrine", address: "10 Route de la Bohème", cp: "65140", city: "Mansan", dept: "65", gps: "43.343730, 0.194628", lat: 43.343730, lng: 0.194628, substation: "VIC-EN-BIGORRE", dist: "10.8 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 20, name: "CASTEBRUNET 1", client: "CASTEBRUNET Jérémy", address: "1074 Chemin de Guillounet", cp: "82300", city: "Caussade", dept: "82", gps: "44.117157, 1.566758", lat: 44.117157, lng: 1.566758, substation: "LERE", dist: "5.5 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 21, name: "FRECHEVILLE", client: "FRECHEVILLE Mathieu", address: "45 Cluzelou-haut", cp: "47210", city: "SAINT EUTROPE DE BORN", dept: "47", gps: "44.588327, 0.665431", lat: 44.588327, lng: 0.665431, substation: "CANCON", dist: "7.2 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 22, name: "CASTEBRUNET 3", client: "CASTEBRUNET 3 Jérémy", address: "93 Chemin des Peyrières", cp: "82300", city: "Monteils", dept: "82", gps: "44.165754, 1.564963", lat: 44.165754, lng: 1.564963, substation: "LERE", dist: "3.6 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 23, name: "DOUMENS", client: "DOUMENS Morgan", address: "4 Route de Salleboeuf", cp: "33750", city: "Beychac-et-Caillau", dept: "33", gps: "44.870054, -0.397698", lat: 44.870054, lng: -0.397698, substation: "POMPIGNAC", dist: "4.0 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 24, name: "HOUSSAIT-YOUNG", client: "HOUSSAIT-YOUNG Jérôme", address: "94 Route d'Hourtin", cp: "33930", city: "Vendays-Montalivet", dept: "33", gps: "45.338321, -1.071016", lat: 45.338321, lng: -1.071016, substation: "ST-VIVIEN", dist: "9.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 25, name: "MISSAULT FRESSENGEAS", client: "MISSAULT David", address: "Route de la Baine", cp: "24800", city: "Saint-Martin-de-Fressengeas", dept: "24", gps: "45.438589, 0.815692", lat: 45.438589, lng: 0.815692, substation: "THIVIERS", dist: "6.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 26, name: "LARDY", client: "LARDY Michel", address: "Outrelaigue", cp: "23150", city: "Maisonnisses", dept: "23", gps: "46.067915, 1.907318", lat: 46.067915, lng: 1.907318, substation: "LAVAUD", dist: "10.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 27, name: "CELERIE", client: "CELERIE Thomas", address: "301 route de la Valade", cp: "19230", city: "Beyssenac", dept: "19", gps: "45.400772, 1.284338", lat: 45.400772, lng: 1.284338, substation: "LUBERSAC", dist: "7.1 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 28, name: "MEILLAT 2", client: "MEILLAT 2 Maxime", address: "1a la Ribiére", cp: "23210", city: "Mourioux-Vieilleville", dept: "23", gps: "46.081523, 1.633909", lat: 46.081523, lng: 1.633909, substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 29, name: "DOMERGUE ARGENCES", client: "DOMERGUE David", address: "1 Route de Plagnes", cp: "12420", city: "Argences en Aubrac", dept: "12", gps: "44.807528, 2.790446", lat: 44.807528, lng: 2.790446, substation: "RUEYRES", dist: "5.9 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 30, name: "COMBY", client: "COMBY Fabrice", address: "14 Route de Besse", cp: "19210", city: "Saint-Éloy-les-Tuileries", dept: "19", gps: "45.452807, 1.284563", lat: 45.452807, lng: 1.284563, substation: "LUBERSAC", dist: "10.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" },
+  { id: 31, name: "CASTEBRUNET 4", client: "CASTEBRUNET 4 Jérémy", address: "3750 Route de Bioule", cp: "82300", city: "Saint-Cirq", dept: "82", gps: "44.124392, 1.583302", lat: 44.124392, lng: 1.583302, substation: "LERE", dist: "6.2 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €", ebitda: "55 438 €", payback: "4.6 ans" }
 ];
 
-// Matrice Financière 15 ans avec loyer 3 000 €/an sur 20 ans
+// Matrice Financière 15 ans avec dégradation batterie 2.2%/an, FCR 15.6h/j, pertes recharge et loyer 3 000 €/an sur 20 ans
 const YEARS_15 = [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038, 2039, 2040];
-const FINANCIAL_MATRIX = {
-  revFcr: [85848, 87565, 89316, 91103, 92925, 94783, 96679, 98612, 100585, 102596, 104648, 106741, 108876, 111054, 113275],
-  revCapa: [8750, 8925, 9104, 9286, 9471, 9661, 9854, 10051, 10252, 10457, 10666, 10880, 11097, 11319, 11545],
-  revArb: [29380, 29668, 29958, 30252, 30548, 30848, 31150, 31455, 31764, 32075, 32390, 32707, 33027, 33351, 33678],
-  opexTurpe: [8317, 8483, 8653, 8826, 9003, 9183, 9366, 9554, 9745, 9940, 10139, 10341, 10548, 10759, 10974],
-  opexRecharge: [34295, 34981, 35681, 36394, 37122, 37865, 38622, 39394, 40182, 40986, 41806, 42642, 43495, 44365, 45252],
-  opexAgregateur: [22316, 22762, 23217, 23682, 24155, 24639, 25131, 25634, 26147, 26670, 27203, 27747, 28302, 28868, 29446],
-  // opexAutres An 1 : Loyer 3 000 € + Maint 4 000 € + Assurance 1 750 € = 8 750 €
-  opexAutres: [8750, 8885, 9023, 9163, 9306, 9453, 9602, 9754, 9909, 10067, 10229, 10393, 10561, 10732, 10907],
-  debtService: [25288, 25288, 25288, 25288, 25288, 25288, 25288, 25288, 25288, 25288, 25288, 25288, 0, 0, 0]
+
+const generateBess15YearMatrix = () => {
+  const revFcr = [];
+  const revCapa = [];
+  const revArb = [];
+  const opexTurpe = [];
+  const opexRecharge = [];
+  const opexAgregateur = [];
+  const opexAutres = [];
+
+  for (let i = 0; i < 15; i++) {
+    const infl = Math.pow(1.02, i);
+    const deg = Math.pow(1 - 0.022, i);
+
+    const fcr = 54093 * infl;
+    const capa = 8750 * infl;
+    const arb = 29380 * deg * infl;
+    const totalRev = fcr + capa + arb;
+
+    const turpe = 8317 * infl;
+    const recharge = 3118 * deg * infl;
+    const agregateur = totalRev * 0.18;
+    const autres = 8750 * infl;
+
+    revFcr.push(Math.round(fcr));
+    revCapa.push(Math.round(capa));
+    revArb.push(Math.round(arb));
+    opexTurpe.push(Math.round(turpe));
+    opexRecharge.push(Math.round(recharge));
+    opexAgregateur.push(Math.round(agregateur));
+    opexAutres.push(Math.round(autres));
+  }
+
+  return { revFcr, revCapa, revArb, opexTurpe, opexRecharge, opexAgregateur, opexAutres };
 };
+
+const FINANCIAL_MATRIX = generateBess15YearMatrix();
 
 // Formateur monétaire
 const fmtEur = (val) => {
@@ -157,15 +183,22 @@ export default function BessDossierPDFGenerator({
   const validDscr = dscrArray.filter(v => v !== null);
   const avgDscr = validDscr.length > 0 ? (validDscr.reduce((a, b) => a + b, 0) / validDscr.length) : 1.98;
 
+  // Totaux cumulés 15 ans
+  const cumulRev = YEARS_15.reduce((acc, _, i) => acc + (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult, 0);
+  const cumulOpex = YEARS_15.reduce((acc, _, i) => acc + (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult, 0);
+  const cumulEbitda = cumulRev - cumulOpex;
+  const cumulDebt = dynamicDebtService.reduce((acc, v) => acc + v * mult, 0);
+  const cumulCf = cumulEbitda - cumulDebt;
+
   // Métriques KPI institutionnelles
   const kpi = {
     irrProject: isPort ? '20.5%' : '20.8%',
     irrEquity: isPort ? 'TRI Equity : 37.4%' : 'TRI Equity : 38.1%',
     payback: isPort ? '4.6 ans' : '4.6 ans',
     paybackEquity: isPort ? 'Sur Fonds Propres : 2.2 ans' : 'Sur Fonds Propres : 2.2 ans',
-    ebitda: isPort ? '1.56 M€' : '50 300 €',
-    ebitdaSub: isPort ? 'EBITDA consolidé net (31 sites)' : 'Marge opérationnelle ~40.6%',
-    revenue: isPort ? '3.84 M€' : '123 978 €',
+    ebitda: isPort ? '1.72 M€' : '55 438 €',
+    ebitdaSub: isPort ? 'EBITDA consolidé net (31 sites)' : 'Marge opérationnelle ~60.1%',
+    revenue: isPort ? '2.86 M€' : '92 223 €',
     revenueSub: isPort ? 'Value Stacking 31 sites (2 c/j)' : '2 cycles journaliers (24h)',
     capex: isPort ? '7.23 M€' : '233 250 €',
     capexSub: isPort ? '~233 k€ / site raccordé clé en main' : '466 € / kW installé',
@@ -173,10 +206,10 @@ export default function BessDossierPDFGenerator({
     turpeSub: isPort ? 'Gain annuel réseau consolidé' : 'Économie directe vs barème',
     rent: isPort ? '93 000 € / an' : '3 000 € / an',
     rentSub: isPort ? '31 baux notariés 20 ans verrouillés' : 'Bail notarié 20 ans (750 €/brique)',
-    fcr: isPort ? '2 661 288 € / an' : '85 848 € / an',
+    fcr: isPort ? '1 676 883 € / an' : '54 093 € / an',
     arb: isPort ? '910 780 € / an' : '29 380 € / an',
     capa: isPort ? '271 250 € / an' : '8 750 € / an',
-    totalRevDonut: isPort ? '3 843 318 € / an' : '123 978 € / an',
+    totalRevDonut: isPort ? '2 858 913 € / an' : '92 223 € / an',
     totalRevSub: isPort ? 'Portefeuille Consolidé 15.5 MW' : 'Unité 500 kW / 1 044 kWh',
     tableTitle: isPort ? (<>Plan d'Affaires Prévisionnel Consolidé sur 15 Ans<br />(31 Sites / 15.5 MW)</>) : (<>Plan d'Affaires Prévisionnel sur 15 Ans<br />(Unitaire 500 kW / 1 044 kWh)</>),
     badgePaybackSmall: (
@@ -891,14 +924,14 @@ export default function BessDossierPDFGenerator({
                   <div className="bg-white border-2 border-blue-200 rounded-2xl p-3.5 shadow-xs flex items-center justify-between">
                     <div className="flex items-center gap-3.5">
                       <div className="w-14 h-11 rounded-xl bg-blue-100 text-blue-800 font-black text-xs flex items-center justify-center shrink-0 self-center">
-                        69.2%
+                        58.7%
                       </div>
                       <div>
                         <h4 className="font-extrabold text-[#0b192c] text-xs">
                           1. Réserve Primaire 50 Hz (FCR) &amp; PICASSO (aFRR Réglage Secondaire)
                         </h4>
                         <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
-                          Rémunération de la mise à disposition de puissance symétrique à la milliseconde pour stabiliser le réseau européen. Temps de réponse &lt; 600 ms certifié par CESC, bien supérieur à la norme de 4s exigée pour les enchères européennes PICASSO.
+                          Rémunération de la mise à disposition de puissance symétrique à la milliseconde pour stabiliser le réseau européen (~15.6 h/jour allouées). Temps de réponse &lt; 600 ms certifié par CESC, bien supérieur à la norme de 4s exigée pour les enchères européennes PICASSO.
                         </p>
                       </div>
                     </div>
@@ -911,7 +944,7 @@ export default function BessDossierPDFGenerator({
                   <div className="bg-white border-2 border-cyan-200 rounded-2xl p-3.5 shadow-xs flex items-center justify-between">
                     <div className="flex items-center gap-3.5">
                       <div className="w-14 h-11 rounded-xl bg-cyan-100 text-cyan-800 font-black text-xs flex items-center justify-center shrink-0 self-center">
-                        23.7%
+                        31.8%
                       </div>
                       <div>
                         <h4 className="font-extrabold text-[#0b192c] text-xs">
@@ -931,7 +964,7 @@ export default function BessDossierPDFGenerator({
                   <div className="bg-white border-2 border-emerald-200 rounded-2xl p-3.5 shadow-xs flex items-center justify-between">
                     <div className="flex items-center gap-3.5">
                       <div className="w-14 h-11 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0 self-center">
-                        7.1%
+                        9.5%
                       </div>
                       <div>
                         <h4 className="font-extrabold text-[#0b192c] text-xs">
@@ -956,25 +989,25 @@ export default function BessDossierPDFGenerator({
                   
                   <div className="relative w-52 h-52 my-1">
                     <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="#2563eb" strokeWidth="15" strokeDasharray="165.3 238.7" strokeDashoffset="0" />
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="#06b6d4" strokeWidth="15" strokeDasharray="56.6 238.7" strokeDashoffset="-165.3" />
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="#10b981" strokeWidth="15" strokeDasharray="16.9 238.7" strokeDashoffset="-221.9" />
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="#2563eb" strokeWidth="15" strokeDasharray="140.0 238.7" strokeDashoffset="0" />
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="#06b6d4" strokeWidth="15" strokeDasharray="76.0 238.7" strokeDashoffset="-140.0" />
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="#10b981" strokeWidth="15" strokeDasharray="22.7 238.7" strokeDashoffset="-216.0" />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black text-[#0b192c]">{isPort ? '3.84 M€' : '124 k€'}</span>
+                      <span className="text-2xl font-black text-[#0b192c]">{isPort ? '2.86 M€' : '92 k€'}</span>
                       <span className="text-[10px] font-extrabold text-slate-400 uppercase">CA Brut Total</span>
                     </div>
                   </div>
 
                   <div className="w-full pt-3 border-t border-slate-100 flex justify-around text-xs font-bold">
                     <span className="flex items-center gap-1.5 text-blue-700">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span> FCR 69.2%
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span> FCR 58.7%
                     </span>
                     <span className="flex items-center gap-1.5 text-cyan-700">
-                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> Arbitrage 23.7%
+                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> Arbitrage 31.8%
                     </span>
                     <span className="flex items-center gap-1.5 text-emerald-700">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Capacité 7.1%
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Capacité 9.5%
                     </span>
                   </div>
                 </div>
@@ -1060,7 +1093,7 @@ export default function BessDossierPDFGenerator({
                       {kpi.tableTitle}
                     </h2>
                     <p className="text-xs font-medium text-slate-600 mt-0.5 leading-snug">
-                      Chronique 15 ans détaillée : Dette senior {debtDuration} ans à {debtRate.toFixed(2)}% • Inflation 2.0%/an • Dégradation batterie 1.0%/an<br />
+                      Chronique 15 ans détaillée : Dette senior {debtDuration} ans à {debtRate.toFixed(2)}% • Inflation 2.0%/an • Dégradation batterie 2.2%/an<br />
                       Loyer foncier 3 000 €/an/site sur 20 ans.
                     </p>
                   </div>
@@ -1115,7 +1148,7 @@ export default function BessDossierPDFGenerator({
                       })}
                     </tr>
                     <tr className="text-slate-600 text-[9.5px]">
-                      <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Énergie de Recharge (Soutirage)</td>
+                      <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Coût Énergie Recharge (Pertes de cycle non réinjectées)</td>
                       {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(FINANCIAL_MATRIX.opexRecharge[i] * mult)}</td>)}
                     </tr>
                     <tr className="text-slate-600 text-[9.5px]">
@@ -1178,15 +1211,15 @@ export default function BessDossierPDFGenerator({
               <div className="grid grid-cols-3 gap-4 pt-1">
                 <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-3 text-center">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700 block">CA Cumulé 15 Ans</span>
-                  <span className="text-lg font-black text-blue-900">{isPort ? '61.5 M€' : '1.98 M€'}</span>
+                  <span className="text-lg font-black text-blue-900">{isPort ? `${(cumulRev / 1000000).toFixed(2)} M€` : `${fmtEur(cumulRev)}`}</span>
                 </div>
                 <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3 text-center">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 block">EBITDA Net Cumulé 15 Ans</span>
-                  <span className="text-lg font-black text-emerald-900">{isPort ? '25.2 M€' : '813 k€'}</span>
+                  <span className="text-lg font-black text-emerald-900">{isPort ? `${(cumulEbitda / 1000000).toFixed(2)} M€` : `${fmtEur(cumulEbitda)}`}</span>
                 </div>
                 <div className="bg-cyan-50/60 border border-cyan-200 rounded-xl p-3 text-center">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-700 block">Cash-Flow Net Cumulé 15 Ans</span>
-                  <span className="text-lg font-black text-cyan-900">{isPort ? '16.1 M€' : '519 k€'}</span>
+                  <span className="text-lg font-black text-cyan-900">{isPort ? `${(cumulCf / 1000000).toFixed(2)} M€` : `${fmtEur(cumulCf)}`}</span>
                 </div>
               </div>
             </div>
@@ -1316,7 +1349,7 @@ export default function BessDossierPDFGenerator({
               <div className="grid grid-cols-4 gap-4">
                 <div className="bg-white border-2 border-blue-200 rounded-xl p-3.5 text-center shadow-xs">
                   <span className="text-[10px] font-extrabold text-blue-700 uppercase block">Marge Opérationnelle</span>
-                  <span className="text-xl font-black text-blue-900 mt-0.5 block">~40.6%</span>
+                  <span className="text-xl font-black text-blue-900 mt-0.5 block">~60.1%</span>
                   <span className="text-[10px] text-slate-500 mt-0.5 block">Excellence opérationnelle</span>
                 </div>
                 <div className="bg-white border-2 border-cyan-200 rounded-xl p-3.5 text-center shadow-xs">
@@ -1716,7 +1749,7 @@ export default function BessDossierPDFGenerator({
                         <td className="py-2 px-2 text-right text-slate-300">90.1 k€ moy.</td>
                         <td className="py-2 px-2 text-center text-cyan-300 font-extrabold leading-tight">15.5 MW /<br />32.36 MWh</td>
                         <td className="py-2 px-2 text-right text-amber-300 font-black">93 000 €/an</td>
-                        <td className="py-2 px-2 text-right text-emerald-400 font-black text-xs">1.56 M€</td>
+                        <td className="py-2 px-2 text-right text-emerald-400 font-black text-xs">1.72 M€</td>
                         <td className="py-2 px-2 text-center text-emerald-300 font-black">4.6 ans</td>
                       </tr>
                     </tbody>
