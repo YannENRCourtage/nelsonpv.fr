@@ -29,6 +29,7 @@ import 'leaflet/dist/leaflet.css';
 import BatteryStationVisualizer from '../developpement/BatteryStationVisualizer.jsx';
 import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
 import { calculatePmt } from '../../services/bessSimulationEngine.js';
+import BessProjectSingleSheet from './BessProjectSingleSheet.jsx';
 
 // Base de données consolidée des 31 sites BESS (15.5 MW / 32.36 MWh)
 const SITES_DATABASE = [
@@ -138,7 +139,7 @@ export default function BessDossierPDFGenerator({
   // Synchronisation dynamique du mode lorsque les props changent
   useEffect(() => {
     if (initialMode) {
-      setActiveMode(initialMode);
+      setActiveMode(initialMode === 'complete' ? 'portfolio' : initialMode);
     }
   }, [initialMode, isOpen]);
 
@@ -147,6 +148,16 @@ export default function BessDossierPDFGenerator({
       setActivePageIndex(0);
     }
   }, [totalPagesCount, activePageIndex]);
+
+  // Auto-déclenchement si mode complete demandé
+  useEffect(() => {
+    if (isOpen && (initialMode === 'complete' || portfolioData?.autoExportType === 'complete')) {
+      const timer = setTimeout(() => {
+        handleGeneratePdf('complete');
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, initialMode, portfolioData]);
 
   if (!isOpen) return null;
 
@@ -251,10 +262,11 @@ export default function BessDossierPDFGenerator({
     return { year: y, ebitda, cf };
   });
 
-  // Moteur d'export PDF A4 Paysage Pleine Largeur
-  const handleGeneratePdf = async () => {
+  // Moteur d'export PDF A4 Paysage Pleine Largeur (Supporte Portfolio 8 planches ou Étude Complète 39 pages)
+  const handleGeneratePdf = async (exportType = 'portfolio') => {
     setIsGenerating(true);
-    setProgressStep('Initialisation du moteur d’impression...');
+    const isComplete = exportType === 'complete';
+    setProgressStep(isComplete ? 'Initialisation de l\'Étude Complète BESS (39 pages)...' : 'Initialisation du moteur d’impression...');
     await new Promise(r => setTimeout(r, 250));
 
     try {
@@ -267,13 +279,61 @@ export default function BessDossierPDFGenerator({
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const pages = document.querySelectorAll('.bess-render-page');
 
-      for (let i = 0; i < pages.length; i++) {
-        const page = pages[i];
-        setProgressStep(`Rendu vectoriel & capture planche ${i + 1} / ${pages.length}...`);
+      // Construction de la liste ordonnée des pages à capturer
+      const pagesToCapture = [];
+      const planchesCount = isPort ? 8 : 6;
 
-        // S'assurer que la planche est bien positionnée
+      // 1. Les planches du dossier portefeuille (8 planches)
+      for (let i = 1; i <= planchesCount; i++) {
+        const el = document.getElementById(`bess-planche-container-${i}`);
+        if (el) {
+          pagesToCapture.push({
+            containerId: `bess-planche-container-${i}`,
+            title: isPort ? `Planche ${i}/8 : ${plancheTitles[i - 1]}` : `Planche ${i}/6 : ${plancheTitles[i - 1]}`,
+            type: 'portfolio',
+            index: i
+          });
+        }
+      }
+
+      // 2. Si Étude Complète : ajouter les 31 fiches unitaires BESS
+      if (isComplete) {
+        for (let j = 1; j <= SITES_DATABASE.length; j++) {
+          const site = SITES_DATABASE[j - 1];
+          pagesToCapture.push({
+            containerId: `bess-single-site-container-${j}`,
+            title: `Fiche Site ${j}/31 : ${site?.name || `Site ${j}`}`,
+            type: 'site',
+            index: j,
+            site
+          });
+        }
+      }
+
+      const totalTargetPages = pagesToCapture.length;
+
+      for (let i = 0; i < totalTargetPages; i++) {
+        const target = pagesToCapture[i];
+        const container = document.getElementById(target.containerId);
+        if (!container) continue;
+
+        const page = container.querySelector('.bess-render-page');
+        if (!page) continue;
+
+        if (isComplete) {
+          if (target.type === 'portfolio') {
+            setProgressStep(`Capture Planche Portefeuille ${target.index}/8 (${plancheTitles[target.index - 1] || ''}) [Page ${i + 1}/${totalTargetPages}]...`);
+          } else {
+            setProgressStep(`Capture Fiche Projet ${target.index}/31 (${target.site?.name || ''}) [Page ${i + 1}/${totalTargetPages}]...`);
+          }
+        } else {
+          setProgressStep(`Capture planche ${i + 1} / ${totalTargetPages} (${target.title})...`);
+        }
+
+        // Forcer temporairement l'affichage du conteneur pour la capture
+        const prevDisplay = container.style.display;
+        container.style.display = 'flex';
         page.scrollIntoView({ block: 'start', inline: 'nearest' });
         await new Promise(r => setTimeout(r, 60));
 
@@ -286,15 +346,15 @@ export default function BessDossierPDFGenerator({
           height: 940,
           allowTaint: true,
           onclone: (clonedDoc) => {
-            // 1. Isoler strictement la planche courante (i) en masquant tous les autres conteneurs
-            const allContainers = clonedDoc.querySelectorAll('[id^="bess-planche-container-"]');
-            allContainers.forEach((container, idx) => {
-              if (idx !== i) {
-                container.style.display = 'none';
+            // Isoler strictement la page courante en masquant tous les autres conteneurs
+            const allContainers = clonedDoc.querySelectorAll('[id^="bess-planche-container-"], [id^="bess-single-site-container-"]');
+            allContainers.forEach((c) => {
+              if (c.id === target.containerId) {
+                c.style.display = 'flex';
+                c.style.margin = '0';
+                c.style.padding = '0';
               } else {
-                container.style.display = 'flex';
-                container.style.margin = '0';
-                container.style.padding = '0';
+                c.style.display = 'none';
               }
             });
 
@@ -306,7 +366,7 @@ export default function BessDossierPDFGenerator({
               scrollBox.scrollTop = 0;
             }
 
-            // 2. Repositionnement parfait des calques Leaflet (SVG/Canvas/Panes) dans html2canvas
+            // Repositionnement parfait des calques Leaflet (SVG/Canvas/Panes) dans html2canvas
             const leafletNodes = clonedDoc.querySelectorAll(
               '.leaflet-map-pane, .leaflet-tile-pane, .leaflet-overlay-pane, .leaflet-zoom-animated, .leaflet-pane svg, .leaflet-pane canvas'
             );
@@ -328,7 +388,10 @@ export default function BessDossierPDFGenerator({
           }
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.98);
+        // Restaurer le style d'affichage d'origine
+        container.style.display = prevDisplay;
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
         if (i > 0) {
           pdf.addPage('a4', 'landscape');
@@ -339,9 +402,14 @@ export default function BessDossierPDFGenerator({
       }
 
       const fileDate = new Date().toISOString().slice(0, 10);
-      const fileName = isPort
-        ? `Dossier_Investissement_BESS_Portefeuille_15.5MW_TURPE7_${fileDate}.pdf`
-        : `Dossier_Investissement_BESS_${projectData?.name || 'Unitaire_500kW'}_TURPE7_${fileDate}.pdf`;
+      let fileName = '';
+      if (isComplete) {
+        fileName = `Etude_Complete_BESS_Portefeuille_31_Sites_39_Pages_${fileDate}.pdf`;
+      } else if (isPort) {
+        fileName = `Dossier_Investissement_BESS_Portefeuille_15.5MW_TURPE7_${fileDate}.pdf`;
+      } else {
+        fileName = `Dossier_Investissement_BESS_${projectData?.name || 'Unitaire_500kW'}_TURPE7_${fileDate}.pdf`;
+      }
 
       setProgressStep('Finalisation et enregistrement du document...');
       pdf.save(fileName);
@@ -1766,6 +1834,40 @@ export default function BessDossierPDFGenerator({
               </section>
             </div>
           )}
+
+          {/* ========================================================================= */}
+          {/* FICHES BESS UNITAIRES DES 31 SITES (POUR L'ÉTUDE COMPLÈTE 39 PAGES) */}
+          {/* ========================================================================= */}
+          {isPort && (
+            <div className="w-full flex flex-col items-center">
+              {SITES_DATABASE.map((site, sIdx) => (
+                <div
+                  key={site.id || sIdx}
+                  id={`bess-single-site-container-${sIdx + 1}`}
+                  style={{ display: 'flex' }}
+                  className="w-full flex flex-col items-center shrink-0 mb-8"
+                >
+                  <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full bg-blue-700 text-white font-black text-xs shadow-xs">
+                        Fiche Projet {sIdx + 1} / {SITES_DATABASE.length} (Page {8 + sIdx + 1} / 39)
+                      </span>
+                      <span className="font-bold text-slate-800 text-sm">
+                        Fiche BESS Unitaire — Projet {site.name} ({site.city} - {site.dept})
+                      </span>
+                    </div>
+                    <span className="text-slate-500 font-medium">500 kW / 1 044 kWh • TURPE 7 HTA1 CU</span>
+                  </div>
+                  <BessProjectSingleSheet
+                    site={site}
+                    siteIndex={sIdx + 1}
+                    totalSites={SITES_DATABASE.length}
+                    studyDuration={20}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ========================================================================= */}
@@ -1778,13 +1880,26 @@ export default function BessDossierPDFGenerator({
             </span>
             <span className="text-slate-300">|</span>
             <span className="text-xs text-slate-500 font-medium">
-              {totalPagesCount} Planches A4 Paysage Pleine Largeur • Fonds Blancs • Loyer 3 000 €/an sur 20 ans
+              {isPort ? '8 Planches Portefeuille + 31 Fiches Projets = 39 Pages' : `${totalPagesCount} Planches A4 Paysage`}
             </span>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Bouton ÉTUDE COMPLÈTE (39 Pages) */}
+            {isPort && (
+              <button
+                onClick={() => handleGeneratePdf('complete')}
+                disabled={isGenerating}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
+                title="Générer l'étude complète de 39 pages (8 pages portefeuille + 31 pages projets unitaires)"
+              >
+                <Sparkles className="w-4 h-4 text-yellow-200" />
+                <span>ÉTUDE COMPLÈTE (39 PAGES)</span>
+              </button>
+            )}
+
             <button
-              onClick={handleGeneratePdf}
+              onClick={() => handleGeneratePdf('portfolio')}
               disabled={isGenerating}
               className="px-6 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-cyan-600/20 transition-all active:scale-95 disabled:opacity-50"
             >
@@ -1796,7 +1911,7 @@ export default function BessDossierPDFGenerator({
               ) : (
                 <>
                   <Printer className="w-4 h-4" />
-                  <span>Imprimer / Exporter en PDF (A4 Paysage)</span>
+                  <span>{isPort ? 'Dossier Portefeuille (8 Pages)' : 'Imprimer / Exporter en PDF'}</span>
                 </>
               )}
             </button>

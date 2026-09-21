@@ -16,7 +16,8 @@ import {
   Table as TableIcon,
   Landmark,
   Percent,
-  Calendar
+  Calendar,
+  Sparkles
 } from 'lucide-react';
 import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
@@ -319,6 +320,23 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
         </div>
 
         <div className="flex items-center gap-2.5" data-html2canvas-ignore="true">
+          {onExportPdf && (
+            <button
+              onClick={() => onExportPdf({
+                debtDuration,
+                debtRate,
+                analyzedSites,
+                consolidatedTotals,
+                consolidatedChronique,
+                autoExportType: 'complete'
+              })}
+              className="px-3.5 py-2 text-xs font-black bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+              title="Générer l'étude complète de 39 pages (8 pages portefeuille + 31 pages projets unitaires)"
+            >
+              <Sparkles className="w-4 h-4 text-yellow-200" />
+              <span>ÉTUDE COMPLÈTE (39 PAGES)</span>
+            </button>
+          )}
           <button
             onClick={handleExportExcel}
             className="px-3 py-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 transition-all flex items-center gap-1.5"
@@ -353,20 +371,36 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
           </div>
 
           {onExportPdf && (
-            <button
-              onClick={() => onExportPdf({
-                debtDuration,
-                debtRate,
-                analyzedSites,
-                consolidatedTotals,
-                consolidatedChronique
-              })}
-              className="px-3.5 py-1.5 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-black rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
-              data-html2canvas-ignore="true"
-            >
-              <FileDown className="w-4 h-4 text-emerald-300" />
-              <span>Dossier PDF Multipages</span>
-            </button>
+            <div className="flex items-center gap-2" data-html2canvas-ignore="true">
+              <button
+                onClick={() => onExportPdf({
+                  debtDuration,
+                  debtRate,
+                  analyzedSites,
+                  consolidatedTotals,
+                  consolidatedChronique,
+                  autoExportType: 'complete'
+                })}
+                className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+                title="Générer l'étude complète de 39 pages"
+              >
+                <Sparkles className="w-4 h-4 text-yellow-200" />
+                <span>Étude Complète (39 Pages)</span>
+              </button>
+              <button
+                onClick={() => onExportPdf({
+                  debtDuration,
+                  debtRate,
+                  analyzedSites,
+                  consolidatedTotals,
+                  consolidatedChronique
+                })}
+                className="px-3.5 py-1.5 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-black rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+              >
+                <FileDown className="w-4 h-4 text-emerald-300" />
+                <span>Dossier PDF Multipages</span>
+              </button>
+            </div>
           )}
         </div>
 

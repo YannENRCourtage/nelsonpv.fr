@@ -11,7 +11,7 @@ import {
   BarChart3, FileText, Calculator, TrendingUp, Users, Building,
   FileDown, Save, ChevronDown, Search, X, CheckCircle, AlertCircle,
   AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download, Menu,
-  Sun, BatteryCharging, Zap, Layers
+  Sun, BatteryCharging, Zap, Layers, Sparkles
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
@@ -1202,6 +1202,16 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   const realEnergy = config.capaciteStockage || (nbBricks * selectedModel.capacity);
 
   useEffect(() => {
+    const handleOpenComplete = () => {
+      setPortfolioExportData(prev => ({ ...(prev || {}), autoExportType: 'complete' }));
+      setBessMode('portfolio');
+      setIsDossierPdfOpen(true);
+    };
+    window.addEventListener('open-bess-complete-study', handleOpenComplete);
+    return () => window.removeEventListener('open-bess-complete-study', handleOpenComplete);
+  }, []);
+
+  useEffect(() => {
     let isMounted = true;
     async function runQualification() {
       if (!selectedProject?.lat && !selectedProject?.lng && !selectedProject?.city && !selectedProject?.address) {
@@ -1385,7 +1395,23 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => setIsDossierPdfOpen(true)}
+            onClick={() => {
+              setPortfolioExportData(prev => ({ ...(prev || {}), autoExportType: 'complete' }));
+              setBessMode('portfolio');
+              setIsDossierPdfOpen(true);
+            }}
+            className="px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+            title="Générer l'étude complète de 39 pages (8 pages portefeuille + 31 pages projets unitaires)"
+          >
+            <Sparkles className="w-4 h-4 text-yellow-200" />
+            <span>ÉTUDE COMPLÈTE (39 PAGES)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPortfolioExportData(prev => ({ ...(prev || {}), autoExportType: undefined }));
+              setIsDossierPdfOpen(true);
+            }}
             className="px-4 py-2 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
           >
             <FileDown className="w-4 h-4 text-emerald-300" />
@@ -2521,6 +2547,19 @@ function TabBpProjets({
 
         {selectedProject && (
           <div className="flex items-center gap-2 shrink-0">
+            {bpSubTab === 'bess' && (
+              <Button
+                size="sm"
+                className="gap-2 h-8 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black shadow-sm"
+                onClick={() => {
+                  const event = new CustomEvent('open-bess-complete-study');
+                  window.dispatchEvent(event);
+                }}
+                title="Générer l'étude complète de 39 pages (8 pages portefeuille + 31 pages projets unitaires)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-yellow-200" /> ETUDE COMPLETE
+              </Button>
+            )}
             <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => {
               if (isHybridEnabled) {
                 const sections = ['pdf-section-1', 'pdf-section-battery', 'pdf-section-hybrid', 'pdf-section-2'];
