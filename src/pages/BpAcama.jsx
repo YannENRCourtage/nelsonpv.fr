@@ -1260,7 +1260,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const c = qty * model.capacity;
     const batteryBms = qty * model.price;
     
-    const rHT = config.raccordementHT || 100;
+    const rHT = config.raccordementHT !== undefined ? config.raccordementHT : 10;
     const dPriv = config.distancePriv ?? 10;
     const newRaccordement = getHtaCost(p, rHT) + (dPriv * 20);
     const newGenieCivil = 6000 + (qty - 1) * 1300;
@@ -1334,8 +1334,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
       const newConfig = { ...(prev.batteryConfig || {}), [k]: v };
       if (k === 'raccordementHT' || k === 'distancePriv') {
         const pReq = newConfig.puissanceDemandee || 125;
-        const rHT = newConfig.raccordementHT || 100;
-        const dPriv = newConfig.distancePriv || 100;
+        const rHT = newConfig.raccordementHT !== undefined ? newConfig.raccordementHT : 10;
+        const dPriv = newConfig.distancePriv !== undefined ? newConfig.distancePriv : 10;
         newConfig.raccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
       }
       return { ...prev, batteryConfig: newConfig };
@@ -1525,7 +1525,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
             <GroupTitle title="DONNEES DU PROJET" />
             <div className="grid grid-cols-1 gap-2">
-              <Field label="Raccordement HT" value={config.raccordementHT || 100} onChange={v => update('raccordementHT', v)} type="number" suffix="m" />
+              <Field label="Raccordement HT" value={config.raccordementHT ?? 10} onChange={v => update('raccordementHT', v)} type="number" suffix="m" />
               <Field label="Distance privée" value={config.distancePriv ?? 10} onChange={v => update('distancePriv', v)} type="number" suffix="m" />
             </div>
           </div>
@@ -4852,7 +4852,9 @@ export default function BpAcama() {
       puissanceDemandee: 500,
       capaciteStockage: 1044,
       dureeDecharge: 2,
-      raccordement: 57650,
+      raccordementHT: 10,
+      distancePriv: 10,
+      raccordement: 42900,
       developpement: 7500,
       fraisCommerciaux: 20000,
       coutRecharge: 0.030,
@@ -4961,7 +4963,15 @@ export default function BpAcama() {
         saved.batteryConfig.genieCivil = 9900;
         saved.batteryConfig.developpement = 7500;
         saved.batteryConfig.fraisCommerciaux = 20000;
-        saved.batteryConfig.raccordement = 57650;
+        if (saved.batteryConfig.raccordementHT === undefined || saved.batteryConfig.raccordementHT === 100) {
+          saved.batteryConfig.raccordementHT = 10;
+        }
+        if (saved.batteryConfig.distancePriv === undefined) {
+          saved.batteryConfig.distancePriv = 10;
+        }
+        if (saved.batteryConfig.raccordement === 57650 || saved.batteryConfig.raccordement === undefined) {
+          saved.batteryConfig.raccordement = 42900;
+        }
         saved.batteryConfig.revenuBailleurAn = 3000;
         saved.batteryConfig.loyerDalle = 3000;
         saved.batteryConfig.dureeEtude = 20;
