@@ -30,6 +30,7 @@ import {
 import BessPortfolioView from '../components/bp-acama/BessPortfolioView.jsx';
 import BessDossierPDFGenerator from '../components/bp-acama/BessDossierPDFGenerator.jsx';
 import { calculateProjectPayback, calculateEquityPayback } from '../services/bessSimulationEngine.js';
+import { findBessOdreData, computeBessRaccordementCost, BESS_ODRE_MATRIX } from '../data/bessOdreMatrix.js';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -1222,17 +1223,19 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   useEffect(() => {
     let isMounted = true;
     async function runQualification() {
-      if (!selectedProject?.lat && !selectedProject?.lng && !selectedProject?.city && !selectedProject?.address) {
+      if (!selectedProject?.lat && !selectedProject?.lng && !selectedProject?.city && !selectedProject?.address && !selectedProject?.name) {
         setNetworkQualification(null);
         return;
       }
       setIsLoadingNetwork(true);
       try {
         const qual = await qualifyBessProjectSite({
+          projectName: selectedProject?.name || selectedProject?.client_name || selectedProject?.clientName || '',
+          siteName: selectedProject?.name || '',
           lat: selectedProject?.lat,
           lng: selectedProject?.lng,
           address: selectedProject?.address,
-          city: selectedProject?.city,
+          city: selectedProject?.city || selectedProject?.commune,
           powerKw: realPower,
           capacityKwh: realEnergy,
           voltageDomainOverride: config.tensionDomain,
@@ -1247,7 +1250,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     }
     runQualification();
     return () => { isMounted = false; };
-  }, [selectedProject?.lat, selectedProject?.lng, selectedProject?.city, selectedProject?.address, realPower, realEnergy, config.tensionDomain, config.raccordementHT]);
+  }, [selectedProject?.id, selectedProject?.name, selectedProject?.client_name, selectedProject?.lat, selectedProject?.lng, selectedProject?.city, selectedProject?.commune, selectedProject?.address, realPower, realEnergy, config.tensionDomain, config.raccordementHT]);
 
   const handleApplyDistance = (meters) => {
     update('raccordementHT', meters);
@@ -1262,7 +1265,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     
     const rHT = config.raccordementHT !== undefined ? config.raccordementHT : 10;
     const dPriv = config.distancePriv ?? 10;
-    const newRaccordement = getHtaCost(p, rHT) + (dPriv * 20);
+    const rCalc = computeBessRaccordementCost(rHT / 1000, dPriv);
+    const newRaccordement = rCalc.raccordementCost;
     const newGenieCivil = 6000 + (qty - 1) * 1300;
     const newDeveloppement = 6000 + (qty - 1) * 500;
     const fraisComm = 40 * p;
@@ -1301,6 +1305,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         developpement: newDeveloppement,
         fraisCommerciaux: fraisComm,
         raccordement: newRaccordement,
+        raccordementHT: rHT,
+        distancePriv: dPriv,
         prixFCR,
         facteurDerating: derating,
         prixCapacite: prixCap,
@@ -1333,10 +1339,10 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     setParams(prev => {
       const newConfig = { ...(prev.batteryConfig || {}), [k]: v };
       if (k === 'raccordementHT' || k === 'distancePriv') {
-        const pReq = newConfig.puissanceDemandee || 125;
-        const rHT = newConfig.raccordementHT !== undefined ? newConfig.raccordementHT : 10;
-        const dPriv = newConfig.distancePriv !== undefined ? newConfig.distancePriv : 10;
-        newConfig.raccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
+        const rHT = Number(newConfig.raccordementHT !== undefined ? newConfig.raccordementHT : 10);
+        const dPriv = Number(newConfig.distancePriv !== undefined ? newConfig.distancePriv : 10);
+        const rCalc = computeBessRaccordementCost(rHT / 1000, dPriv);
+        newConfig.raccordement = rCalc.raccordementCost;
       }
       return { ...prev, batteryConfig: newConfig };
     });
@@ -2304,7 +2310,51 @@ function TabBpProjets({
   const applyProject = (id) => {
     const p = typeof id === 'string' ? (projects || []).find(proj => proj.id === id) : id;
     if (!p) return;
-    setSelectedProject(p);
+
+    // 1. Appariement automatique avec la Matrice ODRE certifiée des 31 sites
+    const odreSite = findBessOdreData(
+      p.name || p.client_name || p.clientName || p.id,
+      p.city || p.commune,
+      p.address,
+      p.lat,
+      p.lng
+    );
+
+    let enrichedProject = { ...p };
+    let distKmBess = 5.0;
+    let distMetersBess = 5000;
+    let raccordementCostBess = 115000;
+
+    if (odreSite) {
+      distKmBess = odreSite.distanceKm;
+      const rCalc = computeBessRaccordementCost(distKmBess, 10);
+      distMetersBess = rCalc.distanceMeters;
+      raccordementCostBess = rCalc.raccordementCost;
+
+      enrichedProject = {
+        ...enrichedProject,
+        lat: odreSite.latitude,
+        lng: odreSite.longitude,
+        city: odreSite.commune,
+        commune: odreSite.commune,
+        postcode: odreSite.codePostal,
+        zip: odreSite.codePostal,
+        dept: odreSite.departement,
+        substation: {
+          name: odreSite.posteSourceEnedis,
+          code: odreSite.posteSourceEnedis,
+          voltageLevel: odreSite.tension,
+          distanceKm: odreSite.distanceKm,
+          quotePartS3renr: odreSite.quotePartS3REnR,
+          quotePartS3renrEur: odreSite.quotePartS3renrEur,
+          resteAffecterMw: odreSite.capaciteResiduelleOdreMw,
+          typologieZoneCre: odreSite.typologieZoneCre,
+          statutRaccordement: odreSite.statutRaccordement
+        }
+      };
+    }
+
+    setSelectedProject(enrichedProject);
     
     // Auto-switch to BESS tab if project is stand-alone battery and has no PV data saved
     if (p.isBatteryStandAlone === 'Oui' && !p.bp_pv_data) {
@@ -2324,24 +2374,38 @@ function TabBpProjets({
     const projectTenant = p.tenant || p.bpAcamaState?.tenant || params.tenant;
     const localBatData = projectTenant === 'GREEN INVEST' ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA;
 
+    const standardBessConfig = {
+      batteryModelKey: 'cesc_mercury_261',
+      nbBricks: 4,
+      puissanceDemandee: 500,
+      capaciteStockage: 1044,
+      batterieBms: 140000,
+      genieCivil: 9900,
+      developpement: 7500,
+      fraisCommerciaux: 20000,
+      raccordementHT: distMetersBess,
+      distancePriv: 10,
+      raccordement: raccordementCostBess,
+      loyerDalle: 3000,
+      revenuBailleurAn: 3000,
+      dureeEtude: 20,
+      useTurpe7: true,
+      tensionDomain: 'HTA1',
+      storageZone: odreSite?.typologieZoneCre?.toLowerCase().includes('injection') 
+        ? 'ZONE_INJECTION_SATURATION' 
+        : (odreSite?.typologieZoneCre?.toLowerCase().includes('soutirage') ? 'ZONE_SOUTIRAGE_TENSION' : 'ZONE_STANDARD')
+    };
+
     const savedState = p.bp_pv_data || p.bpAcamaState;
     if (savedState) {
       const saved = { ...savedState };
-      if (p.bp_bess_data) {
-        saved.batteryConfig = { ...(saved.batteryConfig || {}), ...p.bp_bess_data };
-      }
-      // Standardisation stricte 4 briques CESC Mercury 261 (500 kW / 1044 kWh) et loyer 3 000 €/an sur 20 ans
       saved.batteryConfig = {
         ...(saved.batteryConfig || {}),
-        batteryModelKey: 'cesc_mercury_261',
-        nbBricks: 4,
-        puissanceDemandee: 500,
-        capaciteStockage: 1044,
-        batterieBms: 140000,
-        loyerDalle: 3000,
-        revenuBailleurAn: 3000,
-        dureeEtude: 20
+        ...standardBessConfig
       };
+      if (p.bp_bess_data) {
+        saved.batteryConfig = { ...saved.batteryConfig, ...p.bp_bess_data, ...standardBessConfig };
+      }
       // Enrich saved state with building types, productibles & power
       if (saved.buildings) {
         saved.buildings = saved.buildings.map((b, idx) => {
@@ -4890,6 +4954,18 @@ export default function BpAcama() {
     const features = selectedProject.features || selectedProject.map_state?.features || selectedProject.map_state?.projects || [];
     const buildingFeatures = features.filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
     
+    // Rapprochement ODRE automatique
+    const odreSite = findBessOdreData(
+      selectedProject.name || selectedProject.client_name || selectedProject.id,
+      selectedProject.city || selectedProject.commune,
+      selectedProject.address,
+      selectedProject.lat,
+      selectedProject.lng
+    );
+    const rCalc = computeBessRaccordementCost(odreSite ? odreSite.distanceKm : 5.0, 10);
+    const initialRaccordementHT = rCalc.distanceMeters;
+    const initialRaccordementCost = rCalc.raccordementCost;
+
     const defaultBatteryConfig = {
       enabled: false,
       isGlobal: false,
@@ -4904,7 +4980,9 @@ export default function BpAcama() {
       puissanceDemandee: 500,
       capaciteStockage: 1044,
       dureeDecharge: 2,
-      raccordement: 57650,
+      raccordement: initialRaccordementCost,
+      raccordementHT: initialRaccordementHT,
+      distancePriv: 10,
       developpement: 7500,
       fraisCommerciaux: 20000,
       arbitrageEnergie: 15242.4,
@@ -4925,7 +5003,10 @@ export default function BpAcama() {
       dureeEmprunt: 12,
       dureeEtude: 20,
       apport: 0,
-      tauxIS: 25
+      tauxIS: 25,
+      storageZone: odreSite?.typologieZoneCre?.toLowerCase().includes('injection') 
+        ? 'ZONE_INJECTION_SATURATION' 
+        : (odreSite?.typologieZoneCre?.toLowerCase().includes('soutirage') ? 'ZONE_SOUTIRAGE_TENSION' : 'ZONE_STANDARD')
     };
 
     if (selectedProject.bp_hybrid_enabled !== undefined) {
@@ -4963,15 +5044,9 @@ export default function BpAcama() {
         saved.batteryConfig.genieCivil = 9900;
         saved.batteryConfig.developpement = 7500;
         saved.batteryConfig.fraisCommerciaux = 20000;
-        if (saved.batteryConfig.raccordementHT === undefined || saved.batteryConfig.raccordementHT === 100) {
-          saved.batteryConfig.raccordementHT = 10;
-        }
-        if (saved.batteryConfig.distancePriv === undefined) {
-          saved.batteryConfig.distancePriv = 10;
-        }
-        if (saved.batteryConfig.raccordement === 57650 || saved.batteryConfig.raccordement === undefined) {
-          saved.batteryConfig.raccordement = 42900;
-        }
+        saved.batteryConfig.raccordementHT = initialRaccordementHT;
+        saved.batteryConfig.distancePriv = 10;
+        saved.batteryConfig.raccordement = initialRaccordementCost;
         saved.batteryConfig.revenuBailleurAn = 3000;
         saved.batteryConfig.loyerDalle = 3000;
         saved.batteryConfig.dureeEtude = 20;
@@ -4980,7 +5055,11 @@ export default function BpAcama() {
         saved.batteryConfig.assuranceAn = 1750;
         saved.batteryConfig.commissionAgregateur = 18;
         saved.batteryConfig.degradationAnnuelle = 1;
-        saved.batteryConfig.nbCyclesJour = 2.0;
+        if (odreSite) {
+          saved.batteryConfig.storageZone = odreSite.typologieZoneCre.toLowerCase().includes('injection') 
+            ? 'ZONE_INJECTION_SATURATION' 
+            : (odreSite.typologieZoneCre.toLowerCase().includes('soutirage') ? 'ZONE_SOUTIRAGE_TENSION' : 'ZONE_STANDARD');
+        }
         if (saved.batteryConfig.gestionChargeAn === undefined) {
           saved.batteryConfig.gestionChargeAn = 4562.5 * 4;
         }

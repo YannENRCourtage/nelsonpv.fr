@@ -521,22 +521,24 @@ export async function generateFullUrbanismePDF({ type, project, installationType
             : '/cerfa_DPC_16702_03.pdf';
         }
 
-        const isBat = !isNoBattery && (
-          project?.solutionType === 'battery' ||
+        const isBat = (
+          safeProject?.solutionType === 'battery' ||
+          safeProject?.isBattery === true ||
+          safeProject?.isBatteryStandAlone === true ||
           installationType === 'battery' ||
           installationType === 'batterie_standalone' ||
           (
-            project?.solutionType !== 'building' &&
-            project?.solutionType !== 'ombriere' &&
-            ((installationType || project?.type || '').toLowerCase().includes('batterie') || Boolean(project?.isBatteryStandAlone))
+            safeProject?.solutionType !== 'building' &&
+            safeProject?.solutionType !== 'ombriere' &&
+            ((installationType || safeProject?.type || '').toLowerCase().includes('batterie') || Boolean(safeProject?.isBatteryStandAlone))
           )
         );
         const cerfaType = type === 'cu' ? 'cu' : type === 'pc' ? 'pc' : 'dp';
         const effInstallType = isBat
           ? 'batterie_standalone'
-          : (project?.solutionType === 'building' ? 'batiment_solaire' : (project?.solutionType === 'ombriere' ? 'ombriere' : (installationType || 'batiment_solaire')));
+          : (safeProject?.solutionType === 'building' ? 'batiment_solaire' : (safeProject?.solutionType === 'ombriere' ? 'ombriere' : (installationType || 'batiment_solaire')));
 
-        const filledCerfaBytes = await smartFillCerfa(cerfaUrl, project, cerfaType, effInstallType, plateIds);
+        const filledCerfaBytes = await smartFillCerfa(cerfaUrl, safeProject, cerfaType, effInstallType, plateIds);
         if (filledCerfaBytes) {
           if (platesDoc.getPageCount() === 0) {
             finalPdfBytes = filledCerfaBytes;

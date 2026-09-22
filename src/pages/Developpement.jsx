@@ -442,8 +442,8 @@ export default function Developpement() {
           }
         }
       } else {
-        includeCover = selectedPages ? !!selectedPages.cover : true;
-        includeCerfa = selectedPages ? !!selectedPages.cerfa : true;
+        includeCover = selectedPages ? selectedPages.cover !== false : true;
+        includeCerfa = selectedPages ? selectedPages.cerfa !== false : true;
         if (isPC) {
           if (!selectedPages || selectedPages.situation) plateIds.push(`${prefix}plate-situation`);
           

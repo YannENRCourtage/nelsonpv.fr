@@ -12,6 +12,7 @@
 
 import { CERTITUDE_LEVELS } from '../data/turpe/turpe7Tarifs.js';
 import { getCreSubstationQualification } from './creZonesService.js';
+import { findBessOdreData } from '../data/bessOdreMatrix.js';
 
 /**
  * Calcul de distance géodésique Haversine entre deux coordonnées (lat/lon) en kilomètres
@@ -212,6 +213,8 @@ export async function fetchClosestSubstation(lat, lng) {
  * Qualification réseau complète d'un site BESS
  */
 export async function qualifyBessProjectSite({
+  projectName,
+  siteName,
   lat,
   lng,
   address,
@@ -225,6 +228,78 @@ export async function qualifyBessProjectSite({
   const capacity = Number(capacityKwh) || 1044;
   const recommendedVoltage = recommendVoltageDomain(power);
 
+  // 1. Recherche prioritaire dans la Matrice ODRE des 31 sites certifiés
+  const matchedMatrixSite = findBessOdreData(
+    projectName || siteName || '',
+    city || '',
+    address || '',
+    lat,
+    lng
+  );
+
+  if (matchedMatrixSite) {
+    const latFinal = matchedMatrixSite.latitude;
+    const lngFinal = matchedMatrixSite.longitude;
+    const distKmFinal = matchedMatrixSite.distanceKm;
+    const distMetersFinal = distanceOverrideMeters ? Number(distanceOverrideMeters) : Math.round(distKmFinal * 1000);
+    const effectiveDomainKey = voltageDomainOverride || 'HTA1';
+
+    return {
+      powerKw: power,
+      capacityKwh: capacity,
+      cRate: Math.round((power / (capacity || 1)) * 100) / 100,
+      dischargeDurationHours: Math.round(((capacity * 0.9) / (power || 1)) * 10) / 10,
+      distancePrivDefault: 10,
+
+      // Informations géographiques certifiées
+      gps: {
+        lat: latFinal,
+        lng: lngFinal,
+        address: matchedMatrixSite.commune,
+        city: matchedMatrixSite.commune,
+        dept: matchedMatrixSite.departement,
+        postcode: matchedMatrixSite.codePostal,
+        hasValidGps: true
+      },
+
+      // Poste source certifié Niveau 1 : Officiel Direct
+      substation: {
+        name: matchedMatrixSite.posteSourceEnedis,
+        code: matchedMatrixSite.posteSourceEnedis,
+        voltageLevel: matchedMatrixSite.tension || 'HTA 20 kV (Enedis)',
+        availableCapacityMw: matchedMatrixSite.capaciteResiduelleOdreMw,
+        reservedCapacityMw: 0,
+        quotePartS3REnR: matchedMatrixSite.quotePartS3REnR,
+        quotePartS3renrEur: matchedMatrixSite.quotePartS3renrEur,
+        fileAttenteMw: 0,
+        tauxOccupation: '—',
+        gestionnaire: 'Enedis',
+        distanceKm: distKmFinal,
+        estimatedRouteMeters: distMetersFinal,
+        statutRaccordement: matchedMatrixSite.statutRaccordement || 'Transfo sol libre - Dépôt PTF',
+        creQualification: {
+          label: matchedMatrixSite.typologieZoneCre,
+          code: matchedMatrixSite.typologieZoneCre,
+          isIndexed: true,
+          description: 'Délibération CRE 2025-227 — Neutralité stockage garantie'
+        },
+        certitude: CERTITUDE_LEVELS[1], // NIVEAU 1 : OFFICIEL DIRECT ENEDIS
+        status: 'OFFICIEL DIRECT ENEDIS'
+      },
+
+      connection: {
+        domainKey: effectiveDomainKey,
+        voltageKv: 20,
+        distanceMeters: distMetersFinal,
+        distanceCertitude: CERTITUDE_LEVELS[1],
+        domainCertitude: CERTITUDE_LEVELS[1],
+        isConfirmed: true,
+        statusMessage: `Poste source ${matchedMatrixSite.posteSourceEnedis} (HTA 20 kV) certifié ODRE à ${distKmFinal} km.`
+      }
+    };
+  }
+
+  // 2. Recherche générale par coordonnées GPS dans Caparéseau
   let closestSubstation = null;
   if (lat && lng) {
     closestSubstation = await fetchClosestSubstation(lat, lng);

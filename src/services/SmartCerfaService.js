@@ -603,7 +603,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       setField(['W3ES2_creee', 'S1I_emprise', 'topmostSubform[0].Page7[0].W3ES2_creee[0]'], String(empriseCreee), 9.5);
 
       // 6. Engagement & Signature (page 9/18 du CERFA : Ville, Date JJMMAAAA, Prénom & Nom)
-      const sigLieu = terrainCity || city || project?.commune || project?.city || 'FRANCE';
+      // Priorité : ville du terrain (commune du projet) > adresse parsée > ville du demandeur
+      const sigLieu = project?.terrain_city || project?.terrain_commune || project?.commune || terrainCity || city || project?.city || 'FRANCE';
       setField(fieldMap.sig_lieu, sigLieu, 9.5);
       setField([
         'E1L_lieu',
@@ -721,7 +722,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         }
       }
     } catch (e) {
-      console.warn('[SmartCerfa] AcroForm fill notice:', e.message);
+      console.error('[SmartCerfa] Erreur remplissage AcroForm — le CERFA ne sera pas pré-rempli:', e.message, e);
     }
 
     try {

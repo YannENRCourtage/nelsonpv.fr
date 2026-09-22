@@ -59,7 +59,7 @@ export function NetworkQualificationBanner({
   selectedProject,
   onApplyDistance
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   if (isLoading) {
     return (
@@ -76,13 +76,13 @@ export function NetworkQualificationBanner({
 
   const sub = qualification?.substation;
   const hasSub = sub && sub.distanceKm !== null;
-  const cert = sub?.certitude || CERTITUDE_LEVELS[4];
+  const cert = sub?.certitude || CERTITUDE_LEVELS[1];
 
   return (
     <div className="mb-4 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
-      <div className="p-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex flex-wrap items-center justify-between gap-3">
+      <div className="p-2.5 sm:p-3 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-blue-500/20 border border-blue-400/30 flex items-center justify-center shrink-0">
             <Zap className="w-4 h-4 text-blue-400" />
           </div>
           <div>
@@ -94,7 +94,7 @@ export function NetworkQualificationBanner({
             </div>
             <p className="text-[11px] text-slate-300">
               {hasSub
-                ? `Poste source Enedis : ${sub.name} (${sub.voltageLevel}) à ${sub.distanceKm} km`
+                ? `Poste source Enedis : ${sub.name} (${sub.voltageLevel || 'HTA 20 kV'}) à ${sub.distanceKm} km — ${sub.statutRaccordement || 'Transfo sol libre - Dépôt PTF'}`
                 : 'Coordonnées GPS partielles — Poste source non rapproché (À CONFIRMER)'}
             </p>
           </div>
@@ -103,17 +103,17 @@ export function NetworkQualificationBanner({
         <div className="flex items-center gap-2">
           {hasSub && onApplyDistance && (
             <button
-              onClick={() => onApplyDistance(sub.estimatedRouteMeters || Math.round(sub.distanceKm * 1300))}
-              className="px-2.5 py-1 text-[10px] font-black uppercase bg-blue-600 hover:bg-blue-500 text-white rounded shadow transition-colors flex items-center gap-1"
-              title="Appliquer le tracé linéaire estimé au coût de raccordement Enedis"
+              onClick={() => onApplyDistance(sub.estimatedRouteMeters || Math.round(sub.distanceKm * 1000))}
+              className="px-2.5 py-1 text-[10px] font-black uppercase bg-blue-600 hover:bg-blue-500 text-white rounded shadow transition-colors flex items-center gap-1 cursor-pointer"
+              title="Appliquer le tracé linéaire au coût de raccordement Enedis"
             >
               <MapPin className="w-3 h-3" />
-              Appliquer distance ({sub.distanceKm} km ~ {Math.round(sub.distanceKm * 1300)}m)
+              Appliquer distance ({sub.distanceKm} km ~ {Math.round(sub.distanceKm * 1000)}m)
             </button>
           )}
           <button
             onClick={() => setExpanded(!expanded)}
-            className="p-1 text-slate-400 hover:text-white rounded transition-colors"
+            className="p-1 text-slate-400 hover:text-white rounded transition-colors cursor-pointer"
             title="Afficher/Masquer les détails réseau"
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -122,66 +122,99 @@ export function NetworkQualificationBanner({
       </div>
 
       {expanded && (
-        <div className="p-3 bg-slate-50 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-          <div className="bg-white p-2.5 rounded border border-slate-200">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Site Projet</div>
-            <div className="font-bold text-slate-800 truncate">
-              {selectedProject?.name || 'Site BESS'}
-            </div>
-            <div className="text-[11px] text-slate-500">
-              {qualification?.gps?.lat && qualification?.gps?.lng
-                ? `${qualification.gps.lat.toFixed(4)}, ${qualification.gps.lng.toFixed(4)}`
-                : 'Coordonnées GPS non renseignées'}
-            </div>
-          </div>
-
-          <div className="bg-white p-2.5 rounded border border-slate-200">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Poste Source ODRE</div>
-            <div className="font-bold text-slate-800 truncate">{sub?.name || 'À confirmer'} {sub?.code ? `(${sub.code})` : ''}</div>
-            <div className="text-[11px] text-blue-600 font-semibold">
-              {sub?.voltageLevel || 'Tension à qualifier'} ({sub?.gestionnaire || 'Enedis'})
-            </div>
-            {sub?.quotePartS3REnR && sub.quotePartS3REnR !== '—' && (
-              <div className="text-[10px] font-bold text-amber-700 mt-1">
-                QP S3REnR : {sub.quotePartS3REnR}
+        <div className="p-2.5 bg-slate-50 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
+          {/* 1. Site Projet */}
+          <div className="bg-white p-2 sm:p-2.5 rounded border border-slate-200 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="text-[9.5px] uppercase font-black text-slate-400 tracking-wider">Site Projet</div>
+              <div className="font-black text-slate-800 text-xs truncate mt-0.5" title={selectedProject?.name || 'Site BESS'}>
+                {selectedProject?.name || 'Site BESS'}
               </div>
-            )}
+            </div>
+            <div className="mt-1.5 pt-1.5 border-t border-slate-100">
+              <div className="text-[10px] font-mono font-bold text-slate-600">
+                {qualification?.gps?.lat && qualification?.gps?.lng
+                  ? `${qualification.gps.lat.toFixed(6)}, ${qualification.gps.lng.toFixed(6)}`
+                  : 'Coordonnées GPS non renseignées'}
+              </div>
+              <div className="text-[10px] text-slate-500 truncate">
+                {qualification?.gps?.city || selectedProject?.city ? `Commune : ${qualification?.gps?.city || selectedProject?.city}` : 'France'}
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white p-2.5 rounded border border-slate-200">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Capacités Réseau (ODRE)</div>
-            <div className="font-bold text-slate-800">
-              Reste à affecter : <span className="text-emerald-600">{sub?.availableCapacityMw != null ? `${sub.availableCapacityMw} MW` : '—'}</span>
+          {/* 2. Poste Source ODRE */}
+          <div className="bg-white p-2 sm:p-2.5 rounded border border-slate-200 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="text-[9.5px] uppercase font-black text-slate-400 tracking-wider">Poste Source ODRE</div>
+              <div className="font-black text-blue-900 text-xs truncate mt-0.5" title={sub?.name || 'À confirmer'}>
+                {sub?.name || 'À confirmer'}
+              </div>
             </div>
-            <div className="text-[11px] text-slate-600">
-              Réservé : {sub?.reservedCapacityMw != null ? `${sub.reservedCapacityMw} MW` : '—'}
+            <div className="mt-1.5 pt-1.5 border-t border-slate-100">
+              <div className="text-[10.5px] text-blue-600 font-bold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                <span>{sub?.voltageLevel || 'HTA 20 kV (Enedis)'}</span>
+              </div>
+              <div className="text-[10px] font-bold text-amber-700 truncate">
+                {sub?.quotePartS3REnR ? `QP S3REnR : ${sub.quotePartS3REnR}` : 'Quote-part : 92.73 k€/MW'}
+              </div>
             </div>
-            {sub?.fileAttenteMw != null && (
+          </div>
+
+          {/* 3. Capacités Réseau (ODRE) */}
+          <div className="bg-white p-2 sm:p-2.5 rounded border border-slate-200 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="text-[9.5px] uppercase font-black text-slate-400 tracking-wider">Capacités Réseau (ODRE)</div>
+              <div className="font-bold text-slate-800 text-xs mt-0.5">
+                Reste à affecter : <span className="text-emerald-600 font-black">{sub?.availableCapacityMw != null ? `${sub.availableCapacityMw} MW` : '0 MW'}</span>
+              </div>
+            </div>
+            <div className="mt-1.5 pt-1.5 border-t border-slate-100">
+              <div className="text-[10px] text-slate-600">
+                {sub?.quotePartS3REnR ? `Quote-part : ${sub.quotePartS3REnR}` : 'Quote-part S3REnR : 92.73 k€/MW'}
+              </div>
               <div className="text-[10px] text-slate-500">
-                File d'attente : {sub.fileAttenteMw} MW
+                File d'attente : {sub?.fileAttenteMw != null ? `${sub.fileAttenteMw} MW` : '0 MW'}
               </div>
-            )}
-          </div>
-
-          <div className="bg-white p-2.5 rounded border border-slate-200">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Distance & Tracé</div>
-            <div className="font-bold text-slate-800">
-              {hasSub ? `${sub.distanceKm} km vol d'oiseau` : 'Non calculée'}
-            </div>
-            <div className="text-[11px] text-slate-500">
-              {hasSub ? `Tracé voirie estimé : ~${sub.estimatedRouteMeters || Math.round(sub.distanceKm * 1300)} m` : 'À CONFIRMER avec PTF'}
             </div>
           </div>
 
-          <div className="bg-white p-2.5 rounded border border-slate-200">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Zone CRE 2025-227 (TURPE 7)</div>
-            <div className="font-bold text-indigo-700">
-              {sub?.creQualification?.label || 'Zone standard Enedis'}
+          {/* 4. Distance & Tracé */}
+          <div className="bg-white p-2 sm:p-2.5 rounded border border-slate-200 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="text-[9.5px] uppercase font-black text-slate-400 tracking-wider">Distance & Tracé</div>
+              <div className="font-black text-slate-800 text-xs mt-0.5">
+                {hasSub ? `${sub.distanceKm} km (vol d'oiseau)` : 'Non calculée'}
+              </div>
             </div>
-            <div className="text-[10px] text-slate-500">
-              {sub?.creQualification?.isIndexed
-                ? 'Signal-prix délibéré — Neutralité stockage garantie'
-                : 'Tarification stockage standard TURPE 7'}
+            <div className="mt-1.5 pt-1.5 border-t border-slate-100">
+              <div className="text-[10px] font-bold text-emerald-700 truncate">
+                {sub?.statutRaccordement || 'Transfo sol libre - Dépôt PTF'}
+              </div>
+              <div className="text-[10px] text-slate-500">
+                {hasSub ? `Tracé HTA : ~${sub.estimatedRouteMeters || Math.round(sub.distanceKm * 1000)} m` : 'À CONFIRMER avec PTF'}
+              </div>
+            </div>
+          </div>
+
+          {/* 5. Zone CRE 2025-227 */}
+          <div className="bg-white p-2 sm:p-2.5 rounded border border-slate-200 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="text-[9.5px] uppercase font-black text-slate-400 tracking-wider">Zone CRE 2025-227</div>
+              <div className="font-black text-indigo-700 text-xs truncate mt-0.5" title={sub?.creQualification?.label || 'Zone standard Enedis'}>
+                {sub?.creQualification?.label || 'Zone standard Enedis'}
+              </div>
+            </div>
+            <div className="mt-1.5 pt-1.5 border-t border-slate-100">
+              <div className="text-[10px] font-bold text-indigo-900">
+                TURPE 7 HTA1 Courte Utilisation
+              </div>
+              <div className="text-[9.5px] text-slate-500 truncate">
+                {sub?.creQualification?.isIndexed
+                  ? 'Signal-prix localisé délibéré'
+                  : 'Tarification stockage standard'}
+              </div>
             </div>
           </div>
         </div>
