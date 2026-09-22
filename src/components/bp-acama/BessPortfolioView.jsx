@@ -17,7 +17,8 @@ import {
   Landmark,
   Percent,
   Calendar,
-  Sparkles
+  Sparkles,
+  FileSpreadsheet
 } from 'lucide-react';
 import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
@@ -255,7 +256,42 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
     });
   }, [analyzedSites, selectedSpv, searchTerm]);
 
-  // Export Excel du portefeuille
+// Données réseau ODRE / Caparéseau des 31 postes sources du portefeuille BESS
+const ODRE_CAPARESEAU_31_SITES = [
+  { id: 1, site: "PAILLOT Noël", city: "Rochechouart", cp: "87600", dept: "87", lat: 45.847811, lng: 0.852996, substation: "PLAUD", distKm: 6.6, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix injection" },
+  { id: 2, site: "BATIOT Olivier", city: "Mongausy", cp: "32220", dept: "32", lat: 43.496370, lng: 0.834241, substation: "SEMEZIES", distKm: 5.9, s3renrStr: "84 130 €/MW", capOdre: 1.6, zoneCre: "Poche signal-prix injection" },
+  { id: 3, site: "DOMERGUE David", city: "Meuzac", cp: "87380", dept: "87", lat: 45.566247, lng: 1.397687, substation: "LE REPAIRE", distKm: 8.6, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
+  { id: 4, site: "CUBERTAFON René", city: "Saint-Julien-le-Vendômois", cp: "19210", dept: "19", lat: 45.460274, lng: 1.298160, substation: "LUBERSAC", distKm: 8.3, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
+  { id: 5, site: "PLANTE Jean-Pierre", city: "Port-de-Lanne", cp: "40300", dept: "40", lat: 43.558940, lng: -1.199501, substation: "GUICHE", distKm: 4.9, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
+  { id: 6, site: "PRAVIE Clémence", city: "Grisolles", cp: "82170", dept: "82", lat: 43.806232, lng: 1.295833, substation: "LESQUIVE 2", distKm: 2.3, s3renrStr: "84 130 €/MW", capOdre: 80.0, zoneCre: "Zone standard Enedis" },
+  { id: 7, site: "LATOURNERIE Franck", city: "Brantôme en Périgord", cp: "24310", dept: "24", lat: 45.328888, lng: 0.651040, substation: "BRANTOME", distKm: 3.5, s3renrStr: "92 730 €/MW", capOdre: 0.5, zoneCre: "Poche signal-prix soutirage" },
+  { id: 8, site: "DAVID Louis", city: "Concèze", cp: "19350", dept: "19", lat: 45.353329, lng: 1.314195, substation: "LUBERSAC", distKm: 8.6, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
+  { id: 9, site: "GRANGER Bruno", city: "Saint-Éloy-les-Tuileries", cp: "19210", dept: "19", lat: 45.442533, lng: 1.267710, substation: "LUBERSAC", distKm: 10.5, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
+  { id: 10, site: "CASTEBRUNET Jérémy", city: "Caussade", cp: "82300", dept: "82", lat: 44.123740, lng: 1.564486, substation: "LERE", distKm: 5.7, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
+  { id: 11, site: "BERTRANDIE Sébastien", city: "Monestier", cp: "24240", dept: "24", lat: 44.773569, lng: 0.300107, substation: "STE-FOY-LA-GRANDE", distKm: 9.0, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
+  { id: 12, site: "GIOT Joachim", city: "Leyrat", cp: "23600", dept: "23", lat: 46.360561, lng: 2.306566, substation: "BOUSSAC", distKm: 5.9, s3renrStr: "92 730 €/MW", capOdre: 0.5, zoneCre: "Poche signal-prix injection" },
+  { id: 13, site: "ARBOIN Régis", city: "Duras", cp: "47120", dept: "47", lat: 44.659496, lng: 0.222735, substation: "LA SAUVETAT", distKm: 11.8, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche mixte injection & soutirage" },
+  { id: 14, site: "MISSAULT David", city: "Saint-Saud-Lacoussière", cp: "24470", dept: "24", lat: 45.558769, lng: 0.804488, substation: "NONTRON", distKm: 13.7, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
+  { id: 15, site: "MEILLAT Maxime", city: "Mourioux-Vieilleville", cp: "23210", dept: "23", lat: 46.082964, lng: 1.538518, substation: "CHATELUS 2", distKm: 5.4, s3renrStr: "92 730 €/MW", capOdre: 2.0, zoneCre: "Zone standard Enedis" },
+  { id: 16, site: "SOULIGNAC Thierry", city: "Val-de-Livenne", cp: "33860", dept: "33", lat: 45.264357, lng: -0.550408, substation: "ETAULIERS", distKm: 7.7, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
+  { id: 17, site: "CHAUFFAILLE Franck", city: "Payzac", cp: "24270", dept: "24", lat: 45.436230, lng: 1.288728, substation: "LUBERSAC", distKm: 6.9, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
+  { id: 18, site: "CIROLI", city: "Juillac", cp: "33890", dept: "33", lat: 44.809547, lng: 0.037304, substation: "AURIOLLES", distKm: 7.9, s3renrStr: "92 730 €/MW", capOdre: 0.3, zoneCre: "Poche signal-prix soutirage" },
+  { id: 19, site: "BOURDETTES Sandrine", city: "Mansan", cp: "65140", dept: "65", lat: 43.343730, lng: 0.194628, substation: "VIC-EN-BIGORRE", distKm: 10.8, s3renrStr: "84 130 €/MW", capOdre: 7.0, zoneCre: "Poche signal-prix soutirage" },
+  { id: 20, site: "CASTEBRUNET Jérémy", city: "Caussade", cp: "82300", dept: "82", lat: 44.117157, lng: 1.566758, substation: "LERE", distKm: 5.5, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
+  { id: 21, site: "FRECHEVILLE Mathieu", city: "Saint-Eutrope-de-Born", cp: "47210", dept: "47", lat: 44.588327, lng: 0.665431, substation: "CANCON", distKm: 7.2, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix injection" },
+  { id: 22, site: "CASTEBRUNET Jérémy", city: "Monteils", cp: "82300", dept: "82", lat: 44.165754, lng: 1.564963, substation: "LERE", distKm: 3.6, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" },
+  { id: 23, site: "DOUMENS Morgan", city: "Beychac-et-Caillau", cp: "33750", dept: "33", lat: 44.870054, lng: -0.397698, substation: "POMPIGNAC", distKm: 4.0, s3renrStr: "92 730 €/MW", capOdre: 2.0, zoneCre: "Zone standard Enedis" },
+  { id: 24, site: "HOUSSAIT-YOUNG Jérôme", city: "Vendays-Montalivet", cp: "33930", dept: "33", lat: 45.338321, lng: -1.071016, substation: "ST-VIVIEN", distKm: 9.9, s3renrStr: "92 730 €/MW", capOdre: 8.6, zoneCre: "Poche signal-prix soutirage" },
+  { id: 25, site: "MISSAULT David", city: "Saint-Martin-de-Fressengeas", cp: "24800", dept: "24", lat: 45.438589, lng: 0.815692, substation: "THIVIERS", distKm: 6.7, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche mixte injection & soutirage" },
+  { id: 26, site: "LARDY Michel", city: "Maisonnisses", cp: "23150", dept: "23", lat: 46.067915, lng: 1.907318, substation: "LAVAUD", distKm: 10.6, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
+  { id: 27, site: "CELERIE Thomas", city: "Beyssenac", cp: "19230", dept: "19", lat: 45.400772, lng: 1.284338, substation: "LUBERSAC", distKm: 7.1, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
+  { id: 28, site: "MEILLAT Maxime", city: "Mourioux-Vieilleville", cp: "23210", dept: "23", lat: 46.081523, lng: 1.633909, substation: "CHATELUS 2", distKm: 5.4, s3renrStr: "92 730 €/MW", capOdre: 2.0, zoneCre: "Zone standard Enedis" },
+  { id: 29, site: "DOMERGUE David", city: "Argences en Aubrac", cp: "12420", dept: "12", lat: 44.807528, lng: 2.798446, substation: "RUEYRES", distKm: 5.9, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix injection" },
+  { id: 30, site: "COMBY Fabrice", city: "Saint-Éloy-les-Tuileries", cp: "19210", dept: "19", lat: 45.452807, lng: 1.284563, substation: "LUBERSAC", distKm: 10.5, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
+  { id: 31, site: "CASTEBRUNET Jérémy", city: "Saint-Cirq", cp: "82300", dept: "82", lat: 44.124392, lng: 1.583302, substation: "LERE", distKm: 6.2, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" }
+];
+
+  // Export Excel du business plan consolidé par site
   const handleExportExcel = () => {
     const dataRows = analyzedSites.map(s => ({
       'N°': s.index,
@@ -298,6 +334,45 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
     XLSX.writeFile(wb, `Portefeuille_BESS_31_Sites_Consolide_${debtDuration}ans_${debtRate}pct_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
+  // Export Excel de la Matrice Caparéseau ODRE des 31 postes sources
+  const handleExportOdreMatrix = () => {
+    const dataRows = ODRE_CAPARESEAU_31_SITES.map(s => ({
+      'N°': s.id,
+      'Site / Bailleur': s.site,
+      'Commune': s.city,
+      'Code Postal': s.cp,
+      'Département': s.dept,
+      'Latitude': s.lat,
+      'Longitude': s.lng,
+      'Poste Source Enedis': s.substation,
+      'Tension': 'HTA 20 kV',
+      'Distance Réseau (km)': s.distKm,
+      'Quote-Part S3REnR (€/MW)': s.s3renrStr,
+      'Capacité Résiduelle ODRE (MW)': s.capOdre,
+      'Typologie Zone CRE 2025-227': s.zoneCre,
+      'Puissance BESS (kW)': 500,
+      'Capacité BESS (kWh)': 1044,
+      'Statut Raccordement / Transfo': 'Transfo sol libre - Dépôt PTF'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataRows);
+
+    // Auto-ajustement de la largeur des colonnes
+    const headers = Object.keys(dataRows[0] || {});
+    ws['!cols'] = headers.map(key => {
+      const maxLen = Math.max(
+        key.length,
+        ...dataRows.map(r => (r[key] !== null && r[key] !== undefined ? String(r[key]).length : 0))
+      );
+      return { wch: Math.max(maxLen + 3, 10) };
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Capareseau_ODRE_31_Sites');
+
+    XLSX.writeFile(wb, 'Matrice_Capareseau_ODRE_31_Postes_Sources_ENR_COURTAGE.xlsx');
+  };
+
   return (
     <div id="pdf-section-bess-portfolio" className="space-y-5 bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
       {/* ── En-tête Portefeuille & Actions ───────────────────────────────────── */}
@@ -319,30 +394,21 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
         </div>
 
         <div className="flex items-center gap-2.5" data-html2canvas-ignore="true">
-          {onExportPdf && (
-            <button
-              onClick={() => onExportPdf({
-                debtDuration,
-                debtRate,
-                analyzedSites,
-                consolidatedTotals,
-                consolidatedChronique,
-                autoExportType: 'complete'
-              })}
-              className="px-3.5 py-2 text-xs font-black bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
-              title="Générer l'étude complète de 39 pages (8 pages portefeuille + 31 pages projets unitaires)"
-            >
-              <Sparkles className="w-4 h-4 text-yellow-200" />
-              <span>ÉTUDE COMPLÈTE (39 PAGES)</span>
-            </button>
-          )}
           <button
             onClick={handleExportExcel}
             className="px-3 py-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 transition-all flex items-center gap-1.5"
             title="Télécharger l'analyse consolidée complète au format Excel"
           >
             <Download className="w-4 h-4 text-emerald-400" />
-            Excel Consolidé
+            BP consolidé par site
+          </button>
+          <button
+            onClick={handleExportOdreMatrix}
+            className="px-3 py-2 text-xs font-bold bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-100 rounded-lg border border-emerald-500/30 transition-all flex items-center gap-1.5 shadow-xs"
+            title="Télécharger la matrice Caparéseau ODRE des 31 postes sources au format Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-cyan-300" />
+            Matrice CAPARESEAU ODRE
           </button>
         </div>
       </div>
@@ -368,39 +434,6 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
               </p>
             </div>
           </div>
-
-          {onExportPdf && (
-            <div className="flex items-center gap-2" data-html2canvas-ignore="true">
-              <button
-                onClick={() => onExportPdf({
-                  debtDuration,
-                  debtRate,
-                  analyzedSites,
-                  consolidatedTotals,
-                  consolidatedChronique,
-                  autoExportType: 'complete'
-                })}
-                className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
-                title="Générer l'étude complète de 39 pages"
-              >
-                <Sparkles className="w-4 h-4 text-yellow-200" />
-                <span>Étude Complète (39 Pages)</span>
-              </button>
-              <button
-                onClick={() => onExportPdf({
-                  debtDuration,
-                  debtRate,
-                  analyzedSites,
-                  consolidatedTotals,
-                  consolidatedChronique
-                })}
-                className="px-3.5 py-1.5 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-black rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5"
-              >
-                <FileDown className="w-4 h-4 text-emerald-300" />
-                <span>Dossier PDF Multipages</span>
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

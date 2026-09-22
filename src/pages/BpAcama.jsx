@@ -1403,6 +1403,29 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         <div className="flex items-center gap-2.5">
           <button
             type="button"
+            disabled={bessMode !== 'single'}
+            onClick={() => {
+              if (bessMode !== 'single') return;
+              generateBpAcamaPDF({ 
+                elementId: 'pdf-section-battery', 
+                sections: ['pdf-section-battery'],
+                fileName: `BP_BESS_${selectedProject?.name || 'Projet'}.pdf` 
+              });
+            }}
+            className={cn(
+              "px-3.5 py-2 text-xs font-black rounded-lg border transition-all flex items-center gap-2",
+              bessMode === 'single'
+                ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm hover:shadow cursor-pointer"
+                : "bg-slate-100 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed"
+            )}
+            title={bessMode === 'single' ? `Exporter le PDF BESS du projet ${selectedProject?.name || ''}` : "Actif uniquement en mode Simulation Unitaire"}
+          >
+            <FileDown className={cn("w-4 h-4", bessMode === 'single' ? "text-blue-600" : "text-slate-400")} />
+            <span>PDF BESS {selectedProject?.name ? selectedProject.name.toUpperCase() : 'PROJET'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => {
               setPortfolioExportData(prev => ({ ...(prev || {}), autoExportType: 'complete' }));
               setBessMode('portfolio');
@@ -1412,18 +1435,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             title="Générer l'étude complète de 39 pages (8 pages portefeuille + 31 pages projets unitaires)"
           >
             <Sparkles className="w-4 h-4 text-yellow-200" />
-            <span>ÉTUDE COMPLÈTE (39 PAGES)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPortfolioExportData(prev => ({ ...(prev || {}), autoExportType: undefined }));
-              setIsDossierPdfOpen(true);
-            }}
-            className="px-4 py-2 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
-          >
-            <FileDown className="w-4 h-4 text-emerald-300" />
-            <span>DOSSIER D'ÉTUDE BESS DÉTAILLÉ (MULTIPAGES)</span>
+            <span>ÉTUDE COMPLÈTE</span>
           </button>
         </div>
       </div>
@@ -2556,43 +2568,26 @@ function TabBpProjets({
 
         {selectedProject && (
           <div className="flex items-center gap-2 shrink-0">
-            {bpSubTab === 'bess' && (
-              <Button
-                size="sm"
-                className="gap-2 h-8 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black shadow-sm"
-                onClick={() => {
-                  const event = new CustomEvent('open-bess-complete-study');
-                  window.dispatchEvent(event);
-                }}
-                title="Générer l'étude complète de 39 pages (8 pages portefeuille + 31 pages projets unitaires)"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-yellow-200" /> ETUDE COMPLETE
+            {bpSubTab !== 'bess' && (
+              <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => {
+                if (isHybridEnabled) {
+                  const sections = ['pdf-section-1', 'pdf-section-battery', 'pdf-section-hybrid', 'pdf-section-2'];
+                  generateBpAcamaPDF({ 
+                    elementId: 'bp-acama-content', 
+                    sections,
+                    fileName: `BP_Hybride_${selectedProject?.name || 'Projet'}.pdf` 
+                  });
+                } else {
+                  generateBpAcamaPDF({ 
+                    elementId: 'bp-acama-content', 
+                    sections: ['pdf-section-1', 'pdf-section-2'],
+                    fileName: `BP_PV_${selectedProject?.name || 'Projet'}.pdf` 
+                  });
+                }
+              }}>
+                <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF {isHybridEnabled ? 'HYBRIDE' : 'PV'}
               </Button>
             )}
-            <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => {
-              if (isHybridEnabled) {
-                const sections = ['pdf-section-1', 'pdf-section-battery', 'pdf-section-hybrid', 'pdf-section-2'];
-                generateBpAcamaPDF({ 
-                  elementId: 'bp-acama-content', 
-                  sections,
-                  fileName: `BP_Hybride_${selectedProject?.name || 'Projet'}.pdf` 
-                });
-              } else if (bpSubTab === 'bess') {
-                generateBpAcamaPDF({ 
-                  elementId: 'pdf-section-battery', 
-                  sections: ['pdf-section-battery'],
-                  fileName: `BP_BESS_${selectedProject?.name || 'Projet'}.pdf` 
-                });
-              } else {
-                generateBpAcamaPDF({ 
-                  elementId: 'bp-acama-content', 
-                  sections: ['pdf-section-1', 'pdf-section-2'],
-                  fileName: `BP_PV_${selectedProject?.name || 'Projet'}.pdf` 
-                });
-              }
-            }}>
-              <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF {isHybridEnabled ? 'HYBRIDE' : (bpSubTab === 'bess' ? 'BESS' : 'PV')}
-            </Button>
             <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-[13px] h-8 px-3">
               <Save className="w-3.5 h-3.5 mr-1.5" /> Sauvegarder
             </Button>
