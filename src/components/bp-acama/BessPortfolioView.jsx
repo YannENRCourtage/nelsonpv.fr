@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
-import { calculateIrr, calculatePmt, calculateProjectPayback, calculateEquityPayback } from '../../services/bessSimulationEngine.js';
+import { calculateIrr, calculatePmt, calculateProjectPayback, calculateEquityPayback, computeBessFinancials } from '../../services/bessSimulationEngine.js';
+import { exportBessPortfolioToExcel, exportBessOdreMatrixToExcel } from '../../services/exportBessExcel.js';
 import * as XLSX from 'xlsx';
 
 const fmtEur = (v) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(v || 0))} €`;
@@ -45,112 +46,46 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
   const nbCyclesJour = 2.0; // 2 cycles/jour
   const studyYears = 15;
 
-  // Calcul financier de chaque site et agrégation avec dette dynamique
+  // Calcul financier de chaque site et agrégation avec dette dynamique via computeBessFinancials
   const { analyzedSites, consolidatedTotals, consolidatedChronique } = useMemo(() => {
     const rateDecimal = (debtRate || 4.30) / 100;
     const durationYears = debtDuration || 12;
 
     const sites = BESS_PORTFOLIO_SITES.map((site, index) => {
-      const distKm = site.substation?.distanceKm || 5.0;
-      const raccordementHTCost = Math.round(15000 + (distKm * 1000 * 0.035 * 1000)); // HTA standardisé
-      const distancePriv = 10; // 10 m de distance privée par défaut
-      const distancePrivCost = distancePriv * 20;
-
-      // CAPEX unitaire par site
-      const batterieBms = 140000; // 4 armoires x 35 000 €
-      const genieCivil = 9900;
-      const developpement = 7500;
-      const fraisCommerciaux = 20000;
-      const raccordement = Math.min(115000, 35000 + (raccordementHTCost * 0.45) + distancePrivCost);
-      const capexTotal = batterieBms + genieCivil + developpement + fraisCommerciaux + raccordement;
-
-      // Chiffre d'Affaires annuel Year 1 (Stacking physique : FCR résiduel ~15.6h/j + Arbitrage 2 c/j)
-      const rDecimal = 0.88;
-      const activeHoursCycleJour = nbCyclesJour * (unitCapacity / unitPower) * (1 + 1 / rDecimal);
-      const heuresFcrJour = Math.max(0, Math.min(24, 24 - activeHoursCycleJour));
-      const heuresFcrAn = heuresFcrJour * 365;
-
-      const revFCR = unitPower * heuresFcrAn * 0.95 * (20 / 1000); // ~54 093 €
-      const revCapacite = unitPower * 0.5 * 35; // 8 750 €
-      const energieDechargeeAn = unitCapacity * nbCyclesJour * 365; // 762 120 kWh
-      const revArbitrage = energieDechargeeAn * 0.03855; // ~29 380 €
-      const caAnnuel = revFCR + revCapacite + revArbitrage; // ~92 223 €
-
-      // OPEX annuel Year 1
-      const commAgregateur = caAnnuel * 0.18; // 18% sur CA brut
-      // Coût recharge : UNIQUEMENT les pertes de cycle (inertes/rendement 88%) non réinjectées
-      const energieSoutireeAn = energieDechargeeAn / rDecimal;
-      const pertesEnergieAn = energieSoutireeAn * (1 - rDecimal);
-      const coutRecharge = pertesEnergieAn * 0.030; // ~3 118 € (au lieu de 34 295 € auparavant)
-      const turpeStockage = 8500; // TURPE 7 HTA stockage neutralité CRE
-      const maintenance = unitPower * 8; // 4 000 €
-      const assurance = unitPower * 3.5; // 1 750 €
-      const loyerDalle = site.rent || 3000; // 3 000 €
-      const opexAnnuel = commAgregateur + coutRecharge + turpeStockage + maintenance + assurance + loyerDalle;
-
-      const ebitda = caAnnuel - opexAnnuel;
-
-      // Emprunt dynamique (durée et taux configurables)
-      const emprunt = capexTotal;
-      const annuiteDette = Math.abs(calculatePmt(rateDecimal, durationYears, emprunt));
-
-      // Calcul des cash-flows 15 ans (avec dégradation 2.2%/an à 2 c/j)
-      const cfProjet = [-capexTotal];
-      let remainingCapex = capexTotal;
-      let payback = null;
-      const siteRows = [];
-
-      for (let y = 1; y <= studyYears; y++) {
-        const infl = Math.pow(1.02, y - 1);
-        const deg = Math.pow(1 - 0.022, y - 1);
-        const caY = caAnnuel * infl * deg;
-        const opexY = opexAnnuel * infl;
-        const ebeY = caY - opexY;
-        const amort = capexTotal / studyYears;
-        const interest = y <= durationYears ? (emprunt * (1 - (y - 1) / durationYears) * rateDecimal) : 0;
-        const resFisc = Math.max(0, ebeY - amort - interest);
-        const is = resFisc * 0.25;
-        const servDette = y <= durationYears ? annuiteDette : 0;
-        const cfNet = ebeY - servDette - is;
-
-        cfProjet.push(ebeY - is);
-
-        if (payback === null) {
-          if (cfNet >= remainingCapex && cfNet > 0) {
-            payback = (y - 1) + (remainingCapex / cfNet);
-          } else if (cfNet > 0) {
-            remainingCapex -= cfNet;
-          }
-        }
-
-        siteRows.push({
-          year: y,
-          ca: caY,
-          opex: opexY,
-          ebitda: ebeY,
-          serviceDette: servDette,
-          cfNet
-        });
-      }
-
-      const triProjet = calculateIrr(cfProjet, 0.08);
-      const creQualification = getCreSubstationQualification(site.substation?.name, site.substation?.code);
-      const sitePayback = calculateProjectPayback(capexTotal, siteRows.map(r => r.ebitda));
+      const fin = computeBessFinancials(site, {
+        debtDuration: durationYears,
+        debtRate: debtRate || 4.30,
+        studyDuration: studyYears
+      });
+      const creQualification = getCreSubstationQualification(site.substation?.name || fin.posteSource, site.substation?.code);
 
       return {
         ...site,
         index: index + 1,
         powerKw: unitPower,
         capacityKwh: unitCapacity,
-        capexTotal,
-        caAnnuel,
-        opexAnnuel,
-        ebitda,
-        triProjet,
-        payback: sitePayback,
-        paybackEquity: 2.2,
+        capexTotal: fin.capexTotal,
+        caAnnuel: fin.caAnnuel,
+        opexAnnuel: fin.opexAnnuel,
+        turpeAnnuel: fin.turpeAnnuel,
+        ebitda: fin.ebitdaAn1,
+        ebitdaAn1: fin.ebitdaAn1,
+        triProjet: fin.triProjet,
+        payback: fin.payback,
+        paybackAnnees: fin.paybackAnnees,
+        paybackFormatted: fin.paybackFormatted,
+        paybackEquity: fin.paybackEquity,
+        dscrMoyen: fin.dscrMoyen,
         creQualification,
-        rows: siteRows
+        fin,
+        rows: fin.rows.map(r => ({
+          year: r.year,
+          ca: r.caTotalBrut,
+          opex: r.opex,
+          ebitda: r.ebe,
+          serviceDette: r.serviceDette,
+          cfNet: r.cashFlow
+        }))
       };
     });
 
@@ -293,84 +228,16 @@ const ODRE_CAPARESEAU_31_SITES = [
 
   // Export Excel du business plan consolidé par site
   const handleExportExcel = () => {
-    const dataRows = analyzedSites.map(s => ({
-      'N°': s.index,
-      'Site': s.name,
-      'SPV': s.spv,
-      'Commune': s.city,
-      'Code Postal': s.postcode,
-      'Puissance (kW)': s.powerKw,
-      'Capacité (kWh)': s.capacityKwh,
-      'Poste Source ODRE': s.substation?.name || '—',
-      'Distance (km)': s.substation?.distanceKm || 0,
-      'Quote-Part S3REnR': s.substation?.quotePartS3renr || '—',
-      'Reste à affecter (MW)': s.substation?.resteAffecterMw ?? '—',
-      'Zone CRE 2025-227': s.creQualification?.label || 'Zone standard',
-      'CAPEX Total (€)': Math.round(s.capexTotal),
-      'CA Annuel 1 (€)': Math.round(s.caAnnuel),
-      'EBITDA An 1 (€)': Math.round(s.ebitda),
-      'TRI Projet (%)': (s.triProjet || 0).toFixed(2),
-      'Payback (ans)': (s.payback || 0).toFixed(1),
-      'Loyer Dalle (€/an)': s.rent || 3000
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(dataRows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Portefeuille_BESS_31_Sites');
-
-    // Feuille Chronique consolidée 15 ans
-    const chronoRows = consolidatedChronique.map(c => ({
-      'Année': `Année ${c.year}`,
-      'CA Consolidé (€)': Math.round(c.ca),
-      'OPEX Consolidés (€)': Math.round(c.opex),
-      'EBITDA Consolidé (€)': Math.round(c.ebitda),
-      [`Service Dette (${debtDuration} ans à ${debtRate.toFixed(2)}%) (€)`]: Math.round(c.serviceDette),
-      'Cash-Flow Net (€)': Math.round(c.cfNet),
-      'Cumul Trésorerie (€)': Math.round(c.cumulCf)
-    }));
-    const wsChrono = XLSX.utils.json_to_sheet(chronoRows);
-    XLSX.utils.book_append_sheet(wb, wsChrono, 'Modele_Financier_15_Ans');
-
-    XLSX.writeFile(wb, `Portefeuille_BESS_31_Sites_Consolide_${debtDuration}ans_${debtRate}pct_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    exportBessPortfolioToExcel(BESS_PORTFOLIO_SITES, {
+      debtDuration,
+      debtRate,
+      studyDuration: studyYears
+    });
   };
 
   // Export Excel de la Matrice Caparéseau ODRE des 31 postes sources
   const handleExportOdreMatrix = () => {
-    const dataRows = ODRE_CAPARESEAU_31_SITES.map(s => ({
-      'N°': s.id,
-      'Site / Bailleur': s.site,
-      'Commune': s.city,
-      'Code Postal': s.cp,
-      'Département': s.dept,
-      'Latitude': s.lat,
-      'Longitude': s.lng,
-      'Poste Source Enedis': s.substation,
-      'Tension': 'HTA 20 kV',
-      'Distance Réseau (km)': s.distKm,
-      'Quote-Part S3REnR (€/MW)': s.s3renrStr,
-      'Capacité Résiduelle ODRE (MW)': s.capOdre,
-      'Typologie Zone CRE 2025-227': s.zoneCre,
-      'Puissance BESS (kW)': 500,
-      'Capacité BESS (kWh)': 1044,
-      'Statut Raccordement / Transfo': 'Transfo sol libre - Dépôt PTF'
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(dataRows);
-
-    // Auto-ajustement de la largeur des colonnes
-    const headers = Object.keys(dataRows[0] || {});
-    ws['!cols'] = headers.map(key => {
-      const maxLen = Math.max(
-        key.length,
-        ...dataRows.map(r => (r[key] !== null && r[key] !== undefined ? String(r[key]).length : 0))
-      );
-      return { wch: Math.max(maxLen + 3, 10) };
-    });
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Capareseau_ODRE_31_Sites');
-
-    XLSX.writeFile(wb, 'Matrice_Capareseau_ODRE_31_Postes_Sources_ENR_COURTAGE.xlsx');
+    exportBessOdreMatrixToExcel();
   };
 
   return (

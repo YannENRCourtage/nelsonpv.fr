@@ -21,6 +21,8 @@ export default function EtudeDossierView({
   allProjects = [],
   onBackToDossiers,
   onOpenUrbanismeWizard,
+  onGenerateExpressDp,
+  onOpenDpWizard,
   onOpenEmailMandatement,
   onOpenRaccordementModal,
   onOpenAosModal,
@@ -482,15 +484,62 @@ export default function EtudeDossierView({
           </div>
         </div>
 
-        {/* Bouton d'action principal de l'étape */}
-        <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-          <button
-            onClick={() => handleStepAction(step)}
-            className="w-full py-2.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs transition-all"
-          >
-            {step.actionLabel}
-            <ChevronRight className="w-4 h-4" />
-          </button>
+        {/* Bouton(s) d'action de l'étape */}
+        <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex flex-col gap-2">
+          {step.id === 'dp' ? (
+            <>
+              {(project?.dp_config?.generatedAt || project?.dp_config?.status === 'GENERATED') && (
+                <div className="flex items-center justify-between px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10.5px] font-bold text-emerald-800">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    DP générée le {new Date(project.dp_config.generatedAt || Date.now()).toLocaleDateString('fr-FR')}
+                  </span>
+                  <span className="text-emerald-700 font-extrabold uppercase text-[9.5px]">Prêt</span>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onGenerateExpressDp) {
+                      onGenerateExpressDp(project);
+                    } else {
+                      handleStepAction(step);
+                    }
+                  }}
+                  className="w-full py-2 px-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                  title="Générer et télécharger directement le dossier DP complet avec CERFA pré-rempli"
+                >
+                  <Zap className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>{project?.dp_config?.generatedAt ? 'Télécharger PDF (Express)' : 'Générer DP (Express)'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenDpWizard) {
+                      onOpenDpWizard(project);
+                    } else {
+                      handleStepAction(step);
+                    }
+                  }}
+                  className="w-full py-2 px-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                  title="Ouvrir l'assistant interactif par étapes pour modifier les données de la déclaration"
+                >
+                  <span>{project?.dp_config?.generatedAt ? 'Modifier déclaration' : 'Ouvrir tunnel / Modifier'}</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={() => handleStepAction(step)}
+              className="w-full py-2.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+            >
+              {step.actionLabel}
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     );

@@ -12,8 +12,7 @@ import {
   Layers,
   ArrowRight
 } from 'lucide-react';
-import { calculateTurpe7Details, generateAnnualRechargeProfileMwh } from '../../services/turpeCalculationService.js';
-import { calculateIrr, calculatePmt, calculateProjectPayback, calculateEquityPayback } from '../../services/bessSimulationEngine.js';
+import { calculatePmt, computeBessFinancials } from '../../services/bessSimulationEngine.js';
 
 const fmtNum = (n, dec = 0) => (n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const fmtEur = (n) => `${fmtNum(n, 0)} €`;
@@ -26,163 +25,91 @@ const fmtPct = (n) => `${(n ?? 0).toFixed(1)}%`;
 export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 31, studyDuration = 20 }) {
   if (!site) return null;
 
+  // Calcul unifié avec computeBessFinancials
+  const fin = computeBessFinancials(site, {
+    studyDuration: studyDuration || 20,
+    debtDuration: 12,
+    debtRate: 4.30
+  });
+
   // Données techniques unitaires
   const powerKw = 500;
   const capacityKwh = 1044;
-  const nbCycles = 2.0;
-  const rDecimal = 0.88;
-  const dispo = 0.98;
-  const distKm = parseFloat(site.dist || site.substation?.distanceKm || '5.0');
-  const distPriv = 10;
+  const distKm = fin.distanceKm;
 
   // CAPEX
-  const batterieBms = 140000;
+  const batterieBms = fin.rows[0] ? 140000 : 140000;
   const genieCivil = 9900;
   const developpement = 7500;
   const fraisComm = 20000;
-  const raccordementHT = Math.round(15000 + (distKm * 1000 * 0.035 * 1000));
-  const raccordement = Math.min(115000, Math.round(35000 + (raccordementHT * 0.45) + (distPriv * 20)));
-  const capexTotal = batterieBms + genieCivil + developpement + fraisComm + raccordement;
+  const raccordement = fin.raccordementCost;
+  const capexTotal = fin.capexTotal;
 
   // Financement senior (12 ans @ 4.30%)
   const debtDuration = 12;
   const debtRate = 4.30;
   const rateDec = debtRate / 100;
-  const annuite = Math.abs(calculatePmt(rateDec, debtDuration, capexTotal));
+  const annuite = fin.annuite || Math.abs(calculatePmt(rateDec, debtDuration, capexTotal));
 
   // Value Stacking Year 1
-  const dureeCycle1C = capacityKwh / powerKw;
-  const activeHours = nbCycles * dureeCycle1C * (1 + 1 / rDecimal);
-  const heuresFcrJour = Math.max(0, Math.min(24, 24 - activeHours));
-  const heuresFcrAn = heuresFcrJour * 365;
-
-  const revFcr = powerKw * heuresFcrAn * dispo * (20 / 1000); // ~54 093 €
-  const revCapa = powerKw * 0.5 * 35; // 8 750 €
-  const energieDechargeeAn = capacityKwh * nbCycles * 365; // 762 120 kWh
-  const revArb = energieDechargeeAn * 0.040; // 30 485 €
-  const revenuAn1 = revFcr + revCapa + revArb; // ~93 328 €
+  const revFcr = fin.rows[0]?.revFCR || 53936;
+  const revCapa = fin.rows[0]?.revCapacite || 8750;
+  const revArb = fin.rows[0]?.revArbitrage || 30485;
+  const revenuAn1 = fin.caAnnuel;
 
   // OPEX Year 1
-  const commAgregateur = revenuAn1 * 0.18;
-  const energieSoutiree = energieDechargeeAn / rDecimal;
-  const pertes = energieSoutiree * (1 - rDecimal);
-  const coutRecharge = pertes * 0.030; // ~3 118 €
-
-  // TURPE 7
-  const rechargeProfile = generateAnnualRechargeProfileMwh({ capaciteEffectiveKwh: capacityKwh, nbCyclesJour: nbCycles });
-  const turpeDetails = calculateTurpe7Details({
-    tensionDomain: 'HTA1',
-    tarifOption: 'CU',
-    pSouscriteSoutirageKw: powerKw,
-    pSouscriteInjectionKw: powerKw,
-    rechargeProfileMwh: rechargeProfile,
-    capaciteStockageKwh: capacityKwh,
-    nbCyclesJour: nbCycles,
-    rendementRoundTrip: 88,
-    useStorageOption: true,
-    storageZone: 'ZONE_STANDARD'
-  });
-  const turpeAn1 = turpeDetails?.totalTurpe7 || 8317.19;
-
-  const maintenance = powerKw * 8; // 4 000 €
-  const assurance = powerKw * 3.5; // 1 750 €
-  const loyerDalle = 3000;
-  const totalOpexAn1 = commAgregateur + coutRecharge + turpeAn1 + maintenance + assurance + loyerDalle;
-  const ebitdaAn1 = revenuAn1 - totalOpexAn1;
+  const commAgregateur = fin.rows[0]?.commAgregateur || Math.round(revenuAn1 * 0.18);
+  const coutRecharge = fin.rows[0]?.coutRechargeAn || 3118;
+  const turpeAn1 = fin.turpeAnnuel;
+  const maintenance = fin.rows[0]?.maint || 4000;
+  const assurance = fin.rows[0]?.assur || 1750;
+  const loyerDalle = fin.rows[0]?.revBailleur || 3000;
+  const totalOpexAn1 = fin.opexAnnuel;
+  const ebitdaAn1 = fin.ebitdaAn1;
 
   // Chronique 20 ans
-  const years = Array.from({ length: studyDuration }, (_, i) => 2026 + i);
-  let remainingCapex = capexTotal;
-  let payback = null;
-  let remainingDebt = capexTotal;
-  const cfProjet = [-capexTotal];
-  let totalRecettes = 0;
-  let totalOpexCumul = 0;
-  let totalCashFlow = 0;
-  const tableRows = [];
+  const years = Array.from({ length: studyDuration || 20 }, (_, i) => 2026 + i);
+  const tableRows = (fin.rows || []).slice(0, studyDuration || 20).map((r, i) => ({
+    year: years[i] || (2026 + i),
+    ca: r.caTotalBrut,
+    caTotal: r.caTotalBrut,
+    fcr: r.revFCR,
+    reserve: r.revFCR,
+    capa: r.revCapacite,
+    capacite: r.revCapacite,
+    arb: r.revArbitrage,
+    arbitrage: r.revArbitrage,
+    fraisAgregateur: r.commAgregateur,
+    coutRecharge: r.coutRechargeAn,
+    turpe: r.turpeAn,
+    maint: r.maint,
+    assur: r.assur,
+    revBailleur: r.revBailleur,
+    opex: r.opex,
+    ebitda: r.ebe,
+    ebe: r.ebe,
+    amortissement: r.amortissement,
+    ebit: r.ebit,
+    interest: r.interest,
+    is: r.is,
+    principal: r.principal,
+    servDette: r.serviceDette,
+    serviceDette: r.serviceDette,
+    dscr: r.dscr,
+    cfNet: r.cashFlow,
+    tresorerie: r.cashFlow,
+    cumulCf: r.cumulCashFlow
+  }));
 
-  years.forEach((y, i) => {
-    const infl = Math.pow(1.02, i);
-    const deg = Math.pow(1 - 0.015, i);
+  const triProjet = fin.triProjet;
+  const paybackProjet = fin.payback;
+  const avgDscr = fin.dscrMoyen || 2.14;
+  const totalRecettes = fin.totalRevenuesStudy || tableRows.reduce((sum, r) => sum + r.ca, 0);
+  const totalOpexCumul = fin.totalOpexStudy || tableRows.reduce((sum, r) => sum + r.opex, 0);
+  const beneficeNetCash = fin.gainNetEtude || tableRows.reduce((sum, r) => sum + r.cfNet, 0);
 
-    const fcrY = revFcr * infl;
-    const capaY = revCapa * infl;
-    const arbY = revArb * deg * infl;
-    const caTotalY = fcrY + capaY + arbY;
-
-    const commY = caTotalY * 0.18;
-    const rechY = coutRecharge * deg * infl;
-    const turpY = turpeAn1 * infl;
-    const maintY = maintenance * infl;
-    const assurY = assurance * infl;
-    const loyerY = loyerDalle * infl;
-    const opexTotalY = commY + rechY + turpY + maintY + assurY + loyerY;
-
-    const ebitdaY = caTotalY - opexTotalY;
-    const amortY = capexTotal / studyDuration;
-    const ebitY = ebitdaY - amortY;
-    const interestY = i < debtDuration ? remainingDebt * rateDec : 0;
-    const principalY = i < debtDuration ? Math.max(0, annuite - interestY) : 0;
-    if (i < debtDuration) remainingDebt = Math.max(0, remainingDebt - principalY);
-
-    const resFiscalY = ebitY - interestY;
-    let isY = 0;
-    if (resFiscalY > 0) {
-      if (resFiscalY < 42500) isY = resFiscalY * 0.15;
-      else isY = (42500 * 0.15) + ((resFiscalY - 42500) * 0.25);
-    }
-    const servDetteY = i < debtDuration ? annuite : 0;
-    const cfNetY = ebitdaY - servDetteY - isY;
-
-    cfProjet.push(ebitdaY - isY);
-    totalRecettes += caTotalY;
-    totalOpexCumul += opexTotalY;
-    totalCashFlow += cfNetY;
-
-    const dscrY = servDetteY > 1 ? (ebitdaY - isY) / servDetteY : 9.99;
-
-    tableRows.push({
-      year: y,
-      ca: caTotalY,
-      caTotal: caTotalY,
-      fcr: fcrY,
-      reserve: fcrY,
-      capa: capaY,
-      capacite: capaY,
-      arb: arbY,
-      arbitrage: arbY,
-      fraisAgregateur: commY,
-      coutRecharge: rechY,
-      turpe: turpY,
-      maint: maintY,
-      assur: assurY,
-      revBailleur: loyerY,
-      opex: opexTotalY,
-      ebitda: ebitdaY,
-      ebe: ebitdaY,
-      amortissement: amortY,
-      ebit: ebitY,
-      interest: interestY,
-      is: isY,
-      principal: principalY,
-      servDette: servDetteY,
-      serviceDette: servDetteY,
-      dscr: dscrY,
-      cfNet: cfNetY,
-      tresorerie: cfNetY,
-      cumulCf: totalCashFlow
-    });
-  });
-
-  const triProjet = calculateIrr(cfProjet, 0.08) * 100;
-  const paybackProjet = calculateProjectPayback(capexTotal, tableRows.map(r => r.ebitda));
-  const dscrValid = tableRows.filter(r => r.serviceDette > 1).map(r => r.dscr);
-  const avgDscr = dscrValid.length > 0 ? (dscrValid.reduce((a, b) => a + b, 0) / dscrValid.length) : 2.14;
-  const beneficeSurEtude = totalRecettes - totalOpexCumul - capexTotal;
-  const beneficeNetCash = totalCashFlow;
-
-  const substationName = site.substation?.name || site.substation || 'POSTE SOURCE ENEDIS';
-  const s3renrVal = site.s3renr || site.substation?.quotePartS3renr || '92.73 k€/MW';
+  const substationName = fin.posteSource || 'POSTE SOURCE ENEDIS';
+  const s3renrVal = fin.quotePartS3REnR || '92.73 k€/MW';
 
   // Ligne de données formatée compacte pour la Vue Détaillée
   const DataRow = ({ label, propName, isCurrency, format, bold, className, indent }) => (

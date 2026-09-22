@@ -14,6 +14,7 @@
  */
 
 import { calculateTurpe7Details, generateAnnualRechargeProfileMwh } from './turpeCalculationService.js';
+import { findBessOdreData, computeBessRaccordementCost, BESS_ODRE_MATRIX } from '../data/bessOdreMatrix.js';
 
 /**
  * Calcul financier d'annuité constante (PMT)
@@ -436,3 +437,130 @@ export function simulateBessFinancials(config = {}) {
     rows
   };
 }
+
+/**
+ * FONCTION CENTRALE PARTAGÉE D'HARMONISATION BESS
+ * Utilisée identiquement par :
+ * 1. Simulateur BP Nelson (Unitaire)
+ * 2. Portefeuille BESS & Export Excel (31 Sites)
+ * 3. Compilateur PDF (Planches 7/8 et Fiches 39 Pages)
+ *
+ * @param {object} siteOrConfig Données du site ou configuration BESS
+ * @param {object} [options] Options financières (dette, durée, etc.)
+ * @returns {object} Indicateurs financiers unifiés (CA, OPEX, TURPE, EBITDA, Payback, TRI, DSCR)
+ */
+export function computeBessFinancials(siteOrConfig = {}, options = {}) {
+  const site = siteOrConfig || {};
+  
+  // 1. Appariement automatique avec la matrice officielle ODRE des 31 sites
+  const odreData = findBessOdreData(
+    site.name || site.siteName || site.id,
+    site.city || site.commune,
+    site.address,
+    site.lat || site.latitude,
+    site.lng || site.longitude
+  );
+
+  // 2. Détermination de la typologie CRE & TURPE 7
+  const zoneCre = site.typologieZoneCre || site.zoneCre || odreData?.typologieZoneCre || 'Zone standard Enedis';
+  let storageZone = 'ZONE_STANDARD';
+  const cleanZone = String(zoneCre).toLowerCase();
+  if (cleanZone.includes('injection') || site.storageZone === 'ZONE_INJECTION_SATURATION') {
+    storageZone = 'ZONE_INJECTION_SATURATION';
+  } else if (cleanZone.includes('soutirage') || site.storageZone === 'ZONE_SOUTIRAGE_TENSION') {
+    storageZone = 'ZONE_SOUTIRAGE_TENSION';
+  }
+
+  // 3. Distance réseau & CAPEX Raccordement
+  const rawDist = site.distanceKm ?? site.distKm ?? (site.dist ? String(site.dist).replace('km', '').trim() : null) ?? site.substation?.distanceKm ?? odreData?.distanceKm ?? 5.0;
+  const distKm = parseFloat(rawDist) || 5.0;
+  const distPriv = site.distancePriv ?? options.distancePriv ?? 10;
+  const raccCostResult = computeBessRaccordementCost(distKm, distPriv);
+  const raccordement = (site.raccordement !== undefined && site.raccordement > 0)
+    ? Number(site.raccordement)
+    : raccCostResult.raccordementCost;
+
+  // 4. Décomposition du CAPEX unitaire (Standard Nelson / CESC Mercury 261 500 kW / 1044 kWh)
+  const isInvestPropre = site.isInvestPropre ?? options.isInvestPropre ?? false;
+  const batterieBms = site.batterieBms ?? 140000;
+  const genieCivil = site.genieCivil ?? 9900;
+  const developpement = site.developpement ?? 7500;
+  const fraisCommerciaux = isInvestPropre ? 0 : (site.fraisCommerciaux !== undefined ? Number(site.fraisCommerciaux) : 20000);
+  const capexTotal = batterieBms + genieCivil + developpement + fraisCommerciaux + raccordement;
+
+  // 5. Paramètres d'exploitation & de marché
+  const puissanceDemandee = site.powerKw ?? site.puissanceKw ?? (typeof site.power === 'string' ? parseFloat(site.power) : site.power) ?? 500;
+  const capaciteStockage = site.capacityKwh ?? site.capaciteKwh ?? (typeof site.cap === 'string' ? parseFloat(site.cap) : site.cap) ?? 1044;
+  const loyerDalle = site.rent ?? site.loyerDalle ?? (typeof site.rent === 'string' ? parseFloat(site.rent.replace(/[^0-9]/g, '')) : 3000) ?? 3000;
+
+  // 6. Exécution du moteur de simulation physique et financière
+  const sim = simulateBessFinancials({
+    puissanceDemandee,
+    capaciteStockage,
+    disponibilite: site.disponibilite ?? 98,
+    rendementRoundTrip: site.rendementRoundTrip ?? 88,
+    degradationAnnuelle: site.degradationAnnuelle ?? 2.2,
+    dureeEtude: options.studyDuration ?? site.dureeEtude ?? 15,
+    nbCyclesJour: site.nbCyclesJour ?? 2.0,
+    prixFCR: site.prixFCR ?? 20,
+    facteurDerating: site.facteurDerating ?? 0.5,
+    prixCapacite: site.prixCapacite ?? 35,
+    spreadArbitrage: site.spreadArbitrage ?? 0.040,
+    coutRecharge: site.coutRecharge ?? 0.030,
+    commissionAgregateur: site.commissionAgregateur ?? 18,
+    useTurpe7Engine: true,
+    tensionDomain: site.tensionDomain ?? 'HTA1',
+    tarifOption: site.tarifOption ?? 'CU',
+    useStorageOption: true,
+    storageZone,
+    maintenanceTarif: site.maintenanceTarif ?? 8,
+    assuranceTarif: site.assuranceTarif ?? 3.5,
+    loyerDalle,
+    inflationAnnuelle: site.inflationAnnuelle ?? 2.0,
+    batterieBms,
+    genieCivil,
+    raccordement,
+    developpement,
+    fraisCommerciaux,
+    isInvestPropre,
+    tauxEmprunt: options.debtRate ?? site.tauxEmprunt ?? 4.30,
+    dureeEmprunt: options.debtDuration ?? site.dureeEmprunt ?? 12,
+    apport: site.apport ?? options.apport ?? 0,
+    tauxIS: site.tauxIS ?? 25
+  });
+
+  const caBrutAn1 = Math.round(sim.revenuAn1);
+  const opexAn1 = Math.round(sim.opexAn1);
+  const turpeAn1 = Math.round(sim.turpeAn1);
+  const ebitdaAn1 = Math.round(sim.ebeAn1);
+  const paybackAnnees = Number(sim.payback.toFixed(1));
+
+  return {
+    ...sim,
+    siteName: site.name || site.siteName || odreData?.siteName || 'BESS 500 kW',
+    client: site.client || odreData?.client || '',
+    commune: site.city || site.commune || odreData?.commune || '',
+    codePostal: site.cp || site.postcode || site.codePostal || odreData?.codePostal || '',
+    departement: site.dept || odreData?.departement || '',
+    posteSource: site.substation?.name || site.substation || odreData?.posteSourceEnedis || 'Poste HTA',
+    distanceKm: distKm,
+    quotePartS3REnR: site.s3renr || site.substation?.quotePartS3renr || odreData?.quotePartS3REnR || '',
+    zoneCre,
+    storageZone,
+    raccordementCost: raccordement,
+    capexTotal: sim.capexTotal,
+    caAnnuel: caBrutAn1,
+    caBrutAn1,
+    opexAnnuel: opexAn1,
+    opexAn1,
+    turpeAnnuel: turpeAn1,
+    turpeAn1,
+    ebitda: ebitdaAn1,
+    ebitdaAn1,
+    payback: sim.payback,
+    paybackAnnees,
+    paybackFormatted: `${paybackAnnees.toFixed(1)} ans`,
+    triProjetFormatted: `${sim.triProjet.toFixed(1)}%`
+  };
+}
+

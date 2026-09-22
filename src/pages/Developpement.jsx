@@ -17,11 +17,13 @@ import ProfessionnelsView from '@/components/developpement/ProfessionnelsView';
 
 // Modals
 import UrbanismeWizard from '@/components/developpement/UrbanismeWizard';
+import DpWizardModal from '@/components/developpement/DpWizardModal';
 import EmailMandatementModal from '@/components/developpement/EmailMandatementModal';
 import RaccordementModal from '@/components/developpement/RaccordementModal';
 import AosAoModal from '@/components/developpement/AosAoModal';
 import ConsuelModal from '@/components/developpement/ConsuelModal';
 import BatteryInsertionCompositor from '@/components/developpement/BatteryInsertionCompositor';
+import { initBessDpAutoConfig, buildExpressBessProjectPayload } from '@/services/bessDpAutoInitService';
 
 // Existing plate components (reused for PDF generation)
 import {
@@ -103,6 +105,7 @@ export default function Developpement() {
 
   // ── Modals State ────────────────────────────────────────────────
   const [urbanismeModal, setUrbanismeModal] = useState({ open: false, type: 'dp' });
+  const [dpWizardModal, setDpWizardModal] = useState(false);
   const [emailMandatementModal, setEmailMandatementModal] = useState({ open: false, type: 'geometre' });
   const [raccordementModal, setRaccordementModal] = useState(false);
   const [aosModal, setAosModal] = useState(false);
@@ -687,6 +690,26 @@ export default function Developpement() {
                   onOpenRaccordementModal={() => setRaccordementModal(true)}
                   onOpenAosModal={() => setAosModal(true)}
                   onOpenConsuelModal={() => setConsuelModal(true)}
+                  onGenerateExpressDp={async (project) => {
+                    const p = project || selectedProject;
+                    if (!p) return;
+                    const dpConfig = p.dp_config || initBessDpAutoConfig(p);
+                    const expressPayload = buildExpressBessProjectPayload(p, dpConfig);
+                    await handleUrbanismeGenerate('dp', 'Station Batteries Stand-Alone', expressPayload, {
+                      cerfa: true,
+                      situation: true,
+                      masse: true,
+                      coupe: true,
+                      notice: true,
+                      insertion: true,
+                      envProche: true,
+                      envLointain: true
+                    });
+                  }}
+                  onOpenDpWizard={(project) => {
+                    if (project) setSelectedProject(project);
+                    setDpWizardModal(true);
+                  }}
                   professionals={professionals}
                 />
               )}
@@ -719,6 +742,15 @@ export default function Developpement() {
         isOpen={urbanismeModal.open}
         onClose={() => setUrbanismeModal({ open: false, type: 'dp' })}
         type={urbanismeModal.type}
+        project={selectedProject}
+        onGenerate={handleUrbanismeGenerate}
+        onUpdateProject={handleUpdateProjectData}
+      />
+
+      {/* 1bis. Modal DP Wizard Tunnel Déclaration BESS (5 Étapes interactives) */}
+      <DpWizardModal
+        isOpen={dpWizardModal}
+        onClose={() => setDpWizardModal(false)}
         project={selectedProject}
         onGenerate={handleUrbanismeGenerate}
         onUpdateProject={handleUpdateProjectData}
