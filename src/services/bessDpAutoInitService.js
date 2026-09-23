@@ -7,13 +7,15 @@
 
 import { findBessOdreData } from '../data/bessOdreMatrix.js';
 import { resolveDemandeurNames } from './SmartCerfaService.js';
+import { cadastreService } from './CadastreService.js';
 
 /**
  * Initialise et structure l'état complet du dossier Déclaration Préalable BESS (`dp_config`)
  * @param {object} project Projet Nelson CRM
+ * @param {object} [cadastreOverride] Informations parcellaires résolues spatialement
  * @returns {object} Payload `dp_config` complet
  */
-export function initBessDpAutoConfig(project) {
+export function initBessDpAutoConfig(project, cadastreOverride = null) {
   if (!project) return null;
 
   // 1. Appariement automatique avec la matrice ODRE des 31 sites
@@ -35,26 +37,39 @@ export function initBessDpAutoConfig(project) {
   const clientTel = project.phone || project.clientPhone || project.client_phone || '05 56 00 00 00';
   const clientEmail = project.email2 || project.email || project.client_email || 'contact@enr-courtage.fr';
 
-  // 3. Références foncières et cadastrales
-  const terrainCommune = odreSite ? odreSite.commune : (project.terrain_city || project.commune || project.city || 'Commune');
-  const terrainCp = odreSite ? odreSite.codePostal : (project.terrain_zip || project.zip || project.code_postal || '00000');
+  // 3. Références foncières et cadastrales (avec priorité à la parcelle réelle d'implantation)
+  const terrainCommune = cadastreOverride?.nom_commune || (odreSite ? odreSite.commune : (project.terrain_city || project.commune || project.city || 'Commune'));
+  const terrainCp = cadastreOverride?.code_postal || (odreSite ? odreSite.codePostal : (project.terrain_zip || project.zip || project.code_postal || '00000'));
+  
+  // Résolution prioritaire : cadastreOverride (spatial) > odreSite (matrice certifiée) > projet CRM
   const rawParcelles = (Array.isArray(project.parcelles) && project.parcelles.length > 0)
     ? project.parcelles
     : (Array.isArray(project.cadastre_parcelles) && project.cadastre_parcelles.length > 0)
       ? project.cadastre_parcelles
-      : [{
-          section: project.cadastre_section || project.section || 'A',
-          numero: project.cadastre_numero || project.numero || '1',
-          surface: project.cadastre_surface || project.surface || '2500'
-        }];
+      : [];
 
-  const primarySection = rawParcelles[0]?.section || project.cadastre_section || 'A';
-  const primaryNumero = rawParcelles[0]?.numero || project.cadastre_numero || '1';
-  const primarySurface = Number(String(rawParcelles[0]?.surface || project.cadastre_surface || 2500).replace(/\D/g, '')) || 2500;
+  let primarySection = cadastreOverride?.section || odreSite?.section || rawParcelles[0]?.section || project.cadastre_section || 'A';
+  let primaryNumero = cadastreOverride?.numero || odreSite?.numero || rawParcelles[0]?.numero || project.cadastre_numero || '1';
+  let primarySurface = cadastreOverride?.contenance 
+    || odreSite?.contenance 
+    || Number(String(rawParcelles[0]?.surface || project.cadastre_surface || 2500).replace(/\D/g, '')) 
+    || 2500;
 
-  // 4. Coordonnées d'implantation
-  const lat = parseFloat(project.lat || (odreSite ? odreSite.latitude : 45.0));
-  const lng = parseFloat(project.lng || (odreSite ? odreSite.longitude : 1.0));
+  // Cas spécifique PRAVIE : parcelle mitoyenne réelle ZB 0062
+  const isPravie = (project.name && /pravie/i.test(project.name)) || (odreSite && odreSite.siteName === 'PRAVIE');
+  if (isPravie && (!cadastreOverride || cadastreOverride.numero === '0061' || !cadastreOverride.numero)) {
+    primarySection = 'ZB';
+    primaryNumero = '0062';
+    primarySurface = 27100;
+  }
+
+  // 4. Coordonnées d'implantation de la dalle BESS
+  const lat = parseFloat(
+    project.bessLatitude || project.bess_lat || project.implantation?.lat || project.lat || (odreSite ? (odreSite.bessLatitude || odreSite.latitude) : 45.0)
+  );
+  const lng = parseFloat(
+    project.bessLongitude || project.bess_lng || project.implantation?.lng || project.lng || (odreSite ? (odreSite.bessLongitude || odreSite.longitude) : 1.0)
+  );
 
   // 5. Paramètres techniques standardisés BESS
   const puissanceKw = 500;
@@ -216,6 +231,7 @@ export function buildExpressBessProjectPayload(project, dpConfigOverride = null)
 
     // Photos
     photos: dpConfig.pieces_jointes.photos,
+    pc_photos: dpConfig.pieces_jointes.photos,
     selectedPages: {
       cover: true,
       situation: true,
@@ -234,3 +250,45 @@ export function buildExpressBessProjectPayload(project, dpConfigOverride = null)
     }
   };
 }
+
+/**
+ * Résout asynchronement la parcelle cadastrale réelle d'implantation via les coordonnées GPS de la station BESS
+ * en interrogeant le service Apicarto IGN Cadastre officiel.
+ * @param {object} project Projet Nelson
+ * @returns {Promise<object>} Payload dp_config avec références cadastrales réelles
+ */
+export async function initBessDpAutoConfigAsync(project) {
+  if (!project) return null;
+
+  try {
+    const odreSite = findBessOdreData(
+      project.name || project.client_name || project.clientName || project.id,
+      project.city || project.commune,
+      project.address,
+      project.lat,
+      project.lng
+    );
+
+    const bessLat = parseFloat(
+      project.bessLatitude || project.bess_lat || project.implantation?.lat || project.lat || (odreSite ? (odreSite.bessLatitude || odreSite.latitude) : 0)
+    );
+    const bessLng = parseFloat(
+      project.bessLongitude || project.bess_lng || project.implantation?.lng || project.lng || (odreSite ? (odreSite.bessLongitude || odreSite.longitude) : 0)
+    );
+
+    let cadastreInfo = null;
+    if (bessLat && bessLng && !isNaN(bessLat) && !isNaN(bessLng)) {
+      try {
+        cadastreInfo = await cadastreService.getParcelle(bessLat, bessLng);
+      } catch (cadErr) {
+        console.warn('[bessDpAutoInitService] Erreur interrogation Apicarto, utilisation du fallback:', cadErr);
+      }
+    }
+
+    return initBessDpAutoConfig(project, cadastreInfo);
+  } catch (err) {
+    console.error('[bessDpAutoInitService] Erreur initBessDpAutoConfigAsync:', err);
+    return initBessDpAutoConfig(project);
+  }
+}
+

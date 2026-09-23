@@ -365,7 +365,18 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       batterie:         `Installation d'une station de stockage d'énergie par batteries Stand-Alone composée de 4 armoires CESC Mercury 261 (500 kW / 1044 kWh) sur dalle béton (emprise 19.80 m² < 20 m²) ceinturée par un grillage métallique rigide (H 2.00m).`,
     };
 
-    const isBat = (project?.solutionType === 'battery' || installationType === 'battery' || installationType === 'batterie' || installationType === 'batterie_standalone') && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
+    const isBat = Boolean(
+      project?.isBattery ||
+      project?.isBatteryStandAlone ||
+      project?.solutionType === 'battery' ||
+      project?.urbanisme_solutionType === 'battery' ||
+      installationType === 'battery' ||
+      installationType === 'batterie' ||
+      installationType === 'batterie_standalone' ||
+      installationType === 'Station Batteries Stand-Alone' ||
+      (typeof installationType === 'string' && /batterie|bess/i.test(installationType)) ||
+      (typeof project?.installationType === 'string' && /batterie|bess/i.test(project.installationType))
+    ) && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
     let objet = project?.objet_travaux || project?.objetTravaux;
     if (!objet || (!isBat && /batterie|bess|stockage d'énergie/i.test(objet))) {
       if (isBat) {
@@ -604,7 +615,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
 
       // 6. Engagement & Signature (page 9/18 du CERFA : Ville, Date JJMMAAAA, Prénom & Nom)
       // Priorité : ville du terrain (commune du projet) > adresse parsée > ville du demandeur
-      const sigLieu = project?.terrain_city || project?.terrain_commune || project?.commune || terrainCity || city || project?.city || 'FRANCE';
+      const sigLieu = project?.dp_config?.terrain?.ville || project?.terrain_city || project?.terrain_commune || project?.commune || terrainCity || city || project?.city || 'FRANCE';
       setField(fieldMap.sig_lieu, sigLieu, 9.5);
       setField([
         'E1L_lieu',

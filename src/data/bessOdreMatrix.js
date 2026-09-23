@@ -114,8 +114,13 @@ export const BESS_ODRE_MATRIX = [
     commune: "Grisolles",
     codePostal: "82170",
     departement: "82",
-    latitude: 43.806232,
-    longitude: 1.295833,
+    latitude: 43.806645,
+    longitude: 1.296311,
+    bessLatitude: 43.806645,
+    bessLongitude: 1.296311,
+    section: "ZB",
+    numero: "0062",
+    contenance: 27100,
     posteSourceEnedis: "LESQUIVE 2",
     tension: "HTA 20 kV",
     distanceKm: 2.3,
@@ -695,15 +700,23 @@ export function findBessOdreData(search, city = '', address = '', lat = null, ln
   const cleanCity = normalize(rawCity);
   const cleanAddr = normalize(rawAddress);
 
-  // Recherche directe par mot clé de site (ex: "PAILLOT", "CHAUFFAILLE", "LATOURNERIE", "PRAVIE", "BERTRANDIE", "DOMERGUE", etc.)
+  // 3. Correspondance prioritaire sur le mot-clé exact de site (ex: "PRAVIE", "GRANGER", "LATOURNERIE")
+  const searchWords = cleanSearch.split(/\s+/).filter(Boolean);
+  for (const s of BESS_ODRE_MATRIX) {
+    const sName = normalize(s.siteName);
+    if (sName && (cleanSearch === sName || searchWords.includes(sName) || cleanSearch.startsWith(sName + " ") || cleanSearch.endsWith(" " + sName))) {
+      return s;
+    }
+  }
+
+  // 4. Correspondance standard sur le nom de site ou le client
   for (const s of BESS_ODRE_MATRIX) {
     const sName = normalize(s.siteName);
     const sClient = normalize(s.client);
     const sCommune = normalize(s.commune);
 
-    // Correspondance exacte sur le nom de site ou le client
+    // Correspondance sur le nom de site ou le client
     if (cleanSearch && (cleanSearch.includes(sName) || sClient.includes(cleanSearch) || cleanSearch.includes(sClient))) {
-      // Si site à homonyme (ex: CASTEBRUNET ou DOMERGUE ou MEILLAT), affiner par commune / CP si disponible
       if (cleanCity || cleanAddr) {
         if (cleanCity.includes(sCommune) || cleanAddr.includes(sCommune) || cleanAddr.includes(s.codePostal)) {
           return s;

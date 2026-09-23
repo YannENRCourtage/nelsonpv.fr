@@ -397,10 +397,10 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     );
     
     if (isBattery) {
-        const bQty = Number(project?.battery_quantity || project?.batteryStorage?.quantity || 1) || 1;
-        const bLen = Number(project?.batteryStorage?.dalleLength || project?.longueur || Math.max(6.0, bQty * 3.2 + 3.0));
-        const bModel = project?.battery_model || project?.batteryStorage?.model || 'BESS Stand-Alone';
-        const bPower = Number(project?.kwc || project?.puissance || project?.batteryStorage?.powerKw || (bQty * 125));
+        const bQty = 4;
+        const bLen = Number(project?.batteryStorage?.dalleLength || project?.longueur || 6.20);
+        const bModel = project?.battery_model || project?.batteryStorage?.model || 'CESC Mercury 261';
+        const bPower = Number(project?.kwc || project?.puissance || project?.batteryStorage?.powerKw || 500);
 
         return (
             <div style={{ height: boxHeight, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: isMulti ? '1mm 3.5mm' : '1.5mm 4mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0, overflow: 'hidden' }}>
@@ -409,7 +409,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
                         DP3 — COUPE DE TERRAIN &amp; DES INSTALLATIONS (COUPE TRANSVERSALE {coupeLetter}) — CENTRALE DE STOCKAGE BATTERIES
                     </span>
                     <span style={{ fontSize: isMulti ? '6.5pt' : '7pt', color: '#64748b' }}>
-                        {bQty}× {bModel} ({bPower} kW) • Dalle {bLen.toFixed(2)}m × 6.00m • Échelle indicative
+                        4× {bModel} ({bPower} kW / 1 044 kWh) • Dalle 6.20m × 3.20m • Échelle indicative
                     </span>
                 </div>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -419,46 +419,63 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
                                 <stop offset="0%" stopColor="#334155" />
                                 <stop offset="100%" stopColor="#1e293b" />
                             </linearGradient>
+                            <pattern id="c-mesh-pattern" width="6" height="6" patternUnits="userSpaceOnUse">
+                                <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#2d6a4f" strokeWidth="0.6" opacity="0.6" />
+                            </pattern>
                         </defs>
+                        {/* Sol TN */}
                         <line x1="20" y1="130" x2="680" y2="130" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
                         <text x="30" y="142" fill="#64748b" fontSize="6.5" fontStyle="italic">Terrain Naturel TN ±0.00</text>
                         <text x="670" y="142" textAnchor="end" fill="#64748b" fontSize="6.5" fontStyle="italic">Terrain plat conservé</text>
 
-                        <rect x="160" y="122" width="380" height="8" fill="#94a3b8" stroke="#475569" strokeWidth="1" rx="0.5" />
-                        <text x="350" y="128" textAnchor="middle" fill="#1e293b" fontSize="5.5" fontWeight="bold">Dalle béton armé étanche avec bac de rétention</text>
+                        {/* Dalle béton armé étanche 6.20m (+0.15m) */}
+                        <rect x="145" y="122" width="410" height="8" fill="#cbd5e1" stroke="#475569" strokeWidth="1" rx="0.5" />
+                        <text x="350" y="128" textAnchor="middle" fill="#1e293b" fontSize="5.5" fontWeight="bold">Dalle béton armé étanche 6,20 m avec bac de rétention (+0,15 m / TN)</text>
 
-                        {Array.from({ length: Math.min(4, bQty) }).map((_, idx) => {
-                            const cw = Math.min(65, 260 / Math.min(4, bQty));
-                            const cx = 185 + idx * (cw + 12);
+                        {/* 4 Armoires CESC Mercury 261 */}
+                        {[0, 1, 2, 3].map((idx) => {
+                            const cw = 65;
+                            const cx = 175 + idx * (cw + 16);
                             return (
                                 <g key={idx}>
                                     <rect x={cx} y="55" width={cw} height="67" fill="url(#c-bat-grad)" stroke="#0f172a" strokeWidth="1.2" rx="1.5" />
-                                    <rect x={cx + 4} y="50" width={cw - 8} height="5" fill="#1e293b" stroke="#0f172a" strokeWidth="0.8" rx="1" />
+                                    <rect x={cx + 3} y="51" width={cw - 6} height="4" fill="#0f172a" stroke="#0f172a" strokeWidth="0.8" rx="0.8" />
                                     <line x1={cx + cw / 2} y1="55" x2={cx + cw / 2} y2="122" stroke="#475569" strokeWidth="0.8" />
-                                    <circle cx={cx + cw / 2 - 3} cy="88" r="1.5" fill="#facc15" />
-                                    <circle cx={cx + cw / 2 + 3} cy="88" r="1.5" fill="#facc15" />
-                                    <text x={cx + cw / 2} y="115" textAnchor="middle" fill="#93c5fd" fontSize="5.5" fontWeight="bold">BESS #{idx + 1}</text>
+                                    <rect x={cx + cw / 2 - 12} y="62" width="24" height="10" fill="#0284c7" stroke="#38bdf8" strokeWidth="0.6" rx="0.8" />
+                                    <circle cx={cx + cw / 2 - 5} cy="76" r="1.5" fill="#22c55e" />
+                                    <circle cx={cx + cw / 2} cy="76" r="1.5" fill="#facc15" />
+                                    <circle cx={cx + cw / 2 + 5} cy="76" r="1.5" fill="#ef4444" />
+                                    <rect x={cx + 6} y="85" width="23" height="20" fill="#0f172a" rx="0.5" opacity="0.8" />
+                                    <rect x={cx + 36} y="85" width="23" height="20" fill="#0f172a" rx="0.5" opacity="0.8" />
+                                    <text x={cx + cw / 2} y="116" textAnchor="middle" fill="#93c5fd" fontSize="5.5" fontWeight="bold">BESS #{idx + 1}</text>
                                 </g>
                             );
                         })}
 
-                        <rect x="490" y="65" width="35" height="57" fill="#e2e8f0" stroke="#475569" strokeWidth="1" rx="1" />
-                        <text x="507" y="98" textAnchor="middle" fill="#0f172a" fontSize="5.5" fontWeight="bold">HTA</text>
+                        {/* Poste de raccordement HTA */}
+                        <rect x="502" y="65" width="36" height="57" fill="#e2e8f0" stroke="#475569" strokeWidth="1" rx="1" />
+                        <text x="520" y="98" textAnchor="middle" fill="#0f172a" fontSize="6" fontWeight="bold">HTA</text>
 
-                        <line x1="140" y1="70" x2="560" y2="70" stroke="#64748b" strokeWidth="1" strokeDasharray="3 2" />
-                        <line x1="140" y1="70" x2="140" y2="130" stroke="#334155" strokeWidth="2" />
-                        <line x1="560" y1="70" x2="560" y2="130" stroke="#334155" strokeWidth="2" />
-                        <text x="135" y="100" textAnchor="end" fill="#64748b" fontSize="6" fontWeight="bold">Clôture 2.00m</text>
+                        {/* Clôture grillagée thermolaquée verte RAL 6005 (H 2.00m) */}
+                        <rect x="125" y="68" width="450" height="62" fill="url(#c-mesh-pattern)" stroke="#1b4332" strokeWidth="1" />
+                        <line x1="125" y1="68" x2="125" y2="130" stroke="#1b4332" strokeWidth="2.5" />
+                        <line x1="237" y1="68" x2="237" y2="130" stroke="#1b4332" strokeWidth="1.5" />
+                        <line x1="350" y1="68" x2="350" y2="130" stroke="#1b4332" strokeWidth="1.5" />
+                        <line x1="462" y1="68" x2="462" y2="130" stroke="#1b4332" strokeWidth="1.5" />
+                        <line x1="575" y1="68" x2="575" y2="130" stroke="#1b4332" strokeWidth="2.5" />
+                        <text x="120" y="98" textAnchor="end" fill="#1b4332" fontSize="6.2" fontWeight="bold">Clôture RAL 6005 (2.00m)</text>
 
-                        <line x1="170" y1="55" x2="170" y2="130" stroke="#ef4444" strokeWidth="0.8" />
-                        <line x1="166" y1="55" x2="174" y2="55" stroke="#ef4444" strokeWidth="0.8" />
-                        <line x1="166" y1="130" x2="174" y2="130" stroke="#ef4444" strokeWidth="0.8" />
-                        <text x="162" y="95" textAnchor="end" fill="#ef4444" fontSize="7" fontWeight="bold">H : 2.60m</text>
+                        {/* Cotes de Hauteur BESS (2.38m) */}
+                        <line x1="155" y1="51" x2="155" y2="130" stroke="#ef4444" strokeWidth="0.8" />
+                        <line x1="151" y1="51" x2="159" y2="51" stroke="#ef4444" strokeWidth="0.8" />
+                        <line x1="151" y1="130" x2="159" y2="130" stroke="#ef4444" strokeWidth="0.8" />
+                        <text x="147" y="93" textAnchor="end" fill="#ef4444" fontSize="6.8" fontWeight="bold">H : 2.38m</text>
 
-                        <line x1="160" y1="148" x2="540" y2="148" stroke="#2563eb" strokeWidth="0.8" />
-                        <line x1="160" y1="144" x2="160" y2="152" stroke="#2563eb" strokeWidth="0.8" />
-                        <line x1="540" y1="144" x2="540" y2="152" stroke="#2563eb" strokeWidth="0.8" />
-                        <text x="350" y="156" textAnchor="middle" fill="#2563eb" fontSize="7" fontWeight="bold">Longueur dalle : {bLen.toFixed(2)}m</text>
+                        {/* Cotes de Longueur Dalle (6.20m) */}
+                        <line x1="145" y1="148" x2="555" y2="148" stroke="#2563eb" strokeWidth="0.8" />
+                        <line x1="145" y1="144" x2="145" y2="152" stroke="#2563eb" strokeWidth="0.8" />
+                        <line x1="555" y1="144" x2="555" y2="152" stroke="#2563eb" strokeWidth="0.8" />
+                        <text x="350" y="156" textAnchor="middle" fill="#2563eb" fontSize="7" fontWeight="bold">Longueur dalle : 6.20m (Largeur : 3.20m)</text>
                     </svg>
                 </div>
             </div>
@@ -1195,7 +1212,256 @@ export const PlateSectionAndNotice = (props) => <PlateCoupe {...props} includeNo
 export const PlateSection = PlateCoupe;
 
 /**
- * PLANCHE DP4 : FAÇADES ET TOITURES (5 Vues 3D)
+ * VUES ARCHITECTURALES VECTORIELLES HD STANDARDISÉES POUR DP4 BESS (500 kW / 1044 kWh)
+ * 4 Armoires CESC Mercury 261 + Clôture thermolaquée verte RAL 6005 + Poste HTA
+ */
+export const BessElevationSud = () => (
+    <svg viewBox="0 0 540 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
+        <defs>
+            <linearGradient id="bess-grad-s" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#334155" />
+                <stop offset="100%" stopColor="#1e293b" />
+            </linearGradient>
+            <pattern id="f-mesh-s" width="6" height="6" patternUnits="userSpaceOnUse">
+                <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#2d6a4f" strokeWidth="0.5" opacity="0.6" />
+            </pattern>
+        </defs>
+        {/* Ligne TN */}
+        <line x1="15" y1="168" x2="525" y2="168" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
+        <text x="25" y="180" fill="#64748b" fontSize="7.5" fontStyle="italic">Terrain Naturel TN ±0.00</text>
+
+        {/* Dalle béton armé 6.20m */}
+        <rect x="65" y="157" width="410" height="11" fill="#cbd5e1" stroke="#475569" strokeWidth="1" rx="0.5" />
+        <text x="270" y="165" textAnchor="middle" fill="#334155" fontSize="6.5" fontWeight="bold">Dalle béton armé étanche 6,20 m (+0,15 m / TN)</text>
+
+        {/* 4 Armoires CESC Mercury 261 */}
+        {[0, 1, 2, 3].map(i => {
+            const x = 90 + i * 86;
+            return (
+                <g key={i}>
+                    <rect x={x} y="44" width="76" height="113" fill="url(#bess-grad-s)" stroke="#0f172a" strokeWidth="1.2" rx="1.5" />
+                    <rect x={x - 1} y="39" width="78" height="5" fill="#0f172a" rx="0.8" />
+                    <line x1={x + 38} y1="44" x2={x + 38} y2="157" stroke="#475569" strokeWidth="0.8" />
+                    <rect x={x + 24} y="52" width="28" height="14" fill="#0284c7" stroke="#38bdf8" strokeWidth="0.8" rx="1" />
+                    <circle cx={x + 31} cy="73" r="1.8" fill="#22c55e" />
+                    <circle cx={x + 38} cy="73" r="1.8" fill="#facc15" />
+                    <circle cx={x + 45} cy="73" r="1.8" fill="#ef4444" />
+                    <rect x={x + 7} y="86" width="28" height="28" fill="#0f172a" rx="0.5" opacity="0.8" />
+                    <rect x={x + 41} y="86" width="28" height="28" fill="#0f172a" rx="0.5" opacity="0.8" />
+                    <rect x={x + 7} y="122" width="62" height="30" fill="#0f172a" rx="0.5" opacity="0.8" />
+                    <text x={x + 38} y="81" textAnchor="middle" fill="#93c5fd" fontSize="6.5" fontWeight="bold">MERCURY #{i + 1}</text>
+                </g>
+            );
+        })}
+
+        {/* Clôture thermolaquée verte RAL 6005 (H 2.00m) */}
+        <rect x="45" y="66" width="450" height="102" fill="url(#f-mesh-s)" stroke="#1b4332" strokeWidth="1" />
+        <line x1="45" y1="66" x2="45" y2="168" stroke="#1b4332" strokeWidth="2.5" />
+        <line x1="157" y1="66" x2="157" y2="168" stroke="#1b4332" strokeWidth="1.5" />
+        <line x1="270" y1="66" x2="270" y2="168" stroke="#1b4332" strokeWidth="1.5" />
+        <line x1="382" y1="66" x2="382" y2="168" stroke="#1b4332" strokeWidth="1.5" />
+        <line x1="495" y1="66" x2="495" y2="168" stroke="#1b4332" strokeWidth="2.5" />
+        <text x="270" y="60" textAnchor="middle" fill="#1b4332" fontSize="7" fontWeight="bold">Clôture grillagée rigide thermolaquée verte RAL 6005 (H = 2,00 m)</text>
+
+        {/* Cotes de Hauteur (2.38m) */}
+        <line x1="28" y1="39" x2="28" y2="168" stroke="#ef4444" strokeWidth="1" />
+        <line x1="24" y1="39" x2="32" y2="39" stroke="#ef4444" strokeWidth="1" />
+        <line x1="24" y1="168" x2="32" y2="168" stroke="#ef4444" strokeWidth="1" />
+        <text x="24" y="104" textAnchor="end" fill="#ef4444" fontSize="7.5" fontWeight="bold">H : 2,38 m</text>
+
+        {/* Cotes de Longueur Dalle (6.20m) */}
+        <line x1="65" y1="190" x2="475" y2="190" stroke="#2563eb" strokeWidth="1" />
+        <line x1="65" y1="186" x2="65" y2="194" stroke="#2563eb" strokeWidth="1" />
+        <line x1="475" y1="186" x2="475" y2="194" stroke="#2563eb" strokeWidth="1" />
+        <text x="270" y="200" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">Longueur dalle : 6,20 m</text>
+    </svg>
+);
+
+export const BessElevationNord = () => (
+    <svg viewBox="0 0 540 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
+        <defs>
+            <linearGradient id="bess-grad-n" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#334155" />
+                <stop offset="100%" stopColor="#1e293b" />
+            </linearGradient>
+            <pattern id="f-mesh-n" width="6" height="6" patternUnits="userSpaceOnUse">
+                <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#2d6a4f" strokeWidth="0.5" opacity="0.6" />
+            </pattern>
+        </defs>
+        {/* Ligne TN */}
+        <line x1="15" y1="168" x2="525" y2="168" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
+        <text x="25" y="180" fill="#64748b" fontSize="7.5" fontStyle="italic">Terrain Naturel TN ±0.00</text>
+
+        {/* Dalle béton armé 6.20m */}
+        <rect x="65" y="157" width="410" height="11" fill="#cbd5e1" stroke="#475569" strokeWidth="1" rx="0.5" />
+        <text x="270" y="165" textAnchor="middle" fill="#334155" fontSize="6.5" fontWeight="bold">Dalle béton armé étanche 6,20 m (+0,15 m / TN)</text>
+
+        {/* 4 Armoires CESC Mercury 261 (Face Arrière) */}
+        {[0, 1, 2, 3].map(i => {
+            const x = 90 + i * 86;
+            return (
+                <g key={i}>
+                    <rect x={x} y="44" width="76" height="113" fill="url(#bess-grad-n)" stroke="#0f172a" strokeWidth="1.2" rx="1.5" />
+                    <rect x={x - 1} y="39" width="78" height="5" fill="#0f172a" rx="0.8" />
+                    <rect x={x + 6} y="49" width="64" height="48" fill="#0f172a" rx="0.5" opacity="0.85" />
+                    <text x={x + 38} y="75" textAnchor="middle" fill="#94a3b8" fontSize="6">Échangeur Thermique</text>
+                    <rect x={x + 8} y="106" width="60" height="46" fill="#0f172a" rx="0.5" opacity="0.85" />
+                    <text x={x + 38} y="132" textAnchor="middle" fill="#64748b" fontSize="6">Accès Maintenance</text>
+                </g>
+            );
+        })}
+
+        {/* Clôture thermolaquée verte RAL 6005 (H 2.00m) */}
+        <rect x="45" y="66" width="450" height="102" fill="url(#f-mesh-n)" stroke="#1b4332" strokeWidth="1" />
+        <line x1="45" y1="66" x2="45" y2="168" stroke="#1b4332" strokeWidth="2.5" />
+        <line x1="157" y1="66" x2="157" y2="168" stroke="#1b4332" strokeWidth="1.5" />
+        <line x1="270" y1="66" x2="270" y2="168" stroke="#1b4332" strokeWidth="1.5" />
+        <line x1="382" y1="66" x2="382" y2="168" stroke="#1b4332" strokeWidth="1.5" />
+        <line x1="495" y1="66" x2="495" y2="168" stroke="#1b4332" strokeWidth="2.5" />
+        <text x="270" y="60" textAnchor="middle" fill="#1b4332" fontSize="7" fontWeight="bold">Façade Arrière (Nord) — Clôture RAL 6005</text>
+
+        {/* Cotes de Longueur Dalle (6.20m) */}
+        <line x1="65" y1="190" x2="475" y2="190" stroke="#2563eb" strokeWidth="1" />
+        <line x1="65" y1="186" x2="65" y2="194" stroke="#2563eb" strokeWidth="1" />
+        <line x1="475" y1="186" x2="475" y2="194" stroke="#2563eb" strokeWidth="1" />
+        <text x="270" y="200" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">Longueur dalle : 6,20 m</text>
+    </svg>
+);
+
+export const BessElevationEst = () => (
+    <svg viewBox="0 0 340 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
+        <defs>
+            <linearGradient id="bess-grad-e" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#334155" />
+                <stop offset="100%" stopColor="#1e293b" />
+            </linearGradient>
+            <pattern id="f-mesh-e" width="6" height="6" patternUnits="userSpaceOnUse">
+                <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#2d6a4f" strokeWidth="0.5" opacity="0.6" />
+            </pattern>
+        </defs>
+        {/* Ligne TN */}
+        <line x1="10" y1="168" x2="330" y2="168" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
+        <text x="15" y="180" fill="#64748b" fontSize="7" fontStyle="italic">TN ±0.00</text>
+
+        {/* Dalle largeur 3.20m */}
+        <rect x="45" y="157" width="250" height="11" fill="#cbd5e1" stroke="#475569" strokeWidth="1" rx="0.5" />
+        <text x="170" y="165" textAnchor="middle" fill="#334155" fontSize="6.5" fontWeight="bold">Largeur dalle : 3,20 m</text>
+
+        {/* Profil de l'armoire Mercury 261 (Profondeur 1.00m) */}
+        <rect x="125" y="44" width="90" height="113" fill="url(#bess-grad-e)" stroke="#0f172a" strokeWidth="1.2" rx="1.5" />
+        <rect x={123} y="39" width="94" height="5" fill="#0f172a" rx="0.8" />
+        <rect x="135" y="55" width="70" height="35" fill="#0f172a" rx="0.5" opacity="0.85" />
+        <text x="170" y="75" textAnchor="middle" fill="#93c5fd" fontSize="6.5" fontWeight="bold">P = 1,00 m</text>
+
+        {/* Clôture grillagée RAL 6005 */}
+        <rect x="30" y="66" width="280" height="102" fill="url(#f-mesh-e)" stroke="#1b4332" strokeWidth="1" />
+        <line x1="30" y1="66" x2="30" y2="168" stroke="#1b4332" strokeWidth="2.5" />
+        <line x1="310" y1="66" x2="310" y2="168" stroke="#1b4332" strokeWidth="2.5" />
+        <text x="170" y="60" textAnchor="middle" fill="#1b4332" fontSize="7" fontWeight="bold">Pignon Est (Gauche) — Clôture RAL 6005</text>
+
+        {/* Cotes Largeur Dalle */}
+        <line x1="45" y1="190" x2="295" y2="190" stroke="#2563eb" strokeWidth="1" />
+        <line x1="45" y1="186" x2="45" y2="194" stroke="#2563eb" strokeWidth="1" />
+        <line x1="295" y1="186" x2="295" y2="194" stroke="#2563eb" strokeWidth="1" />
+        <text x="170" y="200" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">Largeur dalle : 3,20 m</text>
+    </svg>
+);
+
+export const BessElevationOuest = () => (
+    <svg viewBox="0 0 340 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
+        <defs>
+            <linearGradient id="bess-grad-w" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#334155" />
+                <stop offset="100%" stopColor="#1e293b" />
+            </linearGradient>
+            <pattern id="f-mesh-w" width="6" height="6" patternUnits="userSpaceOnUse">
+                <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#2d6a4f" strokeWidth="0.5" opacity="0.6" />
+            </pattern>
+        </defs>
+        {/* Ligne TN */}
+        <line x1="10" y1="168" x2="330" y2="168" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
+        <text x="15" y="180" fill="#64748b" fontSize="7" fontStyle="italic">TN ±0.00</text>
+
+        {/* Dalle largeur 3.20m */}
+        <rect x="45" y="157" width="250" height="11" fill="#cbd5e1" stroke="#475569" strokeWidth="1" rx="0.5" />
+        <text x="170" y="165" textAnchor="middle" fill="#334155" fontSize="6.5" fontWeight="bold">Largeur dalle : 3,20 m</text>
+
+        {/* Profil de l'armoire + Poste HTA */}
+        <rect x="85" y="44" width="85" height="113" fill="url(#bess-grad-w)" stroke="#0f172a" strokeWidth="1.2" rx="1.5" />
+        <rect x="180" y="70" width="35" height="87" fill="#e2e8f0" stroke="#475569" strokeWidth="1" rx="1" />
+        <text x="197" y="115" textAnchor="middle" fill="#0f172a" fontSize="6.5" fontWeight="bold">HTA</text>
+
+        {/* Portillon sécurisé RAL 6005 */}
+        <rect x="230" y="66" width="65" height="102" fill="url(#f-mesh-w)" stroke="#1b4332" strokeWidth="1.5" />
+        <circle cx="285" cy="118" r="2.5" fill="#facc15" stroke="#854d0e" strokeWidth="0.8" />
+        <text x="262" y="150" textAnchor="middle" fill="#1b4332" fontSize="5.5" fontWeight="bold">Portillon</text>
+
+        {/* Clôture grillagée RAL 6005 */}
+        <line x1="30" y1="66" x2="30" y2="168" stroke="#1b4332" strokeWidth="2.5" />
+        <line x1="310" y1="66" x2="310" y2="168" stroke="#1b4332" strokeWidth="2.5" />
+        <text x="170" y="60" textAnchor="middle" fill="#1b4332" fontSize="7" fontWeight="bold">Pignon Ouest (Droit — Accès &amp; HTA)</text>
+
+        {/* Cotes Largeur Dalle */}
+        <line x1="45" y1="190" x2="295" y2="190" stroke="#2563eb" strokeWidth="1" />
+        <line x1="45" y1="186" x2="45" y2="194" stroke="#2563eb" strokeWidth="1" />
+        <line x1="295" y1="186" x2="295" y2="194" stroke="#2563eb" strokeWidth="1" />
+        <text x="170" y="200" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">Largeur dalle : 3,20 m</text>
+    </svg>
+);
+
+export const BessElevationToiture = () => (
+    <svg viewBox="0 0 400 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
+        <defs>
+            <pattern id="f-mesh-top" width="5" height="5" patternUnits="userSpaceOnUse">
+                <path d="M 0 5 L 5 0 M 0 0 L 5 5" fill="none" stroke="#2d6a4f" strokeWidth="0.5" opacity="0.4" />
+            </pattern>
+        </defs>
+        {/* Périmètre Dalle béton 6.20m x 3.20m */}
+        <rect x="40" y="45" width="320" height="120" fill="#f1f5f9" stroke="#3b82f6" strokeWidth="1.5" rx="2" />
+        <rect x="35" y="40" width="330" height="130" fill="url(#f-mesh-top)" stroke="#1b4332" strokeWidth="1.5" strokeDasharray="5 3" />
+        <text x="200" y="32" textAnchor="middle" fill="#1b4332" fontSize="7" fontWeight="bold">Plan d'emprise au sol dalle &amp; clôture (19,84 m²)</text>
+
+        {/* 4 Armoires CESC Mercury 261 vues de dessus */}
+        {[0, 1, 2, 3].map(i => {
+            const x = 55 + i * 65;
+            return (
+                <g key={i}>
+                    <rect x={x} y="62" width="55" height="52" fill="#1e293b" stroke="#60a5fa" strokeWidth="1" rx="1" />
+                    <text x={x + 27.5} y="90" textAnchor="middle" fill="#ffffff" fontSize="6.5" fontWeight="bold">BESS #{i + 1}</text>
+                    <text x={x + 27.5} y="102" textAnchor="middle" fill="#93c5fd" fontSize="5">Mercury 261</text>
+                </g>
+            );
+        })}
+
+        {/* Compartiment Poste HTA */}
+        <rect x="318" y="62" width="30" height="52" fill="#e2e8f0" stroke="#475569" strokeWidth="1" rx="1" />
+        <text x="333" y="90" textAnchor="middle" fill="#0f172a" fontSize="6.5" fontWeight="bold">HTA</text>
+
+        {/* Flèche Nord */}
+        <g transform="translate(372, 70)">
+            <circle cx="0" cy="0" r="12" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1" />
+            <polygon points="0,-10 4,-1 0,-3" fill="#dc2626" />
+            <polygon points="0,-10 -4,-1 0,-3" fill="#991b1b" />
+            <polygon points="0,10 4,1 0,3" fill="#475569" />
+            <polygon points="0,10 -4,1 0,3" fill="#1e293b" />
+            <text x="0" y="-12" textAnchor="middle" fill="#dc2626" fontSize="6.5" fontWeight="bold">N</text>
+        </g>
+
+        {/* Cotes Longueur et Largeur */}
+        <line x1="40" y1="180" x2="360" y2="180" stroke="#2563eb" strokeWidth="1" />
+        <line x1="40" y1="176" x2="40" y2="184" stroke="#2563eb" strokeWidth="1" />
+        <line x1="360" y1="176" x2="360" y2="184" stroke="#2563eb" strokeWidth="1" />
+        <text x="200" y="191" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">Longueur dalle : 6,20 m</text>
+
+        <line x1="22" y1="45" x2="22" y2="165" stroke="#2563eb" strokeWidth="1" />
+        <line x1="18" y1="45" x2="26" y2="45" stroke="#2563eb" strokeWidth="1" />
+        <line x1="18" y1="165" x2="26" y2="165" stroke="#2563eb" strokeWidth="1" />
+        <text x="18" y="108" textAnchor="end" fill="#2563eb" fontSize="7" fontWeight="bold">3,20 m</text>
+    </svg>
+);
+
+/**
+ * PLANCHE DP4 : FAÇADES ET TOITURES (5 Vues 3D / Architecturales HD)
  */
 export const PlateFacades = ({ project, captures }) => {
     const safeCaptures = captures || project?.urbanisme_captures || project?.captures || {};
@@ -1206,9 +1472,21 @@ export const PlateFacades = ({ project, captures }) => {
     const ouest = safeCaptures.facade_ouest || safeCaptures.ouest || safePhotos.facade_ouest || safePhotos.ouest || project?.facade_ouest;
     const toiture = safeCaptures.vue_couverture || safeCaptures.toiture || safeCaptures.dessus || safeCaptures.section || safePhotos.vue_couverture || safePhotos.dessus || project?.vue_couverture;
 
-    const renderSlot = (src, alt, label) => {
+    const isBattery = Boolean(
+        project?.isBattery ||
+        project?.isBatteryStandAlone ||
+        project?.solutionType === 'battery' ||
+        project?.urbanisme_solutionType === 'battery' ||
+        project?.installationType === 'Station Batteries Stand-Alone' ||
+        (project?.type || '').toLowerCase().includes('batterie')
+    );
+
+    const renderSlot = (src, alt, label, fallbackBessComponent = null) => {
         if (src) {
             return <SafePlateImage src={src} alt={alt} style={{ maxHeight: '92%' }} />;
+        }
+        if (isBattery && fallbackBessComponent) {
+            return fallbackBessComponent;
         }
         return (
             <div style={{ color: '#94a3b8', fontSize: '7pt', fontStyle: 'italic', textAlign: 'center', padding: '2mm' }}>
@@ -1223,15 +1501,15 @@ export const PlateFacades = ({ project, captures }) => {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '148mm', marginBottom: '4mm' }}>
                 <div style={{ flex: 1.15, display: 'flex', gap: '3.5mm', minHeight: '66mm' }}>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>1. FAÇADE SUD</div>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>1. FAÇADE SUD (FACE AVANT)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            {renderSlot(sud, "Façade Sud", "Façade Sud non capturée")}
+                            {renderSlot(sud, "Façade Sud", "Façade Sud non capturée", <BessElevationSud />)}
                         </div>
                     </div>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>2. FAÇADE NORD</div>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>2. FAÇADE NORD (FACE ARRIÈRE)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            {renderSlot(nord, "Façade Nord", "Façade Nord non capturée")}
+                            {renderSlot(nord, "Façade Nord", "Façade Nord non capturée", <BessElevationNord />)}
                         </div>
                     </div>
                 </div>
@@ -1244,24 +1522,24 @@ export const PlateFacades = ({ project, captures }) => {
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON GAUCHE)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
-                            {renderSlot(est, "Façade Est", "Façade Est non capturée")}
+                            {renderSlot(est, "Façade Est", "Façade Est non capturée", <BessElevationEst />)}
                         </div>
                     </div>
                     {/* Ouest */}
                     <div style={{ flex: 1.2, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center', lineHeight: '1.2' }}>
                             <div>4. FAÇADE OUEST</div>
-                            <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON DROIT)</div>
+                            <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON DROIT &amp; ACCÈS)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
-                            {renderSlot(ouest, "Façade Ouest", "Façade Ouest non capturée")}
+                            {renderSlot(ouest, "Façade Ouest", "Façade Ouest non capturée", <BessElevationOuest />)}
                         </div>
                     </div>
-                    {/* Toiture */}
+                    {/* Toiture / Dessus */}
                     <div style={{ flex: 1.35, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>5. VUE COUVERTURE (PAYSAGE)</div>
+                        <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>5. VUE DU DESSUS / PLAN D'EMPRISE</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
-                            {renderSlot(toiture, "Vue Toiture", "Vue Toiture non capturée")}
+                            {renderSlot(toiture, "Vue Toiture", "Vue Toiture non capturée", <BessElevationToiture />)}
                         </div>
                     </div>
                 </div>

@@ -23,7 +23,7 @@ import RaccordementModal from '@/components/developpement/RaccordementModal';
 import AosAoModal from '@/components/developpement/AosAoModal';
 import ConsuelModal from '@/components/developpement/ConsuelModal';
 import BatteryInsertionCompositor from '@/components/developpement/BatteryInsertionCompositor';
-import { initBessDpAutoConfig, buildExpressBessProjectPayload } from '@/services/bessDpAutoInitService';
+import { initBessDpAutoConfig, initBessDpAutoConfigAsync, buildExpressBessProjectPayload } from '@/services/bessDpAutoInitService';
 
 // Existing plate components (reused for PDF generation)
 import {
@@ -693,7 +693,7 @@ export default function Developpement() {
                   onGenerateExpressDp={async (project) => {
                     const p = project || selectedProject;
                     if (!p) return;
-                    const dpConfig = p.dp_config || initBessDpAutoConfig(p);
+                    const dpConfig = p.dp_config || await initBessDpAutoConfigAsync(p);
                     const expressPayload = buildExpressBessProjectPayload(p, dpConfig);
                     await handleUrbanismeGenerate('dp', 'Station Batteries Stand-Alone', expressPayload, {
                       cerfa: true,

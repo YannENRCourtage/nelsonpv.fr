@@ -99,12 +99,20 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
       const centerX = width / 2;
       const centerY = height / 2;
 
-      // URLs des fournisseurs de tuiles
+      // URLs des fournisseurs de tuiles (avec intégration directe IGN Géoplateforme libre)
       const getTileUrl = (x, y, z) => {
+        if (mode === 'satellite') {
+          // IGN Orthophoto haute résolution (fallback Esri si indisponible)
+          return `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX=${z}&TILEROW=${y}&TILECOL=${x}`;
+        }
+        // "IGN - Plan IGN" vecteur officiel haute lisibilité
+        return `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX=${z}&TILEROW=${y}&TILECOL=${x}`;
+      };
+
+      const getFallbackTileUrl = (x, y, z) => {
         if (mode === 'satellite') {
           return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
         }
-        // OpenStreetMap standard (zoomable jusqu'à 19)
         return `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
       };
 
@@ -422,30 +430,83 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
 
         // Marqueur Pin de localisation (uniquement pour PC1/DP1 Situation et Satellite sans bâtiments configurés)
         if (!hasBuildings) {
-          // Halo
-          ctx.beginPath();
-          ctx.arc(mx, my, 14, 0, Math.PI * 2);
-          ctx.fillStyle = mode === 'satellite' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(13, 77, 173, 0.25)';
-          ctx.fill();
+          const isBatterySite = options?.isBattery || Boolean(buildings?.some(b => b.isBattery || b.solutionKey === 'battery'));
+          if (isBatterySite) {
+            // Repère spécifique BESS haute visibilité bicolore (orange/bleu)
+            ctx.save();
+            // 1. Halo extérieur
+            ctx.beginPath();
+            ctx.arc(mx, my, 22, 0, Math.PI * 2);
+            ctx.fillStyle = mode === 'satellite' ? 'rgba(249, 115, 22, 0.4)' : 'rgba(249, 115, 22, 0.25)';
+            ctx.fill();
 
-          // Pin de localisation
-          ctx.beginPath();
-          ctx.arc(mx, my, 7, 0, Math.PI * 2);
-          ctx.fillStyle = mode === 'satellite' ? '#ef4444' : '#0d4dad';
-          ctx.fill();
-          ctx.lineWidth = 2.5;
-          ctx.strokeStyle = '#ffffff';
-          ctx.stroke();
+            // 2. Anneau orange vif
+            ctx.beginPath();
+            ctx.arc(mx, my, 14, 0, Math.PI * 2);
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 3.5;
+            ctx.stroke();
+
+            // 3. Disque intérieur bleu roi avec contour blanc
+            ctx.beginPath();
+            ctx.arc(mx, my, 8, 0, Math.PI * 2);
+            ctx.fillStyle = '#1d4ed8';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 4. Point blanc central
+            ctx.beginPath();
+            ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            // 5. Badge informatif
+            const badgeW = 150;
+            const badgeH = 20;
+            const bx = mx - badgeW / 2;
+            const by = my - 34;
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 1.5;
+            if (ctx.roundRect) ctx.roundRect(bx, by, badgeW, badgeH, 4);
+            else ctx.rect(bx, by, badgeW, badgeH);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 8.5px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('⚡ CENTRALE BESS 500 kW', mx, by + badgeH / 2);
+            ctx.restore();
+          } else {
+            // Halo standard
+            ctx.beginPath();
+            ctx.arc(mx, my, 14, 0, Math.PI * 2);
+            ctx.fillStyle = mode === 'satellite' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(13, 77, 173, 0.25)';
+            ctx.fill();
+
+            // Pin de localisation
+            ctx.beginPath();
+            ctx.arc(mx, my, 7, 0, Math.PI * 2);
+            ctx.fillStyle = mode === 'satellite' ? '#ef4444' : '#0d4dad';
+            ctx.fill();
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+          }
         }
 
         // Légende filigrane
         ctx.font = 'bold 11px sans-serif';
         ctx.fillStyle = mode === 'satellite' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
         const legendText = hasBuildings
-          ? `PC2 / DP2 — Plan de masse (OpenStreetMap Zoom ${currentZoom})`
+          ? `PC2 / DP2 — Plan de masse (IGN - Plan IGN Zoom ${currentZoom})`
           : (mode === 'satellite'
-            ? 'PC1 / DP1 — Vue Aérienne (Géoportail / Satellite)'
-            : 'PC1 / DP1 — Plan de Situation (IGN / OSM)');
+            ? 'PC1 / DP1 — Vue Aérienne (IGN / Géoportail Orthophoto)'
+            : 'PC1 / DP1 — Plan de Situation (IGN - Plan IGN)');
         ctx.fillText(legendText, 12, height - 12);
 
         try {
@@ -460,6 +521,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
       imagesToLoad.forEach((item) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
+        let triedFallback = false;
         img.onload = () => {
           const posX = centerX + item.dx * tileSize - offsetX;
           const posY = centerY + item.dy * tileSize - offsetY;
@@ -470,6 +532,12 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
           }
         };
         img.onerror = () => {
+          if (!triedFallback) {
+            triedFallback = true;
+            const fbUrl = getFallbackTileUrl(tileCenter.x + item.dx, tileCenter.y + item.dy, currentZoom);
+            img.src = fbUrl;
+            return;
+          }
           loadedCount++;
           if (loadedCount === totalImages) {
             drawMarkerAndFinish();
@@ -518,6 +586,25 @@ export async function getOrGenerateProjectMaps(project) {
   let lat = Number(project?.lat);
   let lng = Number(project?.lng);
 
+  const isBattery = Boolean(
+    project?.isBattery ||
+    project?.isBatteryStandAlone ||
+    project?.solutionType === 'battery' ||
+    project?.urbanisme_solutionType === 'battery' ||
+    project?.installationType === 'Station Batteries Stand-Alone' ||
+    (project?.type || '').toLowerCase().includes('batterie')
+  );
+
+  // Priorité absolue aux coordonnées exactes de la station BESS
+  if (isBattery) {
+    const bessLat = Number(project?.bessLatitude || project?.bess_lat || project?.implantation?.lat || project?.dp_config?.implantation?.lat);
+    const bessLng = Number(project?.bessLongitude || project?.bess_lng || project?.implantation?.lng || project?.dp_config?.implantation?.lng);
+    if (bessLat && bessLng && !isNaN(bessLat) && !isNaN(bessLng)) {
+      lat = bessLat;
+      lng = bessLng;
+    }
+  }
+
   if ((!lat || !lng || (Math.abs(lat - 43.5612) < 0.001 && Math.abs(lng - 0.9168) < 0.001)) && project?.gps) {
     const parts = String(project.gps).split(',').map(v => Number(v.trim()));
     if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]) && parts[0] !== 0) {
@@ -526,7 +613,7 @@ export async function getOrGenerateProjectMaps(project) {
     }
   }
 
-  // Coordonnées par défaut du site projet LABERGUERIE 64120 OREGUE (3810 Route des Barthes)
+  // Coordonnées par défaut si non renseignées
   if (!lat || !lng || isNaN(lat) || isNaN(lng) || (Math.abs(lat - 43.5612) < 0.001 && Math.abs(lng - 0.9168) < 0.001)) {
     lat = 43.43571;
     lng = -1.17644;
@@ -535,21 +622,44 @@ export async function getOrGenerateProjectMaps(project) {
   const existingCaptures = project?.urbanisme_captures || {};
   const result = { ...existingCaptures };
 
-  // 1. PC1 IGN
+  // 1. DP1 / PC1 IGN Plan (Zoom 15 pour 1/25000)
   if (!result.ign) {
-    const ignData = await generateStaticMapImage(lat, lng, 'map', 16);
+    const ignData = await generateStaticMapImage(lat, lng, 'map', isBattery ? 15 : 16, null, true, [], null, { isBattery });
     if (ignData) result.ign = ignData;
   }
 
-  // 2. PC1 Vue Aérienne Satellite
+  // 2. DP1 / PC1 Vue Aérienne Satellite (Zoom 17 pour 1/5000)
   if (!result.satellite) {
-    const satData = await generateStaticMapImage(lat, lng, 'satellite', 17);
+    const satData = await generateStaticMapImage(lat, lng, 'satellite', 17, null, true, [], null, { isBattery });
     if (satData) result.satellite = satData;
   }
 
-  // 3. PC2 Plan de masse OSM Zoom 19
+  // 3. DP2 / PC2 Plan de masse Plan IGN Zoom 19
   if (!result.masse_projet) {
-    const masseData = await generateStaticMapImage(lat, lng, 'map', 19, project?.buildings);
+    const buildingsToUse = (project?.buildings && project.buildings.length > 0)
+      ? project.buildings
+      : (isBattery ? [{
+          name: 'Station Batteries Stand-Alone',
+          solutionKey: 'battery',
+          isBattery: true,
+          length: 6.20,
+          width: 3.20,
+          rotation: Number(project?.dp_config?.implantation?.angle_rotation || project?.implantation?.angle_rotation || 0),
+          lat: lat,
+          lng: lng
+        }] : null);
+
+    const masseData = await generateStaticMapImage(
+      lat,
+      lng,
+      'map',
+      19,
+      buildingsToUse,
+      true,
+      project?.masseDistances || [],
+      project?.sdisPoint,
+      { isBattery }
+    );
     if (masseData) result.masse_projet = masseData;
   }
 

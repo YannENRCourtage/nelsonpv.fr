@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   X, Check, Sparkles, FileText, MapPin, Building, ShieldCheck,
   Image, Layers, ArrowLeft, ArrowRight, Download, RefreshCw, Upload,
-  Zap, Clock, CheckCircle2, ChevronRight
+  Zap, Clock, CheckCircle2, ChevronRight, Trash2, Camera, Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { toast } from '@/components/ui/use-toast.js';
-import { initBessDpAutoConfig, buildExpressBessProjectPayload } from '@/services/bessDpAutoInitService.js';
+import BatteryInsertionCompositor from '@/components/developpement/BatteryInsertionCompositor.jsx';
+import { initBessDpAutoConfig, initBessDpAutoConfigAsync, buildExpressBessProjectPayload } from '@/services/bessDpAutoInitService.js';
 
 export default function DpWizardModal({
   isOpen,
@@ -18,13 +19,26 @@ export default function DpWizardModal({
   const [currentStep, setCurrentStep] = useState(1);
   const [dpConfig, setDpConfig] = useState(null);
   const [isCompiling, setIsCompiling] = useState(false);
+  const [isCompositorOpen, setIsCompositorOpen] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     if (isOpen && project) {
-      const initial = initBessDpAutoConfig(project);
-      setDpConfig(initial);
-      setCurrentStep(1);
+      if (project.dp_config) {
+        setDpConfig(project.dp_config);
+        setCurrentStep(1);
+      } else {
+        const initial = initBessDpAutoConfig(project);
+        setDpConfig(initial);
+        setCurrentStep(1);
+        initBessDpAutoConfigAsync(project).then(resolved => {
+          if (isMounted && resolved) {
+            setDpConfig(resolved);
+          }
+        }).catch(err => console.warn('Spatial cadastre resolution fallback:', err));
+      }
     }
+    return () => { isMounted = false; };
   }, [isOpen, project]);
 
   if (!isOpen || !dpConfig) return null;
@@ -62,6 +76,29 @@ export default function DpWizardModal({
       ...prev,
       notice_custom: { ...prev.notice_custom, [field]: val }
     }));
+  };
+
+  const updatePhoto = (key, dataUrl) => {
+    setDpConfig(prev => ({
+      ...prev,
+      pieces_jointes: {
+        ...prev.pieces_jointes,
+        photos: {
+          ...(prev.pieces_jointes?.photos || {}),
+          [key]: dataUrl
+        }
+      }
+    }));
+  };
+
+  const handleFileUpload = (e, key) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      updatePhoto(key, event.target?.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveAndCompile = async () => {
@@ -483,30 +520,211 @@ export default function DpWizardModal({
           {currentStep === 4 && (
             <div className="space-y-4 animate-fadeIn">
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 border-b border-slate-200 pb-1.5 flex items-center gap-1.5">
-                  <Image className="w-3.5 h-3.5 text-blue-600" />
-                  Pièces Photographiques et Photomontage Paysager (DP6, DP7, DP8)
-                </h4>
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <Image className="w-3.5 h-3.5 text-blue-600" />
+                    Pièces Photographiques et Photomontage Paysager (DP6, DP7, DP8)
+                  </h4>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    Import direct de photos de terrain (aucun fond satellite résiduel)
+                  </span>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
-                    <span className="text-[10px] font-black text-indigo-700 uppercase block">DP6 : Insertion Paysagère 3D</span>
-                    <div className="h-32 bg-slate-100 rounded-lg border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 font-bold">
-                      Photomontage 3D BESS
+                  {/* DP6 : Insertion 3D */}
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl flex flex-col justify-between space-y-2">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10.5px] font-black text-indigo-700 uppercase">
+                          DP6 : Insertion Paysagère 3D
+                        </span>
+                        {dpConfig.pieces_jointes?.photos?.apres && (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                            3D Validée
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 mb-2 leading-tight">
+                        Photomontage avant/après intégrant la dalle béton, les 4 armoires et la clôture RAL 6005.
+                      </p>
+
+                      <div className="relative h-36 bg-slate-100 rounded-lg border border-dashed border-slate-300 overflow-hidden flex items-center justify-center group">
+                        {dpConfig.pieces_jointes?.photos?.apres ? (
+                          <img
+                            src={dpConfig.pieces_jointes.photos.apres}
+                            alt="DP6 Insertion 3D"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : dpConfig.pieces_jointes?.photos?.avant ? (
+                          <div className="relative w-full h-full">
+                            <img
+                              src={dpConfig.pieces_jointes.photos.avant}
+                              alt="Photo avant projet"
+                              className="w-full h-full object-cover opacity-70"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                              <span className="text-[10px] text-white font-bold bg-black/60 px-2 py-1 rounded">
+                                Prêt pour composition 3D
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center p-3">
+                            <Camera className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+                            <span className="text-[10px] text-slate-400 font-bold block">
+                              En attente de photo de terrain
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                      <label className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10.5px] font-bold cursor-pointer transition">
+                        <Upload className="w-3 h-3" />
+                        <span>{dpConfig.pieces_jointes?.photos?.avant ? 'Changer photo initiale' : 'Charger photo de départ'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, 'avant')}
+                        />
+                      </label>
+
+                      <Button
+                        type="button"
+                        onClick={() => setIsCompositorOpen(true)}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-[10.5px] font-bold py-1.5 h-auto gap-1 shadow-2xs"
+                      >
+                        <Sparkles className="w-3 h-3 text-yellow-300" />
+                        <span>{dpConfig.pieces_jointes?.photos?.apres ? 'Modifier le photomontage 3D' : 'Lancer le photomontage 3D'}</span>
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
-                    <span className="text-[10px] font-black text-indigo-700 uppercase block">DP7 : Environnement Proche</span>
-                    <div className="h-32 bg-slate-100 rounded-lg border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 font-bold">
-                      Photo Paysage Proche
+                  {/* DP7 : Environnement Proche */}
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl flex flex-col justify-between space-y-2">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10.5px] font-black text-indigo-700 uppercase">
+                          DP7 : Environnement Proche
+                        </span>
+                        {dpConfig.pieces_jointes?.photos?.proche && (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                            Photo importée
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 mb-2 leading-tight">
+                        Photographie de terrain cadrant les abords immédiats de la parcelle.
+                      </p>
+
+                      <div className="relative h-36 bg-slate-100 rounded-lg border border-dashed border-slate-300 overflow-hidden flex items-center justify-center">
+                        {dpConfig.pieces_jointes?.photos?.proche ? (
+                          <img
+                            src={dpConfig.pieces_jointes.photos.proche}
+                            alt="DP7 Proche"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-center p-3">
+                            <Camera className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+                            <span className="text-[10px] text-slate-400 font-bold block">
+                              Aucune photo proche
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex gap-1.5">
+                        <label className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10.5px] font-bold cursor-pointer transition">
+                          <Upload className="w-3 h-3" />
+                          <span>{dpConfig.pieces_jointes?.photos?.proche ? 'Remplacer' : 'Importer photo'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleFileUpload(e, 'proche')}
+                          />
+                        </label>
+                        {dpConfig.pieces_jointes?.photos?.proche && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="px-2 text-rose-600 hover:bg-rose-50 h-auto py-1.5"
+                            onClick={() => updatePhoto('proche', null)}
+                            title="Supprimer la photo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
-                    <span className="text-[10px] font-black text-indigo-700 uppercase block">DP8 : Paysage Lointain</span>
-                    <div className="h-32 bg-slate-100 rounded-lg border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 font-bold">
-                      Photo Vue Lointaine
+                  {/* DP8 : Paysage Lointain */}
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl flex flex-col justify-between space-y-2">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10.5px] font-black text-indigo-700 uppercase">
+                          DP8 : Paysage Lointain
+                        </span>
+                        {dpConfig.pieces_jointes?.photos?.lointain && (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                            Photo importée
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 mb-2 leading-tight">
+                        Photographie générale montrant l'insertion du site dans le grand paysage.
+                      </p>
+
+                      <div className="relative h-36 bg-slate-100 rounded-lg border border-dashed border-slate-300 overflow-hidden flex items-center justify-center">
+                        {dpConfig.pieces_jointes?.photos?.lointain ? (
+                          <img
+                            src={dpConfig.pieces_jointes.photos.lointain}
+                            alt="DP8 Lointain"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-center p-3">
+                            <Camera className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+                            <span className="text-[10px] text-slate-400 font-bold block">
+                              Aucune photo lointaine
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex gap-1.5">
+                        <label className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10.5px] font-bold cursor-pointer transition">
+                          <Upload className="w-3 h-3" />
+                          <span>{dpConfig.pieces_jointes?.photos?.lointain ? 'Remplacer' : 'Importer photo'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleFileUpload(e, 'lointain')}
+                          />
+                        </label>
+                        {dpConfig.pieces_jointes?.photos?.lointain && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="px-2 text-rose-600 hover:bg-rose-50 h-auto py-1.5"
+                            onClick={() => updatePhoto('lointain', null)}
+                            title="Supprimer la photo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -595,6 +813,29 @@ export default function DpWizardModal({
           </div>
         </div>
       </div>
+
+      {/* Modal Incrustation Paysagère 3D BESS */}
+      {isCompositorOpen && (
+        <BatteryInsertionCompositor
+          isOpen={isCompositorOpen}
+          onClose={() => setIsCompositorOpen(false)}
+          initialPhoto={dpConfig.pieces_jointes?.photos?.avant || dpConfig.pieces_jointes?.photos?.proche || null}
+          batteryConfig={{
+            dalleLength: dpConfig.technique?.longueur_m || 6.20,
+            dalleWidth: dpConfig.technique?.largeur_m || 3.20,
+            quantity: dpConfig.technique?.nb_armoires || 4,
+          }}
+          onSaveSimulation={(dataUrl) => {
+            updatePhoto('apres', dataUrl);
+            setIsCompositorOpen(false);
+            toast({
+              title: "Photomontage 3D DP6 généré",
+              description: "L'insertion 3D des batteries a été enregistrée avec succès."
+            });
+          }}
+          docType="DP6"
+        />
+      )}
     </div>
   );
 }
