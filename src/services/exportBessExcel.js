@@ -8,6 +8,24 @@ import { computeBessFinancials } from './bessSimulationEngine.js';
  * Harmonisé strictement avec le moteur financier Nelson (computeBessFinancials)
  */
 
+export function formatResteAffecterDistance(mw, distanceKm) {
+  let mwStr = '0';
+  if (mw !== null && mw !== undefined && mw !== '—') {
+    const num = typeof mw === 'number' ? mw : parseFloat(String(mw).replace(',', '.'));
+    if (!isNaN(num)) {
+      mwStr = Number.isInteger(num) ? String(num) : num.toString().replace('.', ',');
+    }
+  }
+  let distStr = '0';
+  if (distanceKm !== null && distanceKm !== undefined && distanceKm !== '—') {
+    const numD = typeof distanceKm === 'number' ? distanceKm : parseFloat(String(distanceKm).replace(',', '.'));
+    if (!isNaN(numD)) {
+      distStr = Number.isInteger(numD) ? String(numD) : numD.toString();
+    }
+  }
+  return `${mwStr} (${distStr})`;
+}
+
 export function generateBessPortfolioExcelData(sites = BESS_PORTFOLIO_SITES, options = {}) {
   const debtDuration = options.debtDuration || 12;
   const debtRate = options.debtRate || 4.30;
@@ -28,7 +46,7 @@ export function generateBessPortfolioExcelData(sites = BESS_PORTFOLIO_SITES, opt
     };
   });
 
-  // Tableau consolidé des 31 sites (Feuille 1)
+// Tableau consolidé des sites (Feuille 1)
   const portfolioRows = siteResults.map(({ index, siteRaw, fin }) => ({
     'N°': index,
     'Site': fin.siteName,
@@ -41,6 +59,7 @@ export function generateBessPortfolioExcelData(sites = BESS_PORTFOLIO_SITES, opt
     'Distance (km)': fin.distanceKm,
     'Quote-Part S3REnR': fin.quotePartS3REnR,
     'Reste à affecter (MW)': siteRaw.substation?.resteAffecterMw ?? '—',
+    'Reste à affecter (Distance)': formatResteAffecterDistance(siteRaw.substation?.resteAffecterMw, fin.distanceKm),
     'Zone CRE 2025-227': fin.zoneCre,
     'CAPEX Total (€)': Math.round(fin.capexTotal),
     'CA Annuel 1 (€)': Math.round(fin.caAnnuel),
@@ -116,11 +135,12 @@ export function exportBessPortfolioToExcel(sites = BESS_PORTFOLIO_SITES, options
   wsPortfolio['!cols'] = fitCols(portfolioRows);
   wsChrono['!cols'] = fitCols(chronoRows);
 
+  const portfolioTag = options.portfolioName ? `${options.portfolioName}` : '31_Sites';
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, wsPortfolio, 'Portefeuille_BESS_31_Sites');
+  XLSX.utils.book_append_sheet(wb, wsPortfolio, `Portefeuille_BESS_${portfolioTag}`);
   XLSX.utils.book_append_sheet(wb, wsChrono, 'Modele_Financier_15_Ans');
 
-  const fileName = `Portefeuille_BESS_31_Sites_Consolide_${debtDuration}ans_${debtRate}pct_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const fileName = `Portefeuille_BESS_${portfolioTag}_Consolide_${debtDuration}ans_${debtRate}pct_${new Date().toISOString().slice(0, 10)}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
 

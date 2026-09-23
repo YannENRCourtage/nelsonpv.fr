@@ -29,6 +29,9 @@ import {
 } from '../components/bp-acama/BessTurpe7Module.jsx';
 import BessPortfolioView from '../components/bp-acama/BessPortfolioView.jsx';
 import BessDossierPDFGenerator from '../components/bp-acama/BessDossierPDFGenerator.jsx';
+import PvPortfolioView from '../components/bp-acama/PvPortfolioView.jsx';
+import PvDossierPDFGenerator from '../components/bp-acama/PvDossierPDFGenerator.jsx';
+import { PV_PORTFOLIO_SITES } from '../data/pvPortfolioData.js';
 import { calculateProjectPayback, calculateEquityPayback } from '../services/bessSimulationEngine.js';
 import { findBessOdreData, computeBessRaccordementCost, BESS_ODRE_MATRIX } from '../data/bessOdreMatrix.js';
 
@@ -1190,7 +1193,7 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
   );
 }
 
-function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isGreenInvest, onApplyProject }) {
+function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isGreenInvest, onApplyProject, projects = [] }) {
   const [bessMode, setBessMode] = useState('single'); // 'single' | 'portfolio'
   const [viewDetailed, setViewDetailed] = useState(false);
   const [networkQualification, setNetworkQualification] = useState(null);
@@ -1448,6 +1451,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
 
       {bessMode === 'portfolio' ? (
         <BessPortfolioView
+          projects={projects}
           onSelectSite={(site) => {
             if (site && onApplyProject) {
               onApplyProject({
@@ -1766,7 +1770,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
 }
 // ─── Shared Component: Tableau Previsionnel ───────────────────────────────
 
-function TableauPrevisionnel({ params, rows, apport10 }) {
+function TableauPrevisionnel({ params, rows, apport10, detailed = true }) {
   const DataRow = ({ label, propName, isPercent, isCurrency, format, showSum, bold, className }) => {
     const totalSum = showSum ? rows.reduce((acc, r) => acc + (r[propName] || 0), 0) : null;
     return (
@@ -1804,11 +1808,15 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
             </tr>
             <DataRow label="Puissance" propName="kwcDeg" format={v => fmt(v, 2)} />
             <DataRow label="Production avec dégradation" propName="prod" format={v => fmt(v, 0)} />
-            <DataRow label="Production < 1100KWh/KWc" propName="prodBas" format={v => fmt(v, 0)} />
-            <DataRow label="Production > 1100KWh/KWc" propName="prodHaut" format={v => fmt(v, 0)} />
-            <DataRow label="Vente ACC" propName="prodACC" format={v => fmt(v, 0)} />
-            <DataRow label="Jusque 1 100KWh/KWc" propName="tBas" isCurrency />
-            <DataRow label="Au-delà de 1 100KWh/KWc" propName="tHaut" isCurrency />
+            {detailed && (
+              <>
+                <DataRow label="Production < 1100KWh/KWc" propName="prodBas" format={v => fmt(v, 0)} />
+                <DataRow label="Production > 1100KWh/KWc" propName="prodHaut" format={v => fmt(v, 0)} />
+                <DataRow label="Vente ACC" propName="prodACC" format={v => fmt(v, 0)} />
+                <DataRow label="Jusque 1 100KWh/KWc" propName="tBas" isCurrency />
+                <DataRow label="Au-delà de 1 100KWh/KWc" propName="tHaut" isCurrency />
+              </>
+            )}
             {rows[0]?.isGlobal && (
               <>
                 <DataRow label="Arbitrage énergie (Batterie)" propName="arbitrage" isCurrency className="bg-blue-50/20" />
@@ -1823,22 +1831,30 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
                 <td className="px-2 py-1 border border-slate-300" colSpan={2}>CHARGE D'EXPLOITATION</td>
                 {rows.map((_, i)=><td key={i} className="border border-slate-300"></td>)}
             </tr>
-            <DataRow label="Maintenance" propName="maint" isCurrency />
-            <DataRow label="Location du compteur" propName="loc" isCurrency />
-            <DataRow label="Assurance" propName="ass" isCurrency />
+            {detailed && (
+              <>
+                <DataRow label="Maintenance" propName="maint" isCurrency />
+                <DataRow label="Location du compteur" propName="loc" isCurrency />
+                <DataRow label="Assurance" propName="ass" isCurrency />
+              </>
+            )}
             {rows[0]?.isGlobal ? (
               <>
                 <DataRow label="Annuité crédit (Bâtiment)" propName="serviceDetteBuilding" isCurrency />
                 <DataRow label="Annuité crédit (Batterie)" propName="serviceDetteBattery" isCurrency />
-                <DataRow label="Frais agrégateur" propName="fraisAgregateur" isCurrency className="bg-blue-50/20" />
-                <DataRow label="Taxes locales (TURPE+IFER)" propName="taxes" isCurrency />
-                <DataRow label="Rétribution commerciale" propName="admin" isCurrency />
-                <DataRow label="Revenu bailleur" propName="revenuBailleur" isCurrency />
+                {detailed && (
+                  <>
+                    <DataRow label="Frais agrégateur" propName="fraisAgregateur" isCurrency className="bg-blue-50/20" />
+                    <DataRow label="Taxes locales (TURPE+IFER)" propName="taxes" isCurrency />
+                    <DataRow label="Rétribution commerciale" propName="admin" isCurrency />
+                    <DataRow label="Revenu bailleur" propName="revenuBailleur" isCurrency />
+                  </>
+                )}
               </>
             ) : (
               <DataRow label="Annuité du crédit bancaire" propName="serviceDette" isCurrency />
             )}
-            <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />
+            {detailed && <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />}
             <tr className="border border-slate-200 bg-slate-50 font-bold">
               <td className="px-2 py-1">Total des charges</td>
               <td className="px-2 py-1 w-28 whitespace-nowrap text-right border-l border-slate-200 bg-slate-100/50">
@@ -1855,29 +1871,33 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
                 {rows.map((_, i)=><td key={i} className="border border-slate-300"></td>)}
             </tr>
             <DataRow label="EBITDA" propName="ebitda" isCurrency />
-            <DataRow label="Amortissement" propName="amortissement" isCurrency />
-            <DataRow label="EBIT" propName="ebit" isCurrency />
-            <DataRow label="Intérêts dette LT" propName="interets" isCurrency />
-            <DataRow label="Frais DSRF" propName="fraisDSRF" isCurrency />
-            <DataRow label="Résultat financier" propName="resFin" isCurrency />
-            <DataRow label="Résultat fiscal" propName="resFiscal" isCurrency />
-            <DataRow label="Résultat IS" propName="is" isCurrency />
-            <DataRow label="Résultat après IS" propName="resApresIS" isCurrency />
-
-            <tr className="bg-slate-200 border-none"><td colSpan={1+rows.length} className="h-2"></td></tr>
-            <DataRow label="Dette début période" propName="detteDebut" isCurrency />
-            <DataRow label="CAFDS" propName="cafds" isCurrency />
-            <DataRow label="MRA onduleurs" propName="mra" isCurrency />
-            {rows[0]?.isGlobal ? (
+            {detailed && (
               <>
-                <DataRow label="Dette Bâtiment" propName="serviceDetteBuilding" isCurrency className="text-slate-500 italic" />
-                <DataRow label="Dette Batterie" propName="serviceDetteBattery" isCurrency className="text-slate-500 italic" />
-                <DataRow label="TOTAL Service de la Dette" propName="serviceDette" isCurrency bold />
+                <DataRow label="Amortissement" propName="amortissement" isCurrency />
+                <DataRow label="EBIT" propName="ebit" isCurrency />
+                <DataRow label="Intérêts dette LT" propName="interets" isCurrency />
+                <DataRow label="Frais DSRF" propName="fraisDSRF" isCurrency />
+                <DataRow label="Résultat financier" propName="resFin" isCurrency />
+                <DataRow label="Résultat fiscal" propName="resFiscal" isCurrency />
+                <DataRow label="Résultat IS" propName="is" isCurrency />
+                <DataRow label="Résultat après IS" propName="resApresIS" isCurrency />
+
+                <tr className="bg-slate-200 border-none"><td colSpan={1+rows.length} className="h-2"></td></tr>
+                <DataRow label="Dette début période" propName="detteDebut" isCurrency />
+                <DataRow label="CAFDS" propName="cafds" isCurrency />
+                <DataRow label="MRA onduleurs" propName="mra" isCurrency />
+                {rows[0]?.isGlobal ? (
+                  <>
+                    <DataRow label="Dette Bâtiment" propName="serviceDetteBuilding" isCurrency className="text-slate-500 italic" />
+                    <DataRow label="Dette Batterie" propName="serviceDetteBattery" isCurrency className="text-slate-500 italic" />
+                    <DataRow label="TOTAL Service de la Dette" propName="serviceDette" isCurrency bold />
+                  </>
+                ) : (
+                  <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
+                )}
+                <DataRow label="Remb principal" propName="rembPrincipal" isCurrency />
               </>
-            ) : (
-              <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
             )}
-            <DataRow label="Remb principal" propName="rembPrincipal" isCurrency />
             <DataRow label="DSCR" propName="dscr" isPercent />
             <tr className="border border-slate-300 bg-amber-400 font-black">
               <td className="px-2 py-1 uppercase">Trésorerie nette annuelle</td>
@@ -2038,6 +2058,15 @@ function TabBpProjets({
   isHybridEnabled = false,
   setIsHybridEnabled = () => {}
 }) {
+  const [pvMode, setPvMode] = useState('single'); // 'single' | 'portfolio'
+  const [viewDetailedPv, setViewDetailedPv] = useState(false);
+  const [networkQualificationPv, setNetworkQualificationPv] = useState(null);
+  const [isLoadingNetworkPv, setIsLoadingNetworkPv] = useState(false);
+  const [isPvDossierPdfOpen, setIsPvDossierPdfOpen] = useState(false);
+  const [pvPortfolioExportData, setPvPortfolioExportData] = useState(null);
+
+  const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;
+
   const PDFHeader = () => (
     <div className="pdf-header hidden flex flex-row items-start w-full mb-2 pb-1">
       <div className="flex-1">
@@ -2163,6 +2192,44 @@ function TabBpProjets({
       totalInvestissement: totalConst * 1.2
     };
   }, [params, isGreenInvest]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function runPvQualification() {
+      if (!selectedProject?.lat && !selectedProject?.lng && !selectedProject?.city && !selectedProject?.address && !selectedProject?.name) {
+        setNetworkQualificationPv(null);
+        return;
+      }
+      setIsLoadingNetworkPv(true);
+      try {
+        const qual = await qualifyBessProjectSite({
+          projectName: selectedProject?.name || selectedProject?.client_name || selectedProject?.clientName || '',
+          siteName: selectedProject?.name || '',
+          lat: selectedProject?.lat,
+          lng: selectedProject?.lng,
+          address: selectedProject?.address,
+          city: selectedProject?.city || selectedProject?.commune,
+          powerKw: collapsedParams.kwc || 250,
+          capacityKwh: 0,
+          voltageDomainOverride: 'HTA1',
+          distanceOverrideMeters: params.buildings?.[0]?.distHta || 10
+        });
+        if (isMounted) setNetworkQualificationPv(qual);
+      } catch (err) {
+        console.warn('Erreur qualification réseau PV:', err);
+      } finally {
+        if (isMounted) setIsLoadingNetworkPv(false);
+      }
+    }
+    runPvQualification();
+    return () => { isMounted = false; };
+  }, [selectedProject?.id, selectedProject?.name, selectedProject?.client_name, selectedProject?.lat, selectedProject?.lng, selectedProject?.city, selectedProject?.commune, selectedProject?.address, collapsedParams.kwc, params.buildings?.[0]?.distHta]);
+
+  const handleApplyDistancePv = (meters) => {
+    if (params.buildings && params.buildings.length > 0) {
+      updateBuildingParam(params.buildings[0].id, 'distHta', meters);
+    }
+  };
 
   useEffect(() => {
     if (params.buildings?.length > 0) {
@@ -2615,6 +2682,86 @@ function TabBpProjets({
         </label>
       </div>
 
+      {/* Sélecteur de Mode PV : Projet Unitaire vs Portefeuille Multi-Projets (HÉLIOS) */}
+      {bpSubTab === 'pv' && (
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm" data-html2canvas-ignore="true">
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setPvMode('single')}
+              className={cn(
+                "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2",
+                pvMode === 'single'
+                  ? "bg-white text-blue-900 shadow-sm border border-slate-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+              )}
+            >
+              <Sun className="w-4 h-4 text-amber-500" />
+              <span>Simulation Unitaire ({selectedProject?.name || 'Projet CRM'})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPvMode('portfolio')}
+              className={cn(
+                "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2",
+                pvMode === 'portfolio'
+                  ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-sm font-black"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+              )}
+            >
+              <Layers className="w-4 h-4 text-yellow-200" />
+              <span>Portefeuille Multi-Projets ({PV_PORTFOLIO_SITES.length} sites / {(PV_PORTFOLIO_SITES.reduce((a, b) => a + b.kwc, 0)/1000).toFixed(1)} MWc)</span>
+              <span className="ml-1 px-1.5 py-0.5 text-[9px] font-black uppercase rounded-full bg-amber-400 text-slate-900">
+                PORTFOLIO HÉLIOS
+              </span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              disabled={pvMode !== 'single'}
+              onClick={() => {
+                if (pvMode !== 'single') return;
+                generateBpAcamaPDF({ 
+                  elementId: 'bp-acama-content', 
+                  sections: ['pdf-section-1', 'pdf-section-2'],
+                  fileName: `BP_PV_${selectedProject?.name || 'Projet'}.pdf` 
+                });
+              }}
+              className={cn(
+                "px-3.5 py-2 text-xs font-black rounded-lg border transition-all flex items-center gap-2",
+                pvMode === 'single'
+                  ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm hover:shadow cursor-pointer"
+                  : "bg-slate-100 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed"
+              )}
+              title={pvMode === 'single' ? `Exporter le PDF BP du projet ${selectedProject?.name || ''}` : "Actif uniquement en mode Simulation Unitaire"}
+            >
+              <FileDown className={cn("w-4 h-4", pvMode === 'single' ? "text-amber-500" : "text-slate-400")} />
+              <span>PDF BP {selectedProject?.name ? selectedProject.name.toUpperCase() : 'PROJET'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPvPortfolioExportData(prev => ({ ...(prev || {}), autoExportType: 'complete' }));
+                setIsPvDossierPdfOpen(true);
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+              title="Générer l'étude complète et le dossier d'investissement consolidé"
+            >
+              <Sparkles className="w-4 h-4 text-yellow-200" />
+              <span>ÉTUDE COMPLÈTE</span>
+            </button>
+
+            <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-[13px] h-8 px-3">
+              <Save className="w-3.5 h-3.5 mr-1.5" /> Sauvegarder
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Project selector & Actions */}
       <div data-html2canvas-ignore="true" className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center gap-4 max-w-full">
         <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -2630,26 +2777,18 @@ function TabBpProjets({
 
         <div className="flex-1 min-w-[10px]" />
 
-        {selectedProject && (
+        {selectedProject && bpSubTab !== 'pv' && (
           <div className="flex items-center gap-2 shrink-0">
-            {bpSubTab !== 'bess' && (
+            {isHybridEnabled && (
               <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => {
-                if (isHybridEnabled) {
-                  const sections = ['pdf-section-1', 'pdf-section-battery', 'pdf-section-hybrid', 'pdf-section-2'];
-                  generateBpAcamaPDF({ 
-                    elementId: 'bp-acama-content', 
-                    sections,
-                    fileName: `BP_Hybride_${selectedProject?.name || 'Projet'}.pdf` 
-                  });
-                } else {
-                  generateBpAcamaPDF({ 
-                    elementId: 'bp-acama-content', 
-                    sections: ['pdf-section-1', 'pdf-section-2'],
-                    fileName: `BP_PV_${selectedProject?.name || 'Projet'}.pdf` 
-                  });
-                }
+                const sections = ['pdf-section-1', 'pdf-section-battery', 'pdf-section-hybrid', 'pdf-section-2'];
+                generateBpAcamaPDF({ 
+                  elementId: 'bp-acama-content', 
+                  sections,
+                  fileName: `BP_Hybride_${selectedProject?.name || 'Projet'}.pdf` 
+                });
               }}>
-                <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF {isHybridEnabled ? 'HYBRIDE' : 'PV'}
+                <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF HYBRIDE
               </Button>
             )}
             <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-[13px] h-8 px-3">
@@ -2660,20 +2799,87 @@ function TabBpProjets({
       </div>
 
       {/* BP PV Content (Visible on 'pv' tab, or offscreen in hybrid mode for complete PDF export) */}
-      <div className={cn(
-        bpSubTab === 'pv' ? "flex flex-col gap-4" : (isHybridEnabled ? "fixed -left-[9999px] top-0 w-[1600px] pointer-events-none opacity-0" : "hidden")
-      )} data-pdf-offscreen={bpSubTab !== 'pv' && isHybridEnabled ? "true" : undefined}>
-        <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-2.5 sm:p-4 pt-4 sm:pt-6 relative max-w-full overflow-hidden">
-          {isBatteryStandAlone && (
-            <div className="mb-4 bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-center gap-2 text-amber-800" data-html2canvas-ignore="true">
-              <AlertTriangle className="w-4 h-4" />
-              <span className="text-sm font-medium">Ce projet est marqué comme Batterie Stand-Alone. Vous pouvez néanmoins réaliser une étude combinée ici.</span>
+      {bpSubTab === 'pv' && pvMode === 'portfolio' ? (
+        <PvPortfolioView
+          projects={projects}
+          onSelectSite={(site) => {
+            if (site) {
+              applyProject({
+                id: site.id,
+                name: site.name,
+                city: site.city,
+                postcode: site.postcode,
+                address: site.address,
+                lat: site.lat,
+                lng: site.lng,
+                isBatteryStandAlone: 'Non'
+              });
+              setPvMode('single');
+              toast({
+                title: `Site ${site.name} chargé`,
+                description: `Simulation unitaire de ${site.kwc} kWc rattachée au poste source ${site.substation?.name || 'ODRE'}.`
+              });
+            }
+          }}
+          onExportPdf={(data) => {
+            if (data) setPvPortfolioExportData(data);
+            setIsPvDossierPdfOpen(true);
+          }}
+          onDataChange={(data) => {
+            setPvPortfolioExportData(data);
+          }}
+        />
+      ) : (
+        <div className={cn(
+          bpSubTab === 'pv' ? "flex flex-col gap-4" : (isHybridEnabled ? "fixed -left-[9999px] top-0 w-[1600px] pointer-events-none opacity-0" : "hidden")
+        )} data-pdf-offscreen={bpSubTab !== 'pv' && isHybridEnabled ? "true" : undefined}>
+          <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-2.5 sm:p-4 pt-4 sm:pt-6 relative max-w-full overflow-hidden">
+            {isBatteryStandAlone && (
+              <div className="mb-4 bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-center gap-2 text-amber-800" data-html2canvas-ignore="true">
+                <AlertTriangle className="w-4 h-4" />
+                <span className="text-sm font-medium">Ce projet est marqué comme Batterie Stand-Alone. Vous pouvez néanmoins réaliser une étude combinée ici.</span>
+              </div>
+            )}
+            <PDFHeader selectedProject={selectedProject} />
+
+            {/* Bandeau dépliant QUALIFICATION RÉSEAU & POSTE SOURCE (ODRE) */}
+            <NetworkQualificationBanner
+              qualification={networkQualificationPv}
+              isLoading={isLoadingNetworkPv}
+              selectedProject={selectedProject}
+              onApplyDistance={handleApplyDistancePv}
+            />
+
+            {/* Dimensionnement PV */}
+            <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+              <GroupTitle title="DIMENSIONNEMENT PHOTOVOLTAÏQUE" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] text-slate-500 uppercase font-semibold">Puissance Totale</label>
+                  <div className="text-xl font-black text-slate-900">{fmt(collapsedParams.kwc, 2)} kWc</div>
+                  <span className="text-[10px] text-slate-400 font-medium">{(params.buildings || []).length} bâtiment(s)</span>
+                </div>
+                <div className="space-y-0.5">
+                  <label className="text-[11px] text-slate-500 uppercase font-semibold">Productible Moyen</label>
+                  <div className="text-xl font-black text-amber-600">{fmt(collapsedParams.productible, 0)} kWh/kWc</div>
+                  <span className="text-[10px] text-slate-400 font-medium">Production spécifique an 1</span>
+                </div>
+                <div className="space-y-0.5">
+                  <label className="text-[11px] text-slate-500 uppercase font-semibold">Production Annuelle</label>
+                  <div className="text-xl font-black text-blue-900">{fmt(collapsedParams.kwc * collapsedParams.productible, 0)} kWh</div>
+                  <span className="text-[10px] text-slate-400 font-medium">Volume injecté initial</span>
+                </div>
+                <div className="space-y-0.5">
+                  <label className="text-[11px] text-slate-500 uppercase font-semibold">Module Standard</label>
+                  <div className="text-xl font-black text-slate-800">{params.puissanceUnitaire || 460} Wc</div>
+                  <span className="text-[10px] text-slate-400 font-medium">{Math.ceil((collapsedParams.kwc * 1000) / (params.puissanceUnitaire || 460))} panneaux au total</span>
+                </div>
+              </div>
             </div>
-          )}
-          <PDFHeader selectedProject={selectedProject} />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2 items-stretch max-w-full">
-          {/* Column 1: Projects and Investment (Widened) */}
-          <div className="lg:col-span-12 xl:col-span-5 space-y-8 flex flex-col h-full max-w-full">
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2 items-stretch max-w-full">
+            {/* Column 1: Projects and Investment (Widened) */}
+            <div className="lg:col-span-12 xl:col-span-5 space-y-8 flex flex-col h-full max-w-full">
             <SectionCard 
               title="DONNÉES DU PROJET" 
               id="pdf-section-data"
@@ -3153,39 +3359,66 @@ function TabBpProjets({
             </SectionCard>
           </div>
 
-          {/* Column 3: Results and Banking (Reduced) */}
-          <div className="lg:col-span-6 xl:col-span-4 space-y-6 flex flex-col h-full">
-            <div className="bg-white rounded-lg border border-slate-200 p-4 flex flex-col items-center justify-center text-center space-y-1 shadow-sm border-t-4 border-t-green-500 grow">
-              <div className="p-1.5 bg-green-50 rounded-full mb-0.5"><CheckCircle className="w-5 h-5 text-green-500" /></div>
-              <div className="text-3xl font-black text-green-600">{fmtPct(bpResults.dscrMoyen)}</div>
-              <div className="text-[12px] font-bold text-slate-500 uppercase tracking-widest">DSCR MOYEN 20 ANS</div>
-              <div className="text-[11px] text-slate-400">Seuil bancaire : {fmt(params.targetDSCR * 100, 0)}%</div>
-            </div>
+          {/* Column 3: Indicateurs Clés (Carte visuelle sombre BESS) */}
+          <div className="lg:col-span-6 xl:col-span-4 space-y-4 flex flex-col h-full">
+            <div className="bg-slate-900 rounded-lg p-4 text-white flex flex-col justify-between shadow-inner h-full">
+              <div className="space-y-3">
+                <h4 className="text-[12px] font-black text-amber-400 uppercase tracking-widest border-b border-white/10 pb-2">
+                  Indicateurs de Rentabilité PV
+                </h4>
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] opacity-60 uppercase font-semibold">CAPEX TOTAL</span>
+                  <span className="font-bold text-lg">{fmtEur(totalConstruction)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] opacity-60 uppercase font-bold">REVENUS AN 1</span>
+                  <span className="font-bold text-lg">{fmtEur(bpResults.rows[0]?.ca)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] opacity-60 uppercase font-black text-amber-300">EBE / EBITDA AN 1</span>
+                  <span className="font-bold text-lg text-amber-300">{fmtEur(bpResults.rows[0]?.ebitda)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] opacity-60 uppercase font-black">GAIN NET 20 ANS</span>
+                  <span className="font-bold text-lg text-green-400">{fmtEur(bpResults.gains)}</span>
+                </div>
 
-            <div className="bg-blue-600 rounded-lg p-5 text-white shadow-xl shadow-blue-100 space-y-3 grow">
-              <div className="space-y-1">
-                <div className="text-[11px] font-bold uppercase tracking-widest opacity-60">RESTE À CHARGE</div>
-                <div className="text-2xl font-black">{fmtEur(resteACharge)}</div>
-              </div>
-              <Button onClick={applyToProject} className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-sm py-4 h-10">
-                <RefreshCw className="w-3.5 h-3.5 mr-2" /> Appliquer
-              </Button>
-            </div>
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
+                  <div className="text-center">
+                    <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">TRI Projet</div>
+                    <div className="text-lg font-black text-amber-400">{fmtPct(bpResults.triFP)}</div>
+                  </div>
+                  <div className="text-center border-x border-white/10 px-1">
+                    <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Temps Retour</div>
+                    <div className="text-lg font-black text-blue-400">{fmt(bpResults.payback || bpResults.tempsRetour || 0, 1)} ans</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Moyen</div>
+                    <div className="text-lg font-black text-green-400">{fmt(bpResults.dscrMoyen, 2)}</div>
+                  </div>
+                </div>
 
-            <SectionCard title="INDICATEURS" id="pdf-section-indic" className="grow py-1 border-t-4 border-t-rose-500">
-               <div className="space-y-1">
-                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Apport avec soulte :</span><span className="font-bold text-blue-800 text-[13px]">{fmtEur(apport10 + (calcSoulte > 0 ? calcSoulte : 0))}</span></div>
-                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Emprunt net :</span><span className="font-bold text-blue-800 text-[13px]">{fmtEur(emprunt)}</span></div>
-                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">CA an 1 :</span><span className="font-bold text-blue-600 text-[13px]">{fmtEur(bpResults.rows[0]?.ca)}</span></div>
-                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Charges an 1 :</span><span className="font-bold text-red-600 text-[13px]">{fmtEur((bpResults.rows[0]?.opex || 0) + (bpResults.rows[0]?.serviceDette || 0))}</span></div>
-               </div>
-            </SectionCard>
+                <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-white/10">
+                  <div className="text-center">
+                    <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total CAPEX</div>
+                    <div className="text-[13px] font-black text-red-400">{fmtEur(totalConstruction)}</div>
+                  </div>
+                  <div className="text-center border-x border-white/10 px-1">
+                    <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total OPEX</div>
+                    <div className="text-[13px] font-black text-orange-400">{fmtEur(bpResults.sumOpex)}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total Recettes</div>
+                    <div className="text-[13px] font-black text-green-400">{fmtEur(bpResults.sumCA)}</div>
+                  </div>
+                </div>
 
-            <SectionCard title="RENTABILITÉ" id="pdf-section-renta" className="bg-white border-slate-200 grow py-1 border-t-4 border-t-emerald-500">
-               <div className="space-y-2">
-                 <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-slate-50 p-1.5 rounded" />
-                 
-                 <div className="pt-2 border-t border-slate-100 flex flex-col items-center gap-2">
+                <div className="mt-4 pt-3 border-t border-white/20 space-y-2">
+                  <div className="bg-slate-800/90 p-3 rounded-lg border border-slate-700/70 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-300 font-bold uppercase text-[10px]">Cible DSCR Bancaire :</span>
+                      <span className="font-bold text-amber-400">{fmtPct(params.targetDSCR || 1.17)}</span>
+                    </div>
                     <button 
                       onClick={() => {
                         const target = params.targetDSCR || 1.17;
@@ -3194,51 +3427,92 @@ function TabBpProjets({
                         setParams(p => ({ ...p, loyerCoeff: lCoeff, soulteCoeff: sCoeff }));
                         toast({ title: 'Cible atteinte', description: `Coefficients ajustés pour DSCR ${fmtPct(target)}` });
                       }}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-sm transition-colors shadow-sm uppercase tracking-wide"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs transition-colors shadow-sm uppercase tracking-wide flex items-center justify-center gap-1.5"
                     >
+                      <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
                       Optimiser Loyer / Soulte
                     </button>
-                    
-                    <div className="w-full grid grid-cols-2 gap-2 pt-1 border-t border-slate-50 mt-1">
-                      <div className="flex flex-col items-center p-1 bg-blue-50/50 rounded border border-blue-100">
-                        <span className="text-[10px] text-blue-400 font-bold uppercase">Loyer possible</span>
-                        <span className="text-[12px] font-bold text-blue-800">{fmtEur((autoCoeffs?.loyer || 0) * (bpResults.sumCA - bpResults.sumOpex) / 20)}</span>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="flex flex-col items-center p-1 bg-blue-950/60 rounded border border-blue-800/50">
+                        <span className="text-[9px] text-blue-300 font-bold uppercase">Loyer possible</span>
+                        <span className="text-[11px] font-bold text-white">{fmtEur((autoCoeffs?.loyer || 0) * (bpResults.sumCA - bpResults.sumOpex) / 20)}/an</span>
                       </div>
-                      <div className="flex flex-col items-center p-1 bg-amber-50/50 rounded border border-amber-100">
-                        <span className="text-[10px] text-amber-500 font-bold uppercase">Soulte possible</span>
-                        <span className="text-[12px] font-bold text-amber-700">{fmtEur((autoCoeffs?.soulte || 0) * (bpResults.sumCA - bpResults.sumOpex) / 2)}</span>
+                      <div className="flex flex-col items-center p-1 bg-amber-950/60 rounded border border-amber-800/50">
+                        <span className="text-[9px] text-amber-300 font-bold uppercase">Soulte possible</span>
+                        <span className="text-[11px] font-bold text-white">{fmtEur((autoCoeffs?.soulte || 0) * (bpResults.sumCA - bpResults.sumOpex) / 2)}</span>
                       </div>
                     </div>
-                    
-                    <div className="w-full bg-slate-50 rounded p-2 border border-slate-100 flex justify-between items-center mt-1">
-                       <span className="text-[10px] text-slate-400 font-bold uppercase">Loyer annuel actuel :</span>
-                       <span className="text-sm font-black text-slate-800">{fmtEur(bpResults.loyer)}</span>
+
+                    <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-700">
+                      <span className="text-slate-400 text-[10px] uppercase font-bold">Loyer annuel actuel :</span>
+                      <span className="font-bold text-amber-300">{fmtEur(bpResults.loyer)}</span>
                     </div>
-                 </div>
 
-                 <div className="space-y-0.5 pt-1 border-t border-slate-100">
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bpResults.sumCA)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bpResults.gains)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bpResults.triFP)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">RETOUR :</span><span className="font-bold text-blue-600">{fmt(bpResults.payback || bpResults.tempsRetour || 0, 1)} ans</span></div>
-                   <div className="flex justify-between text-[11px] pt-1 mt-1 border-t border-slate-50">
-                      <span className="text-slate-400 font-bold uppercase">Prix au Wc global :</span>
-                      <span className="font-bold text-slate-700">{fmtEur(totalConstruction / (collapsedParams.kwc * 1000))} /Wc</span>
-                   </div>
-                 </div>
-               </div>
-            </SectionCard>
+                    <div className="pt-2 border-t border-slate-700/80 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">Reste à charge</span>
+                        <span className="text-sm font-black text-white">{fmtEur(resteACharge)}</span>
+                      </div>
+                      <Button size="sm" onClick={applyToProject} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] h-7 px-2">
+                        <RefreshCw className="w-3 h-3 mr-1" /> Appliquer
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center bg-blue-500/10 p-2 rounded">
+                    <span className="text-[11px] opacity-70 uppercase font-black">Prix au Wc global</span>
+                    <span className="text-sm font-black text-white">{fmtEur(totalConstruction / (collapsedParams.kwc * 1000))} /Wc</span>
+                  </div>
+
+                  <div className="flex justify-between items-center bg-green-500/20 p-2 rounded border border-green-500/30">
+                    <span className="text-[11px] opacity-90 uppercase font-bold text-green-400 leading-tight">Bénéfice Net Cash<br/>(avec Dette)</span>
+                    <span className="text-xl font-black text-white">{fmtEur(bpResults.tresoCumulee)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-      {/* Page 2: Tableau Prévisionnel PV 20 ans */}
-      <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
-        <div className="mt-4">
-          <TableauPrevisionnel params={collapsedParams} rows={rows} apport10={bpResults.apport10} />
+      {/* Page 2: Tableau Prévisionnel PV 20 ans avec bascule Vue Simplifiée / Détaillée */}
+      <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-6 relative overflow-hidden">
+        <div className="flex justify-start mb-3" data-html2canvas-ignore="true">
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            <button 
+              type="button"
+              onClick={() => setViewDetailedPv(false)}
+              className={cn(
+                "px-4 py-1.5 text-[11px] font-bold rounded-md transition-all uppercase tracking-wider",
+                !viewDetailedPv ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Vue Simplifiée
+            </button>
+            <button 
+              type="button"
+              onClick={() => setViewDetailedPv(true)}
+              className={cn(
+                "px-4 py-1.5 text-[11px] font-bold rounded-md transition-all uppercase tracking-wider",
+                viewDetailedPv ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Vue Détaillée
+            </button>
+          </div>
         </div>
+        <TableauPrevisionnel params={collapsedParams} rows={rows} apport10={bpResults.apport10} detailed={viewDetailedPv} />
       </div>
     </div>
+  )}
+
+  {/* Modal Dossier d'Étude Portefeuille PV Multi-Pages */}
+  <PvDossierPDFGenerator
+    open={isPvDossierPdfOpen}
+    onClose={() => setIsPvDossierPdfOpen(false)}
+    portfolioData={pvPortfolioExportData}
+  />
 
       {/* Stand-Alone Warning for PV tab if project has no building */}
       {isBatteryStandAlone && (params.buildings?.length === 0 || !params.buildings) && bpSubTab === 'pv' && (
@@ -3259,6 +3533,7 @@ function TabBpProjets({
           selectedProject={selectedProject}
           isGreenInvest={isGreenInvest}
           onApplyProject={applyProject}
+          projects={projects}
         />
       </div>
 

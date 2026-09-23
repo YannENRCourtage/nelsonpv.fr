@@ -1065,32 +1065,24 @@ export default function ProjectEditor() {
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} className="mt-0.5 h-8" placeholder="Nom" /></div>
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-0.5 h-8" placeholder="Prénom" /></div>
                 <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Type</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option></select></div>
-                <div className="flex-1 min-w-[90px] ml-2">
-                  <label className="text-xs font-medium text-blue-600">Batterie SA</label>
-                  <div className="flex gap-1 mt-0.5 h-8">
-                    <button
-                      type="button"
-                      onClick={() => updateProject({ isBatteryStandAlone: 'Oui' })}
-                      className={`flex-1 rounded-lg text-[10px] font-bold transition-colors ${
-                        p.isBatteryStandAlone === 'Oui'
-                          ? 'bg-green-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                      }`}
-                    >
-                      OUI
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateProject({ isBatteryStandAlone: 'Non' })}
-                      className={`flex-1 rounded-lg text-[10px] font-bold transition-colors ${
-                        p.isBatteryStandAlone !== 'Oui'
-                          ? 'bg-red-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                      }`}
-                    >
-                      NON
-                    </button>
-                  </div>
+                <div className="flex-1 min-w-[120px] ml-2">
+                  <label className="text-xs font-medium text-blue-600">Portefeuille BESS</label>
+                  <select
+                    value={p.bess_portfolio || (p.isBatteryStandAlone === 'Oui' ? 'VOLTA' : '')}
+                    onChange={e => {
+                      const val = e.target.value;
+                      updateProject({
+                        bess_portfolio: val || null,
+                        isBatteryStandAlone: val ? 'Oui' : 'Non',
+                        ...(val && (!p.type || p.type === 'Construction') ? { type: 'Batterie SA' } : {})
+                      });
+                    }}
+                    className="mt-0.5 w-full rounded-lg border px-2 py-1 h-8 bg-background text-xs font-bold text-blue-900"
+                  >
+                    <option value="">Aucun / Non</option>
+                    <option value="VOLTA">VOLTA</option>
+                    <option value="TESLA">TESLA</option>
+                  </select>
                 </div>
               </div>
 
@@ -1474,31 +1466,23 @@ export default function ProjectEditor() {
               </div>
 
               <div className="col-span-2">
-                <label className="text-sm font-medium text-blue-600 font-bold">Batterie SA</label>
-                <div className="flex gap-1 mt-1 h-10">
-                  <button
-                    type="button"
-                    onClick={() => updateProject({ isBatteryStandAlone: 'Oui' })}
-                    className={`flex-1 rounded-lg text-xs font-bold transition-colors ${
-                      p.isBatteryStandAlone === 'Oui'
-                        ? 'bg-green-600 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                    }`}
-                  >
-                    OUI
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateProject({ isBatteryStandAlone: 'Non' })}
-                    className={`flex-1 rounded-lg text-xs font-bold transition-colors ${
-                      p.isBatteryStandAlone !== 'Oui'
-                        ? 'bg-red-600 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                    }`}
-                  >
-                    NON
-                  </button>
-                </div>
+                <label className="text-sm font-medium text-blue-600 font-bold">Portefeuille BESS</label>
+                <select
+                  value={p.bess_portfolio || (p.isBatteryStandAlone === 'Oui' ? 'VOLTA' : '')}
+                  onChange={e => {
+                    const val = e.target.value;
+                    updateProject({
+                      bess_portfolio: val || null,
+                      isBatteryStandAlone: val ? 'Oui' : 'Non',
+                      ...(val && (!p.type || p.type === 'Construction') ? { type: 'Batterie SA' } : {})
+                    });
+                  }}
+                  className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background font-bold text-blue-900"
+                >
+                  <option value="">Aucun / Non</option>
+                  <option value="VOLTA">VOLTA</option>
+                  <option value="TESLA">TESLA</option>
+                </select>
               </div>
 
               <div className="col-span-4">

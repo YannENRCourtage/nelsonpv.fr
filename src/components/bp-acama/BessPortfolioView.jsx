@@ -31,7 +31,8 @@ const fmtK = (v) => `${(v / 1000).toFixed(0)} k€`;
 const fmtM = (v) => `${(v / 1000000).toFixed(2)} M€`;
 const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
 
-export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataChange }) {
+export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataChange, projects = [] }) {
+  const [selectedPortfolio, setSelectedPortfolio] = useState('VOLTA'); // 'VOLTA' | 'TESLA' | 'ALL'
   const [selectedSpv, setSelectedSpv] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedChronique, setExpandedChronique] = useState(false);
@@ -46,12 +47,36 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
   const nbCyclesJour = 2.0; // 2 cycles/jour
   const studyYears = 15;
 
+  // Harmonisation des 31 sites BESS avec les projets CRM et attribution portefeuille VOLTA / TESLA
+  const allPortfolioSites = useMemo(() => {
+    return BESS_PORTFOLIO_SITES.map((site, index) => {
+      const matchProj = (projects || []).find(p => 
+        (p.id && (p.id === site.id || p.id === `site_${index+1}`)) ||
+        (p.name && site.name && p.name.trim().toLowerCase() === site.name.trim().toLowerCase()) ||
+        (p.client_name && site.name && p.client_name.trim().toLowerCase().includes(site.name.trim().toLowerCase()))
+      );
+      // Règle portefeuille : Si le projet CRM a bess_portfolio, il prime. Sinon SPV B -> TESLA, le reste -> VOLTA
+      const portfolio = matchProj?.bess_portfolio || site.bess_portfolio || (site.spv === 'SPV B' ? 'TESLA' : 'VOLTA');
+      return {
+        ...site,
+        portfolio,
+        crmProject: matchProj || null
+      };
+    });
+  }, [projects]);
+
+  // Sites actifs filtrés par portefeuille (VOLTA vs TESLA vs TOUS)
+  const activeSites = useMemo(() => {
+    if (selectedPortfolio === 'ALL') return allPortfolioSites;
+    return allPortfolioSites.filter(s => s.portfolio === selectedPortfolio);
+  }, [allPortfolioSites, selectedPortfolio]);
+
   // Calcul financier de chaque site et agrégation avec dette dynamique via computeBessFinancials
   const { analyzedSites, consolidatedTotals, consolidatedChronique } = useMemo(() => {
     const rateDecimal = (debtRate || 4.30) / 100;
     const durationYears = debtDuration || 12;
 
-    const sites = BESS_PORTFOLIO_SITES.map((site, index) => {
+    const sites = activeSites.map((site, index) => {
       const fin = computeBessFinancials(site, {
         debtDuration: durationYears,
         debtRate: debtRate || 4.30,
@@ -163,7 +188,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
       },
       consolidatedChronique: chronique
     };
-  }, [debtDuration, debtRate]);
+  }, [debtDuration, debtRate, activeSites]);
 
   // Propagation des données mises à jour au parent
   useEffect(() => {
@@ -228,10 +253,11 @@ const ODRE_CAPARESEAU_31_SITES = [
 
   // Export Excel du business plan consolidé par site
   const handleExportExcel = () => {
-    exportBessPortfolioToExcel(BESS_PORTFOLIO_SITES, {
+    exportBessPortfolioToExcel(activeSites, {
       debtDuration,
       debtRate,
-      studyDuration: studyYears
+      studyDuration: studyYears,
+      portfolioName: selectedPortfolio
     });
   };
 
@@ -251,16 +277,61 @@ const ODRE_CAPARESEAU_31_SITES = [
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg sm:text-xl font-black tracking-tight">
-                PORTEFEUILLE MULTI-PROJETS BESS (31 SITES / 15.5 MW)
+                PORTEFEUILLE MULTI-PROJETS BESS — {selectedPortfolio === 'ALL' ? 'CONSOLIDÉ' : selectedPortfolio} ({consolidatedTotals.totalSites} SITES / {consolidatedTotals.totalPowerMw.toFixed(1)} MW)
               </h2>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
-              Consolidation globale de 31 unités de 500 kW / 1044 kWh (CESC Mercury 261) • Raccordements ODRE réels • Modèle 15 ans
+              Consolidation {selectedPortfolio === 'ALL' ? 'globale' : `du portefeuille ${selectedPortfolio}`} de {consolidatedTotals.totalSites} unités de 500 kW / 1044 kWh (CESC Mercury 261) • Raccordements ODRE réels • Modèle 15 ans
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5" data-html2canvas-ignore="true">
+        <div className="flex flex-wrap items-center gap-3" data-html2canvas-ignore="true">
+          {/* Sélecteur de Portefeuille VOLTA / TESLA */}
+          <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg border border-white/20">
+            <button
+              type="button"
+              onClick={() => setSelectedPortfolio('VOLTA')}
+              className={`px-3 py-1.5 text-xs font-black rounded-md transition-all flex items-center gap-1.5 ${
+                selectedPortfolio === 'VOLTA'
+                  ? 'bg-blue-600 text-white shadow-sm font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <span>Portefeuille VOLTA</span>
+              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-blue-900/80 text-blue-200">
+                {allPortfolioSites.filter(s => s.portfolio === 'VOLTA').length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedPortfolio('TESLA')}
+              className={`px-3 py-1.5 text-xs font-black rounded-md transition-all flex items-center gap-1.5 ${
+                selectedPortfolio === 'TESLA'
+                  ? 'bg-red-600 text-white shadow-sm font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <span>Portefeuille TESLA</span>
+              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-red-900/80 text-red-200">
+                {allPortfolioSites.filter(s => s.portfolio === 'TESLA').length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedPortfolio('ALL')}
+              className={`px-2.5 py-1.5 text-xs font-bold rounded-md transition-all ${
+                selectedPortfolio === 'ALL'
+                  ? 'bg-white/20 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Tous ({allPortfolioSites.length})
+            </button>
+          </div>
+
           <button
             onClick={handleExportExcel}
             className="px-3 py-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 transition-all flex items-center gap-1.5"
