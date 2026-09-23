@@ -28,7 +28,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                 return;
             }
 
-            const margin = 10; // 10mm margin
+            const margin = 5; // 5mm compact margin to utilize full width
             const contentWidth = pdfWidth - (2 * margin);
             const contentHeight = pdfHeight - (2 * margin);
 
@@ -38,9 +38,9 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                 logging: false,
                 backgroundColor: '#ffffff',
                 onclone: (clonedDoc) => {
-                    // Masquer explicitement les éléments à ignorer
+                    // Masquer explicitement les éléments à ignorer et les détruire du DOM cloné
                     clonedDoc.querySelectorAll('[data-html2canvas-ignore="true"]').forEach(el => {
-                        el.style.display = 'none';
+                        el.remove();
                     });
 
                     const headers = clonedDoc.querySelectorAll('.pdf-header');
@@ -172,8 +172,6 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                             // Détection dynamique du nombre d'années pour garder la même échelle (Image 1)
                             if (id === 'pdf-section-battery') {
                                 const yearThs = s.querySelectorAll('thead tr:first-child th, thead tr:first-child td').length - 1; 
-                                // On garde 1600px pour 12 ans (référence Image 1)
-                                // Au delà, on augmente la largeur pour ne pas compresser les colonnes
                                 if (yearThs > 12) {
                                     s.style.width = `${1600 + (yearThs - 12) * 80}px`;
                                 } else {
@@ -184,22 +182,29 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                             }
                         }
 
-                        const grid = s.querySelector('.grid');
-                        if (grid) {
-                            grid.style.display = 'grid';
-                            if (isPortrait) {
-                                if (grid.classList.contains('grid-cols-2')) {
-                                    grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
-                                } else if (grid.classList.contains('lg:grid-cols-12')) {
-                                    grid.style.gridTemplateColumns = 'repeat(12, minmax(0, 1fr))';
+                        if (id === 'pdf-section-1') {
+                            const grid4 = s.querySelector('.xl\\:grid-cols-4, .grid-cols-1.xl\\:grid-cols-4');
+                            if (grid4) {
+                                grid4.style.display = 'grid';
+                                grid4.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))';
+                                grid4.style.gap = '12px';
+                            }
+                        } else {
+                            const grid = s.querySelector('.grid');
+                            if (grid) {
+                                grid.style.display = 'grid';
+                                if (isPortrait) {
+                                    if (grid.classList.contains('grid-cols-2')) {
+                                        grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+                                    } else if (grid.classList.contains('lg:grid-cols-12')) {
+                                        grid.style.gridTemplateColumns = 'repeat(12, minmax(0, 1fr))';
+                                    }
                                 }
-                            } else if (id === 'pdf-section-1') {
-                                grid.style.gridTemplateColumns = 'repeat(12, minmax(0, 1fr))';
                             }
                         }
                     }
                 },
-                ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore')
+                ignoreElements: (el) => el.getAttribute('data-html2canvas-ignore') === 'true' || el.closest?.('[data-html2canvas-ignore="true"]') !== null
             });
 
             const imgData = canvas.toDataURL('image/png');

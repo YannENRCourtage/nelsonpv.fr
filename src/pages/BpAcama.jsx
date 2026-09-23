@@ -1070,20 +1070,83 @@ const useDragScroll = () => {
   return { ref, onMouseDown, className: cn("overflow-auto border border-slate-200 rounded-lg select-none cursor-grab", isDragging && "cursor-grabbing") };
 };
 
-function Field({ label, value, onChange, type = 'text', suffix, className, step, disabled, precision = 2, hideLabel = false }) {
+function Field({ 
+  label, 
+  value, 
+  onChange, 
+  type = 'text', 
+  suffix, 
+  className, 
+  inputClassName, 
+  labelClassName, 
+  step, 
+  disabled, 
+  readOnly, 
+  precision, 
+  hideLabel = false 
+}) {
+  const [localVal, setLocalVal] = useState(value !== undefined && value !== null ? value : '');
+
+  useEffect(() => {
+    setLocalVal(value !== undefined && value !== null ? value : '');
+  }, [value]);
+
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    setLocalVal(raw);
+    if (type === 'number') {
+      if (raw === '' || raw === '-') {
+        onChange?.('');
+        return;
+      }
+      const parsed = parseFloat(raw.replace(',', '.'));
+      if (!isNaN(parsed)) {
+        onChange?.(parsed);
+      }
+    } else {
+      onChange?.(raw);
+    }
+  };
+
+  const handleBlur = () => {
+    if (type === 'number') {
+      if (localVal === '' || localVal === '-') {
+        setLocalVal(0);
+        onChange?.(0);
+      } else {
+        const parsed = parseFloat(String(localVal).replace(',', '.'));
+        if (!isNaN(parsed)) {
+          setLocalVal(parsed);
+          onChange?.(parsed);
+        }
+      }
+    }
+  };
+
   return (
-    <div className={cn('flex items-center gap-2', className)}>
-      {!hideLabel && <label className="text-[13px] text-slate-500 w-32 shrink-0">{label}</label>}
-      <div className="flex items-center gap-1 flex-1 relative">
+    <div className={cn('flex items-center justify-between gap-1.5', className)}>
+      {!hideLabel && (
+        <label className={cn("text-xs text-slate-600 font-medium shrink-0 whitespace-nowrap", labelClassName)}>
+          {label}
+        </label>
+      )}
+      <div className="flex items-center gap-1 shrink-0 relative">
         <input
-          type={type}
+          type={type === 'number' ? 'text' : type}
+          inputMode={type === 'number' ? 'decimal' : undefined}
           disabled={disabled}
-          className={cn("border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none", disabled ? "bg-slate-50 text-slate-400" : "bg-white")}
-          value={type === 'number' ? (Math.round(value * Math.pow(10, precision)) / Math.pow(10, precision)).toString() : (value ?? '')}
-          onChange={e => onChange?.(type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
+          readOnly={readOnly}
+          className={cn(
+            "border border-slate-200 rounded px-2 py-0.5 text-xs outline-none transition-colors focus:ring-1 focus:ring-blue-500 text-right font-bold w-20 sm:w-24",
+            disabled ? "bg-slate-50 text-slate-400" : (readOnly ? "bg-slate-100 text-slate-700 font-bold" : "bg-white text-slate-900"),
+            inputClassName
+          )}
+          value={localVal}
+          onChange={handleChange}
+          onBlur={handleBlur}
           step={step}
         />
-        {suffix && <span className="text-sm text-slate-500 shrink-0">{suffix}</span>}
+        {suffix && <span className="text-[11px] text-slate-500 font-medium shrink-0 min-w-[24px]">{suffix}</span>}
       </div>
     </div>
   );
@@ -2488,6 +2551,15 @@ function TabBpProjets({
     const savedState = p.bp_pv_data || p.bpAcamaState;
     if (savedState) {
       const saved = { ...savedState };
+      if (!saved.puissanceUnitaire || saved.puissanceUnitaire === 460) {
+        saved.puissanceUnitaire = 465;
+      }
+      if (!saved.tarifBas || saved.tarifBas === 0.0846 || saved.tarifBas === 0.084) {
+        saved.tarifBas = 0.082;
+      }
+      if (!saved.tauxCredit || saved.tauxCredit === 4 || saved.tauxCredit === 3.9) {
+        saved.tauxCredit = 4.3;
+      }
       saved.batteryConfig = {
         ...(saved.batteryConfig || {}),
         ...standardBessConfig
@@ -2521,7 +2593,15 @@ function TabBpProjets({
           // Recompute costs if power changed
           const newCoutCentrale = (newKwc !== b.kwc) ? (newKwc * 490) : b.coutCentrale;
 
-          return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale, coutCharpente: newCoutCharpente };
+          return { 
+            ...b, 
+            typeBat: newTypeBat, 
+            productible: newProd, 
+            kwc: newKwc, 
+            coutCentrale: newCoutCentrale, 
+            coutCharpente: newCoutCharpente,
+            numPanneaux: Math.round(newKwc * 1000 / (saved.puissanceUnitaire || 465))
+          };
         });
       }
       setParams(saved);
@@ -2552,7 +2632,7 @@ function TabBpProjets({
             etudeStructure: 3300,
             distHta: 100,
             distPriv: 100,
-            numPanneaux: Math.round(autoKwc * 1000 / (params.puissanceUnitaire || 460))
+            numPanneaux: Math.round(autoKwc * 1000 / (params.puissanceUnitaire || 465))
           });
         });
       } else {
@@ -2579,26 +2659,26 @@ function TabBpProjets({
             etudeStructure: 3300,
             distHta: 100,
             distPriv: 100,
-            numPanneaux: Math.round(initialKwc * 1000 / (params.puissanceUnitaire || 460))
+            numPanneaux: Math.round(initialKwc * 1000 / (params.puissanceUnitaire || 465))
           });
         }
         if (b2 > 0) {
           const norm2 = normalizeBatType(p.type_bat2 || '');
           const data2 = (localBatData || []).find(d => d.type.toUpperCase() === norm2.toUpperCase());
           const kwc2 = (data2 && (!b2 || b2 === 100)) ? data2.kwc : b2;
-          initialBuildings.push({ id: 2, typeBat: norm2, projectType: 'BAC', kwc: kwc2, productible: parseFloat(p.solarYieldRoof2 || p.productible) || defaultProd, coutCentrale: kwc2 * 490, coutCharpente: data2?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc2 * 1000 / (params.puissanceUnitaire || 460)) });
+          initialBuildings.push({ id: 2, typeBat: norm2, projectType: 'BAC', kwc: kwc2, productible: parseFloat(p.solarYieldRoof2 || p.productible) || defaultProd, coutCentrale: kwc2 * 490, coutCharpente: data2?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc2 * 1000 / (params.puissanceUnitaire || 465)) });
         }
         if (b3 > 0) {
           const norm3 = normalizeBatType(p.type_bat3 || '');
           const data3 = (localBatData || []).find(d => d.type.toUpperCase() === norm3.toUpperCase());
           const kwc3 = (data3 && (!b3 || b3 === 100)) ? data3.kwc : b3;
-          initialBuildings.push({ id: 3, typeBat: norm3, projectType: 'BAC', kwc: kwc3, productible: parseFloat(p.solarYieldRoof3 || p.productible) || defaultProd, coutCentrale: kwc3 * 490, coutCharpente: data3?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc3 * 1000 / (params.puissanceUnitaire || 460)) });
+          initialBuildings.push({ id: 3, typeBat: norm3, projectType: 'BAC', kwc: kwc3, productible: parseFloat(p.solarYieldRoof3 || p.productible) || defaultProd, coutCentrale: kwc3 * 490, coutCharpente: data3?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc3 * 1000 / (params.puissanceUnitaire || 465)) });
         }
         if (b4 > 0) {
           const norm4 = normalizeBatType(p.type_bat4 || '');
           const data4 = (localBatData || []).find(d => d.type.toUpperCase() === norm4.toUpperCase());
           const kwc4 = (data4 && (!b4 || b4 === 100)) ? data4.kwc : b4;
-          initialBuildings.push({ id: 4, typeBat: norm4, projectType: 'BAC', kwc: kwc4, productible: parseFloat(p.solarYieldRoof4 || p.productible) || defaultProd, coutCentrale: kwc4 * 490, coutCharpente: data4?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc4 * 1000 / (params.puissanceUnitaire || 460)) });
+          initialBuildings.push({ id: 4, typeBat: norm4, projectType: 'BAC', kwc: kwc4, productible: parseFloat(p.solarYieldRoof4 || p.productible) || defaultProd, coutCentrale: kwc4 * 490, coutCharpente: data4?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc4 * 1000 / (params.puissanceUnitaire || 465)) });
         }
       }
       
@@ -2612,6 +2692,9 @@ function TabBpProjets({
       setParams(prev => ({
         ...prev,
         buildings: initialBuildings,
+        puissanceUnitaire: prev.puissanceUnitaire || 465,
+        tarifBas: prev.tarifBas ?? 0.082,
+        tauxCredit: prev.tauxCredit ?? 4.3,
         vent: p.windZone || p.vent || p.urbanData?.vents || '',
         neige: p.snowZone || p.neige || p.urbanData?.neige || '',
         raccordement: totalRaccordement,
@@ -2767,7 +2850,13 @@ function TabBpProjets({
             <button
               type="button"
               onClick={() => {
-                setPvPortfolioExportData(prev => ({ ...(prev || {}), autoExportType: 'complete' }));
+                setPvPortfolioExportData({
+                  autoExportType: pvMode === 'single' ? 'single' : 'portfolio',
+                  currentProject: selectedProject,
+                  currentParams: collapsedParams,
+                  currentResults: bpResults,
+                  currentRows: rows
+                });
                 setIsPvDossierPdfOpen(true);
               }}
               className="px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
@@ -2864,13 +2953,15 @@ function TabBpProjets({
             )}
             <PDFHeader selectedProject={selectedProject} />
 
-            {/* Bandeau dépliant QUALIFICATION RÉSEAU & POSTE SOURCE (ODRE) */}
-            <NetworkQualificationBanner
-              qualification={networkQualificationPv}
-              isLoading={isLoadingNetworkPv}
-              selectedProject={selectedProject}
-              onApplyDistance={handleApplyDistancePv}
-            />
+            {/* Bandeau dépliant QUALIFICATION RÉSEAU & POSTE SOURCE (ODRE) — Masqué lors de l'export PDF unitaire */}
+            <div data-html2canvas-ignore="true">
+              <NetworkQualificationBanner
+                qualification={networkQualificationPv}
+                isLoading={isLoadingNetworkPv}
+                selectedProject={selectedProject}
+                onApplyDistance={handleApplyDistancePv}
+              />
+            </div>
 
             {/* Bandeau supérieur — DONNÉES DU PROJET & DIMENSIONNEMENT PV (Aligné sur DIMENSIONNEMENT BATTERIE BESS) */}
             <div className="mb-4 p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-lg">
@@ -3121,7 +3212,7 @@ function TabBpProjets({
                   <div className="grid grid-cols-1 gap-y-1 py-1">
                     <Field label="Seuil KWh/KWc" value={params.seuilKwhKwc} onChange={v => setParams(p => ({ ...p, seuilKwhKwc: v }))} type="number" suffix="kWh/kWc" className="h-7 text-xs" />
                     <Field label="Tarif de base (≤ 1 100)" value={params.tarifBas} onChange={v => setParams(p => ({ ...p, tarifBas: v }))} type="number" suffix="€/kWh" precision={4} step="0.001" className="h-7 text-xs" />
-                    <Field label="Tarif surplus (> 1 100)" value={params.tarifHaut} onChange={v => setParams(p => ({ ...p, tarifHaut: v }))} type="number" suffix="€/kWh" precision={4} step="0.001" className="h-7 text-xs" />
+                    <Field label="Tarif de base (> 1 100)" value={params.tarifHaut} onChange={v => setParams(p => ({ ...p, tarifHaut: v }))} type="number" suffix="€/kWh" precision={4} step="0.001" className="h-7 text-xs" />
                     <Field label="Tarif Vente ACC" value={params.tarifACC} onChange={v => setParams(p => ({ ...p, tarifACC: v }))} type="number" suffix="€/kWh" precision={4} step="0.001" className="h-7 text-xs" />
                     <Field label="Part ACC" value={params.partACC * 100} onChange={v => setParams(p => ({ ...p, partACC: v/100 }))} type="number" suffix="%" className="h-7 text-xs" />
                   </div>
@@ -3129,11 +3220,11 @@ function TabBpProjets({
 
                 <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="border-t-4 border-t-indigo-500">
                   <div className="grid grid-cols-1 gap-y-1 py-1">
-                    <div className="flex items-center gap-2 h-7 group">
-                      <label className="text-xs text-slate-500 w-32 shrink-0">Module unitaire</label>
-                      <div className="flex items-center gap-1 flex-1 relative">
+                    <div className="flex items-center justify-between gap-1.5 h-7 group">
+                      <label className="text-xs text-slate-600 font-medium shrink-0 whitespace-nowrap">Module unitaire</label>
+                      <div className="flex items-center gap-1 shrink-0 relative">
                         <select 
-                          className="border border-slate-200 rounded px-2 py-0.5 text-xs w-full outline-none transition-colors focus:ring-1 focus:ring-blue-500 bg-white font-bold"
+                          className="border border-slate-200 rounded px-2 py-0.5 text-xs w-20 sm:w-24 outline-none transition-colors focus:ring-1 focus:ring-blue-500 bg-white font-bold text-right"
                           value={params.puissanceUnitaire || 465}
                           onChange={e => {
                             const newP = parseFloat(e.target.value);
@@ -3156,6 +3247,7 @@ function TabBpProjets({
                             <option key={m.power} value={m.power}>{m.power} Wc</option>
                           ))}
                         </select>
+                        <span className="text-[11px] text-slate-500 font-medium shrink-0 min-w-[24px]">Wc</span>
                       </div>
                     </div>
                     <Field label="Indexation tarifs" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7 text-xs" />
@@ -5167,6 +5259,9 @@ export default function BpAcama() {
       if (buildingFeatures.length > (saved.buildings?.length || 0)) {
          // Continue to detection logic below to "refresh" from map
       } else {
+         if (!saved.puissanceUnitaire || saved.puissanceUnitaire === 460) saved.puissanceUnitaire = 465;
+         if (!saved.tarifBas || saved.tarifBas === 0.0846 || saved.tarifBas === 0.084) saved.tarifBas = 0.082;
+         if (!saved.tauxCredit || saved.tauxCredit === 4 || saved.tauxCredit === 3.9) saved.tauxCredit = 4.3;
          setParams(saved);
          return;
       }
@@ -5191,7 +5286,7 @@ export default function BpAcama() {
           coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
           distHta: 100,
           distPriv: 100,
-          numPanneaux: Math.round(featPower * 1000 / (params.puissanceUnitaire || 460))
+          numPanneaux: Math.round(featPower * 1000 / (params.puissanceUnitaire || 465))
         });
       });
     } else {
@@ -5213,17 +5308,20 @@ export default function BpAcama() {
           coutCharpente: 0,
           distHta: 100,
           distPriv: 100,
-          numPanneaux: Math.round((b1 || 346.84) * 1000 / (params.puissanceUnitaire || 460))
+          numPanneaux: Math.round((b1 || 346.84) * 1000 / (params.puissanceUnitaire || 465))
         });
       }
-      if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: parseFloat(selectedProject.solarYieldRoof2 || selectedProject.productible) || defaultProd, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
-      if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: parseFloat(selectedProject.solarYieldRoof3 || selectedProject.productible) || defaultProd, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
-      if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: parseFloat(selectedProject.solarYieldRoof4 || selectedProject.productible) || defaultProd, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: parseFloat(selectedProject.solarYieldRoof2 || selectedProject.productible) || defaultProd, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 465)) });
+      if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: parseFloat(selectedProject.solarYieldRoof3 || selectedProject.productible) || defaultProd, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 465)) });
+      if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: parseFloat(selectedProject.solarYieldRoof4 || selectedProject.productible) || defaultProd, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 465)) });
     }
 
     setParams(prev => ({
       ...prev,
       buildings: initialBuildings,
+      puissanceUnitaire: prev.puissanceUnitaire || 465,
+      tarifBas: prev.tarifBas ?? 0.082,
+      tauxCredit: prev.tauxCredit ?? 4.3,
       raccordement: parseFloat(selectedProject.raccordement) || 0,
       frais: parseFloat(selectedProject.frais) || 0,
       soulte: parseFloat(selectedProject.soulte) || 0,
