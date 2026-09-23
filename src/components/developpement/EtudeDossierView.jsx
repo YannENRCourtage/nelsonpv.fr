@@ -547,12 +547,21 @@ export default function EtudeDossierView({
     return findBessOdreData(project?.name || project?.projectName || project?.client || '');
   }, [project?.name, project?.projectName, project?.client]);
 
+  const isBessProject = project?.isBatteryStandAlone || project?.type_projet === 'Batterie SA' || project?.isBattery || bessMatrixData !== null;
+
   // Extraction propre des références cadastrales (section et numéro séparés)
-  const rawSection = project?.cadastre_section || project?.cadastreSection || project?.dp_config?.terrain?.section || bessMatrixData?.section || (project?.cadastre ? project.cadastre.split(' ')[0] : '') || project?.section || '';
-  const rawNumero = project?.cadastre_numero || project?.cadastreNumero || project?.dp_config?.terrain?.parcelle || bessMatrixData?.numero || project?.cadastre_parcel || project?.parcelle || project?.parcel || (project?.cadastre ? project.cadastre.split(' ').slice(1).join(' ') : '') || '';
+  // Pour un projet BESS, la parcelle d'implantation réelle de la station batterie (matrice certifiée / dalle béton) fait foi
+  const rawSection = (isBessProject && bessMatrixData?.section)
+    ? bessMatrixData.section
+    : (project?.cadastre_section || project?.cadastreSection || project?.dp_config?.terrain?.section || bessMatrixData?.section || (project?.cadastre ? project.cadastre.split(' ')[0] : '') || project?.section || '');
+  const rawNumero = (isBessProject && bessMatrixData?.numero)
+    ? bessMatrixData.numero
+    : (project?.cadastre_numero || project?.cadastreNumero || project?.dp_config?.terrain?.parcelle || bessMatrixData?.numero || project?.cadastre_parcel || project?.parcelle || project?.parcel || (project?.cadastre ? project.cadastre.split(' ').slice(1).join(' ') : '') || '');
   const cadastreSection = rawSection ? rawSection.replace(/^Sec\.?\s*/i, '').trim() : '';
   const cadastreNumero = rawNumero ? rawNumero.replace(/^n°?\s*/i, '').trim() : '';
-  const cadastreSurface = project?.cadastre_surface || project?.dp_config?.terrain?.contenance_m2 || bessMatrixData?.contenance || project?.surface_terrain || project?.surfaceTerrain || project?.surface || '';
+  const cadastreSurface = (isBessProject && bessMatrixData?.contenance)
+    ? bessMatrixData.contenance
+    : (project?.cadastre_surface || project?.dp_config?.terrain?.contenance_m2 || bessMatrixData?.contenance || project?.surface_terrain || project?.surfaceTerrain || project?.surface || '');
 
   const [autoCadastre, setAutoCadastre] = useState(null);
 
@@ -575,9 +584,9 @@ export default function EtudeDossierView({
     }
   }, [project?.id, project?.gps, project?.lat, project?.lng, cadastreSection, cadastreNumero, bessMatrixData]);
 
-  const displaySection = cadastreSection || autoCadastre?.section || bessMatrixData?.section || '';
-  const displayNumero = cadastreNumero || autoCadastre?.numero || bessMatrixData?.numero || '';
-  const displaySurface = cadastreSurface || autoCadastre?.contenance || bessMatrixData?.contenance || '';
+  const displaySection = (isBessProject && bessMatrixData?.section) ? bessMatrixData.section : (cadastreSection || autoCadastre?.section || bessMatrixData?.section || '');
+  const displayNumero = (isBessProject && bessMatrixData?.numero) ? bessMatrixData.numero : (cadastreNumero || autoCadastre?.numero || bessMatrixData?.numero || '');
+  const displaySurface = (isBessProject && bessMatrixData?.contenance) ? bessMatrixData.contenance : (cadastreSurface || autoCadastre?.contenance || bessMatrixData?.contenance || '');
 
   return (
     <div className="w-full space-y-4">

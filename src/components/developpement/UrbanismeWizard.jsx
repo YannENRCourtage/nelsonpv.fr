@@ -1571,36 +1571,31 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       });
     }
 
-    if (!isNoBattery && solutions.battery?.buildings?.length > 0) {
-      solutions.battery.buildings.forEach((b, i) => {
-        const batId = b.id ? (String(b.id).startsWith('bat-sa-') ? String(b.id) : `bat-sa-${b.id}`) : `bat-sa-${i + 1}`;
-        const isCurrentActive = solutionType === 'battery' && activeBuildingIndex === i;
+    if (!isNoBattery) {
+      // Pour la solution batterie Stand-Alone, il n'y a STRICTEMENT qu'une seule station technique (< 20 m²)
+      const batObj = solutions.battery?.buildings?.[0] || {};
+      const effectiveLen = 6.20;
+      const effectiveWid = 3.20;
+      const effectiveHeight = 2.38;
 
-        const effectiveLen = isCurrentActive
-          ? Number(config.length || batteryStorage.dalleLength || b.length || 6.20)
-          : Number(b.length || batteryStorage.dalleLength || 6.20);
-        const effectiveWid = isCurrentActive
-          ? Number(config.width || batteryStorage.dalleWidth || b.width || 3.20)
-          : Number(b.width || batteryStorage.dalleWidth || 3.20);
-        const effectiveHeight = isCurrentActive
-          ? Number(config.eaveHeight || b.eaveHeight || 2.38)
-          : Number(b.eaveHeight || 2.38);
-
-        const dynamicName = b.name || `Station Batteries 500 kW (${effectiveLen.toFixed(1)}m × ${effectiveWid.toFixed(1)}m)`;
-
-        list.push({
-          ...b,
-          id: batId,
-          name: dynamicName,
-          length: effectiveLen,
-          width: effectiveWid,
-          totalWidth: effectiveWid,
-          eaveHeight: effectiveHeight,
-          solutionKey: 'battery',
-          solutionLabel: 'Station Batteries 500 kW',
-          isBattery: true,
-          indexInSol: i
-        });
+      list.push({
+        ...batObj,
+        id: 'bat-sa-1',
+        name: 'Station Batteries (DP < 20 m²)',
+        length: effectiveLen,
+        width: effectiveWid,
+        totalWidth: effectiveWid,
+        eaveHeight: effectiveHeight,
+        roofPitch: 0,
+        buildingType: 'battery_standalone',
+        solutionKey: 'battery',
+        solutionLabel: 'Station Batteries (DP < 20 m²)',
+        isBattery: true,
+        isBatteryStandAlone: true,
+        hasSolar: false,
+        bayCount: 4,
+        baySpacing: 1.15,
+        indexInSol: 0
       });
     }
     return list;
@@ -1609,7 +1604,11 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   // Structures strictement filtrées selon le type de solution actif
   const scopedStructures = useMemo(() => {
     return allConfiguredStructures.filter(str => {
-      if (solutionType === 'battery') return str.solutionKey === 'battery' || str.isBattery;
+      if (solutionType === 'battery') {
+        const isBat = str.solutionKey === 'battery' || str.isBattery;
+        const isStrictSize = Number(str.length || 0) <= 10 && Number(str.width || 0) <= 6;
+        return isBat && isStrictSize;
+      }
       if (solutionType === 'ombriere') return str.solutionKey === 'ombriere';
       if (solutionType === 'building') return str.solutionKey === 'building' || (!str.solutionKey && !str.isBattery);
       return true;
@@ -1921,7 +1920,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       const pFootprintArea = (pDalleL * pDalleW).toFixed(2);
 
       return `1- OBJET DE LA DEMANDE
-La présente demande porte sur l'installation d'une station de stockage d'énergie par batteries Stand-Alone (Puissance nominale : ${pPower} kW) sur dalle béton avec clôture rigide, d'une capacité de ${pCap} kWh (${pQty} armoires ${pModel}). L'emprise au sol totale est strictement inférieure à 20 m² (${pFootprintArea} m²), soumise au régime de la Déclaration Préalable de travaux (DP).
+La présente demande porte sur l'installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV sur dalle béton (${pQty} armoires ${pModel}, emprise au sol : ${pFootprintArea} m² < 20 m²), soumise au régime de la Déclaration Préalable de travaux (DP).
 
 2- LE SITE
 Le projet s'implante sur la commune de ${projectCity} (${projectZip}), à l'adresse : ${projectAddress}. ${cadastreNoticeTextBattery}.
@@ -1934,7 +1933,7 @@ Le projet comprend :
 - La pose d'une clôture rigide grillagée périphérique (hauteur 2.00m) ceinturant la dalle béton avec portillon d'accès de sécurité.
 
 4- RACCORDEMENT AUX RESEAUX
-L'installation est raccordée au réseau public de distribution d'électricité ENEDIS. Le dispositif est totalement autonome, statique, silencieux et ne requiert aucun raccordement aux réseaux d'eau ni d'assainissement collectif.
+L'installation est raccordée au réseau public de distribution d'électricité ENEDIS HTA 20 kV. Le dispositif est totalement autonome, statique, silencieux et ne requiert aucun raccordement aux réseaux d'eau ni d'assainissement collectif.
 
 5- SECURITE INCENDIE & PRESCRIPTIONS SDIS
 L'installation intègre tous les dispositifs de sécurité et répond strictement aux préconisations SDIS :
@@ -2190,9 +2189,31 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     setSolutionType(newSolType);
 
     if (newSolType === 'battery') {
+      const bessOdre = findBessOdreData(project?.name || project?.projectName || project?.client || project?.clientName || '');
+      let bessLat = bessOdre?.latitude || null;
+      let bessLng = bessOdre?.longitude || null;
+      const bFeat = (project?.features || []).find(f => f.isBattery || (f.buildingName && f.buildingName.toLowerCase().includes('batterie')));
+      if (bFeat) {
+        if (Array.isArray(bFeat.coords) && bFeat.coords.length > 0) {
+          bessLat = bFeat.coords.reduce((sum, c) => sum + (c.lat ?? c[0]), 0) / bFeat.coords.length;
+          bessLng = bFeat.coords.reduce((sum, c) => sum + (c.lng ?? c[1]), 0) / bFeat.coords.length;
+        } else if (bFeat.lat && bFeat.lng) {
+          bessLat = Number(bFeat.lat);
+          bessLng = Number(bFeat.lng);
+        }
+      } else if (project?.bessLatitude || project?.bess_lat || project?.battery_lat) {
+        bessLat = Number(project.bessLatitude || project.bess_lat || project.battery_lat);
+        bessLng = Number(project.bessLongitude || project.bess_lng || project.battery_lng);
+      }
+
       const siteCoords = resolveProjectCoordinates(editedProject, project);
-      const refLat = outgoingB?.lat || project?.lat || siteCoords.lat;
-      const refLng = outgoingB?.lng || project?.lng || siteCoords.lng;
+      const refLat = bessLat || outgoingB?.lat || project?.lat || siteCoords.lat;
+      const refLng = bessLng || outgoingB?.lng || project?.lng || siteCoords.lng;
+
+      const nextSec = bessOdre?.section || editedProject?.cadastre_section || project.cadastre_section || '';
+      const nextNum = bessOdre?.numero || editedProject?.cadastre_numero || project.cadastre_numero || '';
+      const nextSurf = bessOdre?.contenance ? String(bessOdre.contenance) : (editedProject?.cadastre_surface || project.cadastre_surface || '');
+      const nextParcelles = (nextSec && nextNum) ? [{ section: nextSec, numero: nextNum, surface: nextSurf }] : (editedProject?.parcelles || []);
 
       setEditedProject(prev => ({
         ...prev,
@@ -2204,38 +2225,52 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         installationType: 'Station Batteries Stand-Alone',
         isBattery: true,
         isBatteryStandAlone: true,
+        lat: refLat,
+        lng: refLng,
+        gps: `${refLat},${refLng}`,
+        cadastre_section: nextSec,
+        cadastre_numero: nextNum,
+        cadastre_surface: nextSurf,
+        parcelles: nextParcelles,
+        cadastre_parcelles: nextParcelles,
         objet_travaux: "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.",
         description: "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.",
       }));
 
-      setSolutions(sPrev => {
-        const curBat = sPrev.battery?.buildings?.[0];
-        return {
-          ...sPrev,
-          battery: {
-            ...sPrev.battery,
-            buildings: [{
-              ...(curBat || {}),
-              id: 'bat-sa-1',
-              name: 'Station Batteries Stand-Alone (500 kW)',
-              solutionType: 'battery',
-              isBattery: true,
-              buildingType: 'battery_standalone',
-              length: 6.20,
-              width: 3.20,
-              eaveHeight: 2.38,
-              lat: curBat?.lat || refLat,
-              lng: curBat?.lng || refLng,
-              gps: `${curBat?.lat || refLat},${curBat?.lng || refLng}`
-            }]
-          }
-        };
-      });
+      setSolutions(sPrev => ({
+        ...sPrev,
+        battery: {
+          activeBuildingIndex: 0,
+          buildings: [{
+            id: 'bat-sa-1',
+            name: 'Station Batteries (DP < 20 m²)',
+            solutionType: 'battery',
+            solutionKey: 'battery',
+            isBattery: true,
+            isBatteryStandAlone: true,
+            hasSolar: false,
+            buildingType: 'battery_standalone',
+            length: 6.20,
+            width: 3.20,
+            totalWidth: 3.20,
+            eaveHeight: 2.38,
+            roofPitch: 0,
+            bayCount: 4,
+            baySpacing: 1.15,
+            unitLength: 1.15,
+            unitWidth: 1.44,
+            unitHeight: 2.38,
+            lat: refLat,
+            lng: refLng,
+            gps: `${refLat},${refLng}`
+          }]
+        }
+      }));
 
       setBatteryStorage(prev => ({
         ...prev,
         enabled: true,
-        name: 'Station Batteries Stand-Alone (500 kW)',
+        name: 'Station Batteries (DP < 20 m²)',
         model: 'CESC Mercury 261',
         quantity: 4,
         powerKw: 500,
@@ -2245,6 +2280,15 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         footprint: '6.20m × 3.20m (19.84 m²)'
       }));
       setSelectedStructureIds(['bat-sa-1']);
+
+      if (!isNoticeUserModified || /ombrière|bâtiment agricole|225|311/i.test(noticeText)) {
+        setIsNoticeUserModified(false);
+        setTimeout(() => {
+          const autoNotice = buildAutoNoticeText();
+          setNoticeText(autoNotice);
+          setEditedProject(p => ({ ...p, noticeText: autoNotice }));
+        }, 30);
+      }
     } else if (newSolType === 'ombriere') {
       const ombCount = solutions.ombriere?.buildings?.length || 1;
       const ombTypeStr = ombCount > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
@@ -2521,14 +2565,27 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const projZip = project.zip || project.postalCode || project.code_postal || project.clientZip || '';
     const projCity = project.city || project.commune || project.clientCity || project.cadastre_commune || '';
 
+    const bessOdreMatch = findBessOdreData(project?.name || project?.projectName || project?.client || project?.clientName || '');
+    const rawType = String(project?.type || project?.installationType || project?.projectType || project?.type_projet || project?.urbanismeType || '').toLowerCase();
+    const isBatterySite = !isNoBattery && (
+      rawType.includes('batterie') ||
+      rawType.includes('battery') ||
+      project?.isBatteryStandAlone === 'Oui' ||
+      project?.isBatteryStandAlone === true ||
+      project?.isBatterySA === true ||
+      project?.isBattery === true ||
+      project?.type === 'batterie' ||
+      project?.type === 'battery' ||
+      Boolean(bessOdreMatch)
+    );
+
     let detectedSolutionType;
-    if (savedState?.solutionType) {
+    if (isBatterySite) {
+      detectedSolutionType = 'battery';
+    } else if (savedState?.solutionType) {
       detectedSolutionType = savedState.solutionType;
     } else {
-      const rawType = String(project?.type || project?.installationType || project?.projectType || project?.type_projet || project?.urbanismeType || '').toLowerCase();
-      if (!isNoBattery && (rawType.includes('batterie') || rawType.includes('battery') || project?.isBatteryStandAlone === 'Oui' || project?.isBatteryStandAlone === true)) {
-        detectedSolutionType = 'battery';
-      } else if (rawType.includes('batiment') || rawType.includes('bâtiment') || rawType.includes('hangar')) {
+      if (rawType.includes('batiment') || rawType.includes('bâtiment') || rawType.includes('hangar')) {
         detectedSolutionType = 'building';
       } else if (rawType.includes('ombriere') || rawType.includes('ombrière')) {
         detectedSolutionType = 'ombriere';
@@ -2538,7 +2595,10 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     }
     setSolutionType(detectedSolutionType);
 
-    const isBatteryProject = !isNoBattery && detectedSolutionType === 'battery';
+    const isBatterySolution = detectedSolutionType === 'battery';
+    const isBuildingSolution = detectedSolutionType === 'building';
+    const isOmbriereSolution = detectedSolutionType === 'ombriere';
+    const isBatteryProject = !isNoBattery && isBatterySolution;
 
     let parsedBatteryQty = 4;
     const projectCombinedStr = `${project?.project || ''} ${project?.name || ''} ${project?.nom || ''} ${project?.description || ''}`;
@@ -2570,13 +2630,29 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     const isOmbriere = (project.type || '').toLowerCase().includes('ombriere') || (project.buildingType || '').toLowerCase().includes('ombriere');
     
-    // Déterminer la référence GPS fiable du site (adresse du déclarant)
-    const siteCoords = resolveProjectCoordinates(null, project);
-    let defLat = siteCoords.lat;
-    let defLng = siteCoords.lng;
+    // Déterminer la référence GPS fiable du site (priorité au marqueur dalle batterie en BESS)
+    let bessLat = bessOdreMatch?.latitude || null;
+    let bessLng = bessOdreMatch?.longitude || null;
+    const bFeat = (project?.features || []).find(f => f.isBattery || (f.buildingName && f.buildingName.toLowerCase().includes('batterie')));
+    if (bFeat) {
+      if (Array.isArray(bFeat.coords) && bFeat.coords.length > 0) {
+        bessLat = bFeat.coords.reduce((sum, c) => sum + (c.lat ?? c[0]), 0) / bFeat.coords.length;
+        bessLng = bFeat.coords.reduce((sum, c) => sum + (c.lng ?? c[1]), 0) / bFeat.coords.length;
+      } else if (bFeat.lat && bFeat.lng) {
+        bessLat = Number(bFeat.lat);
+        bessLng = Number(bFeat.lng);
+      }
+    } else if (project?.bessLatitude || project?.bess_lat || project?.battery_lat) {
+      bessLat = Number(project.bessLatitude || project.bess_lat || project.battery_lat);
+      bessLng = Number(project.bessLongitude || project.bess_lng || project.battery_lng);
+    }
 
-    // Si un bâtiment existant possède déjà les coordonnées géocodées réelles du site, les prioriser
-    if (project.buildings && Array.isArray(project.buildings)) {
+    const siteCoords = resolveProjectCoordinates(null, project);
+    let defLat = (isBatteryProject && bessLat) ? bessLat : siteCoords.lat;
+    let defLng = (isBatteryProject && bessLng) ? bessLng : siteCoords.lng;
+
+    // Si un bâtiment existant possède déjà les coordonnées géocodées réelles du site, les prioriser (uniquement pour solaire)
+    if (!isBatteryProject && project.buildings && Array.isArray(project.buildings)) {
       const validBuilding = project.buildings.find(b => {
         const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null));
         return bLat && !isNaN(bLat) && Math.abs(bLat - 43.5612) > 0.01;
@@ -2589,7 +2665,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
 
     // Restaurer fidèlement les bâtiments existants ou initialiser le Bâtiment 1 avec les paramètres précis du projet
     let initialBuildings = [];
-    if (isBatteryProject && (!project.buildings || project.buildings.length === 0)) {
+    if (isBatteryProject) {
       const batLen = 6.20;
       const batW = 3.20;
       initialBuildings = [
@@ -2598,22 +2674,24 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
           name: `Station Batteries Stand-Alone (500 kW)`,
           length: batLen,
           width: batW,
+          totalWidth: batW,
           eaveHeight: 2.38,
           roofPitch: 0,
           buildingType: 'battery_standalone',
           isBattery: true,
+          isBatteryStandAlone: true,
           hasSolar: false,
           bayCount: 4,
           baySpacing: 1.15,
           unitLength: 1.15,
           unitWidth: 1.44,
           unitHeight: 2.38,
-          lat: defLat,
-          lng: defLng,
-          gps: `${defLat},${defLng}`,
+          lat: bessLat || defLat,
+          lng: bessLng || defLng,
+          gps: `${bessLat || defLat},${bessLng || defLng}`,
           captures: project.urbanisme_captures || project.captures || {},
           photos: project.pc_photos || project.photos || {},
-          rotation: Number(project.rotation || 0)
+          rotation: 0
         }
       ];
     } else if (project.buildings && Array.isArray(project.buildings) && project.buildings.length > 0) {
@@ -2723,61 +2801,61 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       ];
     }
 
+    const cleanBatteryStation = {
+      id: 'bat-sa-1',
+      name: 'Station Batteries (DP < 20 m²)',
+      solutionType: 'battery',
+      solutionKey: 'battery',
+      buildingType: 'battery_standalone',
+      length: 6.20,
+      width: 3.20,
+      totalWidth: 3.20,
+      eaveHeight: 2.38,
+      roofPitch: 0,
+      isBattery: true,
+      isBatteryStandAlone: true,
+      hasSolar: false,
+      bayCount: 4,
+      baySpacing: 1.15,
+      unitLength: 1.15,
+      unitWidth: 1.44,
+      unitHeight: 2.38,
+      lat: bessLat || defLat,
+      lng: bessLng || defLng,
+      gps: `${bessLat || defLat},${bessLng || defLng}`,
+      rotation: 0,
+      captures: project.urbanisme_captures || project.captures || {},
+      photos: project.pc_photos || project.photos || {}
+    };
+
     // Partitionner et structurer les bâtiments par solution (Bâtiment vs Ombrière vs Battery)
     let loadedSolutions;
-    if (savedState?.solutions?.building?.buildings && savedState?.solutions?.ombriere?.buildings) {
-      loadedSolutions = savedState.solutions;
-    } else if (project?.solutions?.building?.buildings && project?.solutions?.ombriere?.buildings) {
+    if (savedState?.solutions) {
+      loadedSolutions = {
+        ...savedState.solutions,
+        battery: {
+          activeBuildingIndex: 0,
+          buildings: [cleanBatteryStation]
+        }
+      };
+    } else if (project?.solutions) {
       loadedSolutions = {
         ...project.solutions,
-        battery: project.solutions.battery || {
+        battery: {
           activeBuildingIndex: 0,
-          buildings: [
-            {
-              id: 'bat-sa-1',
-              name: 'Station Batteries Stand-Alone (500 kW)',
-              solutionType: 'battery',
-              length: 6.20,
-              width: 3.20,
-              eaveHeight: 2.38,
-              roofPitch: 0,
-              buildingType: 'battery_standalone',
-              isBattery: true,
-              hasSolar: false,
-              bayCount: 4,
-              baySpacing: 1.15,
-              unitLength: 1.15,
-              unitWidth: 1.44,
-              unitHeight: 2.38,
-              lat: defLat,
-              lng: defLng,
-              gps: `${defLat},${defLng}`,
-              rotation: 0,
-              captures: {},
-              photos: {}
-            }
-          ]
+          buildings: [cleanBatteryStation]
         }
       };
     } else {
       const buildingList = [];
       const ombriereList = [];
-      const batteryList = [];
+      const batteryList = [cleanBatteryStation];
 
       initialBuildings.forEach((b) => {
         const isBat = (b.solutionType === 'battery') || (b.buildingType === 'battery_standalone') || b.isBattery;
         const isOmb = (b.solutionType === 'ombriere') || (b.buildingType || '').toLowerCase().startsWith('ombriere') || (b.category === 'ombriere');
         if (isBat) {
-          batteryList.push({
-            ...b,
-            id: b.id || 'bat-sa-1',
-            solutionType: 'battery',
-            isBattery: true,
-            name: b.name || 'Station Batteries Stand-Alone (500 kW)',
-            length: Number(b.length || 6.20),
-            width: Number(b.width || 3.20),
-            eaveHeight: Number(b.eaveHeight || 2.38)
-          });
+          // Déjà couvert par cleanBatteryStation
         } else if (isOmb) {
           ombriereList.push({
             ...b,
@@ -2792,32 +2870,6 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
           });
         }
       });
-
-      if (batteryList.length === 0) {
-        batteryList.push({
-          id: 'bat-sa-1',
-          name: 'Station Batteries Stand-Alone (500 kW)',
-          solutionType: 'battery',
-          length: 6.20,
-          width: 3.20,
-          eaveHeight: 2.38,
-          roofPitch: 0,
-          buildingType: 'battery_standalone',
-          isBattery: true,
-          hasSolar: false,
-          bayCount: 4,
-          baySpacing: 1.15,
-          unitLength: 1.15,
-          unitWidth: 1.44,
-          unitHeight: 2.38,
-          lat: defLat,
-          lng: defLng,
-          gps: `${defLat},${defLng}`,
-          rotation: 0,
-          captures: {},
-          photos: {}
-        });
-      }
 
       if (buildingList.length === 0) {
         const bInitLen = isAcama ? 30 : 37.5;
@@ -2878,20 +2930,19 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         },
         battery: {
           activeBuildingIndex: 0,
-          buildings: batteryList
+          buildings: [cleanBatteryStation]
         }
       };
     }
 
     setSolutions(loadedSolutions);
 
-    // Initialiser les structures sélectionnées
+    // Initialiser les structures sélectionnées (strictement bat-sa-1 si projet batterie)
     hasInitializedSelectionRef.current = true;
-    if (savedState?.selectedStructureIds && Array.isArray(savedState.selectedStructureIds) && savedState.selectedStructureIds.length > 0) {
+    if (detectedSolutionType === 'battery' || isBatteryProject) {
+      setSelectedStructureIds(['bat-sa-1']);
+    } else if (savedState?.selectedStructureIds && Array.isArray(savedState.selectedStructureIds) && savedState.selectedStructureIds.length > 0) {
       setSelectedStructureIds(savedState.selectedStructureIds);
-    } else if (detectedSolutionType === 'battery') {
-      const batIds = (loadedSolutions.battery?.buildings || []).map(b => b.id);
-      setSelectedStructureIds(batIds.length > 0 ? batIds : ['bat-sa-1']);
     } else if (project?.selectedStructureIds && Array.isArray(project.selectedStructureIds) && project.selectedStructureIds.length > 0) {
       setSelectedStructureIds(project.selectedStructureIds);
     } else {
@@ -2949,18 +3000,25 @@ En cas de besoin pour la défense extérieure contre l'incendie, un canal est si
         .replace(/\s*\(Cf\s+(?:DP|PC)\s*0?2\s*-\s*Plan\s+de\s+masse\)\.?/gi, '.');
     };
 
-    const initialNotice = sanitizeNotice(savedState?.noticeText || project?.noticeText || (isRodierGarons ? garonsImage5Notice : buildAutoNoticeText()));
+    let initialNotice = savedState?.noticeText || project?.noticeText;
+    if (isBatterySolution) {
+      if (!initialNotice || /ombrière|bâtiment agricole|charpente métallique|225|311/i.test(initialNotice) || !/batterie|bess|stockage/i.test(initialNotice)) {
+        initialNotice = buildAutoNoticeText();
+      }
+    } else if (isRodierGarons) {
+      initialNotice = garonsImage5Notice;
+    } else if (!initialNotice) {
+      initialNotice = buildAutoNoticeText();
+    }
+    initialNotice = sanitizeNotice(initialNotice);
     setNoticeText(initialNotice);
-    setIsNoticeUserModified(Boolean(savedState?.isNoticeUserModified || savedState?.noticeText || project?.noticeText || isRodierGarons));
+    setIsNoticeUserModified(Boolean((savedState?.isNoticeUserModified || savedState?.noticeText || project?.noticeText) && (!isBatterySolution || /batterie|bess|stockage/i.test(initialNotice))));
 
     const image4ObjetTravaux = `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire de dimensions 60m x 35.3m soit 2118m² de surface (dont 26.0m principal + 9.30m appentis) ouverte sur les 4 côtés.
 La puissance totale installée en toiture sera de 460 kWc. Le bac acier qui sera installé en toiture sous les modules photovoltaïques sera de RAL7016. Les panneaux photovoltaïques prévus sont noirs avec un encadrement noir.
 Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire de 465 Wc soit 989 panneaux photovoltaïques seront installés en toiture sur les 2 pans de l'ombrière.`;
 
     const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
-    const isBuildingSolution = detectedSolutionType === 'building';
-    const isOmbriereSolution = detectedSolutionType === 'ombriere';
-    const isBatterySolution = detectedSolutionType === 'battery';
 
     const defaultObjetBySol = isBatterySolution
       ? "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV."
@@ -2991,12 +3049,25 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const rawBirthDate = savedState?.editedProject?.birthDate || project.birthDate || '';
     const formattedBirthDate = String(rawBirthDate).replace(/\D/g, '').slice(0, 8);
 
+    const defaultSec = (isBatterySolution && bessOdreMatch?.section)
+      ? bessOdreMatch.section
+      : (savedState?.editedProject?.cadastre_section || project.cadastre_section || project.dp_config?.terrain?.section || '');
+    const defaultNum = (isBatterySolution && bessOdreMatch?.numero)
+      ? bessOdreMatch.numero
+      : (savedState?.editedProject?.cadastre_numero || project.cadastre_numero || project.dp_config?.terrain?.parcelle || '');
+    const defaultSurf = (isBatterySolution && bessOdreMatch?.contenance)
+      ? String(bessOdreMatch.contenance)
+      : (savedState?.editedProject?.cadastre_surface || project.cadastre_surface || project.dp_config?.terrain?.contenance_m2 || '');
+    const defaultParcelles = (isBatterySolution && bessOdreMatch?.section && bessOdreMatch?.numero)
+      ? [{ section: bessOdreMatch.section, numero: bessOdreMatch.numero, surface: String(bessOdreMatch.contenance || '') }]
+      : (savedState?.editedProject?.parcelles || project.parcelles || [{ section: defaultSec, numero: defaultNum, surface: defaultSurf }]);
+
     const initProj = {
       ...project,
       ...(savedState?.editedProject || {}),
-      lat: savedState?.editedProject?.lat || defLat,
-      lng: savedState?.editedProject?.lng || defLng,
-      gps: savedState?.editedProject?.gps || `${defLat},${defLng}`,
+      lat: isBatterySolution ? (bessLat || defLat) : (savedState?.editedProject?.lat || defLat),
+      lng: isBatterySolution ? (bessLng || defLng) : (savedState?.editedProject?.lng || defLng),
+      gps: isBatterySolution ? `${bessLat || defLat},${bessLng || defLng}` : (savedState?.editedProject?.gps || `${defLat},${defLng}`),
       solutionType: detectedSolutionType,
       urbanisme_solutionType: detectedSolutionType,
       type: isBatterySolution ? 'battery' : (isOmbriereSolution ? 'ombriere' : (project.type && !project.type.includes('batterie') ? project.type : 'batiment_solaire')),
@@ -3031,9 +3102,11 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       leftWidth: b1?.leftWidth,
       rightWidth: b1?.rightWidth,
       bayCount: b1?.bayCount,
-      cadastre_section: savedState?.editedProject?.cadastre_section || project.cadastre_section || project.dp_config?.terrain?.section || ((isBatterySolution || project?.isBattery) ? findBessOdreData(project?.name || project?.projectName || project?.client || '')?.section : '') || '',
-      cadastre_numero: savedState?.editedProject?.cadastre_numero || project.cadastre_numero || project.dp_config?.terrain?.parcelle || ((isBatterySolution || project?.isBattery) ? findBessOdreData(project?.name || project?.projectName || project?.client || '')?.numero : '') || '',
-      cadastre_surface: savedState?.editedProject?.cadastre_surface || project.cadastre_surface || project.dp_config?.terrain?.contenance_m2 || ((isBatterySolution || project?.isBattery) ? String(findBessOdreData(project?.name || project?.projectName || project?.client || '')?.contenance || '') : '') || '',
+      cadastre_section: defaultSec,
+      cadastre_numero: defaultNum,
+      cadastre_surface: defaultSurf,
+      parcelles: defaultParcelles,
+      cadastre_parcelles: defaultParcelles,
       cadastre_commune: savedState?.editedProject?.cadastre_commune || project.cadastre_commune || projCity,
       commune: savedState?.editedProject?.commune || projCity,
       urbanismeType: candidateUrbanismeType,
@@ -3076,18 +3149,22 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       const shouldQueryCadastre = (initProj.gps || initProj.lat) && (!initProj.cadastre_section || !initProj.cadastre_numero || isBatterySolution);
       if (shouldQueryCadastre) {
         setFetchingCadastre(true);
-        const gps = initProj.gps || `${initProj.lat},${initProj.lng}`;
-        const [lat, lng] = gps.split(',').map(Number);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          cadastreService.getParcelle(lat, lng).then(data => {
+        const queryLat = isBatterySolution ? (bessLat || Number(initProj.lat)) : Number(initProj.lat);
+        const queryLng = isBatterySolution ? (bessLng || Number(initProj.lng)) : Number(initProj.lng);
+        if (!isNaN(queryLat) && !isNaN(queryLng)) {
+          cadastreService.getParcelle(queryLat, queryLng).then(data => {
             if (data && data.section && data.numero) {
+              const secFound = (isBatterySolution && bessOdreMatch?.section) ? bessOdreMatch.section : data.section;
+              const numFound = (isBatterySolution && bessOdreMatch?.numero) ? bessOdreMatch.numero : data.numero;
+              const surfFound = String((isBatterySolution && bessOdreMatch?.contenance) ? bessOdreMatch.contenance : (data.contenance || ''));
               setEditedProject(prev => ({
                 ...prev,
-                cadastre_section: isBatterySolution ? data.section : (prev.cadastre_section || data.section),
-                cadastre_numero: isBatterySolution ? data.numero : (prev.cadastre_numero || data.numero),
-                cadastre_surface: isBatterySolution ? String(data.contenance || '') : (prev.cadastre_surface || String(data.contenance || '')),
+                cadastre_section: secFound,
+                cadastre_numero: numFound,
+                cadastre_surface: surfFound || prev.cadastre_surface,
                 cadastre_commune: data.nom_commune || prev.cadastre_commune,
-                parcelles: [{ section: data.section, numero: data.numero, surface: String(data.contenance || '') }]
+                parcelles: [{ section: secFound, numero: numFound, surface: surfFound }],
+                cadastre_parcelles: [{ section: secFound, numero: numFound, surface: surfFound }]
               }));
             }
           }).catch(e => console.error('Erreur auto cadastre:', e))
@@ -3284,7 +3361,13 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
   // Mise à jour automatique de la notice selon la configuration ou assainissement des mentions obsolètes
   useEffect(() => {
-    if (!isNoticeUserModified) {
+    if (solutionType === 'battery') {
+      if (!noticeText || /ombrière|bâtiment agricole|charpente métallique|225|311/i.test(noticeText) || !/batterie|bess|stockage/i.test(noticeText)) {
+        const auto = buildAutoNoticeText();
+        setNoticeText(auto);
+        setEditedProject(prev => ({ ...prev, noticeText: auto }));
+      }
+    } else if (!isNoticeUserModified) {
       const auto = buildAutoNoticeText();
       setNoticeText(auto);
       setEditedProject(prev => ({ ...prev, noticeText: auto }));
@@ -3295,7 +3378,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       setNoticeText(cleaned);
       setEditedProject(prev => ({ ...prev, noticeText: cleaned }));
     }
-  }, [step, selectedStructureIds, allConfiguredStructures, additionalRoof, batteryStorage, buildAutoNoticeText, isNoticeUserModified]);
+  }, [step, solutionType, selectedStructureIds, allConfiguredStructures, additionalRoof, batteryStorage, buildAutoNoticeText, isNoticeUserModified]);
 
   // Mise à jour de la position GPS individuelle d'un bâtiment (PC2 / DP2)
   const handleBuildingGpsUpdate = (bIdx, newLat, newLng) => {
@@ -3978,7 +4061,11 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     }
 
     let effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
-    if ((isNoBattery || !isBattery) && effectiveNotice) {
+    if (isBattery) {
+      if (!effectiveNotice || /ombrière|bâtiment agricole|charpente métallique|225|311/i.test(effectiveNotice) || !/batterie|bess|stockage/i.test(effectiveNotice)) {
+        effectiveNotice = buildAutoNoticeText();
+      }
+    } else if ((isNoBattery || !isBattery) && effectiveNotice) {
       effectiveNotice = effectiveNotice
         .replace(/Le système de stockage batterie est[^\n]*\n?/gi, '')
         .replace(/ainsi qu'un système de stockage batterie[^\n,\.]*/gi, '')
@@ -4041,27 +4128,22 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const candidateBuildings = isBattery
       ? allConfigured.filter(b => (b.solutionKey === 'battery' || b.isBattery) && selectedStructureIds.includes(b.id))
       : allConfigured.filter(b => selectedStructureIds.includes(b.id));
-    const structuresToExport = candidateBuildings.length > 0
-      ? candidateBuildings
-      : (isBattery 
-          ? allConfigured.filter(b => b.solutionKey === 'battery' || b.isBattery).slice(0, 1)
-          : (allConfigured.length > 0 ? allConfigured.slice(0, 1) : buildings));
+    const structuresToExport = isBattery
+      ? (allConfigured.filter(b => (b.solutionKey === 'battery' || b.isBattery) && Number(b.length || 0) <= 10).slice(0, 1))
+      : (candidateBuildings.length > 0 ? candidateBuildings : (allConfigured.length > 0 ? allConfigured.slice(0, 1) : buildings));
 
     // Conserver fidèlement chaque structure retenue avec ses propres dimensions et paramètres
     const updatedBuildings = structuresToExport.map((b, idx) => {
-      let bLen = isBattery ? Number(b.length || 6.20) : Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (isAcama ? 30 : 37.5)));
-      let bWid = isBattery ? Number(b.width || 3.20) : Number(b.width || (isAcama ? 15 : 16.4));
-      if (isBattery) {
-        bLen = 6.20;
-        bWid = 3.20;
-      } else if (bWid <= 6.0 || bLen <= 6.0) {
+      let bLen = isBattery ? 6.20 : Number(b.length || (b.bayCount ? b.bayCount * (b.baySpacing || 7.5) : (isAcama ? 30 : 37.5)));
+      let bWid = isBattery ? 3.20 : Number(b.width || (isAcama ? 15 : 16.4));
+      if (!isBattery && (bWid <= 6.0 || bLen <= 6.0)) {
         bLen = isAcama ? 30 : 37.5;
         bWid = isAcama ? 15 : 16.4;
       }
       let bName = b.name;
       const isOmb = solutionType === 'ombriere' || b.solutionKey === 'ombriere' || (b.buildingType || '').toLowerCase().startsWith('ombriere');
       if (isBattery) {
-        bName = 'Station Batteries Stand-Alone (500 kW)';
+        bName = 'Station Batteries (DP < 20 m²)';
       } else {
         if (isAcama) {
           bName = `Bâtiment ${bLen.toFixed(0)}m × ${bWid.toFixed(0)}m`;
@@ -6649,12 +6731,16 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                     ? 'bg-purple-100 text-purple-800'
                                     : (str.solutionKey === 'ombriere' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800')
                                 }`}>
-                                  {str.solutionLabel}
+                                  {isBatStr ? 'Station Batteries (DP < 20 m²)' : str.solutionLabel}
                                 </span>
-                                <span className="font-bold text-xs text-slate-900 truncate">{str.name}</span>
+                                <span className="font-bold text-xs text-slate-900 truncate">
+                                  {isBatStr ? 'Station Batteries (DP < 20 m²)' : str.name}
+                                </span>
                               </div>
                               <p className="text-[11px] text-slate-500 font-medium">
-                                {strLen.toFixed(1)}m × {strWid.toFixed(1)}m — {Math.round(strLen * strWid)} m²
+                                {isBatStr
+                                  ? `${Number(strLen).toFixed(2)}m × ${Number(strWid).toFixed(2)}m — ${(strLen * strWid).toFixed(2)} m² (< 20 m²)`
+                                  : `${strLen.toFixed(1)}m × ${strWid.toFixed(1)}m — ${Math.round(strLen * strWid)} m²`}
                               </p>
                             </div>
                             <input
