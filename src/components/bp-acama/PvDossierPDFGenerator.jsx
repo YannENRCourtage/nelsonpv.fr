@@ -22,6 +22,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { PV_PORTFOLIO_SITES, computePvFinancials } from '../../data/pvPortfolioData.js';
+import PvProjectSingleSheet from './PvProjectSingleSheet.jsx';
 
 // Helpers de formatage
 const fmtEur = (val) => {
@@ -44,6 +45,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [progressStep, setProgressStep] = useState('');
   const scrollContainerRef = useRef(null);
 
   useEffect(() => {
@@ -105,20 +107,28 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
     debtRate: 4.3
   };
 
-  const plancheTitles = [
+  const portfolioPlancheTitles = [
     "Synthèse Exécutive & Données Clés",
     "Compte de Résultat & Cash-Flows 20 ans",
-    isPort ? "Répertoire Exhaustif des Centrales PV" : "Détail Technique des Bâtiments & Toitures"
+    "Répertoire Exhaustif des Centrales PV"
   ];
+  const singlePlancheTitles = [
+    "Synthèse Exécutive & Données Clés",
+    "Compte de Résultat & Cash-Flows 20 ans",
+    "Détail Technique des Bâtiments & Toitures"
+  ];
+  const plancheTitles = isPort ? portfolioPlancheTitles : singlePlancheTitles;
   const totalPagesCount = plancheTitles.length;
+  const totalCompletePages = isPort ? (totalPagesCount + portfolioSites.length) : totalPagesCount;
 
   // Années pour le tableau de cash flow
   const years = Array.from({ length: 20 }, (_, i) => 2026 + i);
 
   // Fonction d'exportation PDF multi-pages A4 Paysage
-  const handleExportPDF = async () => {
+  const handleGeneratePdf = async (exportMode = 'portfolio') => {
     setIsExportingPdf(true);
-    setExportProgress(10);
+    setExportProgress(5);
+    setProgressStep('Initialisation du document...');
 
     try {
       const pdf = new jsPDF({
@@ -131,18 +141,28 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const margin = 5;
 
-      const sectionIds = [
+      const baseSections = [
         'pv-planche-container-1',
         'pv-planche-container-2',
         'pv-planche-container-3'
       ];
 
-      for (let i = 0; i < sectionIds.length; i++) {
-        const container = document.getElementById(sectionIds[i]);
+      let targetIds = [...baseSections];
+      if (exportMode === 'complete' && isPort) {
+        for (let i = 0; i < portfolioSites.length; i++) {
+          targetIds.push(`pv-single-site-container-${i + 1}`);
+        }
+      }
+
+      for (let i = 0; i < targetIds.length; i++) {
+        const id = targetIds[i];
+        const container = document.getElementById(id);
         if (!container) continue;
 
         const targetEl = container.querySelector('.pv-render-page') || container;
-        setExportProgress(Math.round(((i + 1) / sectionIds.length) * 80));
+        const progressPct = Math.round(((i + 1) / targetIds.length) * 90);
+        setExportProgress(progressPct);
+        setProgressStep(`Capture page ${i + 1} / ${targetIds.length}...`);
 
         const canvas = await html2canvas(targetEl, {
           scale: 2,
@@ -172,45 +192,60 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
       }
 
       setExportProgress(100);
-      pdf.save(`Etude_Complete_PV_${isPort ? 'Portefeuille_HELIOS' : (currentProject?.name || 'Projet')}.pdf`);
+      setProgressStep('Finalisation...');
+      
+      const fileName = exportMode === 'complete'
+        ? `Etude_Complete_PV_Portfolio_HELIOS_${totalCompletePages}Pages.pdf`
+        : `Dossier_PV_${isPort ? 'Portfolio_HELIOS' : (currentProject?.name || 'Projet')}.pdf`;
+
+      pdf.save(fileName);
     } catch (err) {
       console.error('Erreur export PDF PV:', err);
       alert("Une erreur est survenue lors de la génération du dossier PDF.");
     } finally {
       setIsExportingPdf(false);
       setExportProgress(0);
+      setProgressStep('');
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl w-full max-w-[1450px] max-h-[96vh] flex flex-col shadow-2xl overflow-hidden">
-        {/* Header Modal */}
-        <header className="px-6 py-3.5 bg-[#0b192c] text-white flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center">
-                <Sun className="w-5 h-5 text-amber-400" />
-              </div>
-              <div>
-                <span className="text-sm font-black tracking-wide uppercase block text-white">
-                  ÉTUDE COMPLÈTE & DOSSIER D'INVESTISSEMENT PHOTOVOLTAÏQUE
+    <div className="fixed inset-x-0 bottom-0 top-[60px] z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200">
+      {/* Conteneur Modal Global Repositionné strictement sous le Header Nelson */}
+      <div className="relative w-full max-w-[1540px] h-[calc(100vh-76px)] bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
+        
+        {/* ========================================================================= */}
+        {/* BARRE SUPÉRIEURE DE NAVIGATION ET COMMUTATEUR (FOND BLANC PUR) */}
+        {/* ========================================================================= */}
+        <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-6 py-3 shadow-xs flex flex-wrap items-center justify-between gap-4 shrink-0">
+          <div className="flex items-center gap-6">
+            {/* Logo Nelson */}
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo-nelson.png"
+                alt="Nelson"
+                className="h-9 w-auto object-contain"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+              <div className="flex flex-col">
+                <span className="text-base font-black tracking-tight text-[#0b192c] leading-none">
+                  NELSON<span className="text-amber-500 font-extrabold ml-1">ENERGY</span>
                 </span>
-                <span className="text-[10px] tracking-wider uppercase font-bold text-slate-400 mt-0.5">
-                  Modèle HÉLIOS • Tarifs d'Achat S21 & ACC
+                <span className="text-[10px] tracking-wider uppercase font-bold text-slate-500 mt-0.5">
+                  Mémorandum d'Investissement Photovoltaïque • Tarifs S21 & ACC
                 </span>
               </div>
             </div>
 
-            {/* Switch Unitaire vs Portefeuille */}
-            <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl p-1">
+            {/* Commutateur interactif Unitaire vs Portefeuille */}
+            <div className="flex items-center bg-slate-100 border border-slate-300 rounded-xl p-1 shadow-inner">
               <button
                 type="button"
                 onClick={() => setActiveMode('single')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   !isPort
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Sun className="w-3.5 h-3.5" />
@@ -219,10 +254,10 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
               <button
                 type="button"
                 onClick={() => setActiveMode('portfolio')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   isPort
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
@@ -231,29 +266,11 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleExportPDF}
-              disabled={isExportingPdf}
-              className="px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isExportingPdf ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Génération ({exportProgress}%)...</span>
-                </>
-              ) : (
-                <>
-                  <FileDown className="w-4 h-4 text-white" />
-                  <span>TÉLÉCHARGER DOSSIER PDF ({totalPagesCount} PLANCHES)</span>
-                </>
-              )}
-            </button>
-
+          <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Fermer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -271,13 +288,13 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                 document.getElementById('pv-planche-container-' + (nextIdx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
               disabled={activePageIndex === 0}
-              className="px-3 py-1 text-xs font-bold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs"
+              className="px-3 py-1 text-xs font-bold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Précédente</span>
             </button>
 
-            <span className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-black">
+            <span className="px-3.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-black">
               Planche {activePageIndex + 1} / {totalPagesCount}
             </span>
 
@@ -289,14 +306,14 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                 document.getElementById('pv-planche-container-' + (nextIdx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
               disabled={activePageIndex === totalPagesCount - 1}
-              className="px-3 py-1 text-xs font-bold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs"
+              className="px-3 py-1 text-xs font-bold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs cursor-pointer"
             >
               <span>Suivante</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto py-0.5">
             {plancheTitles.map((title, idx) => (
               <button
                 key={idx}
@@ -305,7 +322,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                   setActivePageIndex(idx);
                   document.getElementById('pv-planche-container-' + (idx + 1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }}
-                className={'px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ' + (
+                className={'px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ' + (
                   activePageIndex === idx
                     ? 'bg-amber-600 text-white shadow-xs'
                     : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -320,7 +337,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
         {/* Corps du dossier / Conteneur scrollable avec les planches 1380px */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-6 bg-slate-200/90 flex flex-col items-center">
           <div className="text-center text-xs text-slate-600 font-bold bg-white/80 px-4 py-1 rounded-full border border-slate-300 shadow-xs mb-6 shrink-0" data-html2canvas-ignore="true">
-            Dossier d'Étude Photovoltaïque • {totalPagesCount} Planches A4 Paysage Pleine Largeur (297 × 210 mm)
+            Dossier d'Étude Photovoltaïque • {isPort ? `${totalPagesCount} Planches Portefeuille + ${portfolioSites.length} Fiches Projets` : `${totalPagesCount} Planches`} A4 Paysage Pleine Largeur (297 × 210 mm)
           </div>
 
           {/* ========================================================================= */}
@@ -551,7 +568,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                         <td className="p-1.5 sticky left-0 bg-blue-50 font-bold">Chiffre d'Affaires Brut</td>
                         {years.map((y, i) => {
                           const val = isPort ? (portfolioTotals.totalCaAn1 * Math.pow(1 - 0.0045, i) * Math.pow(1 + 0.006, i)) : ((currentRows?.[i]?.ca) || (singleCaAn1 * Math.pow(1 - 0.0045, i) * Math.pow(1 + 0.006, i)));
-                          return <td key={y} className="p-1.5 text-right">{Math.round(val).toLocaleString('fr-FR')}</td>;
+                          return <td key={y} className="p-1.5 text-right whitespace-nowrap">{Math.round(val).toLocaleString('fr-FR')}</td>;
                         })}
                       </tr>
                       <tr className="text-slate-600">
@@ -559,14 +576,14 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                         {years.map((y, i) => {
                           const baseOpex = isPort ? (portfolioTotals.totalCaAn1 - portfolioTotals.totalEbitdaAn1) : (singleCaAn1 - singleEbitdaAn1);
                           const val = isPort ? (baseOpex * Math.pow(1 + 0.02, i)) : ((currentRows?.[i]?.opex) || (baseOpex * Math.pow(1 + 0.02, i)));
-                          return <td key={y} className="p-1.5 text-right">{Math.round(val).toLocaleString('fr-FR')}</td>;
+                          return <td key={y} className="p-1.5 text-right whitespace-nowrap">{Math.round(val).toLocaleString('fr-FR')}</td>;
                         })}
                       </tr>
                       <tr className="bg-emerald-50/60 font-black text-emerald-900">
                         <td className="p-1.5 sticky left-0 bg-emerald-50 font-black">EBITDA Projet</td>
                         {years.map((y, i) => {
                           const val = isPort ? (portfolioTotals.totalEbitdaAn1 * Math.pow(1 - 0.0045, i) * Math.pow(1 + 0.006, i)) : ((currentRows?.[i]?.ebitda) || (singleEbitdaAn1 * Math.pow(1 - 0.0045, i) * Math.pow(1 + 0.006, i)));
-                          return <td key={y} className="p-1.5 text-right font-bold">{Math.round(val).toLocaleString('fr-FR')}</td>;
+                          return <td key={y} className="p-1.5 text-right font-bold whitespace-nowrap">{Math.round(val).toLocaleString('fr-FR')}</td>;
                         })}
                       </tr>
                       <tr className="text-slate-700">
@@ -574,7 +591,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                         {years.map((y, i) => {
                           const capex = isPort ? portfolioTotals.totalCapex : singleCapex;
                           const annuite = (capex * 0.90 * (0.043 / (1 - Math.pow(1 + 0.043, -20))));
-                          return <td key={y} className="p-1.5 text-right">{Math.round(annuite).toLocaleString('fr-FR')}</td>;
+                          return <td key={y} className="p-1.5 text-right whitespace-nowrap">{Math.round(annuite).toLocaleString('fr-FR')}</td>;
                         })}
                       </tr>
                       <tr className="bg-purple-50/50 font-bold text-purple-900">
@@ -584,7 +601,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                           const annuite = (capex * 0.90 * (0.043 / (1 - Math.pow(1 + 0.043, -20))));
                           const ebitda = isPort ? (portfolioTotals.totalEbitdaAn1 * Math.pow(1 - 0.0045, i)) : ((currentRows?.[i]?.ebitda) || (singleEbitdaAn1 * Math.pow(1 - 0.0045, i)));
                           const cf = Math.max(0, ebitda - annuite);
-                          return <td key={y} className="p-1.5 text-right font-bold">{Math.round(cf).toLocaleString('fr-FR')}</td>;
+                          return <td key={y} className="p-1.5 text-right font-bold whitespace-nowrap">{Math.round(cf).toLocaleString('fr-FR')}</td>;
                         })}
                       </tr>
                       <tr className="bg-slate-100 font-black text-slate-900">
@@ -598,7 +615,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                             cumul += (ebitda - annuite);
                           }
                           return (
-                            <td key={y} className={`p-1.5 text-right font-black ${cumul >= 0 ? 'text-emerald-700' : 'text-slate-700'}`}>
+                            <td key={y} className={`p-1.5 text-right font-black whitespace-nowrap ${cumul >= 0 ? 'text-emerald-700' : 'text-slate-700'}`}>
                               {Math.round(cumul).toLocaleString('fr-FR')}
                             </td>
                           );
@@ -734,7 +751,101 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
               </div>
             </section>
           </div>
+
+          {/* ========================================================================= */}
+          {/* FICHES PHOTOVOLTAÏQUES UNITAIRES DES SITES DU PORTEFEUILLE */}
+          {/* ========================================================================= */}
+          {isPort && (
+            <div className="w-full flex flex-col items-center">
+              {portfolioSites.map((site, sIdx) => (
+                <div
+                  key={site.id || sIdx}
+                  id={`pv-single-site-container-${sIdx + 1}`}
+                  style={{ display: 'flex' }}
+                  className="w-full flex flex-col items-center shrink-0 mb-8"
+                >
+                  <div className="w-[1380px] mb-2 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full bg-blue-700 text-white font-black text-xs shadow-xs">
+                        Fiche Projet {sIdx + 1} / {portfolioSites.length} (Page {totalPagesCount + sIdx + 1} / {totalCompletePages})
+                      </span>
+                      <span className="font-bold text-slate-800 text-sm">
+                        Fiche PV Unitaire — {site.siteName || site.name} ({site.commune || site.city} - {site.codePostal?.slice(0, 2) || '—'})
+                      </span>
+                    </div>
+                    <span className="text-slate-500 font-medium">{site.kwc} kWc • Tarif S21 (0,082 €/kWh)</span>
+                  </div>
+                  <PvProjectSingleSheet
+                    site={site}
+                    siteIndex={sIdx + 1}
+                    totalSites={portfolioSites.length}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* ========================================================================= */}
+        {/* BARRE INFÉRIEURE PERSISTANTE : BOUTONS D'EXPORT ET FERMER EN BAS */}
+        {/* ========================================================================= */}
+        <footer className="sticky bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-3 shadow-lg flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-700">
+              {isPort ? `Mode Portefeuille Consolidé (${portfolioSites.length} Projets / ${portfolioTotals.totalPowerMw.toFixed(1)} MWc)` : `Mode Simulation Unitaire (${currentProject?.name || 'Projet'} - ${singleKwc.toFixed(0)} kWc)`}
+            </span>
+            <span className="text-slate-300">|</span>
+            <span className="text-xs text-slate-500 font-medium">
+              {isPort ? `3 Planches Portefeuille + ${portfolioSites.length} Fiches Projets = ${totalCompletePages} Pages` : `${totalPagesCount} Planches A4 Paysage`}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Bouton ÉTUDE COMPLÈTE (Multi-Pages) */}
+            {isPort && (
+              <button
+                type="button"
+                onClick={() => handleGeneratePdf('complete')}
+                disabled={isExportingPdf}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                title={`Générer l'étude complète consolidée de ${totalCompletePages} pages`}
+              >
+                <Sparkles className="w-4 h-4 text-yellow-200" />
+                <span>ÉTUDE COMPLÈTE ({totalCompletePages} PAGES)</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => handleGeneratePdf('portfolio')}
+              disabled={isExportingPdf}
+              className="px-6 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-cyan-600/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isExportingPdf ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>{progressStep}</span>
+                </>
+              ) : (
+                <>
+                  <Printer className="w-4 h-4" />
+                  <span>{isPort ? `Dossier Portefeuille (${totalPagesCount} Pages)` : 'Imprimer / Exporter en PDF'}</span>
+                </>
+              )}
+            </button>
+
+            {/* Bouton Fermer */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              title="Fermer la visionneuse"
+            >
+              <X className="w-4 h-4 text-slate-500" />
+              <span>Fermer</span>
+            </button>
+          </div>
+        </footer>
       </div>
     </div>
   );

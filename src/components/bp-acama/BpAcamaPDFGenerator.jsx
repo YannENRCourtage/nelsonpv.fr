@@ -177,12 +177,17 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                                 } else {
                                     s.style.width = '1600px';
                                 }
+                            } else if (id === 'pdf-section-1') {
+                                s.style.width = '1850px';
                             } else {
                                 s.style.width = (id === 'pdf-section-2' || id === 'pdf-section-hybrid') ? '2200px' : '1600px'; 
                             }
                         }
 
                         if (id === 'pdf-section-1') {
+                            clonedDoc.querySelectorAll('#pdf-section-1 table td, #pdf-section-1 table th').forEach(cell => {
+                                cell.style.setProperty('white-space', 'nowrap', 'important');
+                            });
                             const grid4 = s.querySelector('.xl\\:grid-cols-4, .grid-cols-1.xl\\:grid-cols-4');
                             if (grid4) {
                                 grid4.style.display = 'grid';

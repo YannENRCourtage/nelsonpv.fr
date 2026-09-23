@@ -508,12 +508,12 @@ export const PV_PORTFOLIO_SITES = [
 
 export function computePvFinancials(site, options = {}) {
   const debtDuration = options.debtDuration || 20;
-  const debtRate = options.debtRate || 4.0;
+  const debtRate = options.debtRate || 4.3;
   const studyDuration = options.studyDuration || 20;
 
   const kwc = Number(site.kwc) || 250;
   const productible = Number(site.productible) || 1125;
-  const tarifS21 = options.tarifS21 || 0.0846; // €/kWh
+  const tarifS21 = options.tarifS21 || 0.082; // €/kWh
   const coutKwcCentrale = options.coutKwcCentrale || 490; // €/kWc
   const coutCharpente = site.coutCharpente || Math.round(kwc * 280);
   const coutCentrale = Math.round(kwc * coutKwcCentrale);

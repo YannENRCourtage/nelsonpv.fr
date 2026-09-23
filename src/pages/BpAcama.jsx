@@ -910,6 +910,7 @@ function computeBusinessPlan(params) {
 
   const sumCA = rows.reduce((acc, r) => acc + r.ca, 0);
   const sumOpex = rows.reduce((acc, r) => acc + r.opex, 0);
+  const totalCashFlowNet = rows.reduce((acc, r) => acc + (r.tresorerie || 0), 0);
 
   return { 
     rows, 
@@ -926,6 +927,9 @@ function computeBusinessPlan(params) {
     totalInvestissement: totalConstruction,
     sumCA,
     sumOpex,
+    tresoCumulee: totalCashFlowNet,
+    totalCashFlowNet,
+    beneficeNetCash: totalCashFlowNet,
     gains: sumCA - sumOpex - totalConstruction
   };
 }
@@ -1039,7 +1043,7 @@ function computeResteACharge(params) {
 }
 
 const fmt = (n, dec = 0) => (n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-const fmtEur = (n) => `${fmt(n, 2)} €`;
+const fmtEur = (n) => `${fmt(n, 2)}\u00A0€`;
 const fmtPct = (n) => `${fmt(n * 100, 1)}%`;
 
 const useDragScroll = () => {
@@ -1085,11 +1089,18 @@ function Field({
   precision, 
   hideLabel = false 
 }) {
-  const [localVal, setLocalVal] = useState(value !== undefined && value !== null ? value : '');
+  const formatVal = (v) => {
+    if (v === undefined || v === null || v === '') return '';
+    if (type === 'number' && precision !== undefined && !isNaN(Number(v))) {
+      return Number(Number(v).toFixed(precision));
+    }
+    return v;
+  };
+  const [localVal, setLocalVal] = useState(formatVal(value));
 
   useEffect(() => {
-    setLocalVal(value !== undefined && value !== null ? value : '');
-  }, [value]);
+    setLocalVal(formatVal(value));
+  }, [value, precision]);
 
   const handleChange = (e) => {
     const raw = e.target.value;
@@ -1844,7 +1855,7 @@ function TableauPrevisionnel({ params, rows, apport10, detailed = false }) {
           {showSum ? (isCurrency ? fmtEur(totalSum) : fmt(totalSum, 2)) : "—"}
         </td>
         {rows.map((r, i) => (
-          <td key={i} className="px-1 py-1 text-right border border-slate-200 font-medium align-top text-[11px]">
+          <td key={i} className="px-1.5 py-1 text-right border border-slate-200 font-medium align-top text-[11px] whitespace-nowrap min-w-[55px]">
             {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : (isPercent ? fmtPct(r[propName]) : fmt(r[propName], 2)))}
           </td>
         ))}
@@ -1861,7 +1872,7 @@ function TableauPrevisionnel({ params, rows, apport10, detailed = false }) {
               <td className="w-[180px] p-2 border border-slate-200 text-slate-400 font-bold italic">{rows[0]?.isGlobal ? "Étude Combinée" : "Chronique Financière"}</td>
               <td className="w-28 p-1 border border-slate-200 text-center font-bold bg-amber-50 uppercase text-[10px] text-amber-900">TOTAL</td>
               {rows.map((r, i) => (
-                <td key={i} className="p-1 border border-slate-200 text-center font-bold bg-slate-50">{r.year}</td>
+                <td key={i} className="p-1 border border-slate-200 text-center font-bold bg-slate-50 min-w-[55px]">{r.year}</td>
               ))}
             </tr>
           </thead>
@@ -1892,7 +1903,7 @@ function TableauPrevisionnel({ params, rows, apport10, detailed = false }) {
                     {fmtEur(rows.reduce((acc, r) => acc + (r.tresorerie || 0), 0))}
                   </td>
                   {rows.map((r, i) => (
-                    <td key={i} className="px-1 py-1 text-right border-l border-slate-300 font-black">
+                    <td key={i} className="px-1.5 py-1 text-right border-l border-slate-300 font-black whitespace-nowrap min-w-[55px]">
                       {fmtEur(r.tresorerie)}
                     </td>
                   ))}
@@ -1948,7 +1959,7 @@ function TableauPrevisionnel({ params, rows, apport10, detailed = false }) {
                     {fmtEur(rows.reduce((acc, r) => acc + (r.opex || 0) + (r.serviceDette || 0) + (r.mra || 0), 0))}
                   </td>
                   {rows.map((r, i) => (
-                    <td key={i} className="px-1 py-1 text-right border-l border-slate-200 text-red-700">{fmtEur((r.opex || 0) + (r.serviceDette || 0) + (r.mra || 0))}</td>
+                    <td key={i} className="px-1.5 py-1 text-right border-l border-slate-200 text-red-700 whitespace-nowrap min-w-[55px]">{fmtEur((r.opex || 0) + (r.serviceDette || 0) + (r.mra || 0))}</td>
                   ))}
                 </tr>
                 <DataRow label="OPEX" propName="opex" isCurrency />
@@ -2216,7 +2227,7 @@ function TabBpProjets({
         const etude = !isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0;
         return sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + etude;
       }, 0);
-      const totalFrais = totalCoutTechnique * 0.01;
+      const totalFrais = Math.round(totalCoutTechnique * 0.01 * 100) / 100;
 
       return { 
         ...prev, 
@@ -2377,7 +2388,7 @@ function TabBpProjets({
       return sum + (!isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0);
     }, 0);
     const totalCoutTechnique = params.buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0) + studyCost;
-    const newFrais = totalCoutTechnique * 0.01;
+    const newFrais = Math.round(totalCoutTechnique * 0.01 * 100) / 100;
 
     if (Math.abs((params.raccordement || 0) - newRaccordement) > 0.1 || Math.abs((params.frais || 0) - newFrais) > 0.1) {
       setParams(prev => ({
@@ -2687,7 +2698,7 @@ function TabBpProjets({
         const etude = !isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0;
         return sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + etude;
       }, 0);
-      const totalFrais = totalCoutTechnique * 0.01;
+      const totalFrais = Math.round(totalCoutTechnique * 0.01 * 100) / 100;
 
       setParams(prev => ({
         ...prev,
@@ -3193,7 +3204,16 @@ function TabBpProjets({
                       {!isGreenInvest && (
                         <Field label="Développement" value={collapsedParams.developpement || 0} onChange={v => setParams(p => ({ ...p, developpement: v }))} type="number" suffix="€" className="h-6 text-xs" />
                       )}
-                      <Field label="Frais de structure" value={params.frais || 0} onChange={v => setParams(p => ({ ...p, frais: v }))} type="number" suffix="€" className="h-6 text-xs" />
+                      <Field 
+                        label="Frais de structure" 
+                        value={params.frais !== undefined ? Math.round(Number(params.frais) * 100) / 100 : 0} 
+                        onChange={v => setParams(p => ({ ...p, frais: v }))} 
+                        type="number" 
+                        precision={2} 
+                        step="0.01" 
+                        suffix="€" 
+                        className="h-6 text-xs" 
+                      />
                     </div>
 
                     <div className="pt-2 border-t border-slate-200">
@@ -3361,7 +3381,7 @@ function TabBpProjets({
                       </div>
                       <div className="flex justify-between items-center bg-green-500/20 p-2 rounded border border-green-500/30">
                         <span className="text-[11px] opacity-90 uppercase font-bold text-green-400 leading-tight">Bénéfice Net Cash<br/>(avec Dette)</span>
-                        <span className="text-xl font-black text-white">{fmtEur(bpResults.tresoCumulee)}</span>
+                        <span className="text-xl font-black text-white">{fmtEur(bpResults.totalCashFlowNet ?? bpResults.tresoCumulee ?? (rows || []).reduce((acc, r) => acc + (r.tresorerie || 0), 0))}</span>
                       </div>
                     </div>
                   </div>
