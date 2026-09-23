@@ -11,7 +11,7 @@ import { getUserColor } from '@/lib/utils';
 import { apiService } from '@/services/api';
 import { formatGps } from '@/utils/formatGps.js';
 import { findBessOdreData } from '@/data/bessOdreMatrix.js';
-import { cadastreService } from '@/services/cadastreService.js';
+import { cadastreService } from '@/services/CadastreService.js';
 
 /**
  * EtudeDossierView — Vue détaillée du workflow de développement d'un projet solaire
