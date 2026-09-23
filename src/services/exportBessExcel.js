@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 import { BESS_PORTFOLIO_SITES } from '../data/bessPortfolioData.js';
 import { BESS_ODRE_MATRIX } from '../data/bessOdreMatrix.js';
 import { computeBessFinancials } from './bessSimulationEngine.js';
+import { formatResteAffecterDistanceWithFallback } from './odreSubstationFallback.js';
 
 /**
  * SERVICE D'EXPORT EXCEL CONSOLIDÉ DU PORTEFEUILLE BESS (31 SITES / 15.5 MW)
@@ -59,7 +60,7 @@ export function generateBessPortfolioExcelData(sites = BESS_PORTFOLIO_SITES, opt
     'Distance (km)': fin.distanceKm,
     'Quote-Part S3REnR': fin.quotePartS3REnR,
     'Reste à affecter (MW)': siteRaw.substation?.resteAffecterMw ?? '—',
-    'Reste à affecter (Distance)': formatResteAffecterDistance(siteRaw.substation?.resteAffecterMw, fin.distanceKm),
+    'Reste à affecter (Distance)': formatResteAffecterDistanceWithFallback(siteRaw.substation?.resteAffecterMw, fin.distanceKm, siteRaw.lat, siteRaw.lng, fin.posteSource),
     'Zone CRE 2025-227': fin.zoneCre,
     'CAPEX Total (€)': Math.round(fin.capexTotal),
     'CA Annuel 1 (€)': Math.round(fin.caAnnuel),

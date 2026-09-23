@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { PV_PORTFOLIO_SITES, computePvFinancials } from '../data/pvPortfolioData.js';
-import { formatResteAffecterDistance } from './exportBessExcel.js';
+import { formatResteAffecterDistanceWithFallback } from './odreSubstationFallback.js';
 import { BESS_ODRE_MATRIX } from '../data/bessOdreMatrix.js';
 
 /**
@@ -41,7 +41,7 @@ export function generatePvPortfolioExcelData(sites = PV_PORTFOLIO_SITES, options
     'Distance (km)': fin.distanceKm,
     'Quote-Part S3REnR': fin.quotePartS3REnR,
     'Reste à affecter (MW)': siteRaw.substation?.resteAffecterMw ?? 0,
-    'Reste à affecter (Distance)': formatResteAffecterDistance(siteRaw.substation?.resteAffecterMw ?? 0, fin.distanceKm),
+    'Reste à affecter (Distance)': formatResteAffecterDistanceWithFallback(siteRaw.substation?.resteAffecterMw ?? 0, fin.distanceKm, siteRaw.lat, siteRaw.lng, fin.posteSource),
     'Zone CRE 2025-227': fin.zoneCre,
     'CAPEX Total (€)': Math.round(fin.capexTotal),
     'CA Annuel 1 (€)': Math.round(fin.caAnnuel),
