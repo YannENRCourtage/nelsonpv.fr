@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
@@ -125,7 +125,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
   const years = Array.from({ length: 20 }, (_, i) => 2026 + i);
 
   // Chronique financière détaillée 20 ans pour la Planche 2
-  const detailedChronoRows = useMemo(() => {
+  const detailedChronoRows = (() => {
     const yearsArr = Array.from({ length: 20 }, (_, i) => 2026 + i);
     const capex = isPort ? portfolioTotals.totalCapex : singleCapex;
     const caAn1 = isPort ? portfolioTotals.totalCaAn1 : singleCaAn1;
@@ -190,7 +190,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
         cumulCashFlow
       };
     });
-  }, [isPort, portfolioTotals, singleCapex, singleCaAn1, singleEbitdaAn1]);
+  })();
 
   // Helper de rendu de ligne détaillée pour la Planche 2
   const DataRowP2 = ({ label, propName, isCurrency, format, bold, className, indent }) => (
