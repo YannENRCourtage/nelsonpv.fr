@@ -10,6 +10,8 @@ import { toast } from '@/components/ui/use-toast';
 import { getUserColor } from '@/lib/utils';
 import { apiService } from '@/services/api';
 import { formatGps } from '@/utils/formatGps.js';
+import { findBessOdreData } from '@/data/bessOdreMatrix.js';
+import { cadastreService } from '@/services/cadastreService.js';
 
 /**
  * EtudeDossierView — Vue détaillée du workflow de développement d'un projet solaire
@@ -484,62 +486,15 @@ export default function EtudeDossierView({
           </div>
         </div>
 
-        {/* Bouton(s) d'action de l'étape */}
+        {/* Bouton d'action de l'étape */}
         <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex flex-col gap-2">
-          {step.id === 'dp' ? (
-            <>
-              {(project?.dp_config?.generatedAt || project?.dp_config?.status === 'GENERATED') && (
-                <div className="flex items-center justify-between px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10.5px] font-bold text-emerald-800">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    DP générée le {new Date(project.dp_config.generatedAt || Date.now()).toLocaleDateString('fr-FR')}
-                  </span>
-                  <span className="text-emerald-700 font-extrabold uppercase text-[9.5px]">Prêt</span>
-                </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onGenerateExpressDp) {
-                      onGenerateExpressDp(project);
-                    } else {
-                      handleStepAction(step);
-                    }
-                  }}
-                  className="w-full py-2 px-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
-                  title="Générer et télécharger directement le dossier DP complet avec CERFA pré-rempli"
-                >
-                  <Zap className="w-3.5 h-3.5 text-yellow-300" />
-                  <span>{project?.dp_config?.generatedAt ? 'Télécharger PDF (Express)' : 'Générer DP (Express)'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onOpenDpWizard) {
-                      onOpenDpWizard(project);
-                    } else {
-                      handleStepAction(step);
-                    }
-                  }}
-                  className="w-full py-2 px-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
-                  title="Ouvrir l'assistant interactif par étapes pour modifier les données de la déclaration"
-                >
-                  <span>{project?.dp_config?.generatedAt ? 'Modifier déclaration' : 'Ouvrir tunnel / Modifier'}</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                </button>
-              </div>
-            </>
-          ) : (
-            <button
-              onClick={() => handleStepAction(step)}
-              className="w-full py-2.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
-            >
-              {step.actionLabel}
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            onClick={() => handleStepAction(step)}
+            className="w-full py-2.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+          >
+            {step.actionLabel}
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
     );
@@ -588,12 +543,41 @@ export default function EtudeDossierView({
   const commercialName = project?.commercial || project?.commercial_name || project?.salesRep || '';
   const dateSaisie = formatSaisieDate(project?.created_at || project?.createdAt || project?.date_creation || project?.dateCreation || project?.creationDate || project?.date);
 
+  const bessMatrixData = useMemo(() => {
+    return findBessOdreData(project?.name || project?.projectName || project?.client || '');
+  }, [project?.name, project?.projectName, project?.client]);
+
   // Extraction propre des références cadastrales (section et numéro séparés)
-  const rawSection = project?.cadastre_section || project?.cadastreSection || (project?.cadastre ? project.cadastre.split(' ')[0] : '') || project?.section || '';
-  const rawNumero = project?.cadastre_numero || project?.cadastreNumero || project?.cadastre_parcel || project?.parcelle || project?.parcel || (project?.cadastre ? project.cadastre.split(' ').slice(1).join(' ') : '') || '';
+  const rawSection = project?.cadastre_section || project?.cadastreSection || project?.dp_config?.terrain?.section || bessMatrixData?.section || (project?.cadastre ? project.cadastre.split(' ')[0] : '') || project?.section || '';
+  const rawNumero = project?.cadastre_numero || project?.cadastreNumero || project?.dp_config?.terrain?.parcelle || bessMatrixData?.numero || project?.cadastre_parcel || project?.parcelle || project?.parcel || (project?.cadastre ? project.cadastre.split(' ').slice(1).join(' ') : '') || '';
   const cadastreSection = rawSection ? rawSection.replace(/^Sec\.?\s*/i, '').trim() : '';
   const cadastreNumero = rawNumero ? rawNumero.replace(/^n°?\s*/i, '').trim() : '';
-  const cadastreSurface = project?.cadastre_surface || project?.surface_terrain || project?.surfaceTerrain || project?.surface || '';
+  const cadastreSurface = project?.cadastre_surface || project?.dp_config?.terrain?.contenance_m2 || bessMatrixData?.contenance || project?.surface_terrain || project?.surfaceTerrain || project?.surface || '';
+
+  const [autoCadastre, setAutoCadastre] = useState(null);
+
+  useEffect(() => {
+    if (!project) return;
+    const hasSec = cadastreSection || bessMatrixData?.section;
+    const hasNum = cadastreNumero || bessMatrixData?.numero;
+    if (!hasSec || !hasNum) {
+      const gps = project.gps || (project.lat && project.lng ? `${project.lat},${project.lng}` : (bessMatrixData?.latitude ? `${bessMatrixData.latitude},${bessMatrixData.longitude}` : null));
+      if (gps) {
+        const [lat, lng] = String(gps).split(',').map(Number);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          cadastreService.getParcelle(lat, lng).then(data => {
+            if (data?.section && data?.numero) {
+              setAutoCadastre(data);
+            }
+          }).catch(err => console.warn('Cadastre auto-lookup failed:', err));
+        }
+      }
+    }
+  }, [project?.id, project?.gps, project?.lat, project?.lng, cadastreSection, cadastreNumero, bessMatrixData]);
+
+  const displaySection = cadastreSection || autoCadastre?.section || bessMatrixData?.section || '';
+  const displayNumero = cadastreNumero || autoCadastre?.numero || bessMatrixData?.numero || '';
+  const displaySurface = cadastreSurface || autoCadastre?.contenance || bessMatrixData?.contenance || '';
 
   return (
     <div className="w-full space-y-4">
@@ -654,10 +638,10 @@ export default function EtudeDossierView({
               <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-xs">
                 <span className="text-[9.5px] font-bold text-slate-400 block mb-0.5">Cadastre</span>
                 <span className="font-extrabold text-slate-900 truncate block text-xs">
-                  {cadastreSection ? `Sec. ${cadastreSection}` : 'Sec. —'} {cadastreNumero ? `n° ${cadastreNumero}` : 'n° —'}
+                  {displaySection ? `Sec. ${displaySection}` : 'Sec. —'} {displayNumero ? `n° ${displayNumero}` : 'n° —'}
                 </span>
-                {cadastreSurface && (
-                  <span className="text-[9px] font-semibold text-slate-500 block">{cadastreSurface} m²</span>
+                {displaySurface && (
+                  <span className="text-[9px] font-semibold text-slate-500 block">{displaySurface} m²</span>
                 )}
               </div>
 

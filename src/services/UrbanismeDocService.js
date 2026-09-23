@@ -24,7 +24,7 @@ export function getInstallationTypeInfo(type, kwc, isNoBattery = false) {
     return {
       title: "Station de stockage d'énergie par batteries Stand-Alone",
       subtitle: "Puissance nominale : 500 kW — 4 armoires CESC Mercury 261",
-      cerfaText: "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide",
+      cerfaText: "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.",
       code: 'BATTERIE',
       isNewConstruction: true,
     };
@@ -345,7 +345,7 @@ async function drawCoverPage(doc, project, type, installationType) {
       : typeInfo.cerfaText;
 
   if (isBattery && (!project?.objet_travaux && !project?.objetTravaux || /ombrière|bâtiment|hangar/i.test(objetText))) {
-    objetText = "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
+    objetText = "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.";
   } else if (!isBattery && /batterie|bess|stockage d'énergie/i.test(objetText)) {
     objetText = typeInfo.cerfaText;
   }

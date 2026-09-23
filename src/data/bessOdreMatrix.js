@@ -85,7 +85,10 @@ export const BESS_ODRE_MATRIX = [
     typologieZoneCre: "Zone standard Enedis",
     puissanceKw: 500,
     capaciteKwh: 1044,
-    statutRaccordement: "Transfo sol libre - Dépôt PTF"
+    statutRaccordement: "Transfo sol libre - Dépôt PTF",
+    section: "AY",
+    numero: "0130",
+    contenance: 7305
   },
   {
     id: 5,

@@ -163,7 +163,7 @@ export const PlateCover = ({ project, installationType }) => {
                             {(() => {
                                 const isBat = !isNoBattery && (project?.solutionType === 'battery' || installationType === 'battery' || installationType === 'batterie_standalone') && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
                                 if (isBat) {
-                                    return "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
+                                    return "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.";
                                 }
                                 if (project?.description && !/batterie|bess|stockage d'énergie/i.test(project.description)) {
                                     return project.description;

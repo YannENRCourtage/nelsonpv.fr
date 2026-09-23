@@ -380,7 +380,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     let objet = project?.objet_travaux || project?.objetTravaux;
     if (!objet || (!isBat && /batterie|bess|stockage d'énergie/i.test(objet))) {
       if (isBat) {
-        objet = "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide";
+        objet = "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.";
       } else {
         const solType = project?.solutionType || (isDP ? 'ombriere' : 'batiment_solaire');
         objet = (project?.description && !/batterie|bess/i.test(project.description) ? project.description : null) || typeLabels[solType] || typeLabels[installationType] || typeLabels[isDP ? 'ombriere' : 'batiment_solaire'];

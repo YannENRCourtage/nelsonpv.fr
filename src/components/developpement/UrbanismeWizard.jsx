@@ -37,6 +37,7 @@ import LandscapeIntegrationModal from './LandscapeIntegrationModal';
 import Building3DViewer from './Building3DViewer';
 import BatteryStationVisualizer from './BatteryStationVisualizer';
 import BatteryInsertionCompositor from './BatteryInsertionCompositor';
+import { findBessOdreData } from '@/data/bessOdreMatrix.js';
 import html2canvas from 'html2canvas';
 import { MapContainer, TileLayer, Marker, Polygon, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -2080,7 +2081,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
   // Générateur dynamique du texte détaillé pour "Objet des travaux" (Page de garde)
   const defaultObjetTravauxText = useMemo(() => {
     if (isBatActive) {
-      return "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS) sur dalle béton avec clôture rigide de sécurité, intégrant 4 armoires techniques de stockage, dispositifs de sécurité incendie conformes aux prescriptions SDIS et raccordement au réseau public de distribution.";
+      return "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.";
     }
 
     const retainedStructures = allConfiguredStructures.filter(s => selectedStructureIds.includes(s.id));
@@ -2203,8 +2204,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         installationType: 'Station Batteries Stand-Alone',
         isBattery: true,
         isBatteryStandAlone: true,
-        objet_travaux: "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)",
-        description: "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)",
+        objet_travaux: "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.",
+        description: "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.",
       }));
 
       setSolutions(sPrev => {
@@ -2962,7 +2963,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const isBatterySolution = detectedSolutionType === 'battery';
 
     const defaultObjetBySol = isBatterySolution
-      ? "Installation d'une station de stockage d'énergie par batteries (Puissance nominale : 500 kW) sur dalle béton avec clôture rigide"
+      ? "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV."
       : (isRodierGarons
           ? image4ObjetTravaux
           : (isOmbriereSolution || isDP
@@ -3030,9 +3031,9 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       leftWidth: b1?.leftWidth,
       rightWidth: b1?.rightWidth,
       bayCount: b1?.bayCount,
-      cadastre_section: savedState?.editedProject?.cadastre_section || project.cadastre_section || '',
-      cadastre_numero: savedState?.editedProject?.cadastre_numero || project.cadastre_numero || '',
-      cadastre_surface: savedState?.editedProject?.cadastre_surface || project.cadastre_surface || '',
+      cadastre_section: savedState?.editedProject?.cadastre_section || project.cadastre_section || project.dp_config?.terrain?.section || ((isBatterySolution || project?.isBattery) ? findBessOdreData(project?.name || project?.projectName || project?.client || '')?.section : '') || '',
+      cadastre_numero: savedState?.editedProject?.cadastre_numero || project.cadastre_numero || project.dp_config?.terrain?.parcelle || ((isBatterySolution || project?.isBattery) ? findBessOdreData(project?.name || project?.projectName || project?.client || '')?.numero : '') || '',
+      cadastre_surface: savedState?.editedProject?.cadastre_surface || project.cadastre_surface || project.dp_config?.terrain?.contenance_m2 || ((isBatterySolution || project?.isBattery) ? String(findBessOdreData(project?.name || project?.projectName || project?.client || '')?.contenance || '') : '') || '',
       cadastre_commune: savedState?.editedProject?.cadastre_commune || project.cadastre_commune || projCity,
       commune: savedState?.editedProject?.commune || projCity,
       urbanismeType: candidateUrbanismeType,
@@ -3071,23 +3072,29 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         }).catch(err => console.warn('Erreur récupération cache media IndexedDB:', err));
       }
 
-      // 1. Cadastre IGN automatique
-      if ((initProj.gps || initProj.lat) && (!initProj.cadastre_section || !initProj.cadastre_numero)) {
+      // 1. Cadastre IGN automatique (obligatoire pour déterminer la parcelle réelle de la batterie)
+      const shouldQueryCadastre = (initProj.gps || initProj.lat) && (!initProj.cadastre_section || !initProj.cadastre_numero || isBatterySolution);
+      if (shouldQueryCadastre) {
         setFetchingCadastre(true);
         const gps = initProj.gps || `${initProj.lat},${initProj.lng}`;
         const [lat, lng] = gps.split(',').map(Number);
-        cadastreService.getParcelle(lat, lng).then(data => {
-          if (data) {
-            setEditedProject(prev => ({
-              ...prev,
-              cadastre_section: prev.cadastre_section || data.section,
-              cadastre_numero: prev.cadastre_numero || data.numero,
-              cadastre_surface: prev.cadastre_surface || data.contenance,
-              cadastre_commune: prev.cadastre_commune || data.nom_commune,
-            }));
-          }
-        }).catch(e => console.error('Erreur auto cadastre:', e))
-        .finally(() => setFetchingCadastre(false));
+        if (!isNaN(lat) && !isNaN(lng)) {
+          cadastreService.getParcelle(lat, lng).then(data => {
+            if (data && data.section && data.numero) {
+              setEditedProject(prev => ({
+                ...prev,
+                cadastre_section: isBatterySolution ? data.section : (prev.cadastre_section || data.section),
+                cadastre_numero: isBatterySolution ? data.numero : (prev.cadastre_numero || data.numero),
+                cadastre_surface: isBatterySolution ? String(data.contenance || '') : (prev.cadastre_surface || String(data.contenance || '')),
+                cadastre_commune: data.nom_commune || prev.cadastre_commune,
+                parcelles: [{ section: data.section, numero: data.numero, surface: String(data.contenance || '') }]
+              }));
+            }
+          }).catch(e => console.error('Erreur auto cadastre:', e))
+          .finally(() => setFetchingCadastre(false));
+        } else {
+          setFetchingCadastre(false);
+        }
       }
 
       // 2. Génération automatique des cartes PC1 & PC2 (OSM Zoom 19)
@@ -3954,7 +3961,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     
     // Objet synthétique pour Page 1
     const defaultObjet = isBattery
-      ? "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)"
+      ? "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV."
       : (isDP
         ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
         : (isPC
@@ -7124,7 +7131,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                             ? (
                                 (editedProject?.objet_travaux && !editedProject.objet_travaux.toLowerCase().includes('ombrière') && !editedProject.objet_travaux.toLowerCase().includes('bâtiment') && !editedProject.objet_travaux.toLowerCase().includes('hangar'))
                                   ? editedProject.objet_travaux
-                                  : "Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)"
+                                  : "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV."
                               )
                             : (
                                 (editedProject?.objet_travaux && editedProject.objet_travaux.trim().length > 30 && !/batterie|bess|stockage d'énergie/i.test(editedProject.objet_travaux))
@@ -7137,7 +7144,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                           setEditedProject(prev => ({ ...prev, objet_travaux: val, description: val }));
                           handleFieldChange('objet_travaux', val);
                         }}
-                        placeholder={isBatActive ? "Ex: Implantation d'une station de stockage d'énergie par batteries stationnaires Stand-Alone (BESS)" : (solutionType === 'building' ? "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque" : (isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"))}
+                        placeholder={isBatActive ? "Ex: Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV." : (solutionType === 'building' ? "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque" : (isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"))}
                         className="w-full flex-1 min-h-[260px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner resize-none"
                       />
                     </div>
