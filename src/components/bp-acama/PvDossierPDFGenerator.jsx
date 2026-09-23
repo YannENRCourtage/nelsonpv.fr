@@ -23,16 +23,24 @@ import {
 } from 'lucide-react';
 import { PV_PORTFOLIO_SITES, computePvFinancials } from '../../data/pvPortfolioData.js';
 import PvProjectSingleSheet from './PvProjectSingleSheet.jsx';
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 
-// Helpers de formatage
+// Helpers de formatage — séparateurs de milliers avec espace normal (pas narrow no-break space)
 const fmtEur = (val) => {
   if (val === null || val === undefined || isNaN(val)) return '— €';
-  return Math.round(val).toLocaleString('fr-FR') + ' €';
+  const parts = Math.round(val).toString().replace('-', '');
+  const sign = val < 0 ? '-' : '';
+  const formatted = parts.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return sign + formatted + ' €';
 };
 
 const fmtM = (val) => {
   if (val === null || val === undefined || isNaN(val)) return '— M€';
-  return (val / 1000000).toFixed(2) + ' M€';
+  const num = (val / 1000000).toFixed(2);
+  const [int, dec] = num.split('.');
+  const formatted = int.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return formatted + ',' + dec + ' M€';
 };
 
 const fmtPct = (val) => {
@@ -107,15 +115,30 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
     debtRate: 4.3
   };
 
+  // Pagination du répertoire des centrales (max 22 sites par page)
+  const SITES_PER_PAGE = 22;
+  const repertoirePages = isPort
+    ? Array.from({ length: Math.ceil(portfolioSites.length / SITES_PER_PAGE) }, (_, i) =>
+        portfolioSites.slice(i * SITES_PER_PAGE, (i + 1) * SITES_PER_PAGE)
+      )
+    : [[]];
+  const repertoirePageCount = isPort ? repertoirePages.length : 1;
+
   const portfolioPlancheTitles = [
     "Synthèse Exécutive & Données Clés",
     "Compte de Résultat & Cash-Flows 20 ans",
-    "Répertoire Exhaustif des Centrales PV"
+    ...Array.from({ length: repertoirePageCount }, (_, i) =>
+      repertoirePageCount > 1
+        ? `Répertoire des Centrales PV (${i + 1}/${repertoirePageCount})`
+        : "Répertoire Exhaustif des Centrales PV"
+    ),
+    "Cartographie des Projets PV"
   ];
   const singlePlancheTitles = [
     "Synthèse Exécutive & Données Clés",
     "Compte de Résultat & Cash-Flows 20 ans",
-    "Détail Technique des Bâtiments & Toitures"
+    "Détail Technique des Bâtiments & Toitures",
+    "Cartographie du Projet PV"
   ];
   const plancheTitles = isPort ? portfolioPlancheTitles : singlePlancheTitles;
   const totalPagesCount = plancheTitles.length;
@@ -223,11 +246,11 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const margin = 5;
 
-      const baseSections = [
-        'pv-planche-container-1',
-        'pv-planche-container-2',
-        'pv-planche-container-3'
-      ];
+      // Collecter dynamiquement tous les IDs de planches
+      const baseSections = [];
+      for (let p = 1; p <= totalPagesCount; p++) {
+        baseSections.push(`pv-planche-container-${p}`);
+      }
 
       let targetIds = [...baseSections];
       if (exportMode === 'complete' && isPort) {
@@ -729,107 +752,215 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
           </div>
 
           {/* ========================================================================= */}
-          {/* PLANCHE 3 : RÉPERTOIRE DES CENTRALES / DÉTAIL BÂTIMENTS */}
+          {/* PLANCHES 3..N : RÉPERTOIRE DES CENTRALES (PAGINÉ, 22 SITES PAR PAGE) */}
           {/* ========================================================================= */}
-          <div id="pv-planche-container-3" className="w-full flex flex-col items-center shrink-0 mb-8">
-            <div className="w-[1380px] mb-2 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
-              <span className="font-bold text-slate-800 text-sm">Planche 3 : {plancheTitles[2]}</span>
-            </div>
+          {repertoirePages.map((pageSites, pageIdx) => {
+            const plancheNum = 3 + pageIdx;
+            const globalOffset = pageIdx * SITES_PER_PAGE;
+            return (
+              <div key={`rep-${pageIdx}`} id={`pv-planche-container-${plancheNum}`} className="w-full flex flex-col items-center shrink-0 mb-8">
+                <div className="w-[1380px] mb-2 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+                  <span className="font-bold text-slate-800 text-sm">Planche {plancheNum} : {plancheTitles[plancheNum - 1]}</span>
+                </div>
 
-            <section
-              className="pv-render-page shrink-0 bg-white rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
-              style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}
-            >
-              <div>
-                <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src="/logo-enr-courtage-inline.png"
-                      alt="ENR COURTAGE"
-                      className="h-10 w-auto object-contain"
-                      onError={(e) => { e.target.style.display = 'none'; }}
-                    />
-                    <div>
-                      <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight">
-                        {isPort ? "Répertoire Exhaustif des Centrales du Portefeuille HÉLIOS" : `Détail des Bâtiments & Toitures — ${currentProject?.name || 'Centrale'}`}
-                      </h2>
-                      <p className="text-xs font-medium text-slate-600">
-                        {isPort
-                          ? `${portfolioSites.length} centrales solaires avec puissances certifiées, postes sources ODRE et indicateurs de rentabilité.`
-                          : `Décomposition technique et financière par toiture du projet (${(currentParams?.buildings || []).length} bâtiment(s)).`}
-                      </p>
+                <section
+                  className="pv-render-page shrink-0 bg-white rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
+                  style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}
+                >
+                  <div>
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src="/logo-enr-courtage-inline.png"
+                          alt="ENR COURTAGE"
+                          className="h-10 w-auto object-contain"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                        <div>
+                          <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight">
+                            {isPort ? "Répertoire Exhaustif des Centrales du Portefeuille HÉLIOS" : `Détail des Bâtiments & Toitures — ${currentProject?.name || 'Centrale'}`}
+                          </h2>
+                          <p className="text-xs font-medium text-slate-600">
+                            {isPort
+                              ? `${portfolioSites.length} centrales solaires avec puissances certifiées, postes sources ODRE et indicateurs de rentabilité.`
+                              : `Décomposition technique et financière par toiture du projet (${(currentParams?.buildings || []).length} bâtiment(s)).`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-right">
+                        <span className="text-[10px] font-bold text-blue-700 uppercase block">Nombre de Sites / Bâtiments</span>
+                        <span className="text-sm font-black text-blue-900">
+                          {isPort ? `${portfolioSites.length} Centrales` : `${(currentParams?.buildings || []).length} Bâtiments`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tableau exhaustif des sites / bâtiments */}
+                    <div className="border border-slate-200 rounded-xl">
+                      <table className="w-full text-xs text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-900 text-white font-bold">
+                            <th className="p-2">N°</th>
+                            <th className="p-2">Site / Référence</th>
+                            <th className="p-2">Commune (Dép)</th>
+                            <th className="p-2">Modèle / Typologie</th>
+                            <th className="p-2 text-right">Puissance</th>
+                            <th className="p-2">Poste Source Enedis</th>
+                            <th className="p-2 text-center">Distance</th>
+                            <th className="p-2 text-right">CAPEX Total</th>
+                            <th className="p-2 text-right">CA An 1</th>
+                            <th className="p-2 text-right">EBITDA An 1</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {isPort ? (
+                            pageSites.map((s, idx) => (
+                              <tr key={s.id || idx} className="hover:bg-slate-50 transition-colors">
+                                <td className="p-2 font-bold text-slate-400">{globalOffset + idx + 1}</td>
+                                <td className="p-2 font-bold text-slate-900">{s.siteName || s.name}</td>
+                                <td className="p-2 text-slate-600">{s.commune || s.city} ({s.codePostal?.slice(0, 2) || '—'})</td>
+                                <td className="p-2 font-medium text-amber-700">{s.typeBat || 'Bâtiment BAC'}</td>
+                                <td className="p-2 text-right font-black text-blue-900">{s.kwc} kWc</td>
+                                <td className="p-2 font-medium text-slate-700">{s.posteSource}</td>
+                                <td className="p-2 text-center font-bold text-slate-600">{s.distanceKm} km</td>
+                                <td className="p-2 text-right font-bold text-slate-900">{fmtEur(s.capexTotal)}</td>
+                                <td className="p-2 text-right font-bold text-emerald-600">{fmtEur(s.caAnnuel)}</td>
+                                <td className="p-2 text-right font-black text-emerald-700">{fmtEur(s.ebitdaAn1)}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            (currentParams?.buildings || []).map((b, idx) => (
+                              <tr key={b.id || idx} className="hover:bg-slate-50 transition-colors">
+                                <td className="p-2 font-bold text-slate-400">{idx + 1}</td>
+                                <td className="p-2 font-bold text-slate-900">{currentProject?.name || 'Site'} — Bâtiment {idx + 1}</td>
+                                <td className="p-2 text-slate-600">{currentProject?.city || '—'} ({currentProject?.postcode?.slice(0, 2) || '—'})</td>
+                                <td className="p-2 font-medium text-amber-700">{b.typeBat || b.projectType || 'BAC'}</td>
+                                <td className="p-2 text-right font-black text-blue-900">{b.kwc} kWc</td>
+                                <td className="p-2 font-medium text-slate-700">{currentProject?.substation?.name || 'ODRE'}</td>
+                                <td className="p-2 text-center font-bold text-slate-600">{b.distHta || 100} m</td>
+                                <td className="p-2 text-right font-bold text-slate-900">{fmtEur((b.coutCentrale || 0) + (b.coutCharpente || 0))}</td>
+                                <td className="p-2 text-right font-bold text-emerald-600">{fmtEur((b.kwc || 0) * (b.productible || 1123) * 0.082)}</td>
+                                <td className="p-2 text-right font-black text-emerald-700">{fmtEur((b.kwc || 0) * (b.productible || 1123) * 0.082 * 0.82)}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                  <div className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-right">
-                    <span className="text-[10px] font-bold text-blue-700 uppercase block">Nombre de Sites / Bâtiments</span>
-                    <span className="text-sm font-black text-blue-900">
-                      {isPort ? `${portfolioSites.length} Centrales` : `${(currentParams?.buildings || []).length} Bâtiments`}
-                    </span>
+
+                  {/* Pied de page institutionnel ENR COURTAGE SAS */}
+                  <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    <div>ENR COURTAGE SAS • Répertoire d'Actifs Photovoltaïques</div>
+                    <div className="font-semibold text-slate-600">Base consolidée & qualification réseau ODRE</div>
+                    <div className="font-bold text-[#0b192c]">Planche {plancheNum} / {totalPagesCount}</div>
                   </div>
+                </section>
+              </div>
+            );
+          })}
+
+          {/* ========================================================================= */}
+          {/* PLANCHE CARTOGRAPHIE : LOCALISATION DES PROJETS PV SUR CARTE */}
+          {/* ========================================================================= */}
+          {(() => {
+            const cartoPlancheNum = 2 + repertoirePageCount + 1;
+            const mapSites = isPort
+              ? portfolioSites.filter(s => s.lat || s.commune)
+              : [{ lat: currentProject?.lat || 45.0, lng: currentProject?.lng || 1.0, siteName: currentProject?.name, kwc: singleKwc, commune: currentProject?.city }];
+            const validMapSites = mapSites.filter(s => s.lat && s.lng);
+            const centerLat = validMapSites.length > 0 ? validMapSites.reduce((s, p) => s + (p.lat || 45), 0) / validMapSites.length : 45.5;
+            const centerLng = validMapSites.length > 0 ? validMapSites.reduce((s, p) => s + (p.lng || 1), 0) / validMapSites.length : 1.5;
+
+            return (
+              <div id={`pv-planche-container-${cartoPlancheNum}`} className="w-full flex flex-col items-center shrink-0 mb-8">
+                <div className="w-[1380px] mb-2 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+                  <span className="font-bold text-slate-800 text-sm">Planche {cartoPlancheNum} : {plancheTitles[cartoPlancheNum - 1]}</span>
                 </div>
 
-                {/* Tableau exhaustif des sites / bâtiments */}
-                <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-[640px]">
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-900 text-white font-bold">
-                        <th className="p-2">N°</th>
-                        <th className="p-2">Site / Référence</th>
-                        <th className="p-2">Commune (Dép)</th>
-                        <th className="p-2">Modèle / Typologie</th>
-                        <th className="p-2 text-right">Puissance</th>
-                        <th className="p-2">Poste Source Enedis</th>
-                        <th className="p-2 text-center">Distance</th>
-                        <th className="p-2 text-right">CAPEX Total</th>
-                        <th className="p-2 text-right">CA An 1</th>
-                        <th className="p-2 text-right">EBITDA An 1</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {isPort ? (
-                        portfolioSites.map((s, idx) => (
-                          <tr key={s.id || idx} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-2 font-bold text-slate-400">{idx + 1}</td>
-                            <td className="p-2 font-bold text-slate-900">{s.siteName || s.name}</td>
-                            <td className="p-2 text-slate-600">{s.commune || s.city} ({s.codePostal?.slice(0, 2) || '—'})</td>
-                            <td className="p-2 font-medium text-amber-700">{s.typeBat || 'Bâtiment BAC'}</td>
-                            <td className="p-2 text-right font-black text-blue-900">{s.kwc} kWc</td>
-                            <td className="p-2 font-medium text-slate-700">{s.posteSource}</td>
-                            <td className="p-2 text-center font-bold text-slate-600">{s.distanceKm} km</td>
-                            <td className="p-2 text-right font-bold text-slate-900">{fmtEur(s.capexTotal)}</td>
-                            <td className="p-2 text-right font-bold text-emerald-600">{fmtEur(s.caAnnuel)}</td>
-                            <td className="p-2 text-right font-black text-emerald-700">{fmtEur(s.ebitdaAn1)}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        (currentParams?.buildings || []).map((b, idx) => (
-                          <tr key={b.id || idx} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-2 font-bold text-slate-400">{idx + 1}</td>
-                            <td className="p-2 font-bold text-slate-900">{currentProject?.name || 'Site'} — Bâtiment {idx + 1}</td>
-                            <td className="p-2 text-slate-600">{currentProject?.city || '—'} ({currentProject?.postcode?.slice(0, 2) || '—'})</td>
-                            <td className="p-2 font-medium text-amber-700">{b.typeBat || b.projectType || 'BAC'}</td>
-                            <td className="p-2 text-right font-black text-blue-900">{b.kwc} kWc</td>
-                            <td className="p-2 font-medium text-slate-700">{currentProject?.substation?.name || 'ODRE'}</td>
-                            <td className="p-2 text-center font-bold text-slate-600">{b.distHta || 100} m</td>
-                            <td className="p-2 text-right font-bold text-slate-900">{fmtEur((b.coutCentrale || 0) + (b.coutCharpente || 0))}</td>
-                            <td className="p-2 text-right font-bold text-emerald-600">{fmtEur((b.kwc || 0) * (b.productible || 1123) * 0.082)}</td>
-                            <td className="p-2 text-right font-black text-emerald-700">{fmtEur((b.kwc || 0) * (b.productible || 1123) * 0.082 * 0.82)}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                <section
+                  className="pv-render-page shrink-0 bg-white rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
+                  style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}
+                >
+                  <div className="flex-1 flex flex-col">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src="/logo-enr-courtage-inline.png"
+                          alt="ENR COURTAGE"
+                          className="h-10 w-auto object-contain"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                        <div>
+                          <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight">
+                            {isPort ? "Cartographie des Centrales du Portefeuille HÉLIOS" : `Localisation — ${currentProject?.name || 'Projet PV'}`}
+                          </h2>
+                          <p className="text-xs font-medium text-slate-600">
+                            {isPort
+                              ? `Implantation géographique des ${validMapSites.length} centrales solaires dans le Grand Sud-Ouest.`
+                              : `Emplacement géographique de la centrale photovoltaïque.`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-right">
+                        <span className="text-[10px] font-bold text-emerald-700 uppercase block">Sites Géolocalisés</span>
+                        <span className="text-sm font-black text-emerald-900">
+                          {validMapSites.length} / {isPort ? portfolioSites.length : 1}
+                        </span>
+                      </div>
+                    </div>
 
-              {/* Pied de page institutionnel ENR COURTAGE SAS */}
-              <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                <div>ENR COURTAGE SAS • Répertoire d'Actifs Photovoltaïques</div>
-                <div className="font-semibold text-slate-600">Base consolidée & qualification réseau ODRE</div>
-                <div className="font-bold text-[#0b192c]">Planche 3 / {totalPagesCount}</div>
+                    {/* Carte Leaflet OpenStreetMap */}
+                    <div className="flex-1 rounded-xl overflow-hidden border border-slate-200 shadow-inner" style={{ minHeight: '680px' }}>
+                      <MapContainer
+                        center={[centerLat, centerLng]}
+                        zoom={isPort ? 7 : 12}
+                        style={{ height: '100%', width: '100%' }}
+                        scrollWheelZoom={false}
+                        dragging={true}
+                        zoomControl={true}
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        {validMapSites.map((site, idx) => (
+                          <CircleMarker
+                            key={site.id || idx}
+                            center={[site.lat, site.lng]}
+                            radius={isPort ? Math.max(6, Math.min(14, (site.kwc || 250) / 50)) : 12}
+                            pathOptions={{
+                              fillColor: '#f59e0b',
+                              fillOpacity: 0.85,
+                              color: '#0b192c',
+                              weight: 2
+                            }}
+                          >
+                            <Popup>
+                              <div className="text-xs font-medium p-1 min-w-[160px]">
+                                <div className="font-black text-slate-900 text-sm mb-1">{site.siteName || site.name || 'Site PV'}</div>
+                                <div className="text-slate-600">{site.commune || site.city || '—'}</div>
+                                <div className="font-bold text-blue-700 mt-1">{site.kwc} kWc</div>
+                                {site.capexTotal && <div className="text-slate-700 mt-0.5">CAPEX : {fmtEur(site.capexTotal)}</div>}
+                                {site.ebitdaAn1 && <div className="text-emerald-700 font-bold">EBITDA An 1 : {fmtEur(site.ebitdaAn1)}</div>}
+                              </div>
+                            </Popup>
+                          </CircleMarker>
+                        ))}
+                      </MapContainer>
+                    </div>
+                  </div>
+
+                  {/* Pied de page institutionnel ENR COURTAGE SAS */}
+                  <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    <div>ENR COURTAGE SAS • Cartographie d'Actifs Photovoltaïques</div>
+                    <div className="font-semibold text-slate-600">Implantation & Réseau de Centrales Solaires</div>
+                    <div className="font-bold text-[#0b192c]">Planche {cartoPlancheNum} / {totalPagesCount}</div>
+                  </div>
+                </section>
               </div>
-            </section>
-          </div>
+            );
+          })()}
 
           {/* ========================================================================= */}
           {/* FICHES PHOTOVOLTAÏQUES UNITAIRES DES SITES DU PORTEFEUILLE */}
@@ -875,7 +1006,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
             </span>
             <span className="text-slate-300">|</span>
             <span className="text-xs text-slate-500 font-medium">
-              {isPort ? `3 Planches Portefeuille + ${portfolioSites.length} Fiches Projets = ${totalCompletePages} Pages` : `${totalPagesCount} Planches A4 Paysage`}
+              {isPort ? `${totalPagesCount} Planches Portefeuille + ${portfolioSites.length} Fiches Projets = ${totalCompletePages} Pages` : `${totalPagesCount} Planches A4 Paysage`}
             </span>
           </div>
 
