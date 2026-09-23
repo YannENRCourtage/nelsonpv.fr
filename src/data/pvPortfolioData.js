@@ -534,16 +534,19 @@ export function computePvFinancials(site, options = {}) {
   const opexAnnuel = maintenance + assurance + taxesLocales + loyer;
   const ebitdaAn1 = caAnnuel - opexAnnuel;
 
-  // Dette senior
+  // Dette senior (90% emprunt, 10% apport)
+  const emprunt = Math.round(capexTotal * 0.90);
+  const apport10 = capexTotal - emprunt;
   const rateDecimal = debtRate / 100;
   const annuiteDette = Math.round(
-    capexTotal * (rateDecimal / (1 - Math.pow(1 + rateDecimal, -debtDuration)))
+    emprunt * (rateDecimal / (1 - Math.pow(1 + rateDecimal, -debtDuration)))
   );
 
   // Chronique 20 ans
   const rows = [];
-  let detteDebut = capexTotal;
+  let detteDebut = emprunt;
   const cashFlowsProjet = [-capexTotal];
+  let cumulCashFlow = 0;
 
   for (let y = 1; y <= studyDuration; y++) {
     const deg = Math.pow(1 - 0.0045, y - 1);
@@ -551,29 +554,52 @@ export function computePvFinancials(site, options = {}) {
     const idxOpex = Math.pow(1 + 0.02, y - 1);
 
     const caY = Math.round(caAnnuel * deg * idxT);
-    let opexY = Math.round(opexAnnuel * idxOpex);
-    // MRA Onduleurs en An 11
-    if (y === 11) {
-      opexY += Math.round(coutCentrale * 0.1);
-    }
+    const maintY = Math.round(maintenance * idxOpex);
+    const assurY = Math.round(assurance * idxOpex);
+    const taxesY = Math.round(taxesLocales * idxOpex);
+    const loyerY = Math.round(loyer * idxOpex);
+    const mraY = y === 11 ? Math.round(coutCentrale * 0.1) : 0;
+    const opexY = maintY + assurY + taxesY + loyerY + mraY;
+
     const ebitdaY = caY - opexY;
     const servDetteY = y <= debtDuration ? annuiteDette : 0;
     const interestY = y <= debtDuration ? Math.round(detteDebut * rateDecimal) : 0;
     const principalY = servDetteY > 0 ? servDetteY - interestY : 0;
-    const amort = capexTotal / studyDuration;
-    const resFiscal = Math.max(0, ebitdaY - amort - interestY);
-    const isY = resFiscal > 0 ? (resFiscal < 42500 ? resFiscal * 0.15 : (42500 * 0.15) + ((resFiscal - 42500) * 0.25)) : 0;
+    const amort = Math.round(capexTotal / studyDuration);
+    const ebitY = ebitdaY - amort;
+    const resFiscal = Math.max(0, ebitY - interestY);
+    const isY = resFiscal > 0 ? (resFiscal < 42500 ? Math.round(resFiscal * 0.15) : Math.round((42500 * 0.15) + ((resFiscal - 42500) * 0.25))) : 0;
+    const cafdsY = ebitdaY - isY;
+    const dscrY = servDetteY > 0 ? (cafdsY / servDetteY) : 9.99;
     const cfNetY = Math.round(ebitdaY - servDetteY - isY);
+    cumulCashFlow += cfNetY;
 
-    cashFlowsProjet.push(ebitdaY - isY);
+    cashFlowsProjet.push(cafdsY);
 
     rows.push({
-      year: y,
+      year: 2025 + y,
+      yearIndex: y,
       ca: caY,
+      caTotal: caY,
+      maint: maintY,
+      assur: assurY,
+      taxes: taxesY,
+      loyer: loyerY,
+      mra: mraY,
       opex: opexY,
       ebitda: ebitdaY,
+      amortissement: amort,
+      ebit: ebitY,
+      interets: interestY,
+      resFiscal,
+      is: isY,
+      cafds: cafdsY,
+      principal: principalY,
       serviceDette: servDetteY,
+      dscr: dscrY,
       cfNet: cfNetY,
+      tresorerie: cfNetY,
+      cumulCashFlow,
       detteFin: Math.max(0, detteDebut - principalY)
     });
 
@@ -595,6 +621,11 @@ export function computePvFinancials(site, options = {}) {
   // Approximation TRI
   const triProjet = Math.max(5.0, Math.min(18.0, (ebitdaAn1 / capexTotal) * 100 * 0.95));
 
+  const totalRecettesStudy = rows.reduce((s, r) => s + r.ca, 0);
+  const totalOpexStudy = rows.reduce((s, r) => s + r.opex, 0);
+  const totalCashFlowNet = rows.reduce((s, r) => s + r.cfNet, 0);
+  const dscrMoyen = rows.filter(r => r.serviceDette > 0).reduce((s, r) => s + r.dscr, 0) / (debtDuration || 1);
+
   return {
     siteName: site.name,
     commune: site.city,
@@ -608,15 +639,26 @@ export function computePvFinancials(site, options = {}) {
     productible,
     prodMwh: Math.round(prodMwh),
     capexTotal,
+    emprunt,
+    apport10,
     coutCentrale,
     coutCharpente,
     raccordement,
     frais,
     caAnnuel,
     opexAnnuel,
+    maintenanceAn1: maintenance,
+    assuranceAn1: assurance,
+    taxesLocalesAn1: taxesLocales,
+    loyerAn1: loyer,
+    annuiteDette,
     ebitdaAn1,
     triProjet,
     payback,
+    totalRecettesStudy,
+    totalOpexStudy,
+    totalCashFlowNet,
+    dscrMoyen,
     rows
   };
 }

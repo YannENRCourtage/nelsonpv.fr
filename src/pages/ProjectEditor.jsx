@@ -1065,7 +1065,7 @@ export default function ProjectEditor() {
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} className="mt-0.5 h-8" placeholder="Nom" /></div>
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-0.5 h-8" placeholder="Prénom" /></div>
                 <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Type</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option></select></div>
-                <div className="flex-1 min-w-[120px] ml-2">
+                <div className="flex-1 min-w-[110px]">
                   <label className="text-xs font-medium text-blue-600">Portefeuille BESS</label>
                   <select
                     value={p.bess_portfolio || (p.isBatteryStandAlone === 'Oui' ? 'VOLTA' : '')}
@@ -1082,6 +1082,21 @@ export default function ProjectEditor() {
                     <option value="">Aucun / Non</option>
                     <option value="VOLTA">VOLTA</option>
                     <option value="TESLA">TESLA</option>
+                  </select>
+                </div>
+                <div className="flex-1 min-w-[110px]">
+                  <label className="text-xs font-medium text-amber-600 font-bold">Portefeuille PV</label>
+                  <select
+                    value={p.pv_portfolio || ''}
+                    onChange={e => updateProject({ pv_portfolio: e.target.value || null })}
+                    disabled={p.type === 'Batterie SA'}
+                    className="mt-0.5 w-full rounded-lg border px-2 py-1 h-8 bg-background text-xs font-bold text-amber-900 disabled:opacity-40"
+                  >
+                    <option value="">Non affecté</option>
+                    <option value="HELIOS">HELIOS</option>
+                    {p.pv_portfolio && p.pv_portfolio !== 'HELIOS' && (
+                      <option value={p.pv_portfolio}>{p.pv_portfolio}</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -1421,10 +1436,10 @@ export default function ProjectEditor() {
                 </div>
               </div>
 
-              {/* Desktop: GPS + Type + Batterie SA + Projet + kWc (1 seule ligne) */}
-              <div className="col-span-3">
+              {/* Desktop: GPS + Type + Portefeuille BESS + Portefeuille PV + Projet + kWc (1 seule ligne) */}
+              <div className="col-span-2">
                 <label className="text-sm font-medium">Coordonnées GPS</label>
-                <div className="flex gap-2 mt-1">
+                <div className="flex gap-1.5 mt-1">
                   <Input
                     placeholder="Lat"
                     value={p.gps ? formatCoordinate(p.gps.split(',')[0]) : ''}
@@ -1434,7 +1449,7 @@ export default function ProjectEditor() {
                       updateProject({ gps: `${lat}, ${lon}` });
                     }}
                     title="Latitude"
-                    className="font-mono text-xs"
+                    className="font-mono text-xs px-1.5"
                   />
                   <Input
                     placeholder="Lon"
@@ -1445,7 +1460,7 @@ export default function ProjectEditor() {
                       updateProject({ gps: `${lat}, ${lon}` });
                     }}
                     title="Longitude"
-                    className="font-mono text-xs"
+                    className="font-mono text-xs px-1.5"
                   />
                 </div>
               </div>
@@ -1460,6 +1475,7 @@ export default function ProjectEditor() {
                   <option value="Construction">Construction</option>
                   <option value="Bâtiment">Bâtiment</option>
                   <option value="Ombrières">Ombrières</option>
+                  <option value="Toiture PV">Toiture PV</option>
                   <option value="BatiTech">BatiTech</option>
                   <option value="Batterie SA">Batterie SA</option>
                 </select>
@@ -1485,7 +1501,23 @@ export default function ProjectEditor() {
                 </select>
               </div>
 
-              <div className="col-span-4">
+              <div className="col-span-2">
+                <label className="text-sm font-medium text-amber-600 font-bold">Portefeuille PV</label>
+                <select
+                  value={p.pv_portfolio || ''}
+                  onChange={e => updateProject({ pv_portfolio: e.target.value || null })}
+                  disabled={p.type === 'Batterie SA'}
+                  className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background font-bold text-amber-900 disabled:opacity-40 disabled:bg-slate-100"
+                >
+                  <option value="">Non affecté</option>
+                  <option value="HELIOS">HELIOS</option>
+                  {p.pv_portfolio && p.pv_portfolio !== 'HELIOS' && (
+                    <option value={p.pv_portfolio}>{p.pv_portfolio}</option>
+                  )}
+                </select>
+              </div>
+
+              <div className="col-span-3">
                 <label className="text-sm font-medium">Projet</label>
                 <Input
                   value={p.projectSize || ''}

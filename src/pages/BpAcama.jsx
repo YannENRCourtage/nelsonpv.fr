@@ -3264,7 +3264,7 @@ function TabBpProjets({
                           }}
                         >
                           {MODULE_TYPES.map(m => (
-                            <option key={m.power} value={m.power}>{m.power} Wc</option>
+                            <option key={m.power} value={m.power}>{m.power}</option>
                           ))}
                         </select>
                         <span className="text-[11px] text-slate-500 font-medium shrink-0 min-w-[24px]">Wc</span>

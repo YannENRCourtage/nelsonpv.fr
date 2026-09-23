@@ -7,50 +7,92 @@ import {
   MapPin,
   CheckCircle2,
   ShieldCheck,
-  Calendar
+  Calendar,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 import { computePvFinancials } from '../../data/pvPortfolioData.js';
 
-const fmtEur = (val) => {
-  if (val === null || val === undefined || isNaN(val)) return '— €';
-  return Math.round(val).toLocaleString('fr-FR') + ' €';
-};
-
-const fmtPct = (val) => {
-  if (val === null || val === undefined || isNaN(val)) return '— %';
-  return (val || 0).toFixed(1) + ' %';
-};
+const fmtNum = (n, dec = 0) => (n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const fmtEur = (n) => `${fmtNum(n, 0)} €`;
+const fmtPct = (n) => `${(n ?? 0).toFixed(1)}%`;
 
 /**
- * Fiche Individuelle 1 Page A4 Paysage (1380 x 940 px) pour un projet photovoltaïque
- * Utilisée dans l'Étude Complète multi-projets
+ * Rendu 1 Page A4 Paysage (1380 x 940 px) d'une Fiche Photovoltaïque Unitaire
+ * Utilisé dans l'Étude Complète multi-sites PV du Portefeuille HÉLIOS
+ * Intègre la vue détaillée complète du plan d'affaires prévisionnel sur 20 ans
  */
-export default function PvProjectSingleSheet({ site, siteIndex, totalSites = 20 }) {
+export default function PvProjectSingleSheet({ site, siteIndex, totalSites = 20, studyDuration = 20 }) {
   if (!site) return null;
 
-  // Calcul dynamique certifié
+  // Calcul dynamique unifié avec computePvFinancials
   const fin = computePvFinancials(site, {
-    studyDuration: 20,
+    studyDuration: studyDuration || 20,
     debtDuration: 20,
     debtRate: 4.3,
     tarifS21: 0.082
   });
 
   const kwc = fin.kwc || 250;
-  const capexTotal = fin.capexTotal;
-  const caAn1 = fin.caAnnuel;
-  const opexAn1 = fin.opexAnnuel;
-  const ebitdaAn1 = fin.ebitdaAn1;
-  const triProjet = fin.triProjet;
-  const payback = fin.payback;
-  const prodMwh = fin.prodMwh;
-  const substation = site.substation || { name: site.posteSource || 'ODRE', distanceKm: site.distanceKm || 5 };
+  const productible = fin.productible || 1125;
+  const prodMwh = fin.prodMwh || Math.round((kwc * productible) / 1000);
+  const nbPanels = Math.round((kwc * 1000) / 465);
+  const substation = site.substation || { name: site.posteSource || 'ODRE', distanceKm: site.distanceKm || 5.0 };
 
-  const years = Array.from({ length: 20 }, (_, i) => 2026 + i);
+  // Données CAPEX
+  const coutCentrale = fin.coutCentrale;
+  const coutCharpente = fin.coutCharpente;
+  const raccordement = fin.raccordement;
+  const fraisCommuns = fin.frais + 7500;
+  const capexTotal = fin.capexTotal;
+
+  // Financement senior (20 ans @ 4.30%)
+  const debtDuration = 20;
+  const debtRate = 4.30;
+  const emprunt = fin.emprunt || Math.round(capexTotal * 0.90);
+  const apport10 = fin.apport10 || (capexTotal - emprunt);
+  const annuite = fin.annuiteDette;
+
+  // Revenus An 1
+  const caAn1 = fin.caAnnuel;
+
+  // OPEX An 1
+  const maintenanceAn1 = fin.maintenanceAn1 || Math.round(kwc * 7.5);
+  const assuranceAn1 = fin.assuranceAn1 || Math.round(kwc * 3.5);
+  const taxesLocalesAn1 = fin.taxesLocalesAn1 || Math.round(kwc * 1.5);
+  const loyerAn1 = fin.loyerAn1 || Math.round(kwc * 10);
+  const totalOpexAn1 = fin.opexAnnuel;
+  const ebitdaAn1 = fin.ebitdaAn1;
+
+  // Chronique 20 ans
+  const years = Array.from({ length: studyDuration || 20 }, (_, i) => 2026 + i);
+  const tableRows = (fin.rows || []).slice(0, studyDuration || 20);
+
+  const triProjet = fin.triProjet;
+  const paybackProjet = fin.payback;
+  const avgDscr = fin.dscrMoyen || 1.35;
+  const totalRecettes = fin.totalRecettesStudy || tableRows.reduce((sum, r) => sum + (r.ca || 0), 0);
+  const totalOpexCumul = fin.totalOpexStudy || tableRows.reduce((sum, r) => sum + (r.opex || 0), 0);
+  const beneficeNetCash = fin.totalCashFlowNet || tableRows.reduce((sum, r) => sum + (r.cfNet || 0), 0);
+
+  // Ligne de données compacte pour le tableau prévisionnel détaillé
+  const DataRow = ({ label, propName, isCurrency, format, bold, className, indent }) => (
+    <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className || ''}`}>
+      <td className={`px-1.5 py-[1.2px] font-medium bg-slate-50 text-[7.5px] border-r border-slate-200 w-[180px] min-w-[180px] whitespace-nowrap ${bold ? 'font-black text-slate-900' : 'text-slate-700'} ${indent ? 'pl-3 italic text-slate-500' : ''}`}>
+        {label}
+      </td>
+      {tableRows.map((r, i) => (
+        <td key={i} className={`px-1 py-[1.2px] text-right border-r border-slate-200 text-[7.5px] whitespace-nowrap ${bold ? 'font-black' : ''}`}>
+          {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : fmtNum(r[propName], 0))}
+        </td>
+      ))}
+    </tr>
+  );
 
   return (
-    <section
-      className="pv-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
+    <div
+      id={`pv-single-site-page-${siteIndex}`}
+      className="pv-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-xl flex flex-col justify-between"
       style={{
         width: '1380px',
         minWidth: '1380px',
@@ -64,165 +106,188 @@ export default function PvProjectSingleSheet({ site, siteIndex, totalSites = 20 
       }}
     >
       <div>
-        {/* En-tête de la fiche projet */}
-        <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3.5">
-          <div className="flex items-center gap-4">
-            <img src="/logo-nelson.png" alt="Nelson" className="h-10 w-auto object-contain" />
+        {/* 1. En-tête de la Fiche Centrale */}
+        <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-1.5">
+          <div className="flex items-center gap-3.5">
+            <img src="/logo-nelson.png" alt="NELSON" className="h-8 w-auto object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
+            <div className="h-6 w-[1px] bg-slate-200" />
+            <img src="/logo-enr-courtage-inline.png" alt="ENR COURTAGE" className="h-7 w-auto object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white font-black text-[10px] uppercase">
-                  Fiche Centrale {siteIndex} / {totalSites}
+                <span className="px-2 py-0.5 rounded-md bg-amber-500 text-white text-[9.5px] font-black uppercase tracking-wider">
+                  Centrale #{siteIndex} / {totalSites}
                 </span>
-                <h2 className="text-2xl font-black text-[#0b192c] tracking-tight">
-                  {site.siteName || site.name}
-                </h2>
+                <h1 className="text-lg font-black text-[#0b192c] tracking-tight">
+                  PROJET {site.name?.toUpperCase() || site.siteName?.toUpperCase()} • {kwc} kWe / {kwc} kWc
+                </h1>
               </div>
-              <p className="text-xs font-medium text-slate-600 mt-0.5">
-                Bâtiment {site.typeBat || 'BAC'} • {site.commune || site.city || '—'} ({site.codePostal?.slice(0, 2) || site.postcode?.slice(0, 2) || '—'}) • Raccordement Poste Source {substation.name} ({substation.distanceKm} km)
+              <p className="text-[10px] font-medium text-slate-500">
+                {site.client ? `${site.client} • ` : ''}{site.address ? `${site.address}, ` : ''}{site.postcode || site.cp || site.zip} {site.city || site.commune}
               </p>
             </div>
           </div>
           <div className="text-right">
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Centrale Photovoltaïque</span>
-            <span className="text-base font-black text-amber-700">{kwc} kWc</span>
-            <span className="text-xs text-slate-500 font-medium block">TopCon 465 Wc • Tarif 0,082 €</span>
+            <span className="text-[8.5px] uppercase tracking-wider text-slate-400 font-bold block">Centrale Photovoltaïque Toiture</span>
+            <span className="text-sm font-black text-amber-700">{kwc} kWc TopCon 465 Wc</span>
+            <span className="text-[9.5px] text-slate-500 font-semibold block">Tarif Garanti S21 : 0,082 €/kWh • Indexation 0,6%/an</span>
           </div>
         </div>
 
-        {/* 4 Indicateurs Majeurs du Projet */}
-        <div className="grid grid-cols-4 gap-4 mb-4">
-          <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-3 flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-black uppercase text-amber-800">Puissance & Prod.</span>
-              <div className="text-xl font-black text-[#0b192c]">{kwc} kWc</div>
-              <span className="text-[10px] text-slate-500 font-medium">{prodMwh} MWh/an</span>
+        {/* 2. Bandeau Technique & Réseau ODRE */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-5 text-slate-700">
+            <div className="flex items-center gap-1.5">
+              <Sun className="w-3.5 h-3.5 text-amber-500" />
+              <span className="text-[8.5px] uppercase font-bold text-slate-400">Centrale :</span>
+              <span className="text-[11px] font-black text-slate-900">{kwc} kWc ({nbPanels} modules 465 Wc)</span>
             </div>
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center">
-              <Sun className="w-5 h-5 text-amber-600" />
+            <div className="border-l border-slate-200 pl-4 flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="text-[8.5px] uppercase font-bold text-slate-400">Productible :</span>
+              <span className="text-[11px] font-black text-emerald-700">{productible} kWh/kWc/an ({prodMwh} MWh/an)</span>
+            </div>
+            <div className="border-l border-slate-200 pl-4 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-[8.5px] uppercase font-bold text-slate-400">Poste Source Enedis :</span>
+              <span className="text-[11px] font-black text-blue-900">{substation.name} ({substation.distanceKm} km • {substation.voltageLevel || 'HTA 20 kV'})</span>
+            </div>
+          </div>
+          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[9px] font-extrabold uppercase">
+            Bâtiment {site.typeBat || 'BAC'} • S3REnR : {substation.quotePartS3renr || '84.13 k€/MW'}
+          </span>
+        </div>
+
+        {/* 3. Grille des 4 Colonnes : Paramètres & KPI */}
+        <div className="grid grid-cols-4 gap-2 mb-2">
+          {/* Colonne 1 : Données Projet & CAPEX */}
+          <div className="bg-white border border-slate-200 rounded-xl p-2 shadow-2xs space-y-1 text-[9.5px]">
+            <div className="font-black text-amber-700 uppercase border-b border-amber-100 pb-0.5 flex justify-between">
+              <span>Investissement CAPEX</span>
+              <span className="font-extrabold text-slate-900">{fmtEur(capexTotal)}</span>
+            </div>
+            <div className="flex justify-between text-slate-600"><span>Centrale solaire (panneaux, pose) :</span><span className="font-bold text-slate-900">{fmtEur(coutCentrale)}</span></div>
+            <div className="flex justify-between text-slate-600"><span>Charpente métallique & toiture :</span><span className="font-bold text-slate-900">{fmtEur(coutCharpente)}</span></div>
+            <div className="flex justify-between text-slate-600"><span>Raccordement Enedis HTA :</span><span className="font-bold text-slate-900">{fmtEur(raccordement)}</span></div>
+            <div className="flex justify-between text-slate-600"><span>Frais structure & ingénierie DP :</span><span className="font-bold text-slate-900">{fmtEur(fraisCommuns)}</span></div>
+            <div className="pt-0.5 border-t border-slate-100 text-[8.5px] text-slate-500 font-medium flex justify-between">
+              <span>Prix unitaire clé en main :</span>
+              <span className="font-bold text-slate-700">{Math.round(capexTotal / kwc)} € / kWc</span>
             </div>
           </div>
 
-          <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3 flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-black uppercase text-blue-800">CAPEX Clé en Main</span>
-              <div className="text-xl font-black text-[#0b192c]">{fmtEur(capexTotal)}</div>
-              <span className="text-[10px] text-slate-500 font-medium">{Math.round(capexTotal / kwc)} € / kWc</span>
+          {/* Colonne 2 : Tarifs & Financement Senior */}
+          <div className="bg-white border border-slate-200 rounded-xl p-2 shadow-2xs space-y-1 text-[9.5px]">
+            <div className="font-black text-blue-700 uppercase border-b border-blue-100 pb-0.5 flex justify-between">
+              <span>Tarifs & Financement</span>
+              <span className="font-extrabold text-slate-900">20 ans</span>
             </div>
-            <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-400 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-
-          <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3 flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-black uppercase text-emerald-800">EBITDA Année 1</span>
-              <div className="text-xl font-black text-emerald-700">{fmtEur(ebitdaAn1)}</div>
-              <span className="text-[10px] text-slate-500 font-medium">CA Brut : {fmtEur(caAn1)}</span>
-            </div>
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
+            <div className="flex justify-between text-slate-600"><span>Tarif de base (≤ 1 100) :</span><span className="font-bold text-indigo-700">0,082 € / kWh</span></div>
+            <div className="flex justify-between text-slate-600"><span>Seuil kWh / kWc :</span><span className="font-bold text-slate-900">1 100 kWh/kWc</span></div>
+            <div className="flex justify-between text-slate-600"><span>Emprunt bancaire senior :</span><span className="font-bold text-slate-900">{debtDuration} ans @ {debtRate}%</span></div>
+            <div className="flex justify-between text-slate-600"><span>Apport Fonds Propres (10%) :</span><span className="font-bold text-slate-900">{fmtEur(apport10)}</span></div>
+            <div className="pt-0.5 border-t border-slate-100 flex justify-between text-slate-600">
+              <span>Annuité de la Dette :</span>
+              <span className="font-bold text-red-600">{fmtEur(annuite)}/an</span>
             </div>
           </div>
 
-          <div className="bg-purple-50/70 border border-purple-200 rounded-2xl p-3 flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-black uppercase text-purple-800">TRI & Retour</span>
-              <div className="text-xl font-black text-purple-800">{fmtPct(triProjet)}</div>
-              <span className="text-[10px] text-slate-500 font-medium">Payback: {payback.toFixed(1)} ans</span>
+          {/* Colonne 3 : Charges & OPEX An 1 */}
+          <div className="bg-white border border-slate-200 rounded-xl p-2 shadow-2xs space-y-1 text-[9.5px]">
+            <div className="font-black text-blue-700 uppercase border-b border-blue-100 pb-0.5 flex justify-between">
+              <span>Charges & OPEX An 1</span>
+              <span className="font-extrabold text-slate-900">{fmtEur(totalOpexAn1)}/an</span>
             </div>
-            <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-purple-600" />
+            <div className="flex justify-between text-slate-600"><span>Maintenance & monitoring :</span><span className="font-bold text-slate-900">{fmtEur(maintenanceAn1)}</span></div>
+            <div className="flex justify-between text-slate-600"><span>Assurance RC & exploitation :</span><span className="font-bold text-slate-900">{fmtEur(assuranceAn1)}</span></div>
+            <div className="flex justify-between text-slate-600"><span>Location compteur & taxes :</span><span className="font-bold text-slate-900">{fmtEur(taxesLocalesAn1)}</span></div>
+            <div className="flex justify-between text-slate-600"><span>Loyer foncier / toiture :</span><span className="font-bold text-emerald-700">{fmtEur(loyerAn1)}</span></div>
+            <div className="pt-0.5 border-t border-slate-100 flex justify-between text-slate-500 text-[8.5px]">
+              <span>Provision onduleurs (An 11) :</span>
+              <span className="font-bold text-slate-700">{fmtEur(coutCentrale * 0.1)}</span>
+            </div>
+          </div>
+
+          {/* Colonne 4 : Carte KPI Sombre */}
+          <div className="bg-slate-900 text-white rounded-xl p-2 shadow-md flex flex-col justify-between text-[9.5px]">
+            <div>
+              <div className="flex justify-between items-center border-b border-white/10 pb-0.5 mb-0.5">
+                <span className="text-[8.5px] uppercase font-black text-amber-300">Indicateurs de Rentabilité</span>
+                <span className="text-[11px] font-black text-emerald-400">TRI : {triProjet.toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between text-white/80 py-0.5"><span>EBITDA Net An 1 :</span><span className="font-black text-white">{fmtEur(ebitdaAn1)}</span></div>
+              <div className="flex justify-between text-white/80 py-0.5"><span>Temps de Retour :</span><span className="font-black text-amber-300">{paybackProjet ? `${paybackProjet.toFixed(1)} ans` : '8.5 ans'}</span></div>
+              <div className="flex justify-between text-white/80 py-0.5"><span>DSCR Moyen Dette :</span><span className="font-black text-cyan-300">{avgDscr.toFixed(2)}x</span></div>
+            </div>
+            <div className="pt-1 border-t border-white/10 mt-0.5">
+              <div className="flex justify-between text-white/70 text-[8.5px]"><span>Recettes 20 ans :</span><span className="font-bold text-white">{fmtEur(totalRecettes)}</span></div>
+              <div className="flex justify-between text-emerald-300 font-black text-[9.5px] mt-0.5">
+                <span>Bénéfice Net Cash :</span>
+                <span>{fmtEur(beneficeNetCash)}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Détail Technique & Décomposition CAPEX */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs">
-            <span className="text-[10px] font-black uppercase text-slate-500 block mb-2">Décomposition de l'Investissement (CAPEX)</span>
-            <div className="space-y-1">
-              <div className="flex justify-between py-0.5 border-b border-slate-200">
-                <span className="text-slate-600">Centrale solaire (panneaux, onduleurs, pose) :</span>
-                <span className="font-bold text-slate-900">{fmtEur(fin.coutCentrale)}</span>
-              </div>
-              <div className="flex justify-between py-0.5 border-b border-slate-200">
-                <span className="text-slate-600">Charpente métallique & toiture :</span>
-                <span className="font-bold text-slate-900">{fmtEur(fin.coutCharpente)}</span>
-              </div>
-              <div className="flex justify-between py-0.5 border-b border-slate-200">
-                <span className="text-slate-600">Raccordement réseau Enedis HTA :</span>
-                <span className="font-bold text-slate-900">{fmtEur(fin.raccordement)}</span>
-              </div>
-              <div className="flex justify-between py-0.5">
-                <span className="text-slate-600">Frais structure & ingénierie DP :</span>
-                <span className="font-bold text-slate-900">{fmtEur(fin.frais + 7500)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs">
-            <span className="text-[10px] font-black uppercase text-slate-500 block mb-2">Paramètres Réseau & Financement 20 ans</span>
-            <div className="space-y-1">
-              <div className="flex justify-between py-0.5 border-b border-slate-200">
-                <span className="text-slate-600">Poste source ODRE rapproché :</span>
-                <span className="font-bold text-slate-900">{substation.name} à {substation.distanceKm} km</span>
-              </div>
-              <div className="flex justify-between py-0.5 border-b border-slate-200">
-                <span className="text-slate-600">Tarif d'achat de base garanti :</span>
-                <span className="font-bold text-slate-900">0,082 € / kWh (S21)</span>
-              </div>
-              <div className="flex justify-between py-0.5 border-b border-slate-200">
-                <span className="text-slate-600">Financement bancaire sénior :</span>
-                <span className="font-bold text-slate-900">90% CAPEX sur 20 ans @ 4,30%</span>
-              </div>
-              <div className="flex justify-between py-0.5">
-                <span className="text-slate-600">Total Trésorerie Nette 20 ans :</span>
-                <span className="font-black text-emerald-700">{fmtEur(fin.rows?.reduce((s, r) => s + (r.cfNet || 0), 0))}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tableau Financier Prévisionnel 20 ans */}
-        <div className="border border-slate-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-[10px] text-left border-collapse">
+        {/* 4. Tableau Prévisionnel Financier - Vue Détaillée Complète (20 Ans) */}
+        <div className="overflow-x-auto w-full rounded-lg border border-slate-200 shadow-2xs">
+          <table className="w-full border-collapse border border-slate-200 text-[7.5px]">
             <thead>
-              <tr className="bg-slate-900 text-white font-bold">
-                <th className="p-1.5 min-w-[130px] sticky left-0 bg-slate-900">Poste (€)</th>
-                {years.map(y => (
-                  <th key={y} className="p-1.5 text-right min-w-[50px]">{y}</th>
+              <tr className="bg-slate-100">
+                <td className="px-1.5 py-1 border-r border-b border-slate-200 text-[8px] font-black text-slate-800 w-[180px] min-w-[180px]">Indicateurs Financiers (€)</td>
+                {tableRows.map((r, i) => (
+                  <td key={i} className="px-1 py-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[8px] text-slate-900 min-w-[54px]">{r.year}</td>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
-              <tr className="bg-blue-50/50 font-bold text-blue-900">
-                <td className="p-1.5 sticky left-0 bg-blue-50 font-bold">Chiffre d'Affaires</td>
-                {(fin.rows || []).slice(0, 20).map((r, i) => (
-                  <td key={i} className="p-1.5 text-right whitespace-nowrap">{Math.round(r.ca || 0).toLocaleString('fr-FR')}</td>
+            <tbody>
+              {/* SECTION 1 : REVENUS */}
+              <tr className="bg-amber-400 font-bold uppercase text-[7.5px] text-slate-900">
+                <td className="px-1.5 py-0.5 border-r border-b border-slate-300" colSpan={tableRows.length + 1}>CHIFFRE D'AFFAIRES & RECETTES (TARIF S21)</td>
+              </tr>
+              <DataRow label="Vente Énergie Réseau (Injection Totale)" propName="ca" isCurrency indent />
+              <DataRow label="TOTAL RECETTES BRUTES" propName="caTotal" isCurrency bold className="bg-slate-50 text-blue-900 font-bold" />
+
+              {/* SECTION 2 : OPEX */}
+              <tr className="bg-slate-100 font-bold uppercase text-[7.5px] text-slate-800">
+                <td className="px-1.5 py-0.5 border-r border-b border-slate-200" colSpan={tableRows.length + 1}>CHARGES D'EXPLOITATION (OPEX)</td>
+              </tr>
+              <DataRow label="Maintenance & Monitoring Centrale" propName="maint" isCurrency indent />
+              <DataRow label="Assurance RC & Dommages aux Biens" propName="assur" isCurrency indent />
+              <DataRow label="Location Compteur & Taxes Locales" propName="taxes" isCurrency indent />
+              <DataRow label="Loyer Foncier / Bâtiment" propName="loyer" isCurrency indent />
+              <DataRow label="Provision Onduleurs (MRA Année 11)" propName="mra" isCurrency indent />
+              <DataRow label="TOTAL CHARGES D'EXPLOITATION (OPEX)" propName="opex" isCurrency bold className="bg-slate-50 text-slate-800 font-bold" />
+
+              {/* SECTION 3 : SOLDES FINANCIERS & DETTE */}
+              <tr className="bg-slate-100 font-bold uppercase text-[7.5px] text-slate-800">
+                <td className="px-1.5 py-0.5 border-r border-b border-slate-200" colSpan={tableRows.length + 1}>SOLDES FINANCIERS, DETTE & FISCALITÉ</td>
+              </tr>
+              <DataRow label="EBITDA (EBE)" propName="ebitda" isCurrency bold className="bg-blue-50 text-blue-900 font-black" />
+              <DataRow label="Amortissement Linéaire (20 ans)" propName="amortissement" isCurrency indent />
+              <DataRow label="Résultat d'Exploitation (EBIT)" propName="ebit" isCurrency indent />
+              <DataRow label="Intérêts d'Emprunt (4,30%)" propName="interets" isCurrency indent />
+              <DataRow label="Résultat Fiscal / Courant" propName="resFiscal" isCurrency indent />
+              <DataRow label="Impôt sur les Sociétés (IS)" propName="is" isCurrency indent />
+              <DataRow label="Remboursement Principal Dette" propName="principal" isCurrency indent />
+              <DataRow label="Service de la Dette (Senior 20 ans)" propName="serviceDette" isCurrency bold />
+              <DataRow label="DSCR Annuel" propName="dscr" format={v => (v > 9 ? '9.99' : (v ?? 0).toFixed(2))} bold className="bg-slate-50 text-slate-800 font-extrabold" />
+
+              {/* TRÉSORERIE NETTE ANNUELLE */}
+              <tr className="bg-amber-400 font-black text-slate-950 text-[8px]">
+                <td className="px-1.5 py-0.5 uppercase border-r border-slate-300 font-black">TRÉSORERIE NETTE ANNUELLE (AVEC DETTE)</td>
+                {tableRows.map((r, i) => (
+                  <td key={i} className="px-1 py-0.5 text-right border-r border-slate-300 font-black text-slate-950">
+                    {fmtEur(r.tresorerie)}
+                  </td>
                 ))}
               </tr>
-              <tr className="text-slate-600">
-                <td className="p-1.5 sticky left-0 bg-white font-medium">OPEX & Exploitation</td>
-                {(fin.rows || []).slice(0, 20).map((r, i) => (
-                  <td key={i} className="p-1.5 text-right whitespace-nowrap">{Math.round(r.opex || 0).toLocaleString('fr-FR')}</td>
-                ))}
-              </tr>
-              <tr className="bg-emerald-50/60 font-black text-emerald-900">
-                <td className="p-1.5 sticky left-0 bg-emerald-50 font-black">EBITDA</td>
-                {(fin.rows || []).slice(0, 20).map((r, i) => (
-                  <td key={i} className="p-1.5 text-right font-bold whitespace-nowrap">{Math.round(r.ebitda || 0).toLocaleString('fr-FR')}</td>
-                ))}
-              </tr>
-              <tr className="text-slate-700">
-                <td className="p-1.5 sticky left-0 bg-white font-medium">Service de la Dette</td>
-                {(fin.rows || []).slice(0, 20).map((r, i) => (
-                  <td key={i} className="p-1.5 text-right whitespace-nowrap">{Math.round(r.serviceDette || 0).toLocaleString('fr-FR')}</td>
-                ))}
-              </tr>
-              <tr className="bg-amber-400 font-black text-slate-900">
-                <td className="p-1.5 sticky left-0 bg-amber-400 font-black">Cash-Flow Net Annuel</td>
-                {(fin.rows || []).slice(0, 20).map((r, i) => (
-                  <td key={i} className="p-1.5 text-right font-black whitespace-nowrap">{Math.round(r.cfNet || 0).toLocaleString('fr-FR')}</td>
+              {/* TRÉSORERIE CUMULÉE */}
+              <tr className="bg-emerald-50 font-bold text-emerald-950 text-[7.5px]">
+                <td className="px-1.5 py-0.5 border-r border-slate-200 font-bold text-emerald-900">Trésorerie Nette Cumulée</td>
+                {tableRows.map((r, i) => (
+                  <td key={i} className="px-1 py-0.5 text-right border-r border-slate-200 font-bold text-emerald-800">
+                    {fmtEur(r.cumulCashFlow)}
+                  </td>
                 ))}
               </tr>
             </tbody>
@@ -230,12 +295,12 @@ export default function PvProjectSingleSheet({ site, siteIndex, totalSites = 20 
         </div>
       </div>
 
-      {/* Pied de page institutionnel */}
-      <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[10.5px] text-slate-500 font-medium">
-        <div>Nelson Energy Advisory • Fiche Photovoltaïque Unitaire</div>
-        <div className="font-semibold text-slate-600">Projet {site.siteName || site.name} • {kwc} kWc</div>
+      {/* 5. Pied de Page */}
+      <div className="pt-1.5 border-t border-slate-200 flex items-center justify-between text-[9px] text-slate-500 font-medium">
+        <div>Nelson Energy Advisory • Fiche Centrale Photovoltaïque Unitaire #{siteIndex} ({site.name || site.siteName})</div>
+        <div className="font-semibold text-slate-600">Arrêté Tarifaire S21 • Injection Réseau Enedis HTA • TopCon 465 Wc</div>
         <div className="font-bold text-[#0b192c]">Fiche {siteIndex} / {totalSites}</div>
       </div>
-    </section>
+    </div>
   );
 }
