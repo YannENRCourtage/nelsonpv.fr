@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
@@ -124,6 +124,88 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
   // Années pour le tableau de cash flow
   const years = Array.from({ length: 20 }, (_, i) => 2026 + i);
 
+  // Chronique financière détaillée 20 ans pour la Planche 2
+  const detailedChronoRows = useMemo(() => {
+    const yearsArr = Array.from({ length: 20 }, (_, i) => 2026 + i);
+    const capex = isPort ? portfolioTotals.totalCapex : singleCapex;
+    const caAn1 = isPort ? portfolioTotals.totalCaAn1 : singleCaAn1;
+    const ebitdaAn1 = isPort ? portfolioTotals.totalEbitdaAn1 : singleEbitdaAn1;
+    const opexAn1 = Math.max(0, caAn1 - ebitdaAn1);
+    const emprunt = Math.round(capex * 0.90);
+    const rateDec = 0.043;
+    const annuite = Math.round(emprunt * (rateDec / (1 - Math.pow(1 + rateDec, -20))));
+
+    let detteDebut = emprunt;
+    let cumulCashFlow = -Math.round(capex * 0.10);
+
+    return yearsArr.map((y, i) => {
+      const deg = Math.pow(1 - 0.0045, i);
+      const idxT = Math.pow(1 + 0.006, i);
+      const idxOpex = Math.pow(1 + 0.02, i);
+
+      const ca = Math.round(caAn1 * deg * idxT);
+      const maint = Math.round(opexAn1 * 0.50 * idxOpex);
+      const assur = Math.round(opexAn1 * 0.25 * idxOpex);
+      const taxes = Math.round(opexAn1 * 0.10 * idxOpex);
+      const loyer = Math.round(opexAn1 * 0.15 * idxOpex);
+      const mra = i === 10 ? Math.round(capex * 0.05) : 0; // Année 11
+      const opex = maint + assur + taxes + loyer + mra;
+
+      const ebitda = ca - opex;
+      const servDette = annuite;
+      const interest = Math.round(detteDebut * rateDec);
+      const principal = Math.max(0, servDette - interest);
+      const amort = Math.round(capex / 20);
+      const ebit = ebitda - amort;
+      const resFiscal = Math.max(0, ebit - interest);
+      const is = resFiscal > 0 ? (resFiscal < 42500 ? Math.round(resFiscal * 0.15) : Math.round((42500 * 0.15) + ((resFiscal - 42500) * 0.25))) : 0;
+      const cafds = ebitda - is;
+      const dscr = servDette > 0 ? (cafds / servDette) : 9.99;
+      const cfNet = ebitda - servDette - is;
+      cumulCashFlow += cfNet;
+
+      detteDebut = Math.max(0, detteDebut - principal);
+
+      return {
+        year: y,
+        ca,
+        caTotal: ca,
+        maint,
+        assur,
+        taxes,
+        loyer,
+        mra,
+        opex,
+        ebitda,
+        amortissement: amort,
+        ebit,
+        interets: interest,
+        resFiscal,
+        is,
+        principal,
+        serviceDette: servDette,
+        dscr,
+        cfNet,
+        tresorerie: cfNet,
+        cumulCashFlow
+      };
+    });
+  }, [isPort, portfolioTotals, singleCapex, singleCaAn1, singleEbitdaAn1]);
+
+  // Helper de rendu de ligne détaillée pour la Planche 2
+  const DataRowP2 = ({ label, propName, isCurrency, format, bold, className, indent }) => (
+    <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className || ''}`}>
+      <td className={`px-2 py-[1.2px] font-medium bg-slate-50 text-[7.5px] border-r border-slate-200 w-[185px] min-w-[185px] whitespace-nowrap ${bold ? 'font-black text-slate-900' : 'text-slate-700'} ${indent ? 'pl-3 italic text-slate-500' : ''}`}>
+        {label}
+      </td>
+      {detailedChronoRows.map((r, i) => (
+        <td key={i} className={`px-1 py-[1.2px] text-right border-r border-slate-200 text-[7.5px] whitespace-nowrap ${bold ? 'font-black' : ''}`}>
+          {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : (r[propName] || 0).toLocaleString('fr-FR'))}
+        </td>
+      ))}
+    </tr>
+  );
+
   // Fonction d'exportation PDF multi-pages A4 Paysage
   const handleGeneratePdf = async (exportMode = 'portfolio') => {
     setIsExportingPdf(true);
@@ -219,20 +301,20 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
         {/* ========================================================================= */}
         <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-6 py-3 shadow-xs flex flex-wrap items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-6">
-            {/* Logo Nelson */}
+            {/* Logo ENR Courtage */}
             <div className="flex items-center gap-3">
               <img
-                src="/logo-nelson.png"
-                alt="Nelson"
-                className="h-9 w-auto object-contain"
+                src="/logo-enr-courtage-inline.png"
+                alt="ENR COURTAGE"
+                className="h-10 w-auto object-contain"
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
               <div className="flex flex-col">
                 <span className="text-base font-black tracking-tight text-[#0b192c] leading-none">
-                  NELSON<span className="text-amber-500 font-extrabold ml-1">ENERGY</span>
+                  ENR<span className="text-[#0284c7] font-extrabold ml-1">COURTAGE</span>
                 </span>
                 <span className="text-[10px] tracking-wider uppercase font-bold text-slate-500 mt-0.5">
-                  Mémorandum d'Investissement Photovoltaïque • Tarifs S21 & ACC
+                  Mémorandum d'Investissement Photovoltaïque • Tarifs AOS & ACC
                 </span>
               </div>
             </div>
@@ -349,14 +431,19 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
             </div>
 
             <section
-              className="pv-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
+              className="pv-render-page shrink-0 bg-white rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
               style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}
             >
               <div>
-                {/* En-tête institutionnel */}
+                {/* En-tête institutionnel ENR COURTAGE */}
                 <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
                   <div className="flex items-center gap-4">
-                    <img src="/logo-nelson.png" alt="Nelson" className="h-10 w-auto object-contain" />
+                    <img
+                      src="/logo-enr-courtage-inline.png"
+                      alt="ENR COURTAGE"
+                      className="h-11 w-auto object-contain"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
                     <div>
                       <h1 className="text-2xl sm:text-3xl font-black text-[#0b192c] tracking-tight">
                         {kpi.title}
@@ -369,54 +456,64 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                   <div className="text-right">
                     <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold block">Édition d'Analyse</span>
                     <span className="text-sm font-extrabold text-[#0b192c]">{new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
-                    <span className="text-xs font-bold text-amber-600 block mt-0.5">Nelson Energy Advisory</span>
+                    <span className="text-xs font-bold text-cyan-600 block mt-0.5">ENR COURTAGE • M&A Infrastructure</span>
                   </div>
                 </div>
 
-                {/* Grille des 4 indicateurs majeurs */}
-                <div className="grid grid-cols-4 gap-4 mb-5">
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-3.5 flex items-center justify-between">
+                {/* Les 6 grands chiffres clés visuels avec bordures micro-dégradées (identique BESS) */}
+                <div className="grid grid-cols-6 gap-3.5 mb-5">
+                  <div className="bg-white border-2 border-purple-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-indigo-600"></div>
                     <div>
-                      <span className="text-[10px] font-black uppercase text-amber-700 tracking-wider">Puissance Installée</span>
-                      <div className="text-2xl font-black text-[#0b192c] mt-0.5">{kpi.powerLabel}</div>
-                      <span className="text-[10px] text-slate-500 font-medium">Production: {kpi.prodLabel}</span>
+                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-purple-700">TRI Projet & Equity</div>
+                      <div className="text-2xl font-black text-purple-900 mt-1">{kpi.triLabel}</div>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center">
-                      <Sun className="w-5 h-5 text-amber-600" />
-                    </div>
+                    <div className="text-[11px] font-bold text-purple-600 mt-1">TRI Equity : > 14.5%</div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-3.5 flex items-center justify-between">
+                  <div className="bg-white border-2 border-emerald-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 to-teal-600"></div>
                     <div>
-                      <span className="text-[10px] font-black uppercase text-blue-700 tracking-wider">Investissement Global</span>
-                      <div className="text-2xl font-black text-[#0b192c] mt-0.5">{kpi.capexLabel}</div>
-                      <span className="text-[10px] text-slate-500 font-medium">CAPEX clé en main HT</span>
+                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700">Temps de Retour Net</div>
+                      <div className="text-2xl font-black text-emerald-900 mt-1">{kpi.paybackLabel}</div>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400 flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-blue-600" />
-                    </div>
+                    <div className="text-[11px] font-bold text-emerald-600 mt-1">Sur Fonds Propres : 2.5 ans</div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between">
+                  <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-500 to-orange-500"></div>
                     <div>
-                      <span className="text-[10px] font-black uppercase text-emerald-700 tracking-wider">EBITDA Année 1</span>
-                      <div className="text-2xl font-black text-emerald-700 mt-0.5">{kpi.ebitdaLabel}</div>
-                      <span className="text-[10px] text-slate-500 font-medium">CA Brut: {kpi.caLabel}</span>
+                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-amber-700">EBITDA Net An 1</div>
+                      <div className="text-2xl font-black text-amber-900 mt-1">{kpi.ebitdaLabel}</div>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400 flex items-center justify-center">
-                      <TrendingUp className="w-5 h-5 text-emerald-600" />
-                    </div>
+                    <div className="text-[11px] font-bold text-amber-600 mt-1">{isPort ? `EBITDA consolidé net (${portfolioTotals.totalSites} sites)` : 'EBITDA net annuel'}</div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-3.5 flex items-center justify-between">
+                  <div className="bg-white border-2 border-blue-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-cyan-500"></div>
                     <div>
-                      <span className="text-[10px] font-black uppercase text-purple-700 tracking-wider">TRI Projet & Payback</span>
-                      <div className="text-2xl font-black text-purple-800 mt-0.5">{kpi.triLabel}</div>
-                      <span className="text-[10px] text-slate-500 font-medium">Temps de retour: {kpi.paybackLabel}</span>
+                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-blue-700">Chiffre d'Affaires Brut</div>
+                      <div className="text-2xl font-black text-blue-900 mt-1">{kpi.caLabel}</div>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400 flex items-center justify-center">
-                      <Zap className="w-5 h-5 text-purple-600" />
+                    <div className="text-[11px] font-bold text-blue-600 mt-1">{isPort ? `Production ${Math.round(portfolioTotals.totalProdMwh).toLocaleString('fr-FR')} MWh/an` : `Production ${Math.round(singleProdMwh).toLocaleString('fr-FR')} MWh/an`}</div>
+                  </div>
+
+                  <div className="bg-white border-2 border-slate-300 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-600 to-slate-800"></div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-slate-700">CAPEX Clé en Main</div>
+                      <div className="text-2xl font-black text-slate-900 mt-1">{kpi.capexLabel}</div>
                     </div>
+                    <div className="text-[11px] font-bold text-slate-600 mt-1">{isPort ? `~${Math.round(portfolioTotals.totalCapex / (portfolioTotals.totalPowerMw * 1000))} €/kWc raccordé` : `~${Math.round(singleCapex / (singleKwc || 1))} €/kWc`}</div>
+                  </div>
+
+                  <div className="bg-white border-2 border-cyan-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 to-teal-500"></div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-cyan-700">Puissance Installée</div>
+                      <div className="text-2xl font-black text-cyan-900 mt-1">{kpi.powerLabel}</div>
+                    </div>
+                    <div className="text-[11px] font-bold text-cyan-600 mt-1">{isPort ? `${portfolioTotals.totalSites} Centrales solaires` : 'Centrale toiture'}</div>
                   </div>
                 </div>
 
@@ -451,13 +548,13 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                         <span className="font-bold text-slate-900">{kpi.debtDuration} ans</span>
                       </div>
                       <div className="flex justify-between py-1">
-                        <span className="text-slate-500">Couverture Moyenne DSCR :</span>
-                        <span className="font-extrabold text-emerald-700">{kpi.dscrLabel} (Seuil exigé: 1.17x)</span>
+                        <span className="text-slate-500">TRI Portefeuille :</span>
+                        <span className="font-extrabold text-purple-700">{kpi.triLabel}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Bloc 2 : Données Techniques & Tarifaires */}
+                  {/* Bloc 2 : Données Techniques & Tarifs d'Achat */}
                   <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2.5">
                       <h3 className="font-extrabold text-[#0b192c] text-xs uppercase tracking-wide flex items-center gap-2">
@@ -465,7 +562,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                         Paramètres Techniques & Tarifs d'Achat
                       </h3>
                       <span className="text-[10px] font-bold bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
-                        Arrêté S21 / ACC
+                        AOS / ACC
                       </span>
                     </div>
                     <div className="space-y-1.5 text-xs text-slate-700">
@@ -492,35 +589,19 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                     </div>
                   </div>
                 </div>
-
-                {/* Badges de conformité en bas de page 1 */}
-                <div className="flex items-center justify-center gap-3 pt-2 pb-1 border-t border-slate-100">
-                  <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-amber-50 text-amber-800 border border-amber-200">
-                    PHOTOVOLTAÏQUE HAUT RENDEMENT
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-blue-50 text-blue-800 border border-blue-200">
-                    TARIF S21 SÉCURISÉ 20 ANS
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    COUVERTURE DSCR CONFORME
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-purple-50 text-purple-800 border border-purple-200">
-                    TRI > 9%
-                  </span>
-                </div>
               </div>
 
-              {/* Pied de page institutionnel */}
+              {/* Pied de page institutionnel ENR COURTAGE SAS */}
               <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                <div>Nelson Energy Advisory • Mémorandum d'Investissement Photovoltaïque</div>
-                <div className="font-semibold text-slate-600">Modèle certifié CRE S21 & ACC</div>
+                <div>ENR COURTAGE SAS • Mémorandum d'Investissement Photovoltaïque</div>
+                <div className="font-semibold text-slate-600">Modèle certifié CRE & ACC</div>
                 <div className="font-bold text-[#0b192c]">Planche 1 / {totalPagesCount}</div>
               </div>
             </section>
           </div>
 
           {/* ========================================================================= */}
-          {/* PLANCHE 2 : COMPTE DE RÉSULTAT & CASH-FLOWS 20 ANS */}
+          {/* PLANCHE 2 : COMPTE DE RÉSULTAT & CASH-FLOWS 20 ANS (VUE DÉTAILLÉE COMPLÈTE) */}
           {/* ========================================================================= */}
           <div id="pv-planche-container-2" className="w-full flex flex-col items-center shrink-0 mb-8">
             <div className="w-[1380px] mb-2 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
@@ -528,19 +609,24 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
             </div>
 
             <section
-              className="pv-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
+              className="pv-render-page shrink-0 bg-white rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
               style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}
             >
               <div>
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
                   <div className="flex items-center gap-3">
-                    <img src="/logo-nelson.png" alt="Nelson" className="h-9 w-auto object-contain" />
+                    <img
+                      src="/logo-enr-courtage-inline.png"
+                      alt="ENR COURTAGE"
+                      className="h-10 w-auto object-contain"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
                     <div>
                       <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight">
                         Cash-Flows Prévisionnels & Amortissement de la Dette (2026 – 2045)
                       </h2>
                       <p className="text-xs font-medium text-slate-600">
-                        Modélisation financière détaillée sur 20 ans avec dégradation panneau, indexation tarifaire et service de la dette.
+                        Modélisation financière détaillée sur 20 ans — Recettes, OPEX, Service de la Dette et Trésorerie Nette Consolidée.
                       </p>
                     </div>
                   </div>
@@ -552,102 +638,90 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                   </div>
                 </div>
 
-                {/* Tableau financier compact 20 ans */}
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-[10px] text-left border-collapse">
+                {/* Tableau financier prévisionnel en Vue Détaillée Complète 20 ans */}
+                <div className="overflow-x-auto w-full rounded-xl border border-slate-200 shadow-2xs">
+                  <table className="w-full border-collapse border border-slate-200 text-[8px]">
                     <thead>
-                      <tr className="bg-slate-900 text-white font-bold">
-                        <th className="p-1.5 sticky left-0 bg-slate-900 min-w-[140px]">Poste (€ / an)</th>
-                        {years.map(y => (
-                          <th key={y} className="p-1.5 text-right min-w-[52px]">{y}</th>
+                      <tr className="bg-slate-100">
+                        <td className="px-2 py-1 border-r border-b border-slate-200 text-[8.5px] font-black text-slate-800 w-[185px] min-w-[185px]">
+                          Poste Financier (€ / an)
+                        </td>
+                        {detailedChronoRows.map((r, i) => (
+                          <td key={i} className="px-1 py-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[8.5px] text-slate-900 min-w-[52px]">
+                            {r.year}
+                          </td>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      <tr className="bg-blue-50/50 font-bold text-blue-900">
-                        <td className="p-1.5 sticky left-0 bg-blue-50 font-bold">Chiffre d'Affaires Brut</td>
-                        {years.map((y, i) => {
-                          const val = isPort ? (portfolioTotals.totalCaAn1 * Math.pow(1 - 0.0045, i) * Math.pow(1 + 0.006, i)) : ((currentRows?.[i]?.ca) || (singleCaAn1 * Math.pow(1 - 0.0045, i) * Math.pow(1 + 0.006, i)));
-                          return <td key={y} className="p-1.5 text-right whitespace-nowrap">{Math.round(val).toLocaleString('fr-FR')}</td>;
-                        })}
+                    <tbody>
+                      {/* SECTION 1 : REVENUS */}
+                      <tr className="bg-amber-400 font-bold uppercase text-[8px] text-slate-900">
+                        <td className="px-2 py-0.5 border-r border-b border-slate-300" colSpan={detailedChronoRows.length + 1}>
+                          CHIFFRE D'AFFAIRES & RECETTES DU PORTEFEUILLE
+                        </td>
                       </tr>
-                      <tr className="text-slate-600">
-                        <td className="p-1.5 sticky left-0 bg-white font-medium">OPEX & Maintenance</td>
-                        {years.map((y, i) => {
-                          const baseOpex = isPort ? (portfolioTotals.totalCaAn1 - portfolioTotals.totalEbitdaAn1) : (singleCaAn1 - singleEbitdaAn1);
-                          const val = isPort ? (baseOpex * Math.pow(1 + 0.02, i)) : ((currentRows?.[i]?.opex) || (baseOpex * Math.pow(1 + 0.02, i)));
-                          return <td key={y} className="p-1.5 text-right whitespace-nowrap">{Math.round(val).toLocaleString('fr-FR')}</td>;
-                        })}
+                      <DataRowP2 label="Vente Énergie Réseau (Production Solaire)" propName="ca" isCurrency indent />
+                      <DataRowP2 label="TOTAL RECETTES BRUTES CONSOLIDÉES" propName="caTotal" isCurrency bold className="bg-slate-50 text-blue-900 font-bold" />
+
+                      {/* SECTION 2 : OPEX */}
+                      <tr className="bg-slate-100 font-bold uppercase text-[8px] text-slate-800">
+                        <td className="px-2 py-0.5 border-r border-b border-slate-200" colSpan={detailedChronoRows.length + 1}>
+                          CHARGES D'EXPLOITATION (OPEX)
+                        </td>
                       </tr>
-                      <tr className="bg-emerald-50/60 font-black text-emerald-900">
-                        <td className="p-1.5 sticky left-0 bg-emerald-50 font-black">EBITDA Projet</td>
-                        {years.map((y, i) => {
-                          const val = isPort ? (portfolioTotals.totalEbitdaAn1 * Math.pow(1 - 0.0045, i) * Math.pow(1 + 0.006, i)) : ((currentRows?.[i]?.ebitda) || (singleEbitdaAn1 * Math.pow(1 - 0.0045, i) * Math.pow(1 + 0.006, i)));
-                          return <td key={y} className="p-1.5 text-right font-bold whitespace-nowrap">{Math.round(val).toLocaleString('fr-FR')}</td>;
-                        })}
+                      <DataRowP2 label="Maintenance & Monitoring Technique" propName="maint" isCurrency indent />
+                      <DataRowP2 label="Assurance RC & Dommages aux Biens" propName="assur" isCurrency indent />
+                      <DataRowP2 label="Location Compteurs & Taxes Locales" propName="taxes" isCurrency indent />
+                      <DataRowP2 label="Loyers Fonciers / Bâtiments" propName="loyer" isCurrency indent />
+                      <DataRowP2 label="Provision Remplacement Onduleurs (An 11)" propName="mra" isCurrency indent />
+                      <DataRowP2 label="TOTAL CHARGES D'EXPLOITATION (OPEX)" propName="opex" isCurrency bold className="bg-slate-50 text-slate-800 font-bold" />
+
+                      {/* SECTION 3 : SOLDES FINANCIERS & DETTE */}
+                      <tr className="bg-slate-100 font-bold uppercase text-[8px] text-slate-800">
+                        <td className="px-2 py-0.5 border-r border-b border-slate-200" colSpan={detailedChronoRows.length + 1}>
+                          SOLDES FINANCIERS, DETTE & FISCALITÉ
+                        </td>
                       </tr>
-                      <tr className="text-slate-700">
-                        <td className="p-1.5 sticky left-0 bg-white font-medium">Service de la Dette</td>
-                        {years.map((y, i) => {
-                          const capex = isPort ? portfolioTotals.totalCapex : singleCapex;
-                          const annuite = (capex * 0.90 * (0.043 / (1 - Math.pow(1 + 0.043, -20))));
-                          return <td key={y} className="p-1.5 text-right whitespace-nowrap">{Math.round(annuite).toLocaleString('fr-FR')}</td>;
-                        })}
+                      <DataRowP2 label="EBITDA (EBE)" propName="ebitda" isCurrency bold className="bg-blue-50 text-blue-900 font-black" />
+                      <DataRowP2 label="Amortissement Linéaire (20 ans)" propName="amortissement" isCurrency indent />
+                      <DataRowP2 label="Résultat d'Exploitation (EBIT)" propName="ebit" isCurrency indent />
+                      <DataRowP2 label="Intérêts d'Emprunt (Senior 4,30%)" propName="interets" isCurrency indent />
+                      <DataRowP2 label="Résultat Fiscal / Courant" propName="resFiscal" isCurrency indent />
+                      <DataRowP2 label="Impôt sur les Sociétés (IS)" propName="is" isCurrency indent />
+                      <DataRowP2 label="Remboursement Principal Dette" propName="principal" isCurrency indent />
+                      <DataRowP2 label="Service de la Dette (Senior 20 ans)" propName="serviceDette" isCurrency bold />
+                      <DataRowP2 label="DSCR Annuel" propName="dscr" format={v => (v > 9 ? '9.99' : (v ?? 0).toFixed(2))} bold className="bg-slate-50 text-slate-800 font-extrabold" />
+
+                      {/* TRÉSORERIE NETTE ANNUELLE */}
+                      <tr className="bg-amber-400 font-black text-slate-950 text-[8.5px]">
+                        <td className="px-2 py-0.5 uppercase border-r border-slate-300 font-black">
+                          TRÉSORERIE NETTE ANNUELLE (AVEC DETTE)
+                        </td>
+                        {detailedChronoRows.map((r, i) => (
+                          <td key={i} className="px-1 py-0.5 text-right border-r border-slate-300 font-black text-slate-950">
+                            {fmtEur(r.tresorerie)}
+                          </td>
+                        ))}
                       </tr>
-                      <tr className="bg-purple-50/50 font-bold text-purple-900">
-                        <td className="p-1.5 sticky left-0 bg-purple-50 font-bold">Cash-Flow Net Annuel</td>
-                        {years.map((y, i) => {
-                          const capex = isPort ? portfolioTotals.totalCapex : singleCapex;
-                          const annuite = (capex * 0.90 * (0.043 / (1 - Math.pow(1 + 0.043, -20))));
-                          const ebitda = isPort ? (portfolioTotals.totalEbitdaAn1 * Math.pow(1 - 0.0045, i)) : ((currentRows?.[i]?.ebitda) || (singleEbitdaAn1 * Math.pow(1 - 0.0045, i)));
-                          const cf = Math.max(0, ebitda - annuite);
-                          return <td key={y} className="p-1.5 text-right font-bold whitespace-nowrap">{Math.round(cf).toLocaleString('fr-FR')}</td>;
-                        })}
-                      </tr>
-                      <tr className="bg-slate-100 font-black text-slate-900">
-                        <td className="p-1.5 sticky left-0 bg-slate-200 font-black">Cash-Flow Cumulé</td>
-                        {years.map((y, i) => {
-                          const capex = isPort ? portfolioTotals.totalCapex : singleCapex;
-                          const annuite = (capex * 0.90 * (0.043 / (1 - Math.pow(1 + 0.043, -20))));
-                          let cumul = -(capex * 0.10);
-                          for (let step = 0; step <= i; step++) {
-                            const ebitda = isPort ? (portfolioTotals.totalEbitdaAn1 * Math.pow(1 - 0.0045, step)) : ((currentRows?.[step]?.ebitda) || (singleEbitdaAn1 * Math.pow(1 - 0.0045, step)));
-                            cumul += (ebitda - annuite);
-                          }
-                          return (
-                            <td key={y} className={`p-1.5 text-right font-black whitespace-nowrap ${cumul >= 0 ? 'text-emerald-700' : 'text-slate-700'}`}>
-                              {Math.round(cumul).toLocaleString('fr-FR')}
-                            </td>
-                          );
-                        })}
+                      {/* TRÉSORERIE CUMULÉE */}
+                      <tr className="bg-emerald-50 font-bold text-emerald-950 text-[8px]">
+                        <td className="px-2 py-0.5 border-r border-slate-200 font-bold text-emerald-900">
+                          Trésorerie Nette Cumulée
+                        </td>
+                        {detailedChronoRows.map((r, i) => (
+                          <td key={i} className="px-1 py-0.5 text-right border-r border-slate-200 font-bold text-emerald-800">
+                            {fmtEur(r.cumulCashFlow)}
+                          </td>
+                        ))}
                       </tr>
                     </tbody>
                   </table>
                 </div>
-
-                {/* Synthèse de rentabilité bancaire */}
-                <div className="grid grid-cols-3 gap-4 mt-4">
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Levier Dette Sénior</span>
-                    <span className="text-base font-black text-slate-900">90 % du CAPEX</span>
-                    <span className="text-[10px] text-slate-500 block mt-0.5">Taux fixe 4,30% • 20 ans amortissable</span>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase block">DSCR Moyen Projet</span>
-                    <span className="text-base font-black text-emerald-600">{kpi.dscrLabel}</span>
-                    <span className="text-[10px] text-emerald-700 block mt-0.5">Ratio de couverture très favorable</span>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase block">TRI Fonds Propres (Equity)</span>
-                    <span className="text-base font-black text-purple-700">> 14.5 %</span>
-                    <span className="text-[10px] text-purple-600 block mt-0.5">Rendement attractif après effet de levier</span>
-                  </div>
-                </div>
               </div>
 
-              {/* Pied de page institutionnel */}
+              {/* Pied de page institutionnel ENR COURTAGE SAS */}
               <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                <div>Nelson Energy Advisory • Modélisation Financière Photovoltaïque</div>
+                <div>ENR COURTAGE SAS • Modélisation Financière Photovoltaïque</div>
                 <div className="font-semibold text-slate-600">Amortissement & Plan de Financement 20 ans</div>
                 <div className="font-bold text-[#0b192c]">Planche 2 / {totalPagesCount}</div>
               </div>
@@ -663,13 +737,18 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
             </div>
 
             <section
-              className="pv-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
+              className="pv-render-page shrink-0 bg-white rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
               style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}
             >
               <div>
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
                   <div className="flex items-center gap-3">
-                    <img src="/logo-nelson.png" alt="Nelson" className="h-9 w-auto object-contain" />
+                    <img
+                      src="/logo-enr-courtage-inline.png"
+                      alt="ENR COURTAGE"
+                      className="h-10 w-auto object-contain"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
                     <div>
                       <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight">
                         {isPort ? "Répertoire Exhaustif des Centrales du Portefeuille HÉLIOS" : `Détail des Bâtiments & Toitures — ${currentProject?.name || 'Centrale'}`}
@@ -743,9 +822,9 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                 </div>
               </div>
 
-              {/* Pied de page institutionnel */}
+              {/* Pied de page institutionnel ENR COURTAGE SAS */}
               <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                <div>Nelson Energy Advisory • Répertoire d'Actifs Photovoltaïques</div>
+                <div>ENR COURTAGE SAS • Répertoire d'Actifs Photovoltaïques</div>
                 <div className="font-semibold text-slate-600">Base consolidée & qualification réseau ODRE</div>
                 <div className="font-bold text-[#0b192c]">Planche 3 / {totalPagesCount}</div>
               </div>
@@ -773,7 +852,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                         Fiche PV Unitaire — {site.siteName || site.name} ({site.commune || site.city} - {site.codePostal?.slice(0, 2) || '—'})
                       </span>
                     </div>
-                    <span className="text-slate-500 font-medium">{site.kwc} kWc • Tarif S21 (0,082 €/kWh)</span>
+                    <span className="text-slate-500 font-medium">{site.kwc} kWc • Tarif d'achat (0,082 €/kWh)</span>
                   </div>
                   <PvProjectSingleSheet
                     site={site}
