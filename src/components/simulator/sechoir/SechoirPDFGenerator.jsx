@@ -281,7 +281,7 @@ export function getAutoconsumptionData(consKwh, pvProdKwh, withBattery = false) 
 
 export function drawAutoconsumptionBarChart(canvas, data) {
   canvas.width = 1400;
-  canvas.height = 580;
+  canvas.height = 500;
   const ctx = canvas.getContext('2d');
 
   ctx.fillStyle = '#ffffff';
@@ -289,7 +289,7 @@ export function drawAutoconsumptionBarChart(canvas, data) {
 
   const W = canvas.width;
   const H = canvas.height;
-  const padding = { top: 30, right: 30, bottom: 65, left: 110 };
+  const padding = { top: 20, right: 25, bottom: 46, left: 100 };
   const chartW = W - padding.left - padding.right;
   const chartH = H - padding.top - padding.bottom;
 
@@ -310,9 +310,9 @@ export function drawAutoconsumptionBarChart(canvas, data) {
     ctx.stroke();
 
     ctx.fillStyle = '#94a3b8';
-    ctx.font = 'bold 18px "JetBrains Mono", Consolas, monospace';
+    ctx.font = 'bold 17px Montserrat, Arial, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(`${fmt(Math.round(val))} €`, padding.left - 14, y + 6);
+    ctx.fillText(`${fmt(Math.round(val))} €`, padding.left - 12, y + 6);
   }
 
   // Groupes de barres
@@ -357,9 +357,9 @@ export function drawAutoconsumptionBarChart(canvas, data) {
 
     // Label Axe X
     ctx.fillStyle = '#475569';
-    ctx.font = 'bold 20px "JetBrains Mono", Consolas, monospace';
+    ctx.font = 'bold 18px Montserrat, Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(d.label, groupCenter, H - padding.bottom + 32);
+    ctx.fillText(d.label, groupCenter, H - padding.bottom + 26);
   });
 
   // Ligne de base
@@ -374,7 +374,7 @@ export function drawAutoconsumptionBarChart(canvas, data) {
 // ─── Header & Footer Helpers ───────────────────────────────────────────────────
 function renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge = 'ÉTUDE DE RENTABILITÉ & DOSSIER TECHNIQUE COMPLET' }) {
   return `
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2.5px solid #0D3660; padding-bottom: 5px; margin-bottom: 9px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2.5px solid #0D3660; padding-bottom: 5px; margin-bottom: 7px; font-family: Montserrat, Arial, sans-serif;">
       <div style="display: flex; align-items: center; gap: 12px;">
         <img src="${ENR_COURTAGE_LOGO_BASE64}" alt="ENR COURTAGE" style="height: 28px; width: auto; object-fit: contain; display: block;" />
         <span style="font-size: 8pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px;">${pageBadge}</span>
@@ -383,8 +383,9 @@ function renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, 
         <div style="font-size: 11pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">
           Séchoir Multi-Matières <span style="color: #f59e0b;">BatiTech®</span> — <span style="color: #0f172a;">${modelName || 'BatiTech 6.2.15'}</span>
         </div>
-        <div style="font-size: 7.2pt; font-weight: 600; color: #475569; margin-top: 2px;">
-          <strong>Client :</strong> ${clientName || 'Exploitation Agricole'} &bull; <strong>Date :</strong> ${dateStr} &bull; <strong>Adresse :</strong> ${clientAddress}
+        <div style="font-size: 7.2pt; font-weight: 600; color: #475569; margin-top: 2px; line-height: 1.35;">
+          <div><strong>Client :</strong> ${clientName || 'Exploitation Agricole'} &bull; <strong>Date :</strong> ${dateStr}</div>
+          <div style="color: #64748b;"><strong>Adresse :</strong> ${clientAddress}</div>
         </div>
       </div>
     </div>
@@ -631,7 +632,7 @@ export async function generateSechoirPDF({
     // ═══════════════════════════════════════════════════════════════════════════
     container.innerHTML = `
       <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
-        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'PLANCHE 1 • ÉTUDE DE RENTABILITÉ &amp; BILAN TECHNIQUE' })}
+        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'ÉTUDE DE RENTABILITÉ &amp; BILAN TECHNIQUE' })}
 
         <!-- 5 KPIS EN HAUT DE PAGE (STYLE RÉSULTATS) -->
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 9px;">
@@ -829,7 +830,7 @@ export async function generateSechoirPDF({
 
     container.innerHTML = `
       <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
-        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'PLANCHE 2 • BUSINESS PLAN DÉTAILLÉ SUR 25 ANS' })}
+        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'BUSINESS PLAN DÉTAILLÉ SUR 25 ANS' })}
 
         <!-- Grand Graphique de Trésorerie Cumulée Pleine Largeur Agrandit -->
         <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 3px 8px; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); text-align: center; margin-bottom: 6px;">
@@ -911,148 +912,185 @@ export async function generateSechoirPDF({
     // ═══════════════════════════════════════════════════════════════════════════
     // ─── PAGE 3 : SIMULATION D'AUTOCONSOMMATION DE LA PRODUCTION PV SOLAIRE ────
     // ═══════════════════════════════════════════════════════════════════════════
-    const autoconsoData = AUTOCONSOMMATION_TIERS.map(cons =>
-      getAutoconsumptionData(cons, pvProdKwh, withBattery)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ─── PAGE 3 : SIMULATION D'AUTOCONSOMMATION DE LA PRODUCTION PV SOLAIRE ────
+    // ═══════════════════════════════════════════════════════════════════════════
+    const autoconsoDataNoBatt = AUTOCONSOMMATION_TIERS.map(cons =>
+      getAutoconsumptionData(cons, pvProdKwh, false)
     );
-    const maxSaving = Math.max(...autoconsoData.map(d => d.savingsYear1), 0);
-    const maxCumul25 = Math.max(...autoconsoData.map(d => d.cumulativeSavings25), 0);
+    const autoconsoCanvasNoBatt = document.createElement('canvas');
+    drawAutoconsumptionBarChart(autoconsoCanvasNoBatt, autoconsoDataNoBatt);
+    const autoconsoChartImgNoBatt = autoconsoCanvasNoBatt.toDataURL('image/png');
 
-    const autoconsoCanvas = document.createElement('canvas');
-    drawAutoconsumptionBarChart(autoconsoCanvas, autoconsoData);
-    const autoconsoChartImg = autoconsoCanvas.toDataURL('image/png');
+    const autoconsoDataBatt = AUTOCONSOMMATION_TIERS.map(cons =>
+      getAutoconsumptionData(cons, pvProdKwh, true)
+    );
+    const autoconsoCanvasBatt = document.createElement('canvas');
+    drawAutoconsumptionBarChart(autoconsoCanvasBatt, autoconsoDataBatt);
+    const autoconsoChartImgBatt = autoconsoCanvasBatt.toDataURL('image/png');
+
+    const renderAutoconsoRows = (dataList, isBatt) => dataList.map(row => `
+      <tr style="border-bottom: 1px solid #f1f5f9; font-size: 7pt;">
+        <td style="padding: 2.2px 4px; font-weight: 800; color: #0f172a;">${fmt(row.consKwh)} kWh/an</td>
+        <td style="padding: 2.2px 4px; color: #334155; font-weight: 600;">${fmt(row.autoconsoKwh)} kWh</td>
+        <td style="padding: 2.2px 4px; text-align: center;">
+          <span style="display: inline-block; padding: 1px 5px; border-radius: 4px; font-weight: 800; font-size: 6.6pt; ${isBatt ? 'background: #e0e7ff; color: #3730a3;' : 'background: #dcfce7; color: #166534;'}">
+            ${(row.autoprodRate * 100).toFixed(0)} %
+          </span>
+        </td>
+        <td style="padding: 2.2px 4px; text-align: right; color: #64748b; font-weight: 600;">${fmt(row.initialBill)} €</td>
+        <td style="padding: 2.2px 4px; text-align: right; color: #16a34a; font-weight: 800;">+${fmt(row.savingsYear1)} €/an</td>
+        <td style="padding: 2.2px 4px; text-align: right; color: #d97706; font-weight: 700;">${fmt(row.residualBill)} €/an</td>
+        <td style="padding: 2.2px 4px; text-align: right; color: #4338ca; font-weight: 800;">+${fmt(row.cumulativeSavings25)} €</td>
+      </tr>
+    `).join('');
 
     container.innerHTML = `
-      <div style="width: 297mm; height: 210mm; padding: 7mm 14mm 8mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
-        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'PLANCHE 3 • SIMULATION AUTOCONSOMMATION' })}
+      <div style="width: 297mm; height: 210mm; padding: 6mm 14mm 6mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
+        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'SIMULATION AUTOCONSOMMATION &amp; ÉCONOMIES D\'ÉNERGIE' })}
 
-        <!-- 4 KPIS EN HAUT DE PAGE -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 7px;">
-          <!-- 1. Coût Électricité Réseau -->
-          <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 8px; padding: 6px 10px;">
-            <div style="font-size: 7.8pt; font-weight: 800; color: #92400e; text-transform: uppercase; letter-spacing: 0.4px;">⚡ Coût Électricité Réseau</div>
-            <div style="font-size: 15pt; font-weight: 900; color: #0f172a; margin: 1px 0; font-family: 'JetBrains Mono', Consolas, monospace;">0,250 € / kWh</div>
-            <div style="font-size: 7.5pt; color: #64748b;">Inflation contractuelle : <strong style="color: #0f172a;">+2,0 % / an</strong></div>
-          </div>
-
-          <!-- 2. Gisement PV Disponible -->
-          <div style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 8px; padding: 6px 10px;">
-            <div style="font-size: 7.8pt; font-weight: 800; color: #0369a1; text-transform: uppercase; letter-spacing: 0.4px;">☀️ Production Solaire BatiTech®</div>
-            <div style="font-size: 15pt; font-weight: 900; color: #0284c7; margin: 1px 0; font-family: 'JetBrains Mono', Consolas, monospace;">${fmt(pvProdKwh)} kWh/an</div>
-            <div style="font-size: 7.5pt; color: #64748b;">${fmtDec(puissanceKwc, 2)} kWc &bull; ${nbModules} modules Cogen'Air®</div>
-          </div>
-
-          <!-- 3. Économie Facture Maximale -->
-          <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 6px 10px;">
-            <div style="font-size: 7.8pt; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.4px;">💰 Économie Facture An 1 (Max)</div>
-            <div style="font-size: 15pt; font-weight: 900; color: #16a34a; margin: 1px 0; font-family: 'JetBrains Mono', Consolas, monospace;">+${fmt(maxSaving)} €/an</div>
-            <div style="font-size: 7.5pt; color: #166534; font-weight: 600;">Sur profil 50 000 kWh/an</div>
-          </div>
-
-          <!-- 4. Économie Cumulée 25 ans -->
-          <div style="background: #eef2ff; border: 1.5px solid #c7d2fe; border-radius: 8px; padding: 6px 10px;">
-            <div style="font-size: 7.8pt; font-weight: 800; color: #3730a3; text-transform: uppercase; letter-spacing: 0.4px;">📈 Cumul Économisé (25 ans @ +2%)</div>
-            <div style="font-size: 15pt; font-weight: 900; color: #4338ca; margin: 1px 0; font-family: 'JetBrains Mono', Consolas, monospace;">+${fmt(maxCumul25)} €</div>
-            <div style="font-size: 7.5pt; color: #4338ca; font-weight: 600;">Protection face aux hausses tarifaires</div>
-          </div>
-        </div>
-
-        <!-- GRILLE CENTRALE DÉCISIONNELLE : TABLEAU (7/12) + GRAPHIQUE (5/12) -->
-        <div style="display: grid; grid-template-columns: 7.2fr 4.8fr; gap: 9px; margin-bottom: 7px; height: 106mm; box-sizing: border-box;">
+        <!-- 1. SECTION SANS BATTERIE -->
+        <div style="display: grid; grid-template-columns: 7.2fr 4.8fr; gap: 8px; margin-bottom: 5px; height: 63mm; box-sizing: border-box;">
           
-          <!-- COLONNE GAUCHE : TABLEAU DES 6 HYPOTHÈSES DE CONSOMMATION -->
-          <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 7px 10px; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; margin-bottom: 5px;">
-                <div>
-                  <div style="font-size: 8.5pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">
-                    Matrice d'Analyse des Économies selon la Consommation de l'Exploitation
-                  </div>
-                  <div style="font-size: 7pt; color: #64748b; margin-top: 1px;">
-                    Calcul à 0,25 €/kWh indexé à +2%/an &bull; Mode : <strong style="color: ${withBattery ? '#4338ca' : '#166534'};">${withBattery ? '🔋 Avec Batterie (Stockage BESS couplé)' : '⚡ Sans Batterie (Autoconsommation directe)'}</strong>
-                  </div>
+          <!-- TABLEAU SANS BATTERIE -->
+          <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 5px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: flex-start; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 3px;">
+              <div>
+                <div style="font-size: 7.8pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">
+                  Matrice d'Analyse des Économies selon la Consommation de l'Exploitation
                 </div>
-                <span style="font-size: 7.5pt; font-weight: bold; background: #fef3c7; color: #92400e; padding: 2px 7px; border-radius: 4px; white-space: nowrap;">
-                  6 Hypothèses
-                </span>
+                <div style="font-size: 6.6pt; color: #64748b; margin-top: 1px;">
+                  Calcul à 0,25 €/kWh indexé à +2%/an &bull; Mode : <strong style="color: #166534;">⚡ Sans Batterie (Autoconsommation directe)</strong>
+                </div>
               </div>
-
-              <!-- TABLEAU DENSE HAUTE LISIBILITÉ -->
-              <table style="width: 100%; border-collapse: collapse; font-size: 7.8pt;">
-                <thead>
-                  <tr style="background: #f8fafc; color: #475569; font-weight: 800; text-transform: uppercase; font-size: 7pt; border-bottom: 1.5px solid #cbd5e1;">
-                    <th style="padding: 4px 5px; text-align: left;">Consommation</th>
-                    <th style="padding: 4px 5px; text-align: left;">Autoconso (kWh)</th>
-                    <th style="padding: 4px 5px; text-align: center;">Taux Couv.</th>
-                    <th style="padding: 4px 5px; text-align: right;">Facture Sans PV</th>
-                    <th style="padding: 4px 5px; text-align: right; color: #166534;">Économie An 1</th>
-                    <th style="padding: 4px 5px; text-align: right;">Facture Résiduelle</th>
-                    <th style="padding: 4px 5px; text-align: right; color: #4338ca;">Cumul 25 ans (+2%)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${autoconsoData.map(row => `
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                      <td style="padding: 3.5px 5px; font-weight: 900; color: #0f172a; font-family: 'JetBrains Mono', Consolas, monospace;">${fmt(row.consKwh)} kWh/an</td>
-                      <td style="padding: 3.5px 5px; color: #334155; font-family: 'JetBrains Mono', Consolas, monospace;">${fmt(row.autoconsoKwh)} kWh</td>
-                      <td style="padding: 3.5px 5px; text-align: center;">
-                        <span style="display: inline-block; padding: 1px 6px; border-radius: 4px; font-weight: 800; font-size: 7.2pt; ${withBattery ? 'background: #e0e7ff; color: #3730a3;' : 'background: #dcfce7; color: #166534;'}">
-                          ${(row.autoprodRate * 100).toFixed(0)} %
-                        </span>
-                      </td>
-                      <td style="padding: 3.5px 5px; text-align: right; color: #64748b; font-family: 'JetBrains Mono', Consolas, monospace;">${fmt(row.initialBill)} €</td>
-                      <td style="padding: 3.5px 5px; text-align: right; color: #16a34a; font-weight: 900; font-family: 'JetBrains Mono', Consolas, monospace;">+${fmt(row.savingsYear1)} €/an</td>
-                      <td style="padding: 3.5px 5px; text-align: right; color: #d97706; font-weight: 700; font-family: 'JetBrains Mono', Consolas, monospace;">${fmt(row.residualBill)} €/an</td>
-                      <td style="padding: 3.5px 5px; text-align: right; color: #4338ca; font-weight: 900; font-family: 'JetBrains Mono', Consolas, monospace;">+${fmt(row.cumulativeSavings25)} €</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+              <span style="font-size: 7pt; font-weight: bold; background: #fef3c7; color: #92400e; padding: 1.5px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
+                6 Hypothèses
+              </span>
             </div>
 
-            <!-- Notes de Méthodologie & Formules -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 5px; padding-top: 5px; border-top: 1px solid #f1f5f9; font-size: 6.8pt; color: #64748b;">
-              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 7px;">
-                <strong style="color: #0f172a;">Formule d'actualisation 25 ans :</strong><br />
-                &sum;<sub>t=0..24</sub> Économie An 1 &times; (1 + 0,02)<sup>t</sup> = Économie An 1 &times; 32,030
-              </div>
-              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 7px;">
-                <strong style="color: #0f172a;">Cadrage économique :</strong><br />
-                Hypothèse 100% économies de facture (sans simulation de revente en surplus).
-              </div>
-            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 7pt; font-family: Montserrat, Arial, sans-serif;">
+              <thead>
+                <tr style="background: #f8fafc; color: #475569; font-weight: 800; text-transform: uppercase; font-size: 6.6pt; border-bottom: 1.5px solid #cbd5e1;">
+                  <th style="padding: 2.5px 4px; text-align: left;">Consommation</th>
+                  <th style="padding: 2.5px 4px; text-align: left;">Autoconso (kWh)</th>
+                  <th style="padding: 2.5px 4px; text-align: center;">Taux Couv.</th>
+                  <th style="padding: 2.5px 4px; text-align: right;">Facture Sans PV</th>
+                  <th style="padding: 2.5px 4px; text-align: right; color: #166534;">Économie An 1</th>
+                  <th style="padding: 2.5px 4px; text-align: right;">Facture Résiduelle</th>
+                  <th style="padding: 2.5px 4px; text-align: right; color: #4338ca;">Cumul 25 ans (+2%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${renderAutoconsoRows(autoconsoDataNoBatt, false)}
+              </tbody>
+            </table>
           </div>
 
-          <!-- COLONNE DROITE : GRAPHIQUE COMPARATIF -->
-          <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 7px 10px; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between;">
+          <!-- GRAPHIQUE SANS BATTERIE -->
+          <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 5px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
             <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; margin-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 2px;">
                 <div>
-                  <div style="font-size: 8.5pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">
-                    Comparatif Facture Initiale vs Résiduelle
+                  <div style="font-size: 7.6pt; font-weight: 800; color: #0D3660; text-transform: uppercase; line-height: 1.2;">
+                    Comparatif Facture Initiale<br />vs Résiduelle
                   </div>
-                  <div style="font-size: 7pt; color: #64748b;">Dépense annuelle évitée en Année 1 (€/an)</div>
+                  <div style="font-size: 6.4pt; color: #64748b;">Dépense annuelle évitée en Année 1 (€/an)</div>
                 </div>
-                <span style="font-size: 7.2pt; font-weight: bold; ${withBattery ? 'background: #e0e7ff; color: #3730a3;' : 'background: #dcfce7; color: #166534;'}; padding: 2px 7px; border-radius: 4px;">
-                  ${withBattery ? '🔋 Avec batterie' : '⚡ Sans batterie'}
+                <span style="font-size: 7.2pt; font-weight: 800; background: #dcfce7; color: #166534; padding: 2.5px 8px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
+                  ⚡ Sans batterie
                 </span>
               </div>
 
               <!-- Canvas Bar Chart -->
-              <div style="width: 100%; text-align: center; margin: 2px 0;">
-                <img src="${autoconsoChartImg}" style="width: 100%; height: 58mm; object-fit: contain; display: block; margin: 0 auto;" alt="Comparatif Factures" />
+              <div style="width: 100%; text-align: center; margin: 1px 0;">
+                <img src="${autoconsoChartImgNoBatt}" style="width: 100%; height: 34mm; object-fit: contain; display: block; margin: 0 auto;" alt="Comparatif Factures Sans Batterie" />
               </div>
             </div>
 
-            <!-- Légende personnalisée -->
-            <div style="display: flex; justify-content: space-around; font-size: 6.8pt; color: #475569; padding-top: 4px; border-top: 1px solid #f1f5f9;">
-              <span style="display: flex; align-items: center; gap: 4px;">
-                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #cbd5e1;"></span> Facture Sans Solaire (0,25 €)
+            <!-- Légende -->
+            <div style="display: flex; justify-content: space-around; font-size: 6.2pt; color: #475569; padding-top: 2px; border-top: 1px solid #f1f5f9; white-space: nowrap;">
+              <span style="display: flex; align-items: center; gap: 3px;">
+                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 2px; background: #cbd5e1;"></span> Facture Initiale
               </span>
-              <span style="display: flex; align-items: center; gap: 4px;">
-                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #10b981;"></span> Économie Autoconsommée
+              <span style="display: flex; align-items: center; gap: 3px;">
+                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 2px; background: #10b981;"></span> Économie Autoconso
               </span>
-              <span style="display: flex; align-items: center; gap: 4px;">
-                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #f59e0b;"></span> Facture Réseau Résiduelle
+              <span style="display: flex; align-items: center; gap: 3px;">
+                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 2px; background: #f59e0b;"></span> Facture Résiduelle
+              </span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 2. SECTION AVEC BATTERIE -->
+        <div style="display: grid; grid-template-columns: 7.2fr 4.8fr; gap: 8px; margin-bottom: 5px; height: 63mm; box-sizing: border-box;">
+          
+          <!-- TABLEAU AVEC BATTERIE -->
+          <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 5px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: flex-start; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 3px;">
+              <div>
+                <div style="font-size: 7.8pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">
+                  Matrice d'Analyse des Économies selon la Consommation de l'Exploitation
+                </div>
+                <div style="font-size: 6.6pt; color: #64748b; margin-top: 1px;">
+                  Calcul à 0,25 €/kWh indexé à +2%/an &bull; Mode : <strong style="color: #4338ca;">🔋 Avec Batterie (Stockage BESS couplé)</strong>
+                </div>
+              </div>
+              <span style="font-size: 7pt; font-weight: bold; background: #e0e7ff; color: #3730a3; padding: 1.5px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
+                6 Hypothèses
+              </span>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; font-size: 7pt; font-family: Montserrat, Arial, sans-serif;">
+              <thead>
+                <tr style="background: #f8fafc; color: #475569; font-weight: 800; text-transform: uppercase; font-size: 6.6pt; border-bottom: 1.5px solid #cbd5e1;">
+                  <th style="padding: 2.5px 4px; text-align: left;">Consommation</th>
+                  <th style="padding: 2.5px 4px; text-align: left;">Autoconso (kWh)</th>
+                  <th style="padding: 2.5px 4px; text-align: center;">Taux Couv.</th>
+                  <th style="padding: 2.5px 4px; text-align: right;">Facture Sans PV</th>
+                  <th style="padding: 2.5px 4px; text-align: right; color: #166534;">Économie An 1</th>
+                  <th style="padding: 2.5px 4px; text-align: right;">Facture Résiduelle</th>
+                  <th style="padding: 2.5px 4px; text-align: right; color: #4338ca;">Cumul 25 ans (+2%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${renderAutoconsoRows(autoconsoDataBatt, true)}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- GRAPHIQUE AVEC BATTERIE -->
+          <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 5px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 2px;">
+                <div>
+                  <div style="font-size: 7.6pt; font-weight: 800; color: #0D3660; text-transform: uppercase; line-height: 1.2;">
+                    Comparatif Facture Initiale<br />vs Résiduelle
+                  </div>
+                  <div style="font-size: 6.4pt; color: #64748b;">Dépense annuelle évitée en Année 1 (€/an)</div>
+                </div>
+                <span style="font-size: 7.2pt; font-weight: 800; background: #e0e7ff; color: #3730a3; padding: 2.5px 8px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
+                  🔋 Avec batterie
+                </span>
+              </div>
+
+              <!-- Canvas Bar Chart -->
+              <div style="width: 100%; text-align: center; margin: 1px 0;">
+                <img src="${autoconsoChartImgBatt}" style="width: 100%; height: 34mm; object-fit: contain; display: block; margin: 0 auto;" alt="Comparatif Factures Avec Batterie" />
+              </div>
+            </div>
+
+            <!-- Légende -->
+            <div style="display: flex; justify-content: space-around; font-size: 6.2pt; color: #475569; padding-top: 2px; border-top: 1px solid #f1f5f9; white-space: nowrap;">
+              <span style="display: flex; align-items: center; gap: 3px;">
+                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 2px; background: #cbd5e1;"></span> Facture Initiale
+              </span>
+              <span style="display: flex; align-items: center; gap: 3px;">
+                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 2px; background: #10b981;"></span> Économie Autoconso
+              </span>
+              <span style="display: flex; align-items: center; gap: 3px;">
+                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 2px; background: #f59e0b;"></span> Facture Résiduelle
               </span>
             </div>
           </div>
@@ -1060,34 +1098,34 @@ export async function generateSechoirPDF({
         </div>
 
         <!-- 3 BLOCS DÉCISIONNELS EN BAS DE PAGE -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 2px;">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px;">
           <!-- Brique 1 : L'apport de la Batterie -->
-          <div style="background: #eef2ff; border: 1.5px solid #c7d2fe; border-radius: 8px; padding: 6px 9px;">
-            <div style="font-size: 7.8pt; font-weight: 800; color: #3730a3; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+          <div style="background: #eef2ff; border: 1.5px solid #c7d2fe; border-radius: 7px; padding: 5px 8px;">
+            <div style="font-size: 7.2pt; font-weight: 800; color: #3730a3; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
               <span>🔋</span> Apport d'un Stockage Batterie
             </div>
-            <div style="font-size: 7pt; color: #475569; line-height: 1.35;">
+            <div style="font-size: 6.6pt; color: #475569; line-height: 1.3;">
               Le stockage batterie stocke les excédents de mi-journée pour alimenter les besoins du soir et du matin (traite, ventilation). Taux d'autoproduction accru de <strong style="color: #3730a3;">+25 % à +45 %</strong>.
             </div>
           </div>
 
           <!-- Brique 2 : Bouclier Tarifaire Long Terme -->
-          <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 8px; padding: 6px 9px;">
-            <div style="font-size: 7.8pt; font-weight: 800; color: #92400e; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+          <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 7px; padding: 5px 8px;">
+            <div style="font-size: 7.2pt; font-weight: 800; color: #92400e; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
               <span>🛡️</span> Bouclier Tarifaire Long Terme
             </div>
-            <div style="font-size: 7pt; color: #475569; line-height: 1.35;">
+            <div style="font-size: 6.6pt; color: #475569; line-height: 1.3;">
               Avec une inflation de <strong style="color: #0f172a;">2,0 % / an</strong>, le kWh réseau passera de 0,25 € en 2026 à <strong style="color: #92400e;">0,407 € en 2050</strong>. Chaque kWh autoconsommé protège les marges de l'exploitation.
             </div>
           </div>
 
           <!-- Brique 3 : Synergie avec le Séchage BatiTech -->
-          <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 6px 9px;">
-            <div style="font-size: 7.8pt; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+          <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 7px; padding: 5px 8px;">
+            <div style="font-size: 7.2pt; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
               <span>🌾</span> Synergie avec le Séchage BatiTech®
             </div>
-            <div style="font-size: 7pt; color: #475569; line-height: 1.35;">
-              Ces économies d'électricité viennent <strong style="color: #166534;">s'ajouter en surplus direct</strong> aux <strong style="color: #166534;">+${fmt(r.produits?.deltaProduits)} €/an</strong> de valorisation matière (fourrage, bois) des Planches 1 &amp; 2.
+            <div style="font-size: 6.6pt; color: #475569; line-height: 1.3;">
+              Ces économies d'électricité viennent <strong style="color: #166534;">s'ajouter en surplus direct</strong> aux <strong style="color: #166534;">+${fmt(r.produits?.deltaProduits)} €/an</strong> de valorisation matière (fourrage, bois) de l'étude financière.
             </div>
           </div>
         </div>
@@ -1112,7 +1150,7 @@ export async function generateSechoirPDF({
     // ═══════════════════════════════════════════════════════════════════════════
     container.innerHTML = `
       <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
-        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'PLANCHE 4 • VUE 3D &amp; IMPLANTATION SATELLITE' })}
+        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'VUES 3D &amp; IMPLANTATION SATELLITE' })}
 
         <!-- 2 LIGNES DE CADRES (3D EN HAUT, RÉALISATION (1/3) + SATELLITE (2/3) EN BAS) -->
         <div style="display: flex; flex-direction: column; gap: 8px; height: 164mm; box-sizing: border-box;">
@@ -1191,7 +1229,7 @@ export async function generateSechoirPDF({
     // ═══════════════════════════════════════════════════════════════════════════
     container.innerHTML = `
       <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
-        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'PLANCHE 5 • SCHÉMAS TECHNIQUES &amp; FONCTIONNEMENT' })}
+        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'SCHÉMAS TECHNIQUES &amp; FONCTIONNEMENT' })}
 
         <!-- CONTENEUR SCHÉMAS EN 2 LIGNES (LIGNE 1 : 3 SCHÉMAS CÔTE À CÔTE, LIGNE 2 : GRILLES PLEINE LARGEUR) -->
         <div style="display: flex; flex-direction: column; gap: 8px; height: 164mm; box-sizing: border-box;">
@@ -1245,7 +1283,7 @@ export async function generateSechoirPDF({
 
     container.innerHTML = `
       <div style="width: 297mm; height: 210mm; padding: 8mm 14mm 10mm 14mm; box-sizing: border-box; background: #ffffff; color: #1e293b; font-family: Montserrat, Arial, sans-serif; position: relative;">
-        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'PLANCHE 6 • SYNTHÈSE DES BÉNÉFICES &amp; BAISSE DES CHARGES' })}
+        ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'SYNTHÈSE DES BÉNÉFICES &amp; BAISSE DES CHARGES' })}
 
         <!-- Synthèse d'introduction (Agrandie) -->
         <div style="background-color: #f8fafc; border-left: 5px solid #00B050; padding: 11px 20px; margin-bottom: 12px; text-align: justify; font-size: 9.8pt; font-weight: 600; color: #0D3660; border-radius: 0 6px 6px 0; line-height: 1.45;">
