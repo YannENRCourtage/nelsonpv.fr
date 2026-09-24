@@ -66,6 +66,11 @@ const useSechoirStore = create(
 
       setModel: (modelId) => set({ selectedModelId: modelId }),
 
+      // ═══ STOCKAGE BATTERIE BESS ════════════════════════════════════════════
+      hasBattery: false,
+      setHasBattery: (hasBattery) => set({ hasBattery }),
+      toggleBattery: () => set((state) => ({ hasBattery: !state.hasBattery })),
+
       // ═══ ÉTAPE 3 — ORIENTATION & IMPLANTATION ═════════════════════════════
       orientation: 'sud',
       rotation: 0,
@@ -157,6 +162,7 @@ const useSechoirStore = create(
         zoneClimatique: '',
         zoneSechage: '',
         selectedModelId: 'BT-3.1.15',
+        hasBattery: false,
         orientation: 'sud',
         rotation: 0,
         mapCenter: null,
@@ -187,6 +193,7 @@ const useSechoirStore = create(
         zoneClimatique: '',
         zoneSechage: '',
         selectedModelId: 'BT-3.1.15',
+        hasBattery: false,
         orientation: 'sud',
         rotation: 0,
         mapCenter: null,

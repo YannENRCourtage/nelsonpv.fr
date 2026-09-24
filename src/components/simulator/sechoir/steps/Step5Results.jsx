@@ -2,7 +2,7 @@ import React, { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, TrendingUp, Zap, Clock, ShieldCheck, 
-  Landmark, Info, Sparkles, Wind, Coins, CheckCircle2, AlertCircle, FileDown, CheckSquare, Square, Loader2
+  Landmark, Info, Sparkles, Wind, Coins, CheckCircle2, AlertCircle, FileDown, CheckSquare, Square, Loader2, BatteryCharging
 } from 'lucide-react';
 import {
   BarChart,
@@ -28,6 +28,8 @@ export default function Step5Results({ onExportPDF }) {
   const setLastResults = useSechoirStore((state) => state.setLastResults);
   const storeClientName = useSechoirStore((state) => state.clientName);
   const setClientNameInStore = useSechoirStore((state) => state.setClientName);
+  const hasBattery = useSechoirStore((state) => state.hasBattery) || false;
+  const setHasBattery = useSechoirStore((state) => state.setHasBattery);
 
   const [clientName, setClientName] = useState(storeClientName || '');
   const [includeBenefitsPage, setIncludeBenefitsPage] = useState(true);
@@ -485,6 +487,41 @@ export default function Step5Results({ onExportPDF }) {
                 </div>
               </button>
             </div>
+
+            {/* Option Stockage Batterie BESS pour la simulation d'autoconsommation */}
+            <div className="mt-3 p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <BatteryCharging className="w-5 h-5 text-amber-400 shrink-0" />
+                <div>
+                  <div className="text-xs font-bold text-white uppercase tracking-wider">Option Stockage Batterie BESS</div>
+                  <div className="text-xs text-slate-400">Intégrer une batterie de stockage pour maximiser l'autoconsommation (taux de couverture jusqu'à 90%)</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setHasBattery(false)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    !hasBattery
+                      ? 'bg-amber-500 text-slate-950 shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  ⚡ Sans batterie
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHasBattery(true)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    hasBattery
+                      ? 'bg-amber-500 text-slate-950 shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>🔋</span> Avec batterie
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Bouton de téléchargement */}
@@ -497,6 +534,7 @@ export default function Step5Results({ onExportPDF }) {
                     await onExportPDF({ 
                       includeBenefitsPage, 
                       includeCashFlowPage,
+                      hasBattery,
                       customClientName: clientName
                     });
                   } finally {

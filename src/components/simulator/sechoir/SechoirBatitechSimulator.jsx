@@ -273,6 +273,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         customClientName: options.customClientName || store.clientName || selectedProject?.name,
         includeBenefitsPage: options.includeBenefitsPage !== undefined ? options.includeBenefitsPage : true,
         includeCashFlowPage: options.includeCashFlowPage !== undefined ? options.includeCashFlowPage : true,
+        hasBattery: options.hasBattery !== undefined ? options.hasBattery : store.hasBattery,
         mapCenter: store.mapCenter,
         coords: store.mapCenter,
         latitude: store.latitude,
