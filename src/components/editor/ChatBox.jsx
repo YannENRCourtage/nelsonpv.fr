@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProject } from '@/contexts/ProjectContext';
 import { createComment } from '@/services/firebase/comments.service';
@@ -29,18 +29,81 @@ export default function ChatBox() {
   const { project, updateProject } = useProject(); // Utilise le contexte du projet
   const [input, setInput] = useState("");
 
+  const devCommentText = (project?.devComments || project?.notes || (project?.id ? localStorage.getItem(`nelson_comment_${project.id}`) : '') || '').trim();
+
+  // Intégration immédiate des commentaires du dossier dans les lignes du chat
+  const allLines = useMemo(() => {
+    let rawLines = Array.isArray(project?.chatLines) ? [...project.chatLines] : [];
+    if (devCommentText) {
+      const idx = rawLines.findIndex(l => l.source === 'devComments');
+      const author = project?.commercial || project?.assignedUser || user?.name || user?.displayName || user?.firstName || 'Développement';
+      const devLine = {
+        who: author,
+        text: devCommentText,
+        timestamp: project?.updatedAt || new Date().toISOString(),
+        source: 'devComments'
+      };
+      if (idx >= 0) {
+        if (rawLines[idx].text !== devCommentText) {
+          rawLines[idx] = { ...rawLines[idx], ...devLine };
+        }
+      } else {
+        rawLines.push(devLine);
+      }
+    }
+    return rawLines;
+  }, [project?.chatLines, project?.devComments, project?.notes, project?.id, project?.commercial, project?.assignedUser, user, devCommentText]);
+
   // Filtre: Suppression des messages spécifiques demandés par l'utilisateur
-  const allLines = project?.chatLines || [];
-  const lines = allLines.filter(l => 
-    l.text !== "C'est quoi ce projet vide ???" && 
-    !(l.who === "Alexandru" && l.text === "test")
-  );
+  const lines = useMemo(() => {
+    return allLines.filter(l => 
+      l.text !== "C'est quoi ce projet vide ???" && 
+      !(l.who === "Alexandru" && l.text === "test")
+    );
+  }, [allLines]);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // Scroll automatique supprimé à la demande de l'utilisateur
-  // useEffect(scrollToBottom, [lines]);
+  // Synchronisation automatique et persistance en dur dans Firestore
+  useEffect(() => {
+    if (!project?.id || !devCommentText) return;
+
+    const currentLines = Array.isArray(project.chatLines) ? project.chatLines : [];
+    const idx = currentLines.findIndex(l => l.source === 'devComments');
+    const author = project.commercial || project.assignedUser || user?.name || user?.displayName || user?.firstName || 'Développement';
+
+    let needsSave = false;
+    let updatedLines = [...currentLines];
+
+    if (idx >= 0) {
+      if (currentLines[idx].text !== devCommentText) {
+        updatedLines[idx] = {
+          ...updatedLines[idx],
+          who: author,
+          text: devCommentText,
+          timestamp: new Date().toISOString(),
+          source: 'devComments'
+        };
+        needsSave = true;
+      }
+    } else {
+      updatedLines.push({
+        who: author,
+        text: devCommentText,
+        timestamp: project.updatedAt || new Date().toISOString(),
+        source: 'devComments'
+      });
+      needsSave = true;
+    }
+
+    if (needsSave) {
+      updateProject({ chatLines: updatedLines });
+      import('@/services/api').then(({ apiService }) => {
+        apiService.updateProject(project.id, { chatLines: updatedLines }, true);
+      }).catch(err => console.error("Failed to auto-save devComments in chatLines:", err));
+    }
+  }, [project?.id, devCommentText]);
 
   const send = async () => {
     const t = input.trim();
@@ -59,7 +122,6 @@ export default function ChatBox() {
     // 2. Persistance immédiate (Auto-save)
     if (project?.id) {
       try {
-        // Import apiService dynamically if not available or assume global/import
         const { apiService } = await import('@/services/api');
         await apiService.updateProject(project.id, { chatLines: updatedLines }, true);
       } catch (err) {
@@ -70,11 +132,9 @@ export default function ChatBox() {
     // 3. Sauvegarde backend pour Notifications (si projet existant)
     if (project?.id) {
       try {
-        // userId fallback
         const uid = user?.uid || user?.id || 'unknown';
         const uName = user?.name || user?.displayName || user?.firstName || 'Utilisateur';
 
-        // PASS COMMERCIAL as AssignedTo for notification
         const assignedTo = project?.commercial || project?.assignedUser || null;
         await createComment(project.id, uid, uName, t, assignedTo, user?.email);
       } catch (err) {
@@ -94,7 +154,14 @@ export default function ChatBox() {
 
   return (
     <div className="flex flex-col h-full rounded-2xl bg-white shadow-sm">
-      <div className="border-b px-4 py-3 font-semibold text-lg">Chat</div>
+      <div className="border-b px-4 py-3 font-semibold text-lg flex items-center justify-between">
+        <span>Chat</span>
+        {devCommentText && (
+          <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            Dossier synchronisé
+          </span>
+        )}
+      </div>
       <div className="flex-grow p-4 space-y-4 overflow-y-auto h-64">
         {lines.length === 0 && (
           <div className="text-sm text-gray-400 text-center pt-10">
@@ -105,8 +172,15 @@ export default function ChatBox() {
           const isMe = l.who === (user?.name || user?.displayName || user?.firstName || "Vous");
           return (
             <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-              <div className="text-xs text-gray-500 mb-1">{l.who}</div>
-              <div className={`max-w-xs md:max-w-md rounded-lg px-3 py-2 ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
+              <div className="text-xs text-gray-500 mb-1 flex items-center gap-1.5">
+                <span>{l.who}</span>
+                {l.source === 'devComments' && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                    Commentaires du dossier
+                  </span>
+                )}
+              </div>
+              <div className={`max-w-xs md:max-w-md rounded-lg px-3 py-2 whitespace-pre-wrap ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
                 {renderTextWithMentions(l.text)}
               </div>
             </div>

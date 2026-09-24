@@ -153,7 +153,7 @@ export default function DossiersListView({
     });
   }, [projects, onlyMyProjects, currentUser, selectedStatuses, searchTerm]);
 
-  // Sauvegarde rapide du commentaire (Local + Firestore en temps réel)
+  // Sauvegarde rapide du commentaire (Local + Firestore en temps réel + sync chat)
   const handleSaveComment = async (projectId, e) => {
     e.stopPropagation();
     const comment = commentInputs[projectId];
@@ -161,11 +161,52 @@ export default function DossiersListView({
       localStorage.setItem(`nelson_comment_${projectId}`, comment);
       setEditingCommentId(null);
       try {
+        const targetProj = projects.find(p => p.id === projectId);
+        let currentLines = Array.isArray(targetProj?.chatLines) ? [...targetProj.chatLines] : [];
+        try {
+          const fresh = await apiService.getProject(projectId);
+          if (fresh && Array.isArray(fresh.chatLines)) {
+            currentLines = [...fresh.chatLines];
+          }
+        } catch (e) {
+          console.warn('Could not fetch fresh chatLines:', e);
+        }
+
+        const author = currentUser?.name || currentUser?.displayName || currentUser?.firstName || targetProj?.assignedUser || targetProj?.commercial || 'Yann';
+        const cleanText = (comment || '').trim();
+
+        let updatedLines = [...currentLines];
+        if (cleanText) {
+          const existingIdx = updatedLines.findIndex(l => l.source === 'devComments');
+          const devLine = {
+            who: author,
+            text: cleanText,
+            timestamp: new Date().toISOString(),
+            source: 'devComments',
+          };
+          if (existingIdx >= 0) {
+            updatedLines[existingIdx] = devLine;
+          } else {
+            updatedLines.push(devLine);
+          }
+        } else {
+          updatedLines = updatedLines.filter(l => l.source !== 'devComments');
+        }
+
+        if (targetProj) {
+          targetProj.devComments = comment;
+          targetProj.notes = comment;
+          targetProj.chatLines = updatedLines;
+        }
+
         await apiService.updateProject(projectId, {
           devComments: comment,
           notes: comment,
+          chatLines: updatedLines,
           updatedAt: new Date().toISOString(),
         });
+        window.dispatchEvent(new Event('projectsUpdated'));
+        window.dispatchEvent(new Event('storage'));
       } catch (err) {
         console.error('Erreur mise à jour commentaire Firestore:', err);
       }

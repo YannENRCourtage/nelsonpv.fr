@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, Users, Zap, CheckCircle2, Clock, AlertCircle, AlertTriangle,
@@ -12,6 +12,7 @@ import { apiService } from '@/services/api';
 import { formatGps } from '@/utils/formatGps.js';
 import { findBessOdreData } from '@/data/bessOdreMatrix.js';
 import { cadastreService } from '@/services/CadastreService.js';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * EtudeDossierView — Vue détaillée du workflow de développement d'un projet solaire
@@ -145,6 +146,9 @@ export default function EtudeDossierView({
     },
   ];
 
+  const { user } = useAuth();
+  const saveTimeoutRef = useRef(null);
+
   // État local des étapes pour le projet
   const [stepsState, setStepsState] = useState({});
   const [projectComments, setProjectComments] = useState('');
@@ -225,22 +229,98 @@ export default function EtudeDossierView({
     }
   };
 
-  // Sauvegarde des commentaires en temps réel sur Firestore
-  const handleCommentChange = async (val) => {
-    setProjectComments(val);
-    if (project?.id) {
-      localStorage.setItem(`nelson_comment_${project.id}`, val);
-      setIsCommentSaved(true);
-      setTimeout(() => setIsCommentSaved(false), 2000);
+  // Sauvegarde des commentaires et synchronisation immédiate en dur dans le chat du projet
+  const saveCommentAndSyncChat = async (val) => {
+    if (!project?.id) return;
+    setIsCommentSaved(true);
+    setTimeout(() => setIsCommentSaved(false), 2000);
+
+    try {
+      // 1. Récupérer les chatLines existantes du projet
+      let currentLines = Array.isArray(project.chatLines) ? [...project.chatLines] : [];
       try {
-        await apiService.updateProject(project.id, {
-          devComments: val,
-          notes: val,
-          updatedAt: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.error('Erreur mise à jour devComments Firestore:', err);
+        const fresh = await apiService.getProject(project.id);
+        if (fresh && Array.isArray(fresh.chatLines)) {
+          currentLines = [...fresh.chatLines];
+        }
+      } catch (e) {
+        console.warn('Could not fetch fresh chatLines:', e);
       }
+
+      const author = user?.name || user?.displayName || user?.firstName || project.assignedUser || project.commercial || 'Yann';
+      const cleanText = (val || '').trim();
+
+      let updatedLines = [...currentLines];
+      if (cleanText) {
+        const existingIdx = updatedLines.findIndex(l => l.source === 'devComments');
+        const devLine = {
+          who: author,
+          text: cleanText,
+          timestamp: new Date().toISOString(),
+          source: 'devComments',
+        };
+
+        if (existingIdx >= 0) {
+          updatedLines[existingIdx] = devLine;
+        } else {
+          updatedLines.push(devLine);
+        }
+      } else {
+        // Si le champ est vidé, on retire l'entrée des commentaires du dossier du chat
+        updatedLines = updatedLines.filter(l => l.source !== 'devComments');
+      }
+
+      // 2. Mettre à jour l'objet local du projet
+      project.devComments = val;
+      project.notes = val;
+      project.chatLines = updatedLines;
+
+      // 3. Sauvegarder dans Firestore en dur
+      await apiService.updateProject(project.id, {
+        devComments: val,
+        notes: val,
+        chatLines: updatedLines,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // 4. Mettre à jour le cache local et notifier les écouteurs (ProjectContext, ChatBox, etc.)
+      localStorage.setItem(`nelson_comment_${project.id}`, val);
+      window.dispatchEvent(new Event('projectsUpdated'));
+      window.dispatchEvent(new Event('storage'));
+
+      // 5. Créer un commentaire Firebase pour les notifications si nouveau texte
+      if (cleanText) {
+        try {
+          const { createComment } = await import('@/services/firebase/comments.service');
+          const uid = user?.uid || user?.id || 'unknown';
+          const assignedTo = project.commercial || project.assignedUser || null;
+          await createComment(project.id, uid, author, cleanText, assignedTo, user?.email, { context: 'developpement' });
+        } catch (notifErr) {
+          console.warn('Notification creation failed for devComments:', notifErr);
+        }
+      }
+    } catch (err) {
+      console.error('Erreur mise à jour devComments & chatLines Firestore:', err);
+    }
+  };
+
+  const handleCommentChange = (val) => {
+    setProjectComments(val);
+    if (!project?.id) return;
+    localStorage.setItem(`nelson_comment_${project.id}`, val);
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      saveCommentAndSyncChat(val);
+    }, 600);
+  };
+
+  const handleCommentBlur = () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveCommentAndSyncChat(projectComments);
     }
   };
 
@@ -726,6 +806,7 @@ export default function EtudeDossierView({
                 rows={3}
                 value={projectComments}
                 onChange={(e) => handleCommentChange(e.target.value)}
+                onBlur={handleCommentBlur}
                 placeholder="Ajoutez des remarques ou suivis spécifiques..."
                 className="w-full flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none shadow-2xs min-h-[75px]"
               />
