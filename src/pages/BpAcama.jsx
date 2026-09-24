@@ -31,7 +31,7 @@ import BessPortfolioView from '../components/bp-acama/BessPortfolioView.jsx';
 import BessDossierPDFGenerator from '../components/bp-acama/BessDossierPDFGenerator.jsx';
 import PvPortfolioView from '../components/bp-acama/PvPortfolioView.jsx';
 import PvDossierPDFGenerator from '../components/bp-acama/PvDossierPDFGenerator.jsx';
-import { PV_PORTFOLIO_SITES } from '../data/pvPortfolioData.js';
+import { PV_PORTFOLIO_SITES, getPvPortfolioSites } from '../data/pvPortfolioData.js';
 import { calculateProjectPayback, calculateEquityPayback } from '../services/bessSimulationEngine.js';
 import { findBessOdreData, computeBessRaccordementCost, BESS_ODRE_MATRIX } from '../data/bessOdreMatrix.js';
 
@@ -2161,6 +2161,10 @@ function TabBpProjets({
   const [isPvDossierPdfOpen, setIsPvDossierPdfOpen] = useState(false);
   const [pvPortfolioExportData, setPvPortfolioExportData] = useState(null);
 
+  // Sites PV strictement rattachés au portefeuille HELIOS selon la fiche de chaque projet
+  const pvHeliosSites = useMemo(() => getPvPortfolioSites(projects, 'HELIOS'), [projects]);
+  const pvHeliosPowerMw = useMemo(() => (pvHeliosSites.reduce((a, b) => a + (b.kwc || 0), 0) / 1000).toFixed(1), [pvHeliosSites]);
+
   const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;
 
   const PDFHeader = () => (
@@ -2827,7 +2831,7 @@ function TabBpProjets({
               )}
             >
               <Layers className="w-4 h-4 text-yellow-200" />
-              <span>Portefeuille Multi-Projets ({PV_PORTFOLIO_SITES.length} sites / {(PV_PORTFOLIO_SITES.reduce((a, b) => a + b.kwc, 0)/1000).toFixed(1)} MWc)</span>
+              <span>Portefeuille Multi-Projets ({pvHeliosSites.length} sites / {pvHeliosPowerMw} MWc)</span>
               <span className="ml-1 px-1.5 py-0.5 text-[9px] font-black uppercase rounded-full bg-amber-400 text-slate-900">
                 PORTFOLIO HÉLIOS
               </span>
@@ -2866,7 +2870,9 @@ function TabBpProjets({
                   currentProject: selectedProject,
                   currentParams: collapsedParams,
                   currentResults: bpResults,
-                  currentRows: rows
+                  currentRows: rows,
+                  projects: projects,
+                  analyzedSites: pvHeliosSites
                 });
                 setIsPvDossierPdfOpen(true);
               }}
@@ -3426,6 +3432,7 @@ function TabBpProjets({
     open={isPvDossierPdfOpen}
     onClose={() => setIsPvDossierPdfOpen(false)}
     portfolioData={pvPortfolioExportData}
+    projects={projects}
   />
 
       {/* Stand-Alone Warning for PV tab if project has no building */}

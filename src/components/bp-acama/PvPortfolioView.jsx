@@ -19,7 +19,7 @@ import {
   Sparkles,
   FileSpreadsheet
 } from 'lucide-react';
-import { PV_PORTFOLIO_SITES, computePvFinancials } from '../../data/pvPortfolioData.js';
+import { PV_PORTFOLIO_SITES, computePvFinancials, getPvPortfolioSites } from '../../data/pvPortfolioData.js';
 import { exportPvPortfolioToExcel } from '../../services/exportPvExcel.js';
 import { exportBessOdreMatrixToExcel } from '../../services/exportBessExcel.js';
 import { calculatePmt, calculateProjectPayback, calculateIrr } from '../../services/bessSimulationEngine.js';
@@ -39,45 +39,9 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
   const [debtRate, setDebtRate] = useState(4.00); // en % (e.g. 3.50, 4.00, 4.30, 4.50)
   const studyYears = 20;
 
-  // Harmonisation des sites PV du portefeuille HÉLIOS avec les projets CRM PV
+  // Harmonisation stricte : seuls les projets ayant le portefeuille PV affecté dans leur fiche
   const allPvSites = useMemo(() => {
-    const list = [...PV_PORTFOLIO_SITES];
-
-    // Intégrer les projets CRM qui ont du PV (kwc > 0 ou type !== 'Batterie SA')
-    (projects || []).forEach(p => {
-      const pKwc = parseFloat(p.kwc || p.puissance) || 0;
-      if (pKwc > 0 && p.type !== 'Batterie SA' && p.isBatteryStandAlone !== 'Oui') {
-        const already = list.some(s => s.id === p.id || (s.name && p.name && s.name.toLowerCase() === p.name.toLowerCase()));
-        if (!already) {
-          list.push({
-            id: p.id,
-            name: p.name || 'Projet CRM PV',
-            client: [p.firstName, p.name].filter(Boolean).join(' ') || p.client_name || 'Client CRM',
-            postcode: p.zip || p.postcode || '',
-            city: p.city || p.commune || '',
-            address: p.address || '',
-            typeBat: p.type_bat || 'Toiture BAC',
-            spv: 'PROJETS CRM',
-            kwc: pKwc,
-            productible: parseFloat(p.productible || p.solarYieldRoof1) || 1125,
-            surface: p.surface || Math.round(pKwc * 5),
-            rent: Math.round(pKwc * 10),
-            lat: p.lat || 45.0,
-            lng: p.lng || 1.0,
-            substation: p.substation || {
-              name: "ODRE",
-              distanceKm: 5.0,
-              quotePartS3renr: "92.73 k€/MW",
-              resteAffecterMw: 0,
-              statutRaccordement: "Zone standard Enedis"
-            },
-            crmProject: p
-          });
-        }
-      }
-    });
-
-    return list;
+    return getPvPortfolioSites(projects, 'HELIOS');
   }, [projects]);
 
   // Calcul financier de chaque site et agrégation avec dette dynamique
@@ -579,6 +543,19 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {filteredSites.length === 0 && (
+                <tr>
+                  <td colSpan={14} className="p-8 text-center text-slate-500 bg-slate-50/50">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Sun className="w-8 h-8 text-amber-400 opacity-60" />
+                      <p className="font-bold text-sm text-slate-700">Aucun projet affecté au portefeuille HÉLIOS</p>
+                      <p className="text-xs text-slate-500 max-w-md">
+                        Pour faire apparaître un projet dans le portefeuille HÉLIOS et dans l'étude complète, rendez-vous dans sa fiche projet (onglet Client &amp; Projet) et sélectionnez le portefeuille <strong>HELIOS</strong>.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              )}
               {filteredSites.map(s => (
                 <tr key={s.id} className="hover:bg-amber-50/40 transition-colors">
                   <td className="p-2.5 font-bold text-slate-500">{s.index}</td>

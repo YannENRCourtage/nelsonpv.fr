@@ -26,7 +26,7 @@ import {
   SlidersHorizontal,
   AlertCircle
 } from 'lucide-react';
-import { PV_PORTFOLIO_SITES, computePvFinancials } from '../../data/pvPortfolioData.js';
+import { PV_PORTFOLIO_SITES, computePvFinancials, getPvPortfolioSites } from '../../data/pvPortfolioData.js';
 import PvProjectSingleSheet from './PvProjectSingleSheet.jsx';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -68,7 +68,7 @@ function MapBoundsUpdater({ bounds }) {
   return null;
 }
 
-export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) {
+export default function PvDossierPDFGenerator({ open, onClose, portfolioData, projects = [] }) {
   const [activeMode, setActiveMode] = useState('portfolio'); // 'portfolio' | 'single'
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -78,9 +78,16 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
   const [modalSearchTerm, setModalSearchTerm] = useState('');
   const scrollContainerRef = useRef(null);
 
-  // 1. Liste exhaustive brute des centrales du portefeuille avec calculs financiers unitaires
+  // 1. Liste exhaustive des centrales du portefeuille PV (strictement filtrées selon pv_portfolio === 'HELIOS')
   const allAvailableSites = useMemo(() => {
-    const raw = portfolioData?.analyzedSites || PV_PORTFOLIO_SITES;
+    let raw = [];
+    if (portfolioData?.analyzedSites && portfolioData.analyzedSites.length > 0) {
+      raw = portfolioData.analyzedSites;
+    } else {
+      const effectiveProjects = (projects && projects.length > 0) ? projects : (portfolioData?.projects || []);
+      raw = getPvPortfolioSites(effectiveProjects, 'HELIOS');
+    }
+
     return raw.map((s, idx) => {
       const fin = s.capexTotal ? s : computePvFinancials(s);
       return {
@@ -101,7 +108,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
         lng: s.lng || fin.lng
       };
     });
-  }, [portfolioData?.analyzedSites]);
+  }, [portfolioData?.analyzedSites, portfolioData?.projects, projects]);
 
   // 2. Persistance de la sélection active dans le state du visualiseur
   const [selectedProjectIds, setSelectedProjectIds] = useState(() => allAvailableSites.map(s => s.id));
@@ -1403,6 +1410,23 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
+                  {filteredModalSites.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-slate-500 bg-slate-50/50">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Sun className="w-8 h-8 text-amber-400 opacity-60" />
+                          <p className="font-bold text-sm text-slate-700">
+                            {modalSearchTerm ? "Aucun projet ne correspond à votre recherche" : "Aucun projet affecté au portefeuille HÉLIOS"}
+                          </p>
+                          <p className="text-xs text-slate-500 max-w-md">
+                            {modalSearchTerm
+                              ? "Essayez un autre terme de recherche."
+                              : "Seuls les projets ayant le portefeuille HÉLIOS affecté dans leur fiche de projet (onglet Client & Projet) apparaissent ici."}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {filteredModalSites.map((s, idx) => {
                     const isChecked = selectedProjectIds.includes(s.id);
                     return (

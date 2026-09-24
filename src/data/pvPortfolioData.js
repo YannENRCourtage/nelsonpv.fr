@@ -662,3 +662,94 @@ export function computePvFinancials(site, options = {}) {
     rows
   };
 }
+
+/**
+ * Construit la liste exacte des centrales appartenant au portefeuille PV (ex: HELIOS).
+ * RÈGLE STRICTE : Seuls les projets dont la fiche projet comporte explicitement l'affectation au portefeuille PV
+ * (pv_portfolio === 'HELIOS' ou pv_portfolio !== 'Non affecté') apparaissent dans la liste.
+ * Tout projet non affecté (ex: PRAVIE, CUBERTAFON, PAILLOT ayant pv_portfolio = null ou 'Non affecté')
+ * est strictement exclu de la personnalisation et de l'étude complète HELIOS.
+ */
+export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS') {
+  const targetPort = (portfolioName || 'HELIOS').toUpperCase();
+
+  // Helper de normalisation sans accents pour comparaison robuste
+  const normalize = (str) => (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+  // Helper pour vérifier si un projet CRM est affecté au portefeuille PV demandé
+  const isAssignedToPort = (p) => {
+    if (!p) return false;
+    const pvPort = (p.pv_portfolio || '').trim();
+    if (!pvPort || pvPort === 'Non affecté' || pvPort === 'Aucun' || pvPort === 'none' || pvPort === 'null') {
+      return false;
+    }
+    if (targetPort !== 'ALL') {
+      return pvPort.toUpperCase() === targetPort;
+    }
+    return true;
+  };
+
+  // Helper pour trouver un site mock correspondant (pour enrichir les données ODRE / substation si besoin)
+  const findMatchingMockSite = (p) => {
+    const pName = normalize(p.name);
+    const pClient = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
+    const pCity = normalize(p.city || p.commune);
+
+    return PV_PORTFOLIO_SITES.find(s => {
+      if (p.id && s.id && p.id === s.id) return true;
+      const sName = normalize(s.name);
+      const sClient = normalize(s.client);
+      const sCity = normalize(s.city || s.commune);
+
+      if (pName && (sName.includes(pName) || sClient.includes(pName))) return true;
+      if (pClient && (sName.includes(pClient) || sClient.includes(pClient))) return true;
+      if (pCity && sCity && pCity === sCity && pName && (sName.includes(pName) || sClient.includes(pName))) return true;
+      return false;
+    });
+  };
+
+  // Si aucun projet CRM n'est fourni
+  if (!projects || projects.length === 0) {
+    return [];
+  }
+
+  const resultSites = [];
+
+  // Parcourir STRICTEMENT les projets CRM qui ont le portefeuille affecté dans leur fiche
+  projects.forEach((p, idx) => {
+    if (isAssignedToPort(p)) {
+      const mock = findMatchingMockSite(p);
+      const pKwc = parseFloat(p.kwc || p.puissance) || mock?.kwc || 250;
+      const siteId = p.id || mock?.id || `pv_site_${idx + 1}`;
+
+      resultSites.push({
+        id: siteId,
+        name: p.name ? (p.name.toUpperCase().startsWith('HÉLIOS') ? p.name : `HÉLIOS - ${p.name}`) : (mock?.name || `HÉLIOS - Centrale ${idx + 1}`),
+        siteName: p.name || mock?.siteName || mock?.name || `Centrale ${idx + 1}`,
+        client: [p.firstName, p.name].filter(Boolean).join(' ') || p.client_name || mock?.client || 'Client',
+        postcode: p.zip || p.postcode || p.cp || mock?.postcode || '',
+        city: p.city || p.commune || mock?.city || '',
+        address: p.address || mock?.address || '',
+        typeBat: p.type_bat || p.typeBat || mock?.typeBat || 'Bâtiment BAC',
+        spv: p.spv || mock?.spv || 'HÉLIOS SPV 1',
+        kwc: pKwc,
+        productible: parseFloat(p.productible || p.solarYieldRoof1) || mock?.productible || 1125,
+        surface: p.surface || mock?.surface || Math.round(pKwc * 5),
+        rent: p.rent || mock?.rent || Math.round(pKwc * 10),
+        lat: p.lat || mock?.lat || 45.0,
+        lng: p.lng || mock?.lng || 1.0,
+        substation: p.substation || mock?.substation || {
+          name: "ODRE",
+          distanceKm: 5.0,
+          quotePartS3renr: "92.73 k€/MW",
+          resteAffecterMw: 0,
+          statutRaccordement: "Zone standard Enedis"
+        },
+        crmProject: p
+      });
+    }
+  });
+
+  return resultSites;
+}
+
