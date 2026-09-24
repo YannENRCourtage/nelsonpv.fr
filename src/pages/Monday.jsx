@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
     Plus, Trash2, Edit2, GripVertical, Download, Upload, Save, X, MoreVertical,
     Search, Filter, CheckSquare, Square, Trash, Copy, ArrowUp, ArrowDown,
-    // Icons for tabs
-    Users, Briefcase, Lock, Wallet, CreditCard, Table2, FolderOpen, Menu
+    // Icons for tabs & sub-items
+    Users, Briefcase, Lock, Wallet, CreditCard, Table2, FolderOpen, Menu,
+    GitFork, ChevronRight, ChevronDown, Layers, FolderPlus, Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,10 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useSearchParams } from 'react-router-dom';
 import apiService from '../services/api';
 import MondayUpdatesDrawer, { getRowTitle } from '@/components/MondayUpdatesDrawer.jsx';
+import SubItemButton from '@/components/monday/SubItemButton.jsx';
+import SubItemsTable from '@/components/monday/SubItemsTable.jsx';
+import GroupSelectionModal from '@/components/monday/GroupSelectionModal.jsx';
+import AutoGroupModal from '@/components/monday/AutoGroupModal.jsx';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 
 // Helper for Tab Icons
@@ -407,7 +412,28 @@ const UpdateBubble = ({ count = 0, onClick }) => {
 };
 
 // --- Draggable Row ---
-const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, isSelected, toggleSelection, deleteRow, onBlur, ttcColumn, onOpenUpdates }) => {
+const DraggableRow = ({
+    row,
+    index,
+    columns,
+    columnWidths,
+    moveRow,
+    updateCell,
+    isSelected,
+    toggleSelection,
+    deleteRow,
+    onBlur,
+    ttcColumn,
+    onOpenUpdates,
+    isExpanded = false,
+    onToggleExpand,
+    onSubItemUpdate,
+    onAddSubItem,
+    onDeleteSubItem,
+    onDuplicateSubItem,
+    onPromoteSubItem,
+    headerColor
+}) => {
     const ref = useRef(null);
     const [editingCell, setEditingCell] = useState(null); // Track which cell is being edited (col name)
     const inputRefs = useRef({}); // Refs for each input to preserve cursor position
@@ -461,8 +487,6 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                 upperCol.includes('ARRÊTÉ') ||
                 upperCol.includes('ARRETE')
             ) {
-                // S'assurer que ce n'est pas un montant (éviter "MONTANT FACTURE" mais garder "DATE FACTURE")
-                // Si la colonne contient "MONTANT" et n'est pas explicitement une date, on évite
                 if (upperCol.includes('MONTANT') && !upperCol.includes('DATE')) {
                     // C'est probablement un montant
                 } else {
@@ -471,7 +495,6 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
             }
         }
         // Formatage spécifique pour Tél (ajout du 0 devant)
-        // La colonne s'appelle 'Tel' en base (renommée Tél en affichage)
         if (col && (col === 'Tel' || col === 'Tél')) {
             if (value && String(value).length === 9 && !String(value).startsWith('0')) {
                 return '0' + value;
@@ -489,54 +512,19 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
     const calculateCursorPosition = (formattedValue, rawValue, clickPosition) => {
         if (!formattedValue || !rawValue) return 0;
 
-        // If clicking in a TTC column with € formatting
         if (formattedValue.includes('€')) {
-            // Remove spaces and € to get the numeric part
             const numericPart = formattedValue.replace(/\s*€\s*$/g, '');
-            // If click is after the numeric part, position at end of raw value
             if (clickPosition >= numericPart.length) {
                 return rawValue.length;
             }
-            // Otherwise, keep the same position
             return Math.min(clickPosition, rawValue.length);
         }
 
-        // For date formatting (DD/MM/YYYY)
         if (formattedValue.includes('/') && formattedValue.length === 10 && rawValue.includes('-')) {
-            // raw: YYYY-MM-DD (10 chars), formatted: DD/MM/YYYY (10 chars)
-            // This is a simple 1:1 map for standard dates
             return Math.min(clickPosition, rawValue.length);
         }
 
-        // For other values, keep same position or end
         return Math.min(clickPosition, rawValue.length);
-    };
-
-    // Handle cell click - capture cursor position and switch to editing mode
-    const handleCellClick = (col, e) => {
-        if (editingCell === col) {
-            return; // Permet de sélectionner du texte sans forcer la position du curseur
-        }
-        const input = e.target;
-        const clickPosition = input.selectionStart || 0;
-        const formattedValue = getDisplayValue(col, row.data[col]) || '';
-        const rawValue = getRawValue(col, row.data[col]) || '';
-
-        // Calculate where the cursor should be in the raw value
-        const calculatedPosition = calculateCursorPosition(formattedValue, rawValue, clickPosition);
-
-        // Always set cursor position on click if not already editing this cell 
-        // or if we just started editing (to override browser's default cursor-to-end)
-        setCursorPosition({ col, position: calculatedPosition, timestamp: Date.now() });
-        setEditingCell(col);
-    };
-
-    // Handle cell focus - used when tabbing into cell
-    const handleCellFocus = (col) => {
-        if (editingCell !== col) {
-            setEditingCell(col);
-            // Don't set cursor position here, let it default to start/end
-        }
     };
 
     // Handle cell blur - exit editing mode and trigger parent blur
@@ -554,7 +542,6 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
             const input = inputRefs.current[cursorPosition.col];
             if (input) {
                 const pos = cursorPosition.position;
-                // Use requestAnimationFrame + setTimeout to ensure the DOM is ready and React render committed
                 requestAnimationFrame(() => {
                     setTimeout(() => {
                         if (input.value.length >= pos) {
@@ -570,7 +557,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
     }, [editingCell, cursorPosition]);
 
     // Calculate dynamic sticky positions
-    const checkboxWidth = 30; // ~8mm
+    const checkboxWidth = 30;
     const rowNumberLeft = checkboxWidth;
 
     const updates = Array.isArray(row.data?.__updates)
@@ -580,50 +567,88 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
         : [];
     const updateCount = updates.length;
 
+    const subItems = Array.isArray(row.subItems)
+        ? row.subItems
+        : Array.isArray(row.data?.__subItems)
+        ? row.data.__subItems
+        : [];
+    const subItemsCount = subItems.length;
+
     return (
-        <tr
-            ref={ref}
-            className={`bg-white border-b hover:bg-slate-50 group ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
-        >
-            <td className="px-2 py-2 sticky left-0 bg-white group-hover:bg-slate-50 border-r text-center" style={{ width: checkboxWidth }}>
-                <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelection(row.id)}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                />
-            </td>
-            <td className="px-2 py-2 text-slate-500 sticky bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center" style={{ width: 46, left: `${rowNumberLeft}px` }}>
-                <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-600">
-                    <GripVertical className="w-4 h-4" />
-                </div>
-                <span>{index + 1}</span>
-            </td>
-
-            {columns.length === 0 && (
-                <td 
-                    className="px-2 py-1.5 border-r text-center bg-white group-hover:bg-slate-50 select-none" 
-                    style={{ width: 85, minWidth: 85, maxWidth: 85 }}
-                >
-                    <div className="flex items-center justify-center h-full min-h-[40px]">
-                        <UpdateBubble count={updateCount} onClick={() => onOpenUpdates && onOpenUpdates(row)} />
-                    </div>
+        <React.Fragment>
+            <tr
+                ref={ref}
+                className={`bg-white border-b hover:bg-slate-50 group ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'bg-blue-50' : ''} ${isExpanded ? 'bg-indigo-50/20' : ''}`}
+            >
+                <td className="px-2 py-2 sticky left-0 bg-white group-hover:bg-slate-50 border-r text-center" style={{ width: checkboxWidth }}>
+                    <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelection(row.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
                 </td>
-            )}
+                <td className="px-2 py-2 text-slate-500 sticky bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center" style={{ width: 46, left: `${rowNumberLeft}px` }}>
+                    <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-600">
+                        <GripVertical className="w-4 h-4" />
+                    </div>
+                    <span>{index + 1}</span>
+                </td>
 
-            {columns.map((col, cIdx) => {
-                const isEditing = editingCell === col;
-                const displayValue = isEditing ? getRawValue(col, row.data[col]) : getDisplayValue(col, row.data[col]);
+                {columns.length === 0 && (
+                    <>
+                        <td 
+                            className="px-2 py-1.5 border-r text-center bg-white group-hover:bg-slate-50 select-none" 
+                            style={{ width: 50, minWidth: 50, maxWidth: 50 }}
+                        >
+                            <div className="flex items-center justify-center h-full min-h-[40px]">
+                                <UpdateBubble count={updateCount} onClick={() => onOpenUpdates && onOpenUpdates(row)} />
+                            </div>
+                        </td>
+                        <td 
+                            className="px-1 py-1.5 border-r text-center bg-white group-hover:bg-slate-50 select-none" 
+                            style={{ width: 68, minWidth: 68, maxWidth: 68 }}
+                        >
+                            <div className="flex items-center justify-center h-full min-h-[40px]">
+                                <SubItemButton
+                                    count={subItemsCount}
+                                    isExpanded={isExpanded}
+                                    onToggleExpand={() => onToggleExpand && onToggleExpand(row.id)}
+                                    onAddSubItem={() => onAddSubItem && onAddSubItem(row.id)}
+                                />
+                            </div>
+                        </td>
+                    </>
+                )}
 
-                return (
-                    <React.Fragment key={`${row.id}-${cIdx}`}>
-                        <td className="px-0 py-0 border-r relative group" style={{ minWidth: columnWidths[col] || 150, width: 'auto' }}>
-                            <div className="relative flex items-center h-full min-h-[40px]">
-                                {/* Span invisible pour forcer la largeur sur mobile en fonction du contenu */}
-                                <span className="invisible whitespace-nowrap px-2 py-2 pr-8 text-sm lg:hidden">{displayValue}</span>
-                                <input
+                {columns.map((col, cIdx) => {
+                    const isEditing = editingCell === col;
+                    const displayValue = isEditing ? getRawValue(col, row.data[col]) : getDisplayValue(col, row.data[col]);
+
+                    return (
+                        <React.Fragment key={`${row.id}-${cIdx}`}>
+                            <td className="px-0 py-0 border-r relative group" style={{ minWidth: columnWidths[col] || 150, width: 'auto' }}>
+                                <div className="relative flex items-center h-full min-h-[40px]">
+                                    {/* Sub-item toggle chevron on column 0 */}
+                                    {cIdx === 0 && subItemsCount > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onToggleExpand && onToggleExpand(row.id);
+                                            }}
+                                            className="ml-1.5 p-1 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-100 transition-colors shrink-0 z-10"
+                                            title={isExpanded ? "Replier les sous-éléments" : `Déplier ${subItemsCount} sous-élément(s)`}
+                                        >
+                                            {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-indigo-600" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                                        </button>
+                                    )}
+
+                                    {/* Span invisible pour forcer la largeur sur mobile en fonction du contenu */}
+                                    <span className="invisible whitespace-nowrap px-2 py-2 pr-8 text-sm lg:hidden">{displayValue}</span>
+                                    <input
                                         ref={(el) => inputRefs.current[col] = el}
-                                        className={`w-full h-full px-2 py-2 pr-8 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm lg:truncate cursor-text lg:static absolute inset-0 ${isEditing ? '' : 'pointer-events-auto'}`}
+                                        className={`w-full h-full px-2 py-2 pr-8 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm lg:truncate cursor-text lg:static absolute inset-0 ${isEditing ? '' : 'pointer-events-auto'} ${cIdx === 0 && subItemsCount > 0 ? 'pl-1 font-medium text-slate-900' : ''}`}
                                         value={isEditing ? getRawValue(col, row.data[col]) : getDisplayValue(col, row.data[col])}
                                         readOnly={!isEditing}
                                         onChange={(e) => isEditing && updateCell(row.id, col, e.target.value)}
@@ -644,49 +669,84 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                                         }}
                                         onDoubleClick={(e) => {
                                             e.stopPropagation();
-                                            e.target.select(); // Sélectionne tout le texte de la cellule
+                                            e.target.select();
                                         }}
                                         title={row.data[col]}
                                     />
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        const valueToCopy = row.data[col] || '';
-                                        navigator.clipboard.writeText(valueToCopy).then(() => {
-                                            console.log('Copié:', valueToCopy);
-                                        }).catch(err => {
-                                            console.error('Erreur de copie:', err);
-                                        });
-                                    }}
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 rounded transition-all duration-200"
-                                    title="Copier"
-                                >
-                                    <Copy className="w-3.5 h-3.5 text-blue-600" />
-                                </button>
-                            </div>
-                        </td>
-                        {cIdx === 0 && (
-                            <td 
-                                className="px-1 py-1.5 border-r text-center bg-white group-hover:bg-slate-50 select-none" 
-                                style={{ width: 50, minWidth: 50, maxWidth: 50 }}
-                            >
-                                <div className="flex items-center justify-center h-full min-h-[40px]">
-                                    <UpdateBubble count={updateCount} onClick={() => onOpenUpdates && onOpenUpdates(row)} />
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const valueToCopy = row.data[col] || '';
+                                            navigator.clipboard.writeText(valueToCopy).catch(err => {
+                                                console.error('Erreur de copie:', err);
+                                            });
+                                        }}
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 rounded transition-all duration-200 z-10"
+                                        title="Copier"
+                                    >
+                                        <Copy className="w-3.5 h-3.5 text-blue-600" />
+                                    </button>
                                 </div>
                             </td>
-                        )}
-                    </React.Fragment>
-                );
-            })}
-            <td className="px-2 py-2 text-center w-10">
-                <button
-                    onClick={() => deleteRow(row.id)}
-                    className="text-slate-400 hover:text-red-500 transition-colors"
-                >
-                    <X className="w-4 h-4" />
-                </button>
-            </td>
-        </tr>
+                            {cIdx === 0 && (
+                                <>
+                                    <td 
+                                        className="px-1 py-1.5 border-r text-center bg-white group-hover:bg-slate-50 select-none" 
+                                        style={{ width: 50, minWidth: 50, maxWidth: 50 }}
+                                    >
+                                        <div className="flex items-center justify-center h-full min-h-[40px]">
+                                            <UpdateBubble count={updateCount} onClick={() => onOpenUpdates && onOpenUpdates(row)} />
+                                        </div>
+                                    </td>
+                                    <td 
+                                        className="px-1 py-1.5 border-r text-center bg-white group-hover:bg-slate-50 select-none" 
+                                        style={{ width: 68, minWidth: 68, maxWidth: 68 }}
+                                    >
+                                        <div className="flex items-center justify-center h-full min-h-[40px]">
+                                            <SubItemButton
+                                                count={subItemsCount}
+                                                isExpanded={isExpanded}
+                                                onToggleExpand={() => onToggleExpand && onToggleExpand(row.id)}
+                                                onAddSubItem={() => onAddSubItem && onAddSubItem(row.id)}
+                                            />
+                                        </div>
+                                    </td>
+                                </>
+                            )}
+                        </React.Fragment>
+                    );
+                })}
+                <td className="px-2 py-2 text-center w-10">
+                    <button
+                        onClick={() => deleteRow(row.id)}
+                        className="text-slate-400 hover:text-red-500 transition-colors"
+                        title="Supprimer la ligne"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </td>
+            </tr>
+
+            {/* Nested Sub-Items Drawer */}
+            {isExpanded && (
+                <tr className="bg-slate-50/80">
+                    <td colSpan={columns.length + 5} className="p-0 border-b">
+                        <SubItemsTable
+                            parentRow={row}
+                            columns={columns}
+                            columnWidths={columnWidths}
+                            subItems={subItems}
+                            onUpdateSubItem={(subId, col, val) => onSubItemUpdate && onSubItemUpdate(row.id, subId, col, val)}
+                            onAddSubItem={(initialData) => onAddSubItem && onAddSubItem(row.id, initialData)}
+                            onDeleteSubItem={(subId) => onDeleteSubItem && onDeleteSubItem(row.id, subId)}
+                            onDuplicateSubItem={(subId) => onDuplicateSubItem && onDuplicateSubItem(row.id, subId)}
+                            onPromoteSubItem={(subId) => onPromoteSubItem && onPromoteSubItem(row.id, subId)}
+                            headerColor={headerColor}
+                        />
+                    </td>
+                </tr>
+            )}
+        </React.Fragment>
     );
 };
 
@@ -720,6 +780,21 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
     const [isResizing, setIsResizing] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const rowsPerPage = 200;
+
+    // Sub-items & Grouping State
+    const [expandedRowIds, setExpandedRowIds] = useState(new Set());
+    const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+    const [isAutoGroupModalOpen, setIsAutoGroupModalOpen] = useState(false);
+    const [isGroupingProcessing, setIsGroupingProcessing] = useState(false);
+
+    const toggleExpandRow = (rowId) => {
+        setExpandedRowIds(prev => {
+            const next = new Set(prev);
+            if (next.has(rowId)) next.delete(rowId);
+            else next.add(rowId);
+            return next;
+        });
+    };
 
     // Sorting
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -938,12 +1013,19 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
             ordered = [...others, ...ordered];
         }
 
-        // 2. Search (Global)
+        // 2. Search (Global - incluant les sous-éléments)
         if (searchTerm) {
             const lowerTerm = searchTerm.toLowerCase();
             ordered = ordered.filter(row => {
-                return Object.values(row.data).some(val =>
+                const matchesMain = Object.values(row.data || {}).some(val =>
                     String(val).toLowerCase().includes(lowerTerm)
+                );
+                if (matchesMain) return true;
+                const subItems = Array.isArray(row.subItems)
+                    ? row.subItems
+                    : (Array.isArray(row.data?.__subItems) ? row.data.__subItems : []);
+                return subItems.some(sub =>
+                    Object.values(sub.data || {}).some(val => String(val).toLowerCase().includes(lowerTerm))
                 );
             });
         }
@@ -1275,6 +1357,299 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
         }
     };
 
+    // Auto-expand rows when search matches one of their sub-items
+    useEffect(() => {
+        if (!searchTerm) return;
+        const lowerTerm = searchTerm.toLowerCase();
+        const idsToExpand = new Set(expandedRowIds);
+        let changed = false;
+        rows.forEach(r => {
+            const subs = Array.isArray(r.subItems) ? r.subItems : (Array.isArray(r.data?.__subItems) ? r.data.__subItems : []);
+            const matchesSub = subs.some(sub =>
+                Object.values(sub.data || {}).some(val => String(val).toLowerCase().includes(lowerTerm))
+            );
+            if (matchesSub && !idsToExpand.has(r.id)) {
+                idsToExpand.add(r.id);
+                changed = true;
+            }
+        });
+        if (changed) setExpandedRowIds(idsToExpand);
+    }, [searchTerm, rows]);
+
+    // --- Sub-Items Handlers ---
+    const handleUpdateSubItem = async (parentRowId, subItemId, colName, newValue) => {
+        const targetRow = rows.find(r => r.id === parentRowId);
+        if (!targetRow) return;
+        const currentSubs = Array.isArray(targetRow.subItems)
+            ? targetRow.subItems
+            : (Array.isArray(targetRow.data?.__subItems) ? targetRow.data.__subItems : []);
+        const nextSubs = currentSubs.map(s => {
+            if (s.id === subItemId) {
+                return { ...s, data: { ...(s.data || {}), [colName]: newValue } };
+            }
+            return s;
+        });
+        const updatedRow = {
+            ...targetRow,
+            subItems: nextSubs,
+            data: { ...targetRow.data, __subItems: nextSubs }
+        };
+        setRows(prev => prev.map(r => r.id === parentRowId ? updatedRow : r));
+        try {
+            await apiService.updateMondayRow(data.id, parentRowId, {
+                subItems: nextSubs,
+                data: updatedRow.data
+            });
+        } catch (err) {
+            console.error("Erreur mise à jour sous-élément :", err);
+        }
+    };
+
+    const handleAddSubItem = async (parentRowId, initialData = {}) => {
+        const targetRow = rows.find(r => r.id === parentRowId);
+        if (!targetRow) return;
+        const currentSubs = Array.isArray(targetRow.subItems)
+            ? targetRow.subItems
+            : (Array.isArray(targetRow.data?.__subItems) ? targetRow.data.__subItems : []);
+        const newSub = {
+            id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            data: { ...initialData },
+            createdAt: new Date().toISOString()
+        };
+        const nextSubs = [...currentSubs, newSub];
+        const updatedRow = {
+            ...targetRow,
+            subItems: nextSubs,
+            data: { ...targetRow.data, __subItems: nextSubs }
+        };
+        setRows(prev => prev.map(r => r.id === parentRowId ? updatedRow : r));
+        setExpandedRowIds(prev => new Set(prev).add(parentRowId));
+        try {
+            await apiService.updateMondayRow(data.id, parentRowId, {
+                subItems: nextSubs,
+                data: updatedRow.data
+            });
+        } catch (err) {
+            console.error("Erreur ajout sous-élément :", err);
+        }
+    };
+
+    const handleDeleteSubItem = async (parentRowId, subItemId) => {
+        const targetRow = rows.find(r => r.id === parentRowId);
+        if (!targetRow) return;
+        const currentSubs = Array.isArray(targetRow.subItems)
+            ? targetRow.subItems
+            : (Array.isArray(targetRow.data?.__subItems) ? targetRow.data.__subItems : []);
+        const nextSubs = currentSubs.filter(s => s.id !== subItemId);
+        const updatedRow = {
+            ...targetRow,
+            subItems: nextSubs,
+            data: { ...targetRow.data, __subItems: nextSubs }
+        };
+        setRows(prev => prev.map(r => r.id === parentRowId ? updatedRow : r));
+        try {
+            await apiService.updateMondayRow(data.id, parentRowId, {
+                subItems: nextSubs,
+                data: updatedRow.data
+            });
+        } catch (err) {
+            console.error("Erreur suppression sous-élément :", err);
+        }
+    };
+
+    const handleDuplicateSubItem = async (parentRowId, subItemId) => {
+        const targetRow = rows.find(r => r.id === parentRowId);
+        if (!targetRow) return;
+        const currentSubs = Array.isArray(targetRow.subItems)
+            ? targetRow.subItems
+            : (Array.isArray(targetRow.data?.__subItems) ? targetRow.data.__subItems : []);
+        const targetSub = currentSubs.find(s => s.id === subItemId);
+        if (!targetSub) return;
+        const newSub = {
+            id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            data: { ...(targetSub.data || {}) },
+            createdAt: new Date().toISOString()
+        };
+        const nextSubs = [...currentSubs, newSub];
+        const updatedRow = {
+            ...targetRow,
+            subItems: nextSubs,
+            data: { ...targetRow.data, __subItems: nextSubs }
+        };
+        setRows(prev => prev.map(r => r.id === parentRowId ? updatedRow : r));
+        try {
+            await apiService.updateMondayRow(data.id, parentRowId, {
+                subItems: nextSubs,
+                data: updatedRow.data
+            });
+        } catch (err) {
+            console.error("Erreur duplication sous-élément :", err);
+        }
+    };
+
+    const handlePromoteSubItem = async (parentRowId, subItemId) => {
+        const targetRow = rows.find(r => r.id === parentRowId);
+        if (!targetRow) return;
+        const currentSubs = Array.isArray(targetRow.subItems)
+            ? targetRow.subItems
+            : (Array.isArray(targetRow.data?.__subItems) ? targetRow.data.__subItems : []);
+        const targetSub = currentSubs.find(s => s.id === subItemId);
+        if (!targetSub) return;
+        const nextSubs = currentSubs.filter(s => s.id !== subItemId);
+        const updatedParent = {
+            ...targetRow,
+            subItems: nextSubs,
+            data: { ...targetRow.data, __subItems: nextSubs }
+        };
+        const createdRow = await apiService.addMondayRow(data.id, { data: { ...(targetSub.data || {}) } });
+        const newOrder = [createdRow.id, ...rowOrder];
+        setRows(prev => [createdRow, ...prev.map(r => r.id === parentRowId ? updatedParent : r)]);
+        setRowOrder(newOrder);
+        saveMetadata(columns, newOrder, columnWidths);
+        await apiService.updateMondayRow(data.id, parentRowId, {
+            subItems: nextSubs,
+            data: updatedParent.data
+        });
+    };
+
+    // --- Grouping Handlers ---
+    const handleConfirmManualGroup = async ({ parentName, stripPrefix, createNewParent, selectedRowAsParentId }) => {
+        setIsGroupingProcessing(true);
+        try {
+            const selectedRows = rows.filter(r => selectedRowIds.has(r.id));
+            if (selectedRows.length === 0) return;
+
+            const firstCol = columns[0] || 'NAME';
+            let parentRowId = null;
+            let parentRowData = {};
+            let rowsToConvert = [...selectedRows];
+
+            if (!createNewParent && selectedRowAsParentId) {
+                parentRowId = selectedRowAsParentId;
+                const existingParent = rows.find(r => r.id === selectedRowAsParentId);
+                parentRowData = { ...(existingParent?.data || {}) };
+                rowsToConvert = selectedRows.filter(r => r.id !== selectedRowAsParentId);
+            } else {
+                parentRowData[firstCol] = parentName.trim();
+                columns.slice(1).forEach(c => parentRowData[c] = '');
+                const createdParent = await apiService.addMondayRow(data.id, { data: parentRowData });
+                parentRowId = createdParent.id;
+            }
+
+            const subItemsToAdd = rowsToConvert.map(r => {
+                const subData = { ...(r.data || {}) };
+                if (stripPrefix && parentName.trim()) {
+                    const regex = new RegExp(`^${parentName.trim()}[\\s\\-_/:]*`, 'i');
+                    Object.keys(subData).forEach(k => {
+                        if (typeof subData[k] === 'string') {
+                            subData[k] = subData[k].replace(regex, '').trim();
+                        }
+                    });
+                }
+                return {
+                    id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+                    data: subData,
+                    createdAt: new Date().toISOString()
+                };
+            });
+
+            const existingParentObj = rows.find(r => r.id === parentRowId);
+            const existingSubs = Array.isArray(existingParentObj?.subItems)
+                ? existingParentObj.subItems
+                : (Array.isArray(existingParentObj?.data?.__subItems) ? existingParentObj.data.__subItems : []);
+            const allSubs = [...existingSubs, ...subItemsToAdd];
+
+            await apiService.updateMondayRow(data.id, parentRowId, {
+                subItems: allSubs,
+                data: { ...parentRowData, __subItems: allSubs }
+            });
+
+            const idsToDelete = rowsToConvert.map(r => r.id);
+            if (idsToDelete.length > 0) {
+                await apiService.batchDeleteMondayRows(data.id, idsToDelete);
+            }
+
+            const remainingRowOrder = rowOrder.filter(id => !idsToDelete.includes(id));
+            const newOrder = remainingRowOrder.includes(parentRowId)
+                ? remainingRowOrder
+                : [parentRowId, ...remainingRowOrder];
+
+            setRowOrder(newOrder);
+            saveMetadata(columns, newOrder, columnWidths);
+            setSelectedRowIds(new Set());
+            setExpandedRowIds(prev => new Set(prev).add(parentRowId));
+            setIsGroupModalOpen(false);
+        } catch (err) {
+            console.error("Erreur regroupement manuel:", err);
+            alert("Erreur lors du regroupement : " + err.message);
+        } finally {
+            setIsGroupingProcessing(false);
+        }
+    };
+
+    const handleConfirmAutoGroup = async (clusters) => {
+        setIsGroupingProcessing(true);
+        try {
+            const firstCol = columns[0] || 'NAME';
+            let allIdsToDelete = [];
+            let newParentIds = [];
+
+            for (const cluster of clusters) {
+                const parentName = cluster.parentName.trim();
+                const parentData = {};
+                parentData[firstCol] = parentName;
+                columns.slice(1).forEach(c => parentData[c] = '');
+
+                const subItems = cluster.rows.map(r => {
+                    const subData = { ...(r.data || {}) };
+                    if (cluster.stripPrefix && cluster.prefix) {
+                        const regex = new RegExp(`^${cluster.prefix.trim()}[\\s\\-_/:]*`, 'i');
+                        Object.keys(subData).forEach(k => {
+                            if (typeof subData[k] === 'string') {
+                                subData[k] = subData[k].replace(regex, '').trim();
+                            }
+                        });
+                    }
+                    return {
+                        id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+                        data: subData,
+                        createdAt: new Date().toISOString()
+                    };
+                });
+
+                const createdParent = await apiService.addMondayRow(data.id, {
+                    data: { ...parentData, __subItems: subItems },
+                    subItems: subItems
+                });
+                newParentIds.push(createdParent.id);
+
+                cluster.rows.forEach(r => allIdsToDelete.push(r.id));
+            }
+
+            if (allIdsToDelete.length > 0) {
+                await apiService.batchDeleteMondayRows(data.id, allIdsToDelete);
+            }
+
+            const remainingOrder = rowOrder.filter(id => !allIdsToDelete.includes(id));
+            const newOrder = [...newParentIds, ...remainingOrder];
+
+            setRowOrder(newOrder);
+            saveMetadata(columns, newOrder, columnWidths);
+            setSelectedRowIds(new Set());
+            setExpandedRowIds(prev => {
+                const next = new Set(prev);
+                newParentIds.forEach(id => next.add(id));
+                return next;
+            });
+            setIsAutoGroupModalOpen(false);
+        } catch (err) {
+            console.error("Erreur regroupement auto:", err);
+            alert("Erreur lors du regroupement automatique : " + err.message);
+        } finally {
+            setIsGroupingProcessing(false);
+        }
+    };
+
     // Selection
     const toggleSelection = (rowId) => {
         const newSet = new Set(selectedRowIds);
@@ -1529,6 +1904,20 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                             <div className="flex items-center gap-2 px-3 py-1 bg-blue-50/50 rounded-lg border border-blue-100/50 animate-in fade-in slide-in-from-left-2 duration-200">
                                 <span className="text-[12px] font-bold text-blue-700 whitespace-nowrap">{selectedRowIds.size} sélectionné(s)</span>
                                 <div className="h-4 w-px bg-blue-200 mx-1" />
+                                
+                                {selectedRowIds.size >= 2 && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setIsGroupModalOpen(true)}
+                                        title="Regrouper les lignes sélectionnées en sous-éléments"
+                                        className="h-7 px-2.5 bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 flex items-center gap-1.5 font-medium text-xs mr-1 shadow-xs"
+                                    >
+                                        <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                                        <span>Regrouper ({selectedRowIds.size})</span>
+                                    </Button>
+                                )}
+
                                 <Button size="sm" variant="ghost" onClick={handleExportSelected} title="Exporter la sélection" className="h-7 w-7 p-0 hover:bg-blue-100 text-blue-700">
                                     <Download className="w-3.5 h-3.5" />
                                 </Button>
@@ -1554,6 +1943,10 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setIsAutoGroupModalOpen(true)} className="text-indigo-600 font-medium">
+                                    <Sparkles className="w-4 h-4 mr-2 text-indigo-600" /> Regrouper auto (Google, Nelson...)
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={handleImportClick}>
                                     <Upload className="w-4 h-4 mr-2" /> Importer (Remplacer)
                                 </DropdownMenuItem>
@@ -1628,30 +2021,51 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                                         onRename={renameColumn}
                                     />
                                     {idx === 0 && (
-                                        <th
-                                            style={{ width: 50, minWidth: 50, maxWidth: 50 }}
-                                            className="px-1 py-3 border-b border-r bg-slate-50 text-center select-none"
-                                        >
-                                            <span className="font-semibold text-slate-700 text-xs tracking-tight">MaJ</span>
-                                        </th>
+                                        <>
+                                            <th
+                                                style={{ width: 50, minWidth: 50, maxWidth: 50 }}
+                                                className="px-1 py-3 border-b border-r bg-slate-50 text-center select-none"
+                                            >
+                                                <span className="font-semibold text-slate-700 text-xs tracking-tight">MaJ</span>
+                                            </th>
+                                            <th
+                                                style={{ width: 68, minWidth: 68, maxWidth: 68 }}
+                                                className="px-1 py-3 border-b border-r bg-slate-50 text-center select-none"
+                                                title="Sous-éléments"
+                                            >
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <GitFork className="w-3.5 h-3.5 text-indigo-600" />
+                                                    <span className="font-semibold text-slate-700 text-[11px] tracking-tight">Sous-él.</span>
+                                                </div>
+                                            </th>
+                                        </>
                                     )}
                                 </React.Fragment>
                             ))}
                             {columns.length === 0 && (
-                                <th
-                                    style={{ width: 50, minWidth: 50, maxWidth: 50 }}
-                                    className="px-1 py-3 border-b border-r bg-slate-50 text-center select-none"
-                                >
-                                    <span className="font-semibold text-slate-700 text-xs tracking-tight">MaJ</span>
-                                </th>
+                                <>
+                                    <th
+                                        style={{ width: 50, minWidth: 50, maxWidth: 50 }}
+                                        className="px-1 py-3 border-b border-r bg-slate-50 text-center select-none"
+                                    >
+                                        <span className="font-semibold text-slate-700 text-xs tracking-tight">MaJ</span>
+                                    </th>
+                                    <th
+                                        style={{ width: 68, minWidth: 68, maxWidth: 68 }}
+                                        className="px-1 py-3 border-b border-r bg-slate-50 text-center select-none"
+                                    >
+                                        <div className="flex items-center justify-center gap-1">
+                                            <GitFork className="w-3.5 h-3.5 text-indigo-600" />
+                                            <span className="font-semibold text-slate-700 text-[11px] tracking-tight">Sous-él.</span>
+                                        </div>
+                                    </th>
+                                </>
                             )}
-                            {/* Suppression du titre de la colonne de suppression */}
                             <th className="px-2 py-3 w-10 border-b"></th>
                         </tr>
                     </thead>
                     <tbody>
                         {(() => {
-                            // Calculate ttcColumn once for all rows
                             const { column: ttcColumn } = calculateTTCTotal(displayedRows);
 
                             return paginatedRows.map((row, index) => {
@@ -1670,6 +2084,14 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                                         onBlur={() => persistRow(row.id, row)}
                                         ttcColumn={ttcColumn}
                                         onOpenUpdates={(targetRow) => setSelectedRowForUpdates(targetRow)}
+                                        isExpanded={expandedRowIds.has(row.id)}
+                                        onToggleExpand={toggleExpandRow}
+                                        onSubItemUpdate={handleUpdateSubItem}
+                                        onAddSubItem={handleAddSubItem}
+                                        onDeleteSubItem={handleDeleteSubItem}
+                                        onDuplicateSubItem={handleDuplicateSubItem}
+                                        onPromoteSubItem={handlePromoteSubItem}
+                                        headerColor={headerColor}
                                     />
                                 );
                             });
@@ -1679,10 +2101,9 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                         {displayedRows.length > 0 && (() => {
                             const { column: ttcColumn, sum: totalValue } = calculateTTCTotal(displayedRows);
 
-                            // N'afficher la ligne TOTAL que si une colonne TTC existe
                             if (!ttcColumn) return null;
 
-                            const checkboxWidth = 30; // 30px
+                            const checkboxWidth = 30;
                             const rowNumberLeft = checkboxWidth;
 
                             return (
@@ -1695,10 +2116,8 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                                         let displayValue = '';
 
                                         if (cIdx === 0) {
-                                            // Première colonne : afficher "TOTAL"
                                             displayValue = 'TOTAL';
                                         } else if (ttcColumn && col === ttcColumn) {
-                                            // Colonne TTC (Mensualités ou Montants) : afficher la somme
                                             displayValue = `${totalValue.toFixed(2)} €`;
                                         }
 
@@ -1716,11 +2135,18 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                                                     </div>
                                                 </td>
                                                 {cIdx === 0 && (
-                                                    <td 
-                                                        key="total-updates-col"
-                                                        className="px-2 py-2 border-r bg-slate-100 text-center" 
-                                                        style={{ width: 85, minWidth: 85, maxWidth: 85 }} 
-                                                    />
+                                                    <>
+                                                        <td 
+                                                            key="total-updates-col"
+                                                            className="px-2 py-2 border-r bg-slate-100 text-center" 
+                                                            style={{ width: 50, minWidth: 50, maxWidth: 50 }} 
+                                                        />
+                                                        <td 
+                                                            key="total-subitems-col"
+                                                            className="px-2 py-2 border-r bg-slate-100 text-center" 
+                                                            style={{ width: 68, minWidth: 68, maxWidth: 68 }} 
+                                                        />
+                                                    </>
                                                 )}
                                             </React.Fragment>
                                         );
@@ -1731,7 +2157,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                         })()}
                         {paginatedRows.length === 0 && (
                             <tr>
-                                <td colSpan={columns.length + 4} className="px-6 py-10 text-center text-slate-500">
+                                <td colSpan={columns.length + 5} className="px-6 py-10 text-center text-slate-500">
                                     {rows.length === 0
                                         ? "Aucune donnée. Importer ou ajouter une ligne."
                                         : "Aucun résultat pour cette recherche."}
@@ -1809,6 +2235,25 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                     onDeleteUpdate={handleDeleteUpdate}
                 />
             )}
+
+            {/* Modal de regroupement manuel en sous-éléments */}
+            <GroupSelectionModal
+                isOpen={isGroupModalOpen}
+                onClose={() => setIsGroupModalOpen(false)}
+                selectedRows={rows.filter(r => selectedRowIds.has(r.id))}
+                columns={columns}
+                onConfirmGroup={handleConfirmManualGroup}
+                isProcessing={isGroupingProcessing}
+            />
+
+            {/* Modal de regroupement automatique intelligent */}
+            <AutoGroupModal
+                isOpen={isAutoGroupModalOpen}
+                onClose={() => setIsAutoGroupModalOpen(false)}
+                rows={rows}
+                onConfirmAutoGroup={handleConfirmAutoGroup}
+                isProcessing={isGroupingProcessing}
+            />
         </div>
     );
 };
