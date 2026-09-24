@@ -27,6 +27,7 @@ import PrivacyPolicy from './pages/Legal/PrivacyPolicy.jsx';
 import SignerMandat from './pages/SignerMandat.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
+import { PortfolioProvider } from './contexts/PortfolioContext.jsx';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DevErrorBoundary from './components/DevErrorBoundary.jsx';
@@ -240,9 +241,11 @@ export default function App() {
   return (
     <AuthProvider>
       <ProjectProvider>
-        <DevErrorBoundary>
-          <AppContent />
-        </DevErrorBoundary>
+        <PortfolioProvider>
+          <DevErrorBoundary>
+            <AppContent />
+          </DevErrorBoundary>
+        </PortfolioProvider>
       </ProjectProvider>
     </AuthProvider>
   );

@@ -78,14 +78,17 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
   const [modalSearchTerm, setModalSearchTerm] = useState('');
   const scrollContainerRef = useRef(null);
 
-  // 1. Liste exhaustive des centrales du portefeuille PV (strictement filtrées selon pv_portfolio === 'HELIOS')
+  // Nom du portefeuille cible (e.g. HELIOS, CASSIOPEE, ou tout portefeuille créé par l'admin)
+  const portName = (portfolioData?.portfolioName || 'HELIOS').toUpperCase();
+
+  // 1. Liste exhaustive des centrales du portefeuille PV (strictement filtrées selon pv_portfolio)
   const allAvailableSites = useMemo(() => {
     let raw = [];
     if (portfolioData?.analyzedSites && portfolioData.analyzedSites.length > 0) {
       raw = portfolioData.analyzedSites;
     } else {
       const effectiveProjects = (projects && projects.length > 0) ? projects : (portfolioData?.projects || []);
-      raw = getPvPortfolioSites(effectiveProjects, 'HELIOS', portfolioData);
+      raw = getPvPortfolioSites(effectiveProjects, portName, portfolioData);
     }
 
     return raw.map((s, idx) => {
@@ -176,7 +179,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
   const singleProdMwh = (singleKwc * (currentParams?.productible || 1123)) / 1000;
 
   const kpi = {
-    title: isPort ? "Portefeuille Multi-Projets Photovoltaïque HÉLIOS" : `Centrale Photovoltaïque — ${currentProject?.name || 'Projet Standard'}`,
+    title: isPort ? `Portefeuille Multi-Projets Photovoltaïque ${portName}` : `Centrale Photovoltaïque — ${currentProject?.name || 'Projet Standard'}`,
     subtitle: isPort
       ? `Consolidation financière & réseau de ${portfolioTotals.totalSites} centrale${portfolioTotals.totalSites > 1 ? 's' : ''} en toitures et hangars agricoles (${portfolioTotals.totalPowerMw.toFixed(2)} MWc)`
       : `Dimensionnement technique et plan d'affaires de la centrale (${singleKwc.toFixed(1)} kWc) — ${currentProject?.city || 'Site'}`,
@@ -340,7 +343,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
       detteDebut = Math.max(0, detteDebut - principal);
       return {
         year: y, ca, caTotal: ca, maint, assur, taxes, loyer, mra, opex, ebitda,
-        amortissement, ebit, interets, resFiscal, is, principal, serviceDette,
+        amortissement: amort, ebit, interets: interest, resFiscal, is, principal, serviceDette,
         dscr, cfNet, tresorerie: cfNet, cumulCashFlow
       };
     });
@@ -494,8 +497,8 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
       setProgressStep('Finalisation et enregistrement du document...');
 
       const fileName = exportMode === 'complete'
-        ? `Etude_Complete_PV_Portfolio_HELIOS_${portfolioSites.length}Sites_${totalCompletePages}Pages.pdf`
-        : `Dossier_PV_${isPort ? `Portfolio_HELIOS_${portfolioSites.length}Sites` : (currentProject?.name || 'Projet')}.pdf`;
+        ? `Etude_Complete_PV_Portfolio_${portName}_${portfolioSites.length}Sites_${totalCompletePages}Pages.pdf`
+        : `Dossier_PV_${isPort ? `Portfolio_${portName}_${portfolioSites.length}Sites` : (currentProject?.name || 'Projet')}.pdf`;
 
       pdf.save(fileName);
     } catch (err) {
@@ -972,7 +975,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                         />
                         <div>
                           <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight">
-                            {isPort ? "Répertoire Exhaustif des Centrales du Portefeuille HÉLIOS" : `Détail des Bâtiments & Toitures — ${currentProject?.name || 'Centrale'}`}
+                            {isPort ? `Répertoire Exhaustif des Centrales du Portefeuille ${portName}` : `Détail des Bâtiments & Toitures — ${currentProject?.name || 'Centrale'}`}
                           </h2>
                           <p className="text-xs font-medium text-slate-600">
                             {isPort
@@ -1112,7 +1115,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                         />
                         <div>
                           <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight">
-                            {isPort ? `Cartographie des Centrales du Portefeuille HÉLIOS (${portfolioSites.length} Sites)` : `Localisation — ${currentProject?.name || 'Projet PV'}`}
+                            {isPort ? `Cartographie des Centrales du Portefeuille ${portName} (${portfolioSites.length} Sites)` : `Localisation — ${currentProject?.name || 'Projet PV'}`}
                           </h2>
                           <p className="text-xs font-medium text-slate-600">
                             {isPort
@@ -1416,12 +1419,12 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                         <div className="flex flex-col items-center justify-center gap-2">
                           <Sun className="w-8 h-8 text-amber-400 opacity-60" />
                           <p className="font-bold text-sm text-slate-700">
-                            {modalSearchTerm ? "Aucun projet ne correspond à votre recherche" : "Aucun projet affecté au portefeuille HÉLIOS"}
+                            {modalSearchTerm ? "Aucun projet ne correspond à votre recherche" : `Aucun projet affecté au portefeuille ${portName}`}
                           </p>
                           <p className="text-xs text-slate-500 max-w-md">
                             {modalSearchTerm
                               ? "Essayez un autre terme de recherche."
-                              : "Seuls les projets ayant le portefeuille HÉLIOS affecté dans leur fiche de projet (onglet Client & Projet) apparaissent ici."}
+                              : `Seuls les projets ayant le portefeuille ${portName} affecté dans leur fiche de projet (onglet Client & Projet) apparaissent ici.`}
                           </p>
                         </div>
                       </td>

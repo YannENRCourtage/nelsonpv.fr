@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { useProjects } from "@/contexts/ProjectContext.jsx";
 import { useAuth } from "@/contexts/AuthContext.jsx";
+import { usePortfolios } from "@/contexts/PortfolioContext.jsx";
+import PortfolioManagerModal from "@/components/portfolios/PortfolioManagerModal.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { toast } from "@/components/ui/use-toast.js";
@@ -230,6 +232,8 @@ export default function ProjectEditor() {
   const [ambiguityModalOpen, setAmbiguityModalOpen] = useState(false);
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const { pvPortfolios, bessPortfolios, canManagePortfolios } = usePortfolios();
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
 
   const handleTriggerSearchPrm = async (customAddress = null) => {
     let targetAddr = (customAddress || p.address || '').trim();
@@ -1014,7 +1018,19 @@ export default function ProjectEditor() {
               </div>
 
               <div className="flex-1 min-w-[90px]">
-                <label className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider block mb-1 font-bold">Portefeuille BESS</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider block font-bold">Portefeuille BESS</label>
+                  {canManagePortfolios && (
+                    <button
+                      type="button"
+                      onClick={() => setIsPortfolioModalOpen(true)}
+                      className="text-[9px] text-blue-600 hover:text-blue-800 font-bold hover:underline flex items-center gap-0.5"
+                      title="Gérer les portefeuilles (Admin)"
+                    >
+                      + Gérer
+                    </button>
+                  )}
+                </div>
                 <select
                   value={p.bess_portfolio || (p.isBatteryStandAlone === 'Oui' ? 'VOLTA' : '')}
                   onChange={e => {
@@ -1028,13 +1044,29 @@ export default function ProjectEditor() {
                   className="w-full rounded-md border border-input px-3 py-2 h-10 bg-background text-xs font-bold text-blue-900 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <option value="">Aucun / Non</option>
-                  <option value="VOLTA">VOLTA</option>
-                  <option value="TESLA">TESLA</option>
+                  {bessPortfolios.map(bp => (
+                    <option key={bp.id} value={bp.name}>{bp.name}</option>
+                  ))}
+                  {p.bess_portfolio && !bessPortfolios.some(bp => bp.name === p.bess_portfolio) && (
+                    <option value={p.bess_portfolio}>{p.bess_portfolio}</option>
+                  )}
                 </select>
               </div>
 
               <div className="flex-1 min-w-[90px]">
-                <label className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider block mb-1 font-bold">Portefeuille PV</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider block font-bold">Portefeuille PV</label>
+                  {canManagePortfolios && (
+                    <button
+                      type="button"
+                      onClick={() => setIsPortfolioModalOpen(true)}
+                      className="text-[9px] text-amber-600 hover:text-amber-800 font-bold hover:underline flex items-center gap-0.5"
+                      title="Gérer les portefeuilles (Admin)"
+                    >
+                      + Gérer
+                    </button>
+                  )}
+                </div>
                 <select
                   value={p.pv_portfolio || ''}
                   onChange={e => updateProject({ pv_portfolio: e.target.value || null })}
@@ -1042,8 +1074,10 @@ export default function ProjectEditor() {
                   className="w-full rounded-md border border-input px-3 py-2 h-10 bg-background text-xs font-bold text-amber-900 disabled:opacity-40 disabled:bg-slate-100 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <option value="">Non affecté</option>
-                  <option value="HELIOS">HELIOS</option>
-                  {p.pv_portfolio && p.pv_portfolio !== 'HELIOS' && (
+                  {pvPortfolios.map(pp => (
+                    <option key={pp.id} value={pp.name}>{pp.name}</option>
+                  ))}
+                  {p.pv_portfolio && !pvPortfolios.some(pp => pp.name === p.pv_portfolio) && (
                     <option value={p.pv_portfolio}>{p.pv_portfolio}</option>
                   )}
                 </select>
@@ -1107,7 +1141,19 @@ export default function ProjectEditor() {
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-0.5 h-8" placeholder="Prénom" /></div>
                 <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Type</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option></select></div>
                 <div className="flex-1 min-w-[110px]">
-                  <label className="text-xs font-medium text-blue-600">Portefeuille BESS</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-blue-600">Portefeuille BESS</label>
+                    {canManagePortfolios && (
+                      <button
+                        type="button"
+                        onClick={() => setIsPortfolioModalOpen(true)}
+                        className="text-[9px] text-blue-600 font-bold hover:underline"
+                        title="Gérer les portefeuilles"
+                      >
+                        + Gérer
+                      </button>
+                    )}
+                  </div>
                   <select
                     value={p.bess_portfolio || (p.isBatteryStandAlone === 'Oui' ? 'VOLTA' : '')}
                     onChange={e => {
@@ -1121,12 +1167,28 @@ export default function ProjectEditor() {
                     className="mt-0.5 w-full rounded-lg border px-2 py-1 h-8 bg-background text-xs font-bold text-blue-900"
                   >
                     <option value="">Aucun / Non</option>
-                    <option value="VOLTA">VOLTA</option>
-                    <option value="TESLA">TESLA</option>
+                    {bessPortfolios.map(bp => (
+                      <option key={bp.id} value={bp.name}>{bp.name}</option>
+                    ))}
+                    {p.bess_portfolio && !bessPortfolios.some(bp => bp.name === p.bess_portfolio) && (
+                      <option value={p.bess_portfolio}>{p.bess_portfolio}</option>
+                    )}
                   </select>
                 </div>
                 <div className="flex-1 min-w-[110px]">
-                  <label className="text-xs font-medium text-amber-600 font-bold">Portefeuille PV</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-amber-600 font-bold">Portefeuille PV</label>
+                    {canManagePortfolios && (
+                      <button
+                        type="button"
+                        onClick={() => setIsPortfolioModalOpen(true)}
+                        className="text-[9px] text-amber-600 font-bold hover:underline"
+                        title="Gérer les portefeuilles"
+                      >
+                        + Gérer
+                      </button>
+                    )}
+                  </div>
                   <select
                     value={p.pv_portfolio || ''}
                     onChange={e => updateProject({ pv_portfolio: e.target.value || null })}
@@ -1134,8 +1196,10 @@ export default function ProjectEditor() {
                     className="mt-0.5 w-full rounded-lg border px-2 py-1 h-8 bg-background text-xs font-bold text-amber-900 disabled:opacity-40"
                   >
                     <option value="">Non affecté</option>
-                    <option value="HELIOS">HELIOS</option>
-                    {p.pv_portfolio && p.pv_portfolio !== 'HELIOS' && (
+                    {pvPortfolios.map(pp => (
+                      <option key={pp.id} value={pp.name}>{pp.name}</option>
+                    ))}
+                    {p.pv_portfolio && !pvPortfolios.some(pp => pp.name === p.pv_portfolio) && (
                       <option value={p.pv_portfolio}>{p.pv_portfolio}</option>
                     )}
                   </select>
@@ -2929,6 +2993,13 @@ export default function ProjectEditor() {
         onQuoteSaved={(savedQuote) => {
           updateProject({ lastQuote: savedQuote });
         }}
+      />
+
+      {/* Pop-up de gestion et création de portefeuilles (Admin) */}
+      <PortfolioManagerModal
+        open={isPortfolioModalOpen}
+        onClose={() => setIsPortfolioModalOpen(false)}
+        projects={projects}
       />
     </div >
   );

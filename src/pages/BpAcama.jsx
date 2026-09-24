@@ -32,6 +32,8 @@ import BessDossierPDFGenerator from '../components/bp-acama/BessDossierPDFGenera
 import PvPortfolioView from '../components/bp-acama/PvPortfolioView.jsx';
 import PvDossierPDFGenerator from '../components/bp-acama/PvDossierPDFGenerator.jsx';
 import { PV_PORTFOLIO_SITES, getPvPortfolioSites } from '../data/pvPortfolioData.js';
+import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
+import PortfolioManagerModal from '@/components/portfolios/PortfolioManagerModal.jsx';
 import { calculateProjectPayback, calculateEquityPayback } from '../services/bessSimulationEngine.js';
 import { findBessOdreData, computeBessRaccordementCost, BESS_ODRE_MATRIX } from '../data/bessOdreMatrix.js';
 
@@ -2156,6 +2158,9 @@ function TabBpProjets({
   setIsHybridEnabled = () => {}
 }) {
   const [pvMode, setPvMode] = useState('single'); // 'single' | 'portfolio'
+  const { pvPortfolios, canManagePortfolios } = usePortfolios();
+  const [selectedPvPortfolio, setSelectedPvPortfolio] = useState('HELIOS');
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [viewDetailedPv, setViewDetailedPv] = useState(false);
   const [networkQualificationPv, setNetworkQualificationPv] = useState(null);
   const [isLoadingNetworkPv, setIsLoadingNetworkPv] = useState(false);
@@ -2470,13 +2475,13 @@ function TabBpProjets({
   const dscrColor = dscrMoyenVal >= limitDSCR ? 'text-green-600 bg-green-50' : dscrMoyenVal >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
   const DscrIcon = dscrMoyenVal >= limitDSCR ? CheckCircle : dscrMoyenVal >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
 
-  // Sites PV strictement rattachés au portefeuille HELIOS selon la fiche de chaque projet (après initialisation de collapsedParams et rows)
-  const pvHeliosSites = useMemo(() => getPvPortfolioSites(projects, 'HELIOS', {
+  // Sites PV strictement rattachés au portefeuille sélectionné (e.g. HELIOS, CASSIOPEE...) selon la fiche de chaque projet
+  const pvHeliosSites = useMemo(() => getPvPortfolioSites(projects, selectedPvPortfolio, {
     currentProject: selectedProject,
     currentParams: collapsedParams,
     currentResults: bpResults,
     currentRows: rows
-  }), [projects, selectedProject, collapsedParams, bpResults, rows]);
+  }), [projects, selectedPvPortfolio, selectedProject, collapsedParams, bpResults, rows]);
   const pvHeliosPowerMw = useMemo(() => (pvHeliosSites.reduce((a, b) => a + (b.kwc || 0), 0) / 1000).toFixed(1), [pvHeliosSites]);
 
 
@@ -2811,37 +2816,79 @@ function TabBpProjets({
       {/* Sélecteur de Mode PV : Projet Unitaire vs Portefeuille Multi-Projets (HÉLIOS) */}
       {bpSubTab === 'pv' && (
         <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm" data-html2canvas-ignore="true">
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-            <button
-              type="button"
-              onClick={() => setPvMode('single')}
-              className={cn(
-                "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2",
-                pvMode === 'single'
-                  ? "bg-white text-blue-900 shadow-sm border border-slate-200"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
-              )}
-            >
-              <Sun className="w-4 h-4 text-amber-500" />
-              <span>Simulation Unitaire ({selectedProject?.name || 'Projet CRM'})</span>
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setPvMode('single')}
+                className={cn(
+                  "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2",
+                  pvMode === 'single'
+                    ? "bg-white text-blue-900 shadow-sm border border-slate-200"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                )}
+              >
+                <Sun className="w-4 h-4 text-amber-500" />
+                <span>Simulation Unitaire ({selectedProject?.name || 'Projet CRM'})</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setPvMode('portfolio')}
-              className={cn(
-                "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2",
-                pvMode === 'portfolio'
-                  ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-sm font-black"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
-              )}
-            >
-              <Layers className="w-4 h-4 text-yellow-200" />
-              <span>Portefeuille Multi-Projets ({pvHeliosSites.length} sites / {pvHeliosPowerMw} MWc)</span>
-              <span className="ml-1 px-1.5 py-0.5 text-[9px] font-black uppercase rounded-full bg-amber-400 text-slate-900">
-                PORTFOLIO HÉLIOS
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setPvMode('portfolio')}
+                className={cn(
+                  "px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all flex items-center gap-2",
+                  pvMode === 'portfolio'
+                    ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-sm font-black"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                )}
+              >
+                <Layers className="w-4 h-4 text-yellow-200" />
+                <span>Portefeuille Multi-Projets ({pvHeliosSites.length} sites / {pvHeliosPowerMw} MWc)</span>
+                <span className="ml-1 px-1.5 py-0.5 text-[9px] font-black uppercase rounded-full bg-amber-400 text-slate-900">
+                  {selectedPvPortfolio}
+                </span>
+              </button>
+            </div>
+
+            {/* Sélecteur rapide de Portefeuille PV quand en mode Portefeuille */}
+            {pvMode === 'portfolio' && (
+              <div className="flex items-center gap-1 bg-amber-50 p-1 rounded-lg border border-amber-200">
+                <span className="text-[10px] font-bold text-amber-800 uppercase px-1">Choix :</span>
+                {pvPortfolios.map(port => {
+                  const isSel = selectedPvPortfolio.toUpperCase() === port.name.toUpperCase();
+                  const count = (projects || []).filter(p => (p.pv_portfolio || '').trim().toUpperCase() === port.name.toUpperCase()).length;
+                  return (
+                    <button
+                      key={port.id}
+                      type="button"
+                      onClick={() => setSelectedPvPortfolio(port.name)}
+                      className={cn(
+                        "px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1",
+                        isSel
+                          ? "bg-amber-600 text-white shadow-xs font-black"
+                          : "text-amber-900 hover:bg-amber-100"
+                      )}
+                    >
+                      <span>{port.name}</span>
+                      <span className={cn("text-[10px] px-1 rounded-full", isSel ? "bg-amber-800/80 text-amber-100" : "bg-amber-200/60 text-amber-800")}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {canManagePortfolios && (
+                  <button
+                    type="button"
+                    onClick={() => setIsPortfolioModalOpen(true)}
+                    className="px-2 py-1 text-xs font-bold text-amber-800 hover:text-amber-950 hover:bg-amber-200/60 rounded-md transition-all flex items-center gap-1 border-l border-amber-300 ml-1 pl-2"
+                    title="Gérer les portefeuilles PV & BESS (Admin)"
+                  >
+                    + Gérer
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -2873,6 +2920,7 @@ function TabBpProjets({
               onClick={() => {
                 setPvPortfolioExportData({
                   autoExportType: pvMode === 'single' ? 'single' : 'portfolio',
+                  portfolioName: selectedPvPortfolio,
                   currentProject: selectedProject,
                   currentParams: collapsedParams,
                   currentResults: bpResults,
@@ -2936,6 +2984,7 @@ function TabBpProjets({
       {bpSubTab === 'pv' && pvMode === 'portfolio' ? (
         <PvPortfolioView
           projects={projects}
+          initialPortfolio={selectedPvPortfolio}
           onSelectSite={(site) => {
             if (site) {
               applyProject({
@@ -3438,6 +3487,13 @@ function TabBpProjets({
     open={isPvDossierPdfOpen}
     onClose={() => setIsPvDossierPdfOpen(false)}
     portfolioData={pvPortfolioExportData}
+    projects={projects}
+  />
+
+  {/* Modal Gestion des Portefeuilles PV & BESS (Admin) */}
+  <PortfolioManagerModal
+    open={isPortfolioModalOpen}
+    onClose={() => setIsPortfolioModalOpen(false)}
     projects={projects}
   />
 

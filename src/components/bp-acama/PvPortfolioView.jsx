@@ -23,13 +23,19 @@ import { PV_PORTFOLIO_SITES, computePvFinancials, getPvPortfolioSites } from '..
 import { exportPvPortfolioToExcel } from '../../services/exportPvExcel.js';
 import { exportBessOdreMatrixToExcel } from '../../services/exportBessExcel.js';
 import { calculatePmt, calculateProjectPayback, calculateIrr } from '../../services/bessSimulationEngine.js';
+import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
+import PortfolioManagerModal from '@/components/portfolios/PortfolioManagerModal.jsx';
+import { Plus, Settings } from 'lucide-react';
 
 const fmtEur = (v) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(v || 0))} €`;
 const fmtK = (v) => `${(v / 1000).toFixed(0)} k€`;
 const fmtM = (v) => `${(v / 1000000).toFixed(2)} M€`;
 const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
 
-export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChange, projects = [] }) {
+export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChange, projects = [], initialPortfolio = 'HELIOS' }) {
+  const { pvPortfolios, canManagePortfolios } = usePortfolios();
+  const [selectedPortfolio, setSelectedPortfolio] = useState(initialPortfolio || 'HELIOS');
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [selectedSpv, setSelectedSpv] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedChronique, setExpandedChronique] = useState(false);
@@ -39,10 +45,14 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
   const [debtRate, setDebtRate] = useState(4.00); // en % (e.g. 3.50, 4.00, 4.30, 4.50)
   const studyYears = 20;
 
+  useEffect(() => {
+    if (initialPortfolio) setSelectedPortfolio(initialPortfolio);
+  }, [initialPortfolio]);
+
   // Harmonisation stricte : seuls les projets ayant le portefeuille PV affecté dans leur fiche
   const allPvSites = useMemo(() => {
-    return getPvPortfolioSites(projects, 'HELIOS');
-  }, [projects]);
+    return getPvPortfolioSites(projects, selectedPortfolio);
+  }, [projects, selectedPortfolio]);
 
   // Calcul financier de chaque site et agrégation avec dette dynamique
   const { analyzedSites, consolidatedTotals, consolidatedChronique } = useMemo(() => {
@@ -160,6 +170,7 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
   useEffect(() => {
     if (onDataChange) {
       onDataChange({
+        portfolioName: selectedPortfolio,
         debtDuration,
         debtRate,
         analyzedSites,
@@ -167,7 +178,7 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
         consolidatedChronique
       });
     }
-  }, [debtDuration, debtRate, analyzedSites, consolidatedTotals, consolidatedChronique, onDataChange]);
+  }, [selectedPortfolio, debtDuration, debtRate, analyzedSites, consolidatedTotals, consolidatedChronique, onDataChange]);
 
   // Filtrage des sites
   const filteredSites = useMemo(() => {
@@ -193,7 +204,7 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
       debtDuration,
       debtRate,
       studyDuration: studyYears,
-      portfolioName: 'HELIOS'
+      portfolioName: selectedPortfolio
     });
   };
 
@@ -213,35 +224,86 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg sm:text-xl font-black tracking-tight">
-                PORTEFEUILLE MULTI-PROJETS PV ({consolidatedTotals.totalSites} SITES / {consolidatedTotals.totalPowerMw.toFixed(2)} MWc)
+                PORTEFEUILLE MULTI-PROJETS PV — {selectedPortfolio === 'ALL' ? 'CONSOLIDÉ' : selectedPortfolio} ({consolidatedTotals.totalSites} SITES / {consolidatedTotals.totalPowerMw.toFixed(2)} MWc)
               </h2>
               <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-black uppercase">
-                Portefeuille HÉLIOS
+                {selectedPortfolio === 'ALL' ? 'TOUS LES PORTFOLIOS' : `PORTFOLIO ${selectedPortfolio}`}
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
-              Consolidation globale de centrales toitures, hangars et ombrières • Raccordements ODRE certifiés • Modèle 20 ans (Arrêté S21)
+              Consolidation {selectedPortfolio === 'ALL' ? 'globale' : `du portefeuille ${selectedPortfolio}`} de centrales toitures et hangars • Raccordements ODRE certifiés • Modèle 20 ans
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5" data-html2canvas-ignore="true">
-          <button
-            onClick={handleExportExcel}
-            className="px-3 py-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 transition-all flex items-center gap-1.5"
-            title="Télécharger l'analyse consolidée complète au format Excel"
-          >
-            <Download className="w-4 h-4 text-emerald-400" />
-            BP consolidé par site
-          </button>
-          <button
-            onClick={handleExportOdreMatrix}
-            className="px-3 py-2 text-xs font-bold bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-100 rounded-lg border border-emerald-500/30 transition-all flex items-center gap-1.5 shadow-xs"
-            title="Télécharger la matrice Caparéseau ODRE des postes sources au format Excel"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-cyan-300" />
-            Matrice CAPARESEAU ODRE
-          </button>
+        <div className="flex flex-wrap items-center gap-3" data-html2canvas-ignore="true">
+          {/* Sélecteur dynamique de Portefeuille PV */}
+          <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg border border-white/20">
+            {pvPortfolios.map(port => {
+              const count = projects.filter(p => (p.pv_portfolio || '').trim().toUpperCase() === port.name.toUpperCase()).length;
+              const isSelected = selectedPortfolio.toUpperCase() === port.name.toUpperCase();
+              return (
+                <button
+                  key={port.id}
+                  type="button"
+                  onClick={() => setSelectedPortfolio(port.name)}
+                  className={`px-3 py-1.5 text-xs font-black rounded-md transition-all flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-amber-500 text-slate-950 shadow-sm font-black'
+                      : 'text-slate-300 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <span>{port.name}</span>
+                  <span className={`px-1.5 py-0.2 text-[10px] rounded-full ${isSelected ? 'bg-amber-900/60 text-amber-100 font-bold' : 'bg-white/10 text-slate-300'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => setSelectedPortfolio('ALL')}
+              className={`px-2.5 py-1.5 text-xs font-bold rounded-md transition-all ${
+                selectedPortfolio === 'ALL'
+                  ? 'bg-white/20 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Tous ({allPvSites.length})
+            </button>
+
+            {canManagePortfolios && (
+              <button
+                type="button"
+                onClick={() => setIsPortfolioModalOpen(true)}
+                className="px-2 py-1.5 text-xs font-bold text-amber-300 hover:text-white hover:bg-amber-500/20 rounded-md transition-all flex items-center gap-1 border-l border-white/20 ml-1 pl-2"
+                title="Gérer les portefeuilles PV & BESS (Admin)"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Gérer</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportExcel}
+              className="px-3 py-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 transition-all flex items-center gap-1.5"
+              title="Télécharger l'analyse consolidée complète au format Excel"
+            >
+              <Download className="w-4 h-4 text-emerald-400" />
+              BP consolidé
+            </button>
+            <button
+              onClick={handleExportOdreMatrix}
+              className="px-3 py-2 text-xs font-bold bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-100 rounded-lg border border-emerald-500/30 transition-all flex items-center gap-1.5 shadow-xs"
+              title="Télécharger la matrice Caparéseau ODRE des postes sources au format Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-cyan-300" />
+              Matrice ODRE
+            </button>
+          </div>
         </div>
       </div>
 
@@ -608,6 +670,12 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
           </table>
         </div>
       </div>
+
+      <PortfolioManagerModal
+        open={isPortfolioModalOpen}
+        onClose={() => setIsPortfolioModalOpen(false)}
+        projects={projects}
+      />
     </div>
   );
 }

@@ -25,6 +25,9 @@ import { getCreSubstationQualification } from '../../services/creZonesService.js
 import { calculateIrr, calculatePmt, calculateProjectPayback, calculateEquityPayback, computeBessFinancials } from '../../services/bessSimulationEngine.js';
 import { exportBessPortfolioToExcel, exportBessOdreMatrixToExcel } from '../../services/exportBessExcel.js';
 import * as XLSX from 'xlsx';
+import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
+import PortfolioManagerModal from '@/components/portfolios/PortfolioManagerModal.jsx';
+import { Plus } from 'lucide-react';
 
 const fmtEur = (v) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(v || 0))} €`;
 const fmtK = (v) => `${(v / 1000).toFixed(0)} k€`;
@@ -32,7 +35,9 @@ const fmtM = (v) => `${(v / 1000000).toFixed(2)} M€`;
 const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
 
 export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataChange, projects = [] }) {
-  const [selectedPortfolio, setSelectedPortfolio] = useState('VOLTA'); // 'VOLTA' | 'TESLA' | 'ALL'
+  const { bessPortfolios, canManagePortfolios } = usePortfolios();
+  const [selectedPortfolio, setSelectedPortfolio] = useState('VOLTA'); // 'VOLTA' | 'TESLA' | 'ALL' etc.
+  const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [selectedSpv, setSelectedSpv] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedChronique, setExpandedChronique] = useState(false);
@@ -275,37 +280,29 @@ const ODRE_CAPARESEAU_31_SITES = [
         </div>
 
         <div className="flex flex-wrap items-center gap-3" data-html2canvas-ignore="true">
-          {/* Sélecteur de Portefeuille VOLTA / TESLA */}
+          {/* Sélecteur dynamique de Portefeuille BESS */}
           <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg border border-white/20">
-            <button
-              type="button"
-              onClick={() => setSelectedPortfolio('VOLTA')}
-              className={`px-3 py-1.5 text-xs font-black rounded-md transition-all flex items-center gap-1.5 ${
-                selectedPortfolio === 'VOLTA'
-                  ? 'bg-blue-600 text-white shadow-sm font-black'
-                  : 'text-slate-300 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <span>Portefeuille VOLTA</span>
-              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-blue-900/80 text-blue-200">
-                {allPortfolioSites.filter(s => s.portfolio === 'VOLTA').length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedPortfolio('TESLA')}
-              className={`px-3 py-1.5 text-xs font-black rounded-md transition-all flex items-center gap-1.5 ${
-                selectedPortfolio === 'TESLA'
-                  ? 'bg-red-600 text-white shadow-sm font-black'
-                  : 'text-slate-300 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <span>Portefeuille TESLA</span>
-              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-red-900/80 text-red-200">
-                {allPortfolioSites.filter(s => s.portfolio === 'TESLA').length}
-              </span>
-            </button>
+            {bessPortfolios.map(port => {
+              const count = allPortfolioSites.filter(s => s.portfolio && s.portfolio.toUpperCase() === port.name.toUpperCase()).length;
+              const isSelected = selectedPortfolio.toUpperCase() === port.name.toUpperCase();
+              return (
+                <button
+                  key={port.id}
+                  type="button"
+                  onClick={() => setSelectedPortfolio(port.name)}
+                  className={`px-3 py-1.5 text-xs font-black rounded-md transition-all flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-sm font-black'
+                      : 'text-slate-300 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <span>{port.name}</span>
+                  <span className={`px-1.5 py-0.2 text-[10px] rounded-full ${isSelected ? 'bg-blue-900/80 text-blue-200' : 'bg-white/10 text-slate-300'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
 
             <button
               type="button"
@@ -318,6 +315,18 @@ const ODRE_CAPARESEAU_31_SITES = [
             >
               Tous ({allPortfolioSites.length})
             </button>
+
+            {canManagePortfolios && (
+              <button
+                type="button"
+                onClick={() => setIsPortfolioModalOpen(true)}
+                className="px-2 py-1.5 text-xs font-bold text-blue-300 hover:text-white hover:bg-blue-500/20 rounded-md transition-all flex items-center gap-1 border-l border-white/20 ml-1 pl-2"
+                title="Gérer les portefeuilles PV & BESS (Admin)"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Gérer</span>
+              </button>
+            )}
           </div>
 
           <button
@@ -689,6 +698,12 @@ const ODRE_CAPARESEAU_31_SITES = [
           </table>
         </div>
       </div>
+
+      <PortfolioManagerModal
+        open={isPortfolioModalOpen}
+        onClose={() => setIsPortfolioModalOpen(false)}
+        projects={projects}
+      />
     </div>
   );
 }
