@@ -32,7 +32,7 @@ import {
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import BatteryStationVisualizer from '../developpement/BatteryStationVisualizer.jsx';
-import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
+import { BESS_PORTFOLIO_SITES, getBessPortfolioSites } from '../../data/bessPortfolioData.js';
 import { calculatePmt, computeBessFinancials } from '../../services/bessSimulationEngine.js';
 import BessProjectSingleSheet from './BessProjectSingleSheet.jsx';
 
@@ -173,13 +173,67 @@ export default function BessDossierPDFGenerator({
   batteryConfig = null,
   batteryResults = null,
   networkQualification = null,
-  portfolioData = null
+  portfolioData = null,
+  projects = []
 }) {
   const [activeMode, setActiveMode] = useState(initialMode || 'portfolio');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressStep, setProgressStep] = useState('');
   const [activePageIndex, setActivePageIndex] = useState(0);
-  const [selectedProjectIds, setSelectedProjectIds] = useState(() => SITES_DATABASE.map(s => s.id));
+
+  // Base de données consolidée des sites BESS (hydratée depuis portfolioData ou getBessPortfolioSites)
+  const allAvailableSites = useMemo(() => {
+    if (portfolioData?.analyzedSites && portfolioData.analyzedSites.length > 0) {
+      return portfolioData.analyzedSites.map((s, idx) => ({
+        ...s,
+        id: s.id || `bess_site_${idx + 1}`,
+        client: s.client || s.client_name || 'Client',
+        cp: s.cp || s.postcode || '',
+        dept: s.dept || (s.cp || s.postcode || '').substring(0, 2) || 'FR',
+        gps: s.gps || (s.lat && s.lng ? `${Number(s.lat).toFixed(6)}, ${Number(s.lng).toFixed(6)}` : ''),
+        substation: typeof s.substation === 'object' ? (s.substation?.name || 'ODRE') : (s.substation || 'ODRE'),
+        dist: s.dist || (s.substation?.distanceKm ? `${s.substation.distanceKm} km` : '5.0 km'),
+        s3renr: s.s3renr || s.substation?.quotePartS3renr || "92.73 k€/MW",
+        power: s.power || `${s.powerKw || 500} kW`,
+        cap: s.cap || `${s.capacityKwh || 1044} kWh`,
+        rent: s.rent ? (typeof s.rent === 'number' ? fmtEur(s.rent) : s.rent) : "3 000 €",
+        ebitda: s.ebitda ? (typeof s.ebitda === 'number' ? fmtEur(s.ebitda) : s.ebitda) : fmtEur(s.ebitdaAn1 || 0),
+        ebitdaAn1: s.ebitdaAn1 || (typeof s.ebitda === 'number' ? s.ebitda : 0),
+        payback: s.paybackFormatted || (s.payback ? `${s.payback} ans` : '—'),
+        paybackAnnees: s.paybackAnnees || s.payback
+      }));
+    }
+
+    const targetPort = portfolioData?.selectedPortfolio || 'ALL';
+    const rawSites = getBessPortfolioSites(projects, targetPort);
+    if (!rawSites || rawSites.length === 0) {
+      return SITES_DATABASE;
+    }
+    return rawSites.map((s, idx) => {
+      const m = computeDynamicSiteMetrics(s);
+      const cp = s.cp || s.postcode || '';
+      return {
+        ...s,
+        id: s.id || `bess_site_${idx + 1}`,
+        client: s.client || s.client_name || 'Client',
+        cp,
+        dept: s.dept || (cp ? cp.substring(0, 2) : 'FR'),
+        gps: s.gps || (s.lat && s.lng ? `${Number(s.lat).toFixed(6)}, ${Number(s.lng).toFixed(6)}` : ''),
+        substation: typeof s.substation === 'object' ? (s.substation?.name || 'ODRE') : (s.substation || 'ODRE'),
+        dist: s.dist || (s.substation?.distanceKm ? `${s.substation.distanceKm} km` : '5.0 km'),
+        s3renr: s.s3renr || s.substation?.quotePartS3renr || "92.73 k€/MW",
+        power: s.power || "500 kW",
+        cap: s.cap || "1044 kWh",
+        rent: s.rent ? (typeof s.rent === 'number' ? fmtEur(s.rent) : s.rent) : "3 000 €",
+        ebitda: fmtEur(m.ebitdaAn1),
+        payback: m.paybackFormatted,
+        ebitdaAn1: m.ebitdaAn1,
+        paybackAnnees: m.paybackAnnees
+      };
+    });
+  }, [portfolioData?.analyzedSites, portfolioData?.selectedPortfolio, projects]);
+
+  const [selectedProjectIds, setSelectedProjectIds] = useState(() => allAvailableSites.map(s => s.id));
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
   const [modalSearchTerm, setModalSearchTerm] = useState('');
 
@@ -188,18 +242,18 @@ export default function BessDossierPDFGenerator({
   const isPort = activeMode === 'portfolio';
   const totalPagesCount = isPort ? 8 : 6;
 
-  // Synchronisation dynamique si SITES_DATABASE change
+  // Synchronisation dynamique si allAvailableSites change
   useEffect(() => {
-    if (SITES_DATABASE.length > 0) {
+    if (allAvailableSites.length > 0) {
       setSelectedProjectIds(prev => {
         if (prev && prev.length > 0) {
-          const valid = prev.filter(id => SITES_DATABASE.some(s => s.id === id));
+          const valid = prev.filter(id => allAvailableSites.some(s => s.id === id));
           if (valid.length > 0) return valid;
         }
-        return SITES_DATABASE.map(s => s.id);
+        return allAvailableSites.map(s => s.id);
       });
     }
-  }, []);
+  }, [allAvailableSites]);
 
   // Synchronisation dynamique du mode lorsque les props changent
   useEffect(() => {
@@ -228,12 +282,12 @@ export default function BessDossierPDFGenerator({
 
   // 1. Projets BESS filtrés selon la sélection de l'utilisateur
   const selectedBessSites = isPort
-    ? SITES_DATABASE.filter(s => selectedProjectIds.includes(s.id))
-    : SITES_DATABASE;
+    ? allAvailableSites.filter(s => selectedProjectIds.includes(s.id))
+    : allAvailableSites;
   const mult = isPort ? selectedBessSites.length : 1;
 
   // Recherche du site unitaire
-  const selectedSite = SITES_DATABASE.find(s => s.name.toUpperCase() === (projectData?.name || '').toUpperCase()) || SITES_DATABASE[7]; // Concèze
+  const selectedSite = allAvailableSites.find(s => s.name?.toUpperCase() === (projectData?.name || '').toUpperCase()) || allAvailableSites[0] || SITES_DATABASE[7]; // Concèze
 
   // Nom institutionnel affiché dynamique
   const headerProjectTitle = isPort
@@ -327,19 +381,21 @@ export default function BessDossierPDFGenerator({
   const sitesP2 = selectedBessSites.slice(16);
 
   // Helpers pour la modale de sélection multi-projets BESS
-  const filteredModalSites = SITES_DATABASE.filter(s => {
+  const filteredModalSites = allAvailableSites.filter(s => {
     if (!modalSearchTerm) return true;
     const term = modalSearchTerm.toLowerCase();
+    const subName = typeof s.substation === 'object' ? s.substation?.name : s.substation;
     return (
       (s.name || '').toLowerCase().includes(term) ||
       (s.client || '').toLowerCase().includes(term) ||
       (s.city || '').toLowerCase().includes(term) ||
-      (s.substation || '').toLowerCase().includes(term) ||
-      (s.dept || '').includes(term)
+      (String(subName || '')).toLowerCase().includes(term) ||
+      (s.dept || '').includes(term) ||
+      (s.cp || '').includes(term)
     );
   });
 
-  const modalSelectedSites = SITES_DATABASE.filter(s => selectedProjectIds.includes(s.id));
+  const modalSelectedSites = allAvailableSites.filter(s => selectedProjectIds.includes(s.id));
   const modalSelectedPowerMw = modalSelectedSites.length * 0.5;
   const modalSelectedCapMwh = modalSelectedSites.length * 1.044;
   const modalSelectedCapex = modalSelectedSites.reduce((sum, s) => sum + s.capexTotal, 0);
@@ -2009,7 +2065,7 @@ export default function BessDossierPDFGenerator({
                 title="Sélectionner les centrales BESS à inclure"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-600" />
-                <span>Filtrer ({selectedBessSites.length}/{SITES_DATABASE.length})</span>
+                <span>Filtrer ({selectedBessSites.length}/{allAvailableSites.length})</span>
               </button>
             )}
 
@@ -2114,7 +2170,7 @@ export default function BessDossierPDFGenerator({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedProjectIds(SITES_DATABASE.map(s => s.id))}
+                  onClick={() => setSelectedProjectIds(allAvailableSites.map(s => s.id))}
                   className="px-3 py-1.5 text-xs font-bold text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <CheckSquare className="w-3.5 h-3.5" />
@@ -2135,7 +2191,7 @@ export default function BessDossierPDFGenerator({
             <div className="px-6 py-2.5 bg-gradient-to-r from-blue-50 via-cyan-50 to-blue-50 border-b border-cyan-100 flex items-center justify-between text-xs font-bold text-slate-900 shrink-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2.5 py-0.5 rounded-full bg-cyan-700 text-white font-extrabold text-[11px]">
-                  {selectedProjectIds.length} / {SITES_DATABASE.length} projets sélectionnés
+                  {selectedProjectIds.length} / {allAvailableSites.length} projets sélectionnés
                 </span>
                 <span className="text-slate-300">•</span>
                 <span>Puissance : <strong className="text-cyan-900">{modalSelectedPowerMw.toFixed(1)} MW / {modalSelectedCapMwh.toFixed(2)} MWh</strong></span>
@@ -2160,9 +2216,9 @@ export default function BessDossierPDFGenerator({
                     <th className="p-2 w-10 text-center">
                       <input
                         type="checkbox"
-                        checked={selectedProjectIds.length === SITES_DATABASE.length && SITES_DATABASE.length > 0}
+                        checked={selectedProjectIds.length === allAvailableSites.length && allAvailableSites.length > 0}
                         onChange={(e) => {
-                          if (e.target.checked) setSelectedProjectIds(SITES_DATABASE.map(s => s.id));
+                          if (e.target.checked) setSelectedProjectIds(allAvailableSites.map(s => s.id));
                           else setSelectedProjectIds([]);
                         }}
                         className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"

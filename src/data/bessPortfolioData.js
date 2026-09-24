@@ -744,3 +744,128 @@ export const BESS_PORTFOLIO_SITES = [
     }
   }
 ];
+
+/**
+ * Construit la liste harmonisée des centrales appartenant au portefeuille BESS (VOLTA, TESLA ou ALL).
+ * Intègre les sites de référence BESS_PORTFOLIO_SITES et les projets CRM ayant une batterie / portefeuille BESS.
+ * Si un projet CRM a un portefeuille BESS explicitement affecté ('VOLTA' ou 'TESLA'), celui-ci prime.
+ * Les projets comme DUPORT, LABERGUERIE ou MISSAULT sont ainsi correctement intégrés au portefeuille BESS.
+ *
+ * @param {Array} projects Liste des projets CRM (tous tenants)
+ * @param {string} portfolioFilter 'ALL' | 'VOLTA' | 'TESLA'
+ * @returns {Array} Liste des sites BESS enrichis
+ */
+export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
+  const targetPort = (portfolioFilter || 'ALL').toUpperCase();
+
+  // Helper de normalisation sans accents pour comparaison robuste
+  const normalize = (str) => (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+  const matchedCrmIds = new Set();
+
+  // 1. Harmonisation des sites de base (31 sites officiels) avec les projets CRM correspondants
+  const baseSites = BESS_PORTFOLIO_SITES.map((site, index) => {
+    const sName = normalize(site.name);
+    const sCity = normalize(site.city);
+
+    const matchProj = (projects || []).find(p => {
+      if (!p) return false;
+      if (p.id && (p.id === site.id || p.id === `site_${index + 1}`)) return true;
+      const pName = normalize(p.name);
+      const pClient = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
+      if (pName && (sName.includes(pName) || pName.includes(sName))) return true;
+      if (pClient && (sName.includes(pClient) || pClient.includes(sName))) return true;
+      return false;
+    });
+
+    if (matchProj && matchProj.id) {
+      matchedCrmIds.add(matchProj.id);
+    }
+
+    // Règle de portefeuille :
+    // Si le projet CRM a bess_portfolio explicite (VOLTA ou TESLA), il prime.
+    // Sinon fallback sur site.bess_portfolio, ou (site.spv === 'SPV B' ? 'TESLA' : 'VOLTA')
+    const crmPort = (matchProj?.bess_portfolio || '').trim();
+    let port = crmPort;
+    if (!port || port === 'Non affecté' || port === 'Aucun' || port === 'none') {
+      port = site.bess_portfolio || (site.spv === 'SPV B' ? 'TESLA' : 'VOLTA');
+    }
+
+    const clientName = matchProj ? ([matchProj.firstName, matchProj.name].filter(Boolean).join(' ') || matchProj.client_name || site.client || 'Client') : (site.client || 'Client');
+    const cp = site.postcode || matchProj?.zip || matchProj?.postcode || '';
+    const dept = site.dept || (cp ? cp.substring(0, 2) : 'FR');
+
+    return {
+      ...site,
+      client: clientName,
+      dept,
+      portfolio: port,
+      crmProject: matchProj || null
+    };
+  });
+
+  // 2. Détection des projets CRM additionnels avec portefeuille BESS (ex: DUPORT, LABERGUERIE, MISSAULT...)
+  const additionalSites = [];
+  (projects || []).forEach((p, idx) => {
+    if (!p || (p.id && matchedCrmIds.has(p.id))) return;
+
+    const pBessPort = (p.bess_portfolio || '').trim();
+    const hasBessPort = pBessPort && pBessPort !== 'Non affecté' && pBessPort !== 'Aucun' && pBessPort !== 'none';
+    const isBattery = p.isBatteryStandAlone === 'Oui' || 
+                      (p.type || '').toLowerCase().includes('batterie') ||
+                      (p.type_projet || '').toLowerCase().includes('batterie') ||
+                      (p.name || '').toLowerCase().includes('batterie');
+
+    if (hasBessPort || isBattery) {
+      const port = hasBessPort ? pBessPort : (p.spv === 'SPV B' ? 'TESLA' : 'VOLTA');
+      const pId = p.id || `crm_bess_${idx + 1}`;
+      matchedCrmIds.add(pId);
+
+      const clientName = [p.firstName, p.name].filter(Boolean).join(' ') || p.client_name || p.client || 'Client';
+      const cp = p.zip || p.postcode || p.cp || '';
+      const dept = cp ? cp.substring(0, 2) : 'FR';
+      const lat = Number(p.lat || p.latitude || 45.0);
+      const lng = Number(p.lng || p.longitude || 1.0);
+
+      const subName = p.poste_source || p.substationName || p.substation?.name || "ODRE";
+      const distKm = Number(p.distance_raccordement_km || p.distancePoste || p.substation?.distanceKm || 5.0);
+
+      additionalSites.push({
+        id: pId,
+        name: p.name || `Projet BESS ${idx + 1}`,
+        client: clientName,
+        postcode: cp,
+        cp,
+        city: p.city || p.commune || '',
+        dept,
+        address: p.address || `${cp} ${p.city || ''}`.trim(),
+        spv: p.spv || (port === 'TESLA' ? 'SPV B' : 'SPV A'),
+        rent: Number(p.rent || p.loyer_annuel || 3000),
+        lat,
+        lng,
+        gps: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+        substation: typeof p.substation === 'object' ? p.substation : {
+          name: subName,
+          code: p.code_poste || "ODRE",
+          voltageLevel: "HTA / 20 kV",
+          gestionnaire: "Enedis",
+          distanceKm: distKm,
+          quotePartS3renr: "92.73  k€/MW",
+          capaciteReserveeMw: 0,
+          resteAffecterMw: 0,
+          fileAttenteMw: 0
+        },
+        portfolio: port,
+        crmProject: p
+      });
+    }
+  });
+
+  const allSites = [...baseSites, ...additionalSites];
+
+  if (targetPort !== 'ALL') {
+    return allSites.filter(s => s.portfolio && s.portfolio.toUpperCase() === targetPort);
+  }
+  return allSites;
+}
+

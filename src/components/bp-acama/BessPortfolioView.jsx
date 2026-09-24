@@ -20,7 +20,7 @@ import {
   Sparkles,
   FileSpreadsheet
 } from 'lucide-react';
-import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
+import { BESS_PORTFOLIO_SITES, getBessPortfolioSites } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
 import { calculateIrr, calculatePmt, calculateProjectPayback, calculateEquityPayback, computeBessFinancials } from '../../services/bessSimulationEngine.js';
 import { exportBessPortfolioToExcel, exportBessOdreMatrixToExcel } from '../../services/exportBessExcel.js';
@@ -47,22 +47,9 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
   const nbCyclesJour = 2.0; // 2 cycles/jour
   const studyYears = 15;
 
-  // Harmonisation des 31 sites BESS avec les projets CRM et attribution portefeuille VOLTA / TESLA
+  // Harmonisation des sites BESS avec les projets CRM et attribution portefeuille VOLTA / TESLA
   const allPortfolioSites = useMemo(() => {
-    return BESS_PORTFOLIO_SITES.map((site, index) => {
-      const matchProj = (projects || []).find(p => 
-        (p.id && (p.id === site.id || p.id === `site_${index+1}`)) ||
-        (p.name && site.name && p.name.trim().toLowerCase() === site.name.trim().toLowerCase()) ||
-        (p.client_name && site.name && p.client_name.trim().toLowerCase().includes(site.name.trim().toLowerCase()))
-      );
-      // Règle portefeuille : Si le projet CRM a bess_portfolio, il prime. Sinon SPV B -> TESLA, le reste -> VOLTA
-      const portfolio = matchProj?.bess_portfolio || site.bess_portfolio || (site.spv === 'SPV B' ? 'TESLA' : 'VOLTA');
-      return {
-        ...site,
-        portfolio,
-        crmProject: matchProj || null
-      };
-    });
+    return getBessPortfolioSites(projects, 'ALL');
   }, [projects]);
 
   // Sites actifs filtrés par portefeuille (VOLTA vs TESLA vs TOUS)
@@ -198,10 +185,11 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
         debtRate,
         analyzedSites,
         consolidatedTotals,
-        consolidatedChronique
+        consolidatedChronique,
+        selectedPortfolio
       });
     }
-  }, [debtDuration, debtRate, analyzedSites, consolidatedTotals, consolidatedChronique, onDataChange]);
+  }, [debtDuration, debtRate, analyzedSites, consolidatedTotals, consolidatedChronique, selectedPortfolio, onDataChange]);
 
   // Filtrage des sites
   const filteredSites = useMemo(() => {

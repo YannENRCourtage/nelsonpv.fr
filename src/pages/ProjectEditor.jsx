@@ -761,14 +761,14 @@ export default function ProjectEditor() {
     // Auto-set inclination and weighting first (Priority to Data)
     if (building && building.code) {
       const code = building.code;
-      let newAngle = null;
-      const firstLetter = code.charAt(0).toUpperCase();
+      const bId = (building.id || '').toUpperCase();
+      const bGamme = (building.gamme || '').toUpperCase();
 
       if (building.angle !== undefined && building.angle !== null && (activeTenantId === 'acama' || building.isCustom)) {
         newAngle = String(Math.round(building.angle));
-      } else if (['O', 'C', 'A'].includes(firstLetter)) {
+      } else if (bId.startsWith('O') || bGamme.startsWith('ORION') || bId.startsWith('C') || bGamme.startsWith('CYRUS') || bId.startsWith('A') || bGamme.startsWith('ATLAS')) {
         newAngle = "15";
-      } else if (['K', 'H', 'Y', 'S'].includes(firstLetter)) {
+      } else if (bId.startsWith('K') || bGamme.startsWith('KEREN') || bId.startsWith('H') || bGamme.startsWith('HELIOS') || bId.startsWith('Y') || bGamme.startsWith('YOKO') || bId.startsWith('S') || bGamme.startsWith('SOLEA')) {
         newAngle = "10";
       }
 
@@ -797,30 +797,35 @@ export default function ProjectEditor() {
         }
       }
 
-      // ACAMA uniquement ou mode Sur-mesure : forcer la surface et la puissance
-      // Ainsi que la longueur et la largeur
-      if ((activeTenantId === 'acama' && building.isPredefinedAcama !== false) || building.isCustom) {
-        if (building.length !== undefined && building.length !== null) {
-          if (isNextBuildingSecond) updates.longueur2 = String(building.length);
-          else updates.longueur = String(building.length);
+      // Synchronisation systématique des dimensions, surface, puissance et taille projet
+      // pour tous les bâtiments prédéfinis (Acama, Green Invest, Sur-Mesure)
+      if (building.length !== undefined && building.length !== null) {
+        if (isNextBuildingSecond) updates.longueur2 = String(building.length);
+        else updates.longueur = String(building.length);
+      }
+      if (building.width !== undefined && building.width !== null) {
+        if (isNextBuildingSecond) updates.largeur2 = String(building.width);
+        else updates.largeur = String(building.width);
+      }
+      if (building.surface !== undefined && building.surface !== null) {
+        if (isNextBuildingSecond) {
+          updates.surface2 = Number(building.surface);
+        } else {
+          updates.surface = Number(building.surface);
         }
-        if (building.width !== undefined && building.width !== null) {
-          if (isNextBuildingSecond) updates.largeur2 = String(building.width);
-          else updates.largeur = String(building.width);
+      }
+      if (building.power !== undefined && building.power !== null) {
+        if (isNextBuildingSecond) {
+          updates.puissance2 = Number(building.power);
+        } else {
+          updates.puissance = Number(building.power);
         }
-        if (building.surface !== undefined && building.surface !== null) {
-          if (isNextBuildingSecond) {
-            updates.surface2 = Number(building.surface);
-          } else {
-            updates.surface = Number(building.surface);
-          }
-        }
-        if (building.power !== undefined && building.power !== null) {
-          if (isNextBuildingSecond) {
-            updates.puissance2 = Number(building.power);
-          } else {
-            updates.puissance = Number(building.power);
-          }
+      }
+      if (building.projectSizeDescription) {
+        if (isNextBuildingSecond) {
+          updates.projectSize2 = building.projectSizeDescription;
+        } else {
+          updates.projectSize = building.projectSizeDescription;
         }
       }
 

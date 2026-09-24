@@ -34,6 +34,30 @@ export function loadAllProjectsFromLS(tenantId) {
   return loadProjectsFromLS(tenantId);
 }
 
+/** Charge l'ensemble des projets de tous les tenants (Green Invest, ENR Courtage, Acama) */
+export function loadAllTenantProjectsFromLS() {
+  const tenants = ['green-invest', 'enr-courtage-energie', 'acama'];
+  const map = new Map();
+  tenants.forEach(t => {
+    try {
+      const raw = localStorage.getItem(getTenantLSKey(t));
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          list.forEach(p => {
+            if (p && p.id && !map.has(p.id)) {
+              map.set(p.id, { ...p, _tenantId: p.tenantId || t });
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(`Error reading projects for tenant ${t}:`, e);
+    }
+  });
+  return Array.from(map.values());
+}
+
 export function saveAllProjectsToLS(tenantIdOrList, maybeList) {
   if (Array.isArray(tenantIdOrList)) {
     return saveProjectsToLS(null, tenantIdOrList);
@@ -44,12 +68,14 @@ export function saveAllProjectsToLS(tenantIdOrList, maybeList) {
 /** Contexte */
 const ProjectContext = createContext({
   projects: [],
+  allProjects: [],
   setProjects: () => { },
   project: null,
   setProject: () => { },
   updateProject: () => { },
   saveProject: () => { },
   loadAllProjects: (tenantId) => loadProjectsFromLS(tenantId),
+  loadAllTenantProjects: () => loadAllTenantProjectsFromLS(),
   refreshProjects: async () => { },
   loading: false,
   error: null
@@ -65,6 +91,7 @@ export function ProjectProvider({ children }) {
   const activeTenantIdRef = useRef(activeTenantId);
   useEffect(() => { activeTenantIdRef.current = activeTenantId; }, [activeTenantId]);
   const [projects, _setProjects] = useState(() => loadProjectsFromLS(activeTenantId));
+  const [allProjects, setAllProjects] = useState(() => loadAllTenantProjectsFromLS());
   const [project, _setProject] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -75,6 +102,8 @@ export function ProjectProvider({ children }) {
       const newProjects = typeof updater === 'function' ? updater(prev) : updater;
       // Sync to localStorage immediately for the active tenant
       saveProjectsToLS(activeTenantIdRef.current, newProjects);
+      // Synchroniser allProjects
+      setAllProjects(loadAllTenantProjectsFromLS());
       return newProjects;
     });
   }, []);
@@ -87,9 +116,10 @@ export function ProjectProvider({ children }) {
       return;
     }
 
-    // Charger immédiatement le cache du tenant actif
+    // Charger immédiatement le cache du tenant actif et de l'ensemble des tenants
     const cached = loadProjectsFromLS(activeTenantId);
     _setProjects(cached);
+    setAllProjects(loadAllTenantProjectsFromLS());
 
     const setupSubscription = async () => {
       setLoading(true);
@@ -108,6 +138,21 @@ export function ProjectProvider({ children }) {
         if (Array.isArray(directData) && directData.length > 0) {
           setProjects(directData);
         }
+
+        // Précharger également les projets des tenants partenaires (Green Invest & ENR Courtage)
+        // afin que les portefeuilles PV et BESS soient complets sur les deux interfaces
+        const partnerTenants = ['green-invest', 'enr-courtage-energie'].filter(t => t !== activeTenantId);
+        for (const pt of partnerTenants) {
+          try {
+            const partnerData = await apiService.getProjects(pt);
+            if (Array.isArray(partnerData) && partnerData.length > 0) {
+              saveProjectsToLS(pt, partnerData);
+            }
+          } catch (pe) {
+            console.warn(`Could not preload partner projects for ${pt}:`, pe);
+          }
+        }
+        setAllProjects(loadAllTenantProjectsFromLS());
       } catch (err) {
         console.error("Failed to subscribe to projects:", err);
         setError(err);
@@ -138,6 +183,16 @@ export function ProjectProvider({ children }) {
     try {
       const updated = await apiService.getProjects(activeTenantIdRef.current);
       setProjects(updated);
+      const partnerTenants = ['green-invest', 'enr-courtage-energie'].filter(t => t !== activeTenantIdRef.current);
+      for (const pt of partnerTenants) {
+        try {
+          const pData = await apiService.getProjects(pt);
+          if (Array.isArray(pData) && pData.length > 0) {
+            saveProjectsToLS(pt, pData);
+          }
+        } catch (e) { }
+      }
+      setAllProjects(loadAllTenantProjectsFromLS());
     } catch (err) {
       console.error("Manual refresh failed:", err);
       setError(err);
@@ -151,6 +206,7 @@ export function ProjectProvider({ children }) {
     const handleStorageChange = () => {
       const local = loadProjectsFromLS(activeTenantIdRef.current);
       _setProjects(local); // Use _setProjects to avoid triggering another save
+      setAllProjects(loadAllTenantProjectsFromLS());
     };
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('projectsUpdated', handleStorageChange);
@@ -371,6 +427,7 @@ export function ProjectProvider({ children }) {
   const value = useMemo(
     () => ({
       projects,
+      allProjects,
       setProjects,
       project,
       setProject,
@@ -379,10 +436,11 @@ export function ProjectProvider({ children }) {
       saveProjectToLS: saveProject, // Alias pour compatibilité
       refreshProjects,
       loadAllProjects: loadAllProjectsFromLS,
+      loadAllTenantProjects: loadAllTenantProjectsFromLS,
       loading,
       error
     }),
-    [projects, project, setProject, updateProject, saveProject, refreshProjects, loading, error]
+    [projects, allProjects, project, setProject, updateProject, saveProject, refreshProjects, loading, error]
   );
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

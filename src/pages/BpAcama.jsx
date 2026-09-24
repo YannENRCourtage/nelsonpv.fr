@@ -1839,6 +1839,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         batteryResults={results}
         networkQualification={networkQualification}
         portfolioData={portfolioExportData}
+        projects={projects}
       />
     </div>
   );
@@ -5033,7 +5034,11 @@ function TabPlaceholder({ label }) {
 
 export default function BpAcama() {
   const { user, activeTenantId } = useAuth();
-  const { projects, loading, refreshProjects } = useProjects();
+  const { projects, allProjects, loading, refreshProjects } = useProjects();
+  const effectivePortfolioProjects = useMemo(() => {
+    if (allProjects && allProjects.length > 0) return allProjects;
+    return projects || [];
+  }, [allProjects, projects]);
   const [activeTab, setActiveTab] = useState('bp_projets');
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectEdits, setProjectEdits] = useState({});
@@ -5614,10 +5619,10 @@ export default function BpAcama() {
       case 'bp_saved': return <TabBpSaved projects={projects || []} onSelect={setSelectedProject} activeTab={activeTab} setActiveTab={setActiveTab} isGreenInvest={isGreenInvest} isEnrCourtage={isEnrCourtage} />;
       case 'bp_projets': return (
         <TabBpProjets 
-          projects={projects || []} 
+          projects={effectivePortfolioProjects} 
           selectedProject={selectedProject} 
           setSelectedProject={(val) => {
-            const p = typeof val === 'string' ? projects.find(proj => proj.id === val) : val;
+            const p = typeof val === 'string' ? effectivePortfolioProjects.find(proj => proj.id === val) : val;
             setSelectedProject(p);
           }}
           params={params}

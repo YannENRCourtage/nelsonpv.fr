@@ -27,8 +27,7 @@ const formatNumber = (num) => {
 // Helper to determine configuration based on building code / gamme (GREEN INVEST only)
 const getBuildingConfig = (building) => {
   if (!building) return { allowAuvent: false, allowAppentis: false, baseWeight: 50, getWeight: () => 50 };
-  const code = building.code || building.id || '';
-  const firstLetter = code.charAt(0).toUpperCase();
+  const id = (building.id || '').toUpperCase();
   const gamme = (building.gamme || '').toUpperCase();
 
   const config = {
@@ -44,56 +43,61 @@ const getBuildingConfig = (building) => {
     return config;
   }
 
-  switch (firstLetter) {
-    case 'O':
-      config.allowAuvent = true;
-      config.baseWeight = 90;
-      config.getWeight = (auv) => {
-        const a = Number(auv) || 0;
-        return a === 2 ? 70 : 90;
-      };
-      break;
-    case 'C':
-      config.allowAuvent = true;
-      config.baseWeight = 70;
-      config.getWeight = (auv) => {
-        const a = parseInt(auv, 10) || 0;
-        if (a === 1) return 75;
-        if (a === 2) return 65;
-        return 70;
-      };
-      break;
-    case 'A':
-      config.baseWeight = 100;
-      config.getWeight = () => 100;
-      break;
-    case 'H':
-      config.allowAuvent = true;
-      config.allowAppentis = true;
-      config.baseWeight = 50;
-      config.getWeight = (auv, app) => {
-        const a = parseInt(auv, 10) || 0;
-        const ap = parseInt(app, 10) || 0;
-        if (a === 0 && ap === 0) return 50;
-        if (a === 0 && ap === 1) return 65;
-        if (a === 0 && ap === 2) return 50;
-        if (a === 1 && ap === 1) return 60;
-        if (a === 1 && ap === 0) return 55;
-        if (a === 2 && ap === 0) return 50;
-        return 50;
-      };
-      break;
-    case 'K':
-      config.baseWeight = 65;
-      config.getWeight = () => 65;
-      break;
-    case 'Y':
-    case 'S':
-      config.baseWeight = 50;
-      config.getWeight = () => 50;
-      break;
-    default:
-      config.baseWeight = 50;
+  // Gamme ORION (O1, O2, ... ou ORION 16 / ORION 20)
+  // Possibilité d'ajouter 1 ou 2 auvents (Sud puis Nord)
+  if (gamme.startsWith('ORION') || id.startsWith('O')) {
+    config.allowAuvent = true;
+    config.allowAppentis = false;
+    config.baseWeight = 90;
+    config.getWeight = (auv) => {
+      const a = Number(auv) || 0;
+      return a === 2 ? 70 : 90;
+    };
+  } else if (gamme.startsWith('CYRUS') || id.startsWith('C')) {
+    config.allowAuvent = true;
+    config.allowAppentis = false;
+    config.baseWeight = 70;
+    config.getWeight = (auv) => {
+      const a = parseInt(auv, 10) || 0;
+      if (a === 1) return 75;
+      if (a === 2) return 65;
+      return 70;
+    };
+  } else if (gamme.startsWith('ATLAS') || id.startsWith('A')) {
+    config.allowAuvent = true;
+    config.allowAppentis = false;
+    config.baseWeight = 100;
+    config.getWeight = () => 100;
+  } else if (gamme.startsWith('HELIOS') || id.startsWith('H')) {
+    config.allowAuvent = true;
+    config.allowAppentis = true;
+    config.baseWeight = 50;
+    config.getWeight = (auv, app) => {
+      const a = parseInt(auv, 10) || 0;
+      const ap = parseInt(app, 10) || 0;
+      if (a === 0 && ap === 0) return 50;
+      if (a === 0 && ap === 1) return 65;
+      if (a === 0 && ap === 2) return 50;
+      if (a === 1 && ap === 1) return 60;
+      if (a === 1 && ap === 0) return 55;
+      if (a === 2 && ap === 0) return 50;
+      return 50;
+    };
+  } else if (gamme.startsWith('KEREN') || id.startsWith('K')) {
+    config.allowAuvent = true;
+    config.allowAppentis = true;
+    config.baseWeight = 65;
+    config.getWeight = () => 65;
+  } else if (gamme.startsWith('YOKO') || id.startsWith('Y') || gamme.startsWith('SOLEA') || id.startsWith('S')) {
+    config.allowAuvent = true;
+    config.allowAppentis = true;
+    config.baseWeight = 50;
+    config.getWeight = () => 50;
+  } else {
+    config.allowAuvent = true;
+    config.allowAppentis = true;
+    config.baseWeight = 50;
+    config.getWeight = () => 50;
   }
   return config;
 };
@@ -234,8 +238,8 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
     let baseWidth = baseBuilding.largeur;
     let extraWidth = 0;
     if (auventCount > 0) extraWidth += auventCount * 4;
-    if (appentisCount > 0) extraWidth += auventCount * 9.3;
-    const currentWidth = baseWidth + extraWidth;
+    if (appentisCount > 0) extraWidth += appentisCount * 9.3;
+    const currentWidth = Number((baseWidth + extraWidth).toFixed(2));
 
     const currentSurface = Math.round(currentLength * currentWidth);
     const powerRatio = baseBuilding.kwc > 0 && baseBuilding.surface > 0
@@ -262,6 +266,14 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
     const config = getBuildingConfig(baseBuilding);
     const roofWeighting = config.getWeight(auventCount, appentisCount);
 
+    let extensionLabel = '';
+    if (auventCount === 1) extensionLabel += ' + 1 auvent Sud (4m)';
+    else if (auventCount === 2) extensionLabel += ' + 2 auvents Sud & Nord (8m)';
+    if (appentisCount === 1) extensionLabel += ' + 1 appenti Sud (9.3m)';
+    else if (appentisCount === 2) extensionLabel += ' + 2 appentis Sud & Nord (18.6m)';
+
+    const fullDesignation = `${baseBuilding.designation || baseBuilding.id}${extensionLabel}`;
+
     return {
       ...baseBuilding,
       length: currentLength,
@@ -280,6 +292,12 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
       traveeCount,
       travees: `${traveeCount} x 7.5m`,
       roofWeighting,
+      auventCount,
+      appentisCount,
+      extensionLabel,
+      fullDesignation,
+      projectSizeDescription: `${baseBuilding.id} (${currentLength}m × ${currentWidth}m${extensionLabel})`,
+      isPredefinedBuilding: true,
       pricing_ht: {
         charpente_base_ht: charpente,
         fondations_base_ht: fondations,
@@ -303,6 +321,16 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
     }
   };
 
+  const handleKeySelect = (key) => {
+    setSelectedKey(key);
+    const b = BARCONNIERE_CATALOG.find(x => `${x.gamme}_${x.id}` === key || x.id === key);
+    if (b) {
+      const cfg = getBuildingConfig(b);
+      if (!cfg.allowAuvent) setAuventCount(0);
+      if (!cfg.allowAppentis) setAppentisCount(0);
+    }
+  };
+
   return (
     <Card className="rounded-2xl shadow-sm border border-slate-200">
       <CardHeader className="flex flex-row items-center justify-between pb-2 bg-slate-50/60 rounded-t-2xl border-b border-slate-100">
@@ -322,9 +350,20 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
                   else setAuventCount(0);
                 }}
                 disabled={!selectedBuildingData || !getBuildingConfig(selectedBuildingData).allowAuvent}
-                className={`h-8 text-xs ${auventCount > 0 ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}`}
+                className={`h-8 text-xs font-semibold ${
+                  auventCount > 0 ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''
+                }`}
+                title={
+                  auventCount === 0
+                    ? 'Ajouter un 1er auvent (Sud +4m)'
+                    : auventCount === 1
+                    ? 'Ajouter un 2ème auvent (Nord +4m -> Total 8m)'
+                    : 'Retirer les auvents'
+                }
               >
-                Auvent {auventCount > 0 && `(x${auventCount})`}
+                {auventCount === 0 && 'Auvent'}
+                {auventCount === 1 && 'Auvent Sud (4m)'}
+                {auventCount === 2 && '2 Auvents S+N (8m)'}
               </Button>
               <Button
                 variant={appentisCount > 0 ? 'default' : 'outline'}
@@ -335,9 +374,20 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
                   else setAppentisCount(0);
                 }}
                 disabled={!selectedBuildingData || !getBuildingConfig(selectedBuildingData).allowAppentis}
-                className={`h-8 text-xs ${appentisCount > 0 ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}`}
+                className={`h-8 text-xs font-semibold ${
+                  appentisCount > 0 ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''
+                }`}
+                title={
+                  appentisCount === 0
+                    ? 'Ajouter un 1er appenti (Sud +9.3m)'
+                    : appentisCount === 1
+                    ? 'Ajouter un 2ème appenti (Nord +9.3m -> Total 18.6m)'
+                    : 'Retirer les appentis'
+                }
               >
-                Appentis {appentisCount > 0 && `(x${appentisCount})`}
+                {appentisCount === 0 && 'Appenti'}
+                {appentisCount === 1 && 'Appenti Sud (9.3m)'}
+                {appentisCount === 2 && '2 Appentis S+N (18.6m)'}
               </Button>
             </>
           )}
@@ -356,7 +406,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
         {/* Selector dropdown */}
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <Select onValueChange={setSelectedKey} value={selectedKey || ''}>
+            <Select onValueChange={handleKeySelect} value={selectedKey || ''}>
               <SelectTrigger className="h-9 text-xs bg-white">
                 <SelectValue placeholder="Choisir un modèle prédéfini..." />
               </SelectTrigger>
@@ -466,6 +516,12 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
                 <span>Puissance :</span>
                 <span className="font-bold text-amber-600">{selectedBuildingData.power} kWc</span>
               </div>
+              {selectedBuildingData.extensionLabel && (
+                <div className="col-span-2 pt-1 text-[11px] text-amber-700 font-bold border-t border-slate-100 flex items-center justify-between">
+                  <span>Extension :</span>
+                  <span>{selectedBuildingData.extensionLabel.replace(/^\s*\+\s*/, '')}</span>
+                </div>
+              )}
             </div>
 
             {/* Financial Breakdown (GREEN INVEST) */}
