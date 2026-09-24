@@ -31,7 +31,7 @@ import BessPortfolioView from '../components/bp-acama/BessPortfolioView.jsx';
 import BessDossierPDFGenerator from '../components/bp-acama/BessDossierPDFGenerator.jsx';
 import PvPortfolioView from '../components/bp-acama/PvPortfolioView.jsx';
 import PvDossierPDFGenerator from '../components/bp-acama/PvDossierPDFGenerator.jsx';
-import { PV_PORTFOLIO_SITES, getPvPortfolioSites } from '../data/pvPortfolioData.js';
+import { PV_PORTFOLIO_SITES, getPvPortfolioSites, normalizePortfolioName, getProjectPvPortfolio } from '../data/pvPortfolioData.js';
 import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
 import PortfolioManagerModal from '@/components/portfolios/PortfolioManagerModal.jsx';
 import { calculateProjectPayback, calculateEquityPayback } from '../services/bessSimulationEngine.js';
@@ -2855,8 +2855,8 @@ function TabBpProjets({
               <div className="flex items-center gap-1 bg-amber-50 p-1 rounded-lg border border-amber-200">
                 <span className="text-[10px] font-bold text-amber-800 uppercase px-1">Choix :</span>
                 {pvPortfolios.map(port => {
-                  const isSel = selectedPvPortfolio.toUpperCase() === port.name.toUpperCase();
-                  const count = (projects || []).filter(p => (p.pv_portfolio || '').trim().toUpperCase() === port.name.toUpperCase()).length;
+                  const isSel = normalizePortfolioName(selectedPvPortfolio) === normalizePortfolioName(port.name);
+                  const count = (projects || []).filter(p => normalizePortfolioName(getProjectPvPortfolio(p)) === normalizePortfolioName(port.name)).length;
                   return (
                     <button
                       key={port.id}

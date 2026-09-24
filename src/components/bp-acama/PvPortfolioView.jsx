@@ -19,7 +19,7 @@ import {
   Sparkles,
   FileSpreadsheet
 } from 'lucide-react';
-import { PV_PORTFOLIO_SITES, computePvFinancials, getPvPortfolioSites } from '../../data/pvPortfolioData.js';
+import { PV_PORTFOLIO_SITES, computePvFinancials, getPvPortfolioSites, normalizePortfolioName, getProjectPvPortfolio } from '../../data/pvPortfolioData.js';
 import { exportPvPortfolioToExcel } from '../../services/exportPvExcel.js';
 import { exportBessOdreMatrixToExcel } from '../../services/exportBessExcel.js';
 import { calculatePmt, calculateProjectPayback, calculateIrr } from '../../services/bessSimulationEngine.js';
@@ -240,8 +240,8 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
           {/* Sélecteur dynamique de Portefeuille PV */}
           <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg border border-white/20">
             {pvPortfolios.map(port => {
-              const count = projects.filter(p => (p.pv_portfolio || '').trim().toUpperCase() === port.name.toUpperCase()).length;
-              const isSelected = selectedPortfolio.toUpperCase() === port.name.toUpperCase();
+              const count = (projects || []).filter(p => normalizePortfolioName(getProjectPvPortfolio(p)) === normalizePortfolioName(port.name)).length;
+              const isSelected = normalizePortfolioName(selectedPortfolio) === normalizePortfolioName(port.name);
               return (
                 <button
                   key={port.id}

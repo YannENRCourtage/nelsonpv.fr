@@ -25,6 +25,8 @@ import {
   Plus
 } from 'lucide-react';
 
+import { normalizePortfolioName, getProjectPvPortfolio } from '@/data/pvPortfolioData.js';
+
 export default function PortfolioManagerModal({ open, onClose, projects = [] }) {
   const { portfolios, canManagePortfolios, createPortfolio, updatePortfolio, deletePortfolio, loading } = usePortfolios();
   const { toast } = useToast();
@@ -53,13 +55,13 @@ export default function PortfolioManagerModal({ open, onClose, projects = [] }) 
   const projectCounts = useMemo(() => {
     const counts = {};
     (projects || []).forEach(p => {
-      if (p.pv_portfolio) {
-        const key = p.pv_portfolio.trim().toUpperCase();
-        counts[key] = (counts[key] || 0) + 1;
+      const pvPort = normalizePortfolioName(getProjectPvPortfolio(p));
+      if (pvPort) {
+        counts[pvPort] = (counts[pvPort] || 0) + 1;
       }
-      if (p.bess_portfolio) {
-        const key = p.bess_portfolio.trim().toUpperCase();
-        counts[key] = (counts[key] || 0) + 1;
+      const bessPort = normalizePortfolioName(p.bess_portfolio || p.portfolio_bess || p.bessPortfolio || p.data?.bess_portfolio || '');
+      if (bessPort) {
+        counts[bessPort] = (counts[bessPort] || 0) + 1;
       }
     });
     return counts;
@@ -180,7 +182,7 @@ export default function PortfolioManagerModal({ open, onClose, projects = [] }) 
       return;
     }
 
-    const assignedCount = projectCounts[port.name.toUpperCase()] || 0;
+    const assignedCount = projectCounts[normalizePortfolioName(port.name)] || 0;
     const confirmMessage = assignedCount > 0
       ? `Attention : ${assignedCount} projet(s) sont actuellement affectés au portefeuille "${port.name}". Voulez-vous vraiment le supprimer ?`
       : `Voulez-vous vraiment supprimer le portefeuille "${port.name}" ?`;
@@ -358,7 +360,7 @@ export default function PortfolioManagerModal({ open, onClose, projects = [] }) 
           ) : (
             filteredPortfolios.map(port => {
               const isEditing = editingId === port.id;
-              const assignedCount = projectCounts[port.name.toUpperCase()] || 0;
+              const assignedCount = projectCounts[normalizePortfolioName(port.name)] || 0;
 
               if (isEditing) {
                 return (

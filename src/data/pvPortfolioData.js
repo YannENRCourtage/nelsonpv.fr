@@ -795,27 +795,49 @@ export function computePvFinancials(site, options = {}) {
 }
 
 /**
- * Construit la liste exacte des centrales appartenant au portefeuille PV (ex: HELIOS).
+ * Normalise un nom de portefeuille sans accents et en majuscules pour comparaison stricte et robuste
+ */
+export function normalizePortfolioName(str) {
+  if (!str) return '';
+  return String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+}
+
+/**
+ * Extrait la valeur de portefeuille PV d'un projet CRM à travers tous les champs possibles
+ */
+export function getProjectPvPortfolio(p) {
+  if (!p) return '';
+  const val = p.pv_portfolio || p.portfolio_pv || p.pvPortfolio || p.portfolio || p.portefeuille_pv || p.portefeuille || p.data?.pv_portfolio || p.bp_pv_data?.portfolio || '';
+  return String(val).trim();
+}
+
+/**
+ * Construit la liste exacte des centrales appartenant au portefeuille PV (ex: HELIOS, CASSIOPEE).
  * RÈGLE STRICTE : Seuls les projets dont la fiche projet comporte explicitement l'affectation au portefeuille PV
- * (pv_portfolio === 'HELIOS' ou pv_portfolio !== 'Non affecté') apparaissent dans la liste.
+ * apparaissent dans la liste.
  * Reprend fidèlement les chiffrages réels, configurations de bâtiments, CAPEX et OPEX
  * réalisés pour chaque projet indépendamment (aucun loyer foncier arbitraire).
  */
 export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', currentContext = null) {
-  const targetPort = (portfolioName || 'HELIOS').toUpperCase();
+  const normTarget = normalizePortfolioName(portfolioName || 'HELIOS');
 
-  // Helper de normalisation sans accents pour comparaison robuste
+  // Helper de normalisation sans accents pour comparaison de texte (noms, villes)
   const normalize = (str) => (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
   // Helper pour vérifier si un projet CRM est affecté au portefeuille PV demandé
   const isAssignedToPort = (p) => {
     if (!p) return false;
-    const pvPort = (p.pv_portfolio || '').trim();
-    if (!pvPort || pvPort === 'Non affecté' || pvPort === 'Aucun' || pvPort === 'none' || pvPort === 'null') {
+    const rawPort = getProjectPvPortfolio(p);
+    const normPort = normalizePortfolioName(rawPort);
+    if (!normPort || normPort === 'NON AFFECTE' || normPort === 'NON AFFECTE' || normPort === 'AUCUN' || normPort === 'NONE' || normPort === 'NULL' || normPort === 'UNDEFINED') {
       return false;
     }
-    if (targetPort !== 'ALL') {
-      return pvPort.toUpperCase() === targetPort;
+    if (normTarget !== 'ALL') {
+      return normPort === normTarget;
     }
     return true;
   };
@@ -839,15 +861,33 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
     });
   };
 
-  // Si aucun projet CRM n'est fourni
-  if (!projects || projects.length === 0) {
+  // Récupération des projets effectifs (avec fallback local si le state React est vide lors du premier rendu)
+  let effectiveProjects = Array.isArray(projects) && projects.length > 0 ? projects : [];
+  if (effectiveProjects.length === 0 && typeof window !== 'undefined') {
+    try {
+      const gList = JSON.parse(localStorage.getItem('nelson:projects:green-invest:v1') || '[]');
+      const eList = JSON.parse(localStorage.getItem('nelson:projects:enr-courtage-energie:v1') || '[]');
+      const aList = JSON.parse(localStorage.getItem('nelson:projects:acama:v1') || '[]');
+      const mergedMap = new Map();
+      [...gList, ...eList, ...aList].forEach(p => {
+        if (p && p.id && !mergedMap.has(p.id)) mergedMap.set(p.id, p);
+      });
+      effectiveProjects = Array.from(mergedMap.values());
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // Si aucun projet CRM n'est fourni ou trouvé
+  if (effectiveProjects.length === 0) {
     return [];
   }
 
   const resultSites = [];
+  const displayPortLabel = portfolioName === 'ALL' ? 'HELIOS' : portfolioName;
 
   // Parcourir STRICTEMENT les projets CRM qui ont le portefeuille affecté dans leur fiche
-  projects.forEach((p, idx) => {
+  effectiveProjects.forEach((p, idx) => {
     if (isAssignedToPort(p)) {
       const mock = findMatchingMockSite(p);
       const coords = extractProjectCoordinates(p, mock);
@@ -974,16 +1014,21 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
       };
 
       const siteId = p.id || mock?.id || `pv_site_${idx + 1}`;
+      const projectName = p.name || mock?.siteName || mock?.name || `Centrale ${idx + 1}`;
+      const siteFullName = normalizePortfolioName(projectName).startsWith(normTarget)
+        ? projectName
+        : `${displayPortLabel} - ${projectName}`;
+
       const siteObj = {
         id: siteId,
-        name: p.name ? (p.name.toUpperCase().startsWith('HÉLIOS') ? p.name : `HÉLIOS - ${p.name}`) : (mock?.name || `HÉLIOS - Centrale ${idx + 1}`),
-        siteName: p.name || mock?.siteName || mock?.name || `Centrale ${idx + 1}`,
+        name: siteFullName,
+        siteName: projectName,
         client: [p.firstName, p.name].filter(Boolean).join(' ') || p.client_name || mock?.client || 'Client',
         postcode: p.zip || p.postcode || p.cp || mock?.postcode || '',
         city: p.city || p.commune || mock?.city || '',
         address: p.address || mock?.address || '',
         typeBat: p.type_bat || p.typeBat || mock?.typeBat || 'Bâtiment BAC',
-        spv: p.spv || mock?.spv || 'HÉLIOS SPV 1',
+        spv: p.spv || mock?.spv || `${displayPortLabel} SPV 1`,
         kwc: pKwc,
         productible: pProd,
         surface: p.surface || mock?.surface || Math.round(pKwc * 5),
