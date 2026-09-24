@@ -469,26 +469,6 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
 
             // Ignorer les éléments annotés
             clonedDoc.querySelectorAll('[data-html2canvas-ignore="true"]').forEach(el => el.remove());
-
-            // Repositionnement parfait des calques Leaflet (SVG/Canvas/Panes) dans html2canvas
-            const leafletNodes = clonedDoc.querySelectorAll(
-              '.leaflet-map-pane, .leaflet-tile-pane, .leaflet-overlay-pane, .leaflet-zoom-animated, .leaflet-pane svg, .leaflet-pane canvas'
-            );
-            leafletNodes.forEach((node) => {
-              const transform = node.style.transform;
-              if (transform && transform !== 'none') {
-                const match = transform.match(/translate(?:3d)?\(\s*([-\d.]+)px,\s*([-\d.]+)px/);
-                if (match) {
-                  const tx = parseFloat(match[1]);
-                  const ty = parseFloat(match[2]);
-                  const curL = parseFloat(node.style.left || 0);
-                  const curT = parseFloat(node.style.top || 0);
-                  node.style.left = `${curL + tx}px`;
-                  node.style.top = `${curT + ty}px`;
-                  node.style.transform = 'none';
-                }
-              }
-            });
           }
         });
 
