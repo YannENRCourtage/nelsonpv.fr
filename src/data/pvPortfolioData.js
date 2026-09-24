@@ -1,3 +1,5 @@
+import { findBessOdreData } from './bessOdreMatrix.js';
+
 /**
  * DONNÉES DU PORTEFEUILLE PHOTOVOLTAÏQUE HÉLIOS (MULTI-SITES PV)
  * 20 sites certifiés avec puissances réelles, productibles, et raccordements ODRE
@@ -16,7 +18,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 251.0,
     productible: 1125,
     surface: 1173,
-    rent: 2800,
+    rent: 0,
     lat: 45.847811,
     lng: 0.852996,
     substation: {
@@ -506,36 +508,164 @@ export const PV_PORTFOLIO_SITES = [
   }
 ];
 
+/**
+ * Extrait précisément les coordonnées GPS d'un projet CRM ou site de référence.
+ * Priorités :
+ * 1. lat/lng ou latitude/longitude numériques directes
+ * 2. Parsing du champ p.gps ("lat, lng" ou "lat; lng")
+ * 3. Géométrie polygonale/centroïde des map features (p.features)
+ * 4. Matrice officielle ODRE certifiée (par nom, commune, adresse)
+ * 5. Coordonnées du site mock si correspondance
+ * 6. Centroïde du département (Grand Sud-Ouest) avec dispersion déterministe pour éviter tout chevauchement
+ */
+export function extractProjectCoordinates(p, mock = null) {
+  // 1. Coordonnées directes sur l'objet projet
+  const pLat = parseFloat(p?.lat || p?.latitude);
+  const pLng = parseFloat(p?.lng || p?.longitude);
+  if (!isNaN(pLat) && !isNaN(pLng) && pLat > 41 && pLat < 51.5 && pLng > -5.5 && pLng < 9.5) {
+    return { lat: +pLat.toFixed(6), lng: +pLng.toFixed(6) };
+  }
+
+  // 2. Parsing de la chaîne GPS du CRM ("45.847811, 0.852996")
+  if (p?.gps && typeof p.gps === 'string') {
+    const sep = p.gps.includes(';') ? ';' : ',';
+    const parts = p.gps.split(sep).map(s => parseFloat(s.trim()));
+    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      if (parts[0] > 41 && parts[0] < 51.5 && parts[1] > -5.5 && parts[1] < 9.5) {
+        return { lat: +parts[0].toFixed(6), lng: +parts[1].toFixed(6) };
+      }
+    }
+  }
+
+  // 3. Extraction depuis les polygones / features cartographiques
+  const features = p?.features || p?.map_state?.features || [];
+  for (const feat of features) {
+    if (feat.latLngs && Array.isArray(feat.latLngs) && feat.latLngs.length > 0) {
+      const pt = feat.latLngs[0];
+      const fLat = parseFloat(pt.lat || pt[0]);
+      const fLng = parseFloat(pt.lng || pt[1]);
+      if (!isNaN(fLat) && !isNaN(fLng) && fLat > 41 && fLat < 51.5 && fLng > -5.5 && fLng < 9.5) {
+        return { lat: +fLat.toFixed(6), lng: +fLng.toFixed(6) };
+      }
+    }
+    if (feat.geometry?.coordinates && Array.isArray(feat.geometry.coordinates)) {
+      const coords = feat.geometry.coordinates[0];
+      if (Array.isArray(coords) && coords.length > 0) {
+        const pt = coords[0];
+        const fLng = parseFloat(pt[0]);
+        const fLat = parseFloat(pt[1]);
+        if (!isNaN(fLat) && !isNaN(fLng) && fLat > 41 && fLat < 51.5 && fLng > -5.5 && fLng < 9.5) {
+          return { lat: +fLat.toFixed(6), lng: +fLng.toFixed(6) };
+        }
+      }
+    }
+  }
+
+  // 4. Correspondance automatique avec la Matrice ODRE certifiée (31 postes sources)
+  const odre = findBessOdreData(
+    p?.name || p?.client_name || p?.client,
+    p?.city || p?.commune,
+    p?.address
+  );
+  if (odre && odre.latitude && odre.longitude) {
+    return { lat: +odre.latitude.toFixed(6), lng: +odre.longitude.toFixed(6) };
+  }
+
+  // 5. Coordonnées du mock de référence si trouvé
+  if (mock?.lat && mock?.lng) {
+    return { lat: +mock.lat.toFixed(6), lng: +mock.lng.toFixed(6) };
+  }
+
+  // 6. Géolocalisation par département / code postal dans le Grand Sud-Ouest
+  const cp = String(p?.postcode || p?.zip || p?.cp || '').trim();
+  const dept = cp.length >= 2 ? cp.substring(0, 2) : String(p?.dept || '').trim();
+  const DEPT_COORDS = {
+    '24': { lat: 45.18, lng: 0.72 }, // Dordogne (Périgueux, Bergerac, Prigonrieux)
+    '33': { lat: 44.84, lng: -0.58 }, // Gironde (Bordeaux, Libourne)
+    '47': { lat: 44.33, lng: 0.45 }, // Lot-et-Garonne (Agen, Marmande, Duras)
+    '40': { lat: 43.89, lng: -0.89 }, // Landes (Mont-de-Marsan, Dax)
+    '64': { lat: 43.30, lng: -0.37 }, // Pyrénées-Atlantiques (Pau, Bayonne)
+    '32': { lat: 43.65, lng: 0.58 }, // Gers (Auch)
+    '82': { lat: 44.02, lng: 1.35 }, // Tarn-et-Garonne (Montauban, Castelsarrasin)
+    '81': { lat: 43.93, lng: 2.15 }, // Tarn (Albi, Castres)
+    '31': { lat: 43.60, lng: 1.44 }, // Haute-Garonne (Toulouse)
+    '65': { lat: 43.23, lng: 0.08 }, // Hautes-Pyrénées (Tarbes)
+    '19': { lat: 45.27, lng: 1.77 }, // Corrèze (Tulle, Brive)
+    '87': { lat: 45.83, lng: 1.26 }, // Haute-Vienne (Limoges, Rochechouart)
+    '23': { lat: 46.17, lng: 1.87 }, // Creuse (Guéret)
+    '16': { lat: 45.65, lng: 0.16 }, // Charente (Angoulême)
+    '17': { lat: 45.75, lng: -0.63 }, // Charente-Maritime (La Rochelle, Saintes)
+    '46': { lat: 44.45, lng: 1.44 }, // Lot (Cahors)
+    '12': { lat: 44.35, lng: 2.57 }, // Aveyron (Rodez)
+  };
+
+  const strHash = (p?.name || p?.id || p?.city || 'site').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  if (DEPT_COORDS[dept]) {
+    const jitterLat = ((strHash % 17) - 8) * 0.025;
+    const jitterLng = (((strHash * 3) % 17) - 8) * 0.025;
+    return {
+      lat: +(DEPT_COORDS[dept].lat + jitterLat).toFixed(6),
+      lng: +(DEPT_COORDS[dept].lng + jitterLng).toFixed(6)
+    };
+  }
+
+  // 7. Fallback régional Grand Sud-Ouest avec dispersion déterministe
+  const jitterLat = ((strHash % 25) - 12) * 0.05;
+  const jitterLng = (((strHash * 7) % 25) - 12) * 0.05;
+  return {
+    lat: +(44.8 + jitterLat).toFixed(6),
+    lng: +(0.8 + jitterLng).toFixed(6)
+  };
+}
+
 export function computePvFinancials(site, options = {}) {
   const debtDuration = options.debtDuration || 20;
   const debtRate = options.debtRate || 4.3;
   const studyDuration = options.studyDuration || 20;
 
+  // Si le site a déjà ses rows 20 ans calculées et ses résultats complets, on les respecte fidèlement
+  if (site.rows && site.rows.length >= studyDuration && site.capexTotal && site.ebitdaAn1) {
+    return {
+      ...site,
+      studyDuration,
+      debtDuration,
+      debtRate
+    };
+  }
+
   const kwc = Number(site.kwc) || 250;
   const productible = Number(site.productible) || 1125;
-  const tarifS21 = options.tarifS21 || 0.082; // €/kWh
+  const tarifS21 = site.tarifBas || options.tarifS21 || 0.082; // €/kWh
   const coutKwcCentrale = options.coutKwcCentrale || 490; // €/kWc
-  const coutCharpente = site.coutCharpente || Math.round(kwc * 280);
-  const coutCentrale = Math.round(kwc * coutKwcCentrale);
-  const raccordement = site.raccordement || Math.min(65000, Math.round(15000 + (site.substation?.distanceKm || 5) * 4500));
-  const frais = Math.round((coutCentrale + coutCharpente) * 0.01);
-  const ingenieurDP = 7500;
-  const capexTotal = coutCentrale + coutCharpente + raccordement + frais + ingenieurDP;
+  const coutCentrale = site.coutCentrale !== undefined ? Number(site.coutCentrale) : Math.round(kwc * coutKwcCentrale);
+  const coutCharpente = site.coutCharpente !== undefined ? Number(site.coutCharpente) : 0;
+  const raccordement = site.raccordement !== undefined ? Number(site.raccordement) : Math.min(65000, Math.round(15000 + (site.substation?.distanceKm || 5) * 4500));
+  const frais = site.frais !== undefined ? Number(site.frais) : Math.round((coutCentrale + coutCharpente) * 0.01);
+  const capexTotal = site.capexTotal ? Number(site.capexTotal) : (coutCentrale + coutCharpente + raccordement + frais);
 
-  // Calcul revenus An 1 (S21 injection totale / surplus)
+  // Calcul revenus An 1 (S21 injection totale avec palier 1 100 kWh/kWc)
   const prodMwh = (kwc * productible) / 1000;
-  const caAnnuel = Math.round(kwc * productible * tarifS21);
+  let caAnnuel;
+  if (site.caAnnuel) {
+    caAnnuel = Number(site.caAnnuel);
+  } else if (productible > 1100) {
+    const prodBas = kwc * 1100;
+    const prodHaut = kwc * (productible - 1100);
+    caAnnuel = Math.round((prodBas * tarifS21) + (prodHaut * 0.04));
+  } else {
+    caAnnuel = Math.round(kwc * productible * tarifS21);
+  }
 
-  // OPEX annuels
-  const maintenance = Math.round(kwc * 7.5);
-  const assurance = Math.round(kwc * 3.5);
-  const taxesLocales = Math.round(kwc * 1.5);
-  const loyer = site.rent || Math.round(kwc * 10);
-  const opexAnnuel = maintenance + assurance + taxesLocales + loyer;
-  const ebitdaAn1 = caAnnuel - opexAnnuel;
+  // OPEX annuels : STRICTEMENT AUCUN LOYER FONCIER PAR DÉFAUT (loyer = 0 €)
+  const maintenance = site.maintenanceAn1 !== undefined ? Number(site.maintenanceAn1) : Math.round(kwc * 7.5);
+  const assurance = site.assuranceAn1 !== undefined ? Number(site.assuranceAn1) : Math.round(kwc * 3.5);
+  const taxesLocales = site.taxesLocalesAn1 !== undefined ? Number(site.taxesLocalesAn1) : 0;
+  const loyer = (site.rent !== undefined && site.rent !== null) ? Number(site.rent) : 0; // 0 € par défaut
+  const opexAnnuel = site.opexAnnuel ? Number(site.opexAnnuel) : (maintenance + assurance + taxesLocales + loyer);
+  const ebitdaAn1 = site.ebitdaAn1 ? Number(site.ebitdaAn1) : (caAnnuel - opexAnnuel);
 
   // Dette senior (90% emprunt, 10% apport)
-  const emprunt = Math.round(capexTotal * 0.90);
+  const emprunt = site.emprunt ? Number(site.emprunt) : Math.round(capexTotal * 0.90);
   const apport10 = capexTotal - emprunt;
   const rateDecimal = debtRate / 100;
   const annuiteDette = Math.round(
@@ -618,18 +748,19 @@ export function computePvFinancials(site, options = {}) {
     }
   }
 
-  // Approximation TRI
-  const triProjet = Math.max(5.0, Math.min(18.0, (ebitdaAn1 / capexTotal) * 100 * 0.95));
+  const triProjet = site.triProjet ? Number(site.triProjet) : Math.max(5.0, Math.min(18.0, (ebitdaAn1 / capexTotal) * 100 * 0.95));
+  const paybackProjet = site.payback ? Number(site.payback) : payback;
 
   const totalRecettesStudy = rows.reduce((s, r) => s + r.ca, 0);
   const totalOpexStudy = rows.reduce((s, r) => s + r.opex, 0);
   const totalCashFlowNet = rows.reduce((s, r) => s + r.cfNet, 0);
-  const dscrMoyen = rows.filter(r => r.serviceDette > 0).reduce((s, r) => s + r.dscr, 0) / (debtDuration || 1);
+  const dscrMoyen = site.dscrMoyen ? Number(site.dscrMoyen) : (rows.filter(r => r.serviceDette > 0).reduce((s, r) => s + r.dscr, 0) / (debtDuration || 1));
 
   return {
+    ...site,
     siteName: site.name,
-    commune: site.city,
-    codePostal: site.postcode,
+    commune: site.city || site.commune,
+    codePostal: site.postcode || site.zip || site.cp,
     posteSource: site.substation?.name || "ODRE",
     distanceKm: site.substation?.distanceKm || 5.0,
     quotePartS3REnR: site.substation?.quotePartS3renr || "92.73 k€/MW",
@@ -654,7 +785,7 @@ export function computePvFinancials(site, options = {}) {
     annuiteDette,
     ebitdaAn1,
     triProjet,
-    payback,
+    payback: paybackProjet,
     totalRecettesStudy,
     totalOpexStudy,
     totalCashFlowNet,
@@ -667,10 +798,10 @@ export function computePvFinancials(site, options = {}) {
  * Construit la liste exacte des centrales appartenant au portefeuille PV (ex: HELIOS).
  * RÈGLE STRICTE : Seuls les projets dont la fiche projet comporte explicitement l'affectation au portefeuille PV
  * (pv_portfolio === 'HELIOS' ou pv_portfolio !== 'Non affecté') apparaissent dans la liste.
- * Tout projet non affecté (ex: PRAVIE, CUBERTAFON, PAILLOT ayant pv_portfolio = null ou 'Non affecté')
- * est strictement exclu de la personnalisation et de l'étude complète HELIOS.
+ * Reprend fidèlement les chiffrages réels, configurations de bâtiments, CAPEX et OPEX
+ * réalisés pour chaque projet indépendamment (aucun loyer foncier arbitraire).
  */
-export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS') {
+export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', currentContext = null) {
   const targetPort = (portfolioName || 'HELIOS').toUpperCase();
 
   // Helper de normalisation sans accents pour comparaison robuste
@@ -689,7 +820,7 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS') {
     return true;
   };
 
-  // Helper pour trouver un site mock correspondant (pour enrichir les données ODRE / substation si besoin)
+  // Helper pour trouver un site mock correspondant
   const findMatchingMockSite = (p) => {
     const pName = normalize(p.name);
     const pClient = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
@@ -719,10 +850,131 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS') {
   projects.forEach((p, idx) => {
     if (isAssignedToPort(p)) {
       const mock = findMatchingMockSite(p);
-      const pKwc = parseFloat(p.kwc || p.puissance) || mock?.kwc || 250;
-      const siteId = p.id || mock?.id || `pv_site_${idx + 1}`;
+      const coords = extractProjectCoordinates(p, mock);
 
-      resultSites.push({
+      // Vérifier si ce projet correspond au projet actuellement ouvert dans l'éditeur BP
+      const isCurrentProject = currentContext?.currentProject && (
+        (p.id && currentContext.currentProject.id && p.id === currentContext.currentProject.id) ||
+        (normalize(p.name) && normalize(p.name) === normalize(currentContext.currentProject.name))
+      );
+
+      // Extraire la configuration BP sauvegardée ou les bâtiments dessinés
+      const savedState = p.bp_pv_data || p.bpAcamaState || {};
+      const savedBuildings = savedState.buildings || [];
+
+      let pKwc = 0;
+      let pProd = 0;
+      let pCentrale = 0;
+      let pCharpente = 0;
+      let pRaccordement = 0;
+      let pFrais = 0;
+      let pCapex = 0;
+      let pMaint = undefined;
+      let pAssur = undefined;
+      let pTaxes = 0;
+      let pLoyer = 0;
+      let pCa = undefined;
+      let pEbitda = undefined;
+      let pOpex = undefined;
+      let pTri = undefined;
+      let pPayback = undefined;
+      let pRows = undefined;
+
+      if (isCurrentProject && currentContext.currentParams && currentContext.currentResults) {
+        // PROJET EN COURS DANS L'ÉDITEUR BP : reprendre fidèlement ses chiffres exacts
+        const curPar = currentContext.currentParams;
+        const curRes = currentContext.currentResults;
+        pKwc = Number(curPar.kwc || curRes.kwc || 250);
+        pProd = Number(curPar.productible || curRes.productible || 1125);
+        pCentrale = Number(curPar.coutCentrale || Math.round(pKwc * 490));
+        pCharpente = Number(curPar.coutCharpente || 0);
+        pRaccordement = Number(curPar.raccordement || 0);
+        pFrais = Number(curPar.frais || 0);
+        pCapex = Number(curRes.capexTotal || curPar.totalInvestissement || (pCentrale + pCharpente + pRaccordement + pFrais));
+        pMaint = curPar.maintenance ? Number(curPar.maintenance) : Math.round(pKwc * 7.5);
+        pAssur = curPar.assurance ? Number(curPar.assurance) : Math.round(pKwc * 3.5);
+        pTaxes = curPar.taxesLocales ? Number(curPar.taxesLocales) : 0;
+        pLoyer = 0; // AUCUN LOYER FONCIER
+        pCa = Number(curRes.caAnnuel || curRes.revAn1 || 0);
+        pEbitda = Number(curRes.ebitdaAn1 || curRes.ebitda || 0);
+        pOpex = Number(curRes.totalOpexAn1 || curRes.opexAnnuel || 0);
+        pTri = Number(curRes.triProjet || 0);
+        pPayback = Number(curRes.payback || 0);
+        if (currentContext.currentRows && currentContext.currentRows.length >= 20) {
+          pRows = currentContext.currentRows;
+        }
+      } else if (p.bpResults) {
+        // Chiffrage BP précalculé sur le projet
+        const res = p.bpResults;
+        pKwc = Number(res.kwc || p.kwc || 250);
+        pProd = Number(res.productible || 1125);
+        pCapex = Number(res.capexTotal || res.totalConstruction || 250000);
+        pCentrale = Number(res.coutCentrale || Math.round(pKwc * 490));
+        pCharpente = Number(res.coutCharpente || 0);
+        pRaccordement = Number(res.raccordement || 0);
+        pFrais = Number(res.frais || 0);
+        pCa = Number(res.caAnnuel || (res.totalCA ? (res.totalCA / 20) : 0));
+        pEbitda = Number(res.ebitdaAn1 || res.ebitda || 0);
+        pOpex = Number(res.opexAnnuel || (res.caAnnuel - res.ebitdaAn1) || 0);
+        pTri = Number(res.triProjet || 0);
+        pPayback = Number(res.payback || 0);
+        pLoyer = 0;
+        if (res.rows && res.rows.length >= 20) pRows = res.rows;
+      } else if (savedBuildings.length > 0) {
+        // État BP sauvegardé avec liste de bâtiments
+        pKwc = savedBuildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0);
+        pCentrale = savedBuildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0), 0);
+        pCharpente = savedBuildings.reduce((sum, b) => sum + (parseFloat(b.coutCharpente) || 0), 0);
+        const totalProdKwh = savedBuildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0), 0);
+        pProd = pKwc > 0 ? (totalProdKwh / pKwc) : (parseFloat(p.solarYieldRoof1 || p.productible) || 1125);
+        pRaccordement = parseFloat(savedState.raccordement) || 0;
+        pFrais = parseFloat(savedState.frais) || 0;
+        pCapex = pCentrale + pCharpente + pRaccordement + pFrais + (parseFloat(savedState.soulte) || 0);
+        pMaint = savedState.maintenance ? parseFloat(savedState.maintenance) : Math.round(pKwc * 7.5);
+        pAssur = savedState.assurance ? parseFloat(savedState.assurance) : Math.round(pKwc * 3.5);
+        pTaxes = savedState.taxesLocales ? parseFloat(savedState.taxesLocales) : 0;
+        pLoyer = 0;
+      } else {
+        // Bâtiments multi-puissances (b1, b2, etc.) ou map features ou champs directs
+        const buildingFeatures = (p.features || []).filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
+        if (buildingFeatures.length > 0) {
+          pKwc = buildingFeatures.reduce((sum, f) => sum + (parseFloat(f.power || f.kwc || f.puissance) || 0), 0);
+          pCentrale = pKwc * 490;
+          pCharpente = buildingFeatures.reduce((sum, f) => sum + (parseFloat(f.cout_bat || f.coutCharpente) || 0), 0);
+        } else {
+          const b1 = parseFloat(p.puissance) || 0;
+          const b2 = parseFloat(p.puissance2) || 0;
+          const b3 = parseFloat(p.puissance3) || 0;
+          const b4 = parseFloat(p.puissance4) || 0;
+          const multi = b1 + b2 + b3 + b4;
+          if (multi > 0) {
+            pKwc = multi;
+            pCentrale = pKwc * 490;
+            pCharpente = parseFloat(p.coutCharpente) || 0;
+          } else {
+            pKwc = parseFloat(p.kwc || p.puissance) || mock?.kwc || 250;
+            pCentrale = Math.round(pKwc * 490);
+            pCharpente = parseFloat(p.coutCharpente) || 0;
+          }
+        }
+        pProd = parseFloat(p.productible || p.solarYieldRoof1) || mock?.productible || 1125;
+        pRaccordement = parseFloat(p.raccordement) || Math.min(65000, Math.round(15000 + (p.substation?.distanceKm || mock?.substation?.distanceKm || 5) * 4500));
+        pFrais = parseFloat(p.frais) || Math.round((pCentrale + pCharpente) * 0.01);
+        pCapex = parseFloat(p.capex || p.prix_total_ht) || (pCentrale + pCharpente + pRaccordement + pFrais);
+        pLoyer = 0;
+      }
+
+      // ODRE Substation
+      const subst = p.substation || mock?.substation || {
+        name: "ODRE",
+        distanceKm: 5.0,
+        quotePartS3renr: "92.73 k€/MW",
+        resteAffecterMw: 0,
+        statutRaccordement: "Zone standard Enedis"
+      };
+
+      const siteId = p.id || mock?.id || `pv_site_${idx + 1}`;
+      const siteObj = {
         id: siteId,
         name: p.name ? (p.name.toUpperCase().startsWith('HÉLIOS') ? p.name : `HÉLIOS - ${p.name}`) : (mock?.name || `HÉLIOS - Centrale ${idx + 1}`),
         siteName: p.name || mock?.siteName || mock?.name || `Centrale ${idx + 1}`,
@@ -733,23 +985,44 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS') {
         typeBat: p.type_bat || p.typeBat || mock?.typeBat || 'Bâtiment BAC',
         spv: p.spv || mock?.spv || 'HÉLIOS SPV 1',
         kwc: pKwc,
-        productible: parseFloat(p.productible || p.solarYieldRoof1) || mock?.productible || 1125,
+        productible: pProd,
         surface: p.surface || mock?.surface || Math.round(pKwc * 5),
-        rent: p.rent || mock?.rent || Math.round(pKwc * 10),
-        lat: p.lat || mock?.lat || 45.0,
-        lng: p.lng || mock?.lng || 1.0,
-        substation: p.substation || mock?.substation || {
-          name: "ODRE",
-          distanceKm: 5.0,
-          quotePartS3renr: "92.73 k€/MW",
-          resteAffecterMw: 0,
-          statutRaccordement: "Zone standard Enedis"
-        },
+        rent: 0, // STRICTEMENT AUCUN LOYER FONCIER
+        coutCentrale: pCentrale,
+        coutCharpente: pCharpente,
+        raccordement: pRaccordement,
+        frais: pFrais,
+        capexTotal: pCapex,
+        maintenanceAn1: pMaint,
+        assuranceAn1: pAssur,
+        taxesLocalesAn1: pTaxes,
+        loyerAn1: 0,
+        caAnnuel: pCa,
+        ebitdaAn1: pEbitda,
+        opexAnnuel: pOpex,
+        triProjet: pTri,
+        payback: pPayback,
+        rows: pRows,
+        lat: coords.lat,
+        lng: coords.lng,
+        substation: subst,
         crmProject: p
+      };
+
+      const completeFin = computePvFinancials(siteObj);
+      resultSites.push({
+        ...siteObj,
+        ...completeFin,
+        id: siteId,
+        name: siteObj.name,
+        siteName: siteObj.siteName,
+        lat: coords.lat,
+        lng: coords.lng
       });
     }
   });
 
   return resultSites;
 }
+
 

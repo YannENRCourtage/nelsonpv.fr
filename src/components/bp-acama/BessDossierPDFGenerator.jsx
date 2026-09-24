@@ -1645,9 +1645,9 @@ export default function BessDossierPDFGenerator({
               <div className="grid grid-cols-12 gap-5 items-stretch">
                 
                 {/* 1. CÔTÉ GAUCHE (6/12) : CARTE DES IMPLANTATIONS DU PORTEFEUILLE (SANS BARRE HAUTE NI FILIGRANE API) */}
-                <div className="col-span-6 bg-slate-900 text-white rounded-2xl overflow-hidden border border-slate-700 shadow-md flex flex-col justify-between" style={{ height: '480px' }}>
+                <div className="col-span-6 bg-slate-900 text-white rounded-2xl overflow-hidden border border-slate-700 shadow-md flex flex-col justify-between relative" style={{ height: '480px', position: 'relative', isolation: 'isolate', zIndex: 0 }}>
                   {/* Carte Interactive Leaflet Grand Sud-Ouest */}
-                  <div className="relative w-full flex-1 bg-slate-800 h-full">
+                  <div className="relative w-full flex-1 bg-slate-800 h-full" style={{ position: 'relative', isolation: 'isolate' }}>
                     <MapContainer
                       preferCanvas={true}
                       center={[44.75, 0.6]}
@@ -2120,7 +2120,7 @@ export default function BessDossierPDFGenerator({
       {/* MODALE DE SÉLECTION MULTI-PROJETS BESS ("ÉTUDE COMPLÈTE") */}
       {/* ========================================================================= */}
       {isSelectModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150" data-html2canvas-ignore="true">
+        <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150" data-html2canvas-ignore="true">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             
             {/* Header */}

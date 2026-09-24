@@ -88,7 +88,7 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
     const totalCaAn1 = sites.reduce((sum, s) => sum + s.caAnnuel, 0);
     const totalOpexAn1 = sites.reduce((sum, s) => sum + s.opexAnnuel, 0);
     const totalEbitdaAn1 = sites.reduce((sum, s) => sum + s.ebitda, 0);
-    const totalLoyersAn1 = sites.reduce((sum, s) => sum + (s.rent || 3000), 0);
+    const totalLoyersAn1 = sites.reduce((sum, s) => sum + (s.rent || 0), 0);
     const totalAnnuite = Math.abs(calculatePmt(rateDecimal, durationYears, totalCapex));
 
     // Chronique consolidée 20 ans

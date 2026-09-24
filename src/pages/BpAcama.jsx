@@ -2163,7 +2163,12 @@ function TabBpProjets({
   const [pvPortfolioExportData, setPvPortfolioExportData] = useState(null);
 
   // Sites PV strictement rattachés au portefeuille HELIOS selon la fiche de chaque projet
-  const pvHeliosSites = useMemo(() => getPvPortfolioSites(projects, 'HELIOS'), [projects]);
+  const pvHeliosSites = useMemo(() => getPvPortfolioSites(projects, 'HELIOS', {
+    currentProject: selectedProject,
+    currentParams: collapsedParams,
+    currentResults: bpResults,
+    currentRows: rows
+  }), [projects, selectedProject, collapsedParams, bpResults, rows]);
   const pvHeliosPowerMw = useMemo(() => (pvHeliosSites.reduce((a, b) => a + (b.kwc || 0), 0) / 1000).toFixed(1), [pvHeliosSites]);
 
   const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;

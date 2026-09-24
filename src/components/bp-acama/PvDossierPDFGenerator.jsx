@@ -85,11 +85,11 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
       raw = portfolioData.analyzedSites;
     } else {
       const effectiveProjects = (projects && projects.length > 0) ? projects : (portfolioData?.projects || []);
-      raw = getPvPortfolioSites(effectiveProjects, 'HELIOS');
+      raw = getPvPortfolioSites(effectiveProjects, 'HELIOS', portfolioData);
     }
 
     return raw.map((s, idx) => {
-      const fin = s.capexTotal ? s : computePvFinancials(s);
+      const fin = (s.rows && s.rows.length >= 20 && s.capexTotal) ? s : computePvFinancials(s);
       return {
         ...s,
         ...fin,
@@ -97,7 +97,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
         siteName: s.siteName || s.name || `Centrale ${idx + 1}`,
         commune: s.commune || s.city || '—',
         codePostal: s.codePostal || s.postcode || '—',
-        kwc: s.kwc || fin.kwc || 250,
+        kwc: fin.kwc || s.kwc || 250,
         posteSource: s.posteSource || s.substation?.name || 'ODRE',
         capexTotal: fin.capexTotal || s.capexTotal || 250000,
         ebitdaAn1: fin.ebitdaAn1 || s.ebitdaAn1 || 20000,
@@ -108,7 +108,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
         lng: s.lng || fin.lng
       };
     });
-  }, [portfolioData?.analyzedSites, portfolioData?.projects, projects]);
+  }, [portfolioData?.analyzedSites, portfolioData?.projects, portfolioData?.currentProject, portfolioData?.currentParams, portfolioData?.currentResults, portfolioData?.currentRows, projects]);
 
   // 2. Persistance de la sélection active dans le state du visualiseur
   const [selectedProjectIds, setSelectedProjectIds] = useState(() => allAvailableSites.map(s => s.id));
@@ -249,7 +249,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
         const maint = Math.round(opexAn1 * 0.50 * idxOpex);
         const assur = Math.round(opexAn1 * 0.25 * idxOpex);
         const taxes = Math.round(opexAn1 * 0.10 * idxOpex);
-        const loyer = Math.round(opexAn1 * 0.15 * idxOpex);
+        const loyer = 0; // AUCUN LOYER FONCIER
         const mra = i === 10 ? Math.round(capex * 0.05) : 0;
         const opex = maint + assur + taxes + loyer + mra;
         const ebitda = ca - opex;
@@ -323,7 +323,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
       const maint = Math.round(opexAn1 * 0.50 * idxOpex);
       const assur = Math.round(opexAn1 * 0.25 * idxOpex);
       const taxes = Math.round(opexAn1 * 0.10 * idxOpex);
-      const loyer = Math.round(opexAn1 * 0.15 * idxOpex);
+      const loyer = 0; // AUCUN LOYER FONCIER
       const mra = i === 10 ? Math.round(capex * 0.05) : 0;
       const opex = maint + assur + taxes + loyer + mra;
       const ebitda = ca - opex;
@@ -1099,7 +1099,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
 
                 <section
                   className="pv-render-page shrink-0 bg-white rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between"
-                  style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}
+                  style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box', position: 'relative', isolation: 'isolate' }}
                 >
                   <div className="flex-1 flex flex-col">
                     <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
@@ -1129,8 +1129,8 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                       </div>
                     </div>
 
-                    {/* Carte Leaflet OpenStreetMap */}
-                    <div className="flex-1 rounded-xl overflow-hidden border border-slate-200 shadow-inner" style={{ minHeight: '680px' }}>
+                    {/* Carte Leaflet OpenStreetMap avec sous-imposition et isolation de contexte stricte */}
+                    <div className="flex-1 rounded-xl overflow-hidden border border-slate-200 shadow-inner relative" style={{ minHeight: '680px', position: 'relative', isolation: 'isolate', zIndex: 0 }}>
                       <MapContainer
                         center={[centerLat, centerLng]}
                         zoom={isPort ? 7 : 12}
@@ -1296,7 +1296,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
       {/* MODALE DE SÉLECTION MULTI-PROJETS ("ÉTUDE COMPLÈTE") */}
       {/* ========================================================================= */}
       {isSelectModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150" data-html2canvas-ignore="true">
+        <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150" data-html2canvas-ignore="true">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             
             {/* Header */}

@@ -25,13 +25,15 @@ const fmtPct = (n) => `${(n ?? 0).toFixed(1)}%`;
 export default function PvProjectSingleSheet({ site, siteIndex, totalSites = 20, studyDuration = 20 }) {
   if (!site) return null;
 
-  // Calcul dynamique unifié avec computePvFinancials
-  const fin = computePvFinancials(site, {
-    studyDuration: studyDuration || 20,
-    debtDuration: 20,
-    debtRate: 4.3,
-    tarifS21: 0.082
-  });
+  // Calcul dynamique unifié avec computePvFinancials (respecte les calculs BP existants du site)
+  const fin = (site.rows && site.rows.length >= (studyDuration || 20) && site.capexTotal)
+    ? site
+    : computePvFinancials(site, {
+        studyDuration: studyDuration || 20,
+        debtDuration: 20,
+        debtRate: 4.3,
+        tarifS21: 0.082
+      });
 
   const kwc = fin.kwc || 250;
   const productible = fin.productible || 1125;
@@ -43,7 +45,7 @@ export default function PvProjectSingleSheet({ site, siteIndex, totalSites = 20,
   const coutCentrale = fin.coutCentrale;
   const coutCharpente = fin.coutCharpente;
   const raccordement = fin.raccordement;
-  const fraisCommuns = fin.frais + 7500;
+  const fraisCommuns = fin.frais + (fin.ingenieurDP || 0);
   const capexTotal = fin.capexTotal;
 
   // Financement senior (20 ans @ 4.30%)
@@ -56,11 +58,11 @@ export default function PvProjectSingleSheet({ site, siteIndex, totalSites = 20,
   // Revenus An 1
   const caAn1 = fin.caAnnuel;
 
-  // OPEX An 1
+  // OPEX An 1 (Aucun loyer foncier par défaut)
   const maintenanceAn1 = fin.maintenanceAn1 || Math.round(kwc * 7.5);
   const assuranceAn1 = fin.assuranceAn1 || Math.round(kwc * 3.5);
-  const taxesLocalesAn1 = fin.taxesLocalesAn1 || Math.round(kwc * 1.5);
-  const loyerAn1 = fin.loyerAn1 || Math.round(kwc * 10);
+  const taxesLocalesAn1 = fin.taxesLocalesAn1 || 0;
+  const loyerAn1 = fin.loyerAn1 || 0;
   const totalOpexAn1 = fin.opexAnnuel;
   const ebitdaAn1 = fin.ebitdaAn1;
 
@@ -118,7 +120,7 @@ export default function PvProjectSingleSheet({ site, siteIndex, totalSites = 20,
                   Centrale #{siteIndex} / {totalSites}
                 </span>
                 <h1 className="text-lg font-black text-[#0b192c] tracking-tight">
-                  PROJET {site.name?.toUpperCase() || site.siteName?.toUpperCase()} • {kwc} kWe / {kwc} kWc
+                  PROJET {site.name?.toUpperCase() || site.siteName?.toUpperCase()} • {kwc} kWc
                 </h1>
               </div>
               <p className="text-[10px] font-medium text-slate-500">
