@@ -138,12 +138,32 @@ export const subscribeToContacts = (userId, canViewAll, callback, tenantId = 'gr
 // PROJECTS
 // ============================================================================
 
+export const removeUndefinedFields = (val) => {
+    if (val === undefined) return null;
+    if (val === null || typeof val !== 'object') return val;
+    // Don't modify special Firestore objects like serverTimestamp() or FieldValue
+    if (val.constructor && val.constructor.name !== 'Object' && val.constructor.name !== 'Array') {
+        return val;
+    }
+    if (Array.isArray(val)) {
+        return val.map(item => removeUndefinedFields(item));
+    }
+    const clean = {};
+    for (const [key, value] of Object.entries(val)) {
+        if (value !== undefined) {
+            clean[key] = removeUndefinedFields(value);
+        }
+    }
+    return clean;
+};
+
 export const createProject = async (projectData, userId, tenantId = 'green-invest') => {
     const projectRef = doc(collection(db, 'projects'));
     // Remove temporary ID
     const { id, ...data } = projectData;
+    const cleanData = removeUndefinedFields(data);
     const project = {
-        ...data,
+        ...cleanData,
         tenantId,
         createdBy: userId,
         status: projectData.status || 'draft',
@@ -161,8 +181,9 @@ export const getProject = async (projectId) => {
 };
 
 export const updateProject = async (projectId, data) => {
+    const cleanData = removeUndefinedFields(data);
     await updateDoc(doc(db, 'projects', projectId), {
-        ...data,
+        ...cleanData,
         updatedAt: serverTimestamp()
     });
 };

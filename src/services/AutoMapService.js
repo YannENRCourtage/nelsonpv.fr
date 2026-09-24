@@ -60,8 +60,24 @@ function getBuildingCorners(centerLat, centerLng, lengthMeters, widthMeters, rot
  * @param {number} zoom Level de zoom (16-17 pour situation, 19 pour plan de masse)
  * @returns {Promise<string>} Data URL Image JPEG (data:image/jpeg;base64,...)
  */
-export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, buildings = null, showDimensions = true, distances = [], sdisPoint = null) {
+export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, buildings = null, showDimensions = true, distances = [], sdisPoint = null, options = {}) {
   return new Promise((resolve) => {
+    let isResolved = false;
+    const hardTimeout = setTimeout(() => {
+      if (!isResolved) {
+        console.warn('[AutoMap] Hard timeout triggered (6.5s), resolving null');
+        isResolved = true;
+        resolve(null);
+      }
+    }, 6500);
+
+    const safeResolve = (val) => {
+      if (isResolved) return;
+      isResolved = true;
+      clearTimeout(hardTimeout);
+      resolve(val);
+    };
+
     try {
       const width = 800;
       const height = 500;
@@ -72,7 +88,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
       const ctx = canvas.getContext('2d');
 
       if (!ctx) {
-        resolve(null);
+        safeResolve(null);
         return;
       }
 
@@ -430,7 +446,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
 
         // Marqueur Pin de localisation (uniquement pour PC1/DP1 Situation et Satellite sans bâtiments configurés)
         if (!hasBuildings) {
-          const isBatterySite = options?.isBattery || Boolean(buildings?.some(b => b.isBattery || b.solutionKey === 'battery'));
+          const isBatterySite = Boolean(options?.isBattery) || Boolean(buildings?.some(b => b.isBattery || b.solutionKey === 'battery'));
           if (isBatterySite) {
             // Repère spécifique BESS haute visibilité bicolore (orange/bleu)
             ctx.save();
@@ -511,10 +527,10 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
 
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-          resolve(dataUrl);
+          safeResolve(dataUrl);
         } catch (e) {
           console.warn('[AutoMap] Canvas toDataURL failed (CORS):', e);
-          resolve(null);
+          safeResolve(null);
         }
       };
 
@@ -523,12 +539,21 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
         img.crossOrigin = 'anonymous';
         let triedFallback = false;
         img.onload = () => {
-          const posX = centerX + item.dx * tileSize - offsetX;
-          const posY = centerY + item.dy * tileSize - offsetY;
-          ctx.drawImage(img, posX, posY, tileSize, tileSize);
+          try {
+            const posX = centerX + item.dx * tileSize - offsetX;
+            const posY = centerY + item.dy * tileSize - offsetY;
+            ctx.drawImage(img, posX, posY, tileSize, tileSize);
+          } catch (e) {
+            console.warn('[AutoMap] drawImage error:', e);
+          }
           loadedCount++;
           if (loadedCount === totalImages) {
-            drawMarkerAndFinish();
+            try {
+              drawMarkerAndFinish();
+            } catch (err) {
+              console.warn('[AutoMap] drawMarkerAndFinish error:', err);
+              safeResolve(null);
+            }
           }
         };
         img.onerror = () => {
@@ -540,19 +565,28 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
           }
           loadedCount++;
           if (loadedCount === totalImages) {
-            drawMarkerAndFinish();
+            try {
+              drawMarkerAndFinish();
+            } catch (err) {
+              console.warn('[AutoMap] drawMarkerAndFinish error:', err);
+              safeResolve(null);
+            }
           }
         };
         img.src = item.url;
       });
 
-      // Secours en cas de timeout réseau (6 secondes max)
+      // Secours en cas de timeout réseau (5 secondes max)
       setTimeout(() => {
-        if (loadedCount < totalImages) {
-          console.warn(`[AutoMap] Timeout: ${loadedCount}/${totalImages} tiles loaded, rendering partial map`);
-          drawMarkerAndFinish();
+        if (!isResolved) {
+          console.warn(`[AutoMap] Timeout: ${loadedCount}/${totalImages} tiles loaded, finishing map`);
+          try {
+            drawMarkerAndFinish();
+          } catch (e) {
+            safeResolve(null);
+          }
         }
-      }, 6000);
+      }, 5000);
 
     } catch (err) {
       console.error('[AutoMap] Error generating static map:', err);
@@ -568,9 +602,9 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
         fCtx.font = 'bold 14px Arial';
         fCtx.textAlign = 'center';
         fCtx.fillText('Carte non disponible — veuillez réessayer', 400, 250);
-        resolve(fallbackCanvas.toDataURL('image/jpeg', 0.9));
+        safeResolve(fallbackCanvas.toDataURL('image/jpeg', 0.9));
       } catch (_) {
-        resolve(null);
+        safeResolve(null);
       }
     }
   });

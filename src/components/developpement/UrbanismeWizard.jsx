@@ -100,6 +100,43 @@ function resolveProjectCoordinates(edProj, proj) {
   return { lat: 43.43571, lng: -1.17644 };
 }
 
+/**
+ * Supprime récursivement les chaînes Base64 data: lourdes pour Firestore & LocalStorage
+ * Ne conserve que les URLs distantes (https://...) et métadonnées textuelles/numériques
+ */
+function stripDataUrlsDeep(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(item => stripDataUrlsDeep(item));
+  }
+  const clean = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (typeof val === 'string' && val.startsWith('data:')) {
+      continue;
+    }
+    clean[key] = stripDataUrlsDeep(val);
+  }
+  return clean;
+}
+
+/**
+ * Supprime ou convertit les valeurs undefined en null pour Firestore
+ */
+function sanitizeUndefinedDeep(obj) {
+  if (obj === undefined) return null;
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeUndefinedDeep(item));
+  }
+  const clean = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val !== undefined) {
+      clean[key] = sanitizeUndefinedDeep(val);
+    }
+  }
+  return clean;
+}
+
 // Calcul précis des coordonnées GPS des 4 coins d'une structure orientée
 function getBuildingCorners(centerLat, centerLng, lengthMeters, widthMeters, rotationDeg) {
   const lat = Number(centerLat) || 43.43571;
@@ -1316,8 +1353,10 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       ...(overrides.editedProject || {})
     };
 
-    const stateToSave = {
-      step: overrides.step !== undefined ? overrides.step : step,
+    const targetStep = overrides.step !== undefined ? overrides.step : step;
+
+    const rawStateToSave = {
+      step: targetStep,
       solutionType: overrides.solutionType || solutionType,
       solutions: overrides.solutions || solutions,
       editedProject: mergedEditedProject,
@@ -1332,16 +1371,32 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       updatedAt: Date.now()
     };
 
+    // Nettoyer les chaînes Base64 data: lourdes et les champs undefined pour éviter Firestore 1MB et QuotaExceededError
+    const cleanSavedState = sanitizeUndefinedDeep(stripDataUrlsDeep(rawStateToSave));
+
     try {
-      localStorage.setItem(`nelson_urbanisme_state_${project.id}`, JSON.stringify(stateToSave));
+      localStorage.setItem(`nelson_urbanisme_state_${project.id}`, JSON.stringify(cleanSavedState));
     } catch (e) {
       console.warn('[UrbanismeWizard] Failed to save localStorage state:', e);
     }
 
+    // Persister les médias lourds (photos, captures) vers Firebase Storage en arrière-plan
+    if (project?.id) {
+      persistProjectUrbanismeMedia(
+        project.id,
+        activeTenantId,
+        captures,
+        photos,
+        currentBuildings
+      ).catch(err => {
+        console.warn('[UrbanismeWizard] Persistance média en arrière-plan:', err);
+      });
+    }
+
     if (typeof onUpdateProject === 'function') {
       const ed = mergedEditedProject;
-      const flatUpdates = {
-        urbanisme_saved_state: stateToSave,
+      const flatUpdates = sanitizeUndefinedDeep({
+        urbanisme_saved_state: cleanSavedState,
         demandeur: ed.demandeur || ed.lastName || '',
         lastName: ed.lastName || ed.demandeur || '',
         firstName: ed.firstName || '',
@@ -1368,21 +1423,22 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         puissance: ed.puissance || ed.kwc || '',
         objet_travaux: ed.objet_travaux || '',
         description: ed.description || ed.objet_travaux || '',
-        noticeText: stateToSave.noticeText,
-        solutions: stateToSave.solutions,
-        buildings: currentBuildings,
-        selectedStructureIds: stateToSave.selectedStructureIds,
-        masseDistances: stateToSave.masseDistances,
-        urbanisme_solutionType: stateToSave.solutionType,
-        solutionType: stateToSave.solutionType
-      };
+        noticeText: cleanSavedState.noticeText,
+        solutions: sanitizeUndefinedDeep(stripDataUrlsDeep(cleanSavedState.solutions)),
+        buildings: sanitizeUndefinedDeep(stripDataUrlsDeep(currentBuildings)),
+        selectedStructureIds: cleanSavedState.selectedStructureIds,
+        masseDistances: cleanSavedState.masseDistances,
+        urbanisme_solutionType: cleanSavedState.solutionType,
+        solutionType: cleanSavedState.solutionType,
+        urbanisme_step: targetStep
+      });
       try {
         onUpdateProject(project.id, flatUpdates);
       } catch (err) {
         console.warn('[UrbanismeWizard] Error calling onUpdateProject:', err);
       }
     }
-  }, [project?.id, step, solutionType, solutions, editedProject, noticeText, isNoticeUserModified, selectedStructureIds, masseDistances, masseLockedMaps, selectedPages, additionalRoof, batteryStorage, onUpdateProject]);
+  }, [project?.id, step, solutionType, solutions, editedProject, noticeText, isNoticeUserModified, selectedStructureIds, masseDistances, masseLockedMaps, selectedPages, additionalRoof, batteryStorage, captures, photos, activeTenantId, onUpdateProject]);
 
   const queueAutoSave = useCallback((overrides = {}) => {
     if (autoSaveTimerRef.current) {
@@ -1402,12 +1458,13 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           selectedPages: overrides.selectedPages || selectedPages,
           updatedAt: Date.now()
         };
-        localStorage.setItem(`nelson_urbanisme_state_${project.id}`, JSON.stringify(minimalState));
+        const cleanMinimal = sanitizeUndefinedDeep(stripDataUrlsDeep(minimalState));
+        localStorage.setItem(`nelson_urbanisme_state_${project.id}`, JSON.stringify(cleanMinimal));
       } catch (e) {}
     }
     autoSaveTimerRef.current = setTimeout(() => {
       saveWizardState(overrides);
-    }, 350);
+    }, 400);
   }, [project?.id, step, solutionType, solutions, editedProject, noticeText, isNoticeUserModified, selectedStructureIds, masseDistances, selectedPages, saveWizardState]);
 
   const handleSafeClose = useCallback(() => {
@@ -2537,9 +2594,16 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       console.warn('[UrbanismeWizard] Failed to parse local state:', e);
     }
     if (project?.urbanisme_saved_state) {
-      if (!savedState || (project.urbanisme_saved_state.updatedAt && project.urbanisme_saved_state.updatedAt > (savedState.updatedAt || 0))) {
+      if (!savedState || (project.urbanisme_saved_state.updatedAt && project.urbanisme_saved_state.updatedAt >= (savedState.updatedAt || 0))) {
         savedState = project.urbanisme_saved_state;
       }
+    }
+
+    // Restaurer l'étape exacte (0 à 6) sauvegardée pour que les utilisateurs à distance retrouvent le dossier dans l'état exact
+    if (typeof savedState?.step === 'number' && savedState.step >= 0 && savedState.step < STEPS.length) {
+      setStep(savedState.step);
+    } else if (typeof project?.urbanisme_step === 'number' && project.urbanisme_step >= 0 && project.urbanisme_step < STEPS.length) {
+      setStep(project.urbanisme_step);
     }
 
     if (savedState?.selectedPages) {
@@ -3093,15 +3157,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       objet_travaux: finalObjet,
       description: finalObjet,
       noticeText: initialNotice,
-      longueur: isBatterySolution ? '6.20' : String(b1?.length || (isAcama ? 30 : 37.5)),
-      largeur: isBatterySolution ? '3.20' : String(b1?.width || (isAcama ? 15 : 20.0)),
-      hauteur_egout: isBatterySolution ? '2.38' : String(b1?.eaveHeight || (isOmbriereSolution ? 3.7 : 4.0)),
-      pente: isBatterySolution ? '0' : String(b1?.roofPitch || 10),
-      leftSide: isBatterySolution ? 'none' : (b1?.leftSide || 'none'),
-      rightSide: isBatterySolution ? 'none' : (b1?.rightSide || 'none'),
-      leftWidth: b1?.leftWidth,
-      rightWidth: b1?.rightWidth,
-      bayCount: b1?.bayCount,
+      longueur: isBatterySolution ? '6.20' : String(savedState?.editedProject?.longueur || b1?.length || (isAcama ? 30 : 37.5)),
+      largeur: isBatterySolution ? '3.20' : String(savedState?.editedProject?.largeur || b1?.width || (isAcama ? 15 : 20.0)),
+      hauteur_egout: isBatterySolution ? '2.38' : String(savedState?.editedProject?.hauteur_egout || b1?.eaveHeight || (isOmbriereSolution ? 3.7 : 4.0)),
+      pente: isBatterySolution ? '0' : String(savedState?.editedProject?.pente || b1?.roofPitch || 10),
+      leftSide: isBatterySolution ? 'none' : (savedState?.editedProject?.leftSide || b1?.leftSide || 'none'),
+      rightSide: isBatterySolution ? 'none' : (savedState?.editedProject?.rightSide || b1?.rightSide || 'none'),
+      leftWidth: isBatterySolution ? 0 : (savedState?.editedProject?.leftWidth ?? b1?.leftWidth ?? 0),
+      rightWidth: isBatterySolution ? 0 : (savedState?.editedProject?.rightWidth ?? b1?.rightWidth ?? 0),
+      bayCount: savedState?.editedProject?.bayCount ?? b1?.bayCount ?? (isAcama ? 4 : 5),
       cadastre_section: defaultSec,
       cadastre_numero: defaultNum,
       cadastre_surface: defaultSurf,
@@ -4432,10 +4496,10 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       pente: isBattery ? '0' : String(b1.roofPitch || (b1.buildingType?.startsWith('asymetrique') ? 15 : (config.roofPitch || 10))),
       leftSide: isBattery ? 'none' : (b1.leftSide || config.leftSide || 'none'),
       rightSide: isBattery ? 'none' : (b1.rightSide || config.rightSide || 'none'),
-      leftWidth: isBattery ? 0 : (b1.leftWidth || config.leftWidth),
-      rightWidth: isBattery ? 0 : (b1.rightWidth || config.rightWidth),
-      bayCount: b1.bayCount || config.bayCount,
-      baySpacing: b1.baySpacing || config.baySpacing,
+      leftWidth: isBattery ? 0 : (b1.leftWidth ?? config.leftWidth ?? 0),
+      rightWidth: isBattery ? 0 : (b1.rightWidth ?? config.rightWidth ?? 0),
+      bayCount: b1.bayCount || config.bayCount || 4,
+      baySpacing: b1.baySpacing || config.baySpacing || 7.5,
       kwc: preservedKwc,
       projectSize: preservedKwc,
       puissance: preservedKwc,
