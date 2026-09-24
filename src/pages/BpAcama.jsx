@@ -2162,15 +2162,6 @@ function TabBpProjets({
   const [isPvDossierPdfOpen, setIsPvDossierPdfOpen] = useState(false);
   const [pvPortfolioExportData, setPvPortfolioExportData] = useState(null);
 
-  // Sites PV strictement rattachés au portefeuille HELIOS selon la fiche de chaque projet
-  const pvHeliosSites = useMemo(() => getPvPortfolioSites(projects, 'HELIOS', {
-    currentProject: selectedProject,
-    currentParams: collapsedParams,
-    currentResults: bpResults,
-    currentRows: rows
-  }), [projects, selectedProject, collapsedParams, bpResults, rows]);
-  const pvHeliosPowerMw = useMemo(() => (pvHeliosSites.reduce((a, b) => a + (b.kwc || 0), 0) / 1000).toFixed(1), [pvHeliosSites]);
-
   const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;
 
   const PDFHeader = () => (
@@ -2478,6 +2469,15 @@ function TabBpProjets({
   const dscrMoyenVal = bpResults.dscrMoyen || 0;
   const dscrColor = dscrMoyenVal >= limitDSCR ? 'text-green-600 bg-green-50' : dscrMoyenVal >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
   const DscrIcon = dscrMoyenVal >= limitDSCR ? CheckCircle : dscrMoyenVal >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
+
+  // Sites PV strictement rattachés au portefeuille HELIOS selon la fiche de chaque projet (après initialisation de collapsedParams et rows)
+  const pvHeliosSites = useMemo(() => getPvPortfolioSites(projects, 'HELIOS', {
+    currentProject: selectedProject,
+    currentParams: collapsedParams,
+    currentResults: bpResults,
+    currentRows: rows
+  }), [projects, selectedProject, collapsedParams, bpResults, rows]);
+  const pvHeliosPowerMw = useMemo(() => (pvHeliosSites.reduce((a, b) => a + (b.kwc || 0), 0) / 1000).toFixed(1), [pvHeliosSites]);
 
 
   const applyProject = (id) => {
