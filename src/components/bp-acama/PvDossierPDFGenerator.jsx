@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
@@ -19,11 +19,16 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Maximize2
+  Maximize2,
+  Search,
+  CheckSquare,
+  Square,
+  SlidersHorizontal,
+  AlertCircle
 } from 'lucide-react';
 import { PV_PORTFOLIO_SITES, computePvFinancials } from '../../data/pvPortfolioData.js';
 import PvProjectSingleSheet from './PvProjectSingleSheet.jsx';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Helpers de formatage — séparateurs de milliers avec espace normal (pas narrow no-break space)
@@ -48,13 +53,71 @@ const fmtPct = (val) => {
   return (val || 0).toFixed(1) + ' %';
 };
 
+// Composant interne Leaflet pour recentrer automatiquement la carte sur les projets sélectionnés
+function MapBoundsUpdater({ bounds }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds && bounds.length > 0) {
+      try {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+      } catch (err) {
+        // Fallback silencieux
+      }
+    }
+  }, [bounds, map]);
+  return null;
+}
+
 export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) {
   const [activeMode, setActiveMode] = useState('portfolio'); // 'portfolio' | 'single'
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [progressStep, setProgressStep] = useState('');
+  const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
+  const [modalSearchTerm, setModalSearchTerm] = useState('');
   const scrollContainerRef = useRef(null);
+
+  // 1. Liste exhaustive brute des centrales du portefeuille avec calculs financiers unitaires
+  const allAvailableSites = useMemo(() => {
+    const raw = portfolioData?.analyzedSites || PV_PORTFOLIO_SITES;
+    return raw.map((s, idx) => {
+      const fin = s.capexTotal ? s : computePvFinancials(s);
+      return {
+        ...s,
+        ...fin,
+        id: s.id || `pv_site_${idx + 1}`,
+        siteName: s.siteName || s.name || `Centrale ${idx + 1}`,
+        commune: s.commune || s.city || '—',
+        codePostal: s.codePostal || s.postcode || '—',
+        kwc: s.kwc || fin.kwc || 250,
+        posteSource: s.posteSource || s.substation?.name || 'ODRE',
+        capexTotal: fin.capexTotal || s.capexTotal || 250000,
+        ebitdaAn1: fin.ebitdaAn1 || s.ebitdaAn1 || 20000,
+        caAnnuel: fin.caAnnuel || s.caAnnuel || 25000,
+        distanceKm: s.distanceKm || s.substation?.distanceKm || 5.0,
+        typeBat: s.typeBat || 'Bâtiment BAC',
+        lat: s.lat || fin.lat,
+        lng: s.lng || fin.lng
+      };
+    });
+  }, [portfolioData?.analyzedSites]);
+
+  // 2. Persistance de la sélection active dans le state du visualiseur
+  const [selectedProjectIds, setSelectedProjectIds] = useState(() => allAvailableSites.map(s => s.id));
+
+  // Synchronisation dynamique si la liste change
+  useEffect(() => {
+    if (allAvailableSites.length > 0) {
+      setSelectedProjectIds(prev => {
+        if (prev && prev.length > 0) {
+          const valid = prev.filter(id => allAvailableSites.some(s => s.id === id));
+          if (valid.length > 0) return valid;
+        }
+        return allAvailableSites.map(s => s.id);
+      });
+    }
+  }, [allAvailableSites]);
 
   useEffect(() => {
     if (portfolioData?.autoExportType === 'single') {
@@ -70,24 +133,31 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
   const currentParams = portfolioData?.currentParams;
   const currentResults = portfolioData?.currentResults;
   const currentRows = portfolioData?.currentRows;
+  const isPort = activeMode === 'portfolio';
 
-  // Données consolidées portefeuille
-  const portfolioSites = (portfolioData?.analyzedSites || PV_PORTFOLIO_SITES).map(s => computePvFinancials(s));
-  const portfolioTotals = portfolioData?.consolidatedTotals || {
+  // 3. Centrales actives filtrées strictement selon la sélection utilisateur
+  const portfolioSites = isPort
+    ? allAvailableSites.filter(s => selectedProjectIds.includes(s.id))
+    : allAvailableSites;
+
+  // 4. Moteur de recalcul dynamique consolidé purement basé sur les projets sélectionnés
+  const portfolioTotals = {
     totalSites: portfolioSites.length,
     totalPowerMw: portfolioSites.reduce((sum, s) => sum + (s.kwc || 250), 0) / 1000,
-    totalProdMwh: portfolioSites.reduce((sum, s) => sum + (s.prodMwh || 300), 0),
+    totalProdMwh: portfolioSites.reduce((sum, s) => sum + (s.prodMwh || (s.kwc * 1.123) || 300), 0),
     totalCapex: portfolioSites.reduce((sum, s) => sum + (s.capexTotal || 250000), 0),
     totalCaAn1: portfolioSites.reduce((sum, s) => sum + (s.caAnnuel || 25000), 0),
     totalEbitdaAn1: portfolioSites.reduce((sum, s) => sum + (s.ebitdaAn1 || 20000), 0),
-    triConsolide: 9.5,
-    paybackConsol: 10.8,
+    triConsolide: portfolioSites.length > 0 && portfolioSites.reduce((sum, s) => sum + (s.capexTotal || 250000), 0) > 0
+      ? Math.max(5.0, Math.min(18.0, (portfolioSites.reduce((sum, s) => sum + (s.ebitdaAn1 || 20000), 0) / portfolioSites.reduce((sum, s) => sum + (s.capexTotal || 250000), 0)) * 100 * 0.95))
+      : 9.5,
+    paybackConsol: portfolioSites.reduce((sum, s) => sum + (s.ebitdaAn1 || 20000), 0) > 0
+      ? (portfolioSites.reduce((sum, s) => sum + (s.capexTotal || 250000), 0) / portfolioSites.reduce((sum, s) => sum + (s.ebitdaAn1 || 20000), 0))
+      : 10.8,
     debtDuration: 20,
     debtRate: 4.3,
     avgDscr: 1.35
   };
-
-  const isPort = activeMode === 'portfolio';
 
   // Données actives (Unitaire vs Portefeuille)
   const singleKwc = currentParams?.kwc || currentProject?.puissance || 250;
@@ -101,7 +171,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
   const kpi = {
     title: isPort ? "Portefeuille Multi-Projets Photovoltaïque HÉLIOS" : `Centrale Photovoltaïque — ${currentProject?.name || 'Projet Standard'}`,
     subtitle: isPort
-      ? `Consolidation financière & réseau de ${portfolioTotals.totalSites} centrales en toitures et hangars agricoles (${portfolioTotals.totalPowerMw.toFixed(2)} MWc)`
+      ? `Consolidation financière & réseau de ${portfolioTotals.totalSites} centrale${portfolioTotals.totalSites > 1 ? 's' : ''} en toitures et hangars agricoles (${portfolioTotals.totalPowerMw.toFixed(2)} MWc)`
       : `Dimensionnement technique et plan d'affaires de la centrale (${singleKwc.toFixed(1)} kWc) — ${currentProject?.city || 'Site'}`,
     powerLabel: isPort ? `${portfolioTotals.totalPowerMw.toFixed(2)} MWc` : `${singleKwc.toFixed(1)} kWc`,
     prodLabel: isPort ? `${Math.round(portfolioTotals.totalProdMwh).toLocaleString('fr-FR')} MWh/an` : `${Math.round(singleProdMwh).toLocaleString('fr-FR')} MWh/an`,
@@ -115,12 +185,16 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
     debtRate: 4.3
   };
 
-  // Pagination du répertoire des centrales (max 22 sites par page)
+  // Pagination dynamique du répertoire des centrales (max 22 sites par page pour éviter tout scroll)
   const SITES_PER_PAGE = 22;
   const repertoirePages = isPort
-    ? Array.from({ length: Math.ceil(portfolioSites.length / SITES_PER_PAGE) }, (_, i) =>
-        portfolioSites.slice(i * SITES_PER_PAGE, (i + 1) * SITES_PER_PAGE)
-      )
+    ? (() => {
+        const chunks = [];
+        for (let i = 0; i < portfolioSites.length; i += SITES_PER_PAGE) {
+          chunks.push(portfolioSites.slice(i, i + SITES_PER_PAGE));
+        }
+        return chunks.length > 0 ? chunks : [[]];
+      })()
     : [[]];
   const repertoirePageCount = isPort ? repertoirePages.length : 1;
 
@@ -144,15 +218,88 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
   const totalPagesCount = plancheTitles.length;
   const totalCompletePages = isPort ? (totalPagesCount + portfolioSites.length) : totalPagesCount;
 
-  // Années pour le tableau de cash flow
-  const years = Array.from({ length: 20 }, (_, i) => 2026 + i);
-
-  // Chronique financière détaillée 20 ans pour la Planche 2
+  // Chronique financière détaillée 20 ans pour la Planche 2 (Consolidation pure des flux)
   const detailedChronoRows = (() => {
     const yearsArr = Array.from({ length: 20 }, (_, i) => 2026 + i);
-    const capex = isPort ? portfolioTotals.totalCapex : singleCapex;
-    const caAn1 = isPort ? portfolioTotals.totalCaAn1 : singleCaAn1;
-    const ebitdaAn1 = isPort ? portfolioTotals.totalEbitdaAn1 : singleEbitdaAn1;
+
+    if (!isPort) {
+      const capex = singleCapex;
+      const caAn1 = singleCaAn1;
+      const ebitdaAn1 = singleEbitdaAn1;
+      const opexAn1 = Math.max(0, caAn1 - ebitdaAn1);
+      const emprunt = Math.round(capex * 0.90);
+      const rateDec = 0.043;
+      const annuite = Math.round(emprunt * (rateDec / (1 - Math.pow(1 + rateDec, -20))));
+
+      let detteDebut = emprunt;
+      let cumulCashFlow = -Math.round(capex * 0.10);
+
+      return yearsArr.map((y, i) => {
+        const deg = Math.pow(1 - 0.0045, i);
+        const idxT = Math.pow(1 + 0.006, i);
+        const idxOpex = Math.pow(1 + 0.02, i);
+        const ca = Math.round(caAn1 * deg * idxT);
+        const maint = Math.round(opexAn1 * 0.50 * idxOpex);
+        const assur = Math.round(opexAn1 * 0.25 * idxOpex);
+        const taxes = Math.round(opexAn1 * 0.10 * idxOpex);
+        const loyer = Math.round(opexAn1 * 0.15 * idxOpex);
+        const mra = i === 10 ? Math.round(capex * 0.05) : 0;
+        const opex = maint + assur + taxes + loyer + mra;
+        const ebitda = ca - opex;
+        const servDette = annuite;
+        const interest = Math.round(detteDebut * rateDec);
+        const principal = Math.max(0, servDette - interest);
+        const amort = Math.round(capex / 20);
+        const ebit = ebitda - amort;
+        const resFiscal = Math.max(0, ebit - interest);
+        const is = resFiscal > 0 ? (resFiscal < 42500 ? Math.round(resFiscal * 0.15) : Math.round((42500 * 0.15) + ((resFiscal - 42500) * 0.25))) : 0;
+        const dscr = servDette > 0 ? ((ebitda - is) / servDette) : 9.99;
+        const cfNet = ebitda - servDette - is;
+        cumulCashFlow += cfNet;
+        detteDebut = Math.max(0, detteDebut - principal);
+        return {
+          year: y, ca, caTotal: ca, maint, assur, taxes, loyer, mra, opex, ebitda,
+          amortissement: amort, ebit, interets: interest, resFiscal, is, principal,
+          serviceDette: servDette, dscr, cfNet, tresorerie: cfNet, cumulCashFlow
+        };
+      });
+    }
+
+    // Portefeuille : Somme exacte année par année des flux des projets sélectionnés
+    const hasRows = portfolioSites.length > 0 && portfolioSites[0].rows && portfolioSites[0].rows.length >= 20;
+    if (hasRows) {
+      let cumulCashFlow = -Math.round(portfolioTotals.totalCapex * 0.10);
+      return yearsArr.map((y, i) => {
+        const ca = portfolioSites.reduce((sum, s) => sum + (s.rows?.[i]?.ca || 0), 0);
+        const maint = portfolioSites.reduce((sum, s) => sum + (s.rows?.[i]?.maint || 0), 0);
+        const assur = portfolioSites.reduce((sum, s) => sum + (s.rows?.[i]?.assur || 0), 0);
+        const taxes = portfolioSites.reduce((sum, s) => sum + (s.rows?.[i]?.taxes || 0), 0);
+        const loyer = portfolioSites.reduce((sum, s) => sum + (s.rows?.[i]?.loyer || 0), 0);
+        const mra = portfolioSites.reduce((sum, s) => sum + (s.rows?.[i]?.mra || 0), 0);
+        const opex = maint + assur + taxes + loyer + mra;
+        const ebitda = ca - opex;
+        const amortissement = portfolioSites.reduce((sum, s) => sum + (s.rows?.[i]?.amortissement || 0), 0);
+        const ebit = ebitda - amortissement;
+        const interets = portfolioSites.reduce((sum, s) => sum + (s.rows?.[i]?.interets || 0), 0);
+        const resFiscal = Math.max(0, ebit - interets);
+        const is = resFiscal > 0 ? (resFiscal < 42500 ? Math.round(resFiscal * 0.15) : Math.round((42500 * 0.15) + ((resFiscal - 42500) * 0.25))) : 0;
+        const principal = portfolioSites.reduce((sum, s) => sum + (s.rows?.[i]?.principal || 0), 0);
+        const serviceDette = portfolioSites.reduce((sum, s) => sum + (s.rows?.[i]?.serviceDette || 0), 0);
+        const dscr = serviceDette > 0 ? ((ebitda - is) / serviceDette) : 9.99;
+        const cfNet = ebitda - serviceDette - is;
+        cumulCashFlow += cfNet;
+        return {
+          year: y, ca, caTotal: ca, maint, assur, taxes, loyer, mra, opex, ebitda,
+          amortissement, ebit, interets, resFiscal, is, principal, serviceDette,
+          dscr, cfNet, tresorerie: cfNet, cumulCashFlow
+        };
+      });
+    }
+
+    // Fallback dynamique
+    const capex = portfolioTotals.totalCapex;
+    const caAn1 = portfolioTotals.totalCaAn1;
+    const ebitdaAn1 = portfolioTotals.totalEbitdaAn1;
     const opexAn1 = Math.max(0, caAn1 - ebitdaAn1);
     const emprunt = Math.round(capex * 0.90);
     const rateDec = 0.043;
@@ -165,15 +312,13 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
       const deg = Math.pow(1 - 0.0045, i);
       const idxT = Math.pow(1 + 0.006, i);
       const idxOpex = Math.pow(1 + 0.02, i);
-
       const ca = Math.round(caAn1 * deg * idxT);
       const maint = Math.round(opexAn1 * 0.50 * idxOpex);
       const assur = Math.round(opexAn1 * 0.25 * idxOpex);
       const taxes = Math.round(opexAn1 * 0.10 * idxOpex);
       const loyer = Math.round(opexAn1 * 0.15 * idxOpex);
-      const mra = i === 10 ? Math.round(capex * 0.05) : 0; // Année 11
+      const mra = i === 10 ? Math.round(capex * 0.05) : 0;
       const opex = maint + assur + taxes + loyer + mra;
-
       const ebitda = ca - opex;
       const servDette = annuite;
       const interest = Math.round(detteDebut * rateDec);
@@ -182,35 +327,14 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
       const ebit = ebitda - amort;
       const resFiscal = Math.max(0, ebit - interest);
       const is = resFiscal > 0 ? (resFiscal < 42500 ? Math.round(resFiscal * 0.15) : Math.round((42500 * 0.15) + ((resFiscal - 42500) * 0.25))) : 0;
-      const cafds = ebitda - is;
-      const dscr = servDette > 0 ? (cafds / servDette) : 9.99;
+      const dscr = servDette > 0 ? ((ebitda - is) / servDette) : 9.99;
       const cfNet = ebitda - servDette - is;
       cumulCashFlow += cfNet;
-
       detteDebut = Math.max(0, detteDebut - principal);
-
       return {
-        year: y,
-        ca,
-        caTotal: ca,
-        maint,
-        assur,
-        taxes,
-        loyer,
-        mra,
-        opex,
-        ebitda,
-        amortissement: amort,
-        ebit,
-        interets: interest,
-        resFiscal,
-        is,
-        principal,
-        serviceDette: servDette,
-        dscr,
-        cfNet,
-        tresorerie: cfNet,
-        cumulCashFlow
+        year: y, ca, caTotal: ca, maint, assur, taxes, loyer, mra, opex, ebitda,
+        amortissement, ebit, interets, resFiscal, is, principal, serviceDette,
+        dscr, cfNet, tresorerie: cfNet, cumulCashFlow
       };
     });
   })();
@@ -229,11 +353,38 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
     </tr>
   );
 
-  // Fonction d'exportation PDF multi-pages A4 Paysage
+  // Helpers pour la modale de sélection multi-projets
+  const filteredModalSites = allAvailableSites.filter(s => {
+    if (!modalSearchTerm) return true;
+    const term = modalSearchTerm.toLowerCase();
+    return (
+      (s.siteName || s.name || '').toLowerCase().includes(term) ||
+      (s.commune || s.city || '').toLowerCase().includes(term) ||
+      (s.posteSource || '').toLowerCase().includes(term) ||
+      String(s.kwc || '').includes(term)
+    );
+  });
+
+  const modalSelectedSites = allAvailableSites.filter(s => selectedProjectIds.includes(s.id));
+  const modalSelectedPowerMw = modalSelectedSites.reduce((sum, s) => sum + (s.kwc || 250), 0) / 1000;
+  const modalSelectedCapex = modalSelectedSites.reduce((sum, s) => sum + (s.capexTotal || 250000), 0);
+  const modalSelectedEbitda = modalSelectedSites.reduce((sum, s) => sum + (s.ebitdaAn1 || 20000), 0);
+
+  const toggleSiteSelection = (id) => {
+    setSelectedProjectIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(x => x !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
+  // Fonction d'exportation PDF multi-pages A4 Paysage Pleine Largeur (Fidélité 100% visionneuse & compression JPEG)
   const handleGeneratePdf = async (exportMode = 'portfolio') => {
     setIsExportingPdf(true);
-    setExportProgress(5);
-    setProgressStep('Initialisation du document...');
+    setExportProgress(3);
+    setProgressStep('Initialisation du document A4 Paysage...');
 
     try {
       const pdf = new jsPDF({
@@ -244,64 +395,120 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const margin = 5;
 
-      // Collecter dynamiquement tous les IDs de planches
-      const baseSections = [];
+      // Collecter dynamiquement tous les conteneurs à capturer
+      const pagesToCapture = [];
       for (let p = 1; p <= totalPagesCount; p++) {
-        baseSections.push(`pv-planche-container-${p}`);
+        pagesToCapture.push({
+          containerId: `pv-planche-container-${p}`,
+          title: `Planche ${p}/${totalPagesCount} : ${plancheTitles[p - 1] || ''}`,
+          type: 'portfolio',
+          index: p
+        });
       }
 
-      let targetIds = [...baseSections];
       if (exportMode === 'complete' && isPort) {
         for (let i = 0; i < portfolioSites.length; i++) {
-          targetIds.push(`pv-single-site-container-${i + 1}`);
+          const s = portfolioSites[i];
+          pagesToCapture.push({
+            containerId: `pv-single-site-container-${i + 1}`,
+            title: `Fiche Projet ${i + 1}/${portfolioSites.length} : ${s.siteName || s.name || `Centrale ${i + 1}`}`,
+            type: 'site',
+            index: i + 1
+          });
         }
       }
 
-      for (let i = 0; i < targetIds.length; i++) {
-        const id = targetIds[i];
-        const container = document.getElementById(id);
+      const totalTargetPages = pagesToCapture.length;
+
+      for (let i = 0; i < totalTargetPages; i++) {
+        const target = pagesToCapture[i];
+        const container = document.getElementById(target.containerId);
         if (!container) continue;
 
-        const targetEl = container.querySelector('.pv-render-page') || container;
-        const progressPct = Math.round(((i + 1) / targetIds.length) * 90);
-        setExportProgress(progressPct);
-        setProgressStep(`Capture page ${i + 1} / ${targetIds.length}...`);
+        const page = container.querySelector('.pv-render-page');
+        if (!page) continue;
 
-        const canvas = await html2canvas(targetEl, {
+        setProgressStep(`Capture page ${i + 1} / ${totalTargetPages} (${target.title})...`);
+        setExportProgress(Math.round(((i + 1) / totalTargetPages) * 90));
+
+        // Forcer temporairement l'affichage et scroller
+        const prevDisplay = container.style.display;
+        container.style.display = 'flex';
+        page.scrollIntoView({ block: 'start', inline: 'nearest' });
+        await new Promise(r => setTimeout(r, 60));
+
+        const canvas = await html2canvas(page, {
           scale: 2,
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
+          width: 1380,
+          height: 940,
+          allowTaint: true,
           onclone: (clonedDoc) => {
+            // Isoler strictement la page courante en masquant tous les autres conteneurs
+            const allContainers = clonedDoc.querySelectorAll('[id^="pv-planche-container-"], [id^="pv-single-site-container-"]');
+            allContainers.forEach((c) => {
+              if (c.id === target.containerId) {
+                c.style.display = 'flex';
+                c.style.margin = '0';
+                c.style.padding = '0';
+              } else {
+                c.style.display = 'none';
+              }
+            });
+
+            // Réinitialiser les marges et scrolls du conteneur parent
+            const scrollBox = clonedDoc.querySelector('[class*="overflow-y-auto"]');
+            if (scrollBox) {
+              scrollBox.style.padding = '0';
+              scrollBox.style.margin = '0';
+              scrollBox.scrollTop = 0;
+            }
+
+            // Ignorer les éléments annotés
             clonedDoc.querySelectorAll('[data-html2canvas-ignore="true"]').forEach(el => el.remove());
-          },
-          ignoreElements: (el) => el.getAttribute('data-html2canvas-ignore') === 'true' || el.closest?.('[data-html2canvas-ignore="true"]') !== null
+
+            // Repositionnement parfait des calques Leaflet (SVG/Canvas/Panes) dans html2canvas
+            const leafletNodes = clonedDoc.querySelectorAll(
+              '.leaflet-map-pane, .leaflet-tile-pane, .leaflet-overlay-pane, .leaflet-zoom-animated, .leaflet-pane svg, .leaflet-pane canvas'
+            );
+            leafletNodes.forEach((node) => {
+              const transform = node.style.transform;
+              if (transform && transform !== 'none') {
+                const match = transform.match(/translate(?:3d)?\(\s*([-\d.]+)px,\s*([-\d.]+)px/);
+                if (match) {
+                  const tx = parseFloat(match[1]);
+                  const ty = parseFloat(match[2]);
+                  const curL = parseFloat(node.style.left || 0);
+                  const curT = parseFloat(node.style.top || 0);
+                  node.style.left = `${curL + tx}px`;
+                  node.style.top = `${curT + ty}px`;
+                  node.style.transform = 'none';
+                }
+              }
+            });
+          }
         });
 
-        const imgData = canvas.toDataURL('image/png');
-        const imgProps = pdf.getImageProperties(imgData);
+        // Restaurer le style d'affichage
+        container.style.display = prevDisplay;
 
-        const targetWidth = pdfWidth - (margin * 2);
-        const targetHeight = pdfHeight - (margin * 2);
-        const bestRatio = Math.min(targetWidth / imgProps.width, targetHeight / imgProps.height);
+        // Compression JPEG 0.92 pour éliminer RangeError: Invalid string length
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
 
-        const finalWidth = imgProps.width * bestRatio;
-        const finalHeight = imgProps.height * bestRatio;
-        const xPos = margin + (targetWidth - finalWidth) / 2;
-        const yPos = margin + (targetHeight - finalHeight) / 2;
-
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', xPos, yPos, finalWidth, finalHeight);
+        if (i > 0) pdf.addPage('a4', 'landscape');
+        // Pleine largeur exacte (0 marge pour couvrir 100% de la page A4 paysage sans bandes blanches)
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
       }
 
       setExportProgress(100);
-      setProgressStep('Finalisation...');
-      
+      setProgressStep('Finalisation et enregistrement du document...');
+
       const fileName = exportMode === 'complete'
-        ? `Etude_Complete_PV_Portfolio_HELIOS_${totalCompletePages}Pages.pdf`
-        : `Dossier_PV_${isPort ? 'Portfolio_HELIOS' : (currentProject?.name || 'Projet')}.pdf`;
+        ? `Etude_Complete_PV_Portfolio_HELIOS_${portfolioSites.length}Sites_${totalCompletePages}Pages.pdf`
+        : `Dossier_PV_${isPort ? `Portfolio_HELIOS_${portfolioSites.length}Sites` : (currentProject?.name || 'Projet')}.pdf`;
 
       pdf.save(fileName);
     } catch (err) {
@@ -844,6 +1051,30 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                               </tr>
                             ))
                           )}
+                          {/* Ligne de totalisation consolidée en bas de la dernière page du répertoire */}
+                          {isPort && pageIdx === repertoirePages.length - 1 && (
+                            <tr className="bg-amber-100/90 font-black border-t-2 border-slate-900 text-slate-950 text-xs">
+                              <td className="p-2 text-center text-slate-500 font-bold">∑</td>
+                              <td className="p-2 font-black uppercase text-slate-900" colSpan={3}>
+                                TOTAL CONSOLIDÉ ({portfolioSites.length} CENTRALES SÉLECTIONNÉES)
+                              </td>
+                              <td className="p-2 text-right font-black text-blue-900">
+                                {portfolioTotals.totalPowerMw.toFixed(2)} MWc
+                              </td>
+                              <td className="p-2 text-slate-700 font-bold" colSpan={2}>
+                                {portfolioSites.length} Centrales
+                              </td>
+                              <td className="p-2 text-right font-black text-slate-900">
+                                {fmtEur(portfolioTotals.totalCapex)}
+                              </td>
+                              <td className="p-2 text-right font-black text-emerald-700">
+                                {fmtEur(portfolioTotals.totalCaAn1)}
+                              </td>
+                              <td className="p-2 text-right font-black text-emerald-800">
+                                {fmtEur(portfolioTotals.totalEbitdaAn1)}
+                              </td>
+                            </tr>
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -871,6 +1102,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
             const validMapSites = mapSites.filter(s => s.lat && s.lng);
             const centerLat = validMapSites.length > 0 ? validMapSites.reduce((s, p) => s + (p.lat || 45), 0) / validMapSites.length : 45.5;
             const centerLng = validMapSites.length > 0 ? validMapSites.reduce((s, p) => s + (p.lng || 1), 0) / validMapSites.length : 1.5;
+            const mapBounds = validMapSites.map(s => [s.lat, s.lng]);
 
             return (
               <div id={`pv-planche-container-${cartoPlancheNum}`} className="w-full flex flex-col items-center shrink-0 mb-8">
@@ -893,11 +1125,11 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                         />
                         <div>
                           <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight">
-                            {isPort ? "Cartographie des Centrales du Portefeuille HÉLIOS" : `Localisation — ${currentProject?.name || 'Projet PV'}`}
+                            {isPort ? `Cartographie des Centrales du Portefeuille HÉLIOS (${portfolioSites.length} Sites)` : `Localisation — ${currentProject?.name || 'Projet PV'}`}
                           </h2>
                           <p className="text-xs font-medium text-slate-600">
                             {isPort
-                              ? `Implantation géographique des ${validMapSites.length} centrales solaires dans le Grand Sud-Ouest.`
+                              ? `Implantation géographique des ${validMapSites.length} centrales solaires géolocalisées dans le Grand Sud-Ouest.`
                               : `Emplacement géographique de la centrale photovoltaïque.`}
                           </p>
                         </div>
@@ -924,6 +1156,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
+                        {mapBounds.length > 0 && <MapBoundsUpdater bounds={mapBounds} />}
                         {validMapSites.map((site, idx) => (
                           <CircleMarker
                             key={site.id || idx}
@@ -954,7 +1187,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
                   {/* Pied de page institutionnel ENR COURTAGE SAS */}
                   <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
                     <div>ENR COURTAGE SAS • Cartographie d'Actifs Photovoltaïques</div>
-                    <div className="font-semibold text-slate-600">Implantation & Réseau de Centrales Solaires</div>
+                    <div className="font-semibold text-slate-600">Implantation &amp; Réseau de Centrales Solaires</div>
                     <div className="font-bold text-[#0b192c]">Planche {cartoPlancheNum} / {totalPagesCount}</div>
                   </div>
                 </section>
@@ -1011,14 +1244,28 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Bouton de personnalisation du portefeuille */}
+            {isPort && (
+              <button
+                type="button"
+                onClick={() => setIsSelectModalOpen(true)}
+                disabled={isExportingPdf}
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Sélectionner les centrales à inclure dans l'étude"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
+                <span>Filtrer ({portfolioSites.length}/{allAvailableSites.length})</span>
+              </button>
+            )}
+
             {/* Bouton ÉTUDE COMPLÈTE (Multi-Pages) */}
             {isPort && (
               <button
                 type="button"
-                onClick={() => handleGeneratePdf('complete')}
+                onClick={() => setIsSelectModalOpen(true)}
                 disabled={isExportingPdf}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-                title={`Générer l'étude complète consolidée de ${totalCompletePages} pages`}
+                title={`Personnaliser le portefeuille et générer l'étude complète (${totalCompletePages} pages)`}
               >
                 <Sparkles className="w-4 h-4 text-yellow-200" />
                 <span>ÉTUDE COMPLÈTE ({totalCompletePages} PAGES)</span>
@@ -1057,6 +1304,198 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData }) 
           </div>
         </footer>
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODALE DE SÉLECTION MULTI-PROJETS ("ÉTUDE COMPLÈTE") */}
+      {/* ========================================================================= */}
+      {isSelectModalOpen && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150" data-html2canvas-ignore="true">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md">
+                  <SlidersHorizontal className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-[#0b192c]">Personnaliser le portefeuille pour l'étude complète</h3>
+                  <p className="text-xs text-slate-600">Sélectionnez les projets à inclure dans les analyses financières consolidées, la cartographie et les fiches unitaires.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSelectModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Barre de contrôle et recherche */}
+            <div className="px-6 py-3 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                <div className="relative w-full max-w-sm">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher par nom, commune, puissance..."
+                    value={modalSearchTerm}
+                    onChange={(e) => setModalSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  {modalSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setModalSearchTerm('')}
+                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedProjectIds(allAvailableSites.map(s => s.id))}
+                  className="px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>Tout sélectionner</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProjectIds([])}
+                  className="px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Square className="w-3.5 h-3.5" />
+                  <span>Tout désélectionner</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Compteur dynamique en haut de modale */}
+            <div className="px-6 py-2.5 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border-b border-blue-100 flex items-center justify-between text-xs font-bold text-blue-950 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white font-extrabold text-[11px]">
+                  {selectedProjectIds.length} / {allAvailableSites.length} projets sélectionnés
+                </span>
+                <span className="text-slate-300">•</span>
+                <span>Puissance : <strong className="text-blue-900">{modalSelectedPowerMw.toFixed(2)} MWc</strong></span>
+                <span className="text-slate-300">•</span>
+                <span>CAPEX total : <strong className="text-slate-900">{fmtEur(modalSelectedCapex)}</strong></span>
+                <span className="text-slate-300">•</span>
+                <span>EBITDA An 1 : <strong className="text-emerald-700">{fmtEur(modalSelectedEbitda)}</strong></span>
+              </div>
+              {selectedProjectIds.length === 0 && (
+                <span className="text-red-600 font-black text-xs flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  Veuillez sélectionner au moins un projet
+                </span>
+              )}
+            </div>
+
+            {/* Table list */}
+            <div className="flex-1 overflow-y-auto p-4 max-h-[50vh]">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="sticky top-0 bg-slate-100 text-slate-700 font-extrabold z-10 border-b border-slate-200">
+                  <tr>
+                    <th className="p-2 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedProjectIds.length === allAvailableSites.length && allAvailableSites.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedProjectIds(allAvailableSites.map(s => s.id));
+                          else setSelectedProjectIds([]);
+                        }}
+                        className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      />
+                    </th>
+                    <th className="p-2">#</th>
+                    <th className="p-2">Nom du site / Bâtiment</th>
+                    <th className="p-2">Commune (Dép)</th>
+                    <th className="p-2 text-right">Puissance</th>
+                    <th className="p-2">Poste Source</th>
+                    <th className="p-2 text-right">CAPEX Total</th>
+                    <th className="p-2 text-right">EBITDA An 1</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredModalSites.map((s, idx) => {
+                    const isChecked = selectedProjectIds.includes(s.id);
+                    return (
+                      <tr
+                        key={s.id}
+                        onClick={() => toggleSiteSelection(s.id)}
+                        className={`hover:bg-slate-50 transition-colors cursor-pointer ${isChecked ? 'bg-amber-50/40' : 'opacity-60'}`}
+                      >
+                        <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSiteSelection(s.id)}
+                            className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                          />
+                        </td>
+                        <td className="p-2 text-slate-400 font-bold">{idx + 1}</td>
+                        <td className="p-2 font-bold text-slate-900">{s.siteName || s.name}</td>
+                        <td className="p-2 text-slate-600">{s.commune} ({s.codePostal?.slice(0, 2) || '—'})</td>
+                        <td className="p-2 text-right font-black text-blue-900">{s.kwc} kWc</td>
+                        <td className="p-2 font-medium text-slate-700">{s.posteSource}</td>
+                        <td className="p-2 text-right font-bold text-slate-800">{fmtEur(s.capexTotal)}</td>
+                        <td className="p-2 text-right font-black text-emerald-700">{fmtEur(s.ebitdaAn1)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSelectModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Annuler
+              </button>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={selectedProjectIds.length === 0}
+                  onClick={() => {
+                    if (selectedProjectIds.length === 0) return;
+                    setIsSelectModalOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-800 bg-slate-200 hover:bg-slate-300 disabled:opacity-40 transition-colors cursor-pointer"
+                >
+                  Appliquer à la visionneuse ({selectedProjectIds.length} sites)
+                </button>
+
+                <button
+                  type="button"
+                  disabled={selectedProjectIds.length === 0 || isExportingPdf}
+                  onClick={() => {
+                    if (selectedProjectIds.length === 0) return;
+                    setIsSelectModalOpen(false);
+                    setTimeout(() => {
+                      handleGeneratePdf('complete');
+                    }, 150);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-yellow-200" />
+                  <span>Valider et Générer l'Étude ({totalPagesCount} + {selectedProjectIds.length} Pages)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

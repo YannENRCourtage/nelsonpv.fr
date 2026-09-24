@@ -22,14 +22,34 @@ import {
   Compass,
   Maximize2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Search,
+  CheckSquare,
+  Square,
+  SlidersHorizontal,
+  AlertCircle
 } from 'lucide-react';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import BatteryStationVisualizer from '../developpement/BatteryStationVisualizer.jsx';
 import { BESS_PORTFOLIO_SITES } from '../../data/bessPortfolioData.js';
 import { calculatePmt, computeBessFinancials } from '../../services/bessSimulationEngine.js';
 import BessProjectSingleSheet from './BessProjectSingleSheet.jsx';
+
+// Composant interne Leaflet pour recentrer la carte sur les projets sélectionnés
+function MapBoundsUpdater({ bounds }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds && bounds.length > 0) {
+      try {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+      } catch (err) {
+        // Fallback silencieux
+      }
+    }
+  }, [bounds, map]);
+  return null;
+}
 
 // Helper pour le calcul dynamique des métriques et du Payback réel de chaque site du répertoire
 const computeDynamicSiteMetrics = (site) => {
@@ -159,11 +179,27 @@ export default function BessDossierPDFGenerator({
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressStep, setProgressStep] = useState('');
   const [activePageIndex, setActivePageIndex] = useState(0);
+  const [selectedProjectIds, setSelectedProjectIds] = useState(() => SITES_DATABASE.map(s => s.id));
+  const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
+  const [modalSearchTerm, setModalSearchTerm] = useState('');
 
   const scrollContainerRef = useRef(null);
 
   const isPort = activeMode === 'portfolio';
   const totalPagesCount = isPort ? 8 : 6;
+
+  // Synchronisation dynamique si SITES_DATABASE change
+  useEffect(() => {
+    if (SITES_DATABASE.length > 0) {
+      setSelectedProjectIds(prev => {
+        if (prev && prev.length > 0) {
+          const valid = prev.filter(id => SITES_DATABASE.some(s => s.id === id));
+          if (valid.length > 0) return valid;
+        }
+        return SITES_DATABASE.map(s => s.id);
+      });
+    }
+  }, []);
 
   // Synchronisation dynamique du mode lorsque les props changent
   useEffect(() => {
@@ -190,18 +226,22 @@ export default function BessDossierPDFGenerator({
 
   if (!isOpen) return null;
 
-  const mult = isPort ? 31 : 1;
+  // 1. Projets BESS filtrés selon la sélection de l'utilisateur
+  const selectedBessSites = isPort
+    ? SITES_DATABASE.filter(s => selectedProjectIds.includes(s.id))
+    : SITES_DATABASE;
+  const mult = isPort ? selectedBessSites.length : 1;
 
   // Recherche du site unitaire
   const selectedSite = SITES_DATABASE.find(s => s.name.toUpperCase() === (projectData?.name || '').toUpperCase()) || SITES_DATABASE[7]; // Concèze
 
-  // Nom institutionnel affiché
+  // Nom institutionnel affiché dynamique
   const headerProjectTitle = isPort
-    ? "Portefeuille Consolidé BESS 15,50 MW / 32,36 MWh"
+    ? `Portefeuille Consolidé BESS ${(mult * 0.5).toFixed(2).replace('.', ',')} MW / ${(mult * 1.044).toFixed(2).replace('.', ',')} MWh`
     : `Centrale BESS Stand-Alone 500 kW / 1 044 kWh (${projectData?.name || selectedSite.name})`;
 
   const headerProjectSubtitle = isPort
-    ? "Grappe territoriale de 31 unités standardisées (500 kW / 1 044 kWh) raccordées au réseau HTA 20 kV Enedis dans le Grand Sud-Ouest (Nouvelle-Aquitaine & Occitanie). Monétisation agrégée en Value Stacking sous le régime TURPE 7 délibéré CRE 2025-227."
+    ? `Grappe territoriale de ${mult} unité${mult > 1 ? 's standardisées' : ' standardisée'} (500 kW / 1 044 kWh) raccordée${mult > 1 ? 's' : ''} au réseau HTA 20 kV Enedis dans le Grand Sud-Ouest (Nouvelle-Aquitaine & Occitanie). Monétisation agrégée en Value Stacking sous le régime TURPE 7 délibéré CRE 2025-227.`
     : `Unité de stockage stationnaire autonome par batterie LFP (4 armoires CESC Mercury 261) raccordée au réseau HTA 20 kV Enedis (${selectedSite.substation} - ${selectedSite.dist}). Monétisation optimisée en Value Stacking sous le barème TURPE 7.`;
 
   // Paramètres de dette senior dynamiques
@@ -223,11 +263,11 @@ export default function BessDossierPDFGenerator({
   const validDscr = dscrArray.filter(v => v !== null);
   const avgDscr = validDscr.length > 0 ? (validDscr.reduce((a, b) => a + b, 0) / validDscr.length) : 1.98;
 
-  // Totaux cumulés et métriques unifiées
+  // Totaux cumulés et métriques unifiées basés exclusivement sur les projets sélectionnés
   const singleMetrics = !isPort ? computeDynamicSiteMetrics(selectedSite) : null;
-  const totalEbitdaAllSites = SITES_DATABASE.reduce((sum, s) => sum + s.ebitdaAn1, 0);
-  const totalCaAllSites = SITES_DATABASE.reduce((sum, s) => sum + computeDynamicSiteMetrics(s).caAnnuel, 0);
-  const totalCapexAllSites = SITES_DATABASE.reduce((sum, s) => sum + computeDynamicSiteMetrics(s).capexTotal, 0);
+  const totalEbitdaAllSites = selectedBessSites.reduce((sum, s) => sum + s.ebitdaAn1, 0);
+  const totalCaAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s).caAnnuel, 0);
+  const totalCapexAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s).capexTotal, 0);
 
   // Totaux cumulés 15 ans
   const cumulRev = YEARS_15.reduce((acc, _, i) => acc + (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult, 0);
@@ -243,21 +283,21 @@ export default function BessDossierPDFGenerator({
     payback: isPort ? '5.0 ans' : (singleMetrics?.paybackFormatted || '5.0 ans'),
     paybackEquity: isPort ? 'Sur Fonds Propres : 2.2 ans' : 'Sur Fonds Propres : 2.2 ans',
     ebitda: isPort ? `${(totalEbitdaAllSites / 1000000).toFixed(2)} M€` : fmtEur(singleMetrics?.ebitdaAn1 || 56215),
-    ebitdaSub: isPort ? 'EBITDA consolidé net (31 sites)' : 'Marge opérationnelle ~61%',
+    ebitdaSub: isPort ? `EBITDA consolidé net (${mult} site${mult > 1 ? 's' : ''})` : 'Marge opérationnelle ~61%',
     revenue: isPort ? `${(totalCaAllSites / 1000000).toFixed(2)} M€` : fmtEur(singleMetrics?.caAnnuel || 93171),
-    revenueSub: isPort ? 'Value Stacking 31 sites (2 c/j)' : '2 cycles journaliers (24h)',
+    revenueSub: isPort ? `Value Stacking ${mult} site${mult > 1 ? 's' : ''} (2 c/j)` : '2 cycles journaliers (24h)',
     capex: isPort ? `${(totalCapexAllSites / 1000000).toFixed(2)} M€` : fmtEur(singleMetrics?.capexTotal || 292400),
-    capexSub: isPort ? '~290 k€ / site raccordé clé en main' : '585 € / kW installé',
-    turpeGain: isPort ? '+439 673 €' : '+14 183 €',
+    capexSub: isPort ? `~${Math.round(totalCapexAllSites / (mult || 1) / 1000)} k€ / site raccordé` : '585 € / kW installé',
+    turpeGain: isPort ? `+${Math.round(mult * 14183).toLocaleString('fr-FR')} €` : '+14 183 €',
     turpeSub: isPort ? 'Gain annuel réseau consolidé' : 'Économie directe vs barème',
-    rent: isPort ? '93 000 € / an' : '3 000 € / an',
-    rentSub: isPort ? '31 baux notariés 20 ans verrouillés' : 'Bail notarié 20 ans (750 €/brique)',
-    fcr: isPort ? '1 672 016 € / an' : '53 936 € / an',
-    arb: isPort ? '945 035 € / an' : '30 485 € / an',
-    capa: isPort ? '271 250 € / an' : '8 750 € / an',
+    rent: isPort ? `${(mult * 3000).toLocaleString('fr-FR')} € / an` : '3 000 € / an',
+    rentSub: isPort ? `${mult} baux notariés 20 ans verrouillés` : 'Bail notarié 20 ans (750 €/brique)',
+    fcr: isPort ? `${Math.round(mult * 53936).toLocaleString('fr-FR')} € / an` : '53 936 € / an',
+    arb: isPort ? `${Math.round(mult * 30485).toLocaleString('fr-FR')} € / an` : '30 485 € / an',
+    capa: isPort ? `${Math.round(mult * 8750).toLocaleString('fr-FR')} € / an` : '8 750 € / an',
     totalRevDonut: isPort ? `${(totalCaAllSites / 1000000).toFixed(2)} M€ / an` : `${fmtEur(singleMetrics?.caAnnuel || 93171)} / an`,
-    totalRevSub: isPort ? 'Portefeuille Consolidé 15.5 MW' : 'Unité 500 kW / 1 044 kWh',
-    tableTitle: isPort ? (<>Plan d'Affaires Prévisionnel Consolidé sur 15 Ans<br />(31 Sites / 15.5 MW)</>) : (<>Plan d'Affaires Prévisionnel sur 15 Ans<br />(Unitaire 500 kW / 1 044 kWh)</>),
+    totalRevSub: isPort ? `Portefeuille Consolidé ${(mult * 0.5).toFixed(1)} MW` : 'Unité 500 kW / 1 044 kWh',
+    tableTitle: isPort ? (<>Plan d'Affaires Prévisionnel Consolidé sur 15 Ans<br />({mult} Sites / {(mult * 0.5).toFixed(1)} MW)</>) : (<>Plan d'Affaires Prévisionnel sur 15 Ans<br />(Unitaire 500 kW / 1 044 kWh)</>),
     badgePaybackSmall: (
       <>
         <span className="whitespace-nowrap">{isPort ? '5.0 ans (Projet)' : `${singleMetrics?.paybackFormatted || '5.0 ans'} (Projet)`}</span>
@@ -278,13 +318,42 @@ export default function BessDossierPDFGenerator({
         <span className="whitespace-nowrap text-[10px] font-bold text-blue-700">(Min bancaire 1.15x)</span>
       </>
     ),
-    techConfig: isPort ? "124 armoires extérieures réparties sur 31 sites" : "4 armoires extérieures CESC Mercury 261 (1.15m x 1.44m x 2.38m)",
-    techPowerCap: isPort ? "15.5 MW / 32.36 MWh consolidés" : "500 kW / 1 044 kWh (Ratio 2h de décharge)"
+    techConfig: isPort ? `${mult * 4} armoires extérieures réparties sur ${mult} sites` : "4 armoires extérieures CESC Mercury 261 (1.15m x 1.44m x 2.38m)",
+    techPowerCap: isPort ? `${(mult * 0.5).toFixed(1)} MW / ${(mult * 1.044).toFixed(2)} MWh consolidés` : "500 kW / 1 044 kWh (Ratio 2h de décharge)"
   };
 
-  // Répartition des 31 sites pour les planches 7 et 8
-  const sitesP1 = SITES_DATABASE.slice(0, 16);
-  const sitesP2 = SITES_DATABASE.slice(16);
+  // Répartition des sites sélectionnés pour les planches 7 et 8
+  const sitesP1 = selectedBessSites.slice(0, 16);
+  const sitesP2 = selectedBessSites.slice(16);
+
+  // Helpers pour la modale de sélection multi-projets BESS
+  const filteredModalSites = SITES_DATABASE.filter(s => {
+    if (!modalSearchTerm) return true;
+    const term = modalSearchTerm.toLowerCase();
+    return (
+      (s.name || '').toLowerCase().includes(term) ||
+      (s.client || '').toLowerCase().includes(term) ||
+      (s.city || '').toLowerCase().includes(term) ||
+      (s.substation || '').toLowerCase().includes(term) ||
+      (s.dept || '').includes(term)
+    );
+  });
+
+  const modalSelectedSites = SITES_DATABASE.filter(s => selectedProjectIds.includes(s.id));
+  const modalSelectedPowerMw = modalSelectedSites.length * 0.5;
+  const modalSelectedCapMwh = modalSelectedSites.length * 1.044;
+  const modalSelectedCapex = modalSelectedSites.reduce((sum, s) => sum + s.capexTotal, 0);
+  const modalSelectedEbitda = modalSelectedSites.reduce((sum, s) => sum + s.ebitdaAn1, 0);
+
+  const toggleSiteSelection = (id) => {
+    setSelectedProjectIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(x => x !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
 
   // Données du graphique 15 ans
   const maxEbitda = isPort ? 2100000 : 70000;
@@ -332,13 +401,13 @@ export default function BessDossierPDFGenerator({
         }
       }
 
-      // 2. Si Étude Complète : ajouter les 31 fiches unitaires BESS
+      // 2. Si Étude Complète : ajouter les fiches unitaires BESS des sites sélectionnés
       if (isComplete) {
-        for (let j = 1; j <= SITES_DATABASE.length; j++) {
-          const site = SITES_DATABASE[j - 1];
+        for (let j = 1; j <= selectedBessSites.length; j++) {
+          const site = selectedBessSites[j - 1];
           pagesToCapture.push({
             containerId: `bess-single-site-container-${j}`,
-            title: `Fiche Site ${j}/31 : ${site?.name || `Site ${j}`}`,
+            title: `Fiche Site ${j}/${selectedBessSites.length} : ${site?.name || `Site ${j}`}`,
             type: 'site',
             index: j,
             site
@@ -360,7 +429,7 @@ export default function BessDossierPDFGenerator({
           if (target.type === 'portfolio') {
             setProgressStep(`Capture Planche Portefeuille ${target.index}/8 (${plancheTitles[target.index - 1] || ''}) [Page ${i + 1}/${totalTargetPages}]...`);
           } else {
-            setProgressStep(`Capture Fiche Projet ${target.index}/31 (${target.site?.name || ''}) [Page ${i + 1}/${totalTargetPages}]...`);
+            setProgressStep(`Capture Fiche Projet ${target.index}/${selectedBessSites.length} (${target.site?.name || ''}) [Page ${i + 1}/${totalTargetPages}]...`);
           }
         } else {
           setProgressStep(`Capture planche ${i + 1} / ${totalTargetPages} (${target.title})...`);
@@ -439,9 +508,9 @@ export default function BessDossierPDFGenerator({
       const fileDate = new Date().toISOString().slice(0, 10);
       let fileName = '';
       if (isComplete) {
-        fileName = `Etude_Complete_BESS_Portefeuille_31_Sites_39_Pages_${fileDate}.pdf`;
+        fileName = `Etude_Complete_BESS_Portefeuille_${selectedBessSites.length}_Sites_${8 + selectedBessSites.length}_Pages_${fileDate}.pdf`;
       } else if (isPort) {
-        fileName = `Dossier_Investissement_BESS_Portefeuille_15.5MW_TURPE7_${fileDate}.pdf`;
+        fileName = `Dossier_Investissement_BESS_Portefeuille_${selectedBessSites.length}_Sites_${(selectedBessSites.length * 0.5).toFixed(1)}MW_TURPE7_${fileDate}.pdf`;
       } else {
         fileName = `Dossier_Investissement_BESS_${projectData?.name || 'Unitaire_500kW'}_TURPE7_${fileDate}.pdf`;
       }
@@ -1557,7 +1626,7 @@ export default function BessDossierPDFGenerator({
                         crossOrigin="anonymous"
                       />
                       {/* Affichage des pins BESS bleus / cyan avec contour blanc */}
-                      {SITES_DATABASE.map((site) => (
+                      {selectedBessSites.map((site) => (
                         <CircleMarker
                           key={site.id}
                           center={[site.lat, site.lng]}
@@ -1578,13 +1647,16 @@ export default function BessDossierPDFGenerator({
                           </Popup>
                         </CircleMarker>
                       ))}
+                      {selectedBessSites.length > 0 && (
+                        <MapBoundsUpdater bounds={selectedBessSites.map(s => [s.lat, s.lng])} />
+                      )}
                     </MapContainer>
 
                     {/* Légende épurée dédiée exclusivement au stockage BESS */}
                     <div className="absolute bottom-3 left-3 z-[1000] bg-slate-950/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-800 shadow-lg text-[10px] text-white">
                       <div className="flex items-center gap-2 font-bold text-cyan-400">
                         <span className="w-2.5 h-2.5 rounded-full bg-[#00a2e8]"></span>
-                        <span>{isPort ? 'Stockage Stationnaire BESS (31 Sites HTA)' : `Centrale BESS ${selectedSite.name} (500 kW)`}</span>
+                        <span>{isPort ? `Stockage Stationnaire BESS (${selectedBessSites.length} Sites HTA)` : `Centrale BESS ${selectedSite.name} (500 kW)`}</span>
                       </div>
                     </div>
                   </div>
@@ -1673,7 +1745,7 @@ export default function BessDossierPDFGenerator({
 
                     <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight mt-0.5">
                       {isPort
-                        ? "Répertoire Foncier & Réseau des 31 Projets BESS (Sites #1 à #16)"
+                        ? `Répertoire Foncier & Réseau des ${selectedBessSites.length} Projets BESS (Sites #1 à #${Math.min(16, selectedBessSites.length)})`
                         : `Fiche Projet Détaillée & Sécurisation Foncière (${selectedSite.name})`}
                     </h2>
                     <p className="text-xs font-medium text-slate-600 mt-0.5">
@@ -1712,9 +1784,9 @@ export default function BessDossierPDFGenerator({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    {sitesP1.map((s) => (
+                    {sitesP1.map((s, idx) => (
                       <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-1.5 px-2 text-center font-bold text-slate-400">{s.id}</td>
+                        <td className="py-1.5 px-2 text-center font-bold text-slate-400">{idx + 1}</td>
                         <td className="py-1.5 px-2">
                           <span className="font-extrabold text-slate-900 block leading-tight">{s.name}</span>
                           <span className="text-[9.5px] text-slate-400">{s.client}</span>
@@ -1735,6 +1807,23 @@ export default function BessDossierPDFGenerator({
                         <td className="py-1.5 px-2 text-center font-bold text-slate-700">{computeDynamicSiteMetrics(s).paybackFormatted}</td>
                       </tr>
                     ))}
+
+                    {/* Si 16 sites ou moins, totalisation consolidée directe en Planche 7 */}
+                    {selectedBessSites.length <= 16 && (
+                      <tr className="bg-gradient-to-r from-blue-900 via-indigo-950 to-[#0b192c] text-white font-black text-[11px]">
+                        <td className="py-2 px-2 text-center text-amber-300 font-black">∑</td>
+                        <td className="py-2 px-2 uppercase tracking-wider text-amber-300 leading-tight">Total Consolidé<br />({selectedBessSites.length} Projets)</td>
+                        <td className="py-2 px-2 text-slate-300">Grand Sud-Ouest</td>
+                        <td className="py-2 px-2 font-mono text-[9.5px] text-cyan-300">Grappe Nouvelle-Aquitaine / Occitanie</td>
+                        <td className="py-2 px-2 text-emerald-300 font-extrabold">{selectedBessSites.length} Postes HTA</td>
+                        <td className="py-2 px-2 text-center text-slate-300">7.2 km moy.</td>
+                        <td className="py-2 px-2 text-right text-slate-300">90.1 k€ moy.</td>
+                        <td className="py-2 px-2 text-center text-cyan-300 font-extrabold leading-tight">{(selectedBessSites.length * 0.5).toFixed(1)} MW /<br />{(selectedBessSites.length * 1.044).toFixed(2)} MWh</td>
+                        <td className="py-2 px-2 text-right text-amber-300 font-black">{(selectedBessSites.length * 3000).toLocaleString('fr-FR')} €/an</td>
+                        <td className="py-2 px-2 text-right text-emerald-400 font-black text-xs">{(totalEbitdaAllSites / 1000000).toFixed(2)} M€</td>
+                        <td className="py-2 px-2 text-center text-emerald-300 font-black">5.0 ans</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1743,7 +1832,7 @@ export default function BessDossierPDFGenerator({
             {/* Pied de page institutionnel sans "(Paysage)" */}
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
               <div>ENR COURTAGE SAS • Audit Foncier &amp; Raccordement HTA (Partie 1)</div>
-              <div className="font-semibold text-slate-600">31 Promesses de Baux Notariées 20 Ans • Raccordements HTA Identifiés</div>
+              <div className="font-semibold text-slate-600">{selectedBessSites.length} Promesses de Baux Notariées 20 Ans • Raccordements HTA Identifiés</div>
               <div className="font-bold text-[#0b192c]">Planche 7 / {totalPagesCount}</div>
             </div>
               </section>
@@ -1751,7 +1840,7 @@ export default function BessDossierPDFGenerator({
           )}
 
           {/* ========================================================================= */}
-          {/* PLANCHE 8 : RÉPERTOIRE FONCIER & RÉSEAU DES PROJETS (SITES 17 À 31 + TOTAL) */}
+          {/* PLANCHE 8 : RÉPERTOIRE FONCIER & RÉSEAU DES PROJETS (SITES 17+ OU TOTAL) */}
           {/* ========================================================================= */}
           {isPort && (
           <div
@@ -1781,7 +1870,9 @@ export default function BessDossierPDFGenerator({
                     />
                     <div>
                       <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight mt-0.5">
-                        Répertoire Foncier &amp; Réseau des 31 Projets BESS (Sites #17 à #31)
+                        {selectedBessSites.length > 16
+                          ? `Répertoire Foncier & Réseau des ${selectedBessSites.length} Projets BESS (Sites #17 à #${selectedBessSites.length})`
+                          : `Synthèse Consolidée Foncière & Réseau (${selectedBessSites.length} Sites)`}
                       </h2>
                       <p className="text-xs font-medium text-slate-600 mt-0.5">
                         Identification cadastrale, coordonnées GPS décimales, rattachement aux postes sources Enedis/ODRE et quote-part S3REnR.
@@ -1790,15 +1881,15 @@ export default function BessDossierPDFGenerator({
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-black">
-                      Total Consolidé 15.5 MW
+                      Total Consolidé {(selectedBessSites.length * 0.5).toFixed(1)} MW
                     </span>
                     <span className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-300 text-xs font-black">
-                      32.36 MWh
+                      {(selectedBessSites.length * 1.044).toFixed(2)} MWh
                     </span>
                   </div>
                 </div>
 
-                {/* Tableau compact des sites 17 à 31 + Ligne de total consolidé garantie sans coupure */}
+                {/* Tableau compact des sites 17 à N + Ligne de total consolidé garantie sans coupure */}
                 <div className="overflow-hidden rounded-xl border border-slate-200 shadow-xs">
                   <table className="w-full text-left text-[10.5px] border-collapse bg-white">
                     <thead>
@@ -1817,9 +1908,9 @@ export default function BessDossierPDFGenerator({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                      {sitesP2.map((s) => (
+                      {sitesP2.map((s, idx) => (
                         <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-1 px-2 text-center font-bold text-slate-400">{s.id}</td>
+                          <td className="py-1 px-2 text-center font-bold text-slate-400">{16 + idx + 1}</td>
                           <td className="py-1 px-2">
                             <span className="font-extrabold text-slate-900 block leading-tight">{s.name}</span>
                             <span className="text-[9.5px] text-slate-400">{s.client}</span>
@@ -1841,17 +1932,25 @@ export default function BessDossierPDFGenerator({
                         </tr>
                       ))}
 
-                      {/* LIGNE DE TOTAL CONSOLIDÉ 31 SITES */}
+                      {sitesP2.length === 0 && (
+                        <tr>
+                          <td colSpan={11} className="py-6 text-center text-slate-500 italic bg-slate-50">
+                            L'intégralité des {selectedBessSites.length} centrales BESS retenues est listée sur la Planche 7 précédente.
+                          </td>
+                        </tr>
+                      )}
+
+                      {/* LIGNE DE TOTAL CONSOLIDÉ */}
                       <tr className="bg-gradient-to-r from-blue-900 via-indigo-950 to-[#0b192c] text-white font-black text-[11px]">
-                        <td className="py-2 px-2 text-center text-amber-300 font-black"></td>
-                        <td className="py-2 px-2 uppercase tracking-wider text-amber-300 leading-tight">Total Consolidé<br />(31 Projets)</td>
+                        <td className="py-2 px-2 text-center text-amber-300 font-black">∑</td>
+                        <td className="py-2 px-2 uppercase tracking-wider text-amber-300 leading-tight">Total Consolidé<br />({selectedBessSites.length} Projets)</td>
                         <td className="py-2 px-2 text-slate-300">Grand Sud-Ouest</td>
                         <td className="py-2 px-2 font-mono text-[9.5px] text-cyan-300">Grappe Nouvelle-Aquitaine / Occitanie</td>
-                        <td className="py-2 px-2 text-emerald-300 font-extrabold">31 Postes HTA</td>
+                        <td className="py-2 px-2 text-emerald-300 font-extrabold">{selectedBessSites.length} Postes HTA</td>
                         <td className="py-2 px-2 text-center text-slate-300">7.2 km moy.</td>
                         <td className="py-2 px-2 text-right text-slate-300">90.1 k€ moy.</td>
-                        <td className="py-2 px-2 text-center text-cyan-300 font-extrabold leading-tight">15.5 MW /<br />32.36 MWh</td>
-                        <td className="py-2 px-2 text-right text-amber-300 font-black">93 000 €/an</td>
+                        <td className="py-2 px-2 text-center text-cyan-300 font-extrabold leading-tight">{(selectedBessSites.length * 0.5).toFixed(1)} MW /<br />{(selectedBessSites.length * 1.044).toFixed(2)} MWh</td>
+                        <td className="py-2 px-2 text-right text-amber-300 font-black">{(selectedBessSites.length * 3000).toLocaleString('fr-FR')} €/an</td>
                         <td className="py-2 px-2 text-right text-emerald-400 font-black text-xs">{(totalEbitdaAllSites / 1000000).toFixed(2)} M€</td>
                         <td className="py-2 px-2 text-center text-emerald-300 font-black">5.0 ans</td>
                       </tr>
@@ -1863,7 +1962,7 @@ export default function BessDossierPDFGenerator({
               {/* Pied de page institutionnel sans "(Paysage)" garanti 100% visible */}
               <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
                 <div>ENR COURTAGE SAS • Audit Foncier &amp; Raccordement HTA (Partie 2)</div>
-                <div className="font-semibold text-slate-600">Consolidation Complète 31 Sites • 15.50 MW / 32.36 MWh</div>
+                <div className="font-semibold text-slate-600">Consolidation Complète {selectedBessSites.length} Sites • {(selectedBessSites.length * 0.5).toFixed(2)} MW / {(selectedBessSites.length * 1.044).toFixed(2)} MWh</div>
                 <div className="font-bold text-[#0b192c]">Planche 8 / {totalPagesCount}</div>
               </div>
               </section>
@@ -1871,11 +1970,11 @@ export default function BessDossierPDFGenerator({
           )}
 
           {/* ========================================================================= */}
-          {/* FICHES BESS UNITAIRES DES 31 SITES (POUR L'ÉTUDE COMPLÈTE 39 PAGES) */}
+          {/* FICHES BESS UNITAIRES DES SITES SÉLECTIONNÉS (POUR L'ÉTUDE COMPLÈTE) */}
           {/* ========================================================================= */}
           {isPort && (
             <div className="w-full flex flex-col items-center">
-              {SITES_DATABASE.map((site, sIdx) => (
+              {selectedBessSites.map((site, sIdx) => (
                 <div
                   key={site.id || sIdx}
                   id={`bess-single-site-container-${sIdx + 1}`}
@@ -1885,7 +1984,7 @@ export default function BessDossierPDFGenerator({
                   <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
                     <div className="flex items-center gap-2">
                       <span className="px-3 py-1 rounded-full bg-blue-700 text-white font-black text-xs shadow-xs">
-                        Fiche Projet {sIdx + 1} / {SITES_DATABASE.length} (Page {8 + sIdx + 1} / 39)
+                        Fiche Projet {sIdx + 1} / {selectedBessSites.length} (Page {8 + sIdx + 1} / {8 + selectedBessSites.length})
                       </span>
                       <span className="font-bold text-slate-800 text-sm">
                         Fiche BESS Unitaire — Projet {site.name} ({site.city} - {site.dept})
@@ -1896,7 +1995,7 @@ export default function BessDossierPDFGenerator({
                   <BessProjectSingleSheet
                     site={site}
                     siteIndex={sIdx + 1}
-                    totalSites={SITES_DATABASE.length}
+                    totalSites={selectedBessSites.length}
                     studyDuration={20}
                   />
                 </div>
@@ -1908,35 +2007,51 @@ export default function BessDossierPDFGenerator({
         {/* ========================================================================= */}
         {/* BARRE INFÉRIEURE PERSISTANTE : BOUTON IMPRESSION ET BOUTON FERMER BAS */}
         {/* ========================================================================= */}
-        <footer className="sticky bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-3 shadow-lg flex items-center justify-between">
+        <footer className="sticky bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-3 shadow-lg flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold text-slate-700">
-              {isPort ? 'Mode Portefeuille Consolidé (31 Projets / 15.5 MW)' : `Mode Simulation Unitaire (${selectedSite.name} - 500 kW)`}
+              {isPort ? `Mode Portefeuille Consolidé (${selectedBessSites.length} Projets / ${(selectedBessSites.length * 0.5).toFixed(1)} MW)` : `Mode Simulation Unitaire (${selectedSite.name} - 500 kW)`}
             </span>
             <span className="text-slate-300">|</span>
             <span className="text-xs text-slate-500 font-medium">
-              {isPort ? '8 Planches Portefeuille + 31 Fiches Projets = 39 Pages' : `${totalPagesCount} Planches A4 Paysage`}
+              {isPort ? `8 Planches Portefeuille + ${selectedBessSites.length} Fiches Projets = ${8 + selectedBessSites.length} Pages` : `${totalPagesCount} Planches A4 Paysage`}
             </span>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Bouton ÉTUDE COMPLÈTE (39 Pages) */}
+            {/* Bouton de personnalisation du portefeuille */}
             {isPort && (
               <button
-                onClick={() => handleGeneratePdf('complete')}
+                type="button"
+                onClick={() => setIsSelectModalOpen(true)}
                 disabled={isGenerating}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
-                title="Générer l'étude complète de 39 pages (8 pages portefeuille + 31 pages projets unitaires)"
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Sélectionner les centrales BESS à inclure"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-600" />
+                <span>Filtrer ({selectedBessSites.length}/{SITES_DATABASE.length})</span>
+              </button>
+            )}
+
+            {/* Bouton ÉTUDE COMPLÈTE */}
+            {isPort && (
+              <button
+                type="button"
+                onClick={() => setIsSelectModalOpen(true)}
+                disabled={isGenerating}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                title={`Personnaliser le portefeuille et générer l'étude complète (${8 + selectedBessSites.length} pages)`}
               >
                 <Sparkles className="w-4 h-4 text-yellow-200" />
-                <span>ÉTUDE COMPLÈTE (39 PAGES)</span>
+                <span>ÉTUDE COMPLÈTE ({8 + selectedBessSites.length} PAGES)</span>
               </button>
             )}
 
             <button
+              type="button"
               onClick={() => handleGeneratePdf('portfolio')}
               disabled={isGenerating}
-              className="px-6 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-cyan-600/20 transition-all active:scale-95 disabled:opacity-50"
+              className="px-6 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-cyan-600/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               {isGenerating ? (
                 <>
@@ -1953,8 +2068,9 @@ export default function BessDossierPDFGenerator({
 
             {/* Bouton Fermer Bas Droit */}
             <button
+              type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-bold"
+              className="px-4 py-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer"
               title="Fermer la visionneuse"
             >
               <X className="w-4 h-4 text-slate-500" />
@@ -1963,6 +2079,203 @@ export default function BessDossierPDFGenerator({
           </div>
         </footer>
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODALE DE SÉLECTION MULTI-PROJETS BESS ("ÉTUDE COMPLÈTE") */}
+      {/* ========================================================================= */}
+      {isSelectModalOpen && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150" data-html2canvas-ignore="true">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-700 flex items-center justify-center text-white shadow-md">
+                  <SlidersHorizontal className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-[#0b192c]">Personnaliser le portefeuille BESS pour l'étude complète</h3>
+                  <p className="text-xs text-slate-600">Sélectionnez les centrales de stockage stationnaire à inclure dans les analyses financières consolidées, la cartographie et les fiches unitaires.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSelectModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Barre de contrôle et recherche */}
+            <div className="px-6 py-3 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                <div className="relative w-full max-w-sm">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher par nom, bailleur, commune, poste source..."
+                    value={modalSearchTerm}
+                    onChange={(e) => setModalSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                  {modalSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setModalSearchTerm('')}
+                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedProjectIds(SITES_DATABASE.map(s => s.id))}
+                  className="px-3 py-1.5 text-xs font-bold text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>Tout sélectionner</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProjectIds([])}
+                  className="px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Square className="w-3.5 h-3.5" />
+                  <span>Tout désélectionner</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Compteur dynamique en haut de modale */}
+            <div className="px-6 py-2.5 bg-gradient-to-r from-blue-50 via-cyan-50 to-blue-50 border-b border-cyan-100 flex items-center justify-between text-xs font-bold text-slate-900 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full bg-cyan-700 text-white font-extrabold text-[11px]">
+                  {selectedProjectIds.length} / {SITES_DATABASE.length} projets sélectionnés
+                </span>
+                <span className="text-slate-300">•</span>
+                <span>Puissance : <strong className="text-cyan-900">{modalSelectedPowerMw.toFixed(1)} MW / {modalSelectedCapMwh.toFixed(2)} MWh</strong></span>
+                <span className="text-slate-300">•</span>
+                <span>CAPEX total : <strong className="text-slate-900">{fmtEur(modalSelectedCapex)}</strong></span>
+                <span className="text-slate-300">•</span>
+                <span>EBITDA An 1 : <strong className="text-emerald-700">{fmtEur(modalSelectedEbitda)}</strong></span>
+              </div>
+              {selectedProjectIds.length === 0 && (
+                <span className="text-red-600 font-black text-xs flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  Veuillez sélectionner au moins un projet
+                </span>
+              )}
+            </div>
+
+            {/* Table list */}
+            <div className="flex-1 overflow-y-auto p-4 max-h-[50vh]">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="sticky top-0 bg-slate-100 text-slate-700 font-extrabold z-10 border-b border-slate-200">
+                  <tr>
+                    <th className="p-2 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedProjectIds.length === SITES_DATABASE.length && SITES_DATABASE.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedProjectIds(SITES_DATABASE.map(s => s.id));
+                          else setSelectedProjectIds([]);
+                        }}
+                        className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                      />
+                    </th>
+                    <th className="p-2">#</th>
+                    <th className="p-2">Nom du site &amp; Bailleur</th>
+                    <th className="p-2">Commune (Dép)</th>
+                    <th className="p-2 text-center">Puissance / Capacité</th>
+                    <th className="p-2">Poste Source Enedis</th>
+                    <th className="p-2 text-right">CAPEX Total</th>
+                    <th className="p-2 text-right">EBITDA An 1</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredModalSites.map((s, idx) => {
+                    const isChecked = selectedProjectIds.includes(s.id);
+                    return (
+                      <tr
+                        key={s.id}
+                        onClick={() => toggleSiteSelection(s.id)}
+                        className={`hover:bg-slate-50 transition-colors cursor-pointer ${isChecked ? 'bg-cyan-50/40' : 'opacity-60'}`}
+                      >
+                        <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSiteSelection(s.id)}
+                            className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                          />
+                        </td>
+                        <td className="p-2 text-slate-400 font-bold">{idx + 1}</td>
+                        <td className="p-2">
+                          <span className="font-extrabold text-slate-900 block leading-tight">{s.name}</span>
+                          <span className="text-[10px] text-slate-400">{s.client}</span>
+                        </td>
+                        <td className="p-2 text-slate-600">{s.city} ({s.dept})</td>
+                        <td className="p-2 text-center font-bold text-slate-800">
+                          <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-extrabold">500 kW / 1 044 kWh</span>
+                        </td>
+                        <td className="p-2 font-medium text-emerald-800">{s.substation} ({s.dist})</td>
+                        <td className="p-2 text-right font-bold text-slate-800">{fmtEur(s.capexTotal)}</td>
+                        <td className="p-2 text-right font-black text-emerald-700">{fmtEur(s.ebitdaAn1)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSelectModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Annuler
+              </button>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={selectedProjectIds.length === 0}
+                  onClick={() => {
+                    if (selectedProjectIds.length === 0) return;
+                    setIsSelectModalOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-800 bg-slate-200 hover:bg-slate-300 disabled:opacity-40 transition-colors cursor-pointer"
+                >
+                  Appliquer à la visionneuse ({selectedProjectIds.length} sites)
+                </button>
+
+                <button
+                  type="button"
+                  disabled={selectedProjectIds.length === 0 || isGenerating}
+                  onClick={() => {
+                    if (selectedProjectIds.length === 0) return;
+                    setIsSelectModalOpen(false);
+                    setTimeout(() => {
+                      handleGeneratePdf('complete');
+                    }, 150);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-yellow-200" />
+                  <span>Valider et Générer l'Étude (8 + {selectedBessSites.length} Pages)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
