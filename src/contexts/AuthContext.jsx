@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
         // Only target internal /api routes
         if (config.url && config.url.startsWith('/api')) {
           try {
-            const currentUser = authService.auth.currentUser;
+            const currentUser = authService.auth?.currentUser;
             if (currentUser) {
               const token = await currentUser.getIdToken();
               config.headers.Authorization = `Bearer ${token}`;

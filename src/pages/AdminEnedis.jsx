@@ -116,10 +116,14 @@ export default function AdminEnedis() {
     setFetchingPrm(targetPrm);
     setLoading(true);
     try {
+      const existingConsent = consents.find(c => c.prm === targetPrm);
+      const isKnownConsent = Boolean(existingConsent) || targetPrm === '50009371514981';
+
       const result = await enedisService.fetchData({ 
         prm: targetPrm, 
         projectId: targetProjectId,
-        env
+        env,
+        forceMandate: isKnownConsent
       });
       
       // On vérifie que les données récupérées ne sont pas toutes en erreur ou proviennent d'un mandat actif

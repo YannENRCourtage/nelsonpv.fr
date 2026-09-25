@@ -31,10 +31,10 @@ const enedisService = {
    * Récupère les données de consommation d'un PRM (après consentement ou mandat)
    * @param {Object} params { projectId, prm, startDate?, endDate?, forceRefresh?, env? }
    */
-  async fetchData({ projectId, prm, startDate, endDate, forceRefresh, env }) {
+  async fetchData({ projectId, prm, startDate, endDate, forceRefresh, env, forceMandate }) {
     try {
       const response = await axios.get('/api/enedis/fetch', {
-        params: { projectId, prm, startDate, endDate, forceRefresh, env }
+        params: { projectId, prm, startDate, endDate, forceRefresh, env, forceMandate }
       });
       return response.data;
     } catch (error) {
