@@ -277,8 +277,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
       tarif: totalTarif,
       ratio: ratioKwc,
       ratioKwc,
-      ratioM2,
-      extraBays,
+      extraBays: 0,
       traveeCount,
       travees: `${traveeCount} x 7.5m`,
       roofWeighting,
@@ -293,10 +292,10 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
         fondations_base_ht: fondations,
         couverture_base_ht: couverture,
         total_base_ht: totalTarif,
-        cout_travee_sup_ht: traveePricing,
+        cout_travee_sup_ht: baseBuilding.pricing_ht?.cout_travee_sup_ht || null,
       },
     };
-  }, [selectedKey, extraBays, auventCount, appentisCount, isAcama, customBuilding]);
+  }, [selectedKey, auventCount, appentisCount, isAcama, customBuilding]);
 
   // Sync weighting with parent whenever it changes
   useEffect(() => {
