@@ -2,8 +2,9 @@ import React from 'react';
 import { GitFork, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function SubItemButton({ count = 0, isExpanded = false, onClick, onAddSubItem }) {
+export default function SubItemButton({ count = 0, isExpanded = false, onClick, onToggleExpand, onAddSubItem }) {
   const hasItems = count > 0;
+  const handleToggle = onClick || onToggleExpand;
 
   return (
     <button
@@ -11,9 +12,10 @@ export default function SubItemButton({ count = 0, isExpanded = false, onClick, 
       onClick={(e) => {
         e.stopPropagation();
         if (hasItems) {
-          if (onClick) onClick();
+          if (handleToggle) handleToggle();
         } else {
           if (onAddSubItem) onAddSubItem();
+          else if (handleToggle) handleToggle();
         }
       }}
       className={cn(
