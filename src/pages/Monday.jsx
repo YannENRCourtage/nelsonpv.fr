@@ -789,10 +789,11 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
 
     const toggleExpandRow = (rowId) => {
         setExpandedRowIds(prev => {
-            const next = new Set(prev);
-            if (next.has(rowId)) next.delete(rowId);
-            else next.add(rowId);
-            return next;
+            if (prev.has(rowId)) {
+                return new Set();
+            } else {
+                return new Set([rowId]);
+            }
         });
     };
 
@@ -1359,21 +1360,22 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
 
     // Auto-expand rows when search matches one of their sub-items
     useEffect(() => {
-        if (!searchTerm) return;
+        if (!searchTerm) {
+            setExpandedRowIds(new Set());
+            return;
+        }
         const lowerTerm = searchTerm.toLowerCase();
-        const idsToExpand = new Set(expandedRowIds);
-        let changed = false;
+        const idsToExpand = new Set();
         rows.forEach(r => {
             const subs = Array.isArray(r.subItems) ? r.subItems : (Array.isArray(r.data?.__subItems) ? r.data.__subItems : []);
             const matchesSub = subs.some(sub =>
                 Object.values(sub.data || {}).some(val => String(val).toLowerCase().includes(lowerTerm))
             );
-            if (matchesSub && !idsToExpand.has(r.id)) {
+            if (matchesSub) {
                 idsToExpand.add(r.id);
-                changed = true;
             }
         });
-        if (changed) setExpandedRowIds(idsToExpand);
+        setExpandedRowIds(idsToExpand);
     }, [searchTerm, rows]);
 
     // --- Sub-Items Handlers ---
@@ -1423,7 +1425,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
             data: { ...targetRow.data, __subItems: nextSubs }
         };
         setRows(prev => prev.map(r => r.id === parentRowId ? updatedRow : r));
-        setExpandedRowIds(prev => new Set(prev).add(parentRowId));
+        setExpandedRowIds(new Set([parentRowId]));
         try {
             await apiService.updateMondayRow(data.id, parentRowId, {
                 subItems: nextSubs,
@@ -1577,7 +1579,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
             setRowOrder(newOrder);
             saveMetadata(columns, newOrder, columnWidths);
             setSelectedRowIds(new Set());
-            setExpandedRowIds(prev => new Set(prev).add(parentRowId));
+            setExpandedRowIds(new Set());
             setIsGroupModalOpen(false);
         } catch (err) {
             console.error("Erreur regroupement manuel:", err);
@@ -1636,11 +1638,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
             setRowOrder(newOrder);
             saveMetadata(columns, newOrder, columnWidths);
             setSelectedRowIds(new Set());
-            setExpandedRowIds(prev => {
-                const next = new Set(prev);
-                newParentIds.forEach(id => next.add(id));
-                return next;
-            });
+            setExpandedRowIds(new Set());
             setIsAutoGroupModalOpen(false);
         } catch (err) {
             console.error("Erreur regroupement auto:", err);
