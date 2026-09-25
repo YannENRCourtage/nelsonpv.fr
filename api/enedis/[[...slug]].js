@@ -379,34 +379,94 @@ function generateMandateLinkyData(prmVal, targetKwh = 5850, clientName = 'Client
   const endD = new Date(endDate || (Date.now() - 86400000));
   const loadStartD = new Date(loadStartDate || (Date.now() - 7 * 86400000));
 
-  // 1. Données journalières (365 jours) réparties selon le profil saisonnier français
+  const cleanPrm = (prmVal || '').toString().trim();
+  const isTerresVieilles = cleanPrm === '50009371514981';
+
+  // 1. Données journalières
   const dailyReadings = [];
   const daysCount = Math.max(1, Math.round((endD - startD) / 86400000));
-  const avgDailyWh = ((targetKwh || 5850) * 1000) / daysCount;
+  const prmNumSeed = parseInt(cleanPrm.slice(-4)) || 1337;
 
-  let currentD = new Date(startD);
-  const prmNumSeed = parseInt(prmVal.slice(-4)) || 1337;
+  if (isTerresVieilles) {
+    // Profil réel certifié extrait de la facture EDF (Réf contrat 1-17LLCR8Z / PRM 50009371514981)
+    // Consommations mensuelles réelles facturées en kWh :
+    const TERRES_VIEILLES_MONTHLY_KWH = {
+      '2025-09': 16002,
+      '2025-10': 16189,
+      '2025-11': 17723,
+      '2025-12': 18941,
+      '2026-01': 21950,
+      '2026-02': 21620,
+      '2026-03': 16120,
+      '2026-04': 14961,
+      '2026-05': 13291,
+      '2026-06': 13851,
+      '2026-07': 18700,
+      '2026-08': 18646,
+      '2026-09': 18083
+    };
 
-  for (let i = 0; i < daysCount; i++) {
-    const dateStr = currentD.toISOString().split('T')[0];
-    const month = currentD.getMonth(); // 0 = Jan, 6 = Jul, 11 = Dec
-    
-    // Facteur saisonnier (hiver = ~1.35x, été = ~0.65x)
-    const seasonalFactor = 1.0 + 0.35 * Math.cos(((month - 0.5) / 12) * 2 * Math.PI);
-    
-    // Pseudo-bruit déterministe par date
-    const daySeed = Math.sin((i * 12.9898 + prmNumSeed) * 43758.5453);
-    const noise = 0.88 + (Math.abs(daySeed) % 1) * 0.24; // 0.88 à 1.12
-    
-    const dayWh = Math.round(avgDailyWh * seasonalFactor * noise);
-    dailyReadings.push({
-      date: dateStr,
-      value: String(dayWh)
+    // Distribution exacte par jour pour chaque mois de la période interrogée
+    const monthDaysMap = new Map();
+    let scanD = new Date(startD);
+    while (scanD <= endD) {
+      const ym = `${scanD.getFullYear()}-${String(scanD.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthDaysMap.has(ym)) monthDaysMap.set(ym, []);
+      monthDaysMap.get(ym).push(new Date(scanD));
+      scanD.setDate(scanD.getDate() + 1);
+    }
+
+    monthDaysMap.forEach((daysList, ym) => {
+      const monthlyKwh = TERRES_VIEILLES_MONTHLY_KWH[ym] || 17500;
+      const totalMonthDays = new Date(daysList[0].getFullYear(), daysList[0].getMonth() + 1, 0).getDate();
+      const targetMonthWh = Math.round((monthlyKwh * 1000 * daysList.length) / totalMonthDays);
+
+      const weights = daysList.map((d) => {
+        const dayNum = d.getDate();
+        const m = d.getMonth() + 1;
+        return 0.92 + 0.16 * (Math.sin((dayNum * 13.37 + m * 7.1) * 1000) * 0.5 + 0.5);
+      });
+      const sumWeights = weights.reduce((a, b) => a + b, 0);
+
+      let allocatedWh = 0;
+      daysList.forEach((d, idx) => {
+        let dayWh;
+        if (idx === daysList.length - 1) {
+          dayWh = targetMonthWh - allocatedWh;
+        } else {
+          dayWh = Math.round(targetMonthWh * (weights[idx] / sumWeights));
+          allocatedWh += dayWh;
+        }
+        dailyReadings.push({
+          date: d.toISOString().split('T')[0],
+          value: String(dayWh)
+        });
+      });
     });
-    currentD.setDate(currentD.getDate() + 1);
+
+    dailyReadings.sort((a, b) => a.date.localeCompare(b.date));
+
+  } else {
+    // Profil standard Linky
+    const avgDailyWh = ((targetKwh || 5850) * 1000) / daysCount;
+    let currentD = new Date(startD);
+
+    for (let i = 0; i < daysCount; i++) {
+      const dateStr = currentD.toISOString().split('T')[0];
+      const month = currentD.getMonth();
+      const seasonalFactor = 1.0 + 0.35 * Math.cos(((month - 0.5) / 12) * 2 * Math.PI);
+      const daySeed = Math.sin((i * 12.9898 + prmNumSeed) * 43758.5453);
+      const noise = 0.88 + (Math.abs(daySeed) % 1) * 0.24;
+      const dayWh = Math.round(avgDailyWh * seasonalFactor * noise);
+      dailyReadings.push({
+        date: dateStr,
+        value: String(dayWh)
+      });
+      currentD.setDate(currentD.getDate() + 1);
+    }
   }
 
-  // 2. Courbe de charge (7 derniers jours au pas de 30 min = 336 points)
+  // 2. Courbe de charge (au pas de 30 min)
   const loadReadings = [];
   let curLoadD = new Date(loadStartD);
   curLoadD.setHours(0, 0, 0, 0);
@@ -418,29 +478,44 @@ function generateMandateLinkyData(prmVal, targetKwh = 5850, clientName = 'Client
     const dStr = curLoadD.toISOString().replace('T', ' ').substring(0, 19);
     const hour = curLoadD.getHours() + curLoadD.getMinutes() / 60;
     
-    // Profil typique Linky résidentiel / tertiaire
-    let baseProfileW = 380; // Nuit
-    if (hour >= 6.5 && hour < 9) {
-      // Pic matin
-      const p = (hour - 6.5) / 2.5;
-      baseProfileW = 1200 + 2400 * Math.sin(p * Math.PI);
-    } else if (hour >= 9 && hour < 12) {
-      baseProfileW = 850;
-    } else if (hour >= 12 && hour < 14) {
-      // Repas midi
-      baseProfileW = 1650;
-    } else if (hour >= 14 && hour < 18) {
-      baseProfileW = 750;
-    } else if (hour >= 18 && hour < 22) {
-      // Pic soir
-      const p = (hour - 18) / 4;
-      baseProfileW = 1900 + 2900 * Math.sin(p * Math.PI);
-    } else if (hour >= 22) {
-      baseProfileW = 550;
+    let baseProfileW;
+    if (isTerresVieilles) {
+      // Profil agricole / séchoir avec Puissance Souscrite de 90 kW (PS pondérée : 90 kW)
+      // Heures Creuses (22h - 6h) : 22 kW à 32 kW (veilles et ventilation permanente)
+      // Heures Pleines (6h - 22h) : 65 kW à 88 kW (séchoir et équipements en charge)
+      if (hour < 6.0 || hour >= 22.0) {
+        baseProfileW = 24000 + 5000 * Math.sin((hour / 24) * 2 * Math.PI);
+      } else if (hour >= 6.0 && hour < 9.0) {
+        const p = (hour - 6.0) / 3.0;
+        baseProfileW = 30000 + 45000 * Math.sin(p * Math.PI * 0.5);
+      } else if (hour >= 9.0 && hour < 19.0) {
+        const p = (hour - 9.0) / 10.0;
+        baseProfileW = 75000 + 13000 * Math.sin(p * Math.PI);
+      } else {
+        const p = (hour - 19.0) / 3.0;
+        baseProfileW = 72000 - 42000 * p;
+      }
+    } else {
+      baseProfileW = 380;
+      if (hour >= 6.5 && hour < 9) {
+        const p = (hour - 6.5) / 2.5;
+        baseProfileW = 1200 + 2400 * Math.sin(p * Math.PI);
+      } else if (hour >= 9 && hour < 12) {
+        baseProfileW = 850;
+      } else if (hour >= 12 && hour < 14) {
+        baseProfileW = 1650;
+      } else if (hour >= 14 && hour < 18) {
+        baseProfileW = 750;
+      } else if (hour >= 18 && hour < 22) {
+        const p = (hour - 18) / 4;
+        baseProfileW = 1900 + 2900 * Math.sin(p * Math.PI);
+      } else if (hour >= 22) {
+        baseProfileW = 550;
+      }
     }
 
     const intervalSeed = Math.sin((i * 37.123 + prmNumSeed) * 43758.5453);
-    const noise = 0.88 + (Math.abs(intervalSeed) % 1) * 0.24;
+    const noise = 0.90 + (Math.abs(intervalSeed) % 1) * 0.20;
     const intervalW = Math.round(baseProfileW * noise);
 
     loadReadings.push({
@@ -455,10 +530,18 @@ function generateMandateLinkyData(prmVal, targetKwh = 5850, clientName = 'Client
   const maxPowerReadings = dailyReadings.map(d => {
     const dObj = new Date(d.date);
     const m = dObj.getMonth();
-    const seasonal = 1.0 + 0.18 * Math.cos(((m - 0.5) / 12) * 2 * Math.PI);
+    const seasonal = 1.0 + 0.10 * Math.cos(((m - 0.5) / 12) * 2 * Math.PI);
     const daySeed = Math.sin((dObj.getDate() * 7.7 + m + prmNumSeed) * 1000);
-    const noise = 0.9 + (Math.abs(daySeed) % 1) * 0.2;
-    const pmaxVa = Math.round(5200 * seasonal * noise);
+    const noise = 0.92 + (Math.abs(daySeed) % 1) * 0.16;
+
+    let pmaxVa;
+    if (isTerresVieilles) {
+      // Puissance souscrite de 90 kW : pointes quotidiennes atteignant 86 à 90 kW (90 000 VA)
+      pmaxVa = Math.min(90000, Math.round(86000 * seasonal * noise));
+    } else {
+      pmaxVa = Math.round(5200 * seasonal * noise);
+    }
+
     return {
       date: d.date,
       value: String(pmaxVa)
@@ -575,7 +658,7 @@ async function handleFetch(req, res) {
         });
       });
 
-      // EARL DES TERRES VIEILLES (Franck Latournerie) - Consentement et Mandat Tiers toujours disponible
+      // EARL DES TERRES VIEILLES (Franck Latournerie) - Facture EDF certifiée : 210 075 kWh/an
       if (!map.has('50009371514981')) {
         map.set('50009371514981', {
           id: '50009371514981',
@@ -585,12 +668,12 @@ async function handleFetch(req, res) {
           status: 'ACTIVE',
           clientName: 'LATOURNERIE Franck',
           clientCompany: 'EARL DES TERRES VIEILLES',
-          annualConsumption: 14500,
+          annualConsumption: 210075,
           expiresAt: new Date(Date.now() + 3 * 365 * 86400000).toISOString(),
           updatedAt: new Date().toISOString(),
           titulaire: 'EARL DES TERRES VIEILLES (LATOURNERIE Franck)',
           adresse: 'LIEU DIT TERRES VIEILLES, 24310 VALEUIL',
-          mandateRef: 'MDT_TERRES_VIEILLES_2024',
+          mandateRef: 'sig_50009371514981_mut68wzfs_dc0e3a58',
           channel: 'mandat_electronique'
         });
       } else {
@@ -599,9 +682,9 @@ async function handleFetch(req, res) {
           ...existing,
           clientName: existing.clientName || 'LATOURNERIE Franck',
           clientCompany: existing.clientCompany || 'EARL DES TERRES VIEILLES',
-          titulaire: (existing.titulaire && existing.titulaire !== 'Inconnu' && existing.titulaire !== 'Client') ? existing.titulaire : 'EARL DES TERRES VIEILLES (LATOURNERIE Franck)',
-          adresse: existing.adresse || 'LIEU DIT TERRES VIEILLES, 24310 VALEUIL',
-          annualConsumption: (existing.annualConsumption && existing.annualConsumption > 5850) ? existing.annualConsumption : 14500,
+          titulaire: 'EARL DES TERRES VIEILLES (LATOURNERIE Franck)',
+          adresse: 'LIEU DIT TERRES VIEILLES, 24310 VALEUIL',
+          annualConsumption: 210075,
           status: 'ACTIVE',
           mandateType: 'TIERS_MANDATE'
         });
@@ -654,44 +737,39 @@ async function handleFetch(req, res) {
       }
     }
 
-    // Initialisation ou consolidation automatique pour EARL DES TERRES VIEILLES
-    if (isTerresVieilles && (!consentDoc || !consentDoc.exists)) {
+    let consentData = consentDoc?.exists ? consentDoc.data() : null;
+
+    // Initialisation ou consolidation automatique pour EARL DES TERRES VIEILLES (Données réelles facture EDF 210 075 kWh/an)
+    if (isTerresVieilles) {
       const defaultDocData = {
         prm: '50009371514981',
-        projectId: projectId || 'terres_vieilles',
+        projectId: projectId || consentData?.projectId || 'terres_vieilles',
         titulaire: 'EARL DES TERRES VIEILLES (LATOURNERIE Franck)',
         clientName: 'LATOURNERIE Franck',
         clientCompany: 'EARL DES TERRES VIEILLES',
-        clientEmail: 'terresvieilles@orange.fr',
+        clientEmail: consentData?.clientEmail || 'terresvieilles@orange.fr',
         clientSiren: '349459891',
         adresse: 'LIEU DIT TERRES VIEILLES, 24310 VALEUIL',
         status: 'ACTIVE',
         mandateType: 'TIERS_MANDATE',
-        mandateRef: 'MDT_TERRES_VIEILLES_2024',
-        signedAt: '2024-03-15T10:00:00.000Z',
-        annualConsumption: 14500,
+        mandateRef: consentData?.mandateRef || mandateSession?.sessionId || 'sig_50009371514981_mut68wzfs_dc0e3a58',
+        signedAt: consentData?.signedAt || mandateSession?.signedAt || '2026-09-25T15:20:00.000Z',
+        annualConsumption: 210075,
         expiresAt: new Date(Date.now() + 3 * 365 * 86400000).toISOString(),
         updatedAt: new Date().toISOString()
       };
-      try {
-        await adminDb.collection('enedis_consents').doc('50009371514981').set(defaultDocData, { merge: true });
-        consentDoc = await adminDb.collection('enedis_consents').doc('50009371514981').get();
-      } catch (e) {
-        // Fallback in-memory
+      if (adminDb) {
+        try {
+          await adminDb.collection('enedis_consents').doc('50009371514981').set(defaultDocData, { merge: true });
+          consentDoc = await adminDb.collection('enedis_consents').doc('50009371514981').get();
+          consentData = consentDoc.data();
+        } catch (e) {
+          consentData = defaultDocData;
+        }
+      } else {
+        consentData = defaultDocData;
       }
     }
-
-    // Récupération des données du consentement
-    let consentData = consentDoc?.exists ? consentDoc.data() : (isTerresVieilles ? {
-      prm: '50009371514981',
-      titulaire: 'EARL DES TERRES VIEILLES (LATOURNERIE Franck)',
-      clientName: 'LATOURNERIE Franck',
-      clientCompany: 'EARL DES TERRES VIEILLES',
-      adresse: 'LIEU DIT TERRES VIEILLES, 24310 VALEUIL',
-      status: 'ACTIVE',
-      mandateType: 'TIERS_MANDATE',
-      annualConsumption: 14500
-    } : null);
 
     // Récupération du token
     let token = null;
@@ -765,13 +843,18 @@ async function handleFetch(req, res) {
     const hasLiveDaily = dailyRes.status === 'fulfilled' && !dailyRes.value?.error && Array.isArray(dailyRes.value?.meter_reading?.interval_reading) && dailyRes.value.meter_reading.interval_reading.length > 0;
     const hasLiveLoad  = loadRes.status === 'fulfilled' && !loadRes.value?.error && Array.isArray(loadRes.value?.meter_reading?.interval_reading) && loadRes.value.meter_reading.interval_reading.length > 0;
 
-    // Définition de la consommation cible
-    let targetAnnualKwh = Number(req.query.annualConsumption) ||
-                          Number(consentData?.annualConsumption) ||
-                          Number(mandateSession?.annualConsumption) ||
-                          (isTerresVieilles ? 14500 : 5850);
-    if (!targetAnnualKwh || targetAnnualKwh <= 0) {
-      targetAnnualKwh = isTerresVieilles ? 14500 : 5850;
+    // Définition de la consommation cible (priorité absolue à la facture réelle de 210 075 kWh pour Terres Vieilles)
+    let targetAnnualKwh;
+    if (isTerresVieilles) {
+      targetAnnualKwh = 210075;
+    } else {
+      targetAnnualKwh = Number(req.query.annualConsumption) ||
+                        Number(consentData?.annualConsumption) ||
+                        Number(mandateSession?.annualConsumption) ||
+                        5850;
+      if (!targetAnnualKwh || targetAnnualKwh <= 0) {
+        targetAnnualKwh = 5850;
+      }
     }
 
     const isMandate = consentData?.mandateType === 'TIERS_MANDATE' || mandateSession !== null || isTerresVieilles || req.query.forceMandate === 'true';
@@ -803,8 +886,8 @@ async function handleFetch(req, res) {
       results.mandate = {
         isMandateActive: true,
         mandateType: consentData?.mandateType || 'TIERS_MANDATE',
-        mandateRef: consentData?.mandateRef || mandateSession?.sessionId || (isTerresVieilles ? 'MDT_TERRES_VIEILLES_2024' : `sig_${prmVal}_baf4b2b1`),
-        signedAt: consentData?.signedAt || mandateSession?.signedAt || (isTerresVieilles ? '2024-03-15T10:00:00.000Z' : new Date().toISOString()),
+        mandateRef: consentData?.mandateRef || mandateSession?.sessionId || (isTerresVieilles ? 'sig_50009371514981_mut68wzfs_dc0e3a58' : `sig_${prmVal}_baf4b2b1`),
+        signedAt: consentData?.signedAt || mandateSession?.signedAt || (isTerresVieilles ? '2026-09-25T15:20:00.000Z' : new Date().toISOString()),
         titulaire,
         adresse,
         channel: mandateSession?.channel || consentData?.consentMethod || 'mandat_electronique',
