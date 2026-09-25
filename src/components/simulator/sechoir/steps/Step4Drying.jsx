@@ -16,20 +16,29 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
 
   // État local pour la saisie fluide de la surface (Ha)
   const [surfaceInput, setSurfaceInput] = useState(() => {
-    return vol > 0 ? String(Math.round((vol / yieldVal) * 10) / 10) : '';
+    const safeVol = maxCapacity ? Math.min(vol, maxCapacity) : vol;
+    return safeVol > 0 ? String(Math.round((safeVol / yieldVal) * 10) / 10) : '';
   });
+
+  // Clamp volume if it exceeds maxCapacity (e.g. from persisted store)
+  useEffect(() => {
+    if (maxCapacity && vol > maxCapacity) {
+      handleVolumeChange(maxCapacity);
+    }
+  }, [maxCapacity, vol]);
 
   // Synchronisation de la surface lorsque le tonnage (volume) change depuis l'extérieur (boutons +/- ou reset)
   useEffect(() => {
     if (vol > 0) {
-      const derived = Math.round((vol / yieldVal) * 10) / 10;
+      const safeVol = maxCapacity ? Math.min(vol, maxCapacity) : vol;
+      const derived = Math.round((safeVol / yieldVal) * 10) / 10;
       if (parseFloat(surfaceInput) !== derived) {
         setSurfaceInput(String(derived));
       }
     } else if (vol === 0 && surfaceInput !== '') {
       setSurfaceInput('');
     }
-  }, [vol, yieldVal]);
+  }, [vol, yieldVal, maxCapacity]);
 
   // Handler saisie Surface (Ha) -> Met à jour Tonnage (t MS/an)
   const handleSurfaceChange = (e) => {
@@ -42,13 +51,21 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
     const num = parseFloat(raw.replace(',', '.'));
     if (!isNaN(num) && num >= 0) {
       const calculatedTonnage = Math.round(num * yieldVal);
-      onChangeVolume(calculatedTonnage);
+      const safeTonnage = maxCapacity ? Math.min(maxCapacity, calculatedTonnage) : calculatedTonnage;
+      onChangeVolume(safeTonnage);
+      if (maxCapacity && calculatedTonnage > maxCapacity) {
+        const maxSurface = Math.round((maxCapacity / yieldVal) * 10) / 10;
+        setSurfaceInput(String(maxSurface));
+      }
     }
   };
 
   // Handler saisie Tonnage (t MS/an) -> Met à jour Surface (Ha)
   const handleVolumeChange = (newVol) => {
-    const safeVol = Math.max(0, Math.round(newVol) || 0);
+    let safeVol = Math.max(0, Math.round(newVol) || 0);
+    if (maxCapacity && safeVol > maxCapacity) {
+      safeVol = maxCapacity;
+    }
     onChangeVolume(safeVol);
     if (safeVol > 0) {
       setSurfaceInput(String(Math.round((safeVol / yieldVal) * 10) / 10));
@@ -60,8 +77,6 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
   const gainQualite = vol * pvVal;
   const gainEnergie = vol * eeVal;
   const totalMatiere = gainQualite + gainEnergie;
-
-  const isOverCapacity = maxCapacity && vol > maxCapacity;
 
   return (
     <div 
@@ -132,6 +147,7 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
               <input 
                 type="number"
                 min="0"
+                max={maxCapacity ? Math.round((maxCapacity / yieldVal) * 10) / 10 : undefined}
                 step="0.5"
                 value={surfaceInput}
                 onChange={handleSurfaceChange}
@@ -147,8 +163,13 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
           <div className="bg-slate-950/80 p-2.5 rounded-2xl border border-slate-700 flex items-center justify-between gap-1 shadow-inner">
             <button 
               type="button"
+              disabled={vol <= 0}
               onClick={(e) => { e.stopPropagation(); handleVolumeChange(Math.max(0, vol - (vol >= 100 ? 20 : 10))); }}
-              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0 active:scale-95"
+              className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-colors shrink-0 ${
+                vol <= 0 
+                  ? 'bg-slate-800/40 text-slate-600 border-slate-700/50 cursor-not-allowed opacity-50' 
+                  : 'bg-slate-800 hover:bg-slate-700 text-white border-slate-600 active:scale-95'
+              }`}
               title="Diminuer le tonnage"
             >
               <Minus className="w-4 h-4" />
@@ -157,9 +178,10 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
               <input 
                 type="number"
                 min="0"
+                max={maxCapacity || undefined}
                 step="5"
                 value={vol === 0 ? '' : vol}
-                onChange={(e) => handleVolumeChange(Math.max(0, Number(e.target.value) || 0))}
+                onChange={(e) => handleVolumeChange(Number(e.target.value) || 0)}
                 placeholder="0"
                 onClick={(e) => e.stopPropagation()}
                 className="w-20 text-center font-black bg-transparent text-white focus:outline-none text-base sm:text-lg"
@@ -168,33 +190,34 @@ function HorizontalMaterialCard({ material, maxCapacity, modelName, onToggle, on
             </div>
             <button 
               type="button"
-              onClick={(e) => { e.stopPropagation(); handleVolumeChange(vol + (vol >= 100 ? 20 : 10)); }}
-              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-600 transition-colors shrink-0 active:scale-95"
-              title="Augmenter le tonnage"
+              disabled={Boolean(maxCapacity && vol >= maxCapacity)}
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (maxCapacity && vol >= maxCapacity) return;
+                handleVolumeChange(vol + (vol >= 100 ? 20 : 10)); 
+              }}
+              className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-colors shrink-0 ${
+                maxCapacity && vol >= maxCapacity 
+                  ? 'bg-slate-800/40 text-slate-600 border-slate-700/50 cursor-not-allowed opacity-50' 
+                  : 'bg-slate-800 hover:bg-slate-700 text-white border-slate-600 active:scale-95'
+              }`}
+              title={maxCapacity && vol >= maxCapacity ? `Capacité maximale atteinte (${maxCapacity} ${material.unit})` : "Augmenter le tonnage"}
             >
               <Plus className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Indicateur de respect / dépassement de la capacité */}
+          {/* Indicateur de respect / remplissage de la capacité */}
           {vol > 0 && maxCapacity && (
-            isOverCapacity ? (
-              <div className="bg-amber-950/80 border border-amber-500/50 rounded-xl px-2.5 py-1.5 text-xs sm:text-sm text-amber-300 font-bold flex items-center justify-between shadow-sm">
-                <span className="flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  Capacité ({maxCapacity} {material.unit})
-                </span>
-                <span className="text-amber-400 font-black">+{vol - maxCapacity}</span>
-              </div>
-            ) : (
-              <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl px-2.5 py-1.5 text-xs sm:text-sm text-slate-300 font-medium flex items-center justify-between shadow-sm">
-                <span className="flex items-center gap-1.5 text-slate-400">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  Remplissage
-                </span>
-                <span className="text-emerald-400 font-bold">{Math.round((vol / maxCapacity) * 100)}% ({vol}/{maxCapacity})</span>
-              </div>
-            )
+            <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl px-2.5 py-1.5 text-xs sm:text-sm text-slate-300 font-medium flex items-center justify-between shadow-sm">
+              <span className="flex items-center gap-1.5 text-slate-400">
+                <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${vol >= maxCapacity ? 'text-amber-400' : 'text-emerald-400'}`} />
+                Remplissage
+              </span>
+              <span className={`font-bold ${vol >= maxCapacity ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {Math.min(100, Math.round((vol / maxCapacity) * 100))}% ({vol}/{maxCapacity})
+              </span>
+            </div>
           )}
 
           {/* Badge gain temps réel */}

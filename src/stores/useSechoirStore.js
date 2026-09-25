@@ -6,7 +6,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DRYING_MATERIALS, DEFAULT_FINANCIAL_PARAMS, BATITECH_MODELS } from '@/data/sechoirBatitechModels.js';
+import { DRYING_MATERIALS, DEFAULT_FINANCIAL_PARAMS, BATITECH_MODELS, getDryingCapacity } from '@/data/sechoirBatitechModels.js';
 
 const useSechoirStore = create(
   persist(
@@ -48,23 +48,44 @@ const useSechoirStore = create(
       setAddress: (data) => set((state) => {
         const hasCoords = data.latitude && data.longitude && !isNaN(Number(data.latitude)) && !isNaN(Number(data.longitude));
         const newCoords = hasCoords ? [Number(data.latitude), Number(data.longitude)] : state.mapCenter;
+        const newDept = data.departement || state.departement || '';
+        const activeModel = BATITECH_MODELS[state.selectedModelId] || BATITECH_MODELS['BT-3.1.15'];
         return {
           address: data.address || '',
           addressLabel: data.label || data.address || '',
           latitude: data.latitude || null,
           longitude: data.longitude || null,
-          departement: data.departement || '',
+          departement: newDept,
           commune: data.commune || '',
           codePostal: data.codePostal || '',
           zoneClimatique: data.zoneClimatique || '',
           zoneSechage: data.zoneSechage || '',
           mapCenter: newCoords,
+          materials: state.materials.map(m => {
+            const cap = getDryingCapacity(state.selectedModelId, m.id, newDept) || activeModel?.capacitesMax?.[m.id] || 999999;
+            return {
+              ...m,
+              volume: Math.min(Number(m.volume) || 0, cap),
+            };
+          }),
         };
       }),
 
       selectedModelId: 'BT-3.1.15',
 
-      setModel: (modelId) => set({ selectedModelId: modelId }),
+      setModel: (modelId) => set((state) => {
+        const activeModel = BATITECH_MODELS[modelId] || BATITECH_MODELS['BT-3.1.15'];
+        return {
+          selectedModelId: modelId,
+          materials: state.materials.map(m => {
+            const cap = getDryingCapacity(modelId, m.id, state.departement) || activeModel?.capacitesMax?.[m.id] || 999999;
+            return {
+              ...m,
+              volume: Math.min(Number(m.volume) || 0, cap),
+            };
+          }),
+        };
+      }),
 
       // ═══ STOCKAGE BATTERIE BESS ════════════════════════════════════════════
       hasBattery: false,
@@ -96,25 +117,33 @@ const useSechoirStore = create(
 
       toggleMaterial: (materialId) => set((state) => {
         const activeModel = BATITECH_MODELS[state.selectedModelId] || BATITECH_MODELS['BT-3.1.15'];
+        const cap = getDryingCapacity(state.selectedModelId, materialId, state.departement) || activeModel?.capacitesMax?.[materialId];
         return {
           materials: state.materials.map(m => {
             if (m.id !== materialId) return m;
             const newEnabled = !m.enabled;
-            const modelCap = activeModel?.capacitesMax?.[m.id] || m.defaultVolume || 100;
+            const modelCap = cap || activeModel?.capacitesMax?.[m.id] || m.defaultVolume || 100;
+            const targetVol = m.volume && m.volume > 0 ? Math.min(m.volume, modelCap) : modelCap;
             return {
               ...m,
               enabled: newEnabled,
-              volume: newEnabled && (!m.volume || m.volume === 0) ? modelCap : (m.volume || modelCap),
+              volume: newEnabled ? targetVol : m.volume,
             };
           }),
         };
       }),
 
-      updateMaterialVolume: (materialId, volume) => set((state) => ({
-        materials: state.materials.map(m =>
-          m.id === materialId ? { ...m, volume: Math.max(0, Number(volume) || 0) } : m
-        ),
-      })),
+      updateMaterialVolume: (materialId, volume) => set((state) => {
+        const activeModel = BATITECH_MODELS[state.selectedModelId] || BATITECH_MODELS['BT-3.1.15'];
+        const cap = getDryingCapacity(state.selectedModelId, materialId, state.departement) || activeModel?.capacitesMax?.[materialId];
+        const numVol = Math.max(0, Number(volume) || 0);
+        const safeVol = cap ? Math.min(numVol, cap) : numVol;
+        return {
+          materials: state.materials.map(m =>
+            m.id === materialId ? { ...m, volume: safeVol } : m
+          ),
+        };
+      }),
 
       updateMaterialParams: (materialId, params) => set((state) => ({
         materials: state.materials.map(m =>
