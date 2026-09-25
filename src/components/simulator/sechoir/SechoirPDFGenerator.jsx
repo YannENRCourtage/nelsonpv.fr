@@ -4,7 +4,7 @@
  * Génère un document PDF A4 Paysage (Landscape) 6 pages haute résolution :
  *  - Page 1 : Page Résultats intégrale (5 KPIs avec puissance installée kWc, dimensions et surface, Investissement Initial & Financement, Flux de Trésorerie, Subventions Régionales)
  *  - Page 2 : Business Plan Détaillé sur 25 ans (Grand Graphique ROI surélevé + Tableau Complet des 25 Années avec colonne Charges)
- *  - Page 3 : Simulation d'Autoconsommation de la Production Solaire PV (6 hypothèses de consommation 5k à 50k kWh/an, sans surplus, option stockage batterie BESS, tableau matriciel & bar chart)
+ *  - Page 3 : Simulation d'Autoconsommation de la Production Solaire PV (6 hypothèses de consommation 15k à 200k kWh/an, sans surplus, option stockage batterie BESS, tableau matriciel & bar chart)
  *  - Page 4 : Vue 3D réelle Configurateur selon modèle (3.1.15 / 6.2.15 / 8.3.15) et Implantation Satellite superposées
  *  - Page 5 : Schémas Techniques de Séchage Solaire BatiTech® (Vues 3D, coupes transversales, caissons & bottes, grilles de séchage)
  *  - Page 6 : Synthèse des Bénéfices d'Exploitation (Avantages Financiers/Opérationnels + Grand Graphique de Baisse des Charges)
@@ -235,7 +235,7 @@ export function drawLandscapeTreasuryChart(canvas, cashFlows, roi = 8.79) {
 }
 
 // ─── Simulation Autoconsommation & Factures (Page 3) ───────────────────────────
-export const AUTOCONSOMMATION_TIERS = [5000, 10000, 15000, 20000, 30000, 50000];
+export const AUTOCONSOMMATION_TIERS = [15000, 20000, 30000, 50000, 100000, 200000];
 export const INITIAL_PRICE_PER_KWH = 0.25;
 export const INFLATION_RATE_ELEC = 0.02;
 export const FACTOR_25_YEARS_ELEC = (Math.pow(1 + INFLATION_RATE_ELEC, 25) - 1) / INFLATION_RATE_ELEC;
@@ -243,23 +243,24 @@ export const FACTOR_25_YEARS_ELEC = (Math.pow(1 + INFLATION_RATE_ELEC, 25) - 1) 
 export function getAutoconsumptionData(consKwh, pvProdKwh, withBattery = false) {
   let autoprodRate = 0;
   if (!withBattery) {
-    if (consKwh === 5000) autoprodRate = 0.40;
-    else if (consKwh === 10000) autoprodRate = 0.42;
-    else if (consKwh === 15000) autoprodRate = 0.45;
+    if (consKwh === 15000) autoprodRate = 0.45;
     else if (consKwh === 20000) autoprodRate = 0.48;
     else if (consKwh === 30000) autoprodRate = 0.50;
-    else autoprodRate = 0.48; // 50 000
+    else if (consKwh === 50000) autoprodRate = 0.48;
+    else if (consKwh === 100000) autoprodRate = 0.45;
+    else autoprodRate = 0.40; // 200 000
   } else {
-    if (consKwh === 5000) autoprodRate = 0.90;
-    else if (consKwh === 10000) autoprodRate = 0.85;
-    else if (consKwh === 15000) autoprodRate = 0.82;
+    if (consKwh === 15000) autoprodRate = 0.82;
     else if (consKwh === 20000) autoprodRate = 0.78;
     else if (consKwh === 30000) autoprodRate = 0.72;
-    else autoprodRate = 0.60; // 50 000
+    else if (consKwh === 50000) autoprodRate = 0.60;
+    else if (consKwh === 100000) autoprodRate = 0.52;
+    else autoprodRate = 0.46; // 200 000
   }
 
   // Autoconsommation plafonnée par la production PV disponible (avec coefficient d'efficience)
-  const autoconsoKwh = Math.min(consKwh * autoprodRate, pvProdKwh * 0.92);
+  const maxPvAvailable = (pvProdKwh && pvProdKwh > 0) ? pvProdKwh * (withBattery ? 0.95 : 0.92) : consKwh * autoprodRate;
+  const autoconsoKwh = Math.min(consKwh * autoprodRate, maxPvAvailable);
   const realAutoprodRate = autoconsoKwh / consKwh;
 
   const initialBill = consKwh * INITIAL_PRICE_PER_KWH;
@@ -289,16 +290,17 @@ export function drawAutoconsumptionBarChart(canvas, data) {
 
   const W = canvas.width;
   const H = canvas.height;
-  const padding = { top: 20, right: 25, bottom: 46, left: 100 };
+  const padding = { top: 20, right: 25, bottom: 46, left: 110 };
   const chartW = W - padding.left - padding.right;
   const chartH = H - padding.top - padding.bottom;
 
-  // Échelle Y
-  const maxVal = Math.max(...data.map(d => d.initialBill), 12500);
-  const yCeil = Math.ceil(maxVal / 2000) * 2000;
+  // Échelle Y adaptée jusqu'à 50 000 € (200 000 kWh * 0,25 €/kWh)
+  const maxVal = Math.max(...data.map(d => d.initialBill), 50000);
+  const stepSize = maxVal > 25000 ? 10000 : maxVal > 15000 ? 5000 : 2000;
+  const yCeil = Math.ceil(maxVal / stepSize) * stepSize;
+  const steps = Math.min(7, Math.max(4, Math.round(yCeil / stepSize)));
 
   // Lignes de grille horizontales
-  const steps = 7;
   ctx.strokeStyle = '#f1f5f9';
   ctx.lineWidth = 1.5;
   for (let i = 0; i <= steps; i++) {
@@ -310,7 +312,7 @@ export function drawAutoconsumptionBarChart(canvas, data) {
     ctx.stroke();
 
     ctx.fillStyle = '#94a3b8';
-    ctx.font = 'bold 17px Montserrat, Arial, sans-serif';
+    ctx.font = 'bold 16px Montserrat, Arial, sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(`${fmt(Math.round(val))} €`, padding.left - 12, y + 6);
   }
