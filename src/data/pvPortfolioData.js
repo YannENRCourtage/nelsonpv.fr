@@ -811,7 +811,21 @@ export function normalizePortfolioName(str) {
  */
 export function getProjectPvPortfolio(p) {
   if (!p) return '';
-  const val = p.pv_portfolio || p.portfolio_pv || p.pvPortfolio || p.portfolio || p.portefeuille_pv || p.portefeuille || p.data?.pv_portfolio || p.bp_pv_data?.portfolio || '';
+  const val = p.pv_portfolio || 
+              p.portfolio_pv || 
+              p.pvPortfolio || 
+              p.portfolio || 
+              p.portefeuille_pv || 
+              p.portefeuille || 
+              p.data?.pv_portfolio || 
+              p.data?.portefeuille_pv || 
+              p.data?.pvPortfolio || 
+              p.bp_pv_data?.portfolio || 
+              p.bp_pv_data?.pv_portfolio || 
+              p.bpAcamaState?.pv_portfolio || 
+              p.bpAcamaState?.portfolio || 
+              p.customFields?.pv_portfolio || 
+              '';
   return String(val).trim();
 }
 
@@ -833,7 +847,7 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
     if (!p) return false;
     const rawPort = getProjectPvPortfolio(p);
     const normPort = normalizePortfolioName(rawPort);
-    if (!normPort || normPort === 'NON AFFECTE' || normPort === 'NON AFFECTE' || normPort === 'AUCUN' || normPort === 'NONE' || normPort === 'NULL' || normPort === 'UNDEFINED') {
+    if (!normPort || normPort === 'NON AFFECTE' || normPort === 'AUCUN' || normPort === 'NONE' || normPort === 'NULL' || normPort === 'UNDEFINED') {
       return false;
     }
     if (normTarget !== 'ALL') {
@@ -861,22 +875,39 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
     });
   };
 
-  // Récupération des projets effectifs (avec fallback local si le state React est vide lors du premier rendu)
-  let effectiveProjects = Array.isArray(projects) && projects.length > 0 ? projects : [];
-  if (effectiveProjects.length === 0 && typeof window !== 'undefined') {
+  // Récupération et fusion exhaustive de toutes les sources de projets (state React, cache LS, multi-tenant)
+  const mergedMap = new Map();
+  if (typeof window !== 'undefined') {
     try {
       const gList = JSON.parse(localStorage.getItem('nelson:projects:green-invest:v1') || '[]');
       const eList = JSON.parse(localStorage.getItem('nelson:projects:enr-courtage-energie:v1') || '[]');
       const aList = JSON.parse(localStorage.getItem('nelson:projects:acama:v1') || '[]');
-      const mergedMap = new Map();
       [...gList, ...eList, ...aList].forEach(p => {
-        if (p && p.id && !mergedMap.has(p.id)) mergedMap.set(p.id, p);
+        if (p && p.id) mergedMap.set(p.id, p);
       });
-      effectiveProjects = Array.from(mergedMap.values());
     } catch (e) {
       // ignore
     }
   }
+
+  // Superposer les projets transmis dynamiquement par React
+  if (Array.isArray(projects)) {
+    projects.forEach(p => {
+      if (p && p.id) {
+        const existing = mergedMap.get(p.id) || {};
+        mergedMap.set(p.id, { ...existing, ...p });
+      }
+    });
+  }
+
+  // Si un projet actif est ouvert dans l'éditeur (currentContext.currentProject), le fusionner en priorité
+  if (currentContext?.currentProject && currentContext.currentProject.id) {
+    const curP = currentContext.currentProject;
+    const existing = mergedMap.get(curP.id) || {};
+    mergedMap.set(curP.id, { ...existing, ...curP });
+  }
+
+  let effectiveProjects = Array.from(mergedMap.values());
 
   // Si aucun projet CRM n'est fourni ou trouvé
   if (effectiveProjects.length === 0) {

@@ -5097,8 +5097,19 @@ export default function BpAcama() {
   const { user, activeTenantId } = useAuth();
   const { projects, allProjects, loading, refreshProjects } = useProjects();
   const effectivePortfolioProjects = useMemo(() => {
-    if (allProjects && allProjects.length > 0) return allProjects;
-    return projects || [];
+    const map = new Map();
+    (allProjects || []).forEach(p => { if (p && p.id) map.set(p.id, p); });
+    (projects || []).forEach(p => { if (p && p.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
+    if (map.size > 0) return Array.from(map.values());
+    try {
+      const gList = JSON.parse(localStorage.getItem('nelson:projects:green-invest:v1') || '[]');
+      const eList = JSON.parse(localStorage.getItem('nelson:projects:enr-courtage-energie:v1') || '[]');
+      const aList = JSON.parse(localStorage.getItem('nelson:projects:acama:v1') || '[]');
+      [...gList, ...eList, ...aList].forEach(p => { if (p && p.id && !map.has(p.id)) map.set(p.id, p); });
+      return Array.from(map.values());
+    } catch (e) {
+      return [];
+    }
   }, [allProjects, projects]);
   const [activeTab, setActiveTab] = useState('bp_projets');
   const [selectedProject, setSelectedProject] = useState(null);

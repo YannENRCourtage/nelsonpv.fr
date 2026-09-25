@@ -343,7 +343,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
       detteDebut = Math.max(0, detteDebut - principal);
       return {
         year: y, ca, caTotal: ca, maint, assur, taxes, loyer, mra, opex, ebitda,
-        amortissement: amort, ebit, interets: interest, resFiscal, is, principal, serviceDette,
+        amortissement: amort, ebit, interets: interest, resFiscal, is, principal, serviceDette: servDette,
         dscr, cfNet, tresorerie: cfNet, cumulCashFlow
       };
     });

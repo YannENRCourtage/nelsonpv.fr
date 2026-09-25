@@ -49,10 +49,25 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
     if (initialPortfolio) setSelectedPortfolio(initialPortfolio);
   }, [initialPortfolio]);
 
+  // Fusion multi-sources robuste pour garantir la présence des projets
+  const effectiveProjectsList = useMemo(() => {
+    const mergedMap = new Map();
+    if (typeof window !== 'undefined') {
+      try {
+        const gList = JSON.parse(localStorage.getItem('nelson:projects:green-invest:v1') || '[]');
+        const eList = JSON.parse(localStorage.getItem('nelson:projects:enr-courtage-energie:v1') || '[]');
+        const aList = JSON.parse(localStorage.getItem('nelson:projects:acama:v1') || '[]');
+        [...gList, ...eList, ...aList].forEach(p => { if (p && p.id) mergedMap.set(p.id, p); });
+      } catch (e) { }
+    }
+    (projects || []).forEach(p => { if (p && p.id) mergedMap.set(p.id, { ...(mergedMap.get(p.id) || {}), ...p }); });
+    return Array.from(mergedMap.values());
+  }, [projects]);
+
   // Harmonisation stricte : seuls les projets ayant le portefeuille PV affecté dans leur fiche
   const allPvSites = useMemo(() => {
-    return getPvPortfolioSites(projects, selectedPortfolio);
-  }, [projects, selectedPortfolio]);
+    return getPvPortfolioSites(effectiveProjectsList, selectedPortfolio);
+  }, [effectiveProjectsList, selectedPortfolio]);
 
   // Calcul financier de chaque site et agrégation avec dette dynamique
   const { analyzedSites, consolidatedTotals, consolidatedChronique } = useMemo(() => {
@@ -240,7 +255,7 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
           {/* Sélecteur dynamique de Portefeuille PV */}
           <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg border border-white/20">
             {pvPortfolios.map(port => {
-              const count = (projects || []).filter(p => normalizePortfolioName(getProjectPvPortfolio(p)) === normalizePortfolioName(port.name)).length;
+              const count = effectiveProjectsList.filter(p => normalizePortfolioName(getProjectPvPortfolio(p)) === normalizePortfolioName(port.name)).length;
               const isSelected = normalizePortfolioName(selectedPortfolio) === normalizePortfolioName(port.name);
               return (
                 <button

@@ -8,6 +8,29 @@ import { useAuth } from "./AuthContext";
 const getTenantLSKey = (tId) => `nelson:projects:${tId || 'green-invest'}:v1`;
 
 /* Utils LS */
+function sanitizeProjectForLS(p) {
+  if (!p || typeof p !== 'object') return p;
+  const copy = { ...p };
+  // Strip large data URLs (base64) which exceed localStorage 5MB quota
+  if (Array.isArray(copy.captures)) {
+    copy.captures = copy.captures.map(c => (typeof c === 'string' && c.startsWith('data:') && c.length > 500 ? null : c));
+  }
+  if (Array.isArray(copy.photos)) {
+    copy.photos = copy.photos.map(c => (typeof c === 'string' && c.startsWith('data:') && c.length > 500 ? null : c));
+  }
+  if (copy.urbanisme_captures && typeof copy.urbanisme_captures === 'object') {
+    const uc = {};
+    for (const [k, v] of Object.entries(copy.urbanisme_captures)) {
+      uc[k] = (typeof v === 'string' && v.startsWith('data:') && v.length > 500 ? null : v);
+    }
+    copy.urbanisme_captures = uc;
+  }
+  if (typeof copy.pdf_blob === 'string' && copy.pdf_blob.length > 500) {
+    delete copy.pdf_blob;
+  }
+  return copy;
+}
+
 function loadProjectsFromLS(tenantId) {
   try {
     const raw = localStorage.getItem(getTenantLSKey(tenantId));
@@ -20,12 +43,44 @@ function loadProjectsFromLS(tenantId) {
 
 function saveProjectsToLS(tenantId, list) {
   try {
-    localStorage.setItem(getTenantLSKey(tenantId), JSON.stringify(list));
+    const sanitized = Array.isArray(list) ? list.map(sanitizeProjectForLS) : list;
+    localStorage.setItem(getTenantLSKey(tenantId), JSON.stringify(sanitized));
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('projectsUpdated'));
   } catch (e) {
-    console.warn('localStorage write blocked or unavailable:', e);
-    // Gracefully fail: app can still work without localStorage
+    console.warn('localStorage write error, attempting ultralight payload:', e);
+    try {
+      // Fallback ultra-léger en cas de quota quasi-saturé
+      const ultralight = (Array.isArray(list) ? list : []).map(p => ({
+        id: p.id,
+        name: p.name,
+        firstName: p.firstName,
+        client: p.client || p.name,
+        client_name: p.client_name,
+        address: p.address,
+        zip: p.zip,
+        city: p.city,
+        commune: p.commune,
+        kwc: p.kwc,
+        puissance: p.puissance,
+        productible: p.productible,
+        pv_portfolio: p.pv_portfolio,
+        bess_portfolio: p.bess_portfolio,
+        type: p.type,
+        status: p.status,
+        lat: p.lat,
+        lng: p.lng,
+        gps: p.gps,
+        tenantId: p.tenantId,
+        bp_pv_data: p.bp_pv_data,
+        bpResults: p.bpResults
+      }));
+      localStorage.setItem(getTenantLSKey(tenantId), JSON.stringify(ultralight));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('projectsUpdated'));
+    } catch (e2) {
+      console.warn('localStorage ultralight write also failed:', e2);
+    }
   }
 }
 
@@ -96,14 +151,19 @@ export function ProjectProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Wrapper for setProjects that automatically syncs to localStorage
+  // Wrapper for setProjects that automatically syncs to localStorage and keeps allProjects updated
   const setProjects = useCallback((updater) => {
     _setProjects((prev) => {
       const newProjects = typeof updater === 'function' ? updater(prev) : updater;
       // Sync to localStorage immediately for the active tenant
       saveProjectsToLS(activeTenantIdRef.current, newProjects);
-      // Synchroniser allProjects
-      setAllProjects(loadAllTenantProjectsFromLS());
+      // Synchroniser allProjects en mémoire
+      setAllProjects(prevAll => {
+        const map = new Map();
+        (prevAll || []).forEach(p => { if (p && p.id) map.set(p.id, p); });
+        (newProjects || []).forEach(p => { if (p && p.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
+        return Array.from(map.values());
+      });
       return newProjects;
     });
   }, []);
@@ -141,18 +201,23 @@ export function ProjectProvider({ children }) {
 
         // Précharger également les projets des tenants partenaires (Green Invest & ENR Courtage)
         // afin que les portefeuilles PV et BESS soient complets sur les deux interfaces
-        const partnerTenants = ['green-invest', 'enr-courtage-energie'].filter(t => t !== activeTenantId);
+        const partnerTenants = ['green-invest', 'enr-courtage-energie', 'acama'].filter(t => t !== activeTenantId);
         for (const pt of partnerTenants) {
           try {
             const partnerData = await apiService.getProjects(pt);
             if (Array.isArray(partnerData) && partnerData.length > 0) {
               saveProjectsToLS(pt, partnerData);
+              setAllProjects(prevAll => {
+                const map = new Map();
+                (prevAll || []).forEach(p => { if (p && p.id) map.set(p.id, p); });
+                partnerData.forEach(p => { if (p && p.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
+                return Array.from(map.values());
+              });
             }
           } catch (pe) {
             console.warn(`Could not preload partner projects for ${pt}:`, pe);
           }
         }
-        setAllProjects(loadAllTenantProjectsFromLS());
       } catch (err) {
         console.error("Failed to subscribe to projects:", err);
         setError(err);
@@ -182,17 +247,24 @@ export function ProjectProvider({ children }) {
     setLoading(true);
     try {
       const updated = await apiService.getProjects(activeTenantIdRef.current);
-      setProjects(updated);
-      const partnerTenants = ['green-invest', 'enr-courtage-energie'].filter(t => t !== activeTenantIdRef.current);
+      if (Array.isArray(updated)) {
+        setProjects(updated);
+      }
+      const partnerTenants = ['green-invest', 'enr-courtage-energie', 'acama'].filter(t => t !== activeTenantIdRef.current);
       for (const pt of partnerTenants) {
         try {
           const pData = await apiService.getProjects(pt);
           if (Array.isArray(pData) && pData.length > 0) {
             saveProjectsToLS(pt, pData);
+            setAllProjects(prevAll => {
+              const map = new Map();
+              (prevAll || []).forEach(p => { if (p && p.id) map.set(p.id, p); });
+              pData.forEach(p => { if (p && p.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
+              return Array.from(map.values());
+            });
           }
         } catch (e) { }
       }
-      setAllProjects(loadAllTenantProjectsFromLS());
     } catch (err) {
       console.error("Manual refresh failed:", err);
       setError(err);
@@ -225,13 +297,17 @@ export function ProjectProvider({ children }) {
     }
   }, []);
 
-  /** Mises à jour partielles (patch) */
+  /** Mises à jour partielles (patch) synchronisées sur le projet actif et les listes */
   const updateProject = useCallback(async (patch) => {
-    // Removed side-effect notification logic here to prevent "CONSOLI" bug and double notifications.
-    // Notifications are now handled explicitly in ProjectEditor.jsx or where assignment happens.
-
-    _setProject((prev) => ({ ...(prev || {}), ...(patch || {}) }));
-  }, [project, user]);
+    _setProject((prev) => {
+      const updated = { ...(prev || {}), ...(patch || {}) };
+      if (updated.id) {
+        _setProjects(list => (Array.isArray(list) ? list.map(item => item.id === updated.id ? { ...item, ...patch } : item) : list));
+        setAllProjects(list => (Array.isArray(list) ? list.map(item => item.id === updated.id ? { ...item, ...patch } : item) : list));
+      }
+      return updated;
+    });
+  }, []);
 
   /** Sauvegarde (API + LS backup) */
   /** Sauvegarde (API + LS backup) */

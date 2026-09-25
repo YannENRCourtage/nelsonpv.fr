@@ -909,6 +909,45 @@ export default function ProjectEditor() {
 
   const p = project || {};
 
+  const handlePvPortfolioChange = async (val) => {
+    const chosen = val || null;
+    updateProject({ pv_portfolio: chosen });
+    if (p.id && p.id !== 'new') {
+      try {
+        await apiService.updateProject(p.id, { pv_portfolio: chosen });
+        toast({
+          title: "Portefeuille PV mis à jour",
+          description: chosen ? `Projet affecté au portefeuille ${chosen}` : "Projet retiré du portefeuille",
+          duration: 2500
+        });
+      } catch (err) {
+        console.warn("Auto-update pv_portfolio in Firestore failed:", err);
+      }
+    }
+  };
+
+  const handleBessPortfolioChange = async (val) => {
+    const chosen = val || null;
+    const patch = {
+      bess_portfolio: chosen || null,
+      isBatteryStandAlone: chosen ? 'Oui' : 'Non',
+      ...(chosen && (!p.type || p.type === 'Construction') ? { type: 'Batterie SA' } : {})
+    };
+    updateProject(patch);
+    if (p.id && p.id !== 'new') {
+      try {
+        await apiService.updateProject(p.id, patch);
+        toast({
+          title: "Portefeuille BESS mis à jour",
+          description: chosen ? `Projet affecté au portefeuille ${chosen}` : "Projet retiré du portefeuille",
+          duration: 2500
+        });
+      } catch (err) {
+        console.warn("Auto-update bess_portfolio in Firestore failed:", err);
+      }
+    }
+  };
+
   return (
     <div className="w-full px-2 lg:px-4 py-4 lg:py-6 bg-gray-50">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 mb-6 items-stretch">
@@ -1033,14 +1072,7 @@ export default function ProjectEditor() {
                 </div>
                 <select
                   value={p.bess_portfolio || (p.isBatteryStandAlone === 'Oui' ? 'VOLTA' : '')}
-                  onChange={e => {
-                    const val = e.target.value;
-                    updateProject({
-                      bess_portfolio: val || null,
-                      isBatteryStandAlone: val ? 'Oui' : 'Non',
-                      ...(val && (!p.type || p.type === 'Construction') ? { type: 'Batterie SA' } : {})
-                    });
-                  }}
+                  onChange={e => handleBessPortfolioChange(e.target.value)}
                   className="w-full rounded-md border border-input px-3 py-2 h-10 bg-background text-xs font-bold text-blue-900 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <option value="">Aucun / Non</option>
@@ -1069,7 +1101,7 @@ export default function ProjectEditor() {
                 </div>
                 <select
                   value={p.pv_portfolio || ''}
-                  onChange={e => updateProject({ pv_portfolio: e.target.value || null })}
+                  onChange={e => handlePvPortfolioChange(e.target.value)}
                   disabled={p.type === 'Batterie SA'}
                   className="w-full rounded-md border border-input px-3 py-2 h-10 bg-background text-xs font-bold text-amber-900 disabled:opacity-40 disabled:bg-slate-100 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
@@ -1156,14 +1188,7 @@ export default function ProjectEditor() {
                   </div>
                   <select
                     value={p.bess_portfolio || (p.isBatteryStandAlone === 'Oui' ? 'VOLTA' : '')}
-                    onChange={e => {
-                      const val = e.target.value;
-                      updateProject({
-                        bess_portfolio: val || null,
-                        isBatteryStandAlone: val ? 'Oui' : 'Non',
-                        ...(val && (!p.type || p.type === 'Construction') ? { type: 'Batterie SA' } : {})
-                      });
-                    }}
+                    onChange={e => handleBessPortfolioChange(e.target.value)}
                     className="mt-0.5 w-full rounded-lg border px-2 py-1 h-8 bg-background text-xs font-bold text-blue-900"
                   >
                     <option value="">Aucun / Non</option>
@@ -1191,7 +1216,7 @@ export default function ProjectEditor() {
                   </div>
                   <select
                     value={p.pv_portfolio || ''}
-                    onChange={e => updateProject({ pv_portfolio: e.target.value || null })}
+                    onChange={e => handlePvPortfolioChange(e.target.value)}
                     disabled={p.type === 'Batterie SA'}
                     className="mt-0.5 w-full rounded-lg border px-2 py-1 h-8 bg-background text-xs font-bold text-amber-900 disabled:opacity-40"
                   >
