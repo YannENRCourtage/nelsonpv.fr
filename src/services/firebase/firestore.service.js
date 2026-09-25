@@ -175,12 +175,19 @@ export const createProject = async (projectData, userId, tenantId = 'green-inves
 };
 
 export const getProject = async (projectId) => {
-    const projectDoc = await getDoc(doc(db, 'projects', projectId));
-    if (!projectDoc.exists()) return null;
-    return { ...projectDoc.data(), id: projectDoc.id };
+    if (!projectId || typeof projectId !== 'string') return null;
+    try {
+        const projectDoc = await getDoc(doc(db, 'projects', projectId));
+        if (!projectDoc.exists()) return null;
+        return { ...projectDoc.data(), id: projectDoc.id };
+    } catch (e) {
+        console.warn(`Could not get project ${projectId}:`, e);
+        return null;
+    }
 };
 
 export const updateProject = async (projectId, data) => {
+    if (!projectId || typeof projectId !== 'string') return;
     const cleanData = removeUndefinedFields(data);
     await updateDoc(doc(db, 'projects', projectId), {
         ...cleanData,
@@ -189,6 +196,7 @@ export const updateProject = async (projectId, data) => {
 };
 
 export const deleteProject = async (projectId) => {
+    if (!projectId || typeof projectId !== 'string') return;
     await deleteDoc(doc(db, 'projects', projectId));
 };
 

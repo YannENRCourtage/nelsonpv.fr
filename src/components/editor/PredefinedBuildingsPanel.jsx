@@ -166,7 +166,6 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
   // Reset counters and selection when tenant changes
   useEffect(() => {
     setSelectedKey(null);
-    setExtraBays(0);
     setAuventCount(0);
     setAppentisCount(0);
   }, [tenantId]);
