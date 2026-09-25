@@ -26,29 +26,34 @@ export async function getBuildingInsights(lat, lng) {
   }
   
   const data = await response.json();
-  return data;
+  const segments = data?.roofSegmentSummaries || data?.solarPotential?.roofSegmentStats || data?.solarPotential?.roofSegmentSummaries || data?.roofSegmentStats || [];
+  return {
+    ...data,
+    roofSegmentSummaries: segments,
+    roofSegmentStats: segments,
+  };
 }
 
 /**
  * Choose the most suitable roof segment based on area.
- * @param {Array} segments Array of roofSegmentSummaries from Google Solar.
+ * @param {Array} segments Array of roofSegmentSummaries / roofSegmentStats from Google Solar.
  * @returns {Object|null} Selected segment or null if none.
  */
 export function selectBestRoofSegment(segments) {
   if (!Array.isArray(segments) || segments.length === 0) return null;
   // Sort by area descending, pick first
   const sorted = [...segments].sort((a, b) => {
-    const areaA = a.stats?.areaMeters2 ?? 0;
-    const areaB = b.stats?.areaMeters2 ?? 0;
+    const areaA = a.stats?.areaMeters2 ?? a.areaMeters2 ?? 0;
+    const areaB = b.stats?.areaMeters2 ?? b.areaMeters2 ?? 0;
     return areaB - areaA;
   });
   return sorted[0];
 }
 
 /**
- * Convert the bounding box of a Google segment into a Leaflet polygon (4 points).
- * Google returns {sw: {lat,lng}, ne: {lat,lng}}.
- * We create a rectangle clockwise from SW -> NW -> NE -> SE.
+ * Convert the bounding box of a Google segment or building into a Leaflet polygon (4 points).
+ * Google returns {sw: {latitude|lat, longitude|lng}, ne: {latitude|lat, longitude|lng}}.
+ * We create a rectangle clockwise NW -> NE -> SE -> SW.
  */
 export function boundingBoxToPolygon(bbox) {
   if (!bbox || !bbox.sw || !bbox.ne) return [];
@@ -57,9 +62,9 @@ export function boundingBoxToPolygon(bbox) {
   const neLat = bbox.ne.lat ?? bbox.ne.latitude;
   const neLng = bbox.ne.lng ?? bbox.ne.longitude;
   if (swLat == null || swLng == null || neLat == null || neLng == null) return [];
-  const sw = { lat: swLat, lng: swLng };
   const nw = { lat: neLat, lng: swLng };
   const ne = { lat: neLat, lng: neLng };
   const se = { lat: swLat, lng: neLng };
-  return [sw, nw, ne, se];
+  const sw = { lat: swLat, lng: swLng };
+  return [nw, ne, se, sw];
 }

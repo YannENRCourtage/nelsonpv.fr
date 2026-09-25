@@ -2455,6 +2455,32 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
     return () => window.removeEventListener('map:square-surfaces', handleSquareSurfaces);
   }, [selectedId, setFeatures]);
 
+  useEffect(() => {
+    const handleSolarPolygon = (e) => {
+      const polygon = e.detail?.polygon;
+      if (!polygon || !Array.isArray(polygon) || polygon.length < 3) return;
+      const id = crypto.randomUUID();
+      const newFeature = {
+        id,
+        type: 'polygon',
+        coords: polygon,
+        isSolarDetected: true,
+      };
+      setFeatures(prev => [...prev, newFeature]);
+      if (setSelectedId) setSelectedId(id);
+      try {
+        const bounds = L.latLngBounds(polygon.map(p => [p.lat, p.lng]));
+        if (bounds.isValid() && map) {
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 20 });
+        }
+      } catch (err) {
+        console.warn('Could not fit bounds to solar polygon', err);
+      }
+    };
+    window.addEventListener('map:solar-polygon-loaded', handleSolarPolygon);
+    return () => window.removeEventListener('map:solar-polygon-loaded', handleSolarPolygon);
+  }, [map, setFeatures, setSelectedId]);
+
   const handleAltimetry = async (line) => {
     // If profile is already open, close it
     if (altimetryProfile) {

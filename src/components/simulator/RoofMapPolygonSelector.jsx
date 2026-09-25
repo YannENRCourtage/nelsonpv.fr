@@ -682,7 +682,7 @@ export default function RoofMapPolygonSelector({
         return;
       }
 
-      const summaries = data.solarPotential.roofSegmentSummaries || [];
+      const summaries = data.roofSegmentSummaries || data.solarPotential?.roofSegmentStats || data.solarPotential?.roofSegmentSummaries || data.roofSegmentStats || [];
       if (summaries.length === 0) {
         setSolarFeedback({
           type: 'warning',

@@ -37,14 +37,20 @@ function MapControls({ project, setProject, isRoutingActive, setIsRoutingActive 
   };
 
   const handleDetectSolar = async () => {
-    if (!project?.gps) {
-      toast({ title: 'Coordonnées manquantes', description: 'Veuillez d\'abord saisir une adresse.', variant: 'destructive' });
+    let lat, lng;
+    if (project?.gps) {
+      const [latStr, lngStr] = project.gps.split(',').map(s => s.trim());
+      lat = parseFloat(latStr);
+      lng = parseFloat(lngStr);
+    }
+    if ((isNaN(lat) || isNaN(lng)) && project?.latitude && project?.longitude) {
+      lat = parseFloat(project.latitude);
+      lng = parseFloat(project.longitude);
+    }
+    if (isNaN(lat) || isNaN(lng)) {
+      toast({ title: 'Coordonnées manquantes', description: 'Veuillez d\'abord saisir une adresse ou des coordonnées GPS.', variant: 'destructive' });
       return;
     }
-    const [latStr, lngStr] = project.gps.split(',').map(s => s.trim());
-    const lat = parseFloat(latStr);
-    const lng = parseFloat(lngStr);
-    if (isNaN(lat) || isNaN(lng)) return;
 
     setLoadingSolar(true);
     try {
@@ -57,28 +63,42 @@ function MapControls({ project, setProject, isRoutingActive, setIsRoutingActive 
         });
         return;
       }
-      const segment = selectBestRoofSegment(data.roofSegmentSummaries || []);
+      const segments = data.roofSegmentSummaries || data.solarPotential?.roofSegmentStats || data.solarPotential?.roofSegmentSummaries || [];
+      const segment = selectBestRoofSegment(segments);
       if (!segment) {
         toast({
           title: 'Données 3D non disponibles',
-          description: 'Données 3D non disponibles pour cette zone géographique. Veuillez utiliser le tracé manuel.',
+          description: 'Aucun pan de toiture distinct n\'a été détecté pour ce bâtiment. Veuillez utiliser le tracé manuel.',
           className: 'bg-amber-500 text-white border-amber-600',
         });
         return;
       }
-      const polygon = boundingBoxToPolygon(segment.boundingBox);
+      const polygon = boundingBoxToPolygon(segment.boundingBox || data.boundingBox);
       
+      const pitch = Math.round(segment.pitchDegrees);
+      // Convert Google azimuth (0=N, 90=E, 180=S, 270=W) to PVGIS aspect (-180 to 180, 0=South)
+      let aspect = Math.round(segment.azimuthDegrees - 180);
+      if (aspect < -180) aspect += 360;
+      if (aspect > 180) aspect -= 360;
+      const aspect5 = Math.round(aspect / 5) * 5;
+
       // Mettre à jour le projet avec les nouvelles données
       setProject(prev => ({
         ...prev,
+        panelAngle: String(pitch),
+        panelAspect: String(aspect5),
         solarSlope: segment.pitchDegrees,
         solarAzimuth: segment.azimuthDegrees,
         solarPolygon: polygon
       }));
       
       // Dispatch event for map drawing/calepinage
-      window.dispatchEvent(new CustomEvent('map:solar-polygon-loaded', { detail: { polygon } }));
-      toast({ title: 'Détection Google Solar réussie', description: `Inclinaison ${segment.pitchDegrees}°` });
+      window.dispatchEvent(new CustomEvent('map:solar-polygon-loaded', { detail: { polygon, segment, data } }));
+      toast({
+        title: 'Détection Google Solar réussie',
+        description: `Bâtiment détecté : pente ${pitch}°, azimut ${aspect5}° (${Math.round(segment.stats?.areaMeters2 || 0)} m²)`,
+        className: 'bg-emerald-600 text-white border-emerald-700'
+      });
     } catch (err) {
       console.warn('[Google Solar]', err);
       toast({

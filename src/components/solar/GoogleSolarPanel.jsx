@@ -47,7 +47,8 @@ export default function GoogleSolarPanel({
         setLoading(false);
         return;
       }
-      const segment = selectBestRoofSegment(data.roofSegmentSummaries || []);
+      const segments = data.roofSegmentSummaries || data.solarPotential?.roofSegmentStats || data.solarPotential?.roofSegmentSummaries || [];
+      const segment = selectBestRoofSegment(segments);
       if (!segment) {
         toast({
           title: 'Données 3D non disponibles',
@@ -57,7 +58,7 @@ export default function GoogleSolarPanel({
         setLoading(false);
         return;
       }
-      const polygon = boundingBoxToPolygon(segment.boundingBox);
+      const polygon = boundingBoxToPolygon(segment.boundingBox || data.boundingBox);
       const slope = segment.pitchDegrees;
       const azimuth = segment.azimuthDegrees;
       const result = { slope, azimuth, polygon };
