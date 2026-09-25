@@ -107,7 +107,6 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
   const isAcama = tenantId === 'acama';
 
   const [selectedKey, setSelectedKey] = useState(null);
-  const [extraBays, setExtraBays] = useState(0);
   const [auventCount, setAuventCount] = useState(0);
   const [appentisCount, setAppentisCount] = useState(0);
 
@@ -174,7 +173,6 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
 
   // Reset counters when selecting a new building
   useEffect(() => {
-    setExtraBays(0);
     setAuventCount(0);
     setAppentisCount(0);
   }, [selectedKey]);
@@ -230,9 +228,9 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
     const baseBuilding = BARCONNIERE_CATALOG.find(b => `${b.gamme}_${b.id}` === selectedKey || b.id === selectedKey);
     if (!baseBuilding) return null;
 
-    // Green Invest: extension and bays stepper logic
+    // Green Invest: dimensions directes du catalogue (ex: C5 = 60m, C6 = 67.5m, C7 = 75m)
     const baseLength = baseBuilding.longueur;
-    const currentLength = Math.max(15, baseLength + extraBays * 7.5);
+    const currentLength = baseLength;
     const traveeCount = Math.round(currentLength / 7.5);
 
     let baseWidth = baseBuilding.largeur;
@@ -247,18 +245,10 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
       : 0.20;
     const currentPower = Math.round(currentSurface * powerRatio);
 
-    // Pricing calculation with extra bays
-    const traveePricing = baseBuilding.pricing_ht?.cout_travee_sup_ht || {
-      charpente_travee: 0,
-      fondations_travee: 0,
-      couverture_travee: 0,
-      total_travee: 0,
-    };
-
-    const charpente = Math.round((baseBuilding.pricing_ht?.charpente_base_ht || 0) + extraBays * traveePricing.charpente_travee);
-    const fondations = Math.round((baseBuilding.pricing_ht?.fondations_base_ht || 0) + extraBays * traveePricing.fondations_travee);
-    const couverture = Math.round((baseBuilding.pricing_ht?.couverture_base_ht || 0) + extraBays * traveePricing.couverture_travee);
-    const totalTarif = Math.round((baseBuilding.pricing_ht?.total_base_ht || baseBuilding.tarif) + extraBays * traveePricing.total_travee);
+    const charpente = Math.round(baseBuilding.pricing_ht?.charpente_base_ht || 0);
+    const fondations = Math.round(baseBuilding.pricing_ht?.fondations_base_ht || 0);
+    const couverture = Math.round(baseBuilding.pricing_ht?.couverture_base_ht || 0);
+    const totalTarif = Math.round(baseBuilding.pricing_ht?.total_base_ht || baseBuilding.tarif || 0);
 
     const ratioKwc = currentPower > 0 ? Number((totalTarif / (currentPower * 1000)).toFixed(2)) : baseBuilding.ratioKwc;
     const ratioM2 = currentSurface > 0 ? Math.round(totalTarif / currentSurface) : baseBuilding.ratioM2;
@@ -458,43 +448,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
           )}
         </div>
 
-        {/* Stepper for 7.50m bays (GREEN INVEST only) */}
-        {!isAcama && selectedBuildingData && selectedKey !== 'SUR-MESURE' && (
-          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-slate-500" />
-              <div className="text-xs">
-                <span className="font-semibold text-slate-700">Travées de 7,50 m : </span>
-                <span className="font-bold text-blue-700">{selectedBuildingData.traveeCount || 4} travées</span>
-                <span className="text-slate-500 ml-1">({selectedBuildingData.length} m)</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-7 w-7 rounded-lg bg-white"
-                onClick={() => setExtraBays((prev) => Math.max(-2, prev - 1))}
-                disabled={(selectedBuildingData.longueur || 30) + (extraBays - 1) * 7.5 < 15}
-                title="Retirer une travée (-7.50m)"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </Button>
-              <span className="text-xs font-mono font-bold w-6 text-center">
-                {extraBays >= 0 ? `+${extraBays}` : extraBays}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-7 w-7 rounded-lg bg-white"
-                onClick={() => setExtraBays((prev) => prev + 1)}
-                title="Ajouter une travée (+7.50m)"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          </div>
-        )}
+
 
         {/* Building details & price breakdown */}
         {selectedBuildingData && (
@@ -557,14 +511,6 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
                   )}
                 </div>
 
-                {selectedBuildingData.pricing_ht.cout_travee_sup_ht?.total_travee > 0 && (
-                  <div className="pt-1 border-t border-slate-800 flex justify-between text-[11px] text-slate-400">
-                    <span>Travée sup. (7.50m) :</span>
-                    <span className="font-bold text-amber-300">
-                      +{formatNumber(selectedBuildingData.pricing_ht.cout_travee_sup_ht.total_travee)} € HT
-                    </span>
-                  </div>
-                )}
               </div>
             )}
           </div>

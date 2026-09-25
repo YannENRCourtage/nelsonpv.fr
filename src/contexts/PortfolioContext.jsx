@@ -16,11 +16,11 @@ export const usePortfolios = () => {
   const context = useContext(PortfolioContext);
   if (!context) {
     // Fallback safe au cas où le contexte n'est pas encore monté
-    const fallbackList = getPortfoliosFromLS();
+    const fallbackList = getPortfoliosFromLS().filter(p => (p.name || '').toUpperCase() !== 'ACAMA');
     return {
       portfolios: fallbackList,
       pvPortfolios: fallbackList.filter(p => p.type === 'PV' || p.type === 'HYBRIDE'),
-      bessPortfolios: fallbackList.filter(p => p.type === 'BESS' || p.type === 'HYBRIDE'),
+      bessPortfolios: fallbackList.filter(p => (p.type === 'BESS' || p.type === 'HYBRIDE') && (p.name || '').toUpperCase() !== 'ACAMA'),
       canManagePortfolios: false,
       loading: false,
       createPortfolio: async () => {},
@@ -70,7 +70,7 @@ export const PortfolioProvider = ({ children }) => {
   }, [portfolios]);
 
   const bessPortfolios = useMemo(() => {
-    return portfolios.filter(p => p.type === 'BESS' || p.type === 'HYBRIDE');
+    return portfolios.filter(p => (p.type === 'BESS' || p.type === 'HYBRIDE') && (p.name || '').toUpperCase() !== 'ACAMA');
   }, [portfolios]);
 
   // Actions d'administration

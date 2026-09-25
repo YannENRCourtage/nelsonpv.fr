@@ -68,8 +68,9 @@ export default function PortfolioManagerModal({ open, onClose, projects = [] }) 
   }, [projects]);
 
   const filteredPortfolios = useMemo(() => {
-    if (activeTab === 'ALL') return portfolios;
-    return portfolios.filter(p => p.type === activeTab);
+    const list = (portfolios || []).filter(p => (p.name || '').toUpperCase() !== 'ACAMA');
+    if (activeTab === 'ALL') return list;
+    return list.filter(p => p.type === activeTab);
   }, [portfolios, activeTab]);
 
   const handleStartCreate = (defaultType = 'PV') => {
@@ -173,7 +174,7 @@ export default function PortfolioManagerModal({ open, onClose, projects = [] }) 
   };
 
   const handleDelete = async (port) => {
-    if (port.isDefault && (port.name === 'HELIOS' || port.name === 'VOLTA')) {
+    if (port.isDefault && (port.name === 'HELIOS' || port.name === 'VOLTA' || port.name === 'LOUXOR')) {
       toast({
         title: "Action non autorisée",
         description: `Le portefeuille système ${port.name} est indispensable et ne peut être supprimé.`,

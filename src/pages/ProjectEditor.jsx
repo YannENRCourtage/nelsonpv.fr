@@ -762,6 +762,7 @@ export default function ProjectEditor() {
   };
 
   const handleBuildingSelect = (building) => {
+    let newAngle = null;
     // Auto-set inclination and weighting first (Priority to Data)
     if (building && building.code) {
       const code = building.code;
@@ -911,13 +912,20 @@ export default function ProjectEditor() {
 
   const handlePvPortfolioChange = async (val) => {
     const chosen = val || null;
-    updateProject({ pv_portfolio: chosen });
+    const isLouxor = (chosen || '').toUpperCase() === 'LOUXOR';
+    const patch = {
+      pv_portfolio: chosen,
+      ...(isLouxor ? { bess_portfolio: 'LOUXOR', isBatteryStandAlone: 'Oui' } : {})
+    };
+    updateProject(patch);
     if (p.id && p.id !== 'new') {
       try {
-        await apiService.updateProject(p.id, { pv_portfolio: chosen });
+        await apiService.updateProject(p.id, patch);
         toast({
           title: "Portefeuille PV mis à jour",
-          description: chosen ? `Projet affecté au portefeuille ${chosen}` : "Projet retiré du portefeuille",
+          description: isLouxor
+            ? "Projet affecté au portefeuille hybride LOUXOR (PV + BESS)"
+            : (chosen ? `Projet affecté au portefeuille ${chosen}` : "Projet retiré du portefeuille"),
           duration: 2500
         });
       } catch (err) {
@@ -928,10 +936,12 @@ export default function ProjectEditor() {
 
   const handleBessPortfolioChange = async (val) => {
     const chosen = val || null;
+    const isLouxor = (chosen || '').toUpperCase() === 'LOUXOR';
     const patch = {
       bess_portfolio: chosen || null,
       isBatteryStandAlone: chosen ? 'Oui' : 'Non',
-      ...(chosen && (!p.type || p.type === 'Construction') ? { type: 'Batterie SA' } : {})
+      ...(chosen && (!p.type || p.type === 'Construction') ? { type: 'Batterie SA' } : {}),
+      ...(isLouxor ? { pv_portfolio: 'LOUXOR' } : {})
     };
     updateProject(patch);
     if (p.id && p.id !== 'new') {
@@ -939,7 +949,9 @@ export default function ProjectEditor() {
         await apiService.updateProject(p.id, patch);
         toast({
           title: "Portefeuille BESS mis à jour",
-          description: chosen ? `Projet affecté au portefeuille ${chosen}` : "Projet retiré du portefeuille",
+          description: isLouxor
+            ? "Projet affecté au portefeuille hybride LOUXOR (BESS + PV automatiquement synchronisés)"
+            : (chosen ? `Projet affecté au portefeuille ${chosen}` : "Projet retiré du portefeuille"),
           duration: 2500
         });
       } catch (err) {
@@ -1076,10 +1088,10 @@ export default function ProjectEditor() {
                   className="w-full rounded-md border border-input px-3 py-2 h-10 bg-background text-xs font-bold text-blue-900 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <option value="">Aucun / Non</option>
-                  {bessPortfolios.map(bp => (
+                  {bessPortfolios.filter(bp => (bp.name || '').toUpperCase() !== 'ACAMA').map(bp => (
                     <option key={bp.id} value={bp.name}>{bp.name}</option>
                   ))}
-                  {p.bess_portfolio && !bessPortfolios.some(bp => bp.name === p.bess_portfolio) && (
+                  {p.bess_portfolio && p.bess_portfolio.toUpperCase() !== 'ACAMA' && !bessPortfolios.some(bp => bp.name === p.bess_portfolio) && (
                     <option value={p.bess_portfolio}>{p.bess_portfolio}</option>
                   )}
                 </select>
@@ -1192,10 +1204,10 @@ export default function ProjectEditor() {
                     className="mt-0.5 w-full rounded-lg border px-2 py-1 h-8 bg-background text-xs font-bold text-blue-900"
                   >
                     <option value="">Aucun / Non</option>
-                    {bessPortfolios.map(bp => (
+                    {bessPortfolios.filter(bp => (bp.name || '').toUpperCase() !== 'ACAMA').map(bp => (
                       <option key={bp.id} value={bp.name}>{bp.name}</option>
                     ))}
-                    {p.bess_portfolio && !bessPortfolios.some(bp => bp.name === p.bess_portfolio) && (
+                    {p.bess_portfolio && p.bess_portfolio.toUpperCase() !== 'ACAMA' && !bessPortfolios.some(bp => bp.name === p.bess_portfolio) && (
                       <option value={p.bess_portfolio}>{p.bess_portfolio}</option>
                     )}
                   </select>
