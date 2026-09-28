@@ -2150,13 +2150,17 @@ export function extractProjectBuildingsAndParams(p, localBatData = [], existingP
     resolvedRent = parseFloat(p.rent || p.loyerAnnuel || p.loyer) || 0;
   }
 
+  // Productible et puissance unitaire résolus
+  const rawProd = p.productible || p.solarYieldRoof1 || p.solarYield || p.solar_yield || p.prodMoyen || p.productibleMoyen || p.yield || p.bpAcamaState?.productible || p.bp_pv_data?.productible;
+  const prod = parseFloat(rawProd) || 1123.08;
+  const pu = existingParams.puissanceUnitaire || p.puissanceUnitaire || 465;
+
   // CAS 1 : DOSSIER CERTIFIÉ LATOURNERIE
   // "un bâtiment de 326kWc (H49) et une toiture de 680kWc" - Total 1006 kWc, loyer 2 250 €/an sur 20 ans
   if (isLatournerie) {
     const bat1Kwc = 326;
     const bat2Kwc = 680;
-    const prod = 1148.17;
-    const pu = 465;
+    const prodL = 1148.17;
 
     const h49Data = (localBatData || []).find(d => normalize(d.type).includes('h49'));
     const coutCharpenteH49 = h49Data?.cout_bat || 145580;
@@ -2168,7 +2172,7 @@ export function extractProjectBuildingsAndParams(p, localBatData = [], existingP
         projectType: 'BAC',
         surfaceToiture: 1519,
         kwc: bat1Kwc,
-        productible: prod,
+        productible: prodL,
         coutCentrale: bat1Kwc * 490,
         coutCharpente: coutCharpenteH49,
         etudeStructure: 3300,
@@ -2182,7 +2186,7 @@ export function extractProjectBuildingsAndParams(p, localBatData = [], existingP
         projectType: 'BE',
         surfaceToiture: 3010,
         kwc: bat2Kwc,
-        productible: prod,
+        productible: prodL,
         coutCentrale: bat2Kwc * 490,
         coutCharpente: 0,
         etudeStructure: 3300,
@@ -2195,7 +2199,7 @@ export function extractProjectBuildingsAndParams(p, localBatData = [], existingP
     return {
       buildings,
       kwc: 1006,
-      productible: prod,
+      productible: prodL,
       puissanceUnitaire: pu,
       rent: 2250,
       loyerAnnuel: 2250,
@@ -2215,8 +2219,6 @@ export function extractProjectBuildingsAndParams(p, localBatData = [], existingP
     const parts = projSizeStr.split(/\s*\+\s*(?=[^\]]*(?:\[|$))/).map(s => s.trim()).filter(Boolean);
     if (parts.length >= 2) {
       const parsedBuildings = [];
-      const prod = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
-      const pu = existingParams.puissanceUnitaire || 465;
 
       parts.forEach((part, idx) => {
         const kwcMatch = part.match(/\[?\s*([0-9]+(?:[.,][0-9]+)?)\s*k?wc\s*\]?/i);
@@ -2269,30 +2271,29 @@ export function extractProjectBuildingsAndParams(p, localBatData = [], existingP
     (f.type === 'polygon' && !f.isBattery)
   );
 
-  if (mapBuildings.length >= 2) {
-    const prod = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
-    const pu = existingParams.puissanceUnitaire || 465;
+  if (mapBuildings.length >= 1) {
     const resolvedFromMap = [];
 
     mapBuildings.forEach((f, idx) => {
       const isPolygon = f.type === 'polygon';
-      const projectType = isPolygon ? 'BE' : (f.projectType || 'BAC');
+      const isToiture = isPolygon || /toiture|existant|rénov|renov|be/i.test(f.projectType || f.type_bat || f.name || p.type_projet || p.type || '');
+      const projectType = isToiture ? 'BE' : (f.projectType || 'BAC');
       const featPower = parseFloat(f.power || f.kwc || f.puissance || f.buildingPower) || 0;
       const featSurface = f.surface || f.buildingSurface || 0;
 
-      const calculatedKwc = featPower > 0 ? featPower : (featSurface > 0 ? Math.round(featSurface / 4.5 * 10) / 10 : 100);
-      const rawName = f.buildingName || f.name || (isPolygon ? 'Toiture existante' : '');
-      const normType = normalizeBatType(rawName);
+      const calculatedKwc = featPower > 0 ? featPower : (featSurface > 0 ? Math.round(featSurface / 4.5 * 10) / 10 : (idx === 0 ? (parseFloat(p.kwc || p.puissance) || 100) : 100));
+      const rawName = f.buildingName || f.name || f.type_bat || (idx === 0 ? (p.projectSize || p.type_bat || p.projet || p.project || p.buildingType) : '') || (isToiture ? 'Toiture existante' : '');
+      const normType = normalizeBatType(rawName) || rawName;
       const batData = (localBatData || []).find(d => normalize(d.type).includes(normalize(normType)));
       const coutCharpente = batData ? batData.cout_bat : 0;
 
       resolvedFromMap.push({
         id: idx + 1,
-        typeBat: normType || (isPolygon ? 'Toiture existante' : ''),
+        typeBat: normType || (isToiture ? 'Toiture existante' : 'Bâtiment standard'),
         projectType,
-        surfaceToiture: featSurface,
+        surfaceToiture: featSurface || (projectType === 'BE' ? Math.round(calculatedKwc * 4.5) : 0),
         kwc: calculatedKwc,
-        productible: prod,
+        productible: parseFloat(f.productible || f.solarYield || prod) || prod,
         coutCentrale: calculatedKwc * 490,
         coutCharpente,
         etudeStructure: 3300,
@@ -2319,30 +2320,42 @@ export function extractProjectBuildingsAndParams(p, localBatData = [], existingP
     const savedTotalKwc = savedState.buildings.reduce((s, b) => s + (parseFloat(b.kwc) || 0), 0);
     // Si la puissance sauvegardée est cohérente avec la fiche projet
     if (!targetCardKwc || Math.abs(savedTotalKwc - targetCardKwc) < 1.0) {
+      const updatedBuildings = savedState.buildings.map(b => ({
+        ...b,
+        productible: parseFloat(b.productible || prod) || prod
+      }));
       return {
         ...savedState,
+        buildings: updatedBuildings,
+        productible: parseFloat(savedState.productible || prod) || prod,
         rent: resolvedRent || savedState.rent || savedState.loyerAnnuel || 0,
         loyerAnnuel: resolvedRent || savedState.loyerAnnuel || savedState.rent || 0
       };
     }
   }
 
-  // CAS 5 : Bâtiments simples depuis p.puissance, p.puissance2, etc. ou p.kwc direct
-  const b1 = parseFloat(p.puissance) || (targetCardKwc > 0 ? targetCardKwc : 100);
+  // CAS 5 : Bâtiments simples depuis p.puissance, p.kwc, p.projectSize, p.type_bat, etc.
+  const rawBatType = p.projectSize || p.type_bat || p.projet || p.project || p.buildingType || p.typeBat || '';
+  const normType = normalizeBatType(rawBatType) || rawBatType;
+  const isToiture = /toiture|existant|rénov|renov|be/i.test(p.type_projet || p.type || p.projectType || rawBatType);
+  const projectType = isToiture ? 'BE' : 'BAC';
+
+  const b1 = parseFloat(p.puissance || p.kwc) || (targetCardKwc > 0 ? targetCardKwc : 100);
   const b2 = parseFloat(p.puissance2) || 0;
-  const prod = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
-  const pu = existingParams.puissanceUnitaire || 465;
+
+  const batData1 = (localBatData || []).find(d => normalize(d.type).includes(normalize(normType)));
+  const coutCharpente1 = batData1 ? batData1.cout_bat : 0;
 
   const defaultBuildings = [
     {
       id: 1,
-      typeBat: normalizeBatType(p.type_bat || ''),
-      projectType: 'BAC',
-      surfaceToiture: 0,
+      typeBat: projectType === 'BE' ? (normType || 'Toiture existante') : (normType || 'Bâtiment standard'),
+      projectType,
+      surfaceToiture: parseFloat(p.surface || p.surfaceToiture || (b1 * 4.5)) || 0,
       kwc: b1,
       productible: prod,
       coutCentrale: b1 * 490,
-      coutCharpente: 0,
+      coutCharpente: coutCharpente1,
       etudeStructure: 3300,
       distHta: 100,
       distPriv: 100,
@@ -2350,15 +2363,19 @@ export function extractProjectBuildingsAndParams(p, localBatData = [], existingP
     }
   ];
   if (b2 > 0) {
+    const rawBatType2 = p.type_bat2 || '';
+    const normType2 = normalizeBatType(rawBatType2) || rawBatType2;
+    const batData2 = (localBatData || []).find(d => normalize(d.type).includes(normalize(normType2)));
+    const coutCharpente2 = batData2 ? batData2.cout_bat : 0;
     defaultBuildings.push({
       id: 2,
-      typeBat: normalizeBatType(p.type_bat2 || ''),
+      typeBat: normType2 || 'Bâtiment standard',
       projectType: 'BAC',
-      surfaceToiture: 0,
+      surfaceToiture: parseFloat(p.surface2 || (b2 * 4.5)) || 0,
       kwc: b2,
       productible: prod,
       coutCentrale: b2 * 490,
-      coutCharpente: 0,
+      coutCharpente: coutCharpente2,
       etudeStructure: 3300,
       distHta: 100,
       distPriv: 100,
@@ -2736,7 +2753,20 @@ function TabBpProjets({
 
 
   const applyProject = (id) => {
-    const p = typeof id === 'string' ? (projects || []).find(proj => proj.id === id) : id;
+    let p = null;
+    if (typeof id === 'string') {
+      p = (projects || []).find(proj => proj.id === id);
+    } else if (id && typeof id === 'object') {
+      const match = (projects || []).find(proj => 
+        (id.id && proj.id === id.id) || 
+        (id.name && proj.name && (
+          proj.name.toLowerCase() === id.name.toLowerCase() ||
+          id.name.toLowerCase().includes(proj.name.toLowerCase()) ||
+          proj.name.toLowerCase().includes(id.name.toLowerCase())
+        ))
+      );
+      p = match ? { ...match, ...id } : id;
+    }
     if (!p) return;
 
     // 1. Appariement automatique avec la Matrice ODRE certifiée des 31 sites
@@ -3090,20 +3120,11 @@ function TabBpProjets({
           initialPortfolio={selectedPvPortfolio}
           onSelectSite={(site) => {
             if (site) {
-              applyProject({
-                id: site.id,
-                name: site.name,
-                city: site.city,
-                postcode: site.postcode,
-                address: site.address,
-                lat: site.lat,
-                lng: site.lng,
-                isBatteryStandAlone: 'Non'
-              });
+              applyProject(site.crmProject || site);
               setPvMode('single');
               toast({
                 title: `Site ${site.name} chargé`,
-                description: `Simulation unitaire de ${site.kwc} kWc rattachée au poste source ${site.substation?.name || 'ODRE'}.`
+                description: `Simulation unitaire de ${site.kwc || site.powerKwc} kWc rattachée au poste source ${site.substation?.name || 'ODRE'}.`
               });
             }
           }}

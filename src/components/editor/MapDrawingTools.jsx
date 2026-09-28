@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Trash2, Mountain, Square, RotateCw, Ruler, Pentagon, CircleDashed } from "lucide-react";
+import { Trash2, Mountain, Square, RotateCw, Ruler, Pentagon, CircleDashed, CheckSquare } from "lucide-react";
 import L from "leaflet";
 
 // Desktop: full width with text; Mobile: icon-only compact button
@@ -34,6 +34,12 @@ export default function MapDrawingTools({ mode, setMode }) {
     }, 100);
   };
 
+  const handleSquareSurfaces = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.dispatchEvent(new CustomEvent('map:square-surfaces'));
+  };
+
   const tools = [
     { key: "line", Icon: Ruler, label: "Distance", title: "Distance (L)", isDelete: false },
     { key: "circle", Icon: CircleDashed, label: "Périmètre", title: "Périmètre (C)", isDelete: false },
@@ -56,6 +62,57 @@ export default function MapDrawingTools({ mode, setMode }) {
         const activeClass = isDelete
           ? (isActive ? btnActiveDelete : "")
           : (isActive ? btnActive : "");
+
+        if (key === "polygon") {
+          return (
+            <React.Fragment key={key}>
+              {/* Desktop: Bouton Surface réduit + Bouton Angle Droit = w-[140px] au total */}
+              <div className="hidden lg:flex items-center gap-1.5 w-[140px] mb-2">
+                <button
+                  type="button"
+                  className={`flex-1 h-[38px] flex items-center justify-center rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-800 shadow hover:bg-slate-50 focus:outline-none ${activeClass}`}
+                  onClick={(e) => handleClick(e, key)}
+                  title={title}
+                  tabIndex={-1}
+                >
+                  <Icon className="h-4 w-4 mr-1.5 shrink-0" />
+                  <span className="truncate">{label}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSquareSurfaces}
+                  className="w-[36px] h-[38px] shrink-0 flex items-center justify-center rounded-md border border-slate-300 bg-white p-1 text-emerald-600 hover:bg-emerald-50 shadow focus:outline-none"
+                  title="Optimiser les angles (90°)"
+                  tabIndex={-1}
+                >
+                  <CheckSquare className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Mobile/Tablet: Surface + Angle Droit */}
+              <div className="flex lg:hidden items-center gap-1 mb-1.5">
+                <button
+                  type="button"
+                  className={`flex items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-slate-800 shadow hover:bg-slate-50 focus:outline-none ${activeClass}`}
+                  onClick={(e) => handleClick(e, key)}
+                  title={title}
+                  tabIndex={-1}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSquareSurfaces}
+                  className="flex items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-emerald-600 shadow hover:bg-emerald-50 focus:outline-none"
+                  title="Optimiser les angles (90°)"
+                  tabIndex={-1}
+                >
+                  <CheckSquare className="h-4 w-4" />
+                </button>
+              </div>
+            </React.Fragment>
+          );
+        }
 
         return (
           <React.Fragment key={key}>

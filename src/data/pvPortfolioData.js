@@ -1147,7 +1147,7 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         postcode: p.zip || p.postcode || p.cp || mock?.postcode || '',
         city: p.city || p.commune || mock?.city || '',
         address: p.address || mock?.address || '',
-        typeBat: p.type_bat || p.typeBat || mock?.typeBat || 'Bâtiment BAC',
+        typeBat: p.projectSize || p.type_bat || p.typeBat || p.projet || p.project || mock?.typeBat || 'Bâtiment BAC',
         spv: p.spv || mock?.spv || `${displayPortLabel} SPV 1`,
         kwc: pKwc,
         productible: pProd,
