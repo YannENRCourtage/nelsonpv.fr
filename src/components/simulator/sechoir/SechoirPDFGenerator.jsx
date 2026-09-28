@@ -979,10 +979,10 @@ export async function generateSechoirPDF({
           ${renderLandscapeHeader({ clientName, dateStr, clientAddress, modelName, pageBadge: 'SIMULATION AUTOCONSOMMATION &amp; ÉCONOMIES D\'ÉNERGIE' })}
 
           <!-- 1. SECTION SANS BATTERIE -->
-          <div style="display: grid; grid-template-columns: 7.2fr 4.8fr; gap: 8px; margin-bottom: 4px; height: 59mm; box-sizing: border-box;">
+          <div style="display: grid; grid-template-columns: 7.2fr 4.8fr; gap: 8px; margin-bottom: 6mm; height: 56mm; box-sizing: border-box;">
             
             <!-- TABLEAU SANS BATTERIE -->
-            <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 4px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: flex-start; box-sizing: border-box;">
+            <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 3.5px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: flex-start; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 2px;">
                 <div>
                   <div style="font-size: 7.8pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">
@@ -1016,7 +1016,7 @@ export async function generateSechoirPDF({
             </div>
 
             <!-- GRAPHIQUE SANS BATTERIE -->
-            <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 4px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+            <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 3.5px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
               <div>
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 2px;">
                   <div>
@@ -1032,7 +1032,7 @@ export async function generateSechoirPDF({
 
                 <!-- Canvas Bar Chart -->
                 <div style="width: 100%; text-align: center; margin: 1px 0;">
-                  <img src="${autoconsoChartImgNoBatt}" style="width: 100%; height: 31mm; object-fit: contain; display: block; margin: 0 auto;" alt="Comparatif Factures Sans Batterie" />
+                  <img src="${autoconsoChartImgNoBatt}" style="width: 100%; height: 28mm; object-fit: contain; display: block; margin: 0 auto;" alt="Comparatif Factures Sans Batterie" />
                 </div>
               </div>
 
@@ -1053,10 +1053,10 @@ export async function generateSechoirPDF({
           </div>
 
           <!-- 2. SECTION AVEC BATTERIE -->
-          <div style="display: grid; grid-template-columns: 7.2fr 4.8fr; gap: 8px; margin-bottom: 5px; height: 59mm; box-sizing: border-box;">
+          <div style="display: grid; grid-template-columns: 7.2fr 4.8fr; gap: 8px; margin-bottom: 5mm; height: 56mm; box-sizing: border-box;">
             
             <!-- TABLEAU AVEC BATTERIE -->
-            <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 4px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: flex-start; box-sizing: border-box;">
+            <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 3.5px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: flex-start; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 2px;">
                 <div>
                   <div style="font-size: 7.8pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">
@@ -1090,7 +1090,7 @@ export async function generateSechoirPDF({
             </div>
 
             <!-- GRAPHIQUE AVEC BATTERIE -->
-            <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 4px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+            <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 3.5px 8px; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
               <div>
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 2px;">
                   <div>
@@ -1106,7 +1106,7 @@ export async function generateSechoirPDF({
 
                 <!-- Canvas Bar Chart -->
                 <div style="width: 100%; text-align: center; margin: 1px 0;">
-                  <img src="${autoconsoChartImgBatt}" style="width: 100%; height: 31mm; object-fit: contain; display: block; margin: 0 auto;" alt="Comparatif Factures Avec Batterie" />
+                  <img src="${autoconsoChartImgBatt}" style="width: 100%; height: 28mm; object-fit: contain; display: block; margin: 0 auto;" alt="Comparatif Factures Avec Batterie" />
                 </div>
               </div>
 
@@ -1127,7 +1127,7 @@ export async function generateSechoirPDF({
           </div>
 
           <!-- 3 BLOCS DÉCISIONNELS EN BAS DE PAGE -->
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 2mm;">
             <!-- Brique 1 : L'apport de la Batterie -->
             <div style="background: #eef2ff; border: 1.5px solid #c7d2fe; border-radius: 8px; padding: 6px 10px; display: flex; flex-direction: column; justify-content: center;">
               <div style="font-size: 8.2pt; font-weight: 800; color: #3730a3; display: flex; align-items: center; gap: 5px; margin-bottom: 3px;">

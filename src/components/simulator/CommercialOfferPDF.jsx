@@ -1173,8 +1173,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       }
     }
 
-    // Si c'est un séchoir BatiTech et que l'option d'inclure la page 2 est demandée (désactivée par défaut pour 1 page unique)
-    const shouldIncludeSechoirPage2 = isSechoir && Boolean(sim.includeBenefitsPage || sim.includePage2);
+    // Si c'est un séchoir BatiTech et que l'option d'inclure la page 2 est demandée (désactivée par défaut pour 1 page unique et jamais incluse pour les courriers postaux)
+    const shouldIncludeSechoirPage2 = isSechoir && Boolean(sim.includeBenefitsPage || sim.includePage2) && !sim.includeCoverLetter;
     if (shouldIncludeSechoirPage2) {
       const chargesCanvas = document.createElement('canvas');
       drawSechoirChargesChart(chargesCanvas);
@@ -1277,20 +1277,20 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     }
 
     // Si c'est une ombrière, une toiture ou un séchoir avec option courrier de prospection, ajouter le Courrier d'accompagnement
-    // Si c'est une ombrière, une toiture ou un séchoir avec option courrier de prospection, ajouter le Courrier d'accompagnement
     if ((isOmbriere || isToiture || isSechoir) && sim.includeCoverLetter) {
       const pageCoverContainer = document.createElement('div');
       pageCoverContainer.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;max-height:297mm;background:#ffffff;color:#0f172a;font-family:Arial,sans-serif;overflow:hidden;box-sizing:border-box;';
       
       const targetCompany = isSechoir
-        ? (sim.companyName || sim.ownerName || sim.clientName || (sim.pacage ? `Exploitation Agricole (PACAGE ${sim.pacage})` : 'Direction de l\'exploitation'))
+        ? (sim.companyName || sim.ownerName || sim.clientName || 'Direction de l\'exploitation')
         : (sim.companyName || sim.ownerName || sim.company || sim.clientName || 'Direction de l\'établissement');
-      const targetAddress = sim.address || clientAddress || '';
+      const rawTargetAddress = sim.address || clientAddress || '';
+      const targetAddress = rawTargetAddress.replace(/\s*\(?(Point\s+)?GPS\s*:[^)]*\)?/gi, '').trim();
       const formattedDate = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
       // Formatage strict de l'adresse destinataire aux normes AFNOR NF Z 10-011 (Fenêtre DL / C5)
       // Emplacement standard : haut droit, top 45mm, right 20mm, max 85mm x 45mm, max 6 lignes
-      let streetLine = targetAddress.replace(/\s*\((Point\s+)?GPS\s*:[^)]*\)/gi, '').trim();
+      let streetLine = targetAddress.replace(/\s*\(?(Point\s+)?GPS\s*:[^)]*\)?/gi, '').trim();
       let postalCityLine = '';
 
       const cpMatch = streetLine.match(/\b(\d{5})\b\s*(.*)$/);
@@ -1321,7 +1321,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         ? 'Objet : Valorisation photovoltaïque et optimisation énergétique de votre toiture — Étude d’opportunité ci-jointe'
         : isOmbriere
         ? 'Objet : Mise en conformité Loi APER et valorisation de votre parking — Étude d’opportunité ci-jointe'
-        : `Objet : Projet d’installation d’un Séchoir Solaire Thermovoltaïque BatiTech® (${sim.modelName || 'BatiTech'}) — PACAGE ${sim.pacage || ''} — Étude d’opportunité ci-jointe`;
+        : `Objet : Projet d’installation d’un Séchoir Solaire Thermovoltaïque BatiTech® (${sim.modelName || 'BatiTech'}) — Étude d’opportunité ci-jointe`;
 
       const letterBodyHtml = isToiture ? `
               <p style="margin: 0 0 9px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
@@ -1335,7 +1335,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </p>
 
               <p style="margin: 0 0 9px 0;">
-                Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre toiture, jointe à ce courrier en Page 2.
+                Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre toiture.
               </p>
 
               <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 13px; margin: 9px 0;">
@@ -1356,7 +1356,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
 
               <p style="margin: 9px 0;">
-                Le document ci-joint en Page 2 vous présente le calepinage sur mesure appliqué à votre toiture, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
+                Le document ci-joint vous présente le calepinage sur mesure appliqué à votre toiture, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
               </p>
 
               <p style="margin: 9px 0;">
@@ -1378,7 +1378,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </p>
 
               <p style="margin: 0 0 9px 0;">
-                Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre parking, jointe à ce courrier en Page 2.
+                Grâce à notre plateforme d'ingénierie et d’analyse spatiale par satellite, nous avons établi une première <strong>étude de faisabilité technique et économique</strong> sur votre parking.
               </p>
 
               <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 13px; margin: 9px 0;">
@@ -1399,7 +1399,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
 
               <p style="margin: 9px 0;">
-                Le document ci-joint en Page 2 vous présente le calepinage sur mesure appliqué à vos allées de stationnement, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
+                Le document ci-joint vous présente le calepinage sur mesure appliqué à vos allées de stationnement, le productible prévisionnel ainsi que les retombées financières chiffrées sur 30 ans.
               </p>
 
               <p style="margin: 9px 0;">
@@ -1421,7 +1421,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </p>
 
               <p style="margin: 0 0 9px 0;">
-                Grâce à notre plateforme d'ingénierie et d’analyse territoriale, nous avons établi une première <strong>étude de faisabilité technique et économique personnalisée</strong> pour votre exploitation${sim.pacage ? ` (PACAGE n° ${sim.pacage})` : ''}, jointe à ce courrier en Page 2.
+                Grâce à notre plateforme d'ingénierie et d’analyse territoriale, nous avons établi une première <strong>étude de faisabilité technique et économique personnalisée</strong> pour votre exploitation.
               </p>
 
               <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 13px; margin: 9px 0;">
@@ -1445,7 +1445,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
 
               <p style="margin: 9px 0;">
-                Le dossier ci-joint en Page 2 détaille le dimensionnement technique sur mesure du bâtiment, les filières valorisées ainsi que le plan de financement prévisionnel sur 25 ans.
+                Le dossier ci-joint détaille le dimensionnement technique sur mesure du bâtiment, les filières valorisées ainsi que le plan de financement prévisionnel sur 25 ans.
               </p>
 
               <p style="margin: 9px 0;">
@@ -1506,12 +1506,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
             </div>
 
-            <!-- SIGNATURE & PJ -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 5px; border-top: 1px solid #f1f5f9;">
-              <div style="font-size: 8pt; color: #64748b; font-style: italic; max-width: 58%;">
-                <strong>P.J. :</strong> ${isToiture ? 'Étude de faisabilité & offre commerciale — Centrale toiture photovoltaïque (Page 2)' : isOmbriere ? 'Étude de faisabilité & offre commerciale — Ombrière de parking photovoltaïque (Page 2)' : 'Étude de faisabilité & offre commerciale — Séchoir Thermovoltaïque BatiTech® (Page 2)'}
-              </div>
-
+            <!-- SIGNATURE -->
+            <div style="display: flex; justify-content: flex-end; align-items: flex-end; padding-top: 5px;">
               <div style="text-align: right; min-width: 210px;">
                 <div style="font-size: 11pt; font-weight: 900; color: #00429d;">Yann BARBERIS</div>
                 <div style="font-size: 9pt; color: #475569; font-weight: bold; margin-top: 1px;">${isSechoir ? 'Conseiller solutions énergies & agro-solaire' : 'Conseiller solutions énergies'}</div>
@@ -1519,13 +1515,6 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 <div style="font-size: 8.4pt; color: #64748b;">y.barberis@enr-courtage.fr</div>
               </div>
             </div>
-          </div>
-
-          <!-- PIED DE PAGE STRICT (FIXÉ À 7MM DU BAS) -->
-          <div style="position: absolute; bottom: 7mm; left: 20mm; right: 20mm; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 3px; font-size: 7.5pt; color: #64748b;">
-            <span style="font-weight: bold; color: #00429d;">enr-courtage.fr</span>
-            <span>Energies Renouvelables &amp; Ingénierie Solaire &bull; SAS au capital de 10 000 €</span>
-            <span>contact@enr-courtage.fr</span>
           </div>
 
         </div>

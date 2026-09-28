@@ -137,12 +137,12 @@ export default function ServicePostalModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center pt-16 pb-4 px-2 sm:px-6 bg-black/75 backdrop-blur-sm">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]"
+          className="relative w-full max-w-7xl lg:max-w-[1500px] h-[calc(100vh-80px)] max-h-[calc(100vh-80px)] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-900 to-indigo-900 text-white shrink-0">
@@ -164,10 +164,10 @@ export default function ServicePostalModal({
           </div>
 
           {/* Grille 2 Colonnes : Visionneuse PDF (gauche) & Paramètres Envoi (droite) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden min-h-0">
             
             {/* COLONNE GAUCHE : VISIONNEUSE PDF DU COURRIER */}
-            <div className="lg:col-span-6 bg-slate-100 border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col h-[320px] lg:h-auto min-h-0">
+            <div className="lg:col-span-7 bg-slate-100 border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col h-[350px] lg:h-full min-h-0">
               <div className="px-4 py-2.5 bg-slate-200/80 border-b border-slate-300 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                   <Eye className="w-4 h-4 text-blue-600" />
@@ -220,7 +220,7 @@ export default function ServicePostalModal({
             </div>
 
             {/* COLONNE DROITE : FORMULAIRE DESTINATAIRE & OPTIONS */}
-            <div className="lg:col-span-6 p-5 overflow-y-auto space-y-4 flex flex-col justify-between">
+            <div className="lg:col-span-5 p-6 overflow-y-auto space-y-4 flex flex-col justify-between">
               <div className="space-y-4">
                 {/* Résumé du document */}
                 <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center justify-between text-xs text-blue-950">
