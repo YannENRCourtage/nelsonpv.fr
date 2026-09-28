@@ -21,26 +21,26 @@ function ScaledBuildingMapOverlay({ length = 18, width = 20, rotation = 0, model
   const map = useMap();
   const [scale, setScale] = useState(4.6);
 
-  const updateScale = () => {
+  const updateScale = (notify = true) => {
     const lat = map.getCenter().lat;
     const zoom = map.getZoom();
     const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
     const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 4.6;
     setScale(pxPerMeter);
-    if (onCenterChange) {
+    if (notify && onCenterChange) {
       const center = map.getCenter();
       onCenterChange([center.lat, center.lng]);
     }
   };
 
   useMapEvents({
-    zoomend: updateScale,
-    moveend: updateScale,
-    zoom: updateScale,
+    zoomend: () => updateScale(true),
+    moveend: () => updateScale(true),
+    zoom: () => updateScale(false),
   });
 
   useEffect(() => {
-    updateScale();
+    updateScale(false);
   }, []);
 
   const wPx = Math.max(30, length * scale);
@@ -206,6 +206,12 @@ export default function Step3Orientation() {
       setMapCenterInStore(initialCoords);
     }
   }, [latitude, longitude]);
+
+  useEffect(() => {
+    if (storeRotation !== undefined && storeRotation !== rotation) {
+      setRotation(storeRotation);
+    }
+  }, [storeRotation]);
 
   useEffect(() => {
     setRotationInStore(rotation);

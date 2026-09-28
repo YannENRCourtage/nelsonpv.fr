@@ -266,8 +266,10 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       const bWid = Number(sim.width || 20);
       const bRot = Number(sim.rotation !== undefined ? sim.rotation : 0);
 
+      const bCenter = sim.mapCenter || [43.6047, 1.4442];
+
       singleMapScreenshot = sim.mapScreenshot || await generateSatelliteSnapshot({
-        center: sim.mapCenter || [43.6047, 1.4442],
+        center: bCenter,
         polygonPoints: sim.polygonPoints || [],
         polygonStyle: isOmbriere ? 'parking' : 'roof',
         ombriereBlocks: sim.placedOmbrieres || sim.ombriereBlocks || null,
@@ -276,10 +278,12 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               ...b,
               length: Number(b.length || bLen),
               width: Number(b.width || bWid),
-              rotation: Number(b.rotation !== undefined ? b.rotation : bRot)
+              rotation: Number(b.rotation !== undefined ? b.rotation : bRot),
+              lat: b.lat ?? bCenter[0],
+              lng: b.lng ?? bCenter[1]
             }))
-          : [{ length: bLen, width: bWid, rotation: bRot, name: `Bâtiment 1` }],
-        building: { length: bLen, width: bWid, rotation: bRot },
+          : [{ length: bLen, width: bWid, rotation: bRot, lat: bCenter[0], lng: bCenter[1], name: `Bâtiment 1` }],
+        building: { length: bLen, width: bWid, rotation: bRot, lat: bCenter[0], lng: bCenter[1] },
         width: 850,
         height: 480,
         zoom: 19

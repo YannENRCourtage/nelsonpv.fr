@@ -65,21 +65,31 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
   // Callback d'injection d'un prospect qualifié dans le simulateur
   const handleSelectProspect = useCallback((prospect) => {
     if (!prospect) return;
-    const targetCoords = prospect.coords || (prospect.latitude && prospect.longitude ? [prospect.latitude, prospect.longitude] : null);
+    const isSamePacage = Boolean(store.pacage && prospect.pacage && String(store.pacage) === String(prospect.pacage));
+    const targetMapCenter = (isSamePacage && store.mapCenter)
+      ? store.mapCenter
+      : (prospect.userMapCenter || prospect.mapCenter || prospect.coords || (prospect.latitude && prospect.longitude ? [prospect.latitude, prospect.longitude] : null));
+    const targetRotation = (isSamePacage && typeof store.rotation === 'number')
+      ? store.rotation
+      : (typeof prospect.userRotation === 'number' ? prospect.userRotation : (typeof prospect.rotation === 'number' ? prospect.rotation : 0));
+
+    store.setPacage(prospect.pacage || '');
     store.setClientName(prospect.companyName || prospect.clientName || `Exploitation PACAGE ${prospect.pacage}`);
     store.setAddress({
       address: prospect.postalAddress || prospect.address,
       label: prospect.addressLabel || prospect.address,
-      latitude: targetCoords ? targetCoords[0] : prospect.latitude,
-      longitude: targetCoords ? targetCoords[1] : prospect.longitude,
+      latitude: targetMapCenter ? targetMapCenter[0] : prospect.latitude,
+      longitude: targetMapCenter ? targetMapCenter[1] : prospect.longitude,
       departement: prospect.departement,
       commune: prospect.commune,
       codePostal: prospect.codePostal,
+      mapCenter: targetMapCenter
     });
     store.setModel(prospect.bestModelId);
-    if (targetCoords) {
-      store.setMapCenter(targetCoords);
+    if (targetMapCenter) {
+      store.setMapCenter(targetMapCenter);
     }
+    store.setRotation(targetRotation);
 
     if (Array.isArray(prospect.materials)) {
       prospect.materials.forEach((mat) => {

@@ -240,17 +240,24 @@ export async function generateSechoirProspectingPdfBlob(prospect, options = {}) 
 
   const sechoirStore = typeof useSechoirStore?.getState === 'function' ? useSechoirStore.getState() : {};
 
-  const targetMapCenter = prospect.mapCenter
-    || (prospect.latitude && prospect.longitude ? [prospect.latitude, prospect.longitude] : null)
-    || prospect.coords
-    || (sechoirStore.mapCenter ? sechoirStore.mapCenter : null)
-    || farmCoords;
+  // Vérifier si le store Zustand correspond à ce prospect
+  const isMatchingStore = Boolean(
+    (sechoirStore.pacage && prospect.pacage && String(sechoirStore.pacage) === String(prospect.pacage)) ||
+    (sechoirStore.clientName && (prospect.companyName || prospect.clientName) && sechoirStore.clientName === (prospect.companyName || prospect.clientName)) ||
+    (!prospect.pacage && sechoirStore.mapCenter)
+  );
 
-  const targetRotation = typeof prospect.rotation === 'number'
-    ? prospect.rotation
-    : (typeof sechoirStore.rotation === 'number' ? sechoirStore.rotation : 0);
+  const targetMapCenter = (isMatchingStore && sechoirStore.mapCenter)
+    ? sechoirStore.mapCenter
+    : (prospect.userMapCenter || prospect.mapCenter || (prospect.latitude && prospect.longitude ? [prospect.latitude, prospect.longitude] : null) || prospect.coords || farmCoords);
 
-  const targetOrientation = prospect.orientation || sechoirStore.orientation || 'sud';
+  const targetRotation = (isMatchingStore && typeof sechoirStore.rotation === 'number')
+    ? sechoirStore.rotation
+    : (typeof prospect.userRotation === 'number' ? prospect.userRotation : (typeof prospect.rotation === 'number' ? prospect.rotation : 0));
+
+  const targetOrientation = (isMatchingStore && sechoirStore.orientation)
+    ? sechoirStore.orientation
+    : (prospect.orientation || 'sud');
 
   const recipientContact = prospect.recipientNom || prospect.nom || prospect.recipientContact || prospect.contactName || prospect.contact || '';
   const recipientCompany = prospect.nom_societe || prospect.recipientCompany || prospect.clientName || clientName || prospect.ownerName;

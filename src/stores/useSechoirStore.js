@@ -33,6 +33,8 @@ const useSechoirStore = create(
       })),
 
       // ═══ ÉTAPE 1 — LOCALISATION & MODÈLE ══════════════════════════════════
+      pacage: '',
+      setPacage: (pacage) => set({ pacage }),
       clientName: '',
       setClientName: (clientName) => set({ clientName }),
       address: '',
@@ -47,9 +49,9 @@ const useSechoirStore = create(
 
       setAddress: (data) => set((state) => {
         const hasCoords = data.latitude && data.longitude && !isNaN(Number(data.latitude)) && !isNaN(Number(data.longitude));
-        const newCoords = hasCoords ? [Number(data.latitude), Number(data.longitude)] : state.mapCenter;
         const newDept = data.departement || state.departement || '';
         const activeModel = BATITECH_MODELS[state.selectedModelId] || BATITECH_MODELS['BT-3.1.15'];
+        const newCoords = data.mapCenter || state.mapCenter || (hasCoords ? [Number(data.latitude), Number(data.longitude)] : null);
         return {
           address: data.address || '',
           addressLabel: data.label || data.address || '',

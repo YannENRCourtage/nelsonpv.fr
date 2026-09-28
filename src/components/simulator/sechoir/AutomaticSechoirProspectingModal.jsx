@@ -570,8 +570,21 @@ export default function AutomaticSechoirProspectingModal({
   // ═══ TÉLÉCHARGEMENT D'UN PDF UNIQUE (OFFRE 1 PAGE PAR DÉFAUT / 2 PAGES) ═══════
   const handleDownloadSinglePdf = async (prospect) => {
     try {
+      const currentStore = useSechoirStore.getState();
+      const isCurrentSim = Boolean(
+        (currentStore.pacage && prospect.pacage && String(currentStore.pacage) === String(prospect.pacage)) ||
+        (currentStore.clientName && (prospect.companyName || prospect.clientName) && currentStore.clientName === (prospect.companyName || prospect.clientName))
+      );
+
+      const enrichedProspect = {
+        ...prospect,
+        mapCenter: (isCurrentSim && currentStore.mapCenter) ? currentStore.mapCenter : (prospect.userMapCenter || prospect.mapCenter || prospect.coords),
+        rotation: (isCurrentSim && typeof currentStore.rotation === 'number') ? currentStore.rotation : (typeof prospect.userRotation === 'number' ? prospect.userRotation : (typeof prospect.rotation === 'number' ? prospect.rotation : 0)),
+        orientation: (isCurrentSim && currentStore.orientation) ? currentStore.orientation : (prospect.orientation || 'sud')
+      };
+
       appendLog(`📄 Génération de l'offre commerciale (${includeBenefitsPage ? '2 pages' : '1 page'}${includeCoverLetter ? ' + Courrier P1' : ''}) pour PACAGE ${prospect.pacage}...`);
-      const { blob, filename } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage, includeCoverLetter });
+      const { blob, filename } = await generateSechoirProspectingPdfBlob(enrichedProspect, { includeBenefitsPage, includeCoverLetter });
 
       if (directoryHandle) {
         await savePdfToLocalDestination({ filename, blob, directoryHandle });
@@ -599,11 +612,22 @@ export default function AutomaticSechoirProspectingModal({
     appendLog(`📦 Préparation de l’archive ZIP (${includeBenefitsPage ? '2 pages' : '1 page'}${includeCoverLetter ? ' + Courrier P1' : ''} par offre) pour ${processedResults.length} offres BatiTech...`);
 
     try {
+      const currentStore = useSechoirStore.getState();
       const zipItems = [];
       for (let i = 0; i < processedResults.length; i++) {
         const prospect = processedResults[i];
+        const isCurrentSim = Boolean(
+          (currentStore.pacage && prospect.pacage && String(currentStore.pacage) === String(prospect.pacage)) ||
+          (currentStore.clientName && (prospect.companyName || prospect.clientName) && currentStore.clientName === (prospect.companyName || prospect.clientName))
+        );
+        const enrichedProspect = {
+          ...prospect,
+          mapCenter: (isCurrentSim && currentStore.mapCenter) ? currentStore.mapCenter : (prospect.userMapCenter || prospect.mapCenter || prospect.coords),
+          rotation: (isCurrentSim && typeof currentStore.rotation === 'number') ? currentStore.rotation : (typeof prospect.userRotation === 'number' ? prospect.userRotation : (typeof prospect.rotation === 'number' ? prospect.rotation : 0)),
+          orientation: (isCurrentSim && currentStore.orientation) ? currentStore.orientation : (prospect.orientation || 'sud')
+        };
         setCurrentStepText(`Génération PDF ${i + 1}/${processedResults.length} : PACAGE ${prospect.pacage}...`);
-        const { blob, filename } = await generateSechoirProspectingPdfBlob(prospect, { includeBenefitsPage, includeCoverLetter });
+        const { blob, filename } = await generateSechoirProspectingPdfBlob(enrichedProspect, { includeBenefitsPage, includeCoverLetter });
         zipItems.push({ filename, blob });
       }
 
@@ -622,7 +646,14 @@ export default function AutomaticSechoirProspectingModal({
   const handleInjectIntoSimulator = (prospect) => {
     appendLog(`⚡ Injection du prospect PACAGE ${prospect.pacage} dans le simulateur Séchoir BatiTech...`);
 
-    const targetCoords = prospect.coords || (prospect.latitude && prospect.longitude ? [prospect.latitude, prospect.longitude] : null);
+    const store = useSechoirStore.getState();
+    const isSamePacage = Boolean(store.pacage && prospect.pacage && String(store.pacage) === String(prospect.pacage));
+    const targetMapCenter = (isSamePacage && store.mapCenter)
+      ? store.mapCenter
+      : (prospect.userMapCenter || prospect.mapCenter || prospect.coords || (prospect.latitude && prospect.longitude ? [prospect.latitude, prospect.longitude] : null));
+    const targetRotation = (isSamePacage && typeof store.rotation === 'number')
+      ? store.rotation
+      : (typeof prospect.userRotation === 'number' ? prospect.userRotation : (typeof prospect.rotation === 'number' ? prospect.rotation : 0));
 
     // Callback externe prioritaire
     if (onSelectProspect) {
@@ -631,31 +662,34 @@ export default function AutomaticSechoirProspectingModal({
         clientName: prospect.companyName || prospect.clientName,
         address: prospect.postalAddress || prospect.address,
         addressLabel: prospect.addressLabel || prospect.address,
-        coords: targetCoords,
-        mapCenter: targetCoords,
-        latitude: targetCoords ? targetCoords[0] : prospect.latitude,
-        longitude: targetCoords ? targetCoords[1] : prospect.longitude,
+        coords: targetMapCenter,
+        mapCenter: targetMapCenter,
+        rotation: targetRotation,
+        latitude: targetMapCenter ? targetMapCenter[0] : prospect.latitude,
+        longitude: targetMapCenter ? targetMapCenter[1] : prospect.longitude,
       });
       onClose();
       return;
     }
 
     // Injection directe dans Zustand store
-    const store = useSechoirStore.getState();
+    store.setPacage(prospect.pacage || '');
     store.setClientName(prospect.companyName || prospect.clientName);
     store.setAddress({
       address: prospect.postalAddress || prospect.address,
       label: prospect.addressLabel || prospect.address,
-      latitude: targetCoords ? targetCoords[0] : prospect.latitude,
-      longitude: targetCoords ? targetCoords[1] : prospect.longitude,
+      latitude: targetMapCenter ? targetMapCenter[0] : prospect.latitude,
+      longitude: targetMapCenter ? targetMapCenter[1] : prospect.longitude,
       departement: prospect.departement,
       commune: prospect.commune,
       codePostal: prospect.codePostal,
+      mapCenter: targetMapCenter
     });
     store.setModel(prospect.bestModelId);
-    if (targetCoords) {
-      store.setMapCenter(targetCoords);
+    if (targetMapCenter) {
+      store.setMapCenter(targetMapCenter);
     }
+    store.setRotation(targetRotation);
 
     // Mettre à jour les matières configurées
     if (Array.isArray(prospect.materials)) {
@@ -1464,7 +1498,18 @@ export default function AutomaticSechoirProspectingModal({
                           <button
                             type="button"
                             onClick={() => {
-                              setPostalModalItem(item);
+                              const currentStore = useSechoirStore.getState();
+                              const isCurrentSim = Boolean(
+                                (currentStore.pacage && item.pacage && String(currentStore.pacage) === String(item.pacage)) ||
+                                (currentStore.clientName && (item.companyName || item.clientName) && currentStore.clientName === (item.companyName || item.clientName))
+                              );
+                              const enrichedItem = {
+                                ...item,
+                                mapCenter: (isCurrentSim && currentStore.mapCenter) ? currentStore.mapCenter : (item.userMapCenter || item.mapCenter || item.coords),
+                                rotation: (isCurrentSim && typeof currentStore.rotation === 'number') ? currentStore.rotation : (typeof item.userRotation === 'number' ? item.userRotation : (typeof item.rotation === 'number' ? item.rotation : 0)),
+                                orientation: (isCurrentSim && currentStore.orientation) ? currentStore.orientation : (item.orientation || 'sud')
+                              };
+                              setPostalModalItem(enrichedItem);
                               setIsPostalModalOpen(true);
                             }}
                             className="p-1.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 text-blue-200 hover:text-white transition-colors cursor-pointer"
