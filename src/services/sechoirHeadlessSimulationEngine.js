@@ -162,6 +162,13 @@ export function simulateFarmHeadless({
     return null;
   }
 
+  // Coordonnées exactes issues de l'adresse BAN ou du barycentre de l'exploitation
+  const exactCoords = farm.addressCoords || (farm.latitude && farm.longitude ? [farm.latitude, farm.longitude] : farm.centroid) || [44.8412, -0.5805];
+  const exactLat = exactCoords[0];
+  const exactLng = exactCoords[1];
+  const communeName = farm.city || farm.commune || '';
+  const postalCode = farm.postalCode || '';
+
   const resolvedClientName = farm.companyName || `Exploitation Agricole (PACAGE ${farm.pacage})`;
   const fullAddressLabel = farm.addressLabel || (farm.postalAddress ? `${farm.postalAddress} (Point GPS : ${exactLat.toFixed(4)}, ${exactLng.toFixed(4)})` : `Exploitation Agricole (${exactLat.toFixed(4)}, ${exactLng.toFixed(4)})`);
   const postalAddress = farm.postalAddress || farm.street || farm.addressLabel || fullAddressLabel;

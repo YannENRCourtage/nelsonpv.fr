@@ -289,11 +289,8 @@ export default function MentionTextarea({
                   {(u.displayName || '?')[0].toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-bold truncate text-xs flex items-center justify-between">
+                  <div className="font-bold truncate text-xs">
                     <span>{u.displayName || 'Utilisateur'}</span>
-                    {u.role && (
-                      <span className={`text-[9px] font-medium ${subtextPopup} shrink-0`}>{u.role}</span>
-                    )}
                   </div>
                   {u.email && (
                     <div className={`text-[10px] ${subtextPopup} truncate`}>{u.email}</div>
