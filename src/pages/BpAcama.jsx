@@ -32,6 +32,7 @@ import BessDossierPDFGenerator from '../components/bp-acama/BessDossierPDFGenera
 import PvPortfolioView from '../components/bp-acama/PvPortfolioView.jsx';
 import PvDossierPDFGenerator from '../components/bp-acama/PvDossierPDFGenerator.jsx';
 import { PV_PORTFOLIO_SITES, getPvPortfolioSites, normalizePortfolioName, getProjectPvPortfolio } from '../data/pvPortfolioData.js';
+import { getBessPortfolioSites } from '../data/bessPortfolioData.js';
 import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
 import PortfolioManagerModal from '@/components/portfolios/PortfolioManagerModal.jsx';
 import { calculateProjectPayback, calculateEquityPayback } from '../services/bessSimulationEngine.js';
