@@ -23,6 +23,9 @@ import UserAvatar from '@/components/UserAvatar.jsx';
 import ProjectsMap from '@/components/crm/ProjectsMap.jsx';
 import AgendaView from '@/components/crm/AgendaView.jsx';
 import { formatGps } from '@/utils/formatGps.js';
+import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
+import { getProjectPvPortfolio } from '@/data/pvPortfolioData.js';
+import { getProjectBessPortfolio } from '@/data/bessPortfolioData.js';
 
 // UserAvatar replaced by import
 
@@ -141,13 +144,37 @@ export default function Crm() {
   const [opportunities, setOpportunities] = useState([]); // Ajout pour éviter le crash
   const [activities, setActivities] = useState([]);
   const [users, setUsers] = useState([]); // Pour résoudre les photos utilisateurs
+  const { pvPortfolios, bessPortfolios } = usePortfolios();
   const [filterUser, setFilterUser] = useState('all'); // Filtre par utilisateur
   const [filterType, setFilterType] = useState('all'); // Filtre par type
+  const [filterPvPortfolio, setFilterPvPortfolio] = useState('all'); // Filtre par Portefeuille PV
+  const [filterBessPortfolio, setFilterBessPortfolio] = useState('all'); // Filtre par Portefeuille BESS
   const [filterStatus, setFilterStatus] = useState('all'); // Filtre par statut
   const [filterMyProjects, setFilterMyProjects] = useState(false); // Filtre "Mes Projets"
   const [monthlyKpis, setMonthlyKpis] = useState(null); // Store last month's KPI values
   const [isLoading, setIsLoading] = useState(true);
   const [isDedupLoading, setIsDedupLoading] = useState(false);
+
+  // Listes mémoïsées des portefeuilles disponibles pour les filtres
+  const pvPortfolioOptions = useMemo(() => {
+    const set = new Set();
+    (pvPortfolios || []).forEach(p => { if (p.name) set.add(p.name); });
+    (projects || []).forEach(p => {
+      const port = getProjectPvPortfolio(p);
+      if (port) set.add(port);
+    });
+    return Array.from(set).sort();
+  }, [pvPortfolios, projects]);
+
+  const bessPortfolioOptions = useMemo(() => {
+    const set = new Set();
+    (bessPortfolios || []).forEach(p => { if (p.name) set.add(p.name); });
+    (projects || []).forEach(p => {
+      const port = getProjectBessPortfolio(p);
+      if (port) set.add(port);
+    });
+    return Array.from(set).sort();
+  }, [bessPortfolios, projects]);
 
   // États Modales
   const [showContactModal, setShowContactModal] = useState(false);
@@ -1534,6 +1561,16 @@ export default function Crm() {
     // Type
     const matchesType = filterType === 'all' || getProjectDisplayType(p.type) === filterType;
 
+    // Portefeuille PV
+    const projectPvPort = getProjectPvPortfolio(p);
+    const matchesPvPortfolio = filterPvPortfolio === 'all' ||
+      (projectPvPort && projectPvPort.toUpperCase() === filterPvPortfolio.toUpperCase());
+
+    // Portefeuille BESS
+    const projectBessPort = getProjectBessPortfolio(p);
+    const matchesBessPortfolio = filterBessPortfolio === 'all' ||
+      (projectBessPort && projectBessPort.toUpperCase() === filterBessPortfolio.toUpperCase());
+
     // Status
     const currentStatus = p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau');
     const matchesStatus = filterStatus === 'all' || currentStatus === filterStatus;
@@ -1562,7 +1599,7 @@ export default function Crm() {
       matchesMyProjects = isCreator || isCommercialId || isCommercialName || isAssigned;
     }
 
-    return matchesSearch && matchesUser && matchesType && matchesStatus && matchesMyProjects;
+    return matchesSearch && matchesUser && matchesType && matchesPvPortfolio && matchesBessPortfolio && matchesStatus && matchesMyProjects;
   });
 
   // Rendu de la liste des Projets
@@ -1606,6 +1643,30 @@ export default function Crm() {
             <option value="Ombrières">Ombrières</option>
             <option value="BatiTech">BatiTech</option>
             <option value="Batterie SA">Batterie SA</option>
+          </select>
+
+          {/* Filtre Portefeuille PV */}
+          <select
+            value={filterPvPortfolio}
+            onChange={(e) => setFilterPvPortfolio(e.target.value)}
+            className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm shrink-0 font-medium"
+          >
+            <option value="all">Tous les portefeuilles PV</option>
+            {pvPortfolioOptions.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+
+          {/* Filtre Portefeuille BESS */}
+          <select
+            value={filterBessPortfolio}
+            onChange={(e) => setFilterBessPortfolio(e.target.value)}
+            className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm shrink-0 font-medium"
+          >
+            <option value="all">Tous les portefeuilles BESS</option>
+            {bessPortfolioOptions.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
           </select>
 
           {/* Filtre Mes Projets */}
