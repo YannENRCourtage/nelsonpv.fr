@@ -848,150 +848,114 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
   }
 
   const effectiveProjects = Array.from(mergedMap.values());
-  const matchedCrmIds = new Set();
   const resultSites = [];
 
-  // Helper pour trouver le projet CRM correspondant à un site
-  const findCrmProject = (site) => {
-    const sName = normalize(site.name);
-    const sCity = normalize(site.city);
+  // Helper pour trouver un site mock de référence (pour enrichir les propriétés techniques/réseau si besoin)
+  const findMatchingMockSite = (p) => {
+    const pName = normalize(p.name);
+    const pClient = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
+    const pCity = normalize(p.city || p.commune);
 
-    return effectiveProjects.find(p => {
-      if (!p) return false;
-      if (p.id && (p.id === site.id || p.id === `site_${site.id}`)) return true;
-      const pName = normalize(p.name);
-      const pClient = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
-      const pCity = normalize(p.city || p.commune);
+    return BESS_PORTFOLIO_SITES.find(site => {
+      if (p.id && site.id && (p.id === site.id || p.id === `site_${site.id}`)) return true;
+      const sName = normalize(site.name);
+      const sClient = normalize(site.client);
+      const sCity = normalize(site.city || site.commune);
 
-      if (pName && sName && (sName === pName || sName.includes(pName) || pName.includes(sName))) {
-        if (sCity && pCity && sCity === pCity) return true;
-        if (!sCity || !pCity) return true;
-        return true;
-      }
+      if (pName && sName && (sName === pName || sName.includes(pName) || pName.includes(sName))) return true;
       if (pClient && sName && (sName.includes(pClient) || pClient.includes(sName))) return true;
+      if (pCity && sCity && pCity === sCity && pName && (sName.includes(pName) || sClient.includes(pName))) return true;
       return false;
     });
   };
 
-  // 1. Parcourir les sites de référence BESS_PORTFOLIO_SITES
+  // 1. SI des projets CRM sont disponibles (cas nominal de l'application)
+  if (effectiveProjects.length > 0) {
+    const seenKeys = new Set();
+
+    effectiveProjects.forEach((p, idx) => {
+      if (!p || isAbandoned(p)) return;
+
+      const pPort = getProjectBessPortfolio(p);
+      if (!pPort) return;
+
+      const normPort = normalizePortfolioName(pPort);
+      if (normTarget !== 'ALL' && normTarget !== 'TOUS' && normPort !== normTarget) {
+        return;
+      }
+
+      // Clé d'unicité pour éviter les doublons
+      const pNameNorm = normalize(p.name || '');
+      const pClientNorm = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
+      const pCityNorm = normalize(p.city || p.commune || '');
+      const dedupeKey = `${p.id || ''}_${pNameNorm || pClientNorm}_${pCityNorm}`;
+      if (seenKeys.has(dedupeKey)) return;
+      seenKeys.add(dedupeKey);
+
+      const mock = findMatchingMockSite(p);
+      const pId = p.id || mock?.id || `crm_bess_${idx + 1}`;
+      const clientName = [p.firstName, p.name].filter(Boolean).join(' ') || p.client_name || p.client || mock?.client || 'Client';
+      const cp = p.zip || p.postcode || p.cp || mock?.postcode || '';
+      const city = p.city || p.commune || mock?.city || '';
+      const dept = cp ? cp.substring(0, 2) : (mock?.dept || 'FR');
+      const lat = Number(p.lat || p.latitude || mock?.lat || 45.0);
+      const lng = Number(p.lng || p.longitude || mock?.lng || 1.0);
+
+      const odre = findBessOdreData(p.name, p.city, p.address, lat, lng);
+      const distKm = Number(odre?.distanceKm || p.distance_raccordement_km || p.distancePoste || p.substation?.distanceKm || mock?.substation?.distanceKm || 5.0);
+
+      const substation = (typeof p.substation === 'object' && p.substation?.name) ? p.substation : (mock?.substation || {
+        name: odre?.posteSourceEnedis || p.poste_source || p.substationName || "ODRE",
+        code: odre?.codePoste || p.code_poste || "ODRE",
+        voltageLevel: odre?.tension || "HTA / 20 kV",
+        gestionnaire: "Enedis",
+        distanceKm: distKm,
+        quotePartS3renr: odre?.quotePartS3REnR || "92.73  k€/MW",
+        quotePartS3renrEur: odre?.quotePartS3renrEur || 92730,
+        capaciteReserveeMw: odre?.capaciteReserveeMw || 0,
+        resteAffecterMw: odre?.capaciteResiduelleOdreMw ?? 0,
+        fileAttenteMw: 0,
+        statutRaccordement: odre?.statutRaccordement || "Zone standard Enedis",
+        typologieZoneCre: odre?.typologieZoneCre || "Zone standard Enedis"
+      });
+
+      resultSites.push({
+        ...(mock || {}),
+        id: pId,
+        name: p.name || mock?.name || `Projet BESS ${idx + 1}`,
+        client: clientName,
+        postcode: cp,
+        cp,
+        city,
+        dept,
+        address: p.address || `${cp} ${city}`.trim() || mock?.address || '',
+        spv: p.spv || mock?.spv || (normPort === 'TESLA' ? 'SPV B' : 'SPV A'),
+        rent: Number(p.rent || p.loyer_annuel || p.loyer || mock?.rent || 3000),
+        lat,
+        lng,
+        gps: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+        substation,
+        portfolio: pPort,
+        bess_portfolio: pPort,
+        crmProject: p
+      });
+    });
+
+    return resultSites;
+  }
+
+  // 2. SI AUCUN PROJET CRM N'EST DISPONIBLE : Fallback sur BESS_PORTFOLIO_SITES (données démo)
   BESS_PORTFOLIO_SITES.forEach((site) => {
-    const matchProj = findCrmProject(site);
-    if (matchProj && matchProj.id) {
-      matchedCrmIds.add(matchProj.id);
-    }
-
-    // Si le projet CRM est abandonné -> EXCLURE
-    if (matchProj && isAbandoned(matchProj)) {
-      return;
-    }
-
-    // Si le projet CRM a un statut explicite de non affectation BESS -> EXCLURE
-    if (matchProj) {
-      const directBess = normalizePortfolioName(matchProj.bess_portfolio || matchProj.portfolio_bess);
-      if (directBess === 'AUCUN' || directBess === 'NON AFFECTE' || directBess === 'AUCUN / NON' || directBess === 'NONE' || directBess === 'NULL') {
-        return;
-      }
-      if (matchProj.isBatteryStandAlone === 'Non') {
-        return;
-      }
-    }
-
-    // Détermination du portefeuille effectif
-    let port = 'VOLTA';
-    if (matchProj) {
-      const crmPort = getProjectBessPortfolio(matchProj);
-      if (crmPort) {
-        port = crmPort;
-      } else {
-        port = site.spv === 'SPV B' ? 'TESLA' : 'VOLTA';
-      }
-    } else {
-      port = site.bess_portfolio || (site.spv === 'SPV B' ? 'TESLA' : 'VOLTA');
-    }
-
+    let port = site.bess_portfolio || (site.spv === 'SPV B' ? 'TESLA' : 'VOLTA');
     const normPort = normalizePortfolioName(port);
     if (normTarget !== 'ALL' && normTarget !== 'TOUS' && normPort !== normTarget) {
       return;
     }
-
-    const clientName = matchProj
-      ? ([matchProj.firstName, matchProj.name].filter(Boolean).join(' ') || matchProj.client_name || site.client || 'Client')
-      : (site.client || 'Client');
-    const cp = site.postcode || matchProj?.zip || matchProj?.postcode || '';
-    const city = site.city || matchProj?.city || matchProj?.commune || '';
-    const dept = site.dept || (cp ? cp.substring(0, 2) : 'FR');
-
     resultSites.push({
       ...site,
-      client: clientName,
-      city,
-      postcode: cp,
-      dept,
       portfolio: port,
       bess_portfolio: port,
-      crmProject: matchProj || null
-    });
-  });
-
-  // 2. Projets CRM additionnels non présents dans BESS_PORTFOLIO_SITES
-  effectiveProjects.forEach((p, idx) => {
-    if (!p || (p.id && matchedCrmIds.has(p.id))) return;
-    if (isAbandoned(p)) return;
-
-    const pPort = getProjectBessPortfolio(p);
-    if (!pPort) return;
-
-    const normPort = normalizePortfolioName(pPort);
-    if (normTarget !== 'ALL' && normTarget !== 'TOUS' && normPort !== normTarget) {
-      return;
-    }
-
-    const pId = p.id || `crm_bess_${idx + 1}`;
-    matchedCrmIds.add(pId);
-
-    const clientName = [p.firstName, p.name].filter(Boolean).join(' ') || p.client_name || p.client || 'Client';
-    const cp = p.zip || p.postcode || p.cp || '';
-    const city = p.city || p.commune || '';
-    const dept = cp ? cp.substring(0, 2) : 'FR';
-    const lat = Number(p.lat || p.latitude || 45.0);
-    const lng = Number(p.lng || p.longitude || 1.0);
-
-    const odre = findBessOdreData(p.name, p.city, p.address, lat, lng);
-    const distKm = Number(odre?.distanceKm || p.distance_raccordement_km || p.distancePoste || p.substation?.distanceKm || 5.0);
-
-    const substation = typeof p.substation === 'object' && p.substation?.name ? p.substation : {
-      name: odre?.posteSourceEnedis || p.poste_source || p.substationName || "ODRE",
-      code: odre?.codePoste || p.code_poste || "ODRE",
-      voltageLevel: odre?.tension || "HTA / 20 kV",
-      gestionnaire: "Enedis",
-      distanceKm: distKm,
-      quotePartS3renr: odre?.quotePartS3REnR || "92.73  k€/MW",
-      quotePartS3renrEur: odre?.quotePartS3renrEur || 92730,
-      capaciteReserveeMw: odre?.capaciteReserveeMw || 0,
-      resteAffecterMw: odre?.capaciteResiduelleOdreMw ?? 0,
-      fileAttenteMw: 0,
-      statutRaccordement: odre?.statutRaccordement || "Zone standard Enedis",
-      typologieZoneCre: odre?.typologieZoneCre || "Zone standard Enedis"
-    };
-
-    resultSites.push({
-      id: pId,
-      name: p.name || `Projet BESS ${idx + 1}`,
-      client: clientName,
-      postcode: cp,
-      cp,
-      city,
-      dept,
-      address: p.address || `${cp} ${city}`.trim(),
-      spv: p.spv || (normPort === 'TESLA' ? 'SPV B' : 'SPV A'),
-      rent: Number(p.rent || p.loyer_annuel || p.loyer || 3000),
-      lat,
-      lng,
-      gps: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-      substation,
-      portfolio: pPort,
-      bess_portfolio: pPort,
-      crmProject: p
+      crmProject: null
     });
   });
 
