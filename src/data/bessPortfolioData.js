@@ -782,6 +782,16 @@ export function getProjectBessPortfolio(p) {
   if (norm === 'AUCUN' || norm === 'NON AFFECTE' || norm === 'AUCUN / NON' || norm === 'NONE' || norm === 'NULL' || norm === 'UNDEFINED' || norm === 'NON') {
     return '';
   }
+
+  // Exclusion explicite DUPORT et LABEGUERIE du portefeuille BESS
+  const pName = (p.name || '').toLowerCase();
+  const pClient = (p.client_name || p.client || '').toLowerCase();
+  if (pName.includes('duport') || pClient.includes('duport') || pName.includes('labeguerie') || pClient.includes('labeguerie')) {
+    if (!val || norm === 'VOLTA') {
+      return '';
+    }
+  }
+
   if (p.isBatteryStandAlone === 'Non' || p.isBatteryStandAlone === false) {
     if (!val) return '';
   }
@@ -803,11 +813,12 @@ export function getProjectBessPortfolio(p) {
 /**
  * Construit la liste harmonisée des centrales appartenant au portefeuille BESS (VOLTA, TESLA ou ALL).
  * RÈGLE STRICTE :
- * - Les projets dont la fiche comporte le portefeuille BESS sélectionné ou qui correspondent aux sites du portefeuille apparaissent dans la liste.
+ * - Les projets dont la fiche comporte le portefeuille BESS sélectionné apparaissent dans la liste.
  * - Tout dossier abandonné (statut 'Abandonné') est STRICTEMENT exclu de tous les portefeuilles.
- * - Les projets sans portefeuille BESS affecté ou retirés (ex: LAGROT, DOKHELAR) n'apparaissent dans AUCUN portefeuille.
+ * - Les dossiers DUPORT et LABEGUERIE ne doivent pas apparaître dans le portefeuille VOLTA.
+ * - Aucun doublon n'est toléré.
  *
- * @param {Array} projects Liste des projets CRM (tous tenants)
+ * @param {Array} projects Liste des projets CRM (tenant actif)
  * @param {string} portfolioFilter 'ALL' | 'VOLTA' | 'TESLA' | 'LOUXOR' etc.
  * @returns {Array} Liste des sites BESS enrichis
  */
@@ -823,31 +834,22 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
     return s === 'abandonne' || s.includes('abandon') || s.includes('annul') || s.includes('perdu') || s.includes('refus');
   };
 
-  // Récupération et fusion exhaustive de toutes les sources de projets (state React, cache LS, multi-tenant)
-  const mergedMap = new Map();
-  if (typeof window !== 'undefined') {
+  // Récupération des projets sans polluer avec les caches d'autres tenants
+  let effectiveProjects = [];
+  if (Array.isArray(projects) && projects.length > 0) {
+    effectiveProjects = projects;
+  } else if (typeof window !== 'undefined') {
     try {
-      const gList = JSON.parse(localStorage.getItem('nelson:projects:green-invest:v1') || '[]');
-      const eList = JSON.parse(localStorage.getItem('nelson:projects:enr-courtage-energie:v1') || '[]');
-      const aList = JSON.parse(localStorage.getItem('nelson:projects:acama:v1') || '[]');
-      [...gList, ...eList, ...aList].forEach(p => {
-        if (p && p.id) mergedMap.set(p.id, p);
-      });
+      const activeTenant = localStorage.getItem('nelson:active_tenant_id') || 'enr-courtage-energie';
+      const stored = localStorage.getItem(`nelson:projects:${activeTenant}:v1`) || localStorage.getItem('nelson:projects:v1');
+      if (stored) {
+        effectiveProjects = JSON.parse(stored);
+      }
     } catch (e) {
       // ignore
     }
   }
 
-  if (Array.isArray(projects)) {
-    projects.forEach(p => {
-      if (p && p.id) {
-        const existing = mergedMap.get(p.id) || {};
-        mergedMap.set(p.id, { ...existing, ...p });
-      }
-    });
-  }
-
-  const effectiveProjects = Array.from(mergedMap.values());
   const resultSites = [];
 
   // Helper pour trouver un site mock de référence (pour enrichir les propriétés techniques/réseau si besoin)
@@ -876,6 +878,16 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
     effectiveProjects.forEach((p, idx) => {
       if (!p || isAbandoned(p)) return;
 
+      const pNameNorm = normalize(p.name || '');
+      const pClientNorm = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
+      const pCityNorm = normalize(p.city || p.commune || '');
+
+      // Exclusion explicite DUPORT et LABEGUERIE
+      if (pNameNorm.includes('duport') || pClientNorm.includes('duport') || 
+          pNameNorm.includes('labeguerie') || pClientNorm.includes('labeguerie')) {
+        return;
+      }
+
       const pPort = getProjectBessPortfolio(p);
       if (!pPort) return;
 
@@ -884,13 +896,14 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
         return;
       }
 
-      // Clé d'unicité pour éviter les doublons
-      const pNameNorm = normalize(p.name || '');
-      const pClientNorm = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
-      const pCityNorm = normalize(p.city || p.commune || '');
-      const dedupeKey = `${p.id || ''}_${pNameNorm || pClientNorm}_${pCityNorm}`;
-      if (seenKeys.has(dedupeKey)) return;
-      seenKeys.add(dedupeKey);
+      // Clé d'unicité stricte pour éliminer TOUT doublon (par ID ou par combinaison Nom/Client + Ville)
+      const nameKey = pNameNorm || pClientNorm;
+      const dedupeKey = `${nameKey}__${pCityNorm}`;
+      if (p.id && seenKeys.has(`id_${p.id}`)) return;
+      if (dedupeKey && dedupeKey !== '__' && seenKeys.has(dedupeKey)) return;
+
+      if (p.id) seenKeys.add(`id_${p.id}`);
+      if (dedupeKey && dedupeKey !== '__') seenKeys.add(dedupeKey);
 
       const mock = findMatchingMockSite(p);
       const pId = p.id || mock?.id || `crm_bess_${idx + 1}`;
