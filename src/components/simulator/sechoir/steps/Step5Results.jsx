@@ -32,8 +32,9 @@ export default function Step5Results({ onExportPDF }) {
   const setHasBattery = useSechoirStore((state) => state.setHasBattery);
 
   const [clientName, setClientName] = useState(storeClientName || '');
-  const [includeBenefitsPage, setIncludeBenefitsPage] = useState(true);
   const [includeCashFlowPage, setIncludeCashFlowPage] = useState(true);
+  const [includeAutoconsoPage, setIncludeAutoconsoPage] = useState(true);
+  const [includeBenefitsPage, setIncludeBenefitsPage] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
   // Recalculer les résultats complets
@@ -438,32 +439,8 @@ export default function Step5Results({ onExportPDF }) {
               Personnalisez les pages incluses dans votre dossier d'étude multi-pages :
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              {/* Option Page 2 : Synthèse Bénéfices */}
-              <button
-                type="button"
-                onClick={() => setIncludeBenefitsPage(!includeBenefitsPage)}
-                className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all ${
-                  includeBenefitsPage
-                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-200 shadow-sm'
-                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:border-slate-600'
-                }`}
-              >
-                <div className="mt-0.5 shrink-0">
-                  {includeBenefitsPage ? (
-                    <CheckSquare className="w-5 h-5 text-amber-400" />
-                  ) : (
-                    <Square className="w-5 h-5 text-slate-500" />
-                  )}
-                </div>
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-amber-400">Page 2 (Recommandée)</div>
-                  <div className="text-sm font-semibold text-white mt-0.5">Synthèse des Bénéfices d'Exploitation</div>
-                  <div className="text-xs text-slate-400 mt-1">Avantages financiers &amp; opérationnels, graphique d'impact sur la baisse des charges.</div>
-                </div>
-              </button>
-
-              {/* Option Page 3 : Flux de trésorerie */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              {/* Option Page 2 : Tableau d'Amortissement */}
               <button
                 type="button"
                 onClick={() => setIncludeCashFlowPage(!includeCashFlowPage)}
@@ -481,9 +458,57 @@ export default function Step5Results({ onExportPDF }) {
                   )}
                 </div>
                 <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-emerald-400">Page 3</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-emerald-400">Page 2</div>
                   <div className="text-sm font-semibold text-white mt-0.5">Tableau d'Amortissement sur 25 ans</div>
                   <div className="text-xs text-slate-400 mt-1">Détail annuel des flux d'exploitation, annuités et trésorerie cumulée.</div>
+                </div>
+              </button>
+
+              {/* Option Page 3 : Simulation d'Autoconsommation */}
+              <button
+                type="button"
+                onClick={() => setIncludeAutoconsoPage(!includeAutoconsoPage)}
+                className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all ${
+                  includeAutoconsoPage
+                    ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-200 shadow-sm'
+                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:border-slate-600'
+                }`}
+              >
+                <div className="mt-0.5 shrink-0">
+                  {includeAutoconsoPage ? (
+                    <CheckSquare className="w-5 h-5 text-cyan-400" />
+                  ) : (
+                    <Square className="w-5 h-5 text-slate-500" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-cyan-400">Page 3</div>
+                  <div className="text-sm font-semibold text-white mt-0.5">Simulation d'Autoconsommation</div>
+                  <div className="text-xs text-slate-400 mt-1">Matrices d'économies selon la consommation (avec et sans stockage batterie).</div>
+                </div>
+              </button>
+
+              {/* Option Page 6 : Synthèse Bénéfices */}
+              <button
+                type="button"
+                onClick={() => setIncludeBenefitsPage(!includeBenefitsPage)}
+                className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all ${
+                  includeBenefitsPage
+                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-200 shadow-sm'
+                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:border-slate-600'
+                }`}
+              >
+                <div className="mt-0.5 shrink-0">
+                  {includeBenefitsPage ? (
+                    <CheckSquare className="w-5 h-5 text-amber-400" />
+                  ) : (
+                    <Square className="w-5 h-5 text-slate-500" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-amber-400">Page 6 (Recommandée)</div>
+                  <div className="text-sm font-semibold text-white mt-0.5">Synthèse des Bénéfices d'Exploitation</div>
+                  <div className="text-xs text-slate-400 mt-1">Avantages financiers &amp; opérationnels, graphique d'impact sur la baisse des charges.</div>
                 </div>
               </button>
             </div>
@@ -497,8 +522,9 @@ export default function Step5Results({ onExportPDF }) {
                   setIsExporting(true);
                   try {
                     await onExportPDF({ 
-                      includeBenefitsPage, 
                       includeCashFlowPage,
+                      includeAutoconsoPage,
+                      includeBenefitsPage,
                       customClientName: clientName
                     });
                   } finally {
