@@ -8,15 +8,40 @@ const ProjectSelect = ({ projects, activeProjectId, onSelect, className }) => {
   const [showSearch, setShowSearch] = React.useState(false);
   const dropdownRef = React.useRef(null);
 
-  const filteredProjects = React.useMemo(() => {
-    if (!search) return projects;
-    return projects.filter(p => 
-      (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
-      (p.address || '').toLowerCase().includes(search.toLowerCase())
-    );
-  }, [projects, search]);
+  const uniqueProjects = React.useMemo(() => {
+    const normalize = (str) => (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    const seen = new Set();
+    const list = [];
+    (projects || []).forEach(p => {
+      if (!p) return;
+      const pName = normalize(p.name || '');
+      const pClient = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
+      const pCity = normalize(p.city || p.commune || '');
+      const dedupeKey = `${pName || pClient}__${pCity}`;
+      if (p.id && seen.has(p.id)) return;
+      if (dedupeKey !== '__' && seen.has(dedupeKey)) return;
+      if (p.id) seen.add(p.id);
+      if (dedupeKey !== '__') seen.add(dedupeKey);
+      list.push(p);
+    });
+    return list;
+  }, [projects]);
 
-  const activeProject = projects.find(p => p.id === activeProjectId);
+  const filteredProjects = React.useMemo(() => {
+    if (!search) return uniqueProjects;
+    const s = search.toLowerCase();
+    return uniqueProjects.filter(p => 
+      (p.name || '').toLowerCase().includes(s) ||
+      (p.client || '').toLowerCase().includes(s) ||
+      (p.client_name || '').toLowerCase().includes(s) ||
+      (p.firstName || '').toLowerCase().includes(s) ||
+      (p.address || '').toLowerCase().includes(s) ||
+      (p.city || '').toLowerCase().includes(s) ||
+      (p.commune || '').toLowerCase().includes(s)
+    );
+  }, [uniqueProjects, search]);
+
+  const activeProject = uniqueProjects.find(p => p.id === activeProjectId) || (projects || []).find(p => p.id === activeProjectId);
 
   React.useEffect(() => {
     const handleClickOutside = (event) => {

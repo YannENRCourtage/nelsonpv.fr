@@ -1152,7 +1152,7 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         kwc: pKwc,
         productible: pProd,
         surface: p.surface || mock?.surface || Math.round(pKwc * 5),
-        rent: 0, // STRICTEMENT AUCUN LOYER FONCIER
+        rent: pLoyer, // 2 250 €/an pour LATOURNERIE location toiture, 0 € pour les autres projets
         coutCentrale: pCentrale,
         coutCharpente: pCharpente,
         raccordement: pRaccordement,
@@ -1161,7 +1161,7 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         maintenanceAn1: pMaint,
         assuranceAn1: pAssur,
         taxesLocalesAn1: pTaxes,
-        loyerAn1: 0,
+        loyerAn1: pLoyer,
         caAnnuel: pCa,
         ebitdaAn1: pEbitda,
         opexAnnuel: pOpex,

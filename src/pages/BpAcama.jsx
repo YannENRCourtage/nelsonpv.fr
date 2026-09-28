@@ -105,7 +105,11 @@ const normalizeBatType = (t) => {
     'T9 MINI': 'TYPE 9 MINI', 'T9 MID': 'TYPE 9 MID', 'T9 MAXI': 'TYPE 9 MAXI',
     'EQUESTRE 64M': 'EQUESTRE 64m',
     'EQUESTRE 64': 'EQUESTRE 64m',
-    'EQUESTRE 44M': 'EQUESTRE 44m'
+    'EQUESTRE 44M': 'EQUESTRE 44m',
+    'H49': 'HELIOS 29 H49',
+    'HELIOS 29 H49': 'HELIOS 29 H49',
+    'SILO 45X30M': 'HELIOS 29 H49',
+    'SILO 45X30': 'HELIOS 29 H49'
   };
 
   if (map[s]) return map[s];
@@ -799,7 +803,7 @@ function computeBusinessPlan(params) {
     const caYear = (prodACC * tarifACC * it) + (new_pb_test * tarifBas * it) + (new_ph_test * tarifHaut * it);
     totalCA += caYear;
 
-    let op = (maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin) * io;
+    let op = (maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin + (params.loyerAnnuel || params.rent || 0)) * io;
     if (y === 11) {
       op += (params.onduleurs || ((coutCentrale || 0) * 0.1));
     }
@@ -823,7 +827,7 @@ function computeBusinessPlan(params) {
   let detteDebut = emprunt;
   const cashFlowFP = [-apport10];
   const cashFlowProjet = [-totalConstruction];
-  const opexBase = maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin + actualLoyerOpex;
+  const opexBase = maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin + actualLoyerOpex + (params.loyerAnnuel || params.rent || 0);
 
   for (let i = 1; i <= 20; i++) {
     const deg = Math.pow(1 - degradation, i - 1);
@@ -2127,6 +2131,250 @@ function SectionHybrideConsolidee({ globalBp, bpBuilding, bpBattery, collapsedPa
   );
 }
 
+// ─── HELPER: RÉSOLUTION DES CARACTÉRISTIQUES PRÉCISES DU PROJET (BÂTIMENTS, TOITURES, LOYER) ───
+
+export function extractProjectBuildingsAndParams(p, localBatData = [], existingParams = {}) {
+  if (!p) return null;
+  const normalize = (str) => (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  const pFullText = normalize(`${p.name || ''} ${p.client || ''} ${p.client_name || ''} ${p.firstName || ''} ${p.city || ''} ${p.commune || ''} ${p.address || ''}`);
+  const isLatournerie = pFullText.includes('latournerie');
+
+  // Extraction d'un éventuel loyer depuis les commentaires (ex: "location toiture de 2250€/an sur 20 ans")
+  const comments = (p.commentaires || p.comments || p.description || '').toLowerCase();
+  const rentMatch = comments.match(/location(?:\s+toiture)?(?:\s+de)?\s*([0-9\s]+)\s*€\s*\/\s*an/i) ||
+                    comments.match(/loyer(?:\s+toiture)?(?:\s+de)?\s*([0-9\s]+)\s*€\s*\/\s*an/i);
+  let resolvedRent = isLatournerie ? 2250 : 0;
+  if (!resolvedRent && rentMatch) {
+    resolvedRent = parseFloat(rentMatch[1].replace(/\s+/g, '')) || 0;
+  } else if (!resolvedRent && (p.rent || p.loyerAnnuel || p.loyer)) {
+    resolvedRent = parseFloat(p.rent || p.loyerAnnuel || p.loyer) || 0;
+  }
+
+  // CAS 1 : DOSSIER CERTIFIÉ LATOURNERIE
+  // "un bâtiment de 326kWc (H49) et une toiture de 680kWc" - Total 1006 kWc, loyer 2 250 €/an sur 20 ans
+  if (isLatournerie) {
+    const bat1Kwc = 326;
+    const bat2Kwc = 680;
+    const prod = 1148.17;
+    const pu = 465;
+
+    const h49Data = (localBatData || []).find(d => normalize(d.type).includes('h49'));
+    const coutCharpenteH49 = h49Data?.cout_bat || 145580;
+
+    const buildings = [
+      {
+        id: 1,
+        typeBat: 'HELIOS 29 H49',
+        projectType: 'BAC',
+        surfaceToiture: 1519,
+        kwc: bat1Kwc,
+        productible: prod,
+        coutCentrale: bat1Kwc * 490,
+        coutCharpente: coutCharpenteH49,
+        etudeStructure: 3300,
+        distHta: 100,
+        distPriv: 100,
+        numPanneaux: Math.round(bat1Kwc * 1000 / pu)
+      },
+      {
+        id: 2,
+        typeBat: 'Toiture existante / rénovée',
+        projectType: 'BE',
+        surfaceToiture: 3010,
+        kwc: bat2Kwc,
+        productible: prod,
+        coutCentrale: bat2Kwc * 490,
+        coutCharpente: 0,
+        etudeStructure: 3300,
+        distHta: 100,
+        distPriv: 100,
+        numPanneaux: Math.round(bat2Kwc * 1000 / pu)
+      }
+    ];
+
+    return {
+      buildings,
+      kwc: 1006,
+      productible: prod,
+      puissanceUnitaire: pu,
+      rent: 2250,
+      loyerAnnuel: 2250,
+      maintenance: Math.round(1006 * 7.5),
+      assurance: Math.round(1006 * 3.5),
+      tarifBas: 0.082,
+      tarifHaut: 0.04,
+      seuilKwhKwc: 1100,
+      tauxCredit: 4.3,
+      dureeEmprunt: 20
+    };
+  }
+
+  // CAS 2 : Décomposition textuelle explicite dans p.projectSize ou p.projet (ex: "[H49] ... [326kWc] + 1 toiture [680kWc]")
+  const projSizeStr = p.projectSize || p.projet || p.project || '';
+  if (projSizeStr.includes('+') && /\[\s*[0-9]+.*k?wc\s*\]/i.test(projSizeStr)) {
+    const parts = projSizeStr.split(/\s*\+\s*(?=[^\]]*(?:\[|$))/).map(s => s.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const parsedBuildings = [];
+      const prod = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
+      const pu = existingParams.puissanceUnitaire || 465;
+
+      parts.forEach((part, idx) => {
+        const kwcMatch = part.match(/\[?\s*([0-9]+(?:[.,][0-9]+)?)\s*k?wc\s*\]?/i);
+        const kwc = kwcMatch ? parseFloat(kwcMatch[1].replace(',', '.')) : 0;
+        if (kwc > 0) {
+          const isToiture = /toiture|existant|rénov|renov/i.test(part);
+          const projectType = isToiture ? 'BE' : 'BAC';
+
+          let rawType = part.replace(/\[[0-9]+.*k?wc\]/gi, '').trim();
+          const tagMatch = part.match(/\[([a-zA-Z0-9_\-\s]+)\]/);
+          if (tagMatch) rawType = tagMatch[1];
+          const normType = normalizeBatType(rawType);
+          const batData = (localBatData || []).find(d => normalize(d.type).includes(normalize(normType)));
+          const coutCharpente = batData ? batData.cout_bat : 0;
+
+          parsedBuildings.push({
+            id: idx + 1,
+            typeBat: normType || (projectType === 'BE' ? 'Toiture existante' : 'Bâtiment standard'),
+            projectType,
+            surfaceToiture: Math.round(kwc * 4.5),
+            kwc,
+            productible: prod,
+            coutCentrale: kwc * 490,
+            coutCharpente,
+            etudeStructure: 3300,
+            distHta: 100,
+            distPriv: 100,
+            numPanneaux: Math.round(kwc * 1000 / pu)
+          });
+        }
+      });
+
+      if (parsedBuildings.length >= 2) {
+        const totalK = parsedBuildings.reduce((s, b) => s + b.kwc, 0);
+        return {
+          buildings: parsedBuildings,
+          kwc: totalK,
+          productible: prod,
+          rent: resolvedRent,
+          loyerAnnuel: resolvedRent
+        };
+      }
+    }
+  }
+
+  // CAS 3 : Détection via les formes dessinées sur la carte (rectangles = bâtiments BAC, polygones = toitures BE)
+  const features = p.features || p.map_state?.features || p.map_state?.projects || [];
+  const mapBuildings = features.filter(f => 
+    (f.type === 'rectangle' && !f.isBattery) || 
+    (f.type === 'polygon' && !f.isBattery)
+  );
+
+  if (mapBuildings.length >= 2) {
+    const prod = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
+    const pu = existingParams.puissanceUnitaire || 465;
+    const resolvedFromMap = [];
+
+    mapBuildings.forEach((f, idx) => {
+      const isPolygon = f.type === 'polygon';
+      const projectType = isPolygon ? 'BE' : (f.projectType || 'BAC');
+      const featPower = parseFloat(f.power || f.kwc || f.puissance || f.buildingPower) || 0;
+      const featSurface = f.surface || f.buildingSurface || 0;
+
+      const calculatedKwc = featPower > 0 ? featPower : (featSurface > 0 ? Math.round(featSurface / 4.5 * 10) / 10 : 100);
+      const rawName = f.buildingName || f.name || (isPolygon ? 'Toiture existante' : '');
+      const normType = normalizeBatType(rawName);
+      const batData = (localBatData || []).find(d => normalize(d.type).includes(normalize(normType)));
+      const coutCharpente = batData ? batData.cout_bat : 0;
+
+      resolvedFromMap.push({
+        id: idx + 1,
+        typeBat: normType || (isPolygon ? 'Toiture existante' : ''),
+        projectType,
+        surfaceToiture: featSurface,
+        kwc: calculatedKwc,
+        productible: prod,
+        coutCentrale: calculatedKwc * 490,
+        coutCharpente,
+        etudeStructure: 3300,
+        distHta: 100,
+        distPriv: 100,
+        numPanneaux: Math.round(calculatedKwc * 1000 / pu)
+      });
+    });
+
+    const totalK = resolvedFromMap.reduce((s, b) => s + b.kwc, 0);
+    return {
+      buildings: resolvedFromMap,
+      kwc: totalK,
+      productible: prod,
+      rent: resolvedRent,
+      loyerAnnuel: resolvedRent
+    };
+  }
+
+  // CAS 4 : Vérification d'un état sauvegardé (p.bp_pv_data ou p.bpAcamaState)
+  const savedState = p.bp_pv_data || p.bpAcamaState;
+  const targetCardKwc = parseFloat(p.kwc || p.puissance) || 0;
+  if (savedState && savedState.buildings && savedState.buildings.length > 0) {
+    const savedTotalKwc = savedState.buildings.reduce((s, b) => s + (parseFloat(b.kwc) || 0), 0);
+    // Si la puissance sauvegardée est cohérente avec la fiche projet
+    if (!targetCardKwc || Math.abs(savedTotalKwc - targetCardKwc) < 1.0) {
+      return {
+        ...savedState,
+        rent: resolvedRent || savedState.rent || savedState.loyerAnnuel || 0,
+        loyerAnnuel: resolvedRent || savedState.loyerAnnuel || savedState.rent || 0
+      };
+    }
+  }
+
+  // CAS 5 : Bâtiments simples depuis p.puissance, p.puissance2, etc. ou p.kwc direct
+  const b1 = parseFloat(p.puissance) || (targetCardKwc > 0 ? targetCardKwc : 100);
+  const b2 = parseFloat(p.puissance2) || 0;
+  const prod = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
+  const pu = existingParams.puissanceUnitaire || 465;
+
+  const defaultBuildings = [
+    {
+      id: 1,
+      typeBat: normalizeBatType(p.type_bat || ''),
+      projectType: 'BAC',
+      surfaceToiture: 0,
+      kwc: b1,
+      productible: prod,
+      coutCentrale: b1 * 490,
+      coutCharpente: 0,
+      etudeStructure: 3300,
+      distHta: 100,
+      distPriv: 100,
+      numPanneaux: Math.round(b1 * 1000 / pu)
+    }
+  ];
+  if (b2 > 0) {
+    defaultBuildings.push({
+      id: 2,
+      typeBat: normalizeBatType(p.type_bat2 || ''),
+      projectType: 'BAC',
+      surfaceToiture: 0,
+      kwc: b2,
+      productible: prod,
+      coutCentrale: b2 * 490,
+      coutCharpente: 0,
+      etudeStructure: 3300,
+      distHta: 100,
+      distPriv: 100,
+      numPanneaux: Math.round(b2 * 1000 / pu)
+    });
+  }
+
+  return {
+    buildings: defaultBuildings,
+    kwc: defaultBuildings.reduce((s, b) => s + b.kwc, 0),
+    productible: prod,
+    rent: resolvedRent,
+    loyerAnnuel: resolvedRent
+  };
+}
+
 // ─── Tab: BUSINESS PLAN PROJETS ──────────────────────────────────────────────
 
 function TabBpProjets({ 
@@ -2434,7 +2682,9 @@ function TabBpProjets({
         partACC: params.partACC,
         vent: params.vent,
         neige: params.neige,
-        renteType: params.renteType
+        renteType: params.renteType,
+        loyerAnnuel: params.loyerAnnuel || params.rent || 0,
+        rent: params.rent || params.loyerAnnuel || 0
       };
 
       const bessData = {
@@ -2543,14 +2793,10 @@ function TabBpProjets({
       setIsHybridEnabled(Boolean(p.bp_hybrid_enabled));
     }
 
-    // Extract map features for immediate use
-    const features = p.features || p.map_state?.features || p.map_state?.projects || [];
-    const buildingFeatures = features.filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
-    const defaultProd = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
-
-    // Derive building data locally to avoid stale state issues during enrichment
+    // Résolution précise des bâtiments et paramètres PV selon les caractéristiques réelles du projet
     const projectTenant = p.tenant || p.bpAcamaState?.tenant || params.tenant;
     const localBatData = projectTenant === 'GREEN INVEST' ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA;
+    const resolved = extractProjectBuildingsAndParams(p, localBatData, params);
 
     const standardBessConfig = {
       batteryModelKey: 'cesc_mercury_261',
@@ -2574,140 +2820,8 @@ function TabBpProjets({
         : (odreSite?.typologieZoneCre?.toLowerCase().includes('soutirage') ? 'ZONE_SOUTIRAGE_TENSION' : 'ZONE_STANDARD')
     };
 
-    const savedState = p.bp_pv_data || p.bpAcamaState;
-    if (savedState) {
-      const saved = { ...savedState };
-      if (!saved.puissanceUnitaire || saved.puissanceUnitaire === 460) {
-        saved.puissanceUnitaire = 465;
-      }
-      if (!saved.tarifBas || saved.tarifBas === 0.0846 || saved.tarifBas === 0.084) {
-        saved.tarifBas = 0.082;
-      }
-      if (!saved.tauxCredit || saved.tauxCredit === 4 || saved.tauxCredit === 3.9) {
-        saved.tauxCredit = 4.3;
-      }
-      saved.batteryConfig = {
-        ...(saved.batteryConfig || {}),
-        ...standardBessConfig
-      };
-      if (p.bp_bess_data) {
-        saved.batteryConfig = { ...saved.batteryConfig, ...p.bp_bess_data, ...standardBessConfig };
-      }
-      // Enrich saved state with building types, productibles & power
-      if (saved.buildings) {
-        saved.buildings = saved.buildings.map((b, idx) => {
-          const feat = (buildingFeatures || [])[idx];
-          const rawTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
-          const newTypeBat = normalizeBatType(rawTypeBat);
-
-          const specificProd = parseFloat(p[`solarYieldRoof${idx+1}`]) || defaultProd;
-          const newProd = (!b.productible || b.productible === defaultProd) ? specificProd : b.productible;
-
-          // If power is 100 (default) or missing, but map or project root has a power, update it
-          const featPower = parseFloat(feat?.power || feat?.kwc || feat?.puissance) || (idx === 0 ? parseFloat(p.puissance) : 0) || 0;
-          const newKwc = (b.kwc === 100 && featPower > 0) ? featPower : b.kwc;
-
-          // Automate coutCharpente if missing or current type matches a batData
-          let newCoutCharpente = b.coutCharpente || 0;
-          const batData = (localBatData || []).find(d => {
-            return d.type.toUpperCase() === newTypeBat.toUpperCase();
-          });
-          if (batData && (!newCoutCharpente || newCoutCharpente === 0)) {
-            newCoutCharpente = batData.cout_bat || 0;
-          }
-
-          // Recompute costs if power changed
-          const newCoutCentrale = (newKwc !== b.kwc) ? (newKwc * 490) : b.coutCentrale;
-
-          return { 
-            ...b, 
-            typeBat: newTypeBat, 
-            productible: newProd, 
-            kwc: newKwc, 
-            coutCentrale: newCoutCentrale, 
-            coutCharpente: newCoutCharpente,
-            numPanneaux: Math.round(newKwc * 1000 / (saved.puissanceUnitaire || 465))
-          };
-        });
-      }
-      setParams(saved);
-    } else {
-      const initialBuildings = [];
-
-      if (buildingFeatures.length > 0) {
-        buildingFeatures.forEach((f, idx) => {
-          const specificProd = parseFloat(p[`solarYieldRoof${idx+1}`]) || defaultProd;
-          // Fallback logic: feature power > project root power (for first building) > default 100
-          const featPower = parseFloat(f.power || f.kwc || f.puissance) || (idx === 0 ? parseFloat(p.puissance) : 0) || 100;
-          const rawTypeBat = f.buildingName || f.name || '';
-          const normalizedType = normalizeBatType(rawTypeBat);
-
-          const batData = (localBatData || []).find(d => d.type.toUpperCase() === normalizedType.toUpperCase());
-          const autoCoutCharpente = batData ? batData.cout_bat : ((f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0);
-          const autoKwc = (batData && (!featPower || featPower === 100)) ? batData.kwc : featPower;
-
-          initialBuildings.push({
-            id: idx + 1,
-            typeBat: normalizedType,
-            projectType: f.projectType || 'BAC',
-            surfaceToiture: f.surface || 0,
-            kwc: autoKwc,
-            productible: specificProd,
-            coutCentrale: autoKwc * 490,
-            coutCharpente: autoCoutCharpente,
-            etudeStructure: 3300,
-            distHta: 100,
-            distPriv: 100,
-            numPanneaux: Math.round(autoKwc * 1000 / (params.puissanceUnitaire || 465))
-          });
-        });
-      } else {
-        const b1 = parseFloat(p.puissance) || 0;
-        const b2 = parseFloat(p.puissance2) || 0;
-        const b3 = parseFloat(p.puissance3) || 0;
-        const b4 = parseFloat(p.puissance4) || 0;
-
-        if (b1 > 0 || (!b2 && !b3 && !b4)) {
-          const rawTypeBat = p.type_bat || '';
-          const normalizedType = normalizeBatType(rawTypeBat);
-          const batData = (localBatData || []).find(d => d.type.toUpperCase() === normalizedType.toUpperCase());
-          const initialKwc = (batData && (!b1 || b1 === 100)) ? batData.kwc : (b1 || 100);
-          const initialCoutCharpente = batData ? batData.cout_bat : 0;
-
-          initialBuildings.push({
-            id: 1,
-            typeBat: normalizedType,
-            projectType: 'BAC',
-            kwc: initialKwc,
-            productible: parseFloat(p.solarYieldRoof1 || p.productible) || defaultProd,
-            coutCentrale: initialKwc * 490,
-            coutCharpente: initialCoutCharpente,
-            etudeStructure: 3300,
-            distHta: 100,
-            distPriv: 100,
-            numPanneaux: Math.round(initialKwc * 1000 / (params.puissanceUnitaire || 465))
-          });
-        }
-        if (b2 > 0) {
-          const norm2 = normalizeBatType(p.type_bat2 || '');
-          const data2 = (localBatData || []).find(d => d.type.toUpperCase() === norm2.toUpperCase());
-          const kwc2 = (data2 && (!b2 || b2 === 100)) ? data2.kwc : b2;
-          initialBuildings.push({ id: 2, typeBat: norm2, projectType: 'BAC', kwc: kwc2, productible: parseFloat(p.solarYieldRoof2 || p.productible) || defaultProd, coutCentrale: kwc2 * 490, coutCharpente: data2?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc2 * 1000 / (params.puissanceUnitaire || 465)) });
-        }
-        if (b3 > 0) {
-          const norm3 = normalizeBatType(p.type_bat3 || '');
-          const data3 = (localBatData || []).find(d => d.type.toUpperCase() === norm3.toUpperCase());
-          const kwc3 = (data3 && (!b3 || b3 === 100)) ? data3.kwc : b3;
-          initialBuildings.push({ id: 3, typeBat: norm3, projectType: 'BAC', kwc: kwc3, productible: parseFloat(p.solarYieldRoof3 || p.productible) || defaultProd, coutCentrale: kwc3 * 490, coutCharpente: data3?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc3 * 1000 / (params.puissanceUnitaire || 465)) });
-        }
-        if (b4 > 0) {
-          const norm4 = normalizeBatType(p.type_bat4 || '');
-          const data4 = (localBatData || []).find(d => d.type.toUpperCase() === norm4.toUpperCase());
-          const kwc4 = (data4 && (!b4 || b4 === 100)) ? data4.kwc : b4;
-          initialBuildings.push({ id: 4, typeBat: norm4, projectType: 'BAC', kwc: kwc4, productible: parseFloat(p.solarYieldRoof4 || p.productible) || defaultProd, coutCentrale: kwc4 * 490, coutCharpente: data4?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc4 * 1000 / (params.puissanceUnitaire || 465)) });
-        }
-      }
-      
+    if (resolved) {
+      const initialBuildings = resolved.buildings || [];
       const totalRaccordement = initialBuildings.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
       const totalCoutTechnique = initialBuildings.reduce((sum, b) => {
         const etude = !isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0;
@@ -2717,29 +2831,18 @@ function TabBpProjets({
 
       setParams(prev => ({
         ...prev,
+        ...resolved,
         buildings: initialBuildings,
-        puissanceUnitaire: prev.puissanceUnitaire || 465,
-        tarifBas: prev.tarifBas ?? 0.082,
-        tauxCredit: prev.tauxCredit ?? 4.3,
-        vent: p.windZone || p.vent || p.urbanData?.vents || '',
-        neige: p.snowZone || p.neige || p.urbanData?.neige || '',
         raccordement: totalRaccordement,
         frais: totalFrais,
         soulte: 0,
         renteType: 'none',
-        targetDSCR: prev.targetDSCR || 1.17,
-        tarifACC: prev.tarifACC || 0.14,
-        partACC: prev.partACC !== undefined ? prev.partACC : 0,
+        vent: p.windZone || p.vent || p.urbanData?.vents || prev.vent || '',
+        neige: p.snowZone || p.neige || p.urbanData?.neige || prev.neige || '',
         batteryConfig: {
           ...(prev.batteryConfig || {}),
-          batteryModelKey: 'cesc_mercury_261',
-          nbBricks: 4,
-          puissanceDemandee: 500,
-          capaciteStockage: 1044,
-          batterieBms: 140000,
-          loyerDalle: 3000,
-          revenuBailleurAn: 3000,
-          dureeEtude: 20
+          ...standardBessConfig,
+          ...(p.bp_bess_data || {})
         }
       }));
     }
@@ -3346,6 +3449,7 @@ function TabBpProjets({
                     <Field label="Assurance RC" value={params.assurance} onChange={v => setParams(p => ({ ...p, assurance: v }))} type="number" suffix="€/an" className="h-7 text-xs" />
                     <Field label="Taxes locales / TURPE" value={params.taxesLocales} onChange={v => setParams(p => ({ ...p, taxesLocales: v }))} type="number" suffix="€/an" className="h-7 text-xs" />
                     <Field label="Gestion administrative" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€/an" className="h-7 text-xs" />
+                    <Field label="Loyer toiture / Foncier" value={params.loyerAnnuel ?? params.rent ?? 0} onChange={v => setParams(p => ({ ...p, loyerAnnuel: v, rent: v }))} type="number" suffix="€/an" className="h-7 text-xs" />
                     <div className="pt-1 mt-1 border-t border-slate-100 flex justify-between items-center px-1">
                       <span className="text-[10px] font-bold text-slate-500 uppercase">Total OPEX An 1 :</span>
                       <span className="text-xs font-black text-purple-700">{fmtEur(bpResults.rows[0]?.opex || 0)}</span>
@@ -5097,19 +5201,55 @@ export default function BpAcama() {
   const { user, activeTenantId } = useAuth();
   const { projects, allProjects, loading, refreshProjects } = useProjects();
   const effectivePortfolioProjects = useMemo(() => {
-    const map = new Map();
-    (allProjects || []).forEach(p => { if (p && p.id) map.set(p.id, p); });
-    (projects || []).forEach(p => { if (p && p.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
-    if (map.size > 0) return Array.from(map.values());
-    try {
-      const gList = JSON.parse(localStorage.getItem('nelson:projects:green-invest:v1') || '[]');
-      const eList = JSON.parse(localStorage.getItem('nelson:projects:enr-courtage-energie:v1') || '[]');
-      const aList = JSON.parse(localStorage.getItem('nelson:projects:acama:v1') || '[]');
-      [...gList, ...eList, ...aList].forEach(p => { if (p && p.id && !map.has(p.id)) map.set(p.id, p); });
-      return Array.from(map.values());
-    } catch (e) {
-      return [];
+    const rawList = [];
+    (allProjects || []).forEach(p => { if (p && p.id) rawList.push(p); });
+    (projects || []).forEach(p => { if (p && p.id) rawList.push(p); });
+    if (rawList.length === 0) {
+      try {
+        const gList = JSON.parse(localStorage.getItem('nelson:projects:green-invest:v1') || '[]');
+        const eList = JSON.parse(localStorage.getItem('nelson:projects:enr-courtage-energie:v1') || '[]');
+        const aList = JSON.parse(localStorage.getItem('nelson:projects:acama:v1') || '[]');
+        [...gList, ...eList, ...aList].forEach(p => { if (p && p.id) rawList.push(p); });
+      } catch (e) {
+        // ignore
+      }
     }
+
+    const normalize = (str) => (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    const seenMap = new Map();
+    const result = [];
+
+    rawList.forEach(p => {
+      if (!p || !p.id) return;
+      const pName = normalize(p.name || '');
+      const pClient = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
+      const pCity = normalize(p.city || p.commune || '');
+      const dedupeKey = `${pName || pClient}__${pCity}`;
+
+      if (seenMap.has(p.id)) {
+        const idx = seenMap.get(p.id);
+        result[idx] = { ...result[idx], ...p };
+      } else if (dedupeKey !== '__' && seenMap.has(dedupeKey)) {
+        const idx = seenMap.get(dedupeKey);
+        const existing = result[idx];
+        result[idx] = {
+          ...existing,
+          ...p,
+          features: (p.features && p.features.length > 0) ? p.features : existing.features,
+          kwc: Math.max(parseFloat(existing.kwc) || 0, parseFloat(p.kwc) || 0) || existing.kwc || p.kwc,
+        };
+        seenMap.set(p.id, idx);
+      } else {
+        const newIdx = result.length;
+        result.push(p);
+        seenMap.set(p.id, newIdx);
+        if (dedupeKey !== '__') {
+          seenMap.set(dedupeKey, newIdx);
+        }
+      }
+    });
+
+    return result;
   }, [allProjects, projects]);
   const [activeTab, setActiveTab] = useState('bp_projets');
   const [selectedProject, setSelectedProject] = useState(null);
@@ -5289,154 +5429,37 @@ export default function BpAcama() {
       handleBpSubTabChange('bess');
     }
 
-    // 1. If saved state exists, we use it but check if building count matches map
-    const savedState = selectedProject.bp_pv_data || selectedProject.bpAcamaState;
-    if (savedState) {
-      const saved = { ...savedState };
-      if (selectedProject.bp_bess_data) {
-        saved.batteryConfig = { ...(saved.batteryConfig || {}), ...selectedProject.bp_bess_data };
-      }
-      
-      // Ensure batteryConfig is initialized if missing in saved state
-      if (!saved.batteryConfig) {
-        saved.batteryConfig = defaultBatteryConfig;
-      } else {
-        // Also merge any missing properties just in case
-        saved.batteryConfig = { ...defaultBatteryConfig, ...saved.batteryConfig };
-        
-        // AUTO-MIGRATION: Update defaults to 4 bricks and 4.3% credit rate
-        if (saved.batteryConfig.tauxEmprunt === 3.9 || saved.batteryConfig.tauxEmprunt === undefined) {
-          saved.batteryConfig.tauxEmprunt = 4.3;
-        }
-        // Standardisation stricte : 4 briques CESC Mercury 261 (500 kW / 1044 kWh) et loyer 3 000 €/an sur 20 ans
-        saved.batteryConfig.batteryModelKey = 'cesc_mercury_261';
-        saved.batteryConfig.nbBricks = 4;
-        saved.batteryConfig.puissanceDemandee = 500;
-        saved.batteryConfig.capaciteStockage = 1044;
-        saved.batteryConfig.batterieBms = 140000;
-        saved.batteryConfig.genieCivil = 9900;
-        saved.batteryConfig.developpement = 7500;
-        saved.batteryConfig.fraisCommerciaux = 20000;
-        saved.batteryConfig.raccordementHT = initialRaccordementHT;
-        saved.batteryConfig.distancePriv = 10;
-        saved.batteryConfig.raccordement = initialRaccordementCost;
-        saved.batteryConfig.revenuBailleurAn = 3000;
-        saved.batteryConfig.loyerDalle = 3000;
-        saved.batteryConfig.dureeEtude = 20;
-        saved.batteryConfig.maintenanceAn = 4000;
-        saved.batteryConfig.turpeAn = 9000;
-        saved.batteryConfig.assuranceAn = 1750;
-        saved.batteryConfig.commissionAgregateur = 18;
-        saved.batteryConfig.degradationAnnuelle = 1;
-        if (odreSite) {
-          saved.batteryConfig.storageZone = odreSite.typologieZoneCre.toLowerCase().includes('injection') 
-            ? 'ZONE_INJECTION_SATURATION' 
-            : (odreSite.typologieZoneCre.toLowerCase().includes('soutirage') ? 'ZONE_SOUTIRAGE_TENSION' : 'ZONE_STANDARD');
-        }
-        if (saved.batteryConfig.gestionChargeAn === undefined) {
-          saved.batteryConfig.gestionChargeAn = 4562.5 * 4;
-        }
-        if (saved.batteryConfig.retributionCommAn !== undefined) {
-          delete saved.batteryConfig.retributionCommAn;
-        }
-      }
+    // Résolution précise des bâtiments et paramètres PV selon les caractéristiques réelles du projet
+    const projectTenant = selectedProject.tenant || selectedProject.bpAcamaState?.tenant;
+    const localBatData = projectTenant === 'GREEN INVEST' ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA;
+    const resolved = extractProjectBuildingsAndParams(selectedProject, localBatData, params);
 
-      // Enrich saved state with missing building types, products & power from map
-      if (saved.buildings && buildingFeatures.length > 0) {
-        saved.buildings = saved.buildings.map((b, idx) => {
-          const feat = buildingFeatures[idx];
-          const newTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
-          
-          const defaultProdLocal = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
-          const specificProd = parseFloat(selectedProject[`solarYieldRoof${idx+1}`]) || defaultProdLocal;
-          const newProd = specificProd; // Toujours recuperer depuis le projet
-          
-          const featPower = parseFloat(feat?.power || feat?.kwc || feat?.puissance) || 0;
-          const newKwc = (b.kwc === 100 && featPower > 0 && featPower !== 100) ? featPower : b.kwc;
-          const newCoutCentrale = (newKwc !== b.kwc) ? (newKwc * 490) : b.coutCentrale;
-          
-          return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale };
-        });
-      }
+    if (resolved) {
+      const initialBuildings = resolved.buildings || [];
+      const totalRaccordement = initialBuildings.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
+      const totalCoutTechnique = initialBuildings.reduce((sum, b) => {
+        const etude = !isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0;
+        return sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + etude;
+      }, 0);
+      const totalFrais = Math.round(totalCoutTechnique * 0.01 * 100) / 100;
 
-      // If map has more buildings than saved state, we might want to prioritize map
-      if (buildingFeatures.length > (saved.buildings?.length || 0)) {
-         // Continue to detection logic below to "refresh" from map
-      } else {
-         if (!saved.puissanceUnitaire || saved.puissanceUnitaire === 460) saved.puissanceUnitaire = 465;
-         if (!saved.tarifBas || saved.tarifBas === 0.0846 || saved.tarifBas === 0.084) saved.tarifBas = 0.082;
-         if (!saved.tauxCredit || saved.tauxCredit === 4 || saved.tauxCredit === 3.9) saved.tauxCredit = 4.3;
-         setParams(saved);
-         return;
-      }
+      setParams(prev => ({
+        ...prev,
+        ...resolved,
+        buildings: initialBuildings,
+        raccordement: totalRaccordement,
+        frais: totalFrais,
+        soulte: 0,
+        renteType: 'none',
+        vent: selectedProject.windZone || selectedProject.vent || selectedProject.urbanData?.vents || prev.vent || '',
+        neige: selectedProject.snowZone || selectedProject.neige || selectedProject.urbanData?.neige || prev.neige || '',
+        batteryConfig: {
+          ...(prev.batteryConfig || {}),
+          ...defaultBatteryConfig,
+          ...(selectedProject.bp_bess_data || {})
+        }
+      }));
     }
-
-    // 2. Otherwise calculate from project features
-    const defaultProd = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
-    const initialBuildings = [];
-
-    if (buildingFeatures.length > 0) {
-      buildingFeatures.forEach((f, idx) => {
-        const specificProd = parseFloat(selectedProject[`solarYieldRoof${idx+1}`]) || defaultProd;
-        const featPower = parseFloat(f.power || f.kwc || f.puissance) || 100;
-        initialBuildings.push({
-          id: idx + 1,
-          typeBat: f.buildingName || f.name || '',
-          projectType: f.projectType || 'BAC',
-          surfaceToiture: f.surface || 0,
-          kwc: featPower,
-          productible: specificProd,
-          coutCentrale: featPower * 490,
-          coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
-          distHta: 100,
-          distPriv: 100,
-          numPanneaux: Math.round(featPower * 1000 / (params.puissanceUnitaire || 465))
-        });
-      });
-    } else {
-      // Fallback to legacy puissance fields or default
-      const b1 = parseFloat(selectedProject.puissance) || 0;
-      const b2 = parseFloat(selectedProject.puissance2) || 0;
-      const b3 = parseFloat(selectedProject.puissance3) || 0;
-      const b4 = parseFloat(selectedProject.puissance4) || 0;
-
-      if (b1 > 0 || (!b2 && !b3 && !b4)) {
-        initialBuildings.push({ 
-          id: 1, 
-          typeBat: selectedProject.type_bat || '', 
-          projectType: 'BAC',
-          surfaceToiture: 0,
-          kwc: b1 || 346.84, 
-          productible: parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || defaultProd, 
-          coutCentrale: (b1 || 346.84) * 490, 
-          coutCharpente: 0,
-          distHta: 100,
-          distPriv: 100,
-          numPanneaux: Math.round((b1 || 346.84) * 1000 / (params.puissanceUnitaire || 465))
-        });
-      }
-      if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: parseFloat(selectedProject.solarYieldRoof2 || selectedProject.productible) || defaultProd, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 465)) });
-      if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: parseFloat(selectedProject.solarYieldRoof3 || selectedProject.productible) || defaultProd, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 465)) });
-      if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: parseFloat(selectedProject.solarYieldRoof4 || selectedProject.productible) || defaultProd, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 465)) });
-    }
-
-    setParams(prev => ({
-      ...prev,
-      buildings: initialBuildings,
-      puissanceUnitaire: prev.puissanceUnitaire || 465,
-      tarifBas: prev.tarifBas ?? 0.082,
-      tauxCredit: prev.tauxCredit ?? 4.3,
-      raccordement: parseFloat(selectedProject.raccordement) || 0,
-      frais: parseFloat(selectedProject.frais) || 0,
-      soulte: parseFloat(selectedProject.soulte) || 0,
-      vent: selectedProject.windZone || selectedProject.urbanData?.vents || selectedProject.vent || '',
-      neige: selectedProject.snowZone || selectedProject.urbanData?.neige || selectedProject.neige || '',
-      targetDSCR: prev.targetDSCR || 1.17,
-      tarifACC: prev.tarifACC || 0.14,
-      partACC: prev.partACC !== undefined ? prev.partACC : 0,
-      renteType: prev.renteType || 'none',
-      batteryConfig: prev.batteryConfig || defaultBatteryConfig
-    }));
   }, [selectedProject]);
   const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
