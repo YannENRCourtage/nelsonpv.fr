@@ -539,6 +539,15 @@ export default function ShantiOnePage() {
     return { valide, fait, attente };
   }, [projects]);
 
+  // État et réinitialisation de tous les filtres
+  const hasActiveFilters = Boolean(searchQuery || spvFilter !== 'ALL' || geometreFilter !== 'ALL' || devisFilter !== 'ALL');
+  const handleResetAllFilters = () => {
+    setSearchQuery('');
+    setSpvFilter('ALL');
+    setGeometreFilter('ALL');
+    setDevisFilter('ALL');
+  };
+
   // Totaux calculés dynamiquement
   const stats = useMemo(() => {
     let totalKwc = 0;
@@ -665,7 +674,7 @@ export default function ShantiOnePage() {
               className="text-xs font-semibold h-9 border-slate-300 text-slate-700 hover:bg-slate-50"
             >
               <Plus className="w-3.5 h-3.5 mr-1 text-blue-600" />
-              + Colonne
+              Colonne
             </Button>
 
             <Button
@@ -808,6 +817,25 @@ export default function ShantiOnePage() {
                 {geometreOptions.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
+
+            {/* Bouton Supprimer tous les filtres */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetAllFilters}
+              disabled={!hasActiveFilters}
+              className={cn(
+                "h-8 px-2.5 text-xs gap-1.5 transition-all shadow-xs shrink-0",
+                hasActiveFilters
+                  ? "text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 bg-rose-50/50 cursor-pointer font-semibold"
+                  : "text-slate-400 border-slate-200 bg-slate-50 cursor-not-allowed opacity-60"
+              )}
+              title="Supprimer tous les filtres appliqués en un seul clic"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
+              Supprimer tous les filtres
+            </Button>
           </div>
 
           {/* Boutons pour les 3 statuts de devis */}
@@ -1228,12 +1256,15 @@ export default function ShantiOnePage() {
                             );
                           }
 
-                          // 4. Colonnes de type Statut / Badge (retour_geometre, devis_valide, plan_pc, enr_courtage, etc.)
-                          const isBadgeCol = col.type?.startsWith('badge_') || ['retour_geometre', 'devis_valide', 'plan_pc', 'enr_courtage', 'geometre_ab6'].includes(col.id);
+                          // 4. Colonnes de type Statut / Badge (retour_geometre, devis_valide, plan_pc, enr_courtage, etc.) ou Géomètre
+                          const isBadgeCol = col.type?.startsWith('badge_') || ['retour_geometre', 'devis_valide', 'plan_pc', 'enr_courtage', 'geometre_ab6', 'geometre'].includes(col.id);
                           if (isBadgeCol) {
                             const isEditing = editingCell?.id === p.id && editingCell?.field === col.id;
-                            const presets = STATUS_PRESETS[col.id] || STATUS_PRESETS.retour_geometre;
+                            const presets = col.id === 'geometre'
+                              ? (geometreOptions && geometreOptions.length > 0 ? geometreOptions : ['A2GEO', 'ALTEO', 'Cabinet BÉMOUÉ', 'Géo Sud Ouest', 'GRAFF-KIEHL Géomètres', 'PIVETEAU', 'Yves CHOPIN'])
+                              : (STATUS_PRESETS[col.id] || STATUS_PRESETS.retour_geometre);
                             const rawVal = p[col.id];
+                            const shouldOpenUp = filteredProjects.length > 6 && idx >= filteredProjects.length - 3;
 
                             return (
                               <td
@@ -1258,7 +1289,7 @@ export default function ShantiOnePage() {
                                       onClick={(e) => e.stopPropagation()}
                                       className={cn(
                                         "absolute left-2 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 p-2 min-w-[250px] text-left",
-                                        idx > filteredProjects.length - 6 ? "bottom-full mb-1" : "top-full mt-1"
+                                        shouldOpenUp ? "bottom-full mb-1" : "top-full mt-1"
                                       )}
                                     >
                                       {!isCustomStatus ? (
@@ -1281,7 +1312,11 @@ export default function ShantiOnePage() {
                                                     isSelected && "bg-blue-50/80 ring-1 ring-blue-300 font-bold"
                                                   )}
                                                 >
-                                                  <StatusBadge value={opt} />
+                                                  {col.id === 'geometre' ? (
+                                                    <span className="font-semibold text-slate-800 text-xs">{opt}</span>
+                                                  ) : (
+                                                    <StatusBadge value={opt} />
+                                                  )}
                                                   {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-2" />}
                                                 </button>
                                               );
@@ -1370,7 +1405,11 @@ export default function ShantiOnePage() {
                                     )}
                                     title="Cliquer pour modifier"
                                   >
-                                    <StatusBadge value={rawVal} />
+                                    {col.id === 'geometre' ? (
+                                      <span className="font-semibold text-slate-800 truncate">{rawVal || <span className="text-slate-300">-</span>}</span>
+                                    ) : (
+                                      <StatusBadge value={rawVal} />
+                                    )}
                                     {col.align !== 'center' && (
                                       <ChevronDown className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover/cell:opacity-100 transition-opacity ml-1.5 shrink-0" />
                                     )}

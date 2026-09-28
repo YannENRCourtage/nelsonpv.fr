@@ -162,14 +162,9 @@ export function simulateFarmHeadless({
     return null;
   }
 
-  const addressLabel = farm.addressLabel || `Exploitation Agricole PACAGE ${farm.pacage}`;
-  const communeName = farm.city || farm.commune || '';
-  const postalCode = farm.postalCode || '';
-
-  // Coordonnées exactes issues de l'adresse BAN ou du barycentre de l'exploitation
-  const exactCoords = farm.addressCoords || (farm.latitude && farm.longitude ? [farm.latitude, farm.longitude] : farm.centroid) || [44.8412, -0.5805];
-  const exactLat = exactCoords[0];
-  const exactLng = exactCoords[1];
+  const resolvedClientName = farm.companyName || `Exploitation Agricole (PACAGE ${farm.pacage})`;
+  const fullAddressLabel = farm.addressLabel || (farm.postalAddress ? `${farm.postalAddress} (Point GPS : ${exactLat.toFixed(4)}, ${exactLng.toFixed(4)})` : `Exploitation Agricole (${exactLat.toFixed(4)}, ${exactLng.toFixed(4)})`);
+  const postalAddress = farm.postalAddress || farm.street || farm.addressLabel || fullAddressLabel;
 
   const activeMats = (best.materials || []).filter(m => m.enabled && m.volume > 0);
   const activeMaterialsText = activeMats.length > 0
@@ -179,9 +174,13 @@ export function simulateFarmHeadless({
   return {
     id: `sechoir_prospect_${farm.pacage}_${Math.random().toString(36).substring(2, 7)}`,
     pacage: farm.pacage,
-    clientName: `Exploitation Agricole (PACAGE ${farm.pacage})`,
-    address: addressLabel,
-    addressLabel,
+    clientName: resolvedClientName,
+    ownerName: resolvedClientName,
+    companyName: farm.companyName || '',
+    siren: farm.siren || '',
+    address: postalAddress,
+    addressLabel: fullAddressLabel,
+    postalAddress,
     commune: communeName,
     codePostal: postalCode,
     departement: departement || '33',

@@ -66,10 +66,10 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
   const handleSelectProspect = useCallback((prospect) => {
     if (!prospect) return;
     const targetCoords = prospect.coords || (prospect.latitude && prospect.longitude ? [prospect.latitude, prospect.longitude] : null);
-    store.setClientName(prospect.clientName || `Exploitation PACAGE ${prospect.pacage}`);
+    store.setClientName(prospect.companyName || prospect.clientName || `Exploitation PACAGE ${prospect.pacage}`);
     store.setAddress({
-      address: prospect.address,
-      label: prospect.addressLabel,
+      address: prospect.postalAddress || prospect.address,
+      label: prospect.addressLabel || prospect.address,
       latitude: targetCoords ? targetCoords[0] : prospect.latitude,
       longitude: targetCoords ? targetCoords[1] : prospect.longitude,
       departement: prospect.departement,

@@ -55,6 +55,7 @@ export function extractRecipientFromProspect(item) {
   }
 
   const rawCompany = (
+    item.companyName ||
     item.company ||
     item.nom_societe ||
     item.societe ||
@@ -72,12 +73,16 @@ export function extractRecipientFromProspect(item) {
   ).trim();
 
   let street = (
+    item.postalAddress ||
+    item.street ||
     item.address ||
     item.adresse_ligne1 ||
-    item.street ||
     item.adresse ||
     ''
   ).trim();
+
+  // Élimine toute mention GPS résiduelle pour l'adresse postale postale standard
+  street = street.replace(/\s*\((Point\s+)?GPS\s*:[^)]*\)/gi, '').trim();
 
   let postalCode = (
     item.postalCode ||

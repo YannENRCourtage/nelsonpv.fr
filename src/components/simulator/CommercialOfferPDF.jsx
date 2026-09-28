@@ -1283,14 +1283,14 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       pageCoverContainer.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;max-height:297mm;background:#ffffff;color:#0f172a;font-family:Arial,sans-serif;overflow:hidden;box-sizing:border-box;';
       
       const targetCompany = isSechoir
-        ? (sim.ownerName || sim.clientName || (sim.pacage ? `Exploitation Agricole (PACAGE ${sim.pacage})` : 'Direction de l\'exploitation'))
-        : (sim.ownerName || sim.company || sim.clientName || 'Direction de l\'établissement');
+        ? (sim.companyName || sim.ownerName || sim.clientName || (sim.pacage ? `Exploitation Agricole (PACAGE ${sim.pacage})` : 'Direction de l\'exploitation'))
+        : (sim.companyName || sim.ownerName || sim.company || sim.clientName || 'Direction de l\'établissement');
       const targetAddress = sim.address || clientAddress || '';
       const formattedDate = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
       // Formatage strict de l'adresse destinataire aux normes AFNOR NF Z 10-011 (Fenêtre DL / C5)
       // Emplacement standard : haut droit, top 45mm, right 20mm, max 85mm x 45mm, max 6 lignes
-      let streetLine = targetAddress.trim();
+      let streetLine = targetAddress.replace(/\s*\((Point\s+)?GPS\s*:[^)]*\)/gi, '').trim();
       let postalCityLine = '';
 
       const cpMatch = streetLine.match(/\b(\d{5})\b\s*(.*)$/);

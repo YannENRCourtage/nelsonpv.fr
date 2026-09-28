@@ -344,6 +344,193 @@ export async function reverseGeocodeBAN(lat, lng) {
   };
 }
 
+// ─── 5b. RÉPERTOIRE & RÉSOLUTION DES EXPLOITATIONS AGRICOLES (PACAGE -> SOCIÉTÉ / SIÈGE) ─────
+
+export const KNOWN_PACAGE_REGISTRY = {
+  // PACAGE 023012669 (Creuse) -> GAEC DES PEYRATS
+  '023012669': {
+    pacage: '023012669',
+    companyName: 'GAEC DES PEYRATS',
+    siren: '838805182',
+    street: '6 Le Tilleul de Villard',
+    postalCode: '23210',
+    city: 'Augères',
+    fullAddress: '6 Le Tilleul de Villard, 23210 Augères',
+    coordinates: [46.07455, 1.72355],
+    dirigeants: ['Christian JOUANNEAUD', 'Sébastien JOUANNEAUD']
+  },
+  '023022963': {
+    pacage: '023022963',
+    companyName: 'GAEC DES PEYRATS',
+    siren: '838805182',
+    street: '6 Le Tilleul de Villard',
+    postalCode: '23210',
+    city: 'Augères',
+    fullAddress: '6 Le Tilleul de Villard, 23210 Augères',
+    coordinates: [46.07455, 1.72355],
+    dirigeants: ['Christian JOUANNEAUD', 'Sébastien JOUANNEAUD']
+  },
+  '023011396': {
+    pacage: '023011396',
+    companyName: 'GAEC MOUSSEAU',
+    siren: '403677370',
+    street: '1 Mousseau',
+    postalCode: '23210',
+    city: 'Augères',
+    fullAddress: '1 Mousseau, 23210 Augères',
+    coordinates: [46.0674, 1.72889]
+  },
+  '023016255': {
+    pacage: '023016255',
+    companyName: 'GAEC LACOUQUE',
+    siren: '940686132',
+    street: '10 Enrias',
+    postalCode: '23210',
+    city: 'Azat-Châtenet',
+    fullAddress: '10 Enrias, 23210 Azat-Châtenet',
+    coordinates: [46.09525, 1.77254]
+  },
+  '087015537': {
+    pacage: '087015537',
+    companyName: 'GAEC DE RAGNOL',
+    street: '15 Ragnol',
+    postalCode: '87270',
+    city: 'Laurière',
+    fullAddress: '15 Ragnol, 87270 Laurière',
+    coordinates: [46.0768, 1.4746]
+  }
+};
+
+/**
+ * Résout le nom juridique de l'exploitation (Raison Sociale / GAEC / EARL),
+ * l'adresse postale de son siège et les coordonnées GPS de son siège d'exploitation.
+ *
+ * @param {object} farm - Objet exploitation contenant le numéro PACAGE et le barycentre
+ * @param {object} [banAddress] - Résultat du reverse géocodage BAN
+ * @returns {Promise<{ companyName: string, siren: string, street: string, postalCode: string, city: string, postalAddress: string, addressLabel: string, gpsText: string, coordinates: [number, number], latitude: number, longitude: number, isResolved: boolean }>}
+ */
+export async function resolveFarmEnterpriseAndSiege(farm, banAddress = {}) {
+  const rawPacage = String(farm.pacage || '').replace(/^PAC_/, '').trim();
+
+  // 1. Consultation prioritaire du registre officiel connu
+  if (KNOWN_PACAGE_REGISTRY[rawPacage]) {
+    const known = KNOWN_PACAGE_REGISTRY[rawPacage];
+    const lat = known.coordinates[0];
+    const lng = known.coordinates[1];
+    const gpsText = `Point GPS : ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    return {
+      companyName: known.companyName,
+      siren: known.siren || '',
+      street: known.street,
+      postalCode: known.postalCode,
+      city: known.city,
+      postalAddress: known.fullAddress,
+      addressLabel: `${known.fullAddress} (${gpsText})`,
+      gpsText,
+      coordinates: known.coordinates,
+      latitude: lat,
+      longitude: lng,
+      isResolved: true
+    };
+  }
+
+  // 2. Interrogation de l'API Recherche Entreprises (Gouv.fr) pour le secteur agricole (Section A)
+  try {
+    let enterprise = null;
+
+    // A. Recherche par adresse postale BAN si disponible
+    if (banAddress?.street && banAddress?.city) {
+      const q = `${banAddress.street} ${banAddress.city}`;
+      const url = `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(q)}&section_activite_principale=A&per_page=1`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(3500) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          enterprise = data.results[0];
+        }
+      }
+    }
+
+    // B. Recherche par géolocalisation de proximité autour du barycentre (rayon 5-6 km)
+    if (!enterprise && farm.centroid && farm.centroid[0]) {
+      const url = `https://recherche-entreprises.api.gouv.fr/near_point?lat=${farm.centroid[0]}&long=${farm.centroid[1]}&radius=6&section_activite_principale=A&per_page=1`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(3500) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          enterprise = data.results[0];
+        }
+      }
+    }
+
+    if (enterprise) {
+      const siege = enterprise.siege || {};
+      const companyName = (enterprise.nom_complet || enterprise.nom_raison_sociale || '').trim();
+      const postalAddress = siege.geo_adresse || siege.adresse || banAddress?.addressLabel || '';
+      const city = siege.libelle_commune || banAddress?.city || '';
+      const postalCode = siege.code_postal || banAddress?.postalCode || '';
+      const street = siege.libelle_voie ? `${siege.numero_voie || ''} ${siege.libelle_voie}`.trim() : (banAddress?.street || postalAddress);
+
+      let lat = banAddress?.latitude || farm.centroid?.[0] || 44.8412;
+      let lng = banAddress?.longitude || farm.centroid?.[1] || -0.5805;
+
+      if (siege.latitude && siege.longitude) {
+        const sLat = Number(siege.latitude);
+        const sLon = Number(siege.longitude);
+        if (!isNaN(sLat) && !isNaN(sLon) && (sLat !== 0 || sLon !== 0)) {
+          lat = sLat;
+          lng = sLon;
+        }
+      }
+
+      const gpsText = `Point GPS : ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      const cleanAddressLabel = postalAddress
+        ? `${postalAddress} (${gpsText})`
+        : `Exploitation Agricole (${gpsText})`;
+
+      if (companyName) {
+        return {
+          companyName,
+          siren: enterprise.siren || '',
+          street,
+          postalCode,
+          city,
+          postalAddress: postalAddress || banAddress?.addressLabel || '',
+          addressLabel: cleanAddressLabel,
+          gpsText,
+          coordinates: [lat, lng],
+          latitude: lat,
+          longitude: lng,
+          isResolved: true
+        };
+      }
+    }
+  } catch (err) {
+    console.warn(`[ProspectingGIS] Résolution société pour PACAGE ${rawPacage}:`, err.message);
+  }
+
+  // 3. Fallback standard propre (Adresse BAN + Point GPS)
+  const lat = banAddress?.latitude || farm.centroid?.[0] || 44.8412;
+  const lng = banAddress?.longitude || farm.centroid?.[1] || -0.5805;
+  const gpsText = `Point GPS : ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  const baseLabel = banAddress?.addressLabel || `Exploitation Agricole (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+
+  return {
+    companyName: `Exploitation PACAGE ${rawPacage}`,
+    siren: '',
+    street: banAddress?.street || '',
+    postalCode: banAddress?.postalCode || '',
+    city: banAddress?.city || '',
+    postalAddress: banAddress?.addressLabel || '',
+    addressLabel: `${baseLabel} (${gpsText})`,
+    gpsText,
+    coordinates: [lat, lng],
+    latitude: lat,
+    longitude: lng,
+    isResolved: false
+  };
+}
+
 // ─── 6. EXTRACTION DES PARCELLES RPG (IGN GÉOPLATEFORME WFS) ─────────────────────
 
 export async function fetchRpgParcelsInBbox(bbox, count = 250) {

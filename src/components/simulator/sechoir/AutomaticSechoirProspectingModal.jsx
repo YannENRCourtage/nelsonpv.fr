@@ -15,7 +15,8 @@ import {
   fetchDepartmentCommunes,
   fetchRpgParcelsInBbox,
   groupParcelsByPacage,
-  reverseGeocodeBAN
+  reverseGeocodeBAN,
+  resolveFarmEnterpriseAndSiege
 } from '@/services/sechoirProspectingGisService';
 
 import {
@@ -494,14 +495,18 @@ export default function AutomaticSechoirProspectingModal({
 
         // Reverse géocodage BAN pour obtenir l'adresse postale et la commune réelle
         const banAddress = await reverseGeocodeBAN(farm.centroid[0], farm.centroid[1]);
-        farm.addressLabel = banAddress.addressLabel;
-        farm.city = banAddress.city;
-        farm.postalCode = banAddress.postalCode;
-        if (banAddress.coordinates) {
-          farm.addressCoords = banAddress.coordinates;
-          farm.latitude = banAddress.latitude;
-          farm.longitude = banAddress.longitude;
-        }
+
+        // Résolution de l'exploitation (Société / GAEC / EARL), de son siège et coordonnées bâtiment
+        const resolved = await resolveFarmEnterpriseAndSiege(farm, banAddress);
+        farm.companyName = resolved.companyName;
+        farm.siren = resolved.siren;
+        farm.postalAddress = resolved.postalAddress;
+        farm.addressLabel = resolved.addressLabel;
+        farm.city = resolved.city;
+        farm.postalCode = resolved.postalCode;
+        farm.addressCoords = resolved.coordinates;
+        farm.latitude = resolved.latitude;
+        farm.longitude = resolved.longitude;
 
         // Simulation headless multi-modèles (BT-3.1.15, BT-6.2.15, BT-8.3.15)
         const prospect = simulateFarmHeadless({
@@ -623,6 +628,9 @@ export default function AutomaticSechoirProspectingModal({
     if (onSelectProspect) {
       onSelectProspect({
         ...prospect,
+        clientName: prospect.companyName || prospect.clientName,
+        address: prospect.postalAddress || prospect.address,
+        addressLabel: prospect.addressLabel || prospect.address,
         coords: targetCoords,
         mapCenter: targetCoords,
         latitude: targetCoords ? targetCoords[0] : prospect.latitude,
@@ -634,10 +642,10 @@ export default function AutomaticSechoirProspectingModal({
 
     // Injection directe dans Zustand store
     const store = useSechoirStore.getState();
-    store.setClientName(prospect.clientName);
+    store.setClientName(prospect.companyName || prospect.clientName);
     store.setAddress({
-      address: prospect.address,
-      label: prospect.addressLabel,
+      address: prospect.postalAddress || prospect.address,
+      label: prospect.addressLabel || prospect.address,
       latitude: targetCoords ? targetCoords[0] : prospect.latitude,
       longitude: targetCoords ? targetCoords[1] : prospect.longitude,
       departement: prospect.departement,
@@ -1362,9 +1370,14 @@ export default function AutomaticSechoirProspectingModal({
 
                           <div className="min-w-0">
                             <div className="font-bold text-white flex items-center gap-2 truncate">
-                              <span>Exploitation PACAGE {item.pacage}</span>
-                              <span className="text-[11px] text-slate-400 font-normal truncate">
-                                — {item.addressLabel}
+                              <span className="truncate">{item.companyName || item.clientName || `Exploitation PACAGE ${item.pacage}`}</span>
+                              {item.companyName && (
+                                <span className="text-[10px] font-semibold text-amber-300 bg-amber-950/70 border border-amber-600/40 px-1.5 py-0.5 rounded shrink-0">
+                                  PACAGE {item.pacage}
+                                </span>
+                              )}
+                              <span className="text-[11px] text-slate-300 font-normal truncate">
+                                — {item.addressLabel || item.address}
                               </span>
                             </div>
 
