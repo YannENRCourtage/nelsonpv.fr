@@ -1305,9 +1305,12 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         postalCityLine = `${cp} ${city}`;
       }
 
-      const afnorQuality = isSechoir
-        ? 'À l\'attention de la Direction d\'Exploitation'
-        : 'À l\'attention de la Direction Générale';
+      const rawContact = (sim.recipientContact || sim.contactName || sim.recipientNom || sim.contact || '').trim();
+      const afnorQuality = rawContact
+        ? (rawContact.toLowerCase().startsWith('à l\'attention') || rawContact.toLowerCase().startsWith('a l\'attention')
+            ? rawContact
+            : `À l'attention de ${rawContact}`)
+        : null;
 
       const afnorLines = [
         afnorQuality,
@@ -1321,7 +1324,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         ? 'Objet : Valorisation photovoltaïque et optimisation énergétique de votre toiture — Étude d’opportunité ci-jointe'
         : isOmbriere
         ? 'Objet : Mise en conformité Loi APER et valorisation de votre parking — Étude d’opportunité ci-jointe'
-        : `Objet : Projet d’installation d’un Séchoir Solaire Thermovoltaïque BatiTech® (${sim.modelName || 'BatiTech'}) — Étude d’opportunité ci-jointe`;
+        : 'Objet : Hypothèse d’installation d’un Séchoir Solaire Thermovoltaïque';
 
       const letterBodyHtml = isToiture ? `
               <p style="margin: 0 0 9px 0; font-weight: bold; color: #0f172a;">Madame, Monsieur,</p>
@@ -1471,23 +1474,23 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             </div>
           </div>
 
+          <!-- DATE & LIEU (ALIGNÉ À GAUCHE, À LA MÊME LIGNE QUE LE NOM DU CLIENT) -->
+          <div style="position: absolute; top: ${afnorQuality ? '53mm' : '47mm'}; left: 20mm; font-size: 9.5pt; color: #475569; text-align: left;">
+            Mérignac, le ${formattedDate}
+          </div>
+
           <!-- BLOC DESTINATAIRE STRICTEMENT CALIBRÉ AUX NORMES AFNOR NF Z 10-011 (HAUT DROIT, FENÊTRE ENVELOPPE DL / C5) -->
           <!-- Position géométrique standard : top 45mm, right 20mm, largeur max 85mm, hauteur max 45mm -->
           <div style="position: absolute; top: 45mm; right: 20mm; width: 85mm; height: 45mm; max-height: 45mm; box-sizing: border-box; overflow: hidden; font-family: Arial, sans-serif; text-align: left; padding: 2mm 0 0 2mm;">
-            ${afnorLines.map((line, idx) => {
-              if (idx === 0) {
-                return `<div style="font-size: 7.8pt; font-weight: bold; color: #475569; text-transform: uppercase; letter-spacing: 0.2px; margin-bottom: 2px; line-height: 1.2;">${line}</div>`;
+            ${afnorLines.map((line) => {
+              if (line === afnorQuality) {
+                return `<div style="font-size: 8pt; font-weight: bold; color: #475569; text-transform: uppercase; letter-spacing: 0.2px; margin-bottom: 2px; line-height: 1.2;">${line}</div>`;
               }
-              if (idx === 1) {
+              if (line === targetCompany.toUpperCase()) {
                 return `<div style="font-size: 10pt; font-weight: 900; color: #0f172a; margin-bottom: 2px; line-height: 1.2; text-transform: uppercase;">${line}</div>`;
               }
               return `<div style="font-size: 9.2pt; color: #334155; line-height: 1.35;">${line}</div>`;
             }).join('')}
-          </div>
-
-          <!-- DATE & LIEU (CALÉ EN DESSOUS DU BLOC AFNOR) -->
-          <div style="position: absolute; top: 93mm; right: 20mm; font-size: 9.5pt; color: #475569; text-align: right;">
-            Mérignac, le ${formattedDate}
           </div>
 
           <!-- CORPS DU COURRIER (OCCUPE L'ESPACE DE TOP 99MM JUSQU'À BOTTOM 16MM) -->

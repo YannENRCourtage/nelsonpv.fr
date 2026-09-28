@@ -33,18 +33,30 @@ export default function ServicePostalModal({
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [previewError, setPreviewError] = useState(null);
+  const isInitialMount = useRef(true);
 
   // Génération / Récupération du Blob PDF pour la prévisualisation
-  const loadPdfPreview = async (item) => {
+  const loadPdfPreview = async (item, customRecipient = null) => {
     if (!item) return;
     setIsLoadingPdf(true);
     setPreviewError(null);
 
     try {
-      let source = item.blob || item.arrayBuffer;
-      if (!source && typeof generatePdfFn === 'function') {
-        const genRes = await generatePdfFn(item);
+      let source = null;
+      const targetRecipient = customRecipient || recipient;
+      if (typeof generatePdfFn === 'function') {
+        const itemToGen = {
+          ...item,
+          ...targetRecipient,
+          recipientNom: targetRecipient?.nom,
+          contactName: targetRecipient?.nom,
+          nom_societe: targetRecipient?.nom_societe,
+          clientName: targetRecipient?.nom_societe || item.clientName
+        };
+        const genRes = await generatePdfFn(itemToGen);
         source = genRes?.blob || genRes?.arrayBuffer || genRes;
+      } else {
+        source = item.blob || item.arrayBuffer;
       }
 
       if (source) {
@@ -53,6 +65,9 @@ export default function ServicePostalModal({
           blobToUse = new Blob([source], { type: 'application/pdf' });
         }
         setPdfBlob(blobToUse);
+        if (pdfUrl) {
+          URL.revokeObjectURL(pdfUrl);
+        }
         const url = URL.createObjectURL(blobToUse);
         setPdfUrl(url);
       } else {
@@ -69,12 +84,13 @@ export default function ServicePostalModal({
   // Initialisation à l'ouverture de la modal
   useEffect(() => {
     if (isOpen && prospect) {
+      isInitialMount.current = true;
       const extracted = extractRecipientFromProspect(prospect);
       setRecipient(extracted);
       setResult(null);
       setError(null);
       setIsSending(false);
-      loadPdfPreview(prospect);
+      loadPdfPreview(prospect, extracted);
     }
 
     return () => {
@@ -83,6 +99,21 @@ export default function ServicePostalModal({
       }
     };
   }, [isOpen, prospect]);
+
+  // Re-génération debouncée de l'aperçu PDF lorsque l'utilisateur modifie les champs destinataire
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (!isOpen || !prospect) return;
+
+    const timer = setTimeout(() => {
+      loadPdfPreview(prospect, recipient);
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [recipient.nom, recipient.nom_societe, recipient.adresse_ligne1, recipient.code_postal, recipient.ville]);
 
   if (!isOpen) return null;
 
@@ -97,9 +128,17 @@ export default function ServicePostalModal({
 
     try {
       // 1. Utiliser le PDF pré-généré ou le générer
-      let pdfSource = pdfBlob || prospect.blob || prospect.arrayBuffer;
+      let pdfSource = pdfBlob;
       if (!pdfSource && typeof generatePdfFn === 'function') {
-        const genRes = await generatePdfFn(prospect);
+        const itemToGen = {
+          ...prospect,
+          ...recipient,
+          recipientNom: recipient?.nom,
+          contactName: recipient?.nom,
+          nom_societe: recipient?.nom_societe,
+          clientName: recipient?.nom_societe || prospect.clientName
+        };
+        const genRes = await generatePdfFn(itemToGen);
         pdfSource = genRes?.blob || genRes?.arrayBuffer || genRes;
       }
 
@@ -205,7 +244,7 @@ export default function ServicePostalModal({
                     <p>{previewError}</p>
                     <button
                       type="button"
-                      onClick={() => loadPdfPreview(prospect)}
+                      onClick={() => loadPdfPreview(prospect, recipient)}
                       className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-medium shadow-xs"
                     >
                       <RefreshCw className="w-3.5 h-3.5" /> Recharger l'aperçu
@@ -220,34 +259,34 @@ export default function ServicePostalModal({
             </div>
 
             {/* COLONNE DROITE : FORMULAIRE DESTINATAIRE & OPTIONS */}
-            <div className="lg:col-span-5 p-6 overflow-y-auto space-y-4 flex flex-col justify-between">
+            <div className="lg:col-span-5 p-6 overflow-y-auto space-y-5 flex flex-col justify-between">
               <div className="space-y-4">
                 {/* Résumé du document */}
-                <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center justify-between text-xs text-blue-950">
+                <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center justify-between text-sm text-blue-950">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span className="text-slate-800">
+                    <span className="text-slate-800 text-xs sm:text-sm">
                       <strong>Document :</strong> Offre commerciale &amp; Étude (2 pages, recto-verso)
                     </span>
                   </div>
-                  <span className="px-2 py-0.5 font-bold text-[10px] bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200 shrink-0">
+                  <span className="px-2.5 py-1 font-bold text-xs bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200 shrink-0">
                     P1 AFNOR + P2 Étude
                   </span>
                 </div>
 
                 {/* Formulaire Adresse Destinataire */}
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                      <MapPin className="w-4 h-4 text-blue-600" />
                       Adresse du Destinataire (Fenêtre d'enveloppe)
                     </label>
-                    <span className="text-[10.5px] text-slate-600 font-medium">Calibré fenêtre DL / C5</span>
+                    <span className="text-xs text-slate-600 font-medium">Calibré fenêtre DL / C5</span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="col-span-1 md:col-span-2">
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Raison Sociale / Entreprise</label>
+                      <label className="block text-xs font-bold text-slate-800 mb-1">Raison Sociale / Entreprise</label>
                       <div className="relative">
                         <Building className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
                         <input
@@ -255,70 +294,70 @@ export default function ServicePostalModal({
                           value={recipient.nom_societe}
                           onChange={(e) => setRecipient({ ...recipient, nom_societe: e.target.value })}
                           placeholder="Ex: SARL DUPONT ou EARL DU CHÊNE"
-                          className="w-full pl-9 pr-3 py-2 text-xs font-medium text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                          className="w-full pl-9 pr-3 py-2 text-sm font-semibold text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
                         />
                       </div>
                     </div>
 
                     <div className="col-span-1 md:col-span-2">
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Contact / Attention de</label>
+                      <label className="block text-xs font-bold text-slate-800 mb-1">Contact / Attention de</label>
                       <div className="relative">
                         <User className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
                         <input
                           type="text"
                           value={recipient.nom}
                           onChange={(e) => setRecipient({ ...recipient, nom: e.target.value })}
-                          placeholder="Ex: M. Jean DUPONT ou Direction Générale"
-                          className="w-full pl-9 pr-3 py-2 text-xs font-medium text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                          placeholder="Ex: M. Jean DUPONT"
+                          className="w-full pl-9 pr-3 py-2 text-sm font-semibold text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
                         />
                       </div>
                     </div>
 
                     <div className="col-span-1 md:col-span-2">
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Adresse (N° et Voie) *</label>
+                      <label className="block text-xs font-bold text-slate-800 mb-1">Adresse (N° et Voie) *</label>
                       <input
                         type="text"
                         value={recipient.adresse_ligne1}
                         onChange={(e) => setRecipient({ ...recipient, adresse_ligne1: e.target.value })}
                         placeholder="Ex: 12 Rue de la Paix"
-                        className="w-full px-3 py-2 text-xs font-medium text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-sm font-semibold text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Code Postal *</label>
+                      <label className="block text-xs font-bold text-slate-800 mb-1">Code Postal *</label>
                       <input
                         type="text"
                         value={recipient.code_postal}
                         onChange={(e) => setRecipient({ ...recipient, code_postal: e.target.value })}
                         placeholder="Ex: 33000"
                         maxLength={5}
-                        className="w-full px-3 py-2 text-xs font-mono font-bold text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-sm font-mono font-bold text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Ville *</label>
+                      <label className="block text-xs font-bold text-slate-800 mb-1">Ville *</label>
                       <input
                         type="text"
                         value={recipient.ville}
                         onChange={(e) => setRecipient({ ...recipient, ville: e.target.value })}
                         placeholder="Ex: BORDEAUX"
-                        className="w-full px-3 py-2 text-xs font-bold uppercase text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-sm font-bold uppercase text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Options d'affranchissement & impression */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs text-slate-700">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs sm:text-sm text-slate-700">
                   <div className="flex items-center justify-between font-semibold text-slate-800">
                     <span>Mode d'envoi La Poste :</span>
                     <span className="text-emerald-700 flex items-center gap-1 font-bold">
                       <ShieldCheck className="w-4 h-4 text-emerald-600" /> Lettre Verte J+3
                     </span>
                   </div>
-                  <ul className="grid grid-cols-2 gap-1 text-[11px] text-slate-600 pt-0.5">
+                  <ul className="grid grid-cols-2 gap-1.5 text-xs text-slate-600 pt-0.5">
                     <li>• Impression : <strong className="text-slate-800">Couleur Haute Qualité</strong></li>
                     <li>• Recto / Verso : <strong className="text-slate-800">Oui (1 feuille)</strong></li>
                     <li>• Affranchissement : <strong className="text-slate-800">Facteur J+3</strong></li>

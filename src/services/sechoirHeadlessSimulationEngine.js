@@ -33,6 +33,8 @@ import {
   RPG_BATITECH_CROP_MAPPING
 } from '@/services/sechoirProspectingGisService.js';
 
+import useSechoirStore from '@/stores/useSechoirStore.js';
+
 // Modèles BatiTech standards à évaluer pour chaque exploitation
 const CANDIDATE_MODEL_IDS = ['BT-3.1.15', 'BT-6.2.15', 'BT-8.3.15'];
 
@@ -236,14 +238,35 @@ export async function generateSechoirProspectingPdfBlob(prospect, options = {}) 
 
   const farmCoords = coords || (latitude && longitude ? [latitude, longitude] : [43.6047, 1.4442]);
 
+  const sechoirStore = typeof useSechoirStore?.getState === 'function' ? useSechoirStore.getState() : {};
+
+  const targetMapCenter = prospect.mapCenter
+    || (prospect.latitude && prospect.longitude ? [prospect.latitude, prospect.longitude] : null)
+    || prospect.coords
+    || (sechoirStore.mapCenter ? sechoirStore.mapCenter : null)
+    || farmCoords;
+
+  const targetRotation = typeof prospect.rotation === 'number'
+    ? prospect.rotation
+    : (typeof sechoirStore.rotation === 'number' ? sechoirStore.rotation : 0);
+
+  const targetOrientation = prospect.orientation || sechoirStore.orientation || 'sud';
+
+  const recipientContact = prospect.recipientNom || prospect.nom || prospect.recipientContact || prospect.contactName || prospect.contact || '';
+  const recipientCompany = prospect.nom_societe || prospect.recipientCompany || prospect.clientName || clientName || prospect.ownerName;
+
   const simPayload = {
     type: 'sechoir_batitech',
     title: `Séchoir Multi-Matières BatiTech® — ${model?.name || 'BatiTech'}`,
-    clientName: clientName || `Exploitation Agricole (PACAGE ${prospect.pacage})`,
+    clientName: recipientCompany || `Exploitation Agricole (PACAGE ${prospect.pacage})`,
     pacage: prospect.pacage,
-    ownerName: prospect.ownerName || clientName || `Exploitation Agricole (PACAGE ${prospect.pacage})`,
-    address: addressLabel || prospect.address || 'Adresse du site',
-    cityName: commune || '',
+    ownerName: recipientCompany || prospect.ownerName || `Exploitation Agricole (PACAGE ${prospect.pacage})`,
+    companyName: recipientCompany,
+    recipientContact: recipientContact,
+    contactName: recipientContact,
+    address: prospect.adresse_ligne1 ? `${prospect.adresse_ligne1}${prospect.code_postal ? `, ${prospect.code_postal}` : ''} ${prospect.ville || ''}` : (addressLabel || prospect.address || 'Adresse du site'),
+    cityName: prospect.ville || commune || '',
+    postalCode: prospect.code_postal || '',
     departmentCode: departement || '33',
     departement: departement || '33',
     modelId: prospect.bestModelId || model?.id || 'BT-3.1.15',
@@ -280,19 +303,19 @@ export async function generateSechoirProspectingPdfBlob(prospect, options = {}) 
     roi: simulation?.roi,
     van: simulation?.van || 0,
     triPercent: simulation?.triPercent || 'N/A',
-    mapCenter: farmCoords,
-    latitude: farmCoords[0],
-    longitude: farmCoords[1],
-    rotation: 0,
-    orientation: 'sud',
-    orientationLabel: 'Sud (0°) • Pente 30°',
+    mapCenter: targetMapCenter,
+    latitude: targetMapCenter[0],
+    longitude: targetMapCenter[1],
+    rotation: targetRotation,
+    orientation: targetOrientation,
+    orientationLabel: targetOrientation === 'sud' ? 'Sud (0°) • Pente 30°' : `${targetOrientation} • Pente 30°`,
     buildings: [{
       name: `Séchoir ${model?.name || 'BatiTech'}`,
       length: model?.length || 18,
       width: model?.width || 20,
-      rotation: 0,
-      lat: farmCoords[0],
-      lng: farmCoords[1],
+      rotation: targetRotation,
+      lat: targetMapCenter[0],
+      lng: targetMapCenter[1],
     }],
     cashFlows: simulation?.treasury?.cashFlows || [],
     includeBenefitsPage: Boolean(options.includeBenefitsPage), // Par défaut false = 1 page !
