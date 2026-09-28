@@ -843,11 +843,17 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
   const normalize = (str) => (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
   // Helper pour vérifier si un projet CRM est affecté au portefeuille PV demandé
-  const isAssignedToPort = (p) => {
+  const isAbandoned = (p) => {
     if (!p) return false;
+    const s = (p.status || p.statut || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    return s === 'abandonne' || s.includes('abandon') || s.includes('annul') || s.includes('perdu') || s.includes('refus');
+  };
+
+  const isAssignedToPort = (p) => {
+    if (!p || isAbandoned(p)) return false;
     const rawPort = getProjectPvPortfolio(p);
     const normPort = normalizePortfolioName(rawPort);
-    if (!normPort || normPort === 'NON AFFECTE' || normPort === 'AUCUN' || normPort === 'NONE' || normPort === 'NULL' || normPort === 'UNDEFINED') {
+    if (!normPort || normPort === 'NON AFFECTE' || normPort === 'AUCUN' || normPort === 'AUCUN / NON' || normPort === 'NONE' || normPort === 'NULL' || normPort === 'UNDEFINED' || normPort === 'NON') {
       return false;
     }
     if (normTarget !== 'ALL') {

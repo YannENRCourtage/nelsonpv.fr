@@ -55,12 +55,15 @@ export default function PortfolioManagerModal({ open, onClose, projects = [] }) 
   const projectCounts = useMemo(() => {
     const counts = {};
     (projects || []).forEach(p => {
+      const isAb = (p.status || p.statut || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+      if (isAb === 'abandonne' || isAb.includes('abandon') || isAb.includes('annul') || isAb.includes('perdu') || isAb.includes('refus')) return;
+
       const pvPort = normalizePortfolioName(getProjectPvPortfolio(p));
-      if (pvPort) {
+      if (pvPort && pvPort !== 'AUCUN' && pvPort !== 'NON AFFECTE' && pvPort !== 'AUCUN / NON') {
         counts[pvPort] = (counts[pvPort] || 0) + 1;
       }
       const bessPort = normalizePortfolioName(p.bess_portfolio || p.portfolio_bess || p.bessPortfolio || p.data?.bess_portfolio || '');
-      if (bessPort) {
+      if (bessPort && bessPort !== 'AUCUN' && bessPort !== 'NON AFFECTE' && bessPort !== 'AUCUN / NON') {
         counts[bessPort] = (counts[bessPort] || 0) + 1;
       }
     });

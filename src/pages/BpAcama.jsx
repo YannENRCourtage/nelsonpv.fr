@@ -1276,12 +1276,20 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
 
 function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isGreenInvest, onApplyProject, projects = [] }) {
   const [bessMode, setBessMode] = useState('single'); // 'single' | 'portfolio'
+  const [selectedBessPortfolio, setSelectedBessPortfolio] = useState('VOLTA');
   const [viewDetailed, setViewDetailed] = useState(false);
   const [networkQualification, setNetworkQualification] = useState(null);
   const [isLoadingNetwork, setIsLoadingNetwork] = useState(false);
   const [showSourcesModal, setShowSourcesModal] = useState(false);
   const [isDossierPdfOpen, setIsDossierPdfOpen] = useState(false);
   const [portfolioExportData, setPortfolioExportData] = useState(null);
+
+  const activeBessSites = useMemo(() => {
+    return getBessPortfolioSites(projects, selectedBessPortfolio);
+  }, [projects, selectedBessPortfolio]);
+  const activeBessPowerMw = useMemo(() => {
+    return ((activeBessSites.length * 500) / 1000).toFixed(1);
+  }, [activeBessSites]);
 
   if (!config.enabled) return null;
 
@@ -1455,7 +1463,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
 
   return (
     <div className="space-y-4">
-      {/* Sélecteur de Mode BESS : Projet Unitaire vs Portefeuille 31 Sites */}
+      {/* Sélecteur de Mode BESS : Projet Unitaire vs Portefeuille Multi-Projets */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm" data-html2canvas-ignore="true">
         <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
           <button
@@ -1483,7 +1491,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             )}
           >
             <Layers className="w-4 h-4 text-amber-300" />
-            <span>Portefeuille Multi-Projets (31 sites / 15.5 MW)</span>
+            <span>Portefeuille Multi-Projets ({activeBessSites.length} sites / {activeBessPowerMw} MW)</span>
             <span className="ml-1 px-1.5 py-0.5 text-[9px] font-black uppercase rounded-full bg-amber-400 text-slate-900">
               CRE 2025-227
             </span>
@@ -1522,7 +1530,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
               setIsDossierPdfOpen(true);
             }}
             className="px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
-            title="Générer l'étude complète de 39 pages (8 pages portefeuille + 31 pages projets unitaires)"
+            title="Générer l'étude complète et le dossier d'investissement consolidé"
           >
             <Sparkles className="w-4 h-4 text-yellow-200" />
             <span>ÉTUDE COMPLÈTE</span>
@@ -1558,6 +1566,9 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           }}
           onDataChange={(data) => {
             setPortfolioExportData(data);
+            if (data?.selectedPortfolio) {
+              setSelectedBessPortfolio(data.selectedPortfolio);
+            }
           }}
         />
       ) : (

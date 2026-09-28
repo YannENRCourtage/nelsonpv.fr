@@ -1,3 +1,5 @@
+import { findBessOdreData } from './bessOdreMatrix.js';
+
 export const BESS_PORTFOLIO_SITES = [
   {
     "id": "site_1",
@@ -746,126 +748,194 @@ export const BESS_PORTFOLIO_SITES = [
 ];
 
 /**
+ * Normalise un nom de portefeuille sans accents et en majuscules pour comparaison stricte et robuste
+ */
+export function normalizePortfolioName(str) {
+  if (!str) return '';
+  return String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+}
+
+/**
+ * Extrait la valeur de portefeuille BESS d'un projet CRM à travers tous les champs possibles
+ */
+export function getProjectBessPortfolio(p) {
+  if (!p) return '';
+  const val = p.bess_portfolio || 
+              p.portfolio_bess || 
+              p.bessPortfolio || 
+              p.portefeuille_bess || 
+              p.data?.bess_portfolio || 
+              p.data?.portefeuille_bess || 
+              p.data?.bessPortfolio || 
+              p.bp_bess_data?.portfolio || 
+              p.bp_bess_data?.bess_portfolio || 
+              p.bpAcamaState?.bess_portfolio || 
+              p.customFields?.bess_portfolio || 
+              '';
+  return String(val).trim();
+}
+
+/**
  * Construit la liste harmonisée des centrales appartenant au portefeuille BESS (VOLTA, TESLA ou ALL).
- * Intègre les sites de référence BESS_PORTFOLIO_SITES et les projets CRM ayant une batterie / portefeuille BESS.
- * Si un projet CRM a un portefeuille BESS explicitement affecté ('VOLTA' ou 'TESLA'), celui-ci prime.
- * Les projets comme DUPORT, LABERGUERIE ou MISSAULT sont ainsi correctement intégrés au portefeuille BESS.
+ * RÈGLE STRICTE :
+ * - Seuls les projets dont la fiche projet comporte explicitement l'affectation au portefeuille BESS apparaissent dans la liste.
+ * - Tout dossier abandonné (statut 'Abandonné') est STRICTEMENT exclu de tous les portefeuilles.
+ * - Les projets sans portefeuille BESS affecté (ex: LAGROT, DOKHELAR) n'apparaissent dans AUCUN portefeuille.
  *
  * @param {Array} projects Liste des projets CRM (tous tenants)
- * @param {string} portfolioFilter 'ALL' | 'VOLTA' | 'TESLA'
+ * @param {string} portfolioFilter 'ALL' | 'VOLTA' | 'TESLA' | 'LOUXOR' etc.
  * @returns {Array} Liste des sites BESS enrichis
  */
 export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
-  const targetPort = (portfolioFilter || 'ALL').toUpperCase();
+  const normTarget = normalizePortfolioName(portfolioFilter || 'ALL');
 
   // Helper de normalisation sans accents pour comparaison robuste
   const normalize = (str) => (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
-  const matchedCrmIds = new Set();
+  const isAbandoned = (p) => {
+    if (!p) return false;
+    const s = (p.status || p.statut || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    return s === 'abandonne' || s.includes('abandon') || s.includes('annul') || s.includes('perdu') || s.includes('refus');
+  };
 
-  // 1. Harmonisation des sites de base (31 sites officiels) avec les projets CRM correspondants
-  const baseSites = BESS_PORTFOLIO_SITES.map((site, index) => {
-    const sName = normalize(site.name);
-    const sCity = normalize(site.city);
-
-    const matchProj = (projects || []).find(p => {
-      if (!p) return false;
-      if (p.id && (p.id === site.id || p.id === `site_${index + 1}`)) return true;
-      const pName = normalize(p.name);
-      const pClient = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
-      if (pName && (sName.includes(pName) || pName.includes(sName))) return true;
-      if (pClient && (sName.includes(pClient) || pClient.includes(sName))) return true;
+  const isAssignedToPort = (p) => {
+    if (!p || isAbandoned(p)) return false;
+    const rawPort = getProjectBessPortfolio(p);
+    const normPort = normalizePortfolioName(rawPort);
+    if (!normPort || normPort === 'NON AFFECTE' || normPort === 'AUCUN' || normPort === 'AUCUN / NON' || normPort === 'NONE' || normPort === 'NULL' || normPort === 'UNDEFINED' || normPort === 'NON') {
       return false;
+    }
+    if (normTarget !== 'ALL' && normTarget !== 'TOUS') {
+      return normPort === normTarget;
+    }
+    return true;
+  };
+
+  // Récupération et fusion exhaustive de toutes les sources de projets (state React, cache LS, multi-tenant)
+  const mergedMap = new Map();
+  if (typeof window !== 'undefined') {
+    try {
+      const gList = JSON.parse(localStorage.getItem('nelson:projects:green-invest:v1') || '[]');
+      const eList = JSON.parse(localStorage.getItem('nelson:projects:enr-courtage-energie:v1') || '[]');
+      const aList = JSON.parse(localStorage.getItem('nelson:projects:acama:v1') || '[]');
+      [...gList, ...eList, ...aList].forEach(p => {
+        if (p && p.id) mergedMap.set(p.id, p);
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // Superposer les projets transmis dynamiquement par React
+  if (Array.isArray(projects)) {
+    projects.forEach(p => {
+      if (p && p.id) {
+        const existing = mergedMap.get(p.id) || {};
+        mergedMap.set(p.id, { ...existing, ...p });
+      }
     });
+  }
 
-    if (matchProj && matchProj.id) {
-      matchedCrmIds.add(matchProj.id);
+  let effectiveProjects = Array.from(mergedMap.values());
+
+  // Déduplication multi-tenants par nom/client et commune
+  const seenProjects = new Set();
+  const dedupedProjects = [];
+  effectiveProjects.forEach(p => {
+    const pNameNorm = normalize(p.name || '');
+    const pClientNorm = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
+    const pCityNorm = normalize(p.city || p.commune || '');
+    const dedupeKey = `${pNameNorm || pClientNorm}__${pCityNorm}`;
+    if (!seenProjects.has(dedupeKey)) {
+      seenProjects.add(dedupeKey);
+      dedupedProjects.push(p);
+    } else {
+      const idx = dedupedProjects.findIndex(x => {
+        const xKey = `${normalize(x.name || '') || normalize(x.client_name || x.client || `${x.firstName || ''} ${x.name || ''}`)}__${normalize(x.city || x.commune || '')}`;
+        return xKey === dedupeKey;
+      });
+      if (idx !== -1) {
+        dedupedProjects[idx] = { ...dedupedProjects[idx], ...p };
+      }
     }
-
-    // Règle de portefeuille :
-    // Si le projet CRM a bess_portfolio explicite (VOLTA ou TESLA), il prime.
-    // Sinon fallback sur site.bess_portfolio, ou (site.spv === 'SPV B' ? 'TESLA' : 'VOLTA')
-    const crmPort = (matchProj?.bess_portfolio || '').trim();
-    let port = crmPort;
-    if (!port || port === 'Non affecté' || port === 'Aucun' || port === 'none') {
-      port = site.bess_portfolio || (site.spv === 'SPV B' ? 'TESLA' : 'VOLTA');
-    }
-
-    const clientName = matchProj ? ([matchProj.firstName, matchProj.name].filter(Boolean).join(' ') || matchProj.client_name || site.client || 'Client') : (site.client || 'Client');
-    const cp = site.postcode || matchProj?.zip || matchProj?.postcode || '';
-    const dept = site.dept || (cp ? cp.substring(0, 2) : 'FR');
-
-    return {
-      ...site,
-      client: clientName,
-      dept,
-      portfolio: port,
-      crmProject: matchProj || null
-    };
   });
+  effectiveProjects = dedupedProjects;
 
-  // 2. Détection des projets CRM additionnels avec portefeuille BESS (ex: DUPORT, LABERGUERIE, MISSAULT...)
-  const additionalSites = [];
-  (projects || []).forEach((p, idx) => {
-    if (!p || (p.id && matchedCrmIds.has(p.id))) return;
+  if (effectiveProjects.length === 0) {
+    return [];
+  }
 
-    const pBessPort = (p.bess_portfolio || '').trim();
-    const hasBessPort = pBessPort && pBessPort !== 'Non affecté' && pBessPort !== 'Aucun' && pBessPort !== 'none';
-    const isBattery = p.isBatteryStandAlone === 'Oui' || 
-                      (p.type || '').toLowerCase().includes('batterie') ||
-                      (p.type_projet || '').toLowerCase().includes('batterie') ||
-                      (p.name || '').toLowerCase().includes('batterie');
+  const resultSites = [];
 
-    if (hasBessPort || isBattery) {
-      const port = hasBessPort ? pBessPort : (p.spv === 'SPV B' ? 'TESLA' : 'VOLTA');
-      const pId = p.id || `crm_bess_${idx + 1}`;
-      matchedCrmIds.add(pId);
+  effectiveProjects.forEach((p, idx) => {
+    if (isAssignedToPort(p)) {
+      const pPort = getProjectBessPortfolio(p) || 'VOLTA';
+      const odre = findBessOdreData(
+        p.name || p.client_name || p.client,
+        p.city || p.commune,
+        p.address,
+        p.lat,
+        p.lng
+      );
+
+      let lat = Number(p.lat || p.latitude);
+      let lng = Number(p.lng || p.longitude);
+      if ((isNaN(lat) || isNaN(lng) || !lat || !lng) && odre && odre.latitude && odre.longitude) {
+        lat = odre.latitude;
+        lng = odre.longitude;
+      }
+      if (isNaN(lat) || isNaN(lng) || !lat || !lng) {
+        lat = 44.8;
+        lng = 0.8;
+      }
 
       const clientName = [p.firstName, p.name].filter(Boolean).join(' ') || p.client_name || p.client || 'Client';
-      const cp = p.zip || p.postcode || p.cp || '';
-      const dept = cp ? cp.substring(0, 2) : 'FR';
-      const lat = Number(p.lat || p.latitude || 45.0);
-      const lng = Number(p.lng || p.longitude || 1.0);
+      const cp = p.zip || p.postcode || p.cp || (odre ? odre.codePostal : '') || '';
+      const city = p.city || p.commune || (odre ? odre.commune : '') || '';
+      const dept = cp ? cp.substring(0, 2) : (odre ? odre.departement : 'FR');
+      const distKm = Number(odre?.distanceKm || p.distance_raccordement_km || p.distancePoste || p.substation?.distanceKm || 5.0);
 
-      const subName = p.poste_source || p.substationName || p.substation?.name || "ODRE";
-      const distKm = Number(p.distance_raccordement_km || p.distancePoste || p.substation?.distanceKm || 5.0);
+      const substation = typeof p.substation === 'object' && p.substation?.name ? p.substation : {
+        name: odre?.posteSourceEnedis || p.poste_source || p.substationName || "ODRE",
+        code: odre?.codePoste || p.code_poste || "ODRE",
+        voltageLevel: odre?.tension || "HTA / 20 kV",
+        gestionnaire: "Enedis",
+        distanceKm: distKm,
+        quotePartS3renr: odre?.quotePartS3REnR || "92.73  k€/MW",
+        quotePartS3renrEur: odre?.quotePartS3renrEur || 92730,
+        capaciteReserveeMw: odre?.capaciteReserveeMw || 0,
+        resteAffecterMw: odre?.capaciteResiduelleOdreMw ?? 0,
+        fileAttenteMw: 0,
+        statutRaccordement: odre?.statutRaccordement || "Zone standard Enedis",
+        typologieZoneCre: odre?.typologieZoneCre || "Zone standard Enedis"
+      };
 
-      additionalSites.push({
-        id: pId,
+      resultSites.push({
+        id: p.id || `crm_bess_${idx + 1}`,
         name: p.name || `Projet BESS ${idx + 1}`,
         client: clientName,
         postcode: cp,
         cp,
-        city: p.city || p.commune || '',
+        city,
         dept,
-        address: p.address || `${cp} ${p.city || ''}`.trim(),
-        spv: p.spv || (port === 'TESLA' ? 'SPV B' : 'SPV A'),
-        rent: Number(p.rent || p.loyer_annuel || 3000),
+        address: p.address || `${cp} ${city}`.trim(),
+        spv: p.spv || (normalizePortfolioName(pPort) === 'TESLA' ? 'SPV B' : 'SPV A'),
+        rent: Number(p.rent || p.loyer_annuel || p.loyer || 3000),
         lat,
         lng,
         gps: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-        substation: typeof p.substation === 'object' ? p.substation : {
-          name: subName,
-          code: p.code_poste || "ODRE",
-          voltageLevel: "HTA / 20 kV",
-          gestionnaire: "Enedis",
-          distanceKm: distKm,
-          quotePartS3renr: "92.73  k€/MW",
-          capaciteReserveeMw: 0,
-          resteAffecterMw: 0,
-          fileAttenteMw: 0
-        },
-        portfolio: port,
+        substation,
+        portfolio: pPort,
+        bess_portfolio: pPort,
         crmProject: p
       });
     }
   });
 
-  const allSites = [...baseSites, ...additionalSites];
-
-  if (targetPort !== 'ALL') {
-    return allSites.filter(s => s.portfolio && s.portfolio.toUpperCase() === targetPort);
-  }
-  return allSites;
+  return resultSites;
 }
 
