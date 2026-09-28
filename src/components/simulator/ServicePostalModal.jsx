@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mail, Send, CheckCircle2, AlertTriangle, AlertCircle,
-  Loader2, X, ExternalLink, ShieldCheck, MapPin, Building, User, FileText
+  Loader2, X, ExternalLink, ShieldCheck, MapPin, Building, User, FileText,
+  Eye, RefreshCw, Download
 } from 'lucide-react';
 import { extractRecipientFromProspect, sendPostalLetter } from '@/services/servicePostalService';
 
@@ -27,6 +28,44 @@ export default function ServicePostalModal({
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  // Visionneuse du courrier PDF
+  const [pdfBlob, setPdfBlob] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
+
+  // Génération / Récupération du Blob PDF pour la prévisualisation
+  const loadPdfPreview = async (item) => {
+    if (!item) return;
+    setIsLoadingPdf(true);
+    setPreviewError(null);
+
+    try {
+      let source = item.blob || item.arrayBuffer;
+      if (!source && typeof generatePdfFn === 'function') {
+        const genRes = await generatePdfFn(item);
+        source = genRes?.blob || genRes?.arrayBuffer || genRes;
+      }
+
+      if (source) {
+        let blobToUse = source;
+        if (source instanceof ArrayBuffer) {
+          blobToUse = new Blob([source], { type: 'application/pdf' });
+        }
+        setPdfBlob(blobToUse);
+        const url = URL.createObjectURL(blobToUse);
+        setPdfUrl(url);
+      } else {
+        setPreviewError("Aperçu non disponible immédiatement.");
+      }
+    } catch (err) {
+      console.warn("Erreur chargement aperçu PDF courrier:", err);
+      setPreviewError("Erreur lors de la génération de l'aperçu PDF.");
+    } finally {
+      setIsLoadingPdf(false);
+    }
+  };
+
   // Initialisation à l'ouverture de la modal
   useEffect(() => {
     if (isOpen && prospect) {
@@ -35,7 +74,14 @@ export default function ServicePostalModal({
       setResult(null);
       setError(null);
       setIsSending(false);
+      loadPdfPreview(prospect);
     }
+
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
   }, [isOpen, prospect]);
 
   if (!isOpen) return null;
@@ -50,8 +96,8 @@ export default function ServicePostalModal({
     setError(null);
 
     try {
-      // 1. Génération du PDF si nécessaire
-      let pdfSource = prospect.blob || prospect.arrayBuffer;
+      // 1. Utiliser le PDF pré-généré ou le générer
+      let pdfSource = pdfBlob || prospect.blob || prospect.arrayBuffer;
       if (!pdfSource && typeof generatePdfFn === 'function') {
         const genRes = await generatePdfFn(prospect);
         pdfSource = genRes?.blob || genRes?.arrayBuffer || genRes;
@@ -91,15 +137,15 @@ export default function ServicePostalModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+          className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-900 to-indigo-900 text-white">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-900 to-indigo-900 text-white shrink-0">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/10 rounded-xl">
                 <Mail className="w-5 h-5 text-blue-300" />
@@ -111,170 +157,230 @@ export default function ServicePostalModal({
             </div>
             <button
               onClick={onClose}
-              className="p-1 text-white/70 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+              className="p-1.5 text-white/70 hover:text-white rounded-xl hover:bg-white/10 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="p-6 max-h-[80vh] overflow-y-auto space-y-4">
-            {/* Résumé de l'offre */}
-            <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl flex items-center justify-between text-xs text-blue-950">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>
-                  <strong>Document :</strong> Offre commerciale &amp; Étude de faisabilité (2 pages, recto-verso)
-                </span>
-              </div>
-              <span className="px-2 py-0.5 font-bold text-[10px] bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200">
-                P1 Lettre AFNOR + P2 Étude
-              </span>
-            </div>
-
-            {/* Formulaire Adresse Destinataire */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                  Adresse du Destinataire (Fenêtre d'enveloppe)
-                </label>
-                <span className="text-[10.5px] text-slate-500">Calibré pour fenêtre DL / C5</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="col-span-1 md:col-span-2">
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Raison Sociale / Entreprise</label>
-                  <div className="relative">
-                    <Building className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={recipient.nom_societe}
-                      onChange={(e) => setRecipient({ ...recipient, nom_societe: e.target.value })}
-                      placeholder="Ex: SARL DUPONT ou EARL DU CHÊNE"
-                      className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
+          {/* Grille 2 Colonnes : Visionneuse PDF (gauche) & Paramètres Envoi (droite) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
+            
+            {/* COLONNE GAUCHE : VISIONNEUSE PDF DU COURRIER */}
+            <div className="lg:col-span-6 bg-slate-100 border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col h-[320px] lg:h-auto min-h-0">
+              <div className="px-4 py-2.5 bg-slate-200/80 border-b border-slate-300 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                  <Eye className="w-4 h-4 text-blue-600" />
+                  <span>Visionneuse du courrier avant envoi</span>
                 </div>
-
-                <div className="col-span-1 md:col-span-2">
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Contact / Attention de</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={recipient.nom}
-                      onChange={(e) => setRecipient({ ...recipient, nom: e.target.value })}
-                      placeholder="Ex: M. Jean DUPONT ou Direction Générale"
-                      className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="col-span-1 md:col-span-2">
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Adresse (N° et Voie) *</label>
-                  <input
-                    type="text"
-                    value={recipient.adresse_ligne1}
-                    onChange={(e) => setRecipient({ ...recipient, adresse_ligne1: e.target.value })}
-                    placeholder="Ex: 12 Rue de la Paix"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Code Postal *</label>
-                  <input
-                    type="text"
-                    value={recipient.code_postal}
-                    onChange={(e) => setRecipient({ ...recipient, code_postal: e.target.value })}
-                    placeholder="Ex: 33000"
-                    maxLength={5}
-                    className="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Ville *</label>
-                  <input
-                    type="text"
-                    value={recipient.ville}
-                    onChange={(e) => setRecipient({ ...recipient, ville: e.target.value })}
-                    placeholder="Ex: BORDEAUX"
-                    className="w-full px-3 py-2 text-xs font-bold uppercase border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Options d'affranchissement & impression */}
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-600">
-              <div className="flex items-center justify-between font-semibold text-slate-800">
-                <span>Mode d'envoi &amp; traitement La Poste :</span>
-                <span className="text-emerald-600 flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4" /> Lettre Verte J+3
-                </span>
-              </div>
-              <ul className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-500 pt-1">
-                <li>• Impression : <strong>Couleur Haute Qualité</strong></li>
-                <li>• Recto / Verso : <strong>Oui (1 feuille)</strong></li>
-                <li>• Affranchissement : <strong>Distribution facteur J+3</strong></li>
-                <li>• Enveloppe : <strong>Fenêtre transparente normalisée</strong></li>
-              </ul>
-            </div>
-
-            {/* Alerte Erreur */}
-            {error && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 space-y-1">
-                <div className="flex items-center gap-2 font-bold text-rose-800">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                  <span>Erreur lors de l'envoi postal</span>
-                </div>
-                <p className="text-rose-700 leading-relaxed">
-                  {typeof error === 'string' ? error : error.message}
-                </p>
-                {error?.errorCode === 'SERVICEPOSTAL_ACCOUNT_403' && (
-                  <div className="mt-2 p-2.5 bg-white/80 rounded-lg border border-rose-200 text-[11px] text-rose-950 font-medium">
-                    👉 <strong>Comment débloquer :</strong> Rendez-vous sur votre compte <strong>servicepostal.com</strong> &gt; Paramètres du compte pour valider l'option API de production (ou contactez le support ServicePostal pour l'activation de votre clé).
-                  </div>
+                {pdfUrl && (
+                  <a
+                    href={pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[11px] font-semibold text-blue-700 hover:text-blue-900 bg-white px-2 py-0.5 rounded-md border border-slate-300 shadow-xs"
+                    title="Ouvrir dans un nouvel onglet"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Plein écran
+                  </a>
                 )}
               </div>
-            )}
 
-            {/* Succès */}
-            {result && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>Courrier envoyé avec succès à La Poste !</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
-                  <div>UID envoi : <strong className="text-slate-800">{result.uid}</strong></div>
-                  <div>Statut : <strong className="text-emerald-700 uppercase">{result.statut || 'Validé'}</strong></div>
-                  {result.total && <div>Coût total : <strong>{Number(result.total).toFixed(2)} € HT</strong></div>}
-                  {result.affranchissement && <div>Affranchissement : <strong>{Number(result.affranchissement).toFixed(2)} €</strong></div>}
-                </div>
-                {result.url && (
-                  <div className="pt-2">
-                    <a
-                      href={result.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-blue-700 hover:text-blue-900 font-semibold underline text-xs"
+              <div className="flex-1 relative bg-slate-200 flex items-center justify-center overflow-hidden">
+                {isLoadingPdf ? (
+                  <div className="flex flex-col items-center gap-2 text-slate-600 p-6 text-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                    <span className="text-xs font-semibold">Génération de la visionneuse PDF en cours...</span>
+                  </div>
+                ) : pdfUrl ? (
+                  <iframe
+                    src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                    className="w-full h-full border-0 bg-white"
+                    title="Visionneuse du courrier postal"
+                  />
+                ) : previewError ? (
+                  <div className="p-6 text-center text-xs text-slate-500 space-y-2">
+                    <AlertTriangle className="w-6 h-6 text-amber-500 mx-auto" />
+                    <p>{previewError}</p>
+                    <button
+                      type="button"
+                      onClick={() => loadPdfPreview(prospect)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-medium shadow-xs"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" /> Voir le document chez Service Postal
-                    </a>
+                      <RefreshCw className="w-3.5 h-3.5" /> Recharger l'aperçu
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-6 text-center text-xs text-slate-400">
+                    Chargement du document...
                   </div>
                 )}
               </div>
-            )}
+            </div>
+
+            {/* COLONNE DROITE : FORMULAIRE DESTINATAIRE & OPTIONS */}
+            <div className="lg:col-span-6 p-5 overflow-y-auto space-y-4 flex flex-col justify-between">
+              <div className="space-y-4">
+                {/* Résumé du document */}
+                <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center justify-between text-xs text-blue-950">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span className="text-slate-800">
+                      <strong>Document :</strong> Offre commerciale &amp; Étude (2 pages, recto-verso)
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 font-bold text-[10px] bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200 shrink-0">
+                    P1 AFNOR + P2 Étude
+                  </span>
+                </div>
+
+                {/* Formulaire Adresse Destinataire */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                      Adresse du Destinataire (Fenêtre d'enveloppe)
+                    </label>
+                    <span className="text-[10.5px] text-slate-600 font-medium">Calibré fenêtre DL / C5</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Raison Sociale / Entreprise</label>
+                      <div className="relative">
+                        <Building className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+                        <input
+                          type="text"
+                          value={recipient.nom_societe}
+                          onChange={(e) => setRecipient({ ...recipient, nom_societe: e.target.value })}
+                          placeholder="Ex: SARL DUPONT ou EARL DU CHÊNE"
+                          className="w-full pl-9 pr-3 py-2 text-xs font-medium text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Contact / Attention de</label>
+                      <div className="relative">
+                        <User className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+                        <input
+                          type="text"
+                          value={recipient.nom}
+                          onChange={(e) => setRecipient({ ...recipient, nom: e.target.value })}
+                          placeholder="Ex: M. Jean DUPONT ou Direction Générale"
+                          className="w-full pl-9 pr-3 py-2 text-xs font-medium text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Adresse (N° et Voie) *</label>
+                      <input
+                        type="text"
+                        value={recipient.adresse_ligne1}
+                        onChange={(e) => setRecipient({ ...recipient, adresse_ligne1: e.target.value })}
+                        placeholder="Ex: 12 Rue de la Paix"
+                        className="w-full px-3 py-2 text-xs font-medium text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Code Postal *</label>
+                      <input
+                        type="text"
+                        value={recipient.code_postal}
+                        onChange={(e) => setRecipient({ ...recipient, code_postal: e.target.value })}
+                        placeholder="Ex: 33000"
+                        maxLength={5}
+                        className="w-full px-3 py-2 text-xs font-mono font-bold text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Ville *</label>
+                      <input
+                        type="text"
+                        value={recipient.ville}
+                        onChange={(e) => setRecipient({ ...recipient, ville: e.target.value })}
+                        placeholder="Ex: BORDEAUX"
+                        className="w-full px-3 py-2 text-xs font-bold uppercase text-black bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Options d'affranchissement & impression */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs text-slate-700">
+                  <div className="flex items-center justify-between font-semibold text-slate-800">
+                    <span>Mode d'envoi La Poste :</span>
+                    <span className="text-emerald-700 flex items-center gap-1 font-bold">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" /> Lettre Verte J+3
+                    </span>
+                  </div>
+                  <ul className="grid grid-cols-2 gap-1 text-[11px] text-slate-600 pt-0.5">
+                    <li>• Impression : <strong className="text-slate-800">Couleur Haute Qualité</strong></li>
+                    <li>• Recto / Verso : <strong className="text-slate-800">Oui (1 feuille)</strong></li>
+                    <li>• Affranchissement : <strong className="text-slate-800">Facteur J+3</strong></li>
+                    <li>• Enveloppe : <strong className="text-slate-800">Fenêtre DL/C5</strong></li>
+                  </ul>
+                </div>
+
+                {/* Alerte Erreur */}
+                {error && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 space-y-1">
+                    <div className="flex items-center gap-2 font-bold text-rose-800">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                      <span>Erreur lors de l'envoi postal</span>
+                    </div>
+                    <p className="text-rose-700 leading-relaxed">
+                      {typeof error === 'string' ? error : error.message}
+                    </p>
+                    {error?.errorCode === 'SERVICEPOSTAL_ACCOUNT_403' && (
+                      <div className="mt-2 p-2 bg-white/80 rounded-lg border border-rose-200 text-[11px] text-rose-950 font-medium">
+                        👉 <strong>Comment débloquer :</strong> Rendez-vous sur votre compte <strong>servicepostal.com</strong> &gt; Paramètres du compte pour valider l'option API de production.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Succès */}
+                {result && (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      <span>Courrier envoyé avec succès à La Poste !</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 pt-1 font-mono text-[11px]">
+                      <div>UID envoi : <strong className="text-slate-800">{result.uid}</strong></div>
+                      <div>Statut : <strong className="text-emerald-700 uppercase">{result.statut || 'Validé'}</strong></div>
+                      {result.total && <div>Coût total : <strong>{Number(result.total).toFixed(2)} € HT</strong></div>}
+                      {result.affranchissement && <div>Affranchissement : <strong>{Number(result.affranchissement).toFixed(2)} €</strong></div>}
+                    </div>
+                    {result.url && (
+                      <div className="pt-1">
+                        <a
+                          href={result.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-blue-700 hover:text-blue-900 font-semibold underline text-xs"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" /> Voir le document chez Service Postal
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50">
+          <div className="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 bg-slate-50 shrink-0">
             <button
               onClick={onClose}
               disabled={isSending}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-lg hover:bg-slate-200/60 transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-200/60 transition-colors cursor-pointer"
             >
               {result ? 'Fermer' : 'Annuler'}
             </button>
@@ -283,7 +389,7 @@ export default function ServicePostalModal({
               <button
                 onClick={handleSend}
                 disabled={isSending || !recipient.adresse_ligne1 || !recipient.code_postal || !recipient.ville}
-                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-md transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-md transition-colors cursor-pointer"
               >
                 {isSending ? (
                   <>
@@ -300,7 +406,7 @@ export default function ServicePostalModal({
             ) : (
               <button
                 onClick={onClose}
-                className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition-colors"
+                className="px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition-colors cursor-pointer"
               >
                 Terminer
               </button>
@@ -311,3 +417,4 @@ export default function ServicePostalModal({
     </AnimatePresence>
   );
 }
+
