@@ -973,14 +973,14 @@ export default function AutomaticSechoirProspectingModal({
                 <input
                   type="range"
                   min="8"
-                  max="15"
+                  max="20"
                   step="0.5"
                   value={targetRoi}
                   onChange={(e) => setTargetRoi(Number(e.target.value))}
                   className="w-full accent-emerald-500 cursor-pointer"
                 />
                 <p className="text-[10px] text-slate-400">
-                  Strictement inférieur à 15 ans. Tout projet dépassant ce seuil est éliminé.
+                  Strictement inférieur à {targetRoi} ans (jusqu'à 20 ans). Tout projet dépassant ce seuil est éliminé.
                 </p>
               </div>
 

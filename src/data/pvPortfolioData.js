@@ -43,7 +43,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 338.0,
     productible: 1180,
     surface: 1563,
-    rent: 3500,
+    rent: 0,
     lat: 43.496370,
     lng: 0.834241,
     substation: {
@@ -68,7 +68,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 302.0,
     productible: 1110,
     surface: 1395,
-    rent: 3200,
+    rent: 0,
     lat: 45.566247,
     lng: 1.397687,
     substation: {
@@ -93,7 +93,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 401.0,
     productible: 1140,
     surface: 1844,
-    rent: 4200,
+    rent: 0,
     lat: 45.460274,
     lng: 1.298160,
     substation: {
@@ -118,7 +118,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 276.0,
     productible: 1220,
     surface: 1270,
-    rent: 3000,
+    rent: 0,
     lat: 43.558940,
     lng: -1.199501,
     substation: {
@@ -143,7 +143,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 386.0,
     productible: 1240,
     surface: 1758,
-    rent: 4000,
+    rent: 0,
     lat: 43.806232,
     lng: 1.295833,
     substation: {
@@ -165,10 +165,10 @@ export const PV_PORTFOLIO_SITES = [
     address: "467 Chemin des Terres Vieilles, 24310 Brantôme",
     typeBat: "HELIOS 18 H18 (BAC)",
     spv: "HÉLIOS SPV 1",
-    kwc: 241.0,
-    productible: 1130,
-    surface: 1116,
-    rent: 2600,
+    kwc: 1006.0,
+    productible: 1148.17,
+    surface: 5030,
+    rent: 2250,
     lat: 45.328888,
     lng: 0.651040,
     substation: {
@@ -193,7 +193,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 217.0,
     productible: 1135,
     surface: 1006,
-    rent: 2400,
+    rent: 0,
     lat: 45.353329,
     lng: 1.314195,
     substation: {
@@ -218,7 +218,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 511.0,
     productible: 1145,
     surface: 2345,
-    rent: 5500,
+    rent: 0,
     lat: 45.442533,
     lng: 1.267710,
     substation: {
@@ -243,7 +243,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 329.0,
     productible: 1250,
     surface: 1509,
-    rent: 3600,
+    rent: 0,
     lat: 44.123740,
     lng: 1.564486,
     substation: {
@@ -268,7 +268,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 423.0,
     productible: 1190,
     surface: 1953,
-    rent: 4600,
+    rent: 0,
     lat: 44.773569,
     lng: 0.300107,
     substation: {
@@ -293,7 +293,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 290.0,
     productible: 1105,
     surface: 1350,
-    rent: 3000,
+    rent: 0,
     lat: 46.360561,
     lng: 2.306566,
     substation: {
@@ -318,7 +318,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 474.0,
     productible: 1210,
     surface: 2179,
-    rent: 5000,
+    rent: 0,
     lat: 44.659496,
     lng: 0.222735,
     substation: {
@@ -343,7 +343,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 181.0,
     productible: 1115,
     surface: 837,
-    rent: 2000,
+    rent: 0,
     lat: 45.558769,
     lng: 0.804488,
     substation: {
@@ -368,7 +368,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 178.0,
     productible: 1100,
     surface: 838,
-    rent: 1900,
+    rent: 0,
     lat: 46.082964,
     lng: 1.538518,
     substation: {
@@ -393,7 +393,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 429.0,
     productible: 1205,
     surface: 1954,
-    rent: 4700,
+    rent: 0,
     lat: 45.264357,
     lng: -0.550408,
     substation: {
@@ -418,7 +418,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 251.0,
     productible: 1130,
     surface: 1173,
-    rent: 2700,
+    rent: 0,
     lat: 45.436230,
     lng: 1.288728,
     substation: {
@@ -443,7 +443,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 362.0,
     productible: 1215,
     surface: 1674,
-    rent: 3900,
+    rent: 0,
     lat: 44.809547,
     lng: 0.037304,
     substation: {
@@ -468,7 +468,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 290.0,
     productible: 1220,
     surface: 1339,
-    rent: 3200,
+    rent: 0,
     lat: 43.343730,
     lng: 0.194628,
     substation: {
@@ -493,7 +493,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 255.0,
     productible: 1235,
     surface: 1172,
-    rent: 2800,
+    rent: 0,
     lat: 44.124392,
     lng: 1.583302,
     substation: {
@@ -909,6 +909,29 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
 
   let effectiveProjects = Array.from(mergedMap.values());
 
+  // Déduplication multi-tenants par nom/client et commune
+  const seenProjects = new Set();
+  const dedupedProjects = [];
+  effectiveProjects.forEach(p => {
+    const pNameNorm = normalize(p.name || '');
+    const pClientNorm = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
+    const pCityNorm = normalize(p.city || p.commune || '');
+    const dedupeKey = `${pNameNorm || pClientNorm}__${pCityNorm}`;
+    if (!seenProjects.has(dedupeKey)) {
+      seenProjects.add(dedupeKey);
+      dedupedProjects.push(p);
+    } else {
+      const idx = dedupedProjects.findIndex(x => {
+        const xKey = `${normalize(x.name || '') || normalize(x.client_name || x.client || `${x.firstName || ''} ${x.name || ''}`)}__${normalize(x.city || x.commune || '')}`;
+        return xKey === dedupeKey;
+      });
+      if (idx !== -1) {
+        dedupedProjects[idx] = { ...dedupedProjects[idx], ...p };
+      }
+    }
+  });
+  effectiveProjects = dedupedProjects;
+
   // Si aucun projet CRM n'est fourni ou trouvé
   if (effectiveProjects.length === 0) {
     return [];
@@ -929,6 +952,65 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         (normalize(p.name) && normalize(p.name) === normalize(currentContext.currentProject.name))
       );
 
+      // Identification des dossiers certifiés (fiche projet / CRM Pro)
+      const pFullText = normalize(`${p.name || ''} ${p.client || ''} ${p.client_name || ''} ${p.firstName || ''} ${p.city || ''} ${p.commune || ''} ${p.address || ''} ${p.zip || ''} ${p.postcode || ''}`);
+      const isLatournerie = pFullText.includes('latournerie');
+      const pLoyer = isLatournerie ? 2250 : 0;
+
+      // Puissances certifiées dans la fiche du projet (CRM Pro)
+      let verifiedKwc = 0;
+      let verifiedProd = 0;
+      if (isLatournerie) {
+        verifiedKwc = 1006;
+        verifiedProd = 1148.17;
+      } else if (pFullText.includes('herit')) {
+        verifiedKwc = 120;
+      } else if (pFullText.includes('solle')) {
+        verifiedKwc = 290;
+      } else if (pFullText.includes('leconte') && (pFullText.includes('lacquy') || pFullText.includes('40120'))) {
+        verifiedKwc = 145;
+      } else if (pFullText.includes('leconte') && (pFullText.includes('saint laurent') || pFullText.includes('33190') || pFullText.includes('plan'))) {
+        verifiedKwc = 485;
+      } else if (pFullText.includes('reckinger')) {
+        verifiedKwc = 789;
+      } else if (pFullText.includes('jarry')) {
+        verifiedKwc = 628;
+      } else if (pFullText.includes('chauchet')) {
+        verifiedKwc = 145;
+      } else if (pFullText.includes('duhard')) {
+        verifiedKwc = 181;
+      } else if (pFullText.includes('missault') && (pFullText.includes('martin') || pFullText.includes('fressengeas') || pFullText.includes('24800'))) {
+        verifiedKwc = 388;
+      } else if (pFullText.includes('missault') && (pFullText.includes('saud') || pFullText.includes('lacoussiere') || pFullText.includes('24470'))) {
+        verifiedKwc = 434;
+      } else if (pFullText.includes('saint arailles') || pFullText.includes('arailles')) {
+        verifiedKwc = 256;
+      } else if (pFullText.includes('consoli')) {
+        verifiedKwc = 488;
+      } else if (pFullText.includes('rodier')) {
+        verifiedKwc = 460;
+      } else if (pFullText.includes('labeguerie')) {
+        verifiedKwc = 513;
+      } else if (pFullText.includes('cassaigne')) {
+        verifiedKwc = 157;
+      } else if (pFullText.includes('duport')) {
+        verifiedKwc = 513;
+      } else if (pFullText.includes('plante')) {
+        verifiedKwc = 354;
+      } else if (pFullText.includes('choloux')) {
+        verifiedKwc = 707.2;
+      } else if (pFullText.includes('martinez')) {
+        verifiedKwc = 756;
+      } else if (pFullText.includes('martin')) {
+        verifiedKwc = 337;
+      }
+
+      // Priorité 1: Puissance explicite de la fiche du projet (p.kwc) ou certifiée
+      const rawCardKwc = p.kwc !== undefined && p.kwc !== null && p.kwc !== ''
+        ? parseFloat(String(p.kwc).replace(',', '.').replace(/[^0-9.]/g, ''))
+        : 0;
+      const targetProjectKwc = verifiedKwc || rawCardKwc;
+
       // Extraire la configuration BP sauvegardée ou les bâtiments dessinés
       const savedState = p.bp_pv_data || p.bpAcamaState || {};
       const savedBuildings = savedState.buildings || [];
@@ -943,7 +1025,6 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
       let pMaint = undefined;
       let pAssur = undefined;
       let pTaxes = 0;
-      let pLoyer = 0;
       let pCa = undefined;
       let pEbitda = undefined;
       let pOpex = undefined;
@@ -951,12 +1032,12 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
       let pPayback = undefined;
       let pRows = undefined;
 
-      if (isCurrentProject && currentContext.currentParams && currentContext.currentResults) {
-        // PROJET EN COURS DANS L'ÉDITEUR BP : reprendre fidèlement ses chiffres exacts
+      if (isCurrentProject && currentContext.currentParams && currentContext.currentResults && (!targetProjectKwc || Math.abs((currentContext.currentParams.kwc || currentContext.currentResults.kwc) - targetProjectKwc) < 0.5)) {
+        // PROJET EN COURS DANS L'ÉDITEUR BP avec puissance cohérente
         const curPar = currentContext.currentParams;
         const curRes = currentContext.currentResults;
-        pKwc = Number(curPar.kwc || curRes.kwc || 250);
-        pProd = Number(curPar.productible || curRes.productible || 1125);
+        pKwc = Number(curPar.kwc || curRes.kwc || targetProjectKwc || 250);
+        pProd = Number(curPar.productible || curRes.productible || verifiedProd || 1125);
         pCentrale = Number(curPar.coutCentrale || Math.round(pKwc * 490));
         pCharpente = Number(curPar.coutCharpente || 0);
         pRaccordement = Number(curPar.raccordement || 0);
@@ -965,7 +1046,6 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         pMaint = curPar.maintenance ? Number(curPar.maintenance) : Math.round(pKwc * 7.5);
         pAssur = curPar.assurance ? Number(curPar.assurance) : Math.round(pKwc * 3.5);
         pTaxes = curPar.taxesLocales ? Number(curPar.taxesLocales) : 0;
-        pLoyer = 0; // AUCUN LOYER FONCIER
         pCa = Number(curRes.caAnnuel || curRes.revAn1 || 0);
         pEbitda = Number(curRes.ebitdaAn1 || curRes.ebitda || 0);
         pOpex = Number(curRes.totalOpexAn1 || curRes.opexAnnuel || 0);
@@ -974,11 +1054,11 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         if (currentContext.currentRows && currentContext.currentRows.length >= 20) {
           pRows = currentContext.currentRows;
         }
-      } else if (p.bpResults) {
-        // Chiffrage BP précalculé sur le projet
+      } else if (p.bpResults && targetProjectKwc && Math.abs((p.bpResults.kwc || 0) - targetProjectKwc) < 0.5) {
+        // Chiffrage BP précalculé correspondant exactement à la puissance de la fiche
         const res = p.bpResults;
-        pKwc = Number(res.kwc || p.kwc || 250);
-        pProd = Number(res.productible || 1125);
+        pKwc = targetProjectKwc;
+        pProd = verifiedProd || Number(res.productible || 1125);
         pCapex = Number(res.capexTotal || res.totalConstruction || 250000);
         pCentrale = Number(res.coutCentrale || Math.round(pKwc * 490));
         pCharpente = Number(res.coutCharpente || 0);
@@ -989,8 +1069,19 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         pOpex = Number(res.opexAnnuel || (res.caAnnuel - res.ebitdaAn1) || 0);
         pTri = Number(res.triProjet || 0);
         pPayback = Number(res.payback || 0);
-        pLoyer = 0;
         if (res.rows && res.rows.length >= 20) pRows = res.rows;
+      } else if (targetProjectKwc > 0) {
+        // Puissance certifiée ou issue de la fiche projet (p.kwc) prioritaire
+        pKwc = targetProjectKwc;
+        pProd = verifiedProd || parseFloat(p.solarYieldRoof1 || p.productible) || mock?.productible || 1125;
+        pCentrale = Math.round(pKwc * 490);
+        pCharpente = parseFloat(p.coutCharpente) || 0;
+        pRaccordement = parseFloat(p.raccordement) || Math.min(65000, Math.round(15000 + (p.substation?.distanceKm || mock?.substation?.distanceKm || 5) * 4500));
+        pFrais = parseFloat(p.frais) || Math.round((pCentrale + pCharpente) * 0.01);
+        pCapex = pCentrale + pCharpente + pRaccordement + pFrais;
+        pMaint = Math.round(pKwc * 7.5);
+        pAssur = Math.round(pKwc * 3.5);
+        pTaxes = 0;
       } else if (savedBuildings.length > 0) {
         // État BP sauvegardé avec liste de bâtiments
         pKwc = savedBuildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0);
@@ -1004,7 +1095,6 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         pMaint = savedState.maintenance ? parseFloat(savedState.maintenance) : Math.round(pKwc * 7.5);
         pAssur = savedState.assurance ? parseFloat(savedState.assurance) : Math.round(pKwc * 3.5);
         pTaxes = savedState.taxesLocales ? parseFloat(savedState.taxesLocales) : 0;
-        pLoyer = 0;
       } else {
         // Bâtiments multi-puissances (b1, b2, etc.) ou map features ou champs directs
         const buildingFeatures = (p.features || []).filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
@@ -1032,7 +1122,6 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         pRaccordement = parseFloat(p.raccordement) || Math.min(65000, Math.round(15000 + (p.substation?.distanceKm || mock?.substation?.distanceKm || 5) * 4500));
         pFrais = parseFloat(p.frais) || Math.round((pCentrale + pCharpente) * 0.01);
         pCapex = parseFloat(p.capex || p.prix_total_ht) || (pCentrale + pCharpente + pRaccordement + pFrais);
-        pLoyer = 0;
       }
 
       // ODRE Substation
@@ -1100,5 +1189,3 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
 
   return resultSites;
 }
-
-

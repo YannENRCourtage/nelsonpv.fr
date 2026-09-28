@@ -263,6 +263,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
     try {
       await generateSechoirPDF({
         results,
+        modelId: store.selectedModelId || results.model?.id,
         address: store.addressLabel || store.address,
         commune: store.commune,
         departement: store.departement,

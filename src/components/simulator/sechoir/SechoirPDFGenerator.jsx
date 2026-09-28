@@ -447,9 +447,23 @@ export async function generateSechoirPDF({
     : Boolean(sechoirState.hasBattery);
 
   const r = results || {};
-  const modelId = sechoirState.selectedModelId || r.model?.id || 'BT-6.2.15';
+  // Résolution prioritaire et stricte du modèle (8.3.15 / 6.2.15 / 3.1.15)
+  const cand = String(r.model?.id || r.model?.name || sechoirState.selectedModelId || '').toLowerCase();
+  let resolvedModelId = 'BT-6.2.15';
+  if (cand.includes('8.3') || cand.includes('8_3') || cand.includes('8-3')) {
+    resolvedModelId = 'BT-8.3.15';
+  } else if (cand.includes('6.2') || cand.includes('6_2') || cand.includes('6-2')) {
+    resolvedModelId = 'BT-6.2.15';
+  } else if (cand.includes('3.1') || cand.includes('3_1') || cand.includes('3-1')) {
+    resolvedModelId = 'BT-3.1.15';
+  } else if (r.model?.id && BATITECH_MODELS[r.model.id]) {
+    resolvedModelId = r.model.id;
+  } else if (sechoirState.selectedModelId && BATITECH_MODELS[sechoirState.selectedModelId]) {
+    resolvedModelId = sechoirState.selectedModelId;
+  }
+  const modelId = resolvedModelId;
   const modelObj = BATITECH_MODELS[modelId] || BATITECH_MODELS['BT-6.2.15'];
-  const modelName = r.model?.name || modelObj.name;
+  const modelName = modelObj.name || r.model?.name;
   const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const clientName = customClientName || sechoirState.clientName || projectName || commune || 'Client NELSON';
   const clientAddress = address || sechoirState.addressLabel || sechoirState.address || (commune ? `${commune} (${departement})` : `Département ${departement}`);
@@ -585,28 +599,31 @@ export async function generateSechoirPDF({
       return url;
     };
 
-    // Image Vue 3D Extérieure (gauche) pour Page 3 (selon modèle)
+    // Image Vue 3D Extérieure (gauche) pour Page 4 (selon modèle certifié)
     let left3dImgUrl = '/vue_3d_batitech_6_2_15_v5.jpg';
-    if (modelId === 'BT-3.1.15' || modelId.includes('3.1')) {
-      left3dImgUrl = '/vue_3d_batitech_3_1_15.jpg';
-    } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
+    if (modelId === 'BT-8.3.15') {
       left3dImgUrl = '/vue_3d_batitech_8_3_15_v2.jpg';
+    } else if (modelId === 'BT-3.1.15') {
+      left3dImgUrl = '/vue_3d_batitech_3_1_15.jpg';
     } else {
       left3dImgUrl = '/vue_3d_batitech_6_2_15_v5.jpg';
     }
 
-    // Image Vue Intérieure / Caissons (droite) pour Page 3 (selon modèle)
+    // Image Vue Intérieure / Caissons (droite) pour Page 4 (selon modèle certifié)
     let right3dImgUrl = '/batitech_interieur_6_2_15_v2.png';
-    if (modelId === 'BT-3.1.15' || modelId.includes('3.1')) {
-      right3dImgUrl = '/batitech_interieur_3_1_15.jpg';
-    } else if (modelId === 'BT-8.3.15' || modelId.includes('8.3')) {
+    if (modelId === 'BT-8.3.15') {
       right3dImgUrl = '/batitech_interieur_8_3_15_v2.png';
+    } else if (modelId === 'BT-3.1.15') {
+      right3dImgUrl = '/batitech_interieur_3_1_15.jpg';
     } else {
       right3dImgUrl = '/batitech_interieur_6_2_15_v2.png';
     }
 
-    const [left3dImgBase64, right3dImgBase64, schema1Img, schema2Img, schema4Img, schemaGrillesImg, realisationImgBase64] = await Promise.all([
-      loadImgAsBase64(left3dImgUrl),
+    // Récupérer le rendu 3D haute définition du modèle (priorité au base64 embarqué officiel)
+    const base64DefaultLeft = BATITECH_3D_IMAGES[modelId] || BATITECH_3D_IMAGES['BT-6.2.15'];
+
+    const [loadedLeft3d, right3dImgBase64, schema1Img, schema2Img, schema4Img, schemaGrillesImg, realisationImgBase64] = await Promise.all([
+      base64DefaultLeft ? Promise.resolve(base64DefaultLeft) : loadImgAsBase64(left3dImgUrl),
       loadImgAsBase64(right3dImgUrl),
       loadImgAsBase64('/schema_sechoir_1 v2.jpg'),
       loadImgAsBase64('/Schema séchoir 2.png'),
@@ -614,6 +631,8 @@ export async function generateSechoirPDF({
       loadImgAsBase64('/schema_sechoir_grilles.png'),
       loadImgAsBase64('/realisation_batitech.png'),
     ]);
+
+    const left3dImgBase64 = base64DefaultLeft || loadedLeft3d;
 
     const snapshotSat = await generateSatelliteSnapshot({
       center: exactMapCenter,
