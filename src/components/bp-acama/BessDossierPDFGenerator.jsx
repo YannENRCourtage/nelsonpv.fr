@@ -278,8 +278,6 @@ export default function BessDossierPDFGenerator({
     }
   }, [isOpen, initialMode, portfolioData]);
 
-  if (!isOpen) return null;
-
   // 1. Projets BESS filtrés selon la sélection de l'utilisateur
   const selectedBessSites = isPort
     ? allAvailableSites.filter(s => selectedProjectIds.includes(s.id))
@@ -631,6 +629,8 @@ export default function BessDossierPDFGenerator({
     "Trajectoire EBITDA vs Cash-Flow Disponible",
     "Standard Technique DP & Implantation Site"
   ];
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-[60px] z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200">
