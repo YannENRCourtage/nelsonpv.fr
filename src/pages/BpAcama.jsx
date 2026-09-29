@@ -3710,7 +3710,7 @@ function TabBpProjets({
         {/* Contenu iframe plein écran */}
         <div className="flex-1 w-full h-full bg-slate-100 relative overflow-hidden">
           <iframe
-            src={`/project/${selectedProject.id}/edit`}
+            src={`/project/${selectedProject.id}/edit?embedded=true`}
             title={`Projet ${selectedProject.name || ''}`}
             className="w-full h-full border-0"
             style={{ width: '100%', height: '100%' }}

@@ -700,6 +700,9 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
 export default function AppLayout() {
   const { user, activeTenantId, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const isEmbedded = searchParams.get('embedded') === 'true';
   const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
   const isAlexandruMihailov = (user?.firstName?.toLowerCase().includes('alexandru') && user?.lastName?.toLowerCase().includes('mihailov')) || user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr';
   const isRestrictedUser = isLaurentGuyon || isAlexandruMihailov;
@@ -745,6 +748,16 @@ export default function AppLayout() {
 
     return isGreenInvest;
   };
+
+  if (isEmbedded) {
+    return (
+      <div className="app-layout min-h-screen bg-gray-50">
+        <main className="app-layout__content">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app-layout">

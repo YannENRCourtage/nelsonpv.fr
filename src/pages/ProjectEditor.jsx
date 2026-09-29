@@ -108,6 +108,8 @@ function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
 
 export default function ProjectEditor() {
   const { projectId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isEmbedded = searchParams.get('embedded') === 'true';
   const navigate = useNavigate();
   const { projects, setProject, project, updateProject, saveProject } = useProjects();
 
@@ -855,7 +857,6 @@ export default function ProjectEditor() {
     }, 100);
   };
 
-  const [searchParams, setSearchParams] = useSearchParams();
   const configuratorValues = useConfiguratorValues();
   const configuratorState = useConfiguratorStore();
 
@@ -961,9 +962,9 @@ export default function ProjectEditor() {
   };
 
   return (
-    <div className="w-full px-2 lg:px-4 py-4 lg:py-6 bg-gray-50">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 mb-6 items-stretch">
-        <section className="col-span-1 lg:col-span-9 rounded-2xl bg-white p-3 lg:p-6 shadow-sm h-full flex flex-col justify-between">
+    <div className={cn("w-full bg-gray-50", isEmbedded ? "p-2 lg:p-4" : "px-2 lg:px-4 py-4 lg:py-6")}>
+      <div className={cn("grid grid-cols-1 gap-4 lg:gap-6 mb-6 items-stretch", isEmbedded ? "grid-cols-1" : "lg:grid-cols-12")}>
+        <section className={cn("rounded-2xl bg-white p-3 lg:p-6 shadow-sm h-full flex flex-col justify-between", isEmbedded ? "col-span-1 w-full" : "col-span-1 lg:col-span-9")}>
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-4">
             <div className="flex items-center justify-between lg:justify-start gap-3 w-full lg:w-auto">
               <Button
@@ -2069,9 +2070,11 @@ export default function ProjectEditor() {
         </section>
 
         {/* Chat Box - Desktop only */}
-        <aside className="col-span-1 lg:col-span-3 h-full hidden lg:block">
-          <ChatBox className="h-full" />
-        </aside>
+        {!isEmbedded && (
+          <aside className="col-span-1 lg:col-span-3 h-full hidden lg:block">
+            <ChatBox className="h-full" />
+          </aside>
+        )}
       </div>
 
       {/* ============================
@@ -2081,27 +2084,29 @@ export default function ProjectEditor() {
 
 
       {/* Floating Chat Bubble - Mobile only */}
-      <div className="lg:hidden">
-        {isChatOpen && (
-          <div className="fixed inset-0 z-[25000] bg-black/50" onClick={() => setIsChatOpen(false)} />
-        )}
-        {isChatOpen && (
-          <div className="fixed bottom-20 right-4 z-[26000] w-[90vw] max-w-sm h-[60vh] rounded-2xl shadow-2xl overflow-hidden">
-            <ChatBox className="h-full" />
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => setIsChatOpen(v => !v)}
-          className="fixed bottom-4 right-4 z-[26001] bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 shadow-xl flex items-center justify-center transition-transform active:scale-95"
-          title="Ouvrir le chat"
-        >
-          {isChatOpen ? <X size={24} /> : <MessageCircle size={24} />}
-        </button>
-      </div>
+      {!isEmbedded && (
+        <div className="lg:hidden">
+          {isChatOpen && (
+            <div className="fixed inset-0 z-[25000] bg-black/50" onClick={() => setIsChatOpen(false)} />
+          )}
+          {isChatOpen && (
+            <div className="fixed bottom-20 right-4 z-[26000] w-[90vw] max-w-sm h-[60vh] rounded-2xl shadow-2xl overflow-hidden">
+              <ChatBox className="h-full" />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsChatOpen(v => !v)}
+            className="fixed bottom-4 right-4 z-[26001] bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 shadow-xl flex items-center justify-center transition-transform active:scale-95"
+            title="Ouvrir le chat"
+          >
+            {isChatOpen ? <X size={24} /> : <MessageCircle size={24} />}
+          </button>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="col-span-1 lg:col-span-9 relative flex flex-col">
+      <div className={cn("grid grid-cols-1 gap-6", isEmbedded ? "grid-cols-1" : "lg:grid-cols-12")}>
+        <div className={cn("relative flex flex-col", isEmbedded ? "col-span-1 w-full" : "col-span-1 lg:col-span-9")}>
           {/* Tab Bar - On mobile: Carte only */}
           <div className="flex gap-2 border-b border-gray-700 overflow-x-auto">
             <button
@@ -2530,8 +2535,9 @@ export default function ProjectEditor() {
         </div>
 
         {/* Desktop Aside Panel */}
-        <aside className="col-span-1 lg:col-span-3 hidden lg:flex flex-col gap-6">
-          <SymbolsPanel onSymbolSelect={handleSymbolSelect} selectedSymbol={symbolToPlace} />
+        {!isEmbedded && (
+          <aside className="col-span-1 lg:col-span-3 hidden lg:flex flex-col gap-6">
+            <SymbolsPanel onSymbolSelect={handleSymbolSelect} selectedSymbol={symbolToPlace} />
 
           {symbolToPlace?.type === 'isochrone' && (
             <div className="rounded-2xl bg-white p-4 shadow-sm border-2 border-blue-200">
@@ -2751,10 +2757,12 @@ export default function ProjectEditor() {
               ))}
             </div>
           </div>
-        </aside>
+          </aside>
+        )}
 
         {/* Mobile Collapsible Panels - Symbols, Buildings, Captures */}
-        <div className="lg:hidden mt-3 flex flex-col gap-3">
+        {!isEmbedded && (
+          <div className="lg:hidden mt-3 flex flex-col gap-3">
           {/* Symbols Collapsible */}
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
             <button
@@ -2949,6 +2957,7 @@ export default function ProjectEditor() {
             )}
           </div>
         </div>
+        )}
       </div >
       {/* Hidden container for actual rendering of DP plates */}
       <div className="fixed left-[-9999px] top-0 pointer-events-none">
