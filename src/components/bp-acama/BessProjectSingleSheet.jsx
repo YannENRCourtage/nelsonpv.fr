@@ -156,7 +156,7 @@ export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 3
                 </h1>
               </div>
               <p className="text-[10px] font-medium text-slate-500">
-                {site.client ? `${site.client} • ` : ''}{site.address ? `${site.address}, ` : ''}{site.cp || site.postcode} {site.city} ({site.dept || 'FR'})
+                {site.client ? `${site.client.replace(/^(MEILLAT|CASTEBRUNET)\s+\d+\s+/i, '$1 ').replace(/\s+\d+\s+/g, ' ')} • ` : ''}{site.address ? `${site.address}, ` : ''}{site.cp || site.postcode} {site.city} ({site.dept || 'FR'})
               </p>
             </div>
           </div>

@@ -86,28 +86,28 @@ const RAW_SITES_DATABASE = [
   { id: 7, name: "LATOURNERIE", client: "LATOURNERIE Franck", address: "467 Chemin des Terres Vieilles", cp: "24310", city: "Brantôme en Périgord", dept: "24", gps: "45.328888, 0.651040", lat: 45.328888, lng: 0.651040, substation: "BRANTOME", dist: "3.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 8, name: "DAVID", client: "DAVID Louis", address: "1053 route de saint-cyr les champagnes", cp: "19350", city: "Concèze", dept: "19", gps: "45.353329, 1.314195", lat: 45.353329, lng: 1.314195, substation: "LUBERSAC", dist: "8.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 9, name: "GRANGER", client: "GRANGER BRUNO", address: "3 Route des Forges", cp: "19210", city: "Saint-Éloy-les-Tuileries", dept: "19", gps: "45.442533, 1.267710", lat: 45.442533, lng: 1.267710, substation: "LUBERSAC", dist: "10.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 10, name: "CASTEBRUNET 2", client: "CASTEBRUNET 2 Jérémy", address: "763 Chemin de Calsos", cp: "82300", city: "Caussade", dept: "82", gps: "44.123740, 1.564486", lat: 44.123740, lng: 1.564486, substation: "LERE", dist: "5.7 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
+  { id: 10, name: "CASTEBRUNET 2", client: "CASTEBRUNET Jérémy", address: "763 Chemin de Calsos", cp: "82300", city: "Caussade", dept: "82", gps: "44.123740, 1.564486", lat: 44.123740, lng: 1.564486, substation: "LERE", dist: "5.7 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 11, name: "BERTRANDIE", client: "BERTRANDIE Sébastien", address: "301 Route de la Roche", cp: "24240", city: "Monestier", dept: "24", gps: "44.773569, 0.300107", lat: 44.773569, lng: 0.300107, substation: "STE-FOY-LA-GRANDE", dist: "9.0 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 12, name: "GIOT", client: "GIOT Joachim", address: "2 Le Cluzeau", cp: "23600", city: "Leyrat", dept: "23", gps: "46.360561, 2.306566", lat: 46.360561, lng: 2.306566, substation: "BOUSSAC", dist: "5.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 13, name: "ARBOIN", client: "ARBOIN Régis", address: "47 Chemin de piquemole", cp: "47120", city: "Duras", dept: "47", gps: "44.659496, 0.222735", lat: 44.659496, lng: 0.222735, substation: "LA SAUVETAT", dist: "11.8 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 14, name: "MISSAULT LACOUSSIÈRE", client: "MISSAULT David", address: "1348 Route des Bouleaux", cp: "24470", city: "Saint-Saud-Lacoussière", dept: "24", gps: "45.558769, 0.804488", lat: 45.558769, lng: 0.804488, substation: "NONTRON", dist: "13.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 15, name: "MEILLAT 1", client: "MEILLAT 1 Maxime", address: "1a La Ribiere", cp: "23210", city: "Mourioux-Vieilleville", dept: "23", gps: "46.082964, 1.638518", lat: 46.082964, lng: 1.638518, substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
+  { id: 15, name: "MEILLAT 1", client: "MEILLAT Maxime", address: "1a La Ribiere", cp: "23210", city: "Mourioux-Vieilleville", dept: "23", gps: "46.082964, 1.638518", lat: 46.082964, lng: 1.638518, substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 16, name: "SOULIGNAC", client: "SOULIGNAC Thierry", address: "Route de Lombardie", cp: "33860", city: "Val-de-Livenne", dept: "33", gps: "45.264357, -0.550408", lat: 45.264357, lng: -0.550408, substation: "ETAULIERS", dist: "7.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 17, name: "CHAUFFAILLE", client: "CHAUFFAILLE Franck", address: "2 Route de Saint Yrieix", cp: "24270", city: "PAYZAC", dept: "24", gps: "45.436230, 1.288720", lat: 45.436230, lng: 1.288720, substation: "LUBERSAC", dist: "6.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 18, name: "CIROLI", client: "CIROLI", address: "66 Lieu Dit Pinasse", cp: "33890", city: "Juillac", dept: "33", gps: "44.809547, 0.037304", lat: 44.809547, lng: 0.037304, substation: "AURIOLLES", dist: "7.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 19, name: "BOURDETTES", client: "BOURDETTES Sandrine", address: "10 Route de la Bohème", cp: "65140", city: "Mansan", dept: "65", gps: "43.343730, 0.194628", lat: 43.343730, lng: 0.194628, substation: "VIC-EN-BIGORRE", dist: "10.8 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 20, name: "CASTEBRUNET 1", client: "CASTEBRUNET Jérémy", address: "1074 Chemin de Guillounet", cp: "82300", city: "Caussade", dept: "82", gps: "44.117157, 1.566758", lat: 44.117157, lng: 1.566758, substation: "LERE", dist: "5.5 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 21, name: "FRECHEVILLE", client: "FRECHEVILLE Mathieu", address: "45 Cluzelou-haut", cp: "47210", city: "SAINT EUTROPE DE BORN", dept: "47", gps: "44.588327, 0.665431", lat: 44.588327, lng: 0.665431, substation: "CANCON", dist: "7.2 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 22, name: "CASTEBRUNET 3", client: "CASTEBRUNET 3 Jérémy", address: "93 Chemin des Peyrières", cp: "82300", city: "Monteils", dept: "82", gps: "44.165754, 1.564963", lat: 44.165754, lng: 1.564963, substation: "LERE", dist: "3.6 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
+  { id: 22, name: "CASTEBRUNET 3", client: "CASTEBRUNET Jérémy", address: "93 Chemin des Peyrières", cp: "82300", city: "Monteils", dept: "82", gps: "44.165754, 1.564963", lat: 44.165754, lng: 1.564963, substation: "LERE", dist: "3.6 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 23, name: "DOUMENS", client: "DOUMENS Morgan", address: "4 Route de Salleboeuf", cp: "33750", city: "Beychac-et-Caillau", dept: "33", gps: "44.870054, -0.397698", lat: 44.870054, lng: -0.397698, substation: "POMPIGNAC", dist: "4.0 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 24, name: "HOUSSAIT-YOUNG", client: "HOUSSAIT-YOUNG Jérôme", address: "94 Route d'Hourtin", cp: "33930", city: "Vendays-Montalivet", dept: "33", gps: "45.338321, -1.071016", lat: 45.338321, lng: -1.071016, substation: "ST-VIVIEN", dist: "9.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 25, name: "MISSAULT FRESSENGEAS", client: "MISSAULT David", address: "Route de la Baine", cp: "24800", city: "Saint-Martin-de-Fressengeas", dept: "24", gps: "45.438589, 0.815692", lat: 45.438589, lng: 0.815692, substation: "THIVIERS", dist: "6.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 26, name: "LARDY", client: "LARDY Michel", address: "Outrelaigue", cp: "23150", city: "Maisonnisses", dept: "23", gps: "46.067915, 1.907318", lat: 46.067915, lng: 1.907318, substation: "LAVAUD", dist: "10.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 27, name: "CELERIE", client: "CELERIE Thomas", address: "301 route de la Valade", cp: "19230", city: "Beyssenac", dept: "19", gps: "45.400772, 1.284338", lat: 45.400772, lng: 1.284338, substation: "LUBERSAC", dist: "7.1 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 28, name: "MEILLAT 2", client: "MEILLAT 2 Maxime", address: "1a la Ribiére", cp: "23210", city: "Mourioux-Vieilleville", dept: "23", gps: "46.081523, 1.633909", lat: 46.081523, lng: 1.633909, substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
+  { id: 28, name: "MEILLAT 2", client: "MEILLAT Maxime", address: "1a la Ribiére", cp: "23210", city: "Mourioux-Vieilleville", dept: "23", gps: "46.081523, 1.633909", lat: 46.081523, lng: 1.633909, substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 29, name: "DOMERGUE ARGENCES", client: "DOMERGUE David", address: "1 Route de Plagnes", cp: "12420", city: "Argences en Aubrac", dept: "12", gps: "44.807528, 2.790446", lat: 44.807528, lng: 2.790446, substation: "RUEYRES", dist: "5.9 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 30, name: "COMBY", client: "COMBY Fabrice", address: "14 Route de Besse", cp: "19210", city: "Saint-Éloy-les-Tuileries", dept: "19", gps: "45.452807, 1.284563", lat: 45.452807, lng: 1.284563, substation: "LUBERSAC", dist: "10.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 31, name: "CASTEBRUNET 4", client: "CASTEBRUNET 4 Jérémy", address: "3750 Route de Bioule", cp: "82300", city: "Saint-Cirq", dept: "82", gps: "44.124392, 1.583302", lat: 44.124392, lng: 1.583302, substation: "LERE", dist: "6.2 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" }
+  { id: 31, name: "CASTEBRUNET 4", client: "CASTEBRUNET Jérémy", address: "3750 Route de Bioule", cp: "82300", city: "Saint-Cirq", dept: "82", gps: "44.124392, 1.583302", lat: 44.124392, lng: 1.583302, substation: "LERE", dist: "6.2 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" }
 ];
 
 const SITES_DATABASE = RAW_SITES_DATABASE.map(s => {
@@ -301,16 +301,69 @@ export default function BessDossierPDFGenerator({
   // Paramètres de dette senior dynamiques
   const debtDuration = portfolioData?.debtDuration ?? 12;
   const debtRate = portfolioData?.debtRate ?? 4.30;
-  const unitCapex = 233250;
-  const unitAnnuity = Math.abs(calculatePmt((debtRate || 4.30) / 100, debtDuration || 12, unitCapex));
-  const dynamicDebtService = YEARS_15.map((_, i) => (i < (debtDuration || 12) ? unitAnnuity : 0));
+
+  // Matrice financière dynamique consolidée calculée site par site
+  const dynamicFinancialMatrix = useMemo(() => {
+    const sitesToUse = isPort ? selectedBessSites : [selectedSite];
+    const revFcr = [];
+    const revCapa = [];
+    const revArb = [];
+    const opexTurpe = [];
+    const opexRecharge = [];
+    const opexAgregateur = [];
+    const opexAutres = [];
+    const debtService = [];
+
+    const siteSimulations = sitesToUse.map(s => {
+      return computeBessFinancials(s, {
+        studyDuration: 15,
+        debtDuration: debtDuration || 12,
+        debtRate: debtRate || 4.30
+      });
+    });
+
+    for (let i = 0; i < 15; i++) {
+      let sumFcr = 0;
+      let sumCapa = 0;
+      let sumArb = 0;
+      let sumTurpe = 0;
+      let sumRecharge = 0;
+      let sumAgreg = 0;
+      let sumAutres = 0;
+      let sumDebt = 0;
+
+      siteSimulations.forEach(fin => {
+        const row = fin.rows?.[i] || {};
+        sumFcr += (row.revFCR || 0);
+        sumCapa += (row.revCapacite || 0);
+        sumArb += (row.revArbitrage || 0);
+        sumTurpe += (row.turpeAn || 0);
+        sumRecharge += (row.coutRechargeAn || 0);
+        sumAgreg += (row.commAgregateur || 0);
+        const other = (row.maint || 0) + (row.assur || 0) + (row.revBailleur || 0);
+        sumAutres += other;
+        sumDebt += (row.serviceDette || 0);
+      });
+
+      revFcr.push(Math.round(sumFcr));
+      revCapa.push(Math.round(sumCapa));
+      revArb.push(Math.round(sumArb));
+      opexTurpe.push(Math.round(sumTurpe));
+      opexRecharge.push(Math.round(sumRecharge));
+      opexAgregateur.push(Math.round(sumAgreg));
+      opexAutres.push(Math.round(sumAutres));
+      debtService.push(Math.round(sumDebt));
+    }
+
+    return { revFcr, revCapa, revArb, opexTurpe, opexRecharge, opexAgregateur, opexAutres, debtService };
+  }, [isPort, selectedBessSites, selectedSite, debtRate, debtDuration]);
 
   // Calcul dynamique du DSCR moyen
   const dscrArray = YEARS_15.map((_, i) => {
-    const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
-    const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+    const rev = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
+    const opex = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
     const ebitda = rev - opex;
-    const debtVal = dynamicDebtService[i] * mult;
+    const debtVal = dynamicFinancialMatrix.debtService[i];
     if (debtVal === 0) return null;
     return ebitda / debtVal;
   });
@@ -324,10 +377,10 @@ export default function BessDossierPDFGenerator({
   const totalCapexAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s).capexTotal, 0);
 
   // Totaux cumulés 15 ans
-  const cumulRev = YEARS_15.reduce((acc, _, i) => acc + (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult, 0);
-  const cumulOpex = YEARS_15.reduce((acc, _, i) => acc + (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult, 0);
+  const cumulRev = YEARS_15.reduce((acc, _, i) => acc + (dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i]), 0);
+  const cumulOpex = YEARS_15.reduce((acc, _, i) => acc + (dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i]), 0);
   const cumulEbitda = cumulRev - cumulOpex;
-  const cumulDebt = dynamicDebtService.reduce((acc, v) => acc + v * mult, 0);
+  const cumulDebt = dynamicFinancialMatrix.debtService.reduce((acc, v) => acc + v, 0);
   const cumulCf = cumulEbitda - cumulDebt;
 
   // Métriques KPI institutionnelles
@@ -414,10 +467,10 @@ export default function BessDossierPDFGenerator({
   // Données du graphique 15 ans
   const maxEbitda = isPort ? 2100000 : 70000;
   const chartBars = YEARS_15.map((y, i) => {
-    const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
-    const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+    const rev = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
+    const opex = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
     const ebitda = rev - opex;
-    const debt = dynamicDebtService[i] * mult;
+    const debt = dynamicFinancialMatrix.debtService[i];
     const cf = ebitda - debt;
     return { year: y, ebitda, cf };
   });
@@ -1202,7 +1255,7 @@ export default function BessDossierPDFGenerator({
                       <circle cx="50" cy="50" r="38" fill="none" stroke="#10b981" strokeWidth="15" strokeDasharray="22.7 238.7" strokeDashoffset="-216.0" />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black text-[#0b192c]">{isPort ? '2.86 M€' : '92 k€'}</span>
+                      <span className="text-2xl font-black text-[#0b192c]">{isPort ? kpi.revenue : '92 k€'}</span>
                       <span className="text-[10px] font-extrabold text-slate-400 uppercase">CA Brut Total</span>
                     </div>
                   </div>
@@ -1331,52 +1384,52 @@ export default function BessDossierPDFGenerator({
                     <tr className="bg-blue-50/50 font-bold text-blue-900">
                       <td className="p-2.5 text-left sticky left-0 bg-blue-50/90 z-10 whitespace-nowrap">1. Chiffre d'Affaires Brut</td>
                       {YEARS_15.map((_, i) => {
-                        const val = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
+                        const val = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
                         return <td key={i} className="p-2 whitespace-nowrap">{fmtEur(val)}</td>;
                       })}
                     </tr>
                     <tr className="text-slate-600 text-[9.5px]">
                       <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Dont Réserve FCR &amp; PICASSO</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">{fmtEur(FINANCIAL_MATRIX.revFcr[i] * mult)}</td>)}
+                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">{fmtEur(dynamicFinancialMatrix.revFcr[i])}</td>)}
                     </tr>
                     <tr className="text-slate-600 text-[9.5px]">
                       <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Dont Capacité RTE PP2</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">{fmtEur(FINANCIAL_MATRIX.revCapa[i] * mult)}</td>)}
+                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">{fmtEur(dynamicFinancialMatrix.revCapa[i])}</td>)}
                     </tr>
                     <tr className="text-slate-600 text-[9.5px]">
                       <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Dont Arbitrage Spot 2 c/j</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">{fmtEur(FINANCIAL_MATRIX.revArb[i] * mult)}</td>)}
+                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">{fmtEur(dynamicFinancialMatrix.revArb[i])}</td>)}
                     </tr>
 
                     <tr className="bg-red-50/40 font-bold text-red-900">
                       <td className="p-2.5 text-left sticky left-0 bg-red-50/90 z-10 whitespace-nowrap">2. OPEX d'Exploitation Total</td>
                       {YEARS_15.map((_, i) => {
-                        const val = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+                        const val = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
                         return <td key={i} className="p-2 whitespace-nowrap">-{fmtEur(val)}</td>;
                       })}
                     </tr>
                     <tr className="text-slate-600 text-[9.5px]">
                       <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Coût Énergie Recharge (Pertes de cycle non réinjectées)</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(FINANCIAL_MATRIX.opexRecharge[i] * mult)}</td>)}
+                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(dynamicFinancialMatrix.opexRecharge[i])}</td>)}
                     </tr>
                     <tr className="text-slate-600 text-[9.5px]">
                       <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Commission Agrégateur 18%</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(FINANCIAL_MATRIX.opexAgregateur[i] * mult)}</td>)}
+                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(dynamicFinancialMatrix.opexAgregateur[i])}</td>)}
                     </tr>
                     <tr className="text-slate-600 text-[9.5px]">
                       <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• TURPE 7 Réseau Abattu</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(FINANCIAL_MATRIX.opexTurpe[i] * mult)}</td>)}
+                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(dynamicFinancialMatrix.opexTurpe[i])}</td>)}
                     </tr>
                     <tr className="text-slate-600 text-[9.5px]">
                       <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Baux 20 ans + Maint + Assurance</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(FINANCIAL_MATRIX.opexAutres[i] * mult)}</td>)}
+                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(dynamicFinancialMatrix.opexAutres[i])}</td>)}
                     </tr>
 
                     <tr className="bg-emerald-50/60 font-black text-emerald-950 text-[10.5px]">
                       <td className="p-2.5 text-left sticky left-0 bg-emerald-50/90 z-10 whitespace-nowrap">3. EBITDA Net d'Exploitation</td>
                       {YEARS_15.map((_, i) => {
-                        const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
-                        const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+                        const rev = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
+                        const opex = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
                         return <td key={i} className="p-2 text-emerald-800 whitespace-nowrap">{fmtEur(rev - opex)}</td>;
                       })}
                     </tr>
@@ -1384,7 +1437,7 @@ export default function BessDossierPDFGenerator({
                     <tr className="text-slate-600 text-[9.5px]">
                       <td className="p-1.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap">4. Service Dette Senior ({debtDuration} ans à {debtRate.toFixed(2)}%)</td>
                       {YEARS_15.map((_, i) => {
-                        const val = dynamicDebtService[i] * mult;
+                        const val = dynamicFinancialMatrix.debtService[i];
                         return <td key={i} className="p-1.5 whitespace-nowrap">{val > 0 ? `-${fmtEur(val)}` : '0 €'}</td>;
                       })}
                     </tr>
@@ -1392,10 +1445,10 @@ export default function BessDossierPDFGenerator({
                     <tr className="bg-cyan-50/60 font-black text-cyan-950 text-[10.5px]">
                       <td className="p-2.5 text-left sticky left-0 bg-cyan-50/90 z-10 whitespace-nowrap">5. Cash-Flow Net Disponible</td>
                       {YEARS_15.map((_, i) => {
-                        const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
-                        const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+                        const rev = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
+                        const opex = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
                         const ebitda = rev - opex;
-                        const debt = dynamicDebtService[i] * mult;
+                        const debt = dynamicFinancialMatrix.debtService[i];
                         return <td key={i} className="p-2 text-cyan-800 whitespace-nowrap">{fmtEur(ebitda - debt)}</td>;
                       })}
                     </tr>
@@ -1403,10 +1456,10 @@ export default function BessDossierPDFGenerator({
                     <tr className="bg-slate-50 text-[9.5px] font-bold text-slate-800">
                       <td className="p-2 text-left sticky left-0 bg-slate-50 z-10 whitespace-nowrap">Ratio DSCR de Dette Senior</td>
                       {YEARS_15.map((_, i) => {
-                        const val = dynamicDebtService[i] * mult;
+                        const val = dynamicFinancialMatrix.debtService[i];
                         if (val === 0) return <td key={i} className="p-1.5 text-slate-400 whitespace-nowrap">—</td>;
-                        const rev = (FINANCIAL_MATRIX.revFcr[i] + FINANCIAL_MATRIX.revCapa[i] + FINANCIAL_MATRIX.revArb[i]) * mult;
-                        const opex = (FINANCIAL_MATRIX.opexTurpe[i] + FINANCIAL_MATRIX.opexRecharge[i] + FINANCIAL_MATRIX.opexAgregateur[i] + FINANCIAL_MATRIX.opexAutres[i]) * mult;
+                        const rev = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
+                        const opex = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
                         const dscr = ((rev - opex) / val).toFixed(2);
                         return <td key={i} className="p-1.5 text-emerald-700 font-extrabold whitespace-nowrap">{dscr}x</td>;
                       })}

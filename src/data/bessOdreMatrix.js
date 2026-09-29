@@ -702,8 +702,26 @@ export function findBessOdreData(search, city = '', address = '', lat = null, ln
   const cleanSearch = normalize(rawSearch);
   const cleanCity = normalize(rawCity);
   const cleanAddr = normalize(rawAddress);
+  const fullText = `${cleanSearch} ${cleanCity} ${cleanAddr}`;
 
-  // 3. Correspondance prioritaire sur le mot-clé exact de site (ex: "PRAVIE", "GRANGER", "LATOURNERIE")
+  // 4. Correspondance prioritaire combinée : Nom de site ET Commune exacte (évite les collisions sur Castebrunet 1/2/3/4, Meillat 1/2, Domergue 1/2)
+  for (const s of BESS_ODRE_MATRIX) {
+    const sName = normalize(s.siteName);
+    const sCommune = normalize(s.commune);
+    const sCodePostal = normalize(s.codePostal);
+
+    const nameMatch = cleanSearch.includes(sName) || fullText.includes(sName);
+    const communeMatch = (cleanCity && cleanCity.includes(sCommune)) || 
+                         (cleanAddr && cleanAddr.includes(sCommune)) || 
+                         (cleanSearch && cleanSearch.includes(sCommune)) ||
+                         (cleanAddr && cleanAddr.includes(sCodePostal));
+
+    if (nameMatch && communeMatch) {
+      return s;
+    }
+  }
+
+  // 5. Correspondance exacte sur le nom de site ou le client
   const searchWords = cleanSearch.split(/\s+/).filter(Boolean);
   for (const s of BESS_ODRE_MATRIX) {
     const sName = normalize(s.siteName);
@@ -712,13 +730,12 @@ export function findBessOdreData(search, city = '', address = '', lat = null, ln
     }
   }
 
-  // 4. Correspondance standard sur le nom de site ou le client
+  // 6. Correspondance standard sur le nom de site ou le client
   for (const s of BESS_ODRE_MATRIX) {
     const sName = normalize(s.siteName);
     const sClient = normalize(s.client);
     const sCommune = normalize(s.commune);
 
-    // Correspondance sur le nom de site ou le client
     if (cleanSearch && (cleanSearch.includes(sName) || sClient.includes(cleanSearch) || cleanSearch.includes(sClient))) {
       if (cleanCity || cleanAddr) {
         if (cleanCity.includes(sCommune) || cleanAddr.includes(sCommune) || cleanAddr.includes(s.codePostal)) {
@@ -729,13 +746,12 @@ export function findBessOdreData(search, city = '', address = '', lat = null, ln
       }
     }
 
-    // Correspondance sur la commune
     if (cleanCity && cleanCity === sCommune) {
       return s;
     }
   }
 
-  // Deuxième passe plus permissive (si commune dans l'adresse ou recherche)
+  // 7. Deuxième passe plus permissive (si commune dans l'adresse ou recherche)
   for (const s of BESS_ODRE_MATRIX) {
     const sCommune = normalize(s.commune);
     if ((cleanSearch && cleanSearch.includes(sCommune)) || (cleanAddr && cleanAddr.includes(sCommune))) {

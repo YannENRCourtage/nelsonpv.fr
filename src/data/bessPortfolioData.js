@@ -907,30 +907,59 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
 
       const mock = findMatchingMockSite(p);
       const pId = p.id || mock?.id || `crm_bess_${idx + 1}`;
-      const clientName = [p.firstName, p.name].filter(Boolean).join(' ') || p.client_name || p.client || mock?.client || 'Client';
+      const rawClient = [p.firstName, p.name].filter(Boolean).join(' ') || p.client_name || p.client || mock?.client || 'Client';
+      const clientName = rawClient
+        .replace(/\b([A-Za-zÀ-ÿ]+)\s+[0-9]+\s+([A-Za-zÀ-ÿ]+)\b/g, '$1 $2')
+        .replace(/\s+[0-9]+$/g, '')
+        .trim();
+
       const cp = p.zip || p.postcode || p.cp || mock?.postcode || '';
       const city = p.city || p.commune || mock?.city || '';
       const dept = cp ? cp.substring(0, 2) : (mock?.dept || 'FR');
-      const lat = Number(p.lat || p.latitude || mock?.lat || 45.0);
-      const lng = Number(p.lng || p.longitude || mock?.lng || 1.0);
 
-      const odre = findBessOdreData(p.name, p.city, p.address, lat, lng);
+      // Extraction robuste des coordonnées GPS
+      let lat = null;
+      let lng = null;
+      if (p.gps && typeof p.gps === 'string' && p.gps.includes(',')) {
+        const parts = p.gps.split(',').map(s => parseFloat(s.trim()));
+        if (!isNaN(parts[0]) && !isNaN(parts[1]) && (parts[0] !== 0 || parts[1] !== 0)) {
+          lat = parts[0];
+          lng = parts[1];
+        }
+      }
+      if (lat === null && p.lat !== undefined && !isNaN(parseFloat(p.lat)) && parseFloat(p.lat) !== 45.0) lat = parseFloat(p.lat);
+      if (lat === null && p.latitude !== undefined && !isNaN(parseFloat(p.latitude))) lat = parseFloat(p.latitude);
+      if (lng === null && p.lng !== undefined && !isNaN(parseFloat(p.lng)) && (parseFloat(p.lng) !== 1.0 || lat !== 45.0)) lng = parseFloat(p.lng);
+      if (lng === null && p.longitude !== undefined && !isNaN(parseFloat(p.longitude))) lng = parseFloat(p.longitude);
+
+      if (lat === null && mock?.lat !== undefined) lat = parseFloat(mock.lat);
+      if (lng === null && mock?.lng !== undefined) lng = parseFloat(mock.lng);
+
+      const odre = findBessOdreData(p.name, city, p.address, lat, lng);
+      if ((lat === null || isNaN(lat) || (lat === 45.0 && lng === 1.0)) && odre?.latitude && odre?.longitude) {
+        lat = parseFloat(odre.latitude);
+        lng = parseFloat(odre.longitude);
+      }
+
+      if (lat === null || isNaN(lat)) lat = 45.0;
+      if (lng === null || isNaN(lng)) lng = 1.0;
+
       const distKm = Number(odre?.distanceKm || p.distance_raccordement_km || p.distancePoste || p.substation?.distanceKm || mock?.substation?.distanceKm || 5.0);
 
-      const substation = (typeof p.substation === 'object' && p.substation?.name) ? p.substation : (mock?.substation || {
-        name: odre?.posteSourceEnedis || p.poste_source || p.substationName || "ODRE",
-        code: odre?.codePoste || p.code_poste || "ODRE",
-        voltageLevel: odre?.tension || "HTA / 20 kV",
+      const substation = (typeof p.substation === 'object' && p.substation?.name) ? p.substation : {
+        name: odre?.posteSourceEnedis || p.poste_source || p.substationName || mock?.substation?.name || "ODRE",
+        code: odre?.codePoste || p.code_poste || mock?.substation?.code || "ODRE",
+        voltageLevel: odre?.tension || mock?.substation?.voltageLevel || "HTA / 20 kV",
         gestionnaire: "Enedis",
         distanceKm: distKm,
-        quotePartS3renr: odre?.quotePartS3REnR || "92.73  k€/MW",
-        quotePartS3renrEur: odre?.quotePartS3renrEur || 92730,
-        capaciteReserveeMw: odre?.capaciteReserveeMw || 0,
-        resteAffecterMw: odre?.capaciteResiduelleOdreMw ?? 0,
+        quotePartS3renr: odre?.quotePartS3REnR || mock?.substation?.quotePartS3renr || "92.73  k€/MW",
+        quotePartS3renrEur: odre?.quotePartS3renrEur || mock?.substation?.quotePartS3renrEur || 92730,
+        capaciteReserveeMw: odre?.capaciteReserveeMw || mock?.substation?.capaciteReserveeMw || 0,
+        resteAffecterMw: odre?.capaciteResiduelleOdreMw ?? mock?.substation?.resteAffecterMw ?? 0,
         fileAttenteMw: 0,
-        statutRaccordement: odre?.statutRaccordement || "Zone standard Enedis",
-        typologieZoneCre: odre?.typologieZoneCre || "Zone standard Enedis"
-      });
+        statutRaccordement: odre?.statutRaccordement || mock?.substation?.statutRaccordement || "Zone standard Enedis",
+        typologieZoneCre: odre?.typologieZoneCre || mock?.substation?.typologieZoneCre || "Zone standard Enedis"
+      };
 
       resultSites.push({
         ...(mock || {}),
