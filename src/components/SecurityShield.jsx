@@ -11,13 +11,21 @@ import React, { useEffect } from 'react';
  */
 export default function SecurityShield() {
   useEffect(() => {
-    // 1. Anti-Framebusting / Protection Clickjacking côté client
+    // 1. Anti-Framebusting / Protection Clickjacking côté client (uniquement domaines externes)
     try {
       if (window.top && window.top !== window.self) {
-        window.top.location = window.self.location;
+        let isSameOrigin = false;
+        try {
+          isSameOrigin = window.top.location.origin === window.location.origin;
+        } catch {
+          isSameOrigin = false;
+        }
+        if (!isSameOrigin) {
+          window.top.location = window.self.location;
+        }
       }
     } catch {
-      // Bloqué par cross-origin policy, sécurisé par X-Frame-Options: DENY
+      // Bloqué par cross-origin policy si tentative d'encapsulation par un domaine tiers
     }
 
     // 2. Avertissement dissuasif dans la console
