@@ -477,6 +477,43 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
               scrollBox.scrollTop = 0;
             }
 
+            // Correction Leaflet : convertir translate3d en top/left pour html2canvas
+            // html2canvas ne gère pas correctement les transforms CSS translate3d de Leaflet,
+            // ce qui cause un décalage des tuiles et marqueurs vers la gauche et le haut.
+            const leafletPanes = clonedDoc.querySelectorAll('.leaflet-map-pane, .leaflet-tile-pane, .leaflet-overlay-pane, .leaflet-marker-pane, .leaflet-tooltip-pane, .leaflet-popup-pane, .leaflet-shadow-pane');
+            leafletPanes.forEach(pane => {
+              const transform = pane.style.transform || '';
+              const match = transform.match(/translate3d\(\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/);
+              if (match) {
+                pane.style.transform = 'none';
+                pane.style.left = match[1] + 'px';
+                pane.style.top = match[2] + 'px';
+              }
+            });
+            // Fixer aussi les tuiles individuelles qui utilisent translate3d
+            const leafletTiles = clonedDoc.querySelectorAll('.leaflet-tile');
+            leafletTiles.forEach(tile => {
+              const transform = tile.style.transform || '';
+              const match = transform.match(/translate3d\(\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/);
+              if (match) {
+                tile.style.transform = 'none';
+                tile.style.left = match[1] + 'px';
+                tile.style.top = match[2] + 'px';
+                tile.style.position = 'absolute';
+              }
+            });
+            // Fixer les conteneurs de marqueurs SVG
+            const svgPanes = clonedDoc.querySelectorAll('.leaflet-overlay-pane svg');
+            svgPanes.forEach(svg => {
+              const transform = svg.style.transform || '';
+              const match = transform.match(/translate3d\(\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/);
+              if (match) {
+                svg.style.transform = 'none';
+                svg.style.left = match[1] + 'px';
+                svg.style.top = match[2] + 'px';
+              }
+            });
+
             // Ignorer les éléments annotés
             clonedDoc.querySelectorAll('[data-html2canvas-ignore="true"]').forEach(el => el.remove());
           }

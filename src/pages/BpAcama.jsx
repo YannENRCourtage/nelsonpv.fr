@@ -11,7 +11,7 @@ import {
   BarChart3, FileText, Calculator, TrendingUp, Users, Building,
   FileDown, Save, ChevronDown, Search, X, CheckCircle, AlertCircle,
   AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download, Menu,
-  Sun, BatteryCharging, Zap, Layers, Sparkles
+  Sun, BatteryCharging, Zap, Layers, Sparkles, ExternalLink
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
@@ -2443,6 +2443,7 @@ function TabBpProjets({
   const [isLoadingNetworkPv, setIsLoadingNetworkPv] = useState(false);
   const [isPvDossierPdfOpen, setIsPvDossierPdfOpen] = useState(false);
   const [pvPortfolioExportData, setPvPortfolioExportData] = useState(null);
+  const [isProjectDetailModalOpen, setIsProjectDetailModalOpen] = useState(false);
 
   const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;
 
@@ -3082,6 +3083,18 @@ function TabBpProjets({
               <span>ÉTUDE COMPLÈTE</span>
             </button>
 
+            {selectedProject?.id && (
+              <button
+                type="button"
+                onClick={() => setIsProjectDetailModalOpen(true)}
+                className="px-3.5 py-2 text-xs font-black rounded-lg border bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100 shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
+                title={`Ouvrir la page du projet ${selectedProject?.name || ''}`}
+              >
+                <ExternalLink className="w-4 h-4 text-blue-600" />
+                <span>PAGE DU PROJET</span>
+              </button>
+            )}
+
             <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-[13px] h-8 px-3">
               <Save className="w-3.5 h-3.5 mr-1.5" /> Sauvegarder
             </Button>
@@ -3100,6 +3113,19 @@ function TabBpProjets({
               onSelect={applyProject} 
             />
           </div>
+          {selectedProject?.id && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setIsProjectDetailModalOpen(true)}
+              className="h-9 px-3 bg-white text-blue-700 border-blue-300 hover:bg-blue-100 hover:border-blue-400 font-bold shadow-xs flex items-center gap-1.5 shrink-0"
+              title={`Ouvrir la page complète du projet ${selectedProject?.name || ''}`}
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+              <span>Voir le projet</span>
+            </Button>
+          )}
         </div>
 
         <div className="flex-1 min-w-[10px]" />
@@ -3633,6 +3659,66 @@ function TabBpProjets({
     onClose={() => setIsPortfolioModalOpen(false)}
     projects={projects}
   />
+
+  {/* Modal / Popup Page Complète du Projet (Éditeur) */}
+  {isProjectDetailModalOpen && selectedProject?.id && (
+    <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+      <div className="relative w-[98vw] max-w-[1750px] h-[96vh] max-h-[1100px] bg-white rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
+        {/* Header de la modal */}
+        <div className="bg-slate-900 text-white px-5 py-3 flex items-center justify-between shrink-0 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-600/30 border border-blue-400/50 flex items-center justify-center text-blue-400 font-bold">
+              <Building className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-black text-white tracking-tight">
+                  Projet : {selectedProject.name?.toUpperCase() || 'PROJET'}
+                </h3>
+                {selectedProject.client_name && (
+                  <span className="text-xs text-slate-300 font-medium">({selectedProject.client_name})</span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400">
+                {selectedProject.address ? `${selectedProject.address}, ` : ''}{selectedProject.city || selectedProject.commune || ''} • Éditeur de projet &amp; Cartographie
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <a
+              href={`/project/${selectedProject.id}/edit`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 flex items-center gap-1.5 transition-colors"
+              title="Ouvrir dans un nouvel onglet"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+              <span>Nouvel onglet</span>
+            </a>
+            <button
+              type="button"
+              onClick={() => setIsProjectDetailModalOpen(false)}
+              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-red-600/80 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              title="Fermer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Contenu iframe plein écran */}
+        <div className="flex-1 w-full h-full bg-slate-100 relative overflow-hidden">
+          <iframe
+            src={`/project/${selectedProject.id}/edit`}
+            title={`Projet ${selectedProject.name || ''}`}
+            className="w-full h-full border-0"
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+      </div>
+    </div>
+  )}
 
       {/* Stand-Alone Warning for PV tab if project has no building */}
       {isBatteryStandAlone && (params.buildings?.length === 0 || !params.buildings) && bpSubTab === 'pv' && (
