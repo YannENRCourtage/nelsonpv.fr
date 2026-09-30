@@ -429,20 +429,22 @@ const DraggableRow = ({
     onToggleExpand,
     onSubItemUpdate,
     onSubItemBlur,
+    onReorderSubItems,
     onAddSubItem,
     onDeleteSubItem,
     onDuplicateSubItem,
     onPromoteSubItem,
     headerColor
 }) => {
-    const ref = useRef(null);
+    const rowRef = useRef(null);
+    const dragHandleRef = useRef(null);
     const [editingCell, setEditingCell] = useState(null); // Track which cell is being edited (col name)
     const inputRefs = useRef({}); // Refs for each input to preserve cursor position
     const [cursorPosition, setCursorPosition] = useState(null); // Store cursor position when switching to edit mode
 
-    const [{ isDragging }, drag] = useDrag({
+    const [{ isDragging }, drag, preview] = useDrag({
         type: ItemTypes.ROW,
-        item: { index },
+        item: () => ({ id: row.id, index }),
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
         }),
@@ -450,8 +452,8 @@ const DraggableRow = ({
 
     const [, drop] = useDrop({
         accept: ItemTypes.ROW,
-        hover(item, monitor) {
-            if (!ref.current) return;
+        hover(item) {
+            if (!rowRef.current) return;
             const dragIndex = item.index;
             const hoverIndex = index;
             if (dragIndex === hoverIndex) return;
@@ -460,7 +462,8 @@ const DraggableRow = ({
         },
     });
 
-    drag(drop(ref));
+    preview(drop(rowRef));
+    drag(dragHandleRef);
 
     // Helper function to format TTC values with €
     const formatTTCValue = (value) => {
@@ -578,8 +581,8 @@ const DraggableRow = ({
     return (
         <React.Fragment>
             <tr
-                ref={ref}
-                className={`bg-white border-b hover:bg-slate-50 group ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'bg-blue-50' : ''} ${isExpanded ? 'bg-indigo-50/20' : ''}`}
+                ref={rowRef}
+                className={`bg-white border-b hover:bg-slate-50 group ${isDragging ? 'opacity-40 bg-blue-100/50' : ''} ${isSelected ? 'bg-blue-50' : ''} ${isExpanded ? 'bg-indigo-50/20' : ''}`}
             >
                 <td className="px-2 py-2 sticky left-0 bg-white group-hover:bg-slate-50 border-r text-center" style={{ width: checkboxWidth }}>
                     <input
@@ -590,7 +593,7 @@ const DraggableRow = ({
                     />
                 </td>
                 <td className="px-2 py-2 text-slate-500 sticky bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center" style={{ width: 46, left: `${rowNumberLeft}px` }}>
-                    <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-600">
+                    <div ref={dragHandleRef} className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-blue-600 transition-colors" title="Glisser pour réorganiser">
                         <GripVertical className="w-4 h-4" />
                     </div>
                     <span>{index + 1}</span>
@@ -739,6 +742,7 @@ const DraggableRow = ({
                             subItems={subItems}
                             onUpdateSubItem={(subId, col, val) => onSubItemUpdate && onSubItemUpdate(row.id, subId, col, val)}
                             onBlurSubItem={(subId) => onSubItemBlur && onSubItemBlur(row.id, subId)}
+                            onReorderSubItems={(newSubs) => onReorderSubItems && onReorderSubItems(row.id, newSubs)}
                             onAddSubItem={(initialData) => onAddSubItem && onAddSubItem(row.id, initialData)}
                             onDeleteSubItem={(subId) => onDeleteSubItem && onDeleteSubItem(row.id, subId)}
                             onDuplicateSubItem={(subId) => onDuplicateSubItem && onDuplicateSubItem(row.id, subId)}
@@ -1585,6 +1589,29 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
         });
     };
 
+    const handleReorderSubItems = async (parentRowId, nextSubs) => {
+        if (subItemDebounceTimers.current[parentRowId]) {
+            clearTimeout(subItemDebounceTimers.current[parentRowId]);
+            delete subItemDebounceTimers.current[parentRowId];
+        }
+        const targetRow = rows.find(r => r.id === parentRowId);
+        if (!targetRow) return;
+        const updatedRow = {
+            ...targetRow,
+            subItems: nextSubs,
+            data: { ...targetRow.data, __subItems: nextSubs }
+        };
+        setRows(prev => prev.map(r => r.id === parentRowId ? updatedRow : r));
+        try {
+            await apiService.updateMondayRow(data.id, parentRowId, {
+                subItems: nextSubs,
+                data: updatedRow.data
+            });
+        } catch (err) {
+            console.error("Erreur réorganisation sous-éléments :", err);
+        }
+    };
+
     // --- Grouping Handlers ---
     const handleConfirmManualGroup = async ({ parentName, stripPrefix, createNewParent, selectedRowAsParentId }) => {
         setIsGroupingProcessing(true);
@@ -1813,12 +1840,15 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
     };
 
     const moveRow = (dragIndex, hoverIndex) => {
-        const newOrder = [...displayedRows.map(r => r.id)]; // Only move within displayed? Or global?
-        // Dragging filtered rows is tricky. Disable DnD when filtered/searched?
+        // Disable reorder during filter / search
         if (searchTerm || Object.keys(filters).some(k => filters[k])) {
-            // Disable reorder during filter
             return;
         }
+        if (sortConfig.key) {
+            setSortConfig({ key: null, direction: 'asc' });
+        }
+        const currentIds = displayedRows.map(r => r.id);
+        const newOrder = [...currentIds];
         const [draggedId] = newOrder.splice(dragIndex, 1);
         newOrder.splice(hoverIndex, 0, draggedId);
         setRowOrder(newOrder);
@@ -2157,6 +2187,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                                         onToggleExpand={toggleExpandRow}
                                         onSubItemUpdate={handleUpdateSubItem}
                                         onSubItemBlur={handleBlurSubItem}
+                                        onReorderSubItems={handleReorderSubItems}
                                         onAddSubItem={handleAddSubItem}
                                         onDeleteSubItem={handleDeleteSubItem}
                                         onDuplicateSubItem={handleDuplicateSubItem}
