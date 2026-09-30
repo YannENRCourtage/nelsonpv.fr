@@ -301,6 +301,7 @@ export default function DossiersListView({
             const lastUpdated = formatUpdatedDate(p.updatedAt);
             const isSelected = activeProjectId === p.id;
             const devProgress = getProjectDevProgress(p);
+            const registeredNum = p.dp_registration_number || p.devWorkflow?.dp?.registrationNumber || p.pc_registration_number || p.devWorkflow?.pc?.registrationNumber || p.cu_registration_number || p.devWorkflow?.cu?.registrationNumber;
 
             return (
               <motion.div
@@ -327,6 +328,11 @@ export default function DossiersListView({
                         <span className="text-[11px] font-black px-2 py-0.5 bg-slate-100 text-blue-900 border border-slate-200 rounded-md tracking-wider flex-shrink-0 font-mono shadow-2xs">
                           {dossierNumbersMap[p.id || index] || p.dossier_num || `2632${String(index + 1).padStart(2, '0')}`}
                         </span>
+                        {registeredNum && (
+                          <span className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded flex-shrink-0 truncate max-w-[130px]" title={`N° d'enregistrement : ${registeredNum}`}>
+                            {registeredNum}
+                          </span>
+                        )}
                         <h3 className="text-base font-extrabold text-slate-900 truncate group-hover:text-blue-600 transition-colors" title={projectName}>
                           {projectName}
                         </h3>

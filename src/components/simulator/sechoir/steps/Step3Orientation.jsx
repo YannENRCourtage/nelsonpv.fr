@@ -10,9 +10,21 @@ function MapRecenter({ center }) {
   const map = useMap();
   useEffect(() => {
     if (center && Array.isArray(center) && center.length === 2 && !isNaN(Number(center[0])) && !isNaN(Number(center[1]))) {
-      map.setView(center, map.getZoom() || 19);
+      const current = map.getCenter();
+      const dist = Math.abs(current.lat - center[0]) + Math.abs(current.lng - center[1]);
+      if (dist > 0.0001) {
+        map.setView(center, map.getZoom() || 19, { animate: false });
+      }
     }
-  }, [center, map]);
+  }, [center?.[0], center?.[1], map]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+    return () => clearTimeout(t);
+  }, [map]);
+
   return null;
 }
 
@@ -197,15 +209,25 @@ export default function Step3Orientation() {
     ? [Number(latitude), Number(longitude)]
     : [43.6047, 1.4442];
 
+  // Synchronisation automatique de la carte avec l'adresse courante
+  useEffect(() => {
+    if (latitude && longitude && !isNaN(Number(latitude)) && !isNaN(Number(longitude))) {
+      const targetCoords = [Number(latitude), Number(longitude)];
+      if (!storeMapCenter) {
+        setMapCenterInStore(targetCoords);
+      } else {
+        // Si l'écart est supérieur à ~500 mètres, l'adresse a été changée à l'étape 1
+        const dist = Math.abs(storeMapCenter[0] - targetCoords[0]) + Math.abs(storeMapCenter[1] - targetCoords[1]);
+        if (dist > 0.005) {
+          setMapCenterInStore(targetCoords);
+        }
+      }
+    }
+  }, [latitude, longitude, storeMapCenter, setMapCenterInStore]);
+
   const mapCenter = storeMapCenter && Array.isArray(storeMapCenter) && storeMapCenter.length === 2
     ? storeMapCenter
     : initialCoords;
-
-  useEffect(() => {
-    if (!storeMapCenter) {
-      setMapCenterInStore(initialCoords);
-    }
-  }, [latitude, longitude]);
 
   useEffect(() => {
     if (storeRotation !== undefined && storeRotation !== rotation) {
@@ -355,6 +377,7 @@ export default function Step3Orientation() {
             </div>
 
             <MapContainer
+              key={`sechoir_map_${Math.round(mapCenter[0] * 500)}_${Math.round(mapCenter[1] * 500)}`}
               center={mapCenter}
               zoom={19}
               maxZoom={23}

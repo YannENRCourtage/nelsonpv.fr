@@ -51,12 +51,33 @@ const useSechoirStore = create(
         const hasCoords = data.latitude && data.longitude && !isNaN(Number(data.latitude)) && !isNaN(Number(data.longitude));
         const newDept = data.departement || state.departement || '';
         const activeModel = BATITECH_MODELS[state.selectedModelId] || BATITECH_MODELS['BT-3.1.15'];
-        const newCoords = data.mapCenter || state.mapCenter || (hasCoords ? [Number(data.latitude), Number(data.longitude)] : null);
+        
+        const newLat = hasCoords ? Number(data.latitude) : null;
+        const newLng = hasCoords ? Number(data.longitude) : null;
+
+        // Détection de changement d'adresse ou de coordonnées
+        const coordsChanged = hasCoords && (
+          state.latitude === null || state.longitude === null ||
+          Number(state.latitude) !== newLat ||
+          Number(state.longitude) !== newLng
+        );
+        const addressChanged = Boolean(
+          (data.address && data.address !== state.address) ||
+          (data.label && data.label !== state.addressLabel)
+        );
+
+        let newCoords = state.mapCenter;
+        if (data.mapCenter) {
+          newCoords = data.mapCenter;
+        } else if (hasCoords && (coordsChanged || addressChanged || !state.mapCenter)) {
+          newCoords = [newLat, newLng];
+        }
+
         return {
           address: data.address || '',
           addressLabel: data.label || data.address || '',
-          latitude: data.latitude || null,
-          longitude: data.longitude || null,
+          latitude: newLat,
+          longitude: newLng,
           departement: newDept,
           commune: data.commune || '',
           codePostal: data.codePostal || '',

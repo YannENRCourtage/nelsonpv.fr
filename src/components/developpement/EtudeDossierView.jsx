@@ -148,6 +148,7 @@ export default function EtudeDossierView({
 
   const { user } = useAuth();
   const saveTimeoutRef = useRef(null);
+  const stepSaveTimeoutRef = useRef(null);
 
   // État local des étapes pour le projet
   const [stepsState, setStepsState] = useState({});
@@ -176,7 +177,25 @@ export default function EtudeDossierView({
     }
 
     if (savedSteps) {
-      setStepsState(savedSteps);
+      const initialized = { ...savedSteps };
+      ['cu', 'dp', 'pc'].forEach(key => {
+        const existingNum = project?.[`${key}_registration_number`] || project?.[`numero_${key}`] || project?.[`num_${key}`] || '';
+        if (!initialized[key]) {
+          initialized[key] = {
+            status: 'pending',
+            lastIntervention: new Date().toLocaleDateString('fr-FR'),
+            deadline: '',
+            notes: '',
+            registrationNumber: existingNum,
+          };
+        } else if (!initialized[key].registrationNumber && existingNum) {
+          initialized[key] = {
+            ...initialized[key],
+            registrationNumber: existingNum,
+          };
+        }
+      });
+      setStepsState(initialized);
     } else {
       // Initialisation par défaut
       const defaultState = {};
@@ -186,6 +205,7 @@ export default function EtudeDossierView({
           lastIntervention: new Date().toLocaleDateString('fr-FR'),
           deadline: '',
           notes: '',
+          registrationNumber: project?.[`${s.id}_registration_number`] || project?.[`numero_${s.id}`] || project?.[`num_${s.id}`] || '',
         };
       });
       setStepsState(defaultState);
@@ -193,7 +213,7 @@ export default function EtudeDossierView({
   }, [project?.id, project?.devWorkflow, project?.devComments]);
 
   // Sauvegarde d'une étape avec synchronisation mutuelle DP / PC et mise à jour Firestore temps réel
-  const updateStep = async (stepId, updates) => {
+  const updateStep = (stepId, updates) => {
     const todayStr = new Date().toLocaleDateString('fr-FR');
     let newStepsState = {
       ...stepsState,
@@ -218,14 +238,32 @@ export default function EtudeDossierView({
     setStepsState(newStepsState);
     if (project?.id) {
       localStorage.setItem(`nelson_workflow_${project.id}`, JSON.stringify(newStepsState));
-      try {
-        await apiService.updateProject(project.id, {
-          devWorkflow: newStepsState,
-          updatedAt: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.error('Erreur mise à jour devWorkflow Firestore:', err);
+
+      if (updates.registrationNumber !== undefined) {
+        project[`${stepId}_registration_number`] = updates.registrationNumber;
+        project[`numero_${stepId}`] = updates.registrationNumber;
       }
+
+      if (stepSaveTimeoutRef.current) {
+        clearTimeout(stepSaveTimeoutRef.current);
+      }
+
+      const delay = updates.registrationNumber !== undefined ? 500 : 0;
+      stepSaveTimeoutRef.current = setTimeout(async () => {
+        try {
+          const payload = {
+            devWorkflow: newStepsState,
+            updatedAt: new Date().toISOString(),
+          };
+          if (newStepsState[stepId]?.registrationNumber !== undefined) {
+            payload[`${stepId}_registration_number`] = newStepsState[stepId].registrationNumber;
+            payload[`numero_${stepId}`] = newStepsState[stepId].registrationNumber;
+          }
+          await apiService.updateProject(project.id, payload);
+        } catch (err) {
+          console.error('Erreur mise à jour devWorkflow Firestore:', err);
+        }
+      }, delay);
     }
   };
 
@@ -564,6 +602,36 @@ export default function EtudeDossierView({
               />
             </div>
           </div>
+
+          {/* Saisie du Numéro d'enregistrement pour CUo, DP et PC */}
+          {['cu', 'dp', 'pc'].includes(step.id) && (
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-bold text-[10.5px] flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-slate-400" />
+                  N° d’enregistrement {step.id.toUpperCase()} :
+                </span>
+                {s.registrationNumber && (
+                  <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                    Enregistré
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                value={s.registrationNumber || ''}
+                onChange={(e) => updateStep(step.id, { registrationNumber: e.target.value })}
+                placeholder={
+                  step.id === 'dp'
+                    ? 'ex : DP 024 410 26 A0001'
+                    : step.id === 'pc'
+                      ? 'ex : PC 024 410 26 A0001'
+                      : 'ex : CU 024 410 26 A0001'
+                }
+                className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-sans outline-none transition-colors"
+              />
+            </div>
+          )}
         </div>
 
         {/* Bouton d'action de l'étape */}

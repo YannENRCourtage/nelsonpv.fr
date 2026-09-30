@@ -146,6 +146,7 @@ export default function Step1Location() {
       label: label,
       latitude: coords[1],
       longitude: coords[0],
+      mapCenter: [coords[1], coords[0]],
       departement: dept,
       commune: city,
       codePostal: postcode,
@@ -157,6 +158,15 @@ export default function Step1Location() {
     setResults([]);
     setShowDropdown(false);
   };
+
+  // Si l'utilisateur change d'étape ou valide avec Enter alors qu'un résultat BAN est disponible
+  useEffect(() => {
+    return () => {
+      if (isUserTypingRef.current && results.length > 0) {
+        handleSelectAddress(results[0]);
+      }
+    };
+  }, [results]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -197,6 +207,14 @@ export default function Step1Location() {
                   type="text"
                   value={query}
                   onChange={handleInputChange}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (results.length > 0) {
+                        handleSelectAddress(results[0]);
+                      }
+                    }
+                  }}
                   onFocus={() => { if (isUserTypingRef.current && results.length > 0) setShowDropdown(true); }}
                   placeholder="Saisissez une adresse ou commune..."
                   className="w-full bg-slate-900/90 border border-slate-700 rounded-2xl py-3.5 pl-12 pr-11 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 text-base font-medium shadow-inner"
