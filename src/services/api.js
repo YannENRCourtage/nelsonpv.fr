@@ -810,8 +810,18 @@ class ApiService {
 
     async updateMondayTable(id, data) {
         const tableRef = doc(db, 'monday_tables', id);
+        const cleanData = { ...data };
+        if (cleanData.columnWidths && typeof cleanData.columnWidths === 'object') {
+            const sanitized = {};
+            Object.entries(cleanData.columnWidths).forEach(([k, v]) => {
+                if (!k.startsWith('__') || !k.endsWith('__')) {
+                    sanitized[k] = v;
+                }
+            });
+            cleanData.columnWidths = sanitized;
+        }
         await updateDoc(tableRef, {
-            ...data,
+            ...cleanData,
             updatedAt: serverTimestamp()
         });
     }

@@ -13,6 +13,8 @@ export default function SubItemButton({ count = 0, isExpanded = false, onClick, 
         e.stopPropagation();
         if (hasItems) {
           if (handleToggle) handleToggle();
+        } else if (isExpanded) {
+          if (handleToggle) handleToggle();
         } else {
           if (onAddSubItem) onAddSubItem();
           else if (handleToggle) handleToggle();

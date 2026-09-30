@@ -428,6 +428,7 @@ const DraggableRow = ({
     isExpanded = false,
     onToggleExpand,
     onSubItemUpdate,
+    onSubItemBlur,
     onAddSubItem,
     onDeleteSubItem,
     onDuplicateSubItem,
@@ -737,6 +738,7 @@ const DraggableRow = ({
                             columnWidths={columnWidths}
                             subItems={subItems}
                             onUpdateSubItem={(subId, col, val) => onSubItemUpdate && onSubItemUpdate(row.id, subId, col, val)}
+                            onBlurSubItem={(subId) => onSubItemBlur && onSubItemBlur(row.id, subId)}
                             onAddSubItem={(initialData) => onAddSubItem && onAddSubItem(row.id, initialData)}
                             onDeleteSubItem={(subId) => onDeleteSubItem && onDeleteSubItem(row.id, subId)}
                             onDuplicateSubItem={(subId) => onDuplicateSubItem && onDuplicateSubItem(row.id, subId)}
@@ -789,11 +791,13 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
 
     const toggleExpandRow = (rowId) => {
         setExpandedRowIds(prev => {
-            if (prev.has(rowId)) {
-                return new Set();
+            const next = new Set(prev);
+            if (next.has(rowId)) {
+                next.delete(rowId);
             } else {
-                return new Set([rowId]);
+                next.add(rowId);
             }
+            return next;
         });
     };
 
@@ -977,11 +981,17 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
     }, [data.columns, data.rowOrder, data.columnWidths]);
 
     const saveMetadata = (newCols, newOrder, newWidths) => {
+        const widthsToSave = { ...(newWidths || columnWidths) };
+        Object.keys(widthsToSave).forEach(key => {
+            if (key.startsWith('__') && key.endsWith('__')) {
+                delete widthsToSave[key];
+            }
+        });
         onUpdate({
             ...data,
             columns: newCols,
             rowOrder: newOrder,
-            columnWidths: newWidths || columnWidths,
+            columnWidths: widthsToSave,
             rows: []
         });
     };
@@ -1358,56 +1368,105 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
         }
     };
 
-    // Auto-expand rows when search matches one of their sub-items
+    // Auto-expand rows only when user searches and term matches one of their sub-items
     useEffect(() => {
-        if (!searchTerm) {
-            setExpandedRowIds(new Set());
-            return;
-        }
+        if (!searchTerm || !searchTerm.trim()) return;
         const lowerTerm = searchTerm.toLowerCase();
-        const idsToExpand = new Set();
-        rows.forEach(r => {
-            const subs = Array.isArray(r.subItems) ? r.subItems : (Array.isArray(r.data?.__subItems) ? r.data.__subItems : []);
-            const matchesSub = subs.some(sub =>
-                Object.values(sub.data || {}).some(val => String(val).toLowerCase().includes(lowerTerm))
-            );
-            if (matchesSub) {
-                idsToExpand.add(r.id);
-            }
+        setExpandedRowIds(prev => {
+            const next = new Set(prev);
+            rows.forEach(r => {
+                const subs = Array.isArray(r.subItems) ? r.subItems : (Array.isArray(r.data?.__subItems) ? r.data.__subItems : []);
+                const matchesSub = subs.some(sub =>
+                    Object.values(sub.data || {}).some(val => String(val).toLowerCase().includes(lowerTerm))
+                );
+                if (matchesSub) {
+                    next.add(r.id);
+                }
+            });
+            return next;
         });
-        setExpandedRowIds(idsToExpand);
-    }, [searchTerm, rows]);
+    }, [searchTerm]);
+
+    // Debounce timer for saving sub-item changes
+    const subItemDebounceTimers = useRef({});
+
+    // Cleanup all pending timers on unmount
+    useEffect(() => {
+        return () => {
+            Object.values(subItemDebounceTimers.current).forEach(t => clearTimeout(t));
+        };
+    }, []);
 
     // --- Sub-Items Handlers ---
-    const handleUpdateSubItem = async (parentRowId, subItemId, colName, newValue) => {
-        const targetRow = rows.find(r => r.id === parentRowId);
-        if (!targetRow) return;
-        const currentSubs = Array.isArray(targetRow.subItems)
-            ? targetRow.subItems
-            : (Array.isArray(targetRow.data?.__subItems) ? targetRow.data.__subItems : []);
-        const nextSubs = currentSubs.map(s => {
-            if (s.id === subItemId) {
-                return { ...s, data: { ...(s.data || {}), [colName]: newValue } };
+    const handleUpdateSubItem = (parentRowId, subItemId, colName, newValue) => {
+        setRows(prev => prev.map(r => {
+            if (r.id === parentRowId) {
+                const currentSubs = Array.isArray(r.subItems)
+                    ? r.subItems
+                    : (Array.isArray(r.data?.__subItems) ? r.data.__subItems : []);
+                const nextSubs = currentSubs.map((s, idx) => {
+                    const sId = s.id || `sub_${idx}`;
+                    if (sId === subItemId) {
+                        return { ...s, id: sId, data: { ...(s.data || {}), [colName]: newValue } };
+                    }
+                    return s;
+                });
+                return {
+                    ...r,
+                    subItems: nextSubs,
+                    data: { ...r.data, __subItems: nextSubs }
+                };
             }
-            return s;
-        });
-        const updatedRow = {
-            ...targetRow,
-            subItems: nextSubs,
-            data: { ...targetRow.data, __subItems: nextSubs }
-        };
-        setRows(prev => prev.map(r => r.id === parentRowId ? updatedRow : r));
-        try {
-            await apiService.updateMondayRow(data.id, parentRowId, {
-                subItems: nextSubs,
-                data: updatedRow.data
+            return r;
+        }));
+
+        // Debounce database write to prevent input stutter and snapshot loops
+        if (subItemDebounceTimers.current[parentRowId]) {
+            clearTimeout(subItemDebounceTimers.current[parentRowId]);
+        }
+        subItemDebounceTimers.current[parentRowId] = setTimeout(async () => {
+            delete subItemDebounceTimers.current[parentRowId];
+            setRows(currentRows => {
+                const targetRow = currentRows.find(r => r.id === parentRowId);
+                if (targetRow) {
+                    const subsToSave = Array.isArray(targetRow.subItems)
+                        ? targetRow.subItems
+                        : (targetRow.data?.__subItems || []);
+                    apiService.updateMondayRow(data.id, parentRowId, {
+                        subItems: subsToSave,
+                        data: { ...targetRow.data, __subItems: subsToSave }
+                    }).catch(err => console.error("Erreur debounce mise à jour sous-élément :", err));
+                }
+                return currentRows;
             });
-        } catch (err) {
-            console.error("Erreur mise à jour sous-élément :", err);
+        }, 500);
+    };
+
+    const handleBlurSubItem = (parentRowId) => {
+        if (subItemDebounceTimers.current[parentRowId]) {
+            clearTimeout(subItemDebounceTimers.current[parentRowId]);
+            delete subItemDebounceTimers.current[parentRowId];
+            setRows(currentRows => {
+                const targetRow = currentRows.find(r => r.id === parentRowId);
+                if (targetRow) {
+                    const subsToSave = Array.isArray(targetRow.subItems)
+                        ? targetRow.subItems
+                        : (targetRow.data?.__subItems || []);
+                    apiService.updateMondayRow(data.id, parentRowId, {
+                        subItems: subsToSave,
+                        data: { ...targetRow.data, __subItems: subsToSave }
+                    }).catch(err => console.error("Erreur blur mise à jour sous-élément :", err));
+                }
+                return currentRows;
+            });
         }
     };
 
     const handleAddSubItem = async (parentRowId, initialData = {}) => {
+        if (subItemDebounceTimers.current[parentRowId]) {
+            clearTimeout(subItemDebounceTimers.current[parentRowId]);
+            delete subItemDebounceTimers.current[parentRowId];
+        }
         const targetRow = rows.find(r => r.id === parentRowId);
         if (!targetRow) return;
         const currentSubs = Array.isArray(targetRow.subItems)
@@ -1425,7 +1484,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
             data: { ...targetRow.data, __subItems: nextSubs }
         };
         setRows(prev => prev.map(r => r.id === parentRowId ? updatedRow : r));
-        setExpandedRowIds(new Set([parentRowId]));
+        setExpandedRowIds(prev => new Set(prev).add(parentRowId));
         try {
             await apiService.updateMondayRow(data.id, parentRowId, {
                 subItems: nextSubs,
@@ -1437,12 +1496,16 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
     };
 
     const handleDeleteSubItem = async (parentRowId, subItemId) => {
+        if (subItemDebounceTimers.current[parentRowId]) {
+            clearTimeout(subItemDebounceTimers.current[parentRowId]);
+            delete subItemDebounceTimers.current[parentRowId];
+        }
         const targetRow = rows.find(r => r.id === parentRowId);
         if (!targetRow) return;
         const currentSubs = Array.isArray(targetRow.subItems)
             ? targetRow.subItems
             : (Array.isArray(targetRow.data?.__subItems) ? targetRow.data.__subItems : []);
-        const nextSubs = currentSubs.filter(s => s.id !== subItemId);
+        const nextSubs = currentSubs.filter((s, idx) => (s.id || `sub_${idx}`) !== subItemId);
         const updatedRow = {
             ...targetRow,
             subItems: nextSubs,
@@ -1460,12 +1523,16 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
     };
 
     const handleDuplicateSubItem = async (parentRowId, subItemId) => {
+        if (subItemDebounceTimers.current[parentRowId]) {
+            clearTimeout(subItemDebounceTimers.current[parentRowId]);
+            delete subItemDebounceTimers.current[parentRowId];
+        }
         const targetRow = rows.find(r => r.id === parentRowId);
         if (!targetRow) return;
         const currentSubs = Array.isArray(targetRow.subItems)
             ? targetRow.subItems
             : (Array.isArray(targetRow.data?.__subItems) ? targetRow.data.__subItems : []);
-        const targetSub = currentSubs.find(s => s.id === subItemId);
+        const targetSub = currentSubs.find((s, idx) => (s.id || `sub_${idx}`) === subItemId);
         if (!targetSub) return;
         const newSub = {
             id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
@@ -1490,14 +1557,18 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
     };
 
     const handlePromoteSubItem = async (parentRowId, subItemId) => {
+        if (subItemDebounceTimers.current[parentRowId]) {
+            clearTimeout(subItemDebounceTimers.current[parentRowId]);
+            delete subItemDebounceTimers.current[parentRowId];
+        }
         const targetRow = rows.find(r => r.id === parentRowId);
         if (!targetRow) return;
         const currentSubs = Array.isArray(targetRow.subItems)
             ? targetRow.subItems
             : (Array.isArray(targetRow.data?.__subItems) ? targetRow.data.__subItems : []);
-        const targetSub = currentSubs.find(s => s.id === subItemId);
+        const targetSub = currentSubs.find((s, idx) => (s.id || `sub_${idx}`) === subItemId);
         if (!targetSub) return;
-        const nextSubs = currentSubs.filter(s => s.id !== subItemId);
+        const nextSubs = currentSubs.filter((s, idx) => (s.id || `sub_${idx}`) !== subItemId);
         const updatedParent = {
             ...targetRow,
             subItems: nextSubs,
@@ -2085,6 +2156,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                                         isExpanded={expandedRowIds.has(row.id)}
                                         onToggleExpand={toggleExpandRow}
                                         onSubItemUpdate={handleUpdateSubItem}
+                                        onSubItemBlur={handleBlurSubItem}
                                         onAddSubItem={handleAddSubItem}
                                         onDeleteSubItem={handleDeleteSubItem}
                                         onDuplicateSubItem={handleDuplicateSubItem}

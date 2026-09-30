@@ -25,6 +25,7 @@ export default function SubItemsTable({
   columns = [],
   subItems = [],
   onUpdateSubItem,
+  onBlurSubItem,
   onAddSubItem,
   onDeleteSubItem,
   onDuplicateSubItem,
@@ -103,15 +104,16 @@ export default function SubItemsTable({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {subItems.map((sub, sIdx) => {
+                const subId = sub.id || `sub_${sIdx}`;
                 return (
-                  <tr key={sub.id || sIdx} className="hover:bg-blue-50/40 group transition-colors">
+                  <tr key={subId} className="hover:bg-blue-50/40 group transition-colors">
                     <td className="w-8 px-2 py-1.5 text-center text-slate-400 font-mono text-[10px] border-r border-slate-200 bg-slate-50/50">
                       {sIdx + 1}
                     </td>
 
                     {columns.map((col) => {
                       const val = sub.data?.[col] || '';
-                      const cellKey = `${sub.id}-${col}`;
+                      const cellKey = `${subId}-${col}`;
                       const isCopied = copiedCellKey === cellKey;
                       const isPassword = col.toLowerCase().includes('pass') || col.toLowerCase().includes('mdp');
                       const isUrl = String(val).startsWith('http://') || String(val).startsWith('https://');
@@ -129,7 +131,8 @@ export default function SubItemsTable({
                                 isPassword ? "font-mono font-medium text-slate-800" : "text-slate-700"
                               )}
                               value={val}
-                              onChange={(e) => onUpdateSubItem(sub.id, col, e.target.value)}
+                              onChange={(e) => onUpdateSubItem && onUpdateSubItem(subId, col, e.target.value)}
+                              onBlur={() => onBlurSubItem && onBlurSubItem(subId)}
                               placeholder={`—`}
                               title={val}
                             />
@@ -184,16 +187,16 @@ export default function SubItemsTable({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="text-xs">
                             {onDuplicateSubItem && (
-                              <DropdownMenuItem onClick={() => onDuplicateSubItem(sub.id)}>
+                              <DropdownMenuItem onClick={() => onDuplicateSubItem(subId)}>
                                 <Copy className="w-3.5 h-3.5 mr-2 text-blue-600" /> Dupliquer ce sous-élément
                               </DropdownMenuItem>
                             )}
                             {onPromoteSubItem && (
-                              <DropdownMenuItem onClick={() => onPromoteSubItem(sub.id)}>
+                              <DropdownMenuItem onClick={() => onPromoteSubItem(subId)}>
                                 <ArrowUpRight className="w-3.5 h-3.5 mr-2 text-amber-600" /> Extraire en ligne principale
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => onDeleteSubItem(sub.id)} className="text-red-600">
+                            <DropdownMenuItem onClick={() => onDeleteSubItem && onDeleteSubItem(subId)} className="text-red-600">
                               <Trash2 className="w-3.5 h-3.5 mr-2" /> Supprimer ce sous-élément
                             </DropdownMenuItem>
                           </DropdownMenuContent>
