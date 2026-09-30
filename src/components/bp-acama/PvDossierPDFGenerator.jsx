@@ -390,7 +390,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
   const mapBounds = validMapSites.map(s => [s.lat, s.lng]);
 
   // Chronique 20 ans pour le Compte de Résultat Consolidé affiché en bas de Planche 1
-  const p1Chronique = useMemo(() => {
+  const p1Chronique = (() => {
     if (isPort && portfolioData?.consolidatedChronique && portfolioData.consolidatedChronique.length >= 20 && portfolioSites.length === allAvailableSites.length) {
       return portfolioData.consolidatedChronique;
     }
@@ -445,7 +445,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
       });
     }
     return res;
-  }, [isPort, portfolioData?.consolidatedChronique, portfolioSites, allAvailableSites.length, portfolioTotals.totalCapex, singleCapex, kpi.debtDuration, kpi.debtRate, detailedChronoRows]);
+  })();
 
   // Capture directe du rendu Leaflet en haute définition (fidélité 100% visionneuse sans décalage de coordonnées)
   const captureMapSnapshot = (mapElement, mapInstance, sites) => {
