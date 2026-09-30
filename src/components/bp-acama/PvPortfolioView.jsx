@@ -606,7 +606,6 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
                 <th className="p-2.5">N°</th>
                 <th className="p-2.5">Site / Bailleur</th>
                 <th className="p-2.5">Localisation</th>
-                <th className="p-2.5">Bâtiment / Modèle</th>
                 <th className="p-2.5 text-right">kWc</th>
                 <th className="p-2.5">Poste Source ODRE</th>
                 <th className="p-2.5 text-center">Distance</th>
@@ -622,7 +621,7 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
             <tbody className="divide-y divide-slate-100">
               {filteredSites.length === 0 && (
                 <tr>
-                  <td colSpan={14} className="p-8 text-center text-slate-500 bg-slate-50/50">
+                  <td colSpan={13} className="p-8 text-center text-slate-500 bg-slate-50/50">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Sun className="w-8 h-8 text-amber-400 opacity-60" />
                       <p className="font-bold text-sm text-slate-700">Aucun projet affecté au portefeuille HÉLIOS</p>
@@ -643,11 +642,6 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
                   <td className="p-2.5">
                     <div className="font-bold text-slate-800">{s.city}</div>
                     <div className="text-[10px] text-slate-400">{s.postcode}</div>
-                  </td>
-                  <td className="p-2.5">
-                    <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-[10.5px]">
-                      {s.typeBat || 'Bâtiment BAC'}
-                    </span>
                   </td>
                   <td className="p-2.5 text-right font-black text-amber-700">
                     {s.powerKwc} kWc

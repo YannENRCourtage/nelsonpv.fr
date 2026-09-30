@@ -24,7 +24,8 @@ import {
   CheckSquare,
   Square,
   SlidersHorizontal,
-  AlertCircle
+  AlertCircle,
+  Table as TableIcon
 } from 'lucide-react';
 import { PV_PORTFOLIO_SITES, computePvFinancials, getPvPortfolioSites } from '../../data/pvPortfolioData.js';
 import PvProjectSingleSheet from './PvProjectSingleSheet.jsx';
@@ -53,6 +54,17 @@ const fmtPct = (val) => {
   return (val || 0).toFixed(1) + ' %';
 };
 
+// Composant interne pour enregistrer la référence de l'instance Leaflet
+function LeafletMapRegistrar({ onRegister }) {
+  const map = useMap();
+  useEffect(() => {
+    if (map && onRegister) {
+      onRegister(map);
+    }
+  }, [map, onRegister]);
+  return null;
+}
+
 // Composant interne Leaflet pour recentrer automatiquement la carte sur les projets sélectionnés
 function MapBoundsUpdater({ bounds }) {
   const map = useMap();
@@ -77,6 +89,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
   const [modalSearchTerm, setModalSearchTerm] = useState('');
   const scrollContainerRef = useRef(null);
+  const leafletMapRef = useRef(null);
 
   // Nom du portefeuille cible (e.g. HELIOS, CASSIOPEE, ou tout portefeuille créé par l'admin)
   const portName = (portfolioData?.portfolioName || 'HELIOS').toUpperCase();
@@ -107,6 +120,8 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
         caAnnuel: fin.caAnnuel || s.caAnnuel || 25000,
         distanceKm: s.distanceKm || s.substation?.distanceKm || 5.0,
         typeBat: s.typeBat || 'Bâtiment BAC',
+        tri: fin.triProjet || s.triProjet || fin.tri || s.tri || 9.5,
+        payback: fin.payback || s.payback || 10.0,
         lat: s.lat || fin.lat,
         lng: s.lng || fin.lng
       };
@@ -363,6 +378,185 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
     </tr>
   );
 
+  // Numéro dynamique de la planche cartographie
+  const cartoPlancheNum = isPort ? (2 + repertoirePageCount + 1) : 4;
+
+  const mapSites = isPort
+    ? portfolioSites.filter(s => s.lat || s.commune)
+    : [{ lat: currentProject?.lat || 45.0, lng: currentProject?.lng || 1.0, siteName: currentProject?.name, kwc: singleKwc, commune: currentProject?.city }];
+  const validMapSites = mapSites.filter(s => s.lat && s.lng);
+  const centerLat = validMapSites.length > 0 ? validMapSites.reduce((s, p) => s + (p.lat || 45), 0) / validMapSites.length : 45.5;
+  const centerLng = validMapSites.length > 0 ? validMapSites.reduce((s, p) => s + (p.lng || 1), 0) / validMapSites.length : 1.5;
+  const mapBounds = validMapSites.map(s => [s.lat, s.lng]);
+
+  // Chronique 20 ans pour le Compte de Résultat Consolidé affiché en bas de Planche 1
+  const p1Chronique = useMemo(() => {
+    if (isPort && portfolioData?.consolidatedChronique && portfolioData.consolidatedChronique.length >= 20 && portfolioSites.length === allAvailableSites.length) {
+      return portfolioData.consolidatedChronique;
+    }
+    const studyYears = 20;
+    const durationYears = kpi.debtDuration || 20;
+    const rateDecimal = (kpi.debtRate || 4.3) / 100;
+    const capex = isPort ? portfolioTotals.totalCapex : singleCapex;
+    const emprunt = capex * 0.90;
+    const totalAnnuite = emprunt > 0 && durationYears > 0
+      ? Math.round(emprunt * (rateDecimal / (1 - Math.pow(1 + rateDecimal, -durationYears))))
+      : 0;
+
+    const res = [];
+    let runningCumul = 0;
+    for (let y = 1; y <= studyYears; y++) {
+      let caY = 0, opexY = 0, ebitdaY = 0;
+      if (isPort) {
+        caY = portfolioSites.reduce((sum, s) => sum + (s.rows?.[y - 1]?.ca || 0), 0);
+        opexY = portfolioSites.reduce((sum, s) => sum + (s.rows?.[y - 1]?.opex || 0), 0);
+        ebitdaY = caY - opexY;
+      } else {
+        const r = detailedChronoRows[y - 1];
+        caY = r?.ca || 0;
+        opexY = r?.opex || 0;
+        ebitdaY = r?.ebitda || 0;
+      }
+      const servDetteY = y <= durationYears ? totalAnnuite : 0;
+      let isY = 0;
+      if (isPort) {
+        isY = portfolioSites.reduce((sum, s) => {
+          const amort = (s.capexTotal || 0) / studyYears;
+          const interest = y <= durationYears ? ((s.capexTotal || 0) * 0.90 * (1 - (y - 1) / durationYears) * rateDecimal) : 0;
+          const resFisc = Math.max(0, (s.rows?.[y - 1]?.ebitda || 0) - amort - interest);
+          return sum + (resFisc * 0.25);
+        }, 0);
+      } else {
+        const amort = capex / studyYears;
+        const interest = y <= durationYears ? (emprunt * (1 - (y - 1) / durationYears) * rateDecimal) : 0;
+        const resFisc = Math.max(0, ebitdaY - amort - interest);
+        isY = resFisc * 0.25;
+      }
+      const cfNetY = Math.round(ebitdaY - servDetteY - isY);
+      runningCumul += cfNetY;
+      res.push({
+        year: y,
+        ca: caY,
+        opex: opexY,
+        ebitda: ebitdaY,
+        serviceDette: servDetteY,
+        cfNet: cfNetY,
+        cumulCf: runningCumul
+      });
+    }
+    return res;
+  }, [isPort, portfolioData?.consolidatedChronique, portfolioSites, allAvailableSites.length, portfolioTotals.totalCapex, singleCapex, kpi.debtDuration, kpi.debtRate, detailedChronoRows]);
+
+  // Capture directe du rendu Leaflet en haute définition (fidélité 100% visionneuse sans décalage de coordonnées)
+  const captureMapSnapshot = (mapElement, mapInstance, sites) => {
+    try {
+      if (!mapElement) return null;
+      const mapRect = mapElement.getBoundingClientRect();
+      const width = Math.round(mapRect.width);
+      const height = Math.round(mapRect.height);
+      if (width <= 0 || height <= 0) return null;
+
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+
+      ctx.fillStyle = '#f1f5f9';
+      ctx.fillRect(0, 0, width, height);
+
+      // 1. Dessiner les tuiles Leaflet depuis le DOM actif
+      const tiles = mapElement.querySelectorAll('.leaflet-tile-pane img.leaflet-tile');
+      tiles.forEach((tile) => {
+        if (!tile.complete || tile.naturalWidth === 0) return;
+        const rect = tile.getBoundingClientRect();
+        const dx = rect.left - mapRect.left;
+        const dy = rect.top - mapRect.top;
+        const dw = rect.width;
+        const dh = rect.height;
+        if (dx + dw > 0 && dx < width && dy + dh > 0 && dy < height) {
+          try {
+            ctx.drawImage(tile, dx, dy, dw, dh);
+          } catch (e) {
+            // Ignorer si tuile protégée
+          }
+        }
+      });
+
+      // 2. Dessiner les points jaunes du portefeuille avec les coordonnées exactes du moteur Leaflet
+      sites.forEach((site) => {
+        if (!site.lat || !site.lng) return;
+        let pt = null;
+        if (mapInstance && typeof mapInstance.latLngToContainerPoint === 'function') {
+          pt = mapInstance.latLngToContainerPoint([site.lat, site.lng]);
+        }
+        if (!pt || isNaN(pt.x) || isNaN(pt.y)) return;
+
+        const radius = isPort ? Math.max(6, Math.min(14, (site.kwc || 250) / 50)) : 12;
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 1.5;
+
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.85)';
+        ctx.fill();
+        ctx.restore();
+
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, radius, 0, 2 * Math.PI);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#0b192c';
+        ctx.stroke();
+      });
+
+      // 3. Attribution Leaflet OSM en bas à droite
+      const attrText = 'Leaflet | © OpenStreetMap contributors';
+      ctx.font = '9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      const textMetrics = ctx.measureText(attrText);
+      const textW = textMetrics.width;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fillRect(width - textW - 14, height - 17, textW + 14, 17);
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(attrText, width - 7, height - 9);
+
+      // 4. Contrôles zoom (+/-) en haut à gauche
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(10, 10, 28, 28, [4, 4, 0, 0]);
+      else ctx.rect(10, 10, 28, 28);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(10, 38, 28, 28, [0, 0, 4, 4]);
+      else ctx.rect(10, 38, 28, 28);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(24, 19); ctx.lineTo(24, 29);
+      ctx.moveTo(19, 24); ctx.lineTo(29, 24);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(19, 52); ctx.lineTo(29, 52);
+      ctx.stroke();
+
+      return canvas;
+    } catch (err) {
+      console.warn('Erreur capture snapshot Leaflet:', err);
+      return null;
+    }
+  };
+
   // Helpers pour la modale de sélection multi-projets
   const filteredModalSites = allAvailableSites.filter(s => {
     if (!modalSearchTerm) return true;
@@ -446,7 +640,20 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
         const prevDisplay = container.style.display;
         container.style.display = 'flex';
         page.scrollIntoView({ block: 'start', inline: 'nearest' });
-        await new Promise(r => setTimeout(r, 60));
+
+        let mapSnapshotCanvas = null;
+        if (target.containerId === `pv-planche-container-${cartoPlancheNum}`) {
+          if (leafletMapRef.current) {
+            try {
+              leafletMapRef.current.invalidateSize(false);
+            } catch (e) {}
+          }
+          await new Promise(r => setTimeout(r, 150));
+          const mapEl = container.querySelector('.leaflet-container');
+          mapSnapshotCanvas = captureMapSnapshot(mapEl, leafletMapRef.current, validMapSites);
+        } else {
+          await new Promise(r => setTimeout(r, 60));
+        }
 
         const canvas = await html2canvas(page, {
           scale: 2,
@@ -477,42 +684,25 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
               scrollBox.scrollTop = 0;
             }
 
-            // Correction Leaflet : convertir translate3d en top/left pour html2canvas
-            // html2canvas ne gère pas correctement les transforms CSS translate3d de Leaflet,
-            // ce qui cause un décalage des tuiles et marqueurs vers la gauche et le haut.
-            const leafletPanes = clonedDoc.querySelectorAll('.leaflet-map-pane, .leaflet-tile-pane, .leaflet-overlay-pane, .leaflet-marker-pane, .leaflet-tooltip-pane, .leaflet-popup-pane, .leaflet-shadow-pane');
-            leafletPanes.forEach(pane => {
-              const transform = pane.style.transform || '';
-              const match = transform.match(/translate3d\(\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/);
-              if (match) {
-                pane.style.transform = 'none';
-                pane.style.left = match[1] + 'px';
-                pane.style.top = match[2] + 'px';
+            // Si c'est la planche cartographie, remplacer le conteneur Leaflet par le snapshot exact haute définition
+            if (target.containerId === `pv-planche-container-${cartoPlancheNum}` && mapSnapshotCanvas) {
+              const clonedMap = clonedDoc.querySelector(`#${target.containerId} .leaflet-container`);
+              if (clonedMap) {
+                try {
+                  const dataUrl = mapSnapshotCanvas.toDataURL('image/png');
+                  const img = clonedDoc.createElement('img');
+                  img.src = dataUrl;
+                  img.style.width = '100%';
+                  img.style.height = '100%';
+                  img.style.objectFit = 'cover';
+                  img.style.display = 'block';
+                  img.style.borderRadius = '0.75rem';
+                  clonedMap.parentNode.replaceChild(img, clonedMap);
+                } catch (e) {
+                  clonedMap.parentNode.replaceChild(mapSnapshotCanvas, clonedMap);
+                }
               }
-            });
-            // Fixer aussi les tuiles individuelles qui utilisent translate3d
-            const leafletTiles = clonedDoc.querySelectorAll('.leaflet-tile');
-            leafletTiles.forEach(tile => {
-              const transform = tile.style.transform || '';
-              const match = transform.match(/translate3d\(\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/);
-              if (match) {
-                tile.style.transform = 'none';
-                tile.style.left = match[1] + 'px';
-                tile.style.top = match[2] + 'px';
-                tile.style.position = 'absolute';
-              }
-            });
-            // Fixer les conteneurs de marqueurs SVG
-            const svgPanes = clonedDoc.querySelectorAll('.leaflet-overlay-pane svg');
-            svgPanes.forEach(svg => {
-              const transform = svg.style.transform || '';
-              const match = transform.match(/translate3d\(\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/);
-              if (match) {
-                svg.style.transform = 'none';
-                svg.style.left = match[1] + 'px';
-                svg.style.top = match[2] + 'px';
-              }
-            });
+            }
 
             // Ignorer les éléments annotés
             clonedDoc.querySelectorAll('[data-html2canvas-ignore="true"]').forEach(el => el.remove());
@@ -846,6 +1036,60 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                     </div>
                   </div>
                 </div>
+
+                {/* ── Compte de Résultat Consolidé 20 Ans (Page 1 en bas) ─────── */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden mt-1">
+                  <div className="px-4 py-1.5 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TableIcon className="w-3.5 h-3.5 text-amber-700" />
+                      <span className="text-[10.5px] font-black uppercase text-slate-800 tracking-wider">
+                        Compte de Résultat Consolidé 20 Ans — {isPort ? `Portefeuille Photovoltaïque ${portName}` : `Centrale Photovoltaïque — ${currentProject?.name || 'Projet'}`}
+                      </span>
+                    </div>
+                    <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">
+                      Flux Prévisionnels Consolidés • {kpi.debtDuration} ans @ {kpi.debtRate}%
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto p-1.5">
+                    <table className="w-full text-right border-collapse text-[7.5px]">
+                      <thead>
+                        <tr className="bg-slate-800 text-white font-bold">
+                          <th className="p-1 text-left w-[175px] min-w-[175px] text-[8px]">Poste Financier (€)</th>
+                          {p1Chronique.map(c => (
+                            <th key={c.year} className="p-1 text-center whitespace-nowrap">A{c.year}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        <tr className="font-bold text-emerald-700 bg-emerald-50/40">
+                          <td className="p-1 text-left font-bold text-slate-800">Chiffre d'Affaires Consolidé</td>
+                          {p1Chronique.map(c => <td key={c.year} className="p-1 whitespace-nowrap">{fmtEur(c.ca)}</td>)}
+                        </tr>
+                        <tr className="text-slate-600">
+                          <td className="p-1 text-left">OPEX (Maintenance, Assurance, MRA)</td>
+                          {p1Chronique.map(c => <td key={c.year} className="p-1 text-rose-600 whitespace-nowrap">-{fmtEur(c.opex)}</td>)}
+                        </tr>
+                        <tr className="font-black bg-amber-50/50 text-amber-900 border-t border-b border-amber-200">
+                          <td className="p-1 text-left font-black text-amber-950">EBITDA Portefeuille</td>
+                          {p1Chronique.map(c => <td key={c.year} className="p-1 whitespace-nowrap">{fmtEur(c.ebitda)}</td>)}
+                        </tr>
+                        <tr className="text-slate-600">
+                          <td className="p-1 text-left">Service de la Dette ({kpi.debtDuration} ans à {kpi.debtRate.toFixed(2)}%)</td>
+                          {p1Chronique.map(c => <td key={c.year} className="p-1 text-slate-500 whitespace-nowrap">{c.serviceDette > 0 ? `-${fmtEur(c.serviceDette)}` : '—'}</td>)}
+                        </tr>
+                        <tr className="font-bold bg-blue-50/50 text-blue-900">
+                          <td className="p-1 text-left font-bold text-blue-950">Cash-Flow Net Annuel</td>
+                          {p1Chronique.map(c => <td key={c.year} className="p-1 whitespace-nowrap">{fmtEur(c.cfNet)}</td>)}
+                        </tr>
+                        <tr className="font-black bg-slate-100 text-slate-900">
+                          <td className="p-1 text-left font-black text-slate-950">Trésorerie Cumulée</td>
+                          {p1Chronique.map(c => <td key={c.year} className="p-1 whitespace-nowrap">{fmtEur(c.cumulCf)}</td>)}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
 
               {/* Pied de page institutionnel ENR COURTAGE SAS */}
@@ -1033,48 +1277,51 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                     <div className="border border-slate-200 rounded-xl">
                       <table className="w-full text-xs text-left border-collapse">
                         <thead>
-                          <tr className="bg-slate-900 text-white font-bold">
-                            <th className="p-2">N°</th>
+                          <tr className="bg-slate-900 text-white font-bold text-[11px]">
+                            <th className="p-2 text-center w-[36px]">N°</th>
                             <th className="p-2">Site / Référence</th>
                             <th className="p-2">Commune (Dép)</th>
-                            <th className="p-2">Modèle / Typologie</th>
                             <th className="p-2 text-right">Puissance</th>
                             <th className="p-2">Poste Source Enedis</th>
                             <th className="p-2 text-center">Distance</th>
                             <th className="p-2 text-right">CAPEX Total</th>
                             <th className="p-2 text-right">CA An 1</th>
                             <th className="p-2 text-right">EBITDA An 1</th>
+                            <th className="p-2 text-right">TRI</th>
+                            <th className="p-2 text-right">Payback</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {isPort ? (
                             pageSites.map((s, idx) => (
-                              <tr key={s.id || idx} className="hover:bg-slate-50 transition-colors">
-                                <td className="p-2 font-bold text-slate-400">{globalOffset + idx + 1}</td>
+                              <tr key={s.id || idx} className="hover:bg-slate-50 transition-colors text-[11.5px]">
+                                <td className="p-2 text-center font-bold text-slate-400">{globalOffset + idx + 1}</td>
                                 <td className="p-2 font-bold text-slate-900">{s.siteName || s.name}</td>
                                 <td className="p-2 text-slate-600">{s.commune || s.city} ({s.codePostal?.slice(0, 2) || '—'})</td>
-                                <td className="p-2 font-medium text-amber-700">{s.typeBat || 'Bâtiment BAC'}</td>
                                 <td className="p-2 text-right font-black text-blue-900">{s.kwc} kWc</td>
                                 <td className="p-2 font-medium text-slate-700">{s.posteSource}</td>
                                 <td className="p-2 text-center font-bold text-slate-600">{s.distanceKm} km</td>
                                 <td className="p-2 text-right font-bold text-slate-900">{fmtEur(s.capexTotal)}</td>
                                 <td className="p-2 text-right font-bold text-emerald-600">{fmtEur(s.caAnnuel)}</td>
                                 <td className="p-2 text-right font-black text-emerald-700">{fmtEur(s.ebitdaAn1)}</td>
+                                <td className="p-2 text-right font-black text-purple-700">{fmtPct(s.triProjet || s.tri)}</td>
+                                <td className="p-2 text-right font-bold text-amber-700">{(s.payback ? Number(s.payback).toFixed(1) : '—')} ans</td>
                               </tr>
                             ))
                           ) : (
                             (currentParams?.buildings || []).map((b, idx) => (
-                              <tr key={b.id || idx} className="hover:bg-slate-50 transition-colors">
-                                <td className="p-2 font-bold text-slate-400">{idx + 1}</td>
+                              <tr key={b.id || idx} className="hover:bg-slate-50 transition-colors text-[11.5px]">
+                                <td className="p-2 text-center font-bold text-slate-400">{idx + 1}</td>
                                 <td className="p-2 font-bold text-slate-900">{currentProject?.name || 'Site'} — Bâtiment {idx + 1}</td>
                                 <td className="p-2 text-slate-600">{currentProject?.city || '—'} ({currentProject?.postcode?.slice(0, 2) || '—'})</td>
-                                <td className="p-2 font-medium text-amber-700">{b.typeBat || b.projectType || 'BAC'}</td>
                                 <td className="p-2 text-right font-black text-blue-900">{b.kwc} kWc</td>
                                 <td className="p-2 font-medium text-slate-700">{currentProject?.substation?.name || 'ODRE'}</td>
                                 <td className="p-2 text-center font-bold text-slate-600">{b.distHta || 100} m</td>
                                 <td className="p-2 text-right font-bold text-slate-900">{fmtEur((b.coutCentrale || 0) + (b.coutCharpente || 0))}</td>
                                 <td className="p-2 text-right font-bold text-emerald-600">{fmtEur((b.kwc || 0) * (b.productible || 1123) * 0.082)}</td>
                                 <td className="p-2 text-right font-black text-emerald-700">{fmtEur((b.kwc || 0) * (b.productible || 1123) * 0.082 * 0.82)}</td>
+                                <td className="p-2 text-right font-black text-purple-700">{fmtPct(singleTri)}</td>
+                                <td className="p-2 text-right font-bold text-amber-700">{singlePayback.toFixed(1)} ans</td>
                               </tr>
                             ))
                           )}
@@ -1082,7 +1329,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                           {isPort && pageIdx === repertoirePages.length - 1 && (
                             <tr className="bg-amber-100/90 font-black border-t-2 border-slate-900 text-slate-950 text-xs">
                               <td className="p-2 text-center text-slate-500 font-bold">∑</td>
-                              <td className="p-2 font-black uppercase text-slate-900" colSpan={3}>
+                              <td className="p-2 font-black uppercase text-slate-900" colSpan={2}>
                                 TOTAL CONSOLIDÉ ({portfolioSites.length} CENTRALES SÉLECTIONNÉES)
                               </td>
                               <td className="p-2 text-right font-black text-blue-900">
@@ -1099,6 +1346,12 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                               </td>
                               <td className="p-2 text-right font-black text-emerald-800">
                                 {fmtEur(portfolioTotals.totalEbitdaAn1)}
+                              </td>
+                              <td className="p-2 text-right font-black text-purple-800">
+                                {fmtPct(portfolioTotals.triConsolide)}
+                              </td>
+                              <td className="p-2 text-right font-black text-amber-800">
+                                {portfolioTotals.paybackConsol.toFixed(1)} ans
                               </td>
                             </tr>
                           )}
@@ -1122,15 +1375,6 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
           {/* PLANCHE CARTOGRAPHIE : LOCALISATION DES PROJETS PV SUR CARTE */}
           {/* ========================================================================= */}
           {(() => {
-            const cartoPlancheNum = 2 + repertoirePageCount + 1;
-            const mapSites = isPort
-              ? portfolioSites.filter(s => s.lat || s.commune)
-              : [{ lat: currentProject?.lat || 45.0, lng: currentProject?.lng || 1.0, siteName: currentProject?.name, kwc: singleKwc, commune: currentProject?.city }];
-            const validMapSites = mapSites.filter(s => s.lat && s.lng);
-            const centerLat = validMapSites.length > 0 ? validMapSites.reduce((s, p) => s + (p.lat || 45), 0) / validMapSites.length : 45.5;
-            const centerLng = validMapSites.length > 0 ? validMapSites.reduce((s, p) => s + (p.lng || 1), 0) / validMapSites.length : 1.5;
-            const mapBounds = validMapSites.map(s => [s.lat, s.lng]);
-
             return (
               <div id={`pv-planche-container-${cartoPlancheNum}`} className="w-full flex flex-col items-center shrink-0 mb-8">
                 <div className="w-[1380px] mb-2 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
@@ -1172,6 +1416,7 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                     {/* Carte Leaflet OpenStreetMap avec sous-imposition et isolation de contexte stricte */}
                     <div className="flex-1 rounded-xl overflow-hidden border border-slate-200 shadow-inner relative" style={{ minHeight: '680px', position: 'relative', isolation: 'isolate', zIndex: 0 }}>
                       <MapContainer
+                        preferCanvas={true}
                         center={[centerLat, centerLng]}
                         zoom={isPort ? 7 : 12}
                         style={{ height: '100%', width: '100%' }}
@@ -1182,7 +1427,9 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                         <TileLayer
                           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          crossOrigin=""
                         />
+                        <LeafletMapRegistrar onRegister={(map) => { leafletMapRef.current = map; }} />
                         {mapBounds.length > 0 && <MapBoundsUpdater bounds={mapBounds} />}
                         {validMapSites.map((site, idx) => (
                           <CircleMarker
