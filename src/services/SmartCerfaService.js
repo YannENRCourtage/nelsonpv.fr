@@ -212,6 +212,23 @@ export function parseFrenchAddress(addressStr, defaultZip = '', defaultCity = ''
   };
 }
 
+/**
+ * Nettoie et formate un numéro de téléphone français pour les formulaires CERFA (10 chiffres consécutifs sans espaces)
+ */
+export function formatFrenchPhoneNumber(phoneStr) {
+  if (!phoneStr) return '';
+  let str = String(phoneStr).trim();
+  // Gestion de l'indicatif international (+33 ou 0033)
+  if (str.startsWith('+33')) {
+    str = '0' + str.slice(3).trim();
+  } else if (str.startsWith('0033')) {
+    str = '0' + str.slice(4).trim();
+  }
+  // Suppression de tous les caractères non numériques (espaces, points, tirets, etc.)
+  const digitsOnly = str.replace(/\D/g, '');
+  return digitsOnly.slice(0, 10);
+}
+
 export function getMissingFields(project, type = 'dp') {
   const required = {
     cu: ['lastName', 'address', 'city', 'zip', 'cadastre_section', 'cadastre_numero', 'email'],
@@ -331,7 +348,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const email     = (cerfaChoice === 'email1')
       ? (project?.email || project?.clientEmail || project?.client_email || 'contact@enr-courtage.fr')
       : (project?.email2 || 'contact@enr-courtage.fr');
-    const tel       = project?.phone || project?.clientPhone || project?.client_phone || '';
+    const rawTel    = project?.phone || project?.clientPhone || project?.client_phone || project?.demandeurPhone || project?.demandeur_telephone || '';
+    const tel       = formatFrenchPhoneNumber(rawTel);
     const now       = new Date();
     const dayStr    = String(now.getDate()).padStart(2, '0');
     const monthStr  = String(now.getMonth() + 1).padStart(2, '0');
