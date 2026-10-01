@@ -849,8 +849,8 @@ export default function Developpement() {
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
               const bRawZoom = Number(b.masse_zoom || activeProj.masse_zoom || 18);
-              const bEffectiveZoom = bRawZoom < 17 ? 18 : bRawZoom;
-              const bEffectiveZoom2 = Number(b.masse_zoom_2 || activeProj.masse_zoom_2 || Math.max(14, bEffectiveZoom - 2));
+              const bEffectiveZoom = bRawZoom;
+              const bEffectiveZoom2 = Number(b.masse_zoom_2 || activeProj.masse_zoom_2 || Math.max(12, bEffectiveZoom - 2));
               const bCaptures = {
                 ...(activeProj.urbanisme_captures || {}),
                 ...(b.captures || {}),
@@ -974,8 +974,8 @@ export default function Developpement() {
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
               const bRawZoom = Number(b.masse_zoom || activeProj.masse_zoom || 18);
-              const bEffectiveZoom = bRawZoom < 17 ? 18 : bRawZoom;
-              const bEffectiveZoom2 = Number(b.masse_zoom_2 || activeProj.masse_zoom_2 || Math.max(14, bEffectiveZoom - 2));
+              const bEffectiveZoom = bRawZoom;
+              const bEffectiveZoom2 = Number(b.masse_zoom_2 || activeProj.masse_zoom_2 || Math.max(12, bEffectiveZoom - 2));
               const bCaptures = {
                 ...(activeProj.urbanisme_captures || {}),
                 ...(b.captures || {}),

@@ -282,7 +282,7 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload, viewNum
                             if (!bDisplayName) bDisplayName = `Bâtiment ${idx + 1}`;
 
                             const bZoomRaw = (viewNumber === 2 ? (b.masse_zoom_2 || project?.masse_zoom_2 || captures?.masse_zoom_2) : null) || b.masse_zoom || project?.masse_zoom || captures?.masse_zoom || (viewNumber === 2 ? 16 : 18);
-                            const bZoom = viewNumber === 2 ? bZoomRaw : (Number(bZoomRaw) < 17 ? 18 : bZoomRaw);
+                            const bZoom = bZoomRaw;
                             const bRidge = Number(b.ridgeHeight || project?.hauteur_faitage || 6.2);
                             const bEave = Number(b.eaveHeight || project?.hauteur_egout || 4.5);
 
@@ -334,7 +334,7 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload, viewNum
                     if (!bDisplayName) bDisplayName = 'Bâtiment 1';
 
                     const bZoomRaw = (viewNumber === 2 ? (b?.masse_zoom_2 || project?.masse_zoom_2 || captures?.masse_zoom_2) : null) || b?.masse_zoom || project?.masse_zoom || captures?.masse_zoom || (viewNumber === 2 ? 16 : 18);
-                    const bZoom = viewNumber === 2 ? bZoomRaw : (Number(bZoomRaw) < 17 ? 18 : bZoomRaw);
+                    const bZoom = bZoomRaw;
                     const bRidge = Number(b?.ridgeHeight || project?.hauteur_faitage || 6.2);
                     const bEave = Number(b?.eaveHeight || project?.hauteur_egout || 4.5);
 

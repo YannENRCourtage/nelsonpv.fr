@@ -115,19 +115,27 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
       const centerX = width / 2;
       const centerY = height / 2;
 
-      // URLs des fournisseurs de tuiles (avec intégration directe IGN Géoplateforme libre)
+      // URLs des fournisseurs de tuiles (OSM pour Plan de Masse DP2 / PC2, IGN pour DP1 / PC1 Situation)
+      const isOsmMasse = mode === 'osm' || mode === 'masse' || hasBuildings || options?.provider === 'osm';
       const getTileUrl = (x, y, z) => {
         if (mode === 'satellite') {
           // IGN Orthophoto haute résolution (fallback Esri si indisponible)
           return `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX=${z}&TILEROW=${y}&TILECOL=${x}`;
         }
-        // "IGN - Plan IGN" vecteur officiel haute lisibilité
+        if (isOsmMasse) {
+          // OpenStreetMap fidèle à la visionneuse Nelson du tunnel de déclaration (Carte DP2)
+          return `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+        }
+        // "IGN - Plan IGN" vecteur officiel haute lisibilité pour DP1 / PC1 Situation
         return `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX=${z}&TILEROW=${y}&TILECOL=${x}`;
       };
 
       const getFallbackTileUrl = (x, y, z) => {
         if (mode === 'satellite') {
           return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
+        }
+        if (isOsmMasse) {
+          return `/api/proxy-image?url=${encodeURIComponent(`https://tile.openstreetmap.org/${z}/${x}/${y}.png`)}`;
         }
         return `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
       };
@@ -519,7 +527,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
         ctx.font = 'bold 11px sans-serif';
         ctx.fillStyle = mode === 'satellite' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
         const legendText = hasBuildings
-          ? `PC2 / DP2 — Plan de masse (IGN - Plan IGN Zoom ${currentZoom})`
+          ? `PC2 / DP2 — Plan de masse (OpenStreetMap Zoom ${currentZoom})`
           : (mode === 'satellite'
             ? 'PC1 / DP1 — Vue Aérienne (IGN / Géoportail Orthophoto)'
             : 'PC1 / DP1 — Plan de Situation (IGN - Plan IGN)');
@@ -668,7 +676,7 @@ export async function getOrGenerateProjectMaps(project) {
     if (satData) result.satellite = satData;
   }
 
-  // 3. DP2 / PC2 Plan de masse Plan IGN Zoom 19
+  // 3. DP2 / PC2 Plan de masse OpenStreetMap
   if (!result.masse_projet) {
     const buildingsToUse = (project?.buildings && project.buildings.length > 0)
       ? project.buildings
@@ -683,11 +691,15 @@ export async function getOrGenerateProjectMaps(project) {
           lng: lng
         }] : null);
 
+    const masseCenterLat = Number(project?.masse_center_lat || project?.buildings?.[0]?.masse_center_lat || lat);
+    const masseCenterLng = Number(project?.masse_center_lng || project?.buildings?.[0]?.masse_center_lng || lng);
+    const masseZoom = Number(project?.masse_zoom || project?.buildings?.[0]?.masse_zoom || (isBattery ? 16 : 18));
+
     const masseData = await generateStaticMapImage(
-      lat,
-      lng,
-      'map',
-      19,
+      masseCenterLat,
+      masseCenterLng,
+      'osm',
+      masseZoom,
       buildingsToUse,
       true,
       project?.masseDistances || [],
@@ -695,6 +707,28 @@ export async function getOrGenerateProjectMaps(project) {
       { isBattery }
     );
     if (masseData) result.masse_projet = masseData;
+  }
+
+  // 4. DP2 / PC2 Vue 2 (zoom étendu) si configurée
+  if (!result.masse_projet_2 && (project?.masse_capture_2 || project?.masse_zoom_2 || project?.hasMasseView2)) {
+    const buildingsToUse = (project?.buildings && project.buildings.length > 0)
+      ? project.buildings
+      : null;
+    const cLat2 = Number(project?.masse_center_lat_2 || project?.buildings?.[0]?.masse_center_lat_2 || lat);
+    const cLng2 = Number(project?.masse_center_lng_2 || project?.buildings?.[0]?.masse_center_lng_2 || lng);
+    const z2 = Number(project?.masse_zoom_2 || project?.buildings?.[0]?.masse_zoom_2 || Math.max(12, (Number(project?.masse_zoom) || 18) - 2));
+    const masseData2 = await generateStaticMapImage(
+      cLat2,
+      cLng2,
+      'osm',
+      z2,
+      buildingsToUse,
+      true,
+      project?.masseDistances || [],
+      project?.sdisPoint,
+      { isBattery }
+    );
+    if (masseData2) result.masse_projet_2 = masseData2;
   }
 
   return result;
