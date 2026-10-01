@@ -693,7 +693,7 @@ export async function getOrGenerateProjectMaps(project) {
 
     const masseCenterLat = Number(project?.masse_center_lat || project?.buildings?.[0]?.masse_center_lat || lat);
     const masseCenterLng = Number(project?.masse_center_lng || project?.buildings?.[0]?.masse_center_lng || lng);
-    const masseZoom = Number(project?.masse_zoom || project?.buildings?.[0]?.masse_zoom || (isBattery ? 16 : 18));
+    const masseZoom = Number(project?.masse_zoom || project?.buildings?.[0]?.masse_zoom || 18);
 
     const masseData = await generateStaticMapImage(
       masseCenterLat,
