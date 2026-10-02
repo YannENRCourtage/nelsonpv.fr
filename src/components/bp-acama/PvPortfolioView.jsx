@@ -20,8 +20,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { PV_PORTFOLIO_SITES, computePvFinancials, getPvPortfolioSites, normalizePortfolioName, getProjectPvPortfolio } from '../../data/pvPortfolioData.js';
-import { exportPvPortfolioToExcel } from '../../services/exportPvExcel.js';
-import { exportBessOdreMatrixToExcel } from '../../services/exportBessExcel.js';
+import { exportPvPortfolioToExcel, exportPvOdreMatrixToExcel } from '../../services/exportPvExcel.js';
 import { calculatePmt, calculateProjectPayback, calculateIrr } from '../../services/bessSimulationEngine.js';
 import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
 import PortfolioManagerModal from '@/components/portfolios/PortfolioManagerModal.jsx';
@@ -223,9 +222,14 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
     });
   };
 
-  // Export Excel de la Matrice Caparéseau ODRE
+  // Export Excel de la Matrice Caparéseau ODRE des sites PV
   const handleExportOdreMatrix = () => {
-    exportBessOdreMatrixToExcel();
+    exportPvOdreMatrixToExcel(allPvSites, {
+      debtDuration,
+      debtRate,
+      studyDuration: studyYears,
+      portfolioName: selectedPortfolio
+    });
   };
 
   return (

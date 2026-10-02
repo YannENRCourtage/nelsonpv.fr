@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import { PV_PORTFOLIO_SITES, computePvFinancials } from '../data/pvPortfolioData.js';
 import { formatResteAffecterDistanceWithFallback } from './odreSubstationFallback.js';
-import { BESS_ODRE_MATRIX } from '../data/bessOdreMatrix.js';
+import { BESS_ODRE_MATRIX, findBessOdreData } from '../data/bessOdreMatrix.js';
 
 /**
  * SERVICE D'EXPORT EXCEL CONSOLIDÉ DU PORTEFEUILLE PV (PHOTOVOLTAÏQUE)
@@ -124,5 +124,104 @@ export function exportPvPortfolioToExcel(sites = PV_PORTFOLIO_SITES, options = {
   XLSX.utils.book_append_sheet(wb, wsChrono, 'Modele_Financier_20_Ans');
 
   const fileName = `Portefeuille_PV_${portfolioTag}_Consolide_${debtDuration}ans_${debtRate}pct_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+}
+
+/**
+ * Génère les données de la Matrice Caparéseau ODRE pour les centrales PV
+ */
+export function generatePvOdreMatrixData(sites = PV_PORTFOLIO_SITES, options = {}) {
+  const actualSites = (sites && sites.length > 0) ? sites : PV_PORTFOLIO_SITES;
+  const debtDuration = options.debtDuration || 20;
+  const debtRate = options.debtRate || 4.0;
+  const studyDuration = options.studyDuration || 20;
+  const rawPortfolioName = options.portfolioName || 'HELIOS';
+  const portfolioTag = rawPortfolioName === 'ALL' ? 'CONSOLIDE' : rawPortfolioName;
+
+  return actualSites.map((site, index) => {
+    const fin = computePvFinancials(site, {
+      debtDuration,
+      debtRate,
+      studyDuration
+    });
+    const siteRaw = site;
+
+    const siteName = fin.siteName || siteRaw.name || siteRaw.client || `Centrale PV ${index + 1}`;
+    const client = siteRaw.client || siteRaw.client_name || siteRaw.clientName || siteName;
+    const spv = siteRaw.spv || (portfolioTag ? `${portfolioTag} SPV 1` : 'HÉLIOS SPV 1');
+    const commune = fin.commune || siteRaw.city || siteRaw.commune || '';
+    const codePostal = fin.codePostal || siteRaw.postcode || siteRaw.zip || siteRaw.cp || '';
+    const cpStr = String(codePostal).trim();
+    const departement = siteRaw.dept || siteRaw.departement || (cpStr.length >= 2 ? cpStr.slice(0, 2) : '');
+
+    const odreMatch = findBessOdreData ? findBessOdreData(siteName || client, commune, siteRaw.address) : null;
+
+    const lat = siteRaw.lat || siteRaw.latitude || odreMatch?.latitude || '';
+    const lng = siteRaw.lng || siteRaw.longitude || odreMatch?.longitude || '';
+
+    const subst = siteRaw.substation || {};
+    const posteSource = fin.posteSource || subst.name || subst.code || odreMatch?.posteSourceEnedis || 'ODRE';
+    const tension = subst.voltageLevel || subst.tension || odreMatch?.tension || 'HTA 20 kV';
+    const distanceKm = fin.distanceKm ?? subst.distanceKm ?? odreMatch?.distanceKm ?? 5.0;
+    const quotePartS3REnR = fin.quotePartS3REnR || subst.quotePartS3renr || subst.quotePartS3REnR || odreMatch?.quotePartS3REnR || '92.73 k€/MW';
+    const capaciteResiduelleMw = subst.resteAffecterMw !== undefined 
+      ? subst.resteAffecterMw 
+      : (fin.resteAffecterMw ?? odreMatch?.capaciteResiduelleOdreMw ?? 0);
+    const resteAffecterDist = formatResteAffecterDistanceWithFallback(capaciteResiduelleMw, distanceKm, lat, lng, posteSource);
+    const typologieZoneCre = fin.zoneCre || subst.statutRaccordement || odreMatch?.typologieZoneCre || 'Zone standard Enedis';
+    const statutRaccordement = subst.statutRaccordement || fin.zoneCre || odreMatch?.statutRaccordement || 'Zone standard Enedis';
+
+    const puissanceKwc = fin.kwc || siteRaw.kwc || siteRaw.powerKwc || 0;
+    const prodMwh = fin.prodMwh || (siteRaw.productible ? Math.round((puissanceKwc * siteRaw.productible) / 1000) : Math.round(puissanceKwc * 1.125));
+
+    return {
+      'N°': index + 1,
+      'Site / Bailleur': siteName,
+      'Client': client,
+      'SPV': spv,
+      'Commune': commune,
+      'Code Postal': codePostal,
+      'Département': departement,
+      'Latitude': lat,
+      'Longitude': lng,
+      'Poste Source Enedis': posteSource,
+      'Tension': tension,
+      'Distance Réseau (km)': distanceKm,
+      'Quote-Part S3REnR': quotePartS3REnR,
+      'Capacité Résiduelle ODRE (MW)': capaciteResiduelleMw,
+      'Reste à affecter (Distance)': resteAffecterDist,
+      'Typologie Zone CRE 2025-227': typologieZoneCre,
+      'Puissance PV (kWc)': puissanceKwc,
+      'Production (MWh/an)': prodMwh,
+      'Statut Raccordement / Transfo': statutRaccordement
+    };
+  });
+}
+
+/**
+ * Déclenche le téléchargement de la Matrice Caparéseau ODRE des centrales PV
+ */
+export function exportPvOdreMatrixToExcel(sites = PV_PORTFOLIO_SITES, options = {}) {
+  const actualSites = (sites && sites.length > 0) ? sites : PV_PORTFOLIO_SITES;
+  const rawPortfolioName = options.portfolioName || 'HELIOS';
+  const portfolioTag = rawPortfolioName === 'ALL' ? 'CONSOLIDE' : rawPortfolioName;
+
+  const dataRows = generatePvOdreMatrixData(actualSites, options);
+
+  const ws = XLSX.utils.json_to_sheet(dataRows);
+  const headers = Object.keys(dataRows[0] || {});
+  ws['!cols'] = headers.map(key => {
+    const maxLen = Math.max(
+      key.length,
+      ...dataRows.map(r => (r[key] !== null && r[key] !== undefined ? String(r[key]).length : 0))
+    );
+    return { wch: Math.max(maxLen + 3, 10) };
+  });
+
+  const sheetName = `Capareseau_ODRE_PV_${portfolioTag}`.slice(0, 31);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+  const fileName = `Matrice_Capareseau_ODRE_PV_${portfolioTag}_${actualSites.length}_Sites_ENR_COURTAGE.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
