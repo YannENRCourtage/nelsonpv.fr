@@ -53,57 +53,54 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 // Détermination infaillible des coordonnées GPS réelles du site (Adresse / Projet / Déclarant)
 function resolveProjectCoordinates(edProj, proj) {
-  const pName = (edProj?.name || proj?.name || edProj?.projectName || proj?.projectName || edProj?.client || proj?.client || '').toLowerCase();
-  const pAddr = (edProj?.address || proj?.address || edProj?.clientAddress || proj?.clientAddress || edProj?.siteAddress || proj?.siteAddress || '').toLowerCase();
-  const pCity = (edProj?.city || proj?.city || edProj?.commune || proj?.commune || '').toLowerCase();
-  const isMeillatSite = pName.includes('meillat') || pAddr.includes('ribiere') || pAddr.includes('ribière') || (pCity.includes('mourioux') && (pAddr.includes('ribiere') || pAddr.includes('1a') || pName.includes('meillat')));
+  // 1. Si editedProject a des coordonnées directes valides (ex: déplacement du marqueur par l'utilisateur)
+  const eLat = Number(edProj?.lat);
+  const eLng = Number(edProj?.lng);
+  if (!isNaN(eLat) && !isNaN(eLng) && eLat !== 0 && eLng !== 0) {
+    if (Math.abs(eLat - 43.5612) > 0.001 || Math.abs(eLng - 0.9168) > 0.001) {
+      return { lat: eLat, lng: eLng };
+    }
+  }
 
-  // 1. Chercher dans les chaînes GPS existantes
-  const candidates = [
-    edProj?.gps,
-    proj?.gps,
-    edProj?.gpsCoordinates,
-    proj?.gpsCoordinates
-  ];
-  for (const c of candidates) {
-    if (c && typeof c === 'string' && c.includes(',')) {
-      if (c.includes('undefined') || c.includes('NaN')) continue;
-      const p = c.split(',').map(v => Number(v.trim()));
+  // 2. Si editedProject a une chaîne gps valide
+  if (edProj?.gps && typeof edProj.gps === 'string' && edProj.gps.includes(',')) {
+    if (!edProj.gps.includes('undefined') && !edProj.gps.includes('NaN')) {
+      const p = edProj.gps.split(',').map(v => Number(v.trim()));
       if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0) {
-        // Exclure formellement l'ancien faux fallback (Gers / Chemin de Fresqueville 43.5612, 0.9168)
         if (Math.abs(p[0] - 43.5612) > 0.001 || Math.abs(p[1] - 0.9168) > 0.001) {
-          // Si MEILLAT / La Ribière mais ancienne coordonnée erronée (ex: 1.538518 Les Forgettes)
-          if (isMeillatSite && (Math.abs(p[1] - 1.538518) < 0.02 || Math.abs(p[1] - 1.644819) < 0.02 || Math.abs(p[1] - 1.633909) < 0.02)) {
-            return { lat: 46.08293, lng: 1.65819 };
-          }
           return { lat: p[0], lng: p[1] };
         }
       }
     }
   }
 
-  // 2. Chercher dans les nombres directs lat / lng
-  const dLat = Number(edProj?.lat ?? proj?.lat);
-  const dLng = Number(edProj?.lng ?? proj?.lng);
+  // 3. Chercher dans le projet source (proj)
+  const dLat = Number(proj?.lat);
+  const dLng = Number(proj?.lng);
   if (!isNaN(dLat) && !isNaN(dLng) && dLat !== 0 && dLng !== 0) {
     if (Math.abs(dLat - 43.5612) > 0.001 || Math.abs(dLng - 0.9168) > 0.001) {
-      if (isMeillatSite && (Math.abs(dLng - 1.538518) < 0.02 || Math.abs(dLng - 1.644819) < 0.02 || Math.abs(dLng - 1.633909) < 0.02)) {
-        return { lat: 46.08293, lng: 1.65819 };
-      }
       return { lat: dLat, lng: dLng };
     }
   }
 
-  // 3. Chercher dans les features de la carte du projet
+  if (proj?.gps && typeof proj.gps === 'string' && proj.gps.includes(',')) {
+    if (!proj.gps.includes('undefined') && !proj.gps.includes('NaN')) {
+      const p = proj.gps.split(',').map(v => Number(v.trim()));
+      if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0) {
+        if (Math.abs(p[0] - 43.5612) > 0.001 || Math.abs(p[1] - 0.9168) > 0.001) {
+          return { lat: p[0], lng: p[1] };
+        }
+      }
+    }
+  }
+
+  // 4. Chercher dans les features de la carte du projet
   if (proj?.features && Array.isArray(proj.features)) {
     for (const f of proj.features) {
       if (f.lat && f.lng && !isNaN(Number(f.lat)) && !isNaN(Number(f.lng))) {
         const fLat = Number(f.lat);
         const fLng = Number(f.lng);
         if (Math.abs(fLat - 43.5612) > 0.001 || Math.abs(fLng - 0.9168) > 0.001) {
-          if (isMeillatSite && (Math.abs(fLng - 1.538518) < 0.02 || Math.abs(fLng - 1.644819) < 0.02 || Math.abs(fLng - 1.633909) < 0.02)) {
-            return { lat: 46.08293, lng: 1.65819 };
-          }
           return { lat: fLat, lng: fLng };
         }
       }
@@ -113,9 +110,6 @@ function resolveProjectCoordinates(edProj, proj) {
         const fLng = Number(c?.lng ?? c?.[1]);
         if (!isNaN(fLat) && !isNaN(fLng) && fLat !== 0 && fLng !== 0) {
           if (Math.abs(fLat - 43.5612) > 0.001 || Math.abs(fLng - 0.9168) > 0.001) {
-            if (isMeillatSite && (Math.abs(fLng - 1.538518) < 0.02 || Math.abs(fLng - 1.644819) < 0.02 || Math.abs(fLng - 1.633909) < 0.02)) {
-              return { lat: 46.08293, lng: 1.65819 };
-            }
             return { lat: fLat, lng: fLng };
           }
         }
@@ -123,7 +117,7 @@ function resolveProjectCoordinates(edProj, proj) {
     }
   }
 
-  // 4. Chercher dans les bâtiments du projet
+  // 5. Chercher dans les bâtiments du projet
   if (proj?.buildings && Array.isArray(proj.buildings)) {
     for (const b of proj.buildings) {
       const bGps = b.gps || (b.lat && b.lng ? `${b.lat},${b.lng}` : null);
@@ -132,9 +126,6 @@ function resolveProjectCoordinates(edProj, proj) {
         const p = bGps.split(',').map(v => Number(v.trim()));
         if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0) {
           if (Math.abs(p[0] - 43.5612) > 0.001 || Math.abs(p[1] - 0.9168) > 0.001) {
-            if (isMeillatSite && (Math.abs(p[1] - 1.538518) < 0.02 || Math.abs(p[1] - 1.644819) < 0.02 || Math.abs(p[1] - 1.633909) < 0.02)) {
-              return { lat: 46.08293, lng: 1.65819 };
-            }
             return { lat: p[0], lng: p[1] };
           }
         }
@@ -142,14 +133,9 @@ function resolveProjectCoordinates(edProj, proj) {
     }
   }
 
-  // 5. Cas direct MEILLAT / La Ribière
-  if (isMeillatSite) {
-    return { lat: 46.08293, lng: 1.65819 };
-  }
-
-  // 6. Chercher dans la matrice ODRE BESS si correspondance (avec la commune du projet)
+  // 6. Chercher dans la matrice ODRE BESS si correspondance (avec la commune ou le nom du projet)
   const odreMatch = findBessOdreData(
-    proj?.name || proj?.projectName || proj?.client || '',
+    proj?.name || proj?.projectName || proj?.client || edProj?.name || '',
     proj?.city || proj?.commune || edProj?.city || '',
     proj?.address || proj?.clientAddress || edProj?.address || ''
   );
@@ -3498,9 +3484,14 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     });
   }, [solutionType, activeBuildingIndex, config, getBuildingDisplayName]);
 
-  // Géocodage automatique à partir de l'adresse du déclarant (Étape 1 ou Fiche Projet)
+  // Géocodage automatique à partir de l'adresse du déclarant uniquement si aucun GPS valide
   useEffect(() => {
     if (!isOpen) return;
+    const currentLat = Number(editedProject?.lat || (editedProject?.gps ? editedProject.gps.split(',')[0] : null));
+    const isBogusGps = !currentLat || isNaN(currentLat) || currentLat === 0 || (Math.abs(currentLat - 43.5612) < 0.001);
+
+    if (!isBogusGps) return; // Coordonnées GPS déjà valides ou déplacées par l'utilisateur -> ne pas écraser
+
     const addr = editedProject?.address || project?.address;
     const zip = editedProject?.zip || project?.zip;
     const city = editedProject?.city || project?.city;
@@ -3508,22 +3499,12 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
     if (!fullAddress || fullAddress.trim().length < 5) return;
 
-    const currentLat = Number(editedProject?.lat || (editedProject?.gps ? editedProject.gps.split(',')[0] : null));
-    const currentLng = Number(editedProject?.lng || (editedProject?.gps ? editedProject.gps.split(',')[1] : null));
-    const isBogusGps = !currentLat || isNaN(currentLat) || (Math.abs(currentLat - 43.5612) < 0.001);
-
     fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(fullAddress)}&limit=1`)
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.features?.[0]?.geometry?.coordinates) {
           const [lng, lat] = data.features[0].geometry.coordinates;
-          const distLat = Math.abs(currentLat - lat);
-          const distLng = Math.abs(currentLng - lng);
-          const isFarFromAddress = isBogusGps || distLat > 0.02 || distLng > 0.02;
-
-          if (isFarFromAddress) {
-            handleGpsUpdate(lat, lng);
-          }
+          handleGpsUpdate(lat, lng);
         }
       })
       .catch(e => console.warn('[UrbanismeWizard] Erreur géocodage adresse:', e));
