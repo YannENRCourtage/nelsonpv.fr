@@ -29,18 +29,10 @@ export default function DossiersListView({
   // Configuration des statuts façon Monday.com
   const STATUS_CONFIG = {
     all: { label: 'Tous', bg: 'bg-slate-700', text: 'text-white' },
-    nouveau: { label: 'Nouveau', bg: 'bg-[#0073ea]', text: 'text-white', lightBg: 'bg-blue-50', border: 'border-blue-200' },
+    nouveau: { label: 'En attente', bg: 'bg-[#0073ea]', text: 'text-white', lightBg: 'bg-blue-50', border: 'border-blue-200' },
     en_cours: { label: 'En cours', bg: 'bg-[#fdab3d]', text: 'text-white', lightBg: 'bg-amber-50', border: 'border-amber-200' },
     termine: { label: 'Terminé', bg: 'bg-[#00c875]', text: 'text-white', lightBg: 'bg-emerald-50', border: 'border-emerald-200' },
     abandonne: { label: 'Abandonné', bg: 'bg-[#e2445c]', text: 'text-white', lightBg: 'bg-rose-50', border: 'border-rose-200' },
-  };
-
-  const normalizeStatus = (rawStatus) => {
-    const s = (rawStatus || '').toLowerCase();
-    if (s.includes('termin') || s.includes('valid') || s.includes('conforme') || s.includes('gagn')) return 'termine';
-    if (s.includes('abandon') || s.includes('refus') || s.includes('perdu') || s.includes('annul')) return 'abandonne';
-    if (s.includes('nouveau') || s.includes('attente') || s.includes('prospect') || s.includes('draft')) return 'nouveau';
-    return 'en_cours';
   };
 
   const formatUpdatedDate = (dateVal) => {
@@ -92,6 +84,48 @@ export default function DossiersListView({
     return { count, totalSteps, percent };
   };
 
+  // Calcul du statut de développement réel du dossier
+  const getProjectDevStatus = (p) => {
+    if (!p) return 'nouveau';
+
+    // 1. Statut explicite si présent
+    const explicitStatus = p.devStatus || p.statut_developpement || p.developmentStatus || p.development_status;
+    if (explicitStatus) {
+      const s = String(explicitStatus).toLowerCase();
+      if (s.includes('termin') || s.includes('valid') || s.includes('conforme') || s.includes('gagn')) return 'termine';
+      if (s.includes('abandon') || s.includes('refus') || s.includes('perdu') || s.includes('annul')) return 'abandonne';
+      if (s.includes('cours') || s.includes('progress')) return 'en_cours';
+      if (s.includes('nouveau') || s.includes('attente') || s.includes('prospect') || s.includes('draft') || s.includes('pending')) return 'nouveau';
+    }
+
+    // 2. Vérification des étapes du workflow de développement
+    let steps = p.devWorkflow || p.workflow || p.stepsState;
+    if (!steps && p.id) {
+      try {
+        const local = localStorage.getItem(`nelson_workflow_${p.id}`);
+        if (local) steps = JSON.parse(local);
+      } catch {}
+    }
+
+    if (steps && typeof steps === 'object') {
+      const stepValues = Object.values(steps);
+      const hasRejected = stepValues.some(s => s && (s.status === 'rejected' || s.status === 'abandonne'));
+      const allRejectedOrPending = stepValues.length > 0 && stepValues.every(s => !s || s.status === 'rejected' || s.status === 'abandonne' || s.status === 'pending');
+      if (hasRejected && allRejectedOrPending) {
+        return 'abandonne';
+      }
+
+      const hasInProgress = stepValues.some(s => s && (s.status === 'in_progress' || s.status === 'en_cours'));
+      const { count, totalSteps, percent } = getProjectDevProgress(p);
+
+      if (percent === 100 || count >= totalSteps) return 'termine';
+      if (hasInProgress || count > 0) return 'en_cours';
+      return 'nouveau';
+    }
+
+    return 'nouveau';
+  };
+
   const handleToggleStatus = (statusKey) => {
     if (statusKey === 'all') {
       setSelectedStatuses(['all']);
@@ -125,7 +159,7 @@ export default function DossiersListView({
       }
 
       if (!selectedStatuses.includes('all')) {
-        const pStatus = normalizeStatus(p.status || p.crm_status);
+        const pStatus = getProjectDevStatus(p);
         if (!selectedStatuses.includes(pStatus)) return false;
       }
 
@@ -292,7 +326,7 @@ export default function DossiersListView({
             const clientFullName = `${p.name || ''} ${p.firstName || ''}`.trim() || 'Client non renseigné';
             const projectName = getFullProjectName(p);
             const powerDisplay = p.kwc ? (p.kwc.toString().toLowerCase().includes('kwc') ? p.kwc : `${p.kwc} kWc`) : (p.projectSize ? `${p.projectSize} kWc` : '-');
-            const statusKey = normalizeStatus(p.status || p.crm_status);
+            const statusKey = getProjectDevStatus(p);
             const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.en_cours;
             const commercialName = getCommercial(p);
             const chefProjetName = getChefProjet(p);
