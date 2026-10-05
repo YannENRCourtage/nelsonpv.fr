@@ -369,8 +369,8 @@ export const PV_PORTFOLIO_SITES = [
     productible: 1100,
     surface: 838,
     rent: 0,
-    lat: 46.082964,
-    lng: 1.538518,
+    lat: 46.08293,
+    lng: 1.65819,
     substation: {
       name: "CHATELUS 2",
       code: "CHATE",

@@ -53,6 +53,11 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 // Détermination infaillible des coordonnées GPS réelles du site (Adresse / Projet / Déclarant)
 function resolveProjectCoordinates(edProj, proj) {
+  const pName = (edProj?.name || proj?.name || edProj?.projectName || proj?.projectName || edProj?.client || proj?.client || '').toLowerCase();
+  const pAddr = (edProj?.address || proj?.address || edProj?.clientAddress || proj?.clientAddress || edProj?.siteAddress || proj?.siteAddress || '').toLowerCase();
+  const pCity = (edProj?.city || proj?.city || edProj?.commune || proj?.commune || '').toLowerCase();
+  const isMeillatSite = pName.includes('meillat') || pAddr.includes('ribiere') || pAddr.includes('ribière') || (pCity.includes('mourioux') && (pAddr.includes('ribiere') || pAddr.includes('1a') || pName.includes('meillat')));
+
   // 1. Chercher dans les chaînes GPS existantes
   const candidates = [
     edProj?.gps,
@@ -67,6 +72,10 @@ function resolveProjectCoordinates(edProj, proj) {
       if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0) {
         // Exclure formellement l'ancien faux fallback (Gers / Chemin de Fresqueville 43.5612, 0.9168)
         if (Math.abs(p[0] - 43.5612) > 0.001 || Math.abs(p[1] - 0.9168) > 0.001) {
+          // Si MEILLAT / La Ribière mais ancienne coordonnée erronée (ex: 1.538518 Les Forgettes)
+          if (isMeillatSite && (Math.abs(p[1] - 1.538518) < 0.02 || Math.abs(p[1] - 1.644819) < 0.02 || Math.abs(p[1] - 1.633909) < 0.02)) {
+            return { lat: 46.08293, lng: 1.65819 };
+          }
           return { lat: p[0], lng: p[1] };
         }
       }
@@ -78,6 +87,9 @@ function resolveProjectCoordinates(edProj, proj) {
   const dLng = Number(edProj?.lng ?? proj?.lng);
   if (!isNaN(dLat) && !isNaN(dLng) && dLat !== 0 && dLng !== 0) {
     if (Math.abs(dLat - 43.5612) > 0.001 || Math.abs(dLng - 0.9168) > 0.001) {
+      if (isMeillatSite && (Math.abs(dLng - 1.538518) < 0.02 || Math.abs(dLng - 1.644819) < 0.02 || Math.abs(dLng - 1.633909) < 0.02)) {
+        return { lat: 46.08293, lng: 1.65819 };
+      }
       return { lat: dLat, lng: dLng };
     }
   }
@@ -89,6 +101,9 @@ function resolveProjectCoordinates(edProj, proj) {
         const fLat = Number(f.lat);
         const fLng = Number(f.lng);
         if (Math.abs(fLat - 43.5612) > 0.001 || Math.abs(fLng - 0.9168) > 0.001) {
+          if (isMeillatSite && (Math.abs(fLng - 1.538518) < 0.02 || Math.abs(fLng - 1.644819) < 0.02 || Math.abs(fLng - 1.633909) < 0.02)) {
+            return { lat: 46.08293, lng: 1.65819 };
+          }
           return { lat: fLat, lng: fLng };
         }
       }
@@ -98,6 +113,9 @@ function resolveProjectCoordinates(edProj, proj) {
         const fLng = Number(c?.lng ?? c?.[1]);
         if (!isNaN(fLat) && !isNaN(fLng) && fLat !== 0 && fLng !== 0) {
           if (Math.abs(fLat - 43.5612) > 0.001 || Math.abs(fLng - 0.9168) > 0.001) {
+            if (isMeillatSite && (Math.abs(fLng - 1.538518) < 0.02 || Math.abs(fLng - 1.644819) < 0.02 || Math.abs(fLng - 1.633909) < 0.02)) {
+              return { lat: 46.08293, lng: 1.65819 };
+            }
             return { lat: fLat, lng: fLng };
           }
         }
@@ -114,6 +132,9 @@ function resolveProjectCoordinates(edProj, proj) {
         const p = bGps.split(',').map(v => Number(v.trim()));
         if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0) {
           if (Math.abs(p[0] - 43.5612) > 0.001 || Math.abs(p[1] - 0.9168) > 0.001) {
+            if (isMeillatSite && (Math.abs(p[1] - 1.538518) < 0.02 || Math.abs(p[1] - 1.644819) < 0.02 || Math.abs(p[1] - 1.633909) < 0.02)) {
+              return { lat: 46.08293, lng: 1.65819 };
+            }
             return { lat: p[0], lng: p[1] };
           }
         }
@@ -121,7 +142,12 @@ function resolveProjectCoordinates(edProj, proj) {
     }
   }
 
-  // 5. Chercher dans la matrice ODRE BESS si correspondance (avec la commune du projet)
+  // 5. Cas direct MEILLAT / La Ribière
+  if (isMeillatSite) {
+    return { lat: 46.08293, lng: 1.65819 };
+  }
+
+  // 6. Chercher dans la matrice ODRE BESS si correspondance (avec la commune du projet)
   const odreMatch = findBessOdreData(
     proj?.name || proj?.projectName || proj?.client || '',
     proj?.city || proj?.commune || edProj?.city || '',
@@ -131,7 +157,7 @@ function resolveProjectCoordinates(edProj, proj) {
     return { lat: Number(odreMatch.latitude), lng: Number(odreMatch.longitude) };
   }
 
-  // 6. Coordonnées par défaut du site projet LABERGUERIE 64120 OREGUE (3810 Route des Barthes)
+  // 7. Coordonnées par défaut du site projet LABERGUERIE 64120 OREGUE (3810 Route des Barthes)
   return { lat: 43.43571, lng: -1.17644 };
 }
 
