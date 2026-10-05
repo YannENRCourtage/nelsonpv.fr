@@ -692,8 +692,14 @@ export default function EtudeDossierView({
   const dateSaisie = formatSaisieDate(project?.created_at || project?.createdAt || project?.date_creation || project?.dateCreation || project?.creationDate || project?.date);
 
   const bessMatrixData = useMemo(() => {
-    return findBessOdreData(project?.name || project?.projectName || project?.client || '');
-  }, [project?.name, project?.projectName, project?.client]);
+    return findBessOdreData(
+      project?.name || project?.projectName || project?.client || '',
+      project?.city || project?.commune || '',
+      project?.address || project?.clientAddress || '',
+      project?.lat,
+      project?.lng
+    );
+  }, [project?.name, project?.projectName, project?.client, project?.city, project?.commune, project?.address, project?.clientAddress, project?.lat, project?.lng]);
 
   const isBessProject = project?.isBatteryStandAlone || project?.type_projet === 'Batterie SA' || project?.isBattery || bessMatrixData !== null;
 

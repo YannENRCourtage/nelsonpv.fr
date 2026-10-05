@@ -49,10 +49,12 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 3,
-    siteName: "DOMERGUE",
+    siteName: "DOMERGUE MEUZAC",
+    aliases: ["DOMERGUE MEUZAC", "DOMERGUE"],
     client: "DOMERGUE David",
     commune: "Meuzac",
     codePostal: "87380",
+    address: "1725 Route du Grand Pré",
     departement: "87",
     latitude: 45.566247,
     longitude: 1.397687,
@@ -197,10 +199,12 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 10,
-    siteName: "CASTEBRUNET",
+    siteName: "CASTEBRUNET 2",
+    aliases: ["CASTEBRUNET 2", "CASTEBRUNET"],
     client: "CASTEBRUNET Jérémy",
     commune: "Caussade",
     codePostal: "82300",
+    address: "763 Chemin de Calsos",
     departement: "82",
     latitude: 44.123740,
     longitude: 1.564486,
@@ -277,10 +281,12 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 14,
-    siteName: "MISSAULT",
+    siteName: "MISSAULT LACOUSSIÈRE",
+    aliases: ["MISSAULT LACOUSSIÈRE", "MISSAULT"],
     client: "MISSAULT David",
     commune: "Saint-Saud-Lacoussière",
     codePostal: "24470",
+    address: "1348 Route des Bouleaux",
     departement: "24",
     latitude: 45.558769,
     longitude: 0.804488,
@@ -297,10 +303,12 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 15,
-    siteName: "MEILLAT",
+    siteName: "MEILLAT 1",
+    aliases: ["MEILLAT 1", "MEILLAT"],
     client: "MEILLAT Maxime",
     commune: "Mourioux-Vieilleville",
     codePostal: "23210",
+    address: "1a La Ribiere",
     departement: "23",
     latitude: 46.082964,
     longitude: 1.538518,
@@ -397,10 +405,12 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 20,
-    siteName: "CASTEBRUNET",
+    siteName: "CASTEBRUNET 1",
+    aliases: ["CASTEBRUNET 1"],
     client: "CASTEBRUNET Jérémy",
     commune: "Caussade",
     codePostal: "82300",
+    address: "1074 Chemin de Guillounet",
     departement: "82",
     latitude: 44.117157,
     longitude: 1.566758,
@@ -437,10 +447,12 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 22,
-    siteName: "CASTEBRUNET",
+    siteName: "CASTEBRUNET 3",
+    aliases: ["CASTEBRUNET 3"],
     client: "CASTEBRUNET Jérémy",
     commune: "Monteils",
     codePostal: "82300",
+    address: "93 Chemin des Peyrières",
     departement: "82",
     latitude: 44.165754,
     longitude: 1.564963,
@@ -497,10 +509,12 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 25,
-    siteName: "MISSAULT",
+    siteName: "MISSAULT FRESSENGEAS",
+    aliases: ["MISSAULT FRESSENGEAS"],
     client: "MISSAULT David",
     commune: "Saint-Martin-de-Fressengeas",
     codePostal: "24800",
+    address: "Route de la Baine",
     departement: "24",
     latitude: 45.438589,
     longitude: 0.815692,
@@ -557,10 +571,12 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 28,
-    siteName: "MEILLAT",
+    siteName: "MEILLAT 2",
+    aliases: ["MEILLAT 2"],
     client: "MEILLAT Maxime",
     commune: "Mourioux-Vieilleville",
     codePostal: "23210",
+    address: "1a la Ribiére",
     departement: "23",
     latitude: 46.081523,
     longitude: 1.633909,
@@ -577,10 +593,12 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 29,
-    siteName: "DOMERGUE",
+    siteName: "DOMERGUE ARGENCES",
+    aliases: ["DOMERGUE ARGENCES"],
     client: "DOMERGUE David",
     commune: "Argences en Aubrac",
     codePostal: "12420",
+    address: "1 Route de Plagnes",
     departement: "12",
     latitude: 44.807528,
     longitude: 2.798446,
@@ -617,10 +635,12 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 31,
-    siteName: "CASTEBRUNET",
+    siteName: "CASTEBRUNET 4",
+    aliases: ["CASTEBRUNET 4"],
     client: "CASTEBRUNET Jérémy",
     commune: "Saint-Cirq",
     codePostal: "82300",
+    address: "3750 Route de Bioule",
     departement: "82",
     latitude: 44.124392,
     longitude: 1.583302,
@@ -702,59 +722,96 @@ export function findBessOdreData(search, city = '', address = '', lat = null, ln
   const cleanSearch = normalize(rawSearch);
   const cleanCity = normalize(rawCity);
   const cleanAddr = normalize(rawAddress);
-  const fullText = `${cleanSearch} ${cleanCity} ${cleanAddr}`;
 
-  // 4. Correspondance prioritaire combinée : Nom de site ET Commune exacte (évite les collisions sur Castebrunet 1/2/3/4, Meillat 1/2, Domergue 1/2)
+  const isNameMatch = (s) => {
+    const sName = normalize(s.siteName);
+    const sClient = normalize(s.client);
+    const aliases = (s.aliases || []).map(normalize);
+    return cleanSearch === sName ||
+      aliases.includes(cleanSearch) ||
+      cleanSearch.startsWith(sName + " ") ||
+      cleanSearch.endsWith(" " + sName) ||
+      cleanSearch.includes(sName) ||
+      aliases.some(a => cleanSearch.includes(a)) ||
+      (sClient && cleanSearch.includes(sClient)) ||
+      (sClient && sClient.includes(cleanSearch));
+  };
+
+  const isNumberMatch = (s) => {
+    const searchNumMatch = cleanSearch.match(/\b([1-9])\b/);
+    if (!searchNumMatch) return true; // pas de numéro dans la recherche
+    const targetNum = searchNumMatch[1];
+    const sName = normalize(s.siteName);
+    const sNumMatch = sName.match(/\b([1-9])\b/);
+    if (sNumMatch) {
+      return sNumMatch[1] === targetNum;
+    }
+    // Si l'entrée n'a pas de numéro, elle ne matche pas si la recherche exige un numéro précis
+    return false;
+  };
+
+  // 4. Correspondance STRICTE : Nom + Numéro exact + Commune exacte
+  if (cleanCity) {
+    for (const s of BESS_ODRE_MATRIX) {
+      const sCommune = normalize(s.commune);
+      const communeMatches = cleanCity === sCommune || cleanCity.includes(sCommune) || sCommune.includes(cleanCity);
+      if (communeMatches && isNameMatch(s) && isNumberMatch(s)) {
+        return s;
+      }
+    }
+  }
+
+  // 5. Correspondance STRICTE : Nom + Numéro exact + Adresse
+  if (cleanAddr) {
+    for (const s of BESS_ODRE_MATRIX) {
+      const sAddr = normalize(s.address);
+      const sCommune = normalize(s.commune);
+      const addrMatches = (sAddr && cleanAddr.includes(sAddr)) || (sCommune && cleanAddr.includes(sCommune));
+      if (addrMatches && isNameMatch(s) && isNumberMatch(s)) {
+        return s;
+      }
+    }
+  }
+
+  // 6. Correspondance EXACTE sur le nom complet / siteName (ex: "CASTEBRUNET 3" === "CASTEBRUNET 3")
   for (const s of BESS_ODRE_MATRIX) {
     const sName = normalize(s.siteName);
-    const sCommune = normalize(s.commune);
-    const sCodePostal = normalize(s.codePostal);
-
-    const nameMatch = cleanSearch.includes(sName) || fullText.includes(sName);
-    const communeMatch = (cleanCity && cleanCity.includes(sCommune)) || 
-                         (cleanAddr && cleanAddr.includes(sCommune)) || 
-                         (cleanSearch && cleanSearch.includes(sCommune)) ||
-                         (cleanAddr && cleanAddr.includes(sCodePostal));
-
-    if (nameMatch && communeMatch) {
+    if (cleanSearch === sName) {
+      // Rejeter si la commune est contradictoire
+      if (cleanCity) {
+        const sCommune = normalize(s.commune);
+        if (cleanCity !== sCommune && !cleanCity.includes(sCommune) && !sCommune.includes(cleanCity)) {
+          continue;
+        }
+      }
       return s;
     }
   }
 
-  // 5. Correspondance exacte sur le nom de site ou le client
-  const searchWords = cleanSearch.split(/\s+/).filter(Boolean);
+  // 7. Correspondance par Nom + Numéro (en respectant la commune si précisée)
   for (const s of BESS_ODRE_MATRIX) {
-    const sName = normalize(s.siteName);
-    if (sName && (cleanSearch === sName || searchWords.includes(sName) || cleanSearch.startsWith(sName + " ") || cleanSearch.endsWith(" " + sName))) {
+    if (isNameMatch(s) && isNumberMatch(s)) {
+      if (cleanCity) {
+        const sCommune = normalize(s.commune);
+        if (cleanCity !== sCommune && !cleanCity.includes(sCommune) && !sCommune.includes(cleanCity)) {
+          continue; // Commune contradictoire : rejeter formellement
+        }
+      }
       return s;
     }
   }
 
-  // 6. Correspondance standard sur le nom de site ou le client
+  // 8. Correspondance générale (avec protection absolue contre commune contradictoire)
   for (const s of BESS_ODRE_MATRIX) {
     const sName = normalize(s.siteName);
     const sClient = normalize(s.client);
     const sCommune = normalize(s.commune);
 
+    if (cleanCity && cleanCity !== sCommune && !cleanCity.includes(sCommune) && !sCommune.includes(cleanCity)) {
+      continue; // Rejeter tout site dont la commune est différente de la commune demandée
+    }
+
     if (cleanSearch && (cleanSearch.includes(sName) || sClient.includes(cleanSearch) || cleanSearch.includes(sClient))) {
-      if (cleanCity || cleanAddr) {
-        if (cleanCity.includes(sCommune) || cleanAddr.includes(sCommune) || cleanAddr.includes(s.codePostal)) {
-          return s;
-        }
-      } else {
-        return s;
-      }
-    }
-
-    if (cleanCity && cleanCity === sCommune) {
-      return s;
-    }
-  }
-
-  // 7. Deuxième passe plus permissive (si commune dans l'adresse ou recherche)
-  for (const s of BESS_ODRE_MATRIX) {
-    const sCommune = normalize(s.commune);
-    if ((cleanSearch && cleanSearch.includes(sCommune)) || (cleanAddr && cleanAddr.includes(sCommune))) {
       return s;
     }
   }

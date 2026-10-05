@@ -145,15 +145,18 @@ export default function ProjectEditor() {
     const props = feature?.properties || {};
     const { address, zip, city, citycode } = extractCleanAddressParts(props, props.label);
     const [lng, lat] = feature?.geometry?.coordinates || [];
-    const latFmt = typeof lat === 'number' ? Number(lat.toFixed(6)) : parseFloat(lat)?.toFixed(6);
-    const lngFmt = typeof lng === 'number' ? Number(lng.toFixed(6)) : parseFloat(lng)?.toFixed(6);
+    const latNum = typeof lat === 'number' ? lat : parseFloat(lat);
+    const lngNum = typeof lng === 'number' ? lng : parseFloat(lng);
+    const hasValidCoords = !isNaN(latNum) && !isNaN(lngNum) && latNum !== 0 && lngNum !== 0;
+    const latFmt = hasValidCoords ? latNum.toFixed(6) : null;
+    const lngFmt = hasValidCoords ? lngNum.toFixed(6) : null;
     updateProject({
       address: address || props.name || '',
       zip: zip || props.postcode || '',
       city: city || props.city || '',
       citycode: citycode || props.citycode || '',
       inseeCode: citycode || props.citycode || '',
-      gps: latFmt && lngFmt ? `${latFmt}, ${lngFmt}` : (p.gps || '')
+      ...(latFmt && lngFmt ? { gps: `${latFmt}, ${lngFmt}` } : {})
     });
     if (lat && lng) {
       window.dispatchEvent(new CustomEvent('map:goto-location', {
@@ -632,9 +635,13 @@ export default function ProjectEditor() {
     const props = properties || feature?.properties || {};
     const { address, zip, city, citycode } = extractCleanAddressParts(props, label);
 
+    const latNum = Number(lat);
+    const lngNum = Number(lng);
+    const hasValidCoords = !isNaN(latNum) && !isNaN(lngNum) && latNum !== 0 && lngNum !== 0;
+
     const updates = {
       address: address || label || '',
-      gps: `${lat}, ${lng}`
+      ...(hasValidCoords ? { gps: `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}` } : {})
     };
     if (zip) updates.zip = zip;
     if (city) updates.city = city;
@@ -644,13 +651,18 @@ export default function ProjectEditor() {
     }
 
     updateProject(updates);
-    // Force map to go to this address immediately by passing coords directly
-    window.dispatchEvent(new CustomEvent("map:goto-address", { detail: { lat, lng } }));
+    if (hasValidCoords) {
+      window.dispatchEvent(new CustomEvent("map:goto-address", { detail: { lat: latNum, lng: lngNum } }));
+    }
   };
 
   const handleAddressSearched = (location) => {
     const { lat, lng } = location;
-    updateProject({ gps: `${lat}, ${lng}` });
+    const latNum = Number(lat);
+    const lngNum = Number(lng);
+    if (!isNaN(latNum) && !isNaN(lngNum) && latNum !== 0 && lngNum !== 0) {
+      updateProject({ gps: `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}` });
+    }
   };
 
   const handleReset = () => {

@@ -62,6 +62,7 @@ function resolveProjectCoordinates(edProj, proj) {
   ];
   for (const c of candidates) {
     if (c && typeof c === 'string' && c.includes(',')) {
+      if (c.includes('undefined') || c.includes('NaN')) continue;
       const p = c.split(',').map(v => Number(v.trim()));
       if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0) {
         // Exclure formellement l'ancien faux fallback (Gers / Chemin de Fresqueville 43.5612, 0.9168)
@@ -81,11 +82,35 @@ function resolveProjectCoordinates(edProj, proj) {
     }
   }
 
-  // 3. Chercher dans les bâtiments du projet
+  // 3. Chercher dans les features de la carte du projet
+  if (proj?.features && Array.isArray(proj.features)) {
+    for (const f of proj.features) {
+      if (f.lat && f.lng && !isNaN(Number(f.lat)) && !isNaN(Number(f.lng))) {
+        const fLat = Number(f.lat);
+        const fLng = Number(f.lng);
+        if (Math.abs(fLat - 43.5612) > 0.001 || Math.abs(fLng - 0.9168) > 0.001) {
+          return { lat: fLat, lng: fLng };
+        }
+      }
+      if (Array.isArray(f.coords) && f.coords.length > 0) {
+        const c = f.coords[0];
+        const fLat = Number(c?.lat ?? c?.[0]);
+        const fLng = Number(c?.lng ?? c?.[1]);
+        if (!isNaN(fLat) && !isNaN(fLng) && fLat !== 0 && fLng !== 0) {
+          if (Math.abs(fLat - 43.5612) > 0.001 || Math.abs(fLng - 0.9168) > 0.001) {
+            return { lat: fLat, lng: fLng };
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Chercher dans les bâtiments du projet
   if (proj?.buildings && Array.isArray(proj.buildings)) {
     for (const b of proj.buildings) {
       const bGps = b.gps || (b.lat && b.lng ? `${b.lat},${b.lng}` : null);
       if (bGps && typeof bGps === 'string' && bGps.includes(',')) {
+        if (bGps.includes('undefined') || bGps.includes('NaN')) continue;
         const p = bGps.split(',').map(v => Number(v.trim()));
         if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) && p[0] !== 0) {
           if (Math.abs(p[0] - 43.5612) > 0.001 || Math.abs(p[1] - 0.9168) > 0.001) {
@@ -96,7 +121,17 @@ function resolveProjectCoordinates(edProj, proj) {
     }
   }
 
-  // 4. Coordonnées par défaut du site projet LABERGUERIE 64120 OREGUE (3810 Route des Barthes)
+  // 5. Chercher dans la matrice ODRE BESS si correspondance (avec la commune du projet)
+  const odreMatch = findBessOdreData(
+    proj?.name || proj?.projectName || proj?.client || '',
+    proj?.city || proj?.commune || edProj?.city || '',
+    proj?.address || proj?.clientAddress || edProj?.address || ''
+  );
+  if (odreMatch?.latitude && odreMatch?.longitude) {
+    return { lat: Number(odreMatch.latitude), lng: Number(odreMatch.longitude) };
+  }
+
+  // 6. Coordonnées par défaut du site projet LABERGUERIE 64120 OREGUE (3810 Route des Barthes)
   return { lat: 43.43571, lng: -1.17644 };
 }
 
@@ -1908,13 +1943,13 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     setSolutions(prev => {
       const nextSolutions = { ...prev };
       let gIdx = 0;
-      ['building', 'ombriere'].forEach(solKey => {
+      ['building', 'ombriere', 'battery'].forEach(solKey => {
         if (nextSolutions[solKey]?.buildings) {
           nextSolutions[solKey] = {
             ...nextSolutions[solKey],
             buildings: nextSolutions[solKey].buildings.map(b => {
-              const offLat = gIdx * 0.00015;
-              const offLng = gIdx * 0.00020;
+              const offLat = solKey === 'battery' ? 0 : gIdx * 0.00015;
+              const offLng = solKey === 'battery' ? 0 : gIdx * 0.00020;
               gIdx++;
               return {
                 ...b,
@@ -1936,6 +1971,16 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         gps: `${lat + bIdx * 0.00015},${lng + bIdx * 0.00020}`
       }));
     });
+    cadastreService.getParcelle(lat, lng).then(data => {
+      if (data && data.section && data.numero) {
+        setEditedProject(prev => ({
+          ...prev,
+          cadastre_section: data.section,
+          cadastre_numero: data.numero,
+          cadastre_surface: String(data.contenance || prev.cadastre_surface || '')
+        }));
+      }
+    }).catch(() => {});
     generateStaticMapImage(lat, lng, 'map', 16).then(ign => {
       if (ign) {
         setCaptures(c => ({ ...c, ign }));
@@ -2323,7 +2368,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     setSolutionType(newSolType);
 
     if (newSolType === 'battery') {
-      const bessOdre = findBessOdreData(project?.name || project?.projectName || project?.client || project?.clientName || '');
+      const bessOdre = findBessOdreData(
+        project?.name || project?.projectName || project?.client || project?.clientName || '',
+        editedProject?.city || project?.city || project?.commune || '',
+        editedProject?.address || project?.address || project?.clientAddress || '',
+        editedProject?.lat || project?.lat,
+        editedProject?.lng || project?.lng
+      );
       let bessLat = bessOdre?.latitude || null;
       let bessLng = bessOdre?.longitude || null;
       const bFeat = (project?.features || []).find(f => f.isBattery || (f.buildingName && f.buildingName.toLowerCase().includes('batterie')));
@@ -2341,8 +2392,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       }
 
       const siteCoords = resolveProjectCoordinates(editedProject, project);
-      const refLat = bessLat || outgoingB?.lat || project?.lat || siteCoords.lat;
-      const refLng = bessLng || outgoingB?.lng || project?.lng || siteCoords.lng;
+      const hasRealGps = Boolean(
+        (outgoingB?.lat && outgoingB?.lng && !isNaN(Number(outgoingB.lat))) ||
+        (project?.lat && project?.lng && !isNaN(Number(project.lat))) ||
+        (project?.gps && !String(project.gps).includes('undefined') && project.gps.includes(','))
+      );
+      const refLat = (hasRealGps && siteCoords?.lat !== 43.43571) ? siteCoords.lat : (bessLat || outgoingB?.lat || project?.lat || siteCoords.lat);
+      const refLng = (hasRealGps && siteCoords?.lng !== -1.17644) ? siteCoords.lng : (bessLng || outgoingB?.lng || project?.lng || siteCoords.lng);
 
       const nextSec = bessOdre?.section || editedProject?.cadastre_section || project.cadastre_section || '';
       const nextNum = bessOdre?.numero || editedProject?.cadastre_numero || project.cadastre_numero || '';
@@ -2706,7 +2762,13 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const projZip = project.zip || project.postalCode || project.code_postal || project.clientZip || '';
     const projCity = project.city || project.commune || project.clientCity || project.cadastre_commune || '';
 
-    const bessOdreMatch = findBessOdreData(project?.name || project?.projectName || project?.client || project?.clientName || '');
+    const bessOdreMatch = findBessOdreData(
+      project?.name || project?.projectName || project?.client || project?.clientName || '',
+      projCity,
+      projAddress,
+      project?.lat || project?.latitude,
+      project?.lng || project?.longitude
+    );
     const rawType = String(project?.type || project?.installationType || project?.projectType || project?.type_projet || project?.urbanismeType || '').toLowerCase();
     const isBatterySite = !isNoBattery && (
       rawType.includes('batterie') ||
@@ -2791,6 +2853,16 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
     const siteCoords = resolveProjectCoordinates(null, project);
     let defLat = (isBatteryProject && bessLat) ? bessLat : siteCoords.lat;
     let defLng = (isBatteryProject && bessLng) ? bessLng : siteCoords.lng;
+
+    // Si le projet possède déjà des coordonnées GPS réelles directes, les prioriser formellement
+    const hasProjectRealGps = Boolean(
+      (project.gps && !String(project.gps).includes('undefined') && project.gps.includes(',')) ||
+      (project.lat && project.lng && !isNaN(Number(project.lat)) && !isNaN(Number(project.lng)))
+    );
+    if (hasProjectRealGps && siteCoords && siteCoords.lat !== 43.43571) {
+      defLat = siteCoords.lat;
+      defLng = siteCoords.lng;
+    }
 
     // Si un bâtiment existant possède déjà les coordonnées géocodées réelles du site, les prioriser (uniquement pour solaire)
     if (!isBatteryProject && project.buildings && Array.isArray(project.buildings)) {
@@ -3203,12 +3275,31 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       ? [{ section: bessOdreMatch.section, numero: bessOdreMatch.numero, surface: String(bessOdreMatch.contenance || '') }]
       : (savedState?.editedProject?.parcelles || project.parcelles || [{ section: defaultSec, numero: defaultNum, surface: defaultSurf }]);
 
+    let safeSavedLat = null;
+    let safeSavedLng = null;
+    if (savedState?.editedProject?.lat && savedState?.editedProject?.lng) {
+      const sLat = Number(savedState.editedProject.lat);
+      const sLng = Number(savedState.editedProject.lng);
+      if (!isNaN(sLat) && !isNaN(sLng)) {
+        // Tolérance de 2.5 km (~0.025 deg) par rapport au site calculé
+        if (Math.abs(sLat - defLat) < 0.025 && Math.abs(sLng - defLng) < 0.025) {
+          safeSavedLat = sLat;
+          safeSavedLng = sLng;
+        } else {
+          console.warn(`[UrbanismeWizard] Coordonnées sauvegardées périmées ou erronées (${sLat}, ${sLng}) au lieu du site (${defLat}, ${defLng}) -> Purge.`);
+        }
+      }
+    }
+
+    const targetSiteLat = safeSavedLat || defLat;
+    const targetSiteLng = safeSavedLng || defLng;
+
     const initProj = {
       ...project,
       ...(savedState?.editedProject || {}),
-      lat: isBatterySolution ? (bessLat || defLat) : (savedState?.editedProject?.lat || defLat),
-      lng: isBatterySolution ? (bessLng || defLng) : (savedState?.editedProject?.lng || defLng),
-      gps: isBatterySolution ? `${bessLat || defLat},${bessLng || defLng}` : (savedState?.editedProject?.gps || `${defLat},${defLng}`),
+      lat: targetSiteLat,
+      lng: targetSiteLng,
+      gps: `${targetSiteLat},${targetSiteLng}`,
       solutionType: detectedSolutionType,
       urbanisme_solutionType: detectedSolutionType,
       type: isBatterySolution ? 'battery' : (isOmbriereSolution ? 'ombriere' : (project.type && !project.type.includes('batterie') ? project.type : 'batiment_solaire')),
@@ -3392,19 +3483,24 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     if (!fullAddress || fullAddress.trim().length < 5) return;
 
     const currentLat = Number(editedProject?.lat || (editedProject?.gps ? editedProject.gps.split(',')[0] : null));
+    const currentLng = Number(editedProject?.lng || (editedProject?.gps ? editedProject.gps.split(',')[1] : null));
     const isBogusGps = !currentLat || isNaN(currentLat) || (Math.abs(currentLat - 43.5612) < 0.001);
 
-    if (isBogusGps) {
-      fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(fullAddress)}&limit=1`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.features?.[0]?.geometry?.coordinates) {
-            const [lng, lat] = data.features[0].geometry.coordinates;
+    fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(fullAddress)}&limit=1`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.features?.[0]?.geometry?.coordinates) {
+          const [lng, lat] = data.features[0].geometry.coordinates;
+          const distLat = Math.abs(currentLat - lat);
+          const distLng = Math.abs(currentLng - lng);
+          const isFarFromAddress = isBogusGps || distLat > 0.02 || distLng > 0.02;
+
+          if (isFarFromAddress) {
             handleGpsUpdate(lat, lng);
           }
-        })
-        .catch(e => console.warn('[UrbanismeWizard] Erreur géocodage adresse:', e));
-    }
+        }
+      })
+      .catch(e => console.warn('[UrbanismeWizard] Erreur géocodage adresse:', e));
   }, [isOpen, editedProject?.address, editedProject?.zip, editedProject?.city, project?.address, project?.zip, project?.city, handleGpsUpdate]);
 
   // Synchronisation continue des valeurs du configurateur vers le projet (sans écraser le kWc du client)

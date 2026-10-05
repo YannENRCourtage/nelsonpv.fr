@@ -10,6 +10,9 @@
 export function formatGps(gpsOrLat, lng, decimals = 6) {
   if (gpsOrLat === null || gpsOrLat === undefined || gpsOrLat === '') return '';
 
+  const strCheck = String(gpsOrLat);
+  if (strCheck.includes('undefined') || strCheck.includes('NaN') || strCheck.includes('null')) return '';
+
   if (typeof gpsOrLat === 'number' || (lng !== undefined && lng !== null)) {
     const latNum = parseFloat(gpsOrLat);
     const lngNum = parseFloat(lng);
@@ -20,7 +23,7 @@ export function formatGps(gpsOrLat, lng, decimals = 6) {
     return '';
   }
 
-  const str = String(gpsOrLat).trim();
+  const str = strCheck.trim();
   if (str.includes(',')) {
     const parts = str.split(',');
     const latNum = parseFloat(parts[0].trim());
@@ -35,7 +38,7 @@ export function formatGps(gpsOrLat, lng, decimals = 6) {
     }
   }
 
-  return str;
+  return '';
 }
 
 /**
@@ -45,7 +48,7 @@ export function formatGps(gpsOrLat, lng, decimals = 6) {
  * @returns {string}
  */
 export function formatCoordinate(val, decimals = 6) {
-  if (val === null || val === undefined || val === '') return '';
+  if (val === null || val === undefined || val === '' || val === 'undefined' || val === 'null' || val === 'NaN') return '';
   const num = parseFloat(val);
-  return isNaN(num) ? String(val) : num.toFixed(decimals);
+  return isNaN(num) ? '' : num.toFixed(decimals);
 }
