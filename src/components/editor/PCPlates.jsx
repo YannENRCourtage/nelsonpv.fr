@@ -267,9 +267,9 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload, viewNum
                     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(rawBuildings.length, 2)}, 1fr)`, gap: '4mm', flex: 1, height: '100%' }}>
                         {rawBuildings.map((b, idx) => {
                             const bPhoto = (viewNumber === 2 
-                                ? (b?.masse_capture_2 || captures?.masse_projet_2 || project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2 || captures?.masse_projet) 
+                                ? (b?.masse_capture_2 || captures?.masse_projet_2 || project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2) 
                                 : (b?.masse_capture || (idx === 0 ? captures?.masse_projet : null) || project?.masse_capture || project?.urbanisme_captures?.masse_projet)) 
-                                || captures?.satellite;
+                                || (viewNumber === 2 ? '' : captures?.satellite);
                             let bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
                             let bW = Number(b.totalWidth || b.width || project?.largeur || 20);
                             if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
@@ -324,9 +324,9 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload, viewNum
                 ) : (() => {
                     const b = rawBuildings[0];
                     const bPhoto = (viewNumber === 2 
-                        ? (b?.masse_capture_2 || captures?.masse_projet_2 || project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2 || captures?.masse_projet) 
+                        ? (b?.masse_capture_2 || captures?.masse_projet_2 || project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2) 
                         : (b?.masse_capture || captures?.masse_projet || project?.masse_capture || project?.urbanisme_captures?.masse_projet)) 
-                        || captures?.satellite;
+                        || (viewNumber === 2 ? '' : captures?.satellite);
                     let bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
                     let bW = Number(b?.totalWidth || b?.width || project?.largeur || 20);
                     if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {

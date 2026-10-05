@@ -3943,18 +3943,22 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     }
   }, [allConfiguredStructures, selectedStructureIds, masseViewTabs, hasMasseView2, captureStructureMasseMap, masseShowDimensions, captures, editedProject]);
 
-  // Auto-détection de Vue 2 si existante dans le projet
+  // Auto-détection de Vue 2 si existante dans le projet (capture réelle uniquement)
   useEffect(() => {
     const view2Map = {};
     let found = false;
     allConfiguredStructures.forEach(str => {
-      if (str.masse_capture_2 || str.masse_zoom_2) {
+      const hasCap2 = Boolean(str.masse_capture_2 && typeof str.masse_capture_2 === 'string' && str.masse_capture_2.length > 50);
+      if (hasCap2) {
         view2Map[str.id] = true;
         found = true;
       }
     });
-    if (!found && (project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2) && allConfiguredStructures.length > 0) {
-      view2Map[allConfiguredStructures[0].id] = true;
+    if (!found && allConfiguredStructures.length > 0) {
+      const pCap2 = project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2;
+      if (pCap2 && typeof pCap2 === 'string' && pCap2.length > 50) {
+        view2Map[allConfiguredStructures[0].id] = true;
+      }
     }
     if (Object.keys(view2Map).length > 0) {
       setHasMasseView2(prev => ({ ...view2Map, ...prev }));
@@ -4452,8 +4456,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'osm', bZoom, updatedBuildings, bShowDim, strDistances1, sdisPoint);
       }
 
-      // --- VUE 2 (si demandée) ---
-      const wantsVue2 = hasMasseView2[b.id] || Boolean(b.masse_capture_2 || b.masse_zoom_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2);
+      // --- VUE 2 (si demandée et capturée) ---
+      const hasCap2 = Boolean(
+        (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50) ||
+        (captures?.masse_projet_2 && typeof captures.masse_projet_2 === 'string' && captures.masse_projet_2.length > 50) ||
+        (editedProject?.masse_capture_2 && typeof editedProject.masse_capture_2 === 'string' && editedProject.masse_capture_2.length > 50) ||
+        (editedProject?.urbanisme_captures?.masse_projet_2 && typeof editedProject.urbanisme_captures.masse_projet_2 === 'string' && editedProject.urbanisme_captures.masse_projet_2.length > 50)
+      );
+      const isView2OnMap = map && masseViewTabs[b.id] === 2;
+      const wantsVue2 = Boolean(hasMasseView2[b.id]) && (hasCap2 || isView2OnMap);
       let masse2 = null;
       let bZoom2 = Number(b.masse_zoom_2 || captures?.masse_zoom_2 || editedProject?.masse_zoom_2 || Math.max(12, bZoom - 2));
       let bCenterLat2 = Number(b.masse_center_lat_2 || editedProject?.masse_center_lat_2 || bCenterLat);
@@ -4461,22 +4472,19 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
       if (wantsVue2) {
         const strDistances2 = masseDistances[b.id] || b.masseDistances || [];
-        const isView2OnMap = map && masseViewTabs[b.id] === 2;
-        if (b.masse_capture_2) {
+        if (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50) {
           masse2 = b.masse_capture_2;
-        } else if (captures?.masse_projet_2) {
+        } else if (captures?.masse_projet_2 && typeof captures.masse_projet_2 === 'string' && captures.masse_projet_2.length > 50) {
           masse2 = captures.masse_projet_2;
-        } else if (editedProject?.masse_capture_2) {
+        } else if (editedProject?.masse_capture_2 && typeof editedProject.masse_capture_2 === 'string' && editedProject.masse_capture_2.length > 50) {
           masse2 = editedProject.masse_capture_2;
-        } else if (editedProject?.urbanisme_captures?.masse_projet_2) {
+        } else if (editedProject?.urbanisme_captures?.masse_projet_2 && typeof editedProject.urbanisme_captures.masse_projet_2 === 'string' && editedProject.urbanisme_captures.masse_projet_2.length > 50) {
           masse2 = editedProject.urbanisme_captures.masse_projet_2;
         } else if (isView2OnMap) {
           bZoom2 = Number(map.getZoom() || bZoom2);
           bCenterLat2 = Number(map.getCenter().lat || bCenterLat2);
           bCenterLng2 = Number(map.getCenter().lng || bCenterLng2);
           masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances2, sdisPoint);
-        } else {
-          masse2 = await generateStaticMapImage(bCenterLat2, bCenterLng2, 'osm', bZoom2, updatedBuildings, bShowDim, strDistances2, sdisPoint);
         }
       }
 
@@ -4490,8 +4498,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         masse_center_lat: bCenterLat,
         masse_center_lng: bCenterLng,
         masse_show_dimensions: bShowDim,
-        ...(wantsVue2 ? {
-          masse_capture_2: masse2 || null,
+        ...(wantsVue2 && masse2 ? {
+          masse_capture_2: masse2,
           masse_zoom_2: bZoom2,
           masse_center_lat_2: bCenterLat2,
           masse_center_lng_2: bCenterLng2,
@@ -4507,7 +4515,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const b1CenterLng = buildingsWithMasse[0]?.masse_center_lng || lng;
     const b1Zoom = buildingsWithMasse[0]?.masse_zoom || 18;
     const masseMap = buildingsWithMasse[0]?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture || await generateStaticMapImage(b1CenterLat, b1CenterLng, 'osm', b1Zoom, updatedBuildings, firstShowDim, b1Distances, sdisPoint);
-    const masseMap2 = buildingsWithMasse[0]?.masse_capture_2 || captures?.masse_projet_2 || editedProject?.masse_capture_2 || editedProject?.urbanisme_captures?.masse_projet_2 || null;
+    const masseMap2 = (buildingsWithMasse[0]?.masse_capture_2 && typeof buildingsWithMasse[0].masse_capture_2 === 'string' && buildingsWithMasse[0].masse_capture_2.length > 50) ? buildingsWithMasse[0].masse_capture_2 : null;
 
     const allBuildingsCaptures = updatedBuildings.reduce((acc, b) => ({
       ...acc,
@@ -4544,7 +4552,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       ...b,
       masse_capture: b.masse_capture || masseMap,
       masse_zoom: b.masse_zoom || 18,
-      ...(b.masse_capture_2 ? { 
+      ...(b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50 ? { 
         masse_capture_2: b.masse_capture_2,
         masse_zoom_2: b.masse_zoom_2 || 16 
       } : {}),
@@ -4553,7 +4561,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         ...(b.urbanisme_captures || {}),
         masse_projet: b.masse_capture || masseMap,
         masse_zoom: b.masse_zoom || 18,
-        ...(b.masse_capture_2 ? {
+        ...(b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50 ? {
           masse_projet_2: b.masse_capture_2,
           masse_zoom_2: b.masse_zoom_2 || 16
         } : {})
@@ -4563,7 +4571,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         ...(b.urbanisme_captures || {}),
         masse_projet: b.masse_capture || masseMap,
         masse_zoom: b.masse_zoom || 18,
-        ...(b.masse_capture_2 ? {
+        ...(b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50 ? {
           masse_projet_2: b.masse_capture_2,
           masse_zoom_2: b.masse_zoom_2 || 16
         } : {})

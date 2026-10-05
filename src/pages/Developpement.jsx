@@ -401,13 +401,23 @@ export default function Developpement() {
         } else if (pieceId === 'masse') {
           if (isCU) {
             plateIds.push('dev-plate-masse');
-            const hasMasse2 = Boolean(projectToUse.masse_capture_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.captures?.masse_projet_2);
+            const hasMasse2 = Boolean(
+              (projectToUse.masse_capture_2 && typeof projectToUse.masse_capture_2 === 'string' && projectToUse.masse_capture_2.length > 50) ||
+              (projectToUse.urbanisme_captures?.masse_projet_2 && typeof projectToUse.urbanisme_captures.masse_projet_2 === 'string' && projectToUse.urbanisme_captures.masse_projet_2.length > 50) ||
+              (projectToUse.captures?.masse_projet_2 && typeof projectToUse.captures.masse_projet_2 === 'string' && projectToUse.captures.masse_projet_2.length > 50)
+            );
             if (hasMasse2) plateIds.push('dev-plate-masse-vue2');
           } else {
             for (let bIdx = 0; bIdx < bList.length; bIdx++) {
               const suffix = bIdx === 0 ? '' : `-${bIdx}`;
               plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse` : `${prefix}plate-masse${suffix}`);
-              const hasMasse2 = Boolean(bList[bIdx]?.masse_capture_2 || bList[bIdx]?.captures?.masse_projet_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.masse_capture_2 || projectToUse.captures?.masse_projet_2);
+              const hasMasse2 = Boolean(
+                (bList[bIdx]?.masse_capture_2 && typeof bList[bIdx].masse_capture_2 === 'string' && bList[bIdx].masse_capture_2.length > 50) ||
+                (bList[bIdx]?.captures?.masse_projet_2 && typeof bList[bIdx].captures.masse_projet_2 === 'string' && bList[bIdx].captures.masse_projet_2.length > 50) ||
+                (projectToUse.urbanisme_captures?.masse_projet_2 && typeof projectToUse.urbanisme_captures.masse_projet_2 === 'string' && projectToUse.urbanisme_captures.masse_projet_2.length > 50) ||
+                (projectToUse.masse_capture_2 && typeof projectToUse.masse_capture_2 === 'string' && projectToUse.masse_capture_2.length > 50) ||
+                (projectToUse.captures?.masse_projet_2 && typeof projectToUse.captures.masse_projet_2 === 'string' && projectToUse.captures.masse_projet_2.length > 50)
+              );
               if (hasMasse2) {
                 plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue2` : `${prefix}plate-masse-vue2${suffix}`);
               }
@@ -455,7 +465,13 @@ export default function Developpement() {
             const suffix = bIdx === 0 ? '' : `-${bIdx}`;
             if (!selectedPages || selectedPages.masse) {
               plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse` : `${prefix}plate-masse${suffix}`);
-              const hasMasse2 = Boolean(bList[bIdx]?.masse_capture_2 || bList[bIdx]?.captures?.masse_projet_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.masse_capture_2 || projectToUse.captures?.masse_projet_2);
+              const hasMasse2 = Boolean(
+                (bList[bIdx]?.masse_capture_2 && typeof bList[bIdx].masse_capture_2 === 'string' && bList[bIdx].masse_capture_2.length > 50) ||
+                (bList[bIdx]?.captures?.masse_projet_2 && typeof bList[bIdx].captures.masse_projet_2 === 'string' && bList[bIdx].captures.masse_projet_2.length > 50) ||
+                (projectToUse.urbanisme_captures?.masse_projet_2 && typeof projectToUse.urbanisme_captures.masse_projet_2 === 'string' && projectToUse.urbanisme_captures.masse_projet_2.length > 50) ||
+                (projectToUse.masse_capture_2 && typeof projectToUse.masse_capture_2 === 'string' && projectToUse.masse_capture_2.length > 50) ||
+                (projectToUse.captures?.masse_projet_2 && typeof projectToUse.captures.masse_projet_2 === 'string' && projectToUse.captures.masse_projet_2.length > 50)
+              );
               if (hasMasse2) {
                 plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue2` : `${prefix}plate-masse-vue2${suffix}`);
               }
@@ -480,7 +496,13 @@ export default function Developpement() {
             const suffix = bIdx === 0 ? '' : `-${bIdx}`;
             if (!selectedPages || selectedPages.masse !== false) {
               plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse` : `dev-plate-masse${suffix}`);
-              const hasMasse2 = Boolean(bList[bIdx]?.masse_capture_2 || bList[bIdx]?.captures?.masse_projet_2 || projectToUse.urbanisme_captures?.masse_projet_2 || projectToUse.masse_capture_2 || projectToUse.captures?.masse_projet_2);
+              const hasMasse2 = Boolean(
+                (bList[bIdx]?.masse_capture_2 && typeof bList[bIdx].masse_capture_2 === 'string' && bList[bIdx].masse_capture_2.length > 50) ||
+                (bList[bIdx]?.captures?.masse_projet_2 && typeof bList[bIdx].captures.masse_projet_2 === 'string' && bList[bIdx].captures.masse_projet_2.length > 50) ||
+                (projectToUse.urbanisme_captures?.masse_projet_2 && typeof projectToUse.urbanisme_captures.masse_projet_2 === 'string' && projectToUse.urbanisme_captures.masse_projet_2.length > 50) ||
+                (projectToUse.masse_capture_2 && typeof projectToUse.masse_capture_2 === 'string' && projectToUse.masse_capture_2.length > 50) ||
+                (projectToUse.captures?.masse_projet_2 && typeof projectToUse.captures.masse_projet_2 === 'string' && projectToUse.captures.masse_projet_2.length > 50)
+              );
               if (hasMasse2) {
                 plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse-vue2` : `dev-plate-masse-vue2${suffix}`);
               }
@@ -852,14 +874,14 @@ export default function Developpement() {
               const bEffectiveZoom = bRawZoom;
               const bEffectiveZoom2 = Number(b.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || Math.max(12, bEffectiveZoom - 2));
               const hasVue2Capture = Boolean(
-                b.masse_capture_2 || 
-                activeProj.masse_capture_2 || 
-                activeProj.urbanisme_captures?.masse_projet_2 || 
-                activeProj.captures?.masse_projet_2 || 
-                b.captures?.masse_projet_2 || 
-                b.urbanisme_captures?.masse_projet_2
+                (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50) || 
+                (activeProj.masse_capture_2 && typeof activeProj.masse_capture_2 === 'string' && activeProj.masse_capture_2.length > 50) || 
+                (activeProj.urbanisme_captures?.masse_projet_2 && typeof activeProj.urbanisme_captures.masse_projet_2 === 'string' && activeProj.urbanisme_captures.masse_projet_2.length > 50) || 
+                (activeProj.captures?.masse_projet_2 && typeof activeProj.captures.masse_projet_2 === 'string' && activeProj.captures.masse_projet_2.length > 50) || 
+                (b.captures?.masse_projet_2 && typeof b.captures.masse_projet_2 === 'string' && b.captures.masse_projet_2.length > 50) || 
+                (b.urbanisme_captures?.masse_projet_2 && typeof b.urbanisme_captures.masse_projet_2 === 'string' && b.urbanisme_captures.masse_projet_2.length > 50)
               );
-              const vue2Photo = b.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2 || activeProj.captures?.masse_projet_2 || b.captures?.masse_projet_2 || b.urbanisme_captures?.masse_projet_2;
+              const vue2Photo = hasVue2Capture ? (b.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2 || activeProj.captures?.masse_projet_2 || b.captures?.masse_projet_2 || b.urbanisme_captures?.masse_projet_2) : null;
               const bCaptures = {
                 ...(activeProj.captures || {}),
                 ...(activeProj.urbanisme_captures || {}),
@@ -937,26 +959,28 @@ export default function Developpement() {
                   <div id={`dev-plate-masse${suffix}`}>
                     <PlateMasse project={bProj} captures={bCaptures} />
                   </div>
-                  {/* DP2 — Seconde page Plan de masse (Vue 2 - Zoom différent) */}
-                  <div id={`dev-plate-masse-vue2${suffix}`}>
-                    <PlateMasse 
-                      project={{ 
-                        ...bProj, 
-                        masse_zoom: bEffectiveZoom2,
-                        masse_zoom_2: bEffectiveZoom2,
-                        masse_capture: vue2Photo,
-                        masse_capture_2: vue2Photo
-                      }} 
-                      captures={{ 
-                        ...bCaptures, 
-                        masse_projet: vue2Photo,
-                        masse_projet_2: vue2Photo,
-                        masse_zoom: bEffectiveZoom2,
-                        masse_zoom_2: bEffectiveZoom2
-                      }} 
-                      viewNumber={2}
-                    />
-                  </div>
+                  {/* DP2 — Seconde page Plan de masse (Vue 2 - Zoom différent) UNIQUEMENT si capture réelle */}
+                  {hasVue2Capture && (
+                    <div id={`dev-plate-masse-vue2${suffix}`}>
+                      <PlateMasse 
+                        project={{ 
+                          ...bProj, 
+                          masse_zoom: bEffectiveZoom2,
+                          masse_zoom_2: bEffectiveZoom2,
+                          masse_capture: vue2Photo,
+                          masse_capture_2: vue2Photo
+                        }} 
+                        captures={{ 
+                          ...bCaptures, 
+                          masse_projet: vue2Photo,
+                          masse_projet_2: vue2Photo,
+                          masse_zoom: bEffectiveZoom2,
+                          masse_zoom_2: bEffectiveZoom2
+                        }} 
+                        viewNumber={2}
+                      />
+                    </div>
+                  )}
                   {/* DP3 — Plan en coupe par bâtiment */}
                   <div id={`dev-plate-section${suffix}`}>
                     <PlateSection 
@@ -995,14 +1019,14 @@ export default function Developpement() {
               const bEffectiveZoom = bRawZoom;
               const bEffectiveZoom2 = Number(b.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || Math.max(12, bEffectiveZoom - 2));
               const hasVue2Capture = Boolean(
-                b.masse_capture_2 || 
-                activeProj.masse_capture_2 || 
-                activeProj.urbanisme_captures?.masse_projet_2 || 
-                activeProj.captures?.masse_projet_2 || 
-                b.captures?.masse_projet_2 || 
-                b.urbanisme_captures?.masse_projet_2
+                (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50) || 
+                (activeProj.masse_capture_2 && typeof activeProj.masse_capture_2 === 'string' && activeProj.masse_capture_2.length > 50) || 
+                (activeProj.urbanisme_captures?.masse_projet_2 && typeof activeProj.urbanisme_captures.masse_projet_2 === 'string' && activeProj.urbanisme_captures.masse_projet_2.length > 50) || 
+                (activeProj.captures?.masse_projet_2 && typeof activeProj.captures.masse_projet_2 === 'string' && activeProj.captures.masse_projet_2.length > 50) || 
+                (b.captures?.masse_projet_2 && typeof b.captures.masse_projet_2 === 'string' && b.captures.masse_projet_2.length > 50) || 
+                (b.urbanisme_captures?.masse_projet_2 && typeof b.urbanisme_captures.masse_projet_2 === 'string' && b.urbanisme_captures.masse_projet_2.length > 50)
               );
-              const vue2Photo = b.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2 || activeProj.captures?.masse_projet_2 || b.captures?.masse_projet_2 || b.urbanisme_captures?.masse_projet_2;
+              const vue2Photo = hasVue2Capture ? (b.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2 || activeProj.captures?.masse_projet_2 || b.captures?.masse_projet_2 || b.urbanisme_captures?.masse_projet_2) : null;
               const bCaptures = {
                 ...(activeProj.captures || {}),
                 ...(activeProj.urbanisme_captures || {}),
@@ -1073,26 +1097,28 @@ export default function Developpement() {
                   <div id={`dev-pc-plate-masse${suffix}`}>
                     <PCPlateMasse project={bProj} captures={bCaptures} />
                   </div>
-                  {/* PC2 — Seconde page Plan de masse (Vue 2 - Zoom différent) */}
-                  <div id={`dev-pc-plate-masse-vue2${suffix}`}>
-                    <PCPlateMasse 
-                      project={{ 
-                        ...bProj, 
-                        masse_zoom: bEffectiveZoom2,
-                        masse_zoom_2: bEffectiveZoom2,
-                        masse_capture: vue2Photo,
-                        masse_capture_2: vue2Photo
-                      }} 
-                      captures={{ 
-                        ...bCaptures, 
-                        masse_projet: vue2Photo,
-                        masse_projet_2: vue2Photo,
-                        masse_zoom: bEffectiveZoom2,
-                        masse_zoom_2: bEffectiveZoom2
-                      }} 
-                      viewNumber={2}
-                    />
-                  </div>
+                  {/* PC2 — Seconde page Plan de masse (Vue 2 - Zoom différent) UNIQUEMENT si capture réelle */}
+                  {hasVue2Capture && (
+                    <div id={`dev-pc-plate-masse-vue2${suffix}`}>
+                      <PCPlateMasse 
+                        project={{ 
+                          ...bProj, 
+                          masse_zoom: bEffectiveZoom2,
+                          masse_zoom_2: bEffectiveZoom2,
+                          masse_capture: vue2Photo,
+                          masse_capture_2: vue2Photo
+                        }} 
+                        captures={{ 
+                          ...bCaptures, 
+                          masse_projet: vue2Photo,
+                          masse_projet_2: vue2Photo,
+                          masse_zoom: bEffectiveZoom2,
+                          masse_zoom_2: bEffectiveZoom2
+                        }} 
+                        viewNumber={2}
+                      />
+                    </div>
+                  )}
                   <div id={`dev-pc-plate-section-notice${suffix}`}>
                     <PCPlateSectionAndNotice 
                       project={bProj} 
