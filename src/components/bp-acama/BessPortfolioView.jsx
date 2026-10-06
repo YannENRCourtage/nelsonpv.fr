@@ -209,8 +209,8 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
     });
   }, [analyzedSites, selectedSpv, searchTerm]);
 
-// Données réseau ODRE / Caparéseau des 31 postes sources du portefeuille BESS
-const ODRE_CAPARESEAU_31_SITES = [
+// Données réseau ODRE / Caparéseau des postes sources du portefeuille BESS (29 sites)
+const ODRE_CAPARESEAU_29_SITES = [
   { id: 1, site: "PAILLOT Noël", city: "Rochechouart", cp: "87600", dept: "87", lat: 45.847811, lng: 0.852996, substation: "PLAUD", distKm: 6.6, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix injection" },
   { id: 2, site: "BATIOT Olivier", city: "Mongausy", cp: "32220", dept: "32", lat: 43.496370, lng: 0.834241, substation: "SEMEZIES", distKm: 5.9, s3renrStr: "84 130 €/MW", capOdre: 1.6, zoneCre: "Poche signal-prix injection" },
   { id: 3, site: "DOMERGUE David", city: "Meuzac", cp: "87380", dept: "87", lat: 45.566247, lng: 1.397687, substation: "LE REPAIRE", distKm: 8.6, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
@@ -236,12 +236,10 @@ const ODRE_CAPARESEAU_31_SITES = [
   { id: 23, site: "DOUMENS Morgan", city: "Beychac-et-Caillau", cp: "33750", dept: "33", lat: 44.870054, lng: -0.397698, substation: "POMPIGNAC", distKm: 4.0, s3renrStr: "92 730 €/MW", capOdre: 2.0, zoneCre: "Zone standard Enedis" },
   { id: 24, site: "HOUSSAIT-YOUNG Jérôme", city: "Vendays-Montalivet", cp: "33930", dept: "33", lat: 45.338321, lng: -1.071016, substation: "ST-VIVIEN", distKm: 9.9, s3renrStr: "92 730 €/MW", capOdre: 8.6, zoneCre: "Poche signal-prix soutirage" },
   { id: 25, site: "MISSAULT David", city: "Saint-Martin-de-Fressengeas", cp: "24800", dept: "24", lat: 45.438589, lng: 0.815692, substation: "THIVIERS", distKm: 6.7, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Poche mixte injection & soutirage" },
-  { id: 26, site: "LARDY Michel", city: "Maisonnisses", cp: "23150", dept: "23", lat: 46.067915, lng: 1.907318, substation: "LAVAUD", distKm: 10.6, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
-  { id: 27, site: "CELERIE Thomas", city: "Beyssenac", cp: "19230", dept: "19", lat: 45.400772, lng: 1.284338, substation: "LUBERSAC", distKm: 7.1, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
-  { id: 28, site: "MEILLAT Maxime", city: "Mourioux-Vieilleville", cp: "23210", dept: "23", lat: 46.081523, lng: 1.633909, substation: "CHATELUS 2", distKm: 5.4, s3renrStr: "92 730 €/MW", capOdre: 2.0, zoneCre: "Zone standard Enedis" },
-  { id: 29, site: "DOMERGUE David", city: "Argences en Aubrac", cp: "12420", dept: "12", lat: 44.807528, lng: 2.798446, substation: "RUEYRES", distKm: 5.9, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix injection" },
-  { id: 30, site: "COMBY Fabrice", city: "Saint-Éloy-les-Tuileries", cp: "19210", dept: "19", lat: 45.452807, lng: 1.284563, substation: "LUBERSAC", distKm: 10.5, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
-  { id: 31, site: "CASTEBRUNET Jérémy", city: "Saint-Cirq", cp: "82300", dept: "82", lat: 44.124392, lng: 1.583302, substation: "LERE", distKm: 6.2, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" }
+  { id: 26, site: "MEILLAT Maxime", city: "Mourioux-Vieilleville", cp: "23210", dept: "23", lat: 46.081523, lng: 1.633909, substation: "CHATELUS 2", distKm: 5.4, s3renrStr: "92 730 €/MW", capOdre: 2.0, zoneCre: "Zone standard Enedis" },
+  { id: 27, site: "DOMERGUE David", city: "Argences en Aubrac", cp: "12420", dept: "12", lat: 44.807528, lng: 2.798446, substation: "RUEYRES", distKm: 5.9, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix injection" },
+  { id: 28, site: "COMBY Fabrice", city: "Saint-Éloy-les-Tuileries", cp: "19210", dept: "19", lat: 45.452807, lng: 1.284563, substation: "LUBERSAC", distKm: 10.5, s3renrStr: "92 730 €/MW", capOdre: 0.0, zoneCre: "Zone standard Enedis" },
+  { id: 29, site: "CASTEBRUNET Jérémy", city: "Saint-Cirq", cp: "82300", dept: "82", lat: 44.124392, lng: 1.583302, substation: "LERE", distKm: 6.2, s3renrStr: "84 130 €/MW", capOdre: 0.0, zoneCre: "Poche signal-prix soutirage" }
 ];
 
   // Export Excel du business plan consolidé par site
@@ -475,7 +473,7 @@ const ODRE_CAPARESEAU_31_SITES = [
               {fmtEur(consolidatedTotals.totalAnnuite)} <span className="text-xs font-medium text-slate-500">/ an</span>
             </div>
             <div className="text-[10px] font-semibold text-blue-700 mt-1 bg-blue-50/80 px-2 py-1 rounded border border-blue-100">
-              ~{fmtEur(consolidatedTotals.totalAnnuite / 31)} / an / site ({debtDuration} ans)
+              ~{fmtEur(consolidatedTotals.totalAnnuite / (consolidatedTotals.totalSites || 1))} / an / site ({debtDuration} ans)
             </div>
           </div>
 
@@ -498,14 +496,14 @@ const ODRE_CAPARESEAU_31_SITES = [
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Puissance Globale</div>
-          <div className="text-xl font-black text-slate-900 mt-1">15.5 MW</div>
-          <div className="text-[10px] font-semibold text-blue-600 mt-0.5">31 × 500 kW HTA</div>
+          <div className="text-xl font-black text-slate-900 mt-1">{consolidatedTotals.totalPowerMw.toFixed(1)} MW</div>
+          <div className="text-[10px] font-semibold text-blue-600 mt-0.5">{consolidatedTotals.totalSites} × 500 kW HTA</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Capacité Stockage</div>
-          <div className="text-xl font-black text-slate-900 mt-1">32.36 MWh</div>
-          <div className="text-[10px] font-semibold text-indigo-600 mt-0.5">31 × 1044 kWh (2h)</div>
+          <div className="text-xl font-black text-slate-900 mt-1">{consolidatedTotals.totalCapacityMwh.toFixed(2)} MWh</div>
+          <div className="text-[10px] font-semibold text-indigo-600 mt-0.5">{consolidatedTotals.totalSites} × 1044 kWh (2h)</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
@@ -542,7 +540,7 @@ const ODRE_CAPARESEAU_31_SITES = [
           <div className="flex items-center gap-2">
             <TableIcon className="w-4 h-4 text-blue-700" />
             <span className="text-xs font-black uppercase text-slate-800 tracking-wider">
-              Compte de Résultat Consolidé 15 Ans — Portefeuille 31 Sites
+              Compte de Résultat Consolidé 15 Ans — Portefeuille {selectedPortfolio === 'ALL' ? 'Consolidé' : selectedPortfolio} ({consolidatedTotals.totalSites} Sites)
             </span>
           </div>
           <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
@@ -593,16 +591,16 @@ const ODRE_CAPARESEAU_31_SITES = [
         )}
       </div>
 
-      {/* ── Table Détaillée des 31 Sites BESS ─────────────────────────────────── */}
+      {/* ── Table Détaillée des Sites BESS ─────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/60">
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-blue-600" />
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-              Inventaire Exhaustif des 31 Sites du Portefeuille
+              Inventaire Exhaustif des {consolidatedTotals.totalSites} Sites du Portefeuille
             </h3>
             <span className="ml-2 px-2 py-0.5 text-[10px] font-black rounded-full bg-blue-100 text-blue-800">
-              {filteredSites.length} / 31 sites
+              {filteredSites.length} / {consolidatedTotals.totalSites} sites
             </span>
           </div>
 

@@ -5,7 +5,7 @@ import { computeBessFinancials } from './bessSimulationEngine.js';
 import { formatResteAffecterDistanceWithFallback } from './odreSubstationFallback.js';
 
 /**
- * SERVICE D'EXPORT EXCEL CONSOLIDÉ DU PORTEFEUILLE BESS (31 SITES / 15.5 MW)
+ * SERVICE D'EXPORT EXCEL CONSOLIDÉ DU PORTEFEUILLE BESS
  * Harmonisé strictement avec le moteur financier Nelson (computeBessFinancials)
  */
 
@@ -136,7 +136,7 @@ export function exportBessPortfolioToExcel(sites = BESS_PORTFOLIO_SITES, options
   wsPortfolio['!cols'] = fitCols(portfolioRows);
   wsChrono['!cols'] = fitCols(chronoRows);
 
-  const portfolioTag = options.portfolioName ? `${options.portfolioName}` : '31_Sites';
+  const portfolioTag = options.portfolioName ? `${options.portfolioName}` : `${sites.length}_Sites`;
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, wsPortfolio, `Portefeuille_BESS_${portfolioTag}`);
   XLSX.utils.book_append_sheet(wb, wsChrono, 'Modele_Financier_15_Ans');
@@ -180,6 +180,6 @@ export function exportBessOdreMatrixToExcel() {
   });
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Capareseau_ODRE_31_Sites');
-  XLSX.writeFile(wb, 'Matrice_Capareseau_ODRE_31_Postes_Sources_ENR_COURTAGE.xlsx');
+  XLSX.utils.book_append_sheet(wb, ws, `Capareseau_ODRE_${BESS_ODRE_MATRIX.length}_Sites`);
+  XLSX.writeFile(wb, `Matrice_Capareseau_ODRE_${BESS_ODRE_MATRIX.length}_Postes_Sources_ENR_COURTAGE.xlsx`);
 }

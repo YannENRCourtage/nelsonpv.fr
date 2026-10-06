@@ -457,30 +457,7 @@ export const BESS_PORTFOLIO_SITES = [
       "lng": -0.42513502454982444
     }
   },
-  {
-    "id": "site_20",
-    "name": "LARDY",
-    "postcode": "23150",
-    "city": "Maisonnisses",
-    "address": "23150 Maisonnisses",
-    "spv": "SPV A",
-    "rent": 3000,
-    "lat": 46.056502,
-    "lng": 1.907133,
-    "substation": {
-      "name": "LAVAUD",
-      "code": "LAVAU",
-      "voltageLevel": "HTA / 20 kV",
-      "gestionnaire": "Enedis",
-      "distanceKm": 10.6,
-      "quotePartS3renr": "92.73  k€/MW",
-      "capaciteReserveeMw": 5.1,
-      "resteAffecterMw": 0,
-      "fileAttenteMw": 7.8,
-      "lat": 46.15167132199841,
-      "lng": 1.9068918686853655
-    }
-  },
+
   {
     "id": "site_21",
     "name": "FRECHEVILLE",
@@ -779,14 +756,17 @@ export function getProjectBessPortfolio(p) {
                  '';
   const val = String(direct).trim();
   const norm = normalizePortfolioName(val);
-  if (norm === 'AUCUN' || norm === 'NON AFFECTE' || norm === 'AUCUN / NON' || norm === 'NONE' || norm === 'NULL' || norm === 'UNDEFINED' || norm === 'NON') {
+  if (norm === 'AUCUN' || norm === 'NON AFFECTE' || norm === 'AUCUN / NON' || norm === 'NONE' || norm === 'NULL' || norm === 'UNDEFINED' || norm === 'NON' || !val) {
     return '';
   }
 
-  // Exclusion explicite DUPORT et LABEGUERIE du portefeuille BESS
+  // Exclusion explicite DUPORT, LABEGUERIE, LARDY et CELERIE du portefeuille BESS / VOLTA
   const pName = (p.name || '').toLowerCase();
-  const pClient = (p.client_name || p.client || '').toLowerCase();
-  if (pName.includes('duport') || pClient.includes('duport') || pName.includes('labeguerie') || pClient.includes('labeguerie')) {
+  const pClient = (p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`).toLowerCase();
+  if (pName.includes('duport') || pClient.includes('duport') || 
+      pName.includes('labeguerie') || pClient.includes('labeguerie') ||
+      pName.includes('lardy') || pClient.includes('lardy') ||
+      pName.includes('celerie') || pClient.includes('celerie')) {
     if (!val || norm === 'VOLTA') {
       return '';
     }
@@ -797,16 +777,6 @@ export function getProjectBessPortfolio(p) {
   }
   if (val) return val;
 
-  // Si le projet est marqué comme Batterie SA / Stand-alone
-  if (p.isBatteryStandAlone === 'Oui' || 
-      p.type === 'Batterie SA' || 
-      (p.type_projet || '').toLowerCase().includes('batterie') ||
-      (p.type || '').toLowerCase().includes('batterie') ||
-      (p.projectSize || '').toLowerCase().includes('batterie') ||
-      (p.projet || '').toLowerCase().includes('batterie')) {
-    return (p.spv === 'SPV B' ? 'TESLA' : 'VOLTA');
-  }
-
   return '';
 }
 
@@ -815,7 +785,7 @@ export function getProjectBessPortfolio(p) {
  * RÈGLE STRICTE :
  * - Les projets dont la fiche comporte le portefeuille BESS sélectionné apparaissent dans la liste.
  * - Tout dossier abandonné (statut 'Abandonné') est STRICTEMENT exclu de tous les portefeuilles.
- * - Les dossiers DUPORT et LABEGUERIE ne doivent pas apparaître dans le portefeuille VOLTA.
+ * - Les dossiers DUPORT, LABEGUERIE, LARDY et CELERIE ne doivent pas apparaître dans le portefeuille VOLTA.
  * - Aucun doublon n'est toléré.
  *
  * @param {Array} projects Liste des projets CRM (tenant actif)
@@ -882,9 +852,11 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
       const pClientNorm = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
       const pCityNorm = normalize(p.city || p.commune || '');
 
-      // Exclusion explicite DUPORT et LABEGUERIE
+      // Exclusion explicite DUPORT, LABEGUERIE, LARDY et CELERIE
       if (pNameNorm.includes('duport') || pClientNorm.includes('duport') || 
-          pNameNorm.includes('labeguerie') || pClientNorm.includes('labeguerie')) {
+          pNameNorm.includes('labeguerie') || pClientNorm.includes('labeguerie') ||
+          pNameNorm.includes('lardy') || pClientNorm.includes('lardy') ||
+          pNameNorm.includes('celerie') || pClientNorm.includes('celerie')) {
         return;
       }
 

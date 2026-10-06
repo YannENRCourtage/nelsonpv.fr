@@ -1096,7 +1096,7 @@ export default function ProjectEditor() {
                   )}
                 </div>
                 <select
-                  value={p.bess_portfolio || (p.isBatteryStandAlone === 'Oui' ? 'VOLTA' : '')}
+                  value={p.bess_portfolio || ''}
                   onChange={e => handleBessPortfolioChange(e.target.value)}
                   className="w-full rounded-md border border-input px-3 py-2 h-10 bg-background text-xs font-bold text-blue-900 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
@@ -1212,7 +1212,7 @@ export default function ProjectEditor() {
                     )}
                   </div>
                   <select
-                    value={p.bess_portfolio || (p.isBatteryStandAlone === 'Oui' ? 'VOLTA' : '')}
+                    value={p.bess_portfolio || ''}
                     onChange={e => handleBessPortfolioChange(e.target.value)}
                     className="mt-0.5 w-full rounded-lg border px-2 py-1 h-8 bg-background text-xs font-bold text-blue-900"
                   >

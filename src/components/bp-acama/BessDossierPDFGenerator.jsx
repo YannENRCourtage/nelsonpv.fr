@@ -102,12 +102,10 @@ const RAW_SITES_DATABASE = [
   { id: 23, name: "DOUMENS", client: "DOUMENS Morgan", address: "4 Route de Salleboeuf", cp: "33750", city: "Beychac-et-Caillau", dept: "33", gps: "44.870054, -0.397698", lat: 44.870054, lng: -0.397698, substation: "POMPIGNAC", dist: "4.0 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 24, name: "HOUSSAIT-YOUNG", client: "HOUSSAIT-YOUNG Jérôme", address: "94 Route d'Hourtin", cp: "33930", city: "Vendays-Montalivet", dept: "33", gps: "45.338321, -1.071016", lat: 45.338321, lng: -1.071016, substation: "ST-VIVIEN", dist: "9.9 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
   { id: 25, name: "MISSAULT FRESSENGEAS", client: "MISSAULT David", address: "Route de la Baine", cp: "24800", city: "Saint-Martin-de-Fressengeas", dept: "24", gps: "45.438589, 0.815692", lat: 45.438589, lng: 0.815692, substation: "THIVIERS", dist: "6.7 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 26, name: "LARDY", client: "LARDY Michel", address: "Outrelaigue", cp: "23150", city: "Maisonnisses", dept: "23", gps: "46.067915, 1.907318", lat: 46.067915, lng: 1.907318, substation: "LAVAUD", dist: "10.6 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 27, name: "CELERIE", client: "CELERIE Thomas", address: "301 route de la Valade", cp: "19230", city: "Beyssenac", dept: "19", gps: "45.400772, 1.284338", lat: 45.400772, lng: 1.284338, substation: "LUBERSAC", dist: "7.1 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 28, name: "MEILLAT 2", client: "MEILLAT Maxime", address: "1a la Ribiére", cp: "23210", city: "Mourioux-Vieilleville", dept: "23", gps: "46.081523, 1.633909", lat: 46.081523, lng: 1.633909, substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 29, name: "DOMERGUE ARGENCES", client: "DOMERGUE David", address: "1 Route de Plagnes", cp: "12420", city: "Argences en Aubrac", dept: "12", gps: "44.807528, 2.790446", lat: 44.807528, lng: 2.790446, substation: "RUEYRES", dist: "5.9 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 30, name: "COMBY", client: "COMBY Fabrice", address: "14 Route de Besse", cp: "19210", city: "Saint-Éloy-les-Tuileries", dept: "19", gps: "45.452807, 1.284563", lat: 45.452807, lng: 1.284563, substation: "LUBERSAC", dist: "10.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
-  { id: 31, name: "CASTEBRUNET 4", client: "CASTEBRUNET Jérémy", address: "3750 Route de Bioule", cp: "82300", city: "Saint-Cirq", dept: "82", gps: "44.124392, 1.583302", lat: 44.124392, lng: 1.583302, substation: "LERE", dist: "6.2 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" }
+  { id: 26, name: "MEILLAT 2", client: "MEILLAT Maxime", address: "1a la Ribiére", cp: "23210", city: "Mourioux-Vieilleville", dept: "23", gps: "46.081523, 1.633909", lat: 46.081523, lng: 1.633909, substation: "CHATELUS 2", dist: "5.4 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
+  { id: 27, name: "DOMERGUE ARGENCES", client: "DOMERGUE David", address: "1 Route de Plagnes", cp: "12420", city: "Argences en Aubrac", dept: "12", gps: "44.807528, 2.790446", lat: 44.807528, lng: 2.790446, substation: "RUEYRES", dist: "5.9 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
+  { id: 28, name: "COMBY", client: "COMBY Fabrice", address: "14 Route de Besse", cp: "19210", city: "Saint-Éloy-les-Tuileries", dept: "19", gps: "45.452807, 1.284563", lat: 45.452807, lng: 1.284563, substation: "LUBERSAC", dist: "10.5 km", s3renr: "92.73 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" },
+  { id: 29, name: "CASTEBRUNET 4", client: "CASTEBRUNET Jérémy", address: "3750 Route de Bioule", cp: "82300", city: "Saint-Cirq", dept: "82", gps: "44.124392, 1.583302", lat: 44.124392, lng: 1.583302, substation: "LERE", dist: "6.2 km", s3renr: "84.13 k€/MW", power: "500 kW", cap: "1044 kWh", rent: "3 000 €" }
 ];
 
 const SITES_DATABASE = RAW_SITES_DATABASE.map(s => {
@@ -719,7 +717,7 @@ export default function BessDossierPDFGenerator({
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
-                Portefeuille Consolidé (31 Sites / 15.5 MW)
+                Portefeuille Consolidé ({selectedBessSites.length} Sites / {((selectedBessSites.length * 500) / 1000).toFixed(1)} MW)
               </button>
             </div>
           </div>

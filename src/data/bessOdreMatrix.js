@@ -533,46 +533,6 @@ export const BESS_ODRE_MATRIX = [
   },
   {
     id: 26,
-    siteName: "LARDY",
-    client: "LARDY Michel",
-    commune: "Maisonnisses",
-    codePostal: "23150",
-    departement: "23",
-    latitude: 46.067915,
-    longitude: 1.907318,
-    posteSourceEnedis: "LAVAUD",
-    tension: "HTA 20 kV",
-    distanceKm: 10.6,
-    quotePartS3REnR: "92.73 k€/MW",
-    quotePartS3renrEur: 92730,
-    capaciteResiduelleOdreMw: 0.0,
-    typologieZoneCre: "Zone standard Enedis",
-    puissanceKw: 500,
-    capaciteKwh: 1044,
-    statutRaccordement: "Transfo sol libre - Dépôt PTF"
-  },
-  {
-    id: 27,
-    siteName: "CELERIE",
-    client: "CELERIE Thomas",
-    commune: "Beyssenac",
-    codePostal: "19230",
-    departement: "19",
-    latitude: 45.400772,
-    longitude: 1.284338,
-    posteSourceEnedis: "LUBERSAC",
-    tension: "HTA 20 kV",
-    distanceKm: 7.1,
-    quotePartS3REnR: "92.73 k€/MW",
-    quotePartS3renrEur: 92730,
-    capaciteResiduelleOdreMw: 0.0,
-    typologieZoneCre: "Zone standard Enedis",
-    puissanceKw: 500,
-    capaciteKwh: 1044,
-    statutRaccordement: "Transfo sol libre - Dépôt PTF"
-  },
-  {
-    id: 28,
     siteName: "MEILLAT 2",
     aliases: ["MEILLAT 2"],
     client: "MEILLAT Maxime",
@@ -594,7 +554,7 @@ export const BESS_ODRE_MATRIX = [
     statutRaccordement: "Transfo sol libre - Dépôt PTF"
   },
   {
-    id: 29,
+    id: 27,
     siteName: "DOMERGUE ARGENCES",
     aliases: ["DOMERGUE ARGENCES"],
     client: "DOMERGUE David",
@@ -616,7 +576,7 @@ export const BESS_ODRE_MATRIX = [
     statutRaccordement: "Transfo sol libre - Dépôt PTF"
   },
   {
-    id: 30,
+    id: 28,
     siteName: "COMBY",
     client: "COMBY Fabrice",
     commune: "Saint-Éloy-les-Tuileries",
@@ -636,7 +596,7 @@ export const BESS_ODRE_MATRIX = [
     statutRaccordement: "Transfo sol libre - Dépôt PTF"
   },
   {
-    id: 31,
+    id: 29,
     siteName: "CASTEBRUNET 4",
     aliases: ["CASTEBRUNET 4"],
     client: "CASTEBRUNET Jérémy",
