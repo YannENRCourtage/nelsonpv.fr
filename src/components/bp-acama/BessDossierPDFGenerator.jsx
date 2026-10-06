@@ -27,7 +27,8 @@ import {
   CheckSquare,
   Square,
   SlidersHorizontal,
-  AlertCircle
+  AlertCircle,
+  Table as TableIcon
 } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -281,6 +282,7 @@ export default function BessDossierPDFGenerator({
     ? allAvailableSites.filter(s => selectedProjectIds.includes(s.id))
     : allAvailableSites;
   const mult = isPort ? selectedBessSites.length : 1;
+  const portName = portfolioData?.selectedPortfolio || 'VOLTA';
 
   // Recherche du site unitaire
   const selectedSite = allAvailableSites.find(s => s.name?.toUpperCase() === (projectData?.name || '').toUpperCase()) || allAvailableSites[0] || SITES_DATABASE[7]; // Concèze
@@ -368,6 +370,28 @@ export default function BessDossierPDFGenerator({
 
   // Totaux cumulés et métriques unifiées basés exclusivement sur les projets sélectionnés
   const singleMetrics = !isPort ? computeDynamicSiteMetrics(selectedSite) : null;
+
+  // Chronique 15 ans pour le Compte de Résultat Consolidé affiché en bas de Planche 1
+  const bessP1Chronique = useMemo(() => {
+    let cumul = 0;
+    return YEARS_15.map((_, i) => {
+      const ca = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
+      const opex = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
+      const ebitda = ca - opex;
+      const serviceDette = dynamicFinancialMatrix.debtService[i];
+      const cfNet = ebitda - serviceDette;
+      cumul += cfNet;
+      return {
+        year: i + 1,
+        ca,
+        opex,
+        ebitda,
+        serviceDette,
+        cfNet,
+        cumulCf: cumul
+      };
+    });
+  }, [dynamicFinancialMatrix]);
   const totalEbitdaAllSites = selectedBessSites.reduce((sum, s) => sum + s.ebitdaAn1, 0);
   const totalCaAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s).caAnnuel, 0);
   const totalCapexAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s).capexTotal, 0);
@@ -816,19 +840,19 @@ export default function BessDossierPDFGenerator({
             </div>
             <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
             <div>
-              {/* En-tête de planche sans les bulles supérieures (déplacées en bas) */}
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
+              {/* En-tête de planche */}
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
                 <div className="flex items-center gap-4">
                   <img
                     src="/logo-enr-courtage-inline.png"
                     alt="ENR COURTAGE"
-                    className="h-12 w-auto object-contain"
+                    className="h-11 w-auto object-contain"
                   />
                   <div>
                     <h1 className="text-2xl sm:text-3xl font-black text-[#0b192c] tracking-tight">
                       {headerProjectTitle}
                     </h1>
-                    <p className="text-xs sm:text-sm font-medium text-slate-600 mt-1 max-w-4xl">
+                    <p className="text-xs font-medium text-slate-600 mt-0.5 max-w-4xl">
                       {headerProjectSubtitle}
                     </p>
                   </div>
@@ -841,67 +865,67 @@ export default function BessDossierPDFGenerator({
               </div>
 
               {/* Les 6 grands chiffres clés visuels avec bordures micro-dégradées */}
-              <div className="grid grid-cols-6 gap-3.5 mb-5">
-                <div className="bg-white border-2 border-purple-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+              <div className="grid grid-cols-6 gap-3 mb-3">
+                <div className="bg-white border-2 border-purple-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                   <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-indigo-600"></div>
                   <div>
                     <div className="text-[10px] uppercase tracking-wider font-extrabold text-purple-700">TRI Projet & Equity</div>
-                    <div className="text-2xl font-black text-purple-900 mt-1">{kpi.irrProject}</div>
+                    <div className="text-xl font-black text-purple-900 mt-0.5">{kpi.irrProject}</div>
                   </div>
-                  <div className="text-[11px] font-bold text-purple-600 mt-1">{kpi.irrEquity}</div>
+                  <div className="text-[10.5px] font-bold text-purple-600 mt-0.5">{kpi.irrEquity}</div>
                 </div>
 
-                <div className="bg-white border-2 border-emerald-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                <div className="bg-white border-2 border-emerald-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                   <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 to-teal-600"></div>
                   <div>
                     <div className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700">Temps de Retour Net</div>
-                    <div className="text-2xl font-black text-emerald-900 mt-1">{kpi.payback}</div>
+                    <div className="text-xl font-black text-emerald-900 mt-0.5">{kpi.payback}</div>
                   </div>
-                  <div className="text-[11px] font-bold text-emerald-600 mt-1">{kpi.paybackEquity}</div>
+                  <div className="text-[10.5px] font-bold text-emerald-600 mt-0.5">{kpi.paybackEquity}</div>
                 </div>
 
-                <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                <div className="bg-white border-2 border-amber-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                   <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-500 to-orange-500"></div>
                   <div>
                     <div className="text-[10px] uppercase tracking-wider font-extrabold text-amber-700">EBITDA Net An 1</div>
-                    <div className="text-2xl font-black text-amber-900 mt-1">{kpi.ebitda}</div>
+                    <div className="text-xl font-black text-amber-900 mt-0.5">{kpi.ebitda}</div>
                   </div>
-                  <div className="text-[11px] font-bold text-amber-600 mt-1">{kpi.ebitdaSub}</div>
+                  <div className="text-[10.5px] font-bold text-amber-600 mt-0.5">{kpi.ebitdaSub}</div>
                 </div>
 
-                <div className="bg-white border-2 border-blue-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                <div className="bg-white border-2 border-blue-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                   <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-cyan-500"></div>
                   <div>
                     <div className="text-[10px] uppercase tracking-wider font-extrabold text-blue-700">Chiffre d'Affaires Brut</div>
-                    <div className="text-2xl font-black text-blue-900 mt-1">{kpi.revenue}</div>
+                    <div className="text-xl font-black text-blue-900 mt-0.5">{kpi.revenue}</div>
                   </div>
-                  <div className="text-[11px] font-bold text-blue-600 mt-1">{kpi.revenueSub}</div>
+                  <div className="text-[10.5px] font-bold text-blue-600 mt-0.5">{kpi.revenueSub}</div>
                 </div>
 
-                <div className="bg-white border-2 border-slate-300 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                <div className="bg-white border-2 border-slate-300 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                   <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-600 to-slate-800"></div>
                   <div>
                     <div className="text-[10px] uppercase tracking-wider font-extrabold text-slate-700">CAPEX Clé en Main</div>
-                    <div className="text-2xl font-black text-slate-900 mt-1">{kpi.capex}</div>
+                    <div className="text-xl font-black text-slate-900 mt-0.5">{kpi.capex}</div>
                   </div>
-                  <div className="text-[11px] font-bold text-slate-600 mt-1">{kpi.capexSub}</div>
+                  <div className="text-[10.5px] font-bold text-slate-600 mt-0.5">{kpi.capexSub}</div>
                 </div>
 
-                <div className="bg-white border-2 border-cyan-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                <div className="bg-white border-2 border-cyan-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                   <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 to-teal-500"></div>
                   <div>
                     <div className="text-[10px] uppercase tracking-wider font-extrabold text-cyan-700">Gain Annuel TURPE 7</div>
-                    <div className="text-2xl font-black text-cyan-900 mt-1">{kpi.turpeGain}</div>
+                    <div className="text-xl font-black text-cyan-900 mt-0.5">{kpi.turpeGain}</div>
                   </div>
-                  <div className="text-[11px] font-bold text-cyan-600 mt-1">{kpi.turpeSub}</div>
+                  <div className="text-[10.5px] font-bold text-cyan-600 mt-0.5">{kpi.turpeSub}</div>
                 </div>
               </div>
 
               {/* Deux grands blocs d'analyse comparative et de sécurisation foncière */}
-              <div className="grid grid-cols-2 gap-5 mb-3">
+              <div className="grid grid-cols-2 gap-4 mb-2">
                 {/* Bloc 1 : Spécifications Techniques Matériel */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
                       <h3 className="font-extrabold text-[#0b192c] text-xs uppercase tracking-wide">
@@ -913,28 +937,28 @@ export default function BessDossierPDFGenerator({
                     </span>
                   </div>
 
-                  <div className="space-y-2 text-xs text-slate-700">
-                    <div className="flex justify-between py-1 border-b border-slate-100">
+                  <div className="space-y-1 text-[11px] text-slate-700">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Configuration technique :</span>
                       <span className="font-bold text-[#0b192c]">{kpi.techConfig}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Puissance nominale & Capacité :</span>
                       <span className="font-extrabold text-blue-700">{kpi.techPowerCap}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Emprise au sol par unité :</span>
                       <span className="font-bold text-emerald-700">19.84 m² sur dalle béton (&lt; 20 m² Déclaration Préalable DP)</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Clôture & Sécurité périmétrique :</span>
                       <span className="font-bold text-slate-800">Grillage rigide thermo-laqué H 2.00m avec portillon sécurisé</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Rendement Round-Trip (AC-AC) :</span>
                       <span className="font-bold text-[#0b192c]">88.0% certifié en cycles nominaux</span>
                     </div>
-                    <div className="flex justify-between py-1">
+                    <div className="flex justify-between py-0.5">
                       <span className="font-medium text-slate-500">Refroidissement & Sécurité incendie :</span>
                       <span className="font-bold text-[#0b192c]">Liquide HVAC • Aérosol NFPA 855 asservi</span>
                     </div>
@@ -942,8 +966,8 @@ export default function BessDossierPDFGenerator({
                 </div>
 
                 {/* Bloc 2 : Insertion Réseau Enedis & Sécurisation Foncière 20 Ans */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
                       <h3 className="font-extrabold text-[#0b192c] text-xs uppercase tracking-wide">
@@ -955,28 +979,28 @@ export default function BessDossierPDFGenerator({
                     </span>
                   </div>
 
-                  <div className="space-y-2 text-xs text-slate-700">
-                    <div className="flex justify-between py-1 border-b border-slate-100">
+                  <div className="space-y-1 text-[11px] text-slate-700">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Domaine de tension de raccordement :</span>
                       <span className="font-bold text-[#0b192c]">HTA 20 000 V (Option HTA1 Courte Utilisation)</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Distance privée de raccordement :</span>
                       <span className="font-bold text-[#0b192c]">10 mètres optimisés (Minimisation du génie civil)</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Sécurisation foncière des sites :</span>
                       <span className="font-extrabold text-emerald-700">Promesses de bail sur 20 ans signées (3 000 € HT/an/site)</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Statut Réseau Postes Sources :</span>
                       <span className="font-bold text-slate-800">Transfos sol &ge; 400 kVA identifiés (Dépôts libres acquéreur)</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-slate-100">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100">
                       <span className="font-medium text-slate-500">Protocoles de communication :</span>
                       <span className="font-bold text-[#0b192c]">IEC 61850 &amp; Conformité téléaction RTE / PICASSO</span>
                     </div>
-                    <div className="flex justify-between py-1">
+                    <div className="flex justify-between py-0.5">
                       <span className="font-medium text-slate-500">Délai prévisionnel de COD :</span>
                       <span className="font-bold text-cyan-700">6 à 9 mois post-purges administratives de la DP</span>
                     </div>
@@ -984,20 +1008,58 @@ export default function BessDossierPDFGenerator({
                 </div>
               </div>
 
-              {/* Les 4 Bulles déplacées en bas de la page 1 */}
-              <div className="flex items-center justify-center gap-3 pt-2 pb-1 border-t border-slate-100">
-                <span className="px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 shadow-xs">
-                  STOCKAGE STATIONNAIRE BESS HTA
-                </span>
-                <span className="px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
-                  RÉGIME DÉLIBÉRÉ CRE 2025-227
-                </span>
-                <span className="px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200 shadow-xs">
-                  2 CYCLES / JOUR
-                </span>
-                <span className="px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
-                  BAIL NOTARIÉ 20 ANS
-                </span>
+              {/* ── Compte de Résultat Consolidé 15 Ans (Page 1 en bas) ─────── */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden mt-1">
+                <div className="px-4 py-1.5 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TableIcon className="w-3.5 h-3.5 text-amber-700" />
+                    <span className="text-[10.5px] font-black uppercase text-slate-800 tracking-wider">
+                      Compte de Résultat Consolidé 15 Ans — {isPort ? `Portefeuille BESS ${portName}` : `Centrale BESS — ${projectData?.name || selectedSite.name}`}
+                    </span>
+                  </div>
+                  <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">
+                    Flux Prévisionnels Consolidés • {debtDuration} ans @ {debtRate.toFixed(2)}%
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto p-1.5">
+                  <table className="w-full text-right border-collapse text-[7.5px]">
+                    <thead>
+                      <tr className="bg-slate-800 text-white font-bold">
+                        <th className="p-1 text-left w-[175px] min-w-[175px] text-[8px]">Poste Financier (€)</th>
+                        {bessP1Chronique.map(c => (
+                          <th key={c.year} className="p-1 text-center whitespace-nowrap">A{c.year}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <tr className="font-bold text-emerald-700 bg-emerald-50/40">
+                        <td className="p-1 text-left font-bold text-slate-800">Chiffre d'Affaires Consolidé</td>
+                        {bessP1Chronique.map(c => <td key={c.year} className="p-1 whitespace-nowrap">{fmtEur(c.ca)}</td>)}
+                      </tr>
+                      <tr className="text-slate-600">
+                        <td className="p-1 text-left">OPEX &amp; Acheminement TURPE 7</td>
+                        {bessP1Chronique.map(c => <td key={c.year} className="p-1 text-rose-600 whitespace-nowrap">-{fmtEur(c.opex)}</td>)}
+                      </tr>
+                      <tr className="font-black bg-blue-50/50 text-blue-900 border-t border-b border-blue-200">
+                        <td className="p-1 text-left font-black text-blue-950">EBITDA Portefeuille</td>
+                        {bessP1Chronique.map(c => <td key={c.year} className="p-1 whitespace-nowrap">{fmtEur(c.ebitda)}</td>)}
+                      </tr>
+                      <tr className="text-slate-600">
+                        <td className="p-1 text-left">Service de la Dette ({debtDuration} ans à {debtRate.toFixed(2)}%)</td>
+                        {bessP1Chronique.map(c => <td key={c.year} className="p-1 text-slate-500 whitespace-nowrap">{c.serviceDette > 0 ? `-${fmtEur(c.serviceDette)}` : '—'}</td>)}
+                      </tr>
+                      <tr className="font-bold bg-amber-50/50 text-amber-950">
+                        <td className="p-1 text-left font-bold text-amber-950">Cash-Flow Net Annuel</td>
+                        {bessP1Chronique.map(c => <td key={c.year} className="p-1 whitespace-nowrap">{fmtEur(c.cfNet)}</td>)}
+                      </tr>
+                      <tr className="font-black bg-slate-100 text-slate-950">
+                        <td className="p-1 text-left font-black text-slate-950">Trésorerie Cumulée</td>
+                        {bessP1Chronique.map(c => <td key={c.year} className="p-1 whitespace-nowrap">{fmtEur(c.cumulCf)}</td>)}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
