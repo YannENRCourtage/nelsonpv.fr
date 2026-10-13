@@ -4,8 +4,10 @@ import {
   Sparkles, Zap, Search, BatteryCharging, MapPin, FolderOpen,
   FileText, CheckCircle2, AlertCircle, Loader2, Play, Square,
   RotateCcw, HardDrive, Compass, Euro, Download, Archive, X,
-  ShieldCheck, ExternalLink, Mail, Building, MapPinned, Eye
+  ShieldCheck, ExternalLink, Mail, Building, MapPinned, Eye,
+  Copy, Check, Navigation
 } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast.js';
 
 import {
   DEPARTEMENTS_FRANCE,
@@ -89,6 +91,21 @@ export default function AutomaticBessProspectingModal({
 
   const abortControllerRef = useRef(false);
   const logsEndRef = useRef(null);
+
+  const [copiedKey, setCopiedKey] = useState(null);
+  const handleCopy = useCallback((text, key) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    toast({
+      title: key.startsWith('addr') ? 'Adresse copiée !' : 'Coordonnées GPS copiées !',
+      description: text,
+      duration: 2000
+    });
+    setTimeout(() => {
+      setCopiedKey((curr) => (curr === key ? null : curr));
+    }, 2000);
+  }, []);
 
   const appendLog = useCallback((message) => {
     const timestamp = new Date().toLocaleTimeString('fr-FR', {
@@ -893,7 +910,7 @@ export default function AutomaticBessProspectingModal({
                           </div>
 
                           <div className="min-w-0">
-                            <div className="font-bold text-white flex items-center gap-2 truncate">
+                            <div className="font-bold text-white flex items-center gap-1.5 truncate">
                               <span className="truncate">{item.nom_societe || item.denomination || 'Propriétaire Foncier'}</span>
                               {item.parcelId && (
                                 <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-950/70 border border-emerald-600/40 px-1.5 py-0.5 rounded shrink-0">
@@ -903,12 +920,40 @@ export default function AutomaticBessProspectingModal({
                               <span className="text-[11px] text-slate-300 font-normal truncate">
                                 — {item.adresse_ligne1} ({item.ville || item.commune})
                               </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(`${item.adresse_ligne1}, ${item.code_postal || ''} ${item.ville || item.commune}`, `addr_${idx}`)}
+                                className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                                title="Copier l'adresse complète"
+                              >
+                                {copiedKey === `addr_${idx}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                              </button>
                             </div>
 
                             <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
                               <span className="px-1.5 py-0.5 text-[9.5px] font-black rounded border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
                                 Transfo Sol ({item.distSouterrain}m souterrain)
                               </span>
+                              {item.lat && item.lng && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(`${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}`, `gps_${idx}`)}
+                                  className="text-slate-400 hover:text-emerald-300 font-mono text-[9.5px] flex items-center gap-1 cursor-pointer transition-colors bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-700/60"
+                                  title="Cliquer pour copier les coordonnées GPS"
+                                >
+                                  {copiedKey === `gps_${idx}` ? (
+                                    <>
+                                      <Check className="w-2.5 h-2.5 text-emerald-400" />
+                                      <span className="text-emerald-400 font-bold">Copié !</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Navigation className="w-2.5 h-2.5 text-cyan-400" />
+                                      <span>{item.lat.toFixed(5)}, {item.lng.toFixed(5)}</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
                               <span>•</span>
                               <span className="text-amber-400 font-bold">
                                 💶 Loyer : 2 000 €/an (20 ans)

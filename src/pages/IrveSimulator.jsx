@@ -480,9 +480,16 @@ export default function IrveSimulator() {
         adresse_ligne1: targetSim.address || 'Votre parcelle',
         code_postal: targetSim.postalCode || '',
         ville: targetSim.cityName || '',
+        nomCommune: targetSim.cityName || '',
+        lat: targetSim.lat,
+        lng: targetSim.lng,
+        coords: targetSim.lat && targetSim.lng ? [targetSim.lat, targetSim.lng] : null,
         parcelId: targetSim.parcelId || '',
         section: targetSim.section || '',
-        numero: targetSim.numero || ''
+        numero: targetSim.numero || '',
+        parcelGeometry: targetSim.parcelGeometry || null,
+        distSouterrain: targetSim.distSouterrain,
+        distAerien: targetSim.distAerien
       }, { includeBrochure: targetSim.includeBrochure !== undefined ? targetSim.includeBrochure : true });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
