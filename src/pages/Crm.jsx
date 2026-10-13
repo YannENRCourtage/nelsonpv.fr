@@ -1555,8 +1555,15 @@ export default function Crm() {
   // Filtered Projects Logic (Lifted for Count)
   const filteredProjects = projects.filter(p => {
     // Search
-    const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.city || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLow = (searchTerm || '').toLowerCase().trim();
+    const matchesSearch = !searchLow ||
+      (p.name || '').toLowerCase().includes(searchLow) ||
+      (p.client || '').toLowerCase().includes(searchLow) ||
+      (p.client_name || '').toLowerCase().includes(searchLow) ||
+      (p.firstName || '').toLowerCase().includes(searchLow) ||
+      (p.city || '').toLowerCase().includes(searchLow) ||
+      (p.zip || '').includes(searchLow) ||
+      (p.address || '').toLowerCase().includes(searchLow);
 
     // User
     const projectUser = p.assignedUser || p.createdByFirstName || (typeof p.user === 'string' ? p.user : null);

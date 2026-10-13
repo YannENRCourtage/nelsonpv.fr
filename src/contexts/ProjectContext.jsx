@@ -7,27 +7,62 @@ import { useAuth } from "./AuthContext";
 /** Clef LS cloisonnée par tenant */
 const getTenantLSKey = (tId) => `nelson:projects:${tId || 'green-invest'}:v1`;
 
+// Clean legacy / obsolete localStorage keys to free quota space
+try {
+  localStorage.removeItem('nelson:projects:v1');
+  localStorage.removeItem('nelson:projects:undefined:v1');
+  localStorage.removeItem('nelson:projects:null:v1');
+} catch (_) {}
+
 /* Utils LS */
 function sanitizeProjectForLS(p) {
   if (!p || typeof p !== 'object') return p;
   const copy = { ...p };
+
+  // Strip massive non-list fields that bloat localStorage beyond the 5MB quota
+  delete copy.features;
+  delete copy.urbanisme_saved_state;
+  delete copy.cadastre_geojson;
+  delete copy.sun_data;
+  delete copy.pdf_blob;
+  delete copy.urbanisme_captures;
+
+  // Clean buildings and solutions from heavy nested captures and photos
+  if (Array.isArray(copy.buildings)) {
+    copy.buildings = copy.buildings.map(b => {
+      if (!b || typeof b !== 'object') return b;
+      const { captures, photos, urbanisme_captures, masse_capture, ...rest } = b;
+      return rest;
+    });
+  }
+
+  if (copy.solutions && typeof copy.solutions === 'object') {
+    const sol = {};
+    for (const [k, v] of Object.entries(copy.solutions)) {
+      if (v && Array.isArray(v.buildings)) {
+        sol[k] = {
+          ...v,
+          buildings: v.buildings.map(b => {
+            if (!b || typeof b !== 'object') return b;
+            const { captures, photos, urbanisme_captures, masse_capture, ...rest } = b;
+            return rest;
+          })
+        };
+      } else {
+        sol[k] = v;
+      }
+    }
+    copy.solutions = sol;
+  }
+
   // Strip large data URLs (base64) which exceed localStorage 5MB quota
   if (Array.isArray(copy.captures)) {
-    copy.captures = copy.captures.map(c => (typeof c === 'string' && c.startsWith('data:') && c.length > 500 ? null : c));
+    copy.captures = copy.captures.filter(c => typeof c === 'string' && !c.startsWith('data:') && c.length <= 500);
   }
   if (Array.isArray(copy.photos)) {
-    copy.photos = copy.photos.map(c => (typeof c === 'string' && c.startsWith('data:') && c.length > 500 ? null : c));
+    copy.photos = copy.photos.filter(c => typeof c === 'string' && !c.startsWith('data:') && c.length <= 500);
   }
-  if (copy.urbanisme_captures && typeof copy.urbanisme_captures === 'object') {
-    const uc = {};
-    for (const [k, v] of Object.entries(copy.urbanisme_captures)) {
-      uc[k] = (typeof v === 'string' && v.startsWith('data:') && v.length > 500 ? null : v);
-    }
-    copy.urbanisme_captures = uc;
-  }
-  if (typeof copy.pdf_blob === 'string' && copy.pdf_blob.length > 500) {
-    delete copy.pdf_blob;
-  }
+
   return copy;
 }
 
@@ -90,16 +125,15 @@ function loadProjectsFromLS(tenantId) {
 }
 
 function saveProjectsToLS(tenantId, list) {
+  if (!tenantId) return;
   try {
     const migrated = migrateProjectsLouxorToTesla(list);
     const sanitized = Array.isArray(migrated) ? migrated.map(sanitizeProjectForLS) : migrated;
     localStorage.setItem(getTenantLSKey(tenantId), JSON.stringify(sanitized));
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('projectsUpdated'));
   } catch (e) {
     console.warn('localStorage write error, attempting ultralight payload:', e);
     try {
-      // Fallback ultra-léger en cas de quota quasi-saturé
+      // Fallback ultra-léger (strictement l'affichage CRM & portefeuilles) en cas de quota presque saturé
       const ultralight = (Array.isArray(list) ? list : []).map(p => ({
         id: p.id,
         name: p.name,
@@ -113,20 +147,28 @@ function saveProjectsToLS(tenantId, list) {
         kwc: p.kwc,
         puissance: p.puissance,
         productible: p.productible,
+        projectSize: p.projectSize,
         pv_portfolio: p.pv_portfolio,
         bess_portfolio: p.bess_portfolio,
+        portfolio: p.portfolio,
+        portfolio_pv: p.portfolio_pv,
+        portfolio_bess: p.portfolio_bess,
         type: p.type,
         status: p.status,
         lat: p.lat,
         lng: p.lng,
         gps: p.gps,
         tenantId: p.tenantId,
-        bp_pv_data: p.bp_pv_data,
-        bpResults: p.bpResults
+        assignedUser: p.assignedUser,
+        commercial: p.commercial,
+        user: p.user,
+        createdBy: p.createdBy,
+        createdByFirstName: p.createdByFirstName,
+        creatorId: p.creatorId,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt
       }));
       localStorage.setItem(getTenantLSKey(tenantId), JSON.stringify(ultralight));
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new Event('projectsUpdated'));
     } catch (e2) {
       console.warn('localStorage ultralight write also failed:', e2);
     }
@@ -238,7 +280,13 @@ export function ProjectProvider({ children }) {
         unsubscribe = await apiService.subscribeToProjects((updatedProjects) => {
           console.log("Projects updated from Firestore:", updatedProjects?.length);
           if (Array.isArray(updatedProjects)) {
-            setProjects(updatedProjects);
+            setProjects(prev => {
+              if (updatedProjects.length === 0 && Array.isArray(prev) && prev.length > 0) {
+                console.warn("Ignoring transient empty projects snapshot from Firestore while local state has items");
+                return prev;
+              }
+              return updatedProjects;
+            });
           }
           setLoading(false);
         }, activeTenantId);
@@ -276,7 +324,7 @@ export function ProjectProvider({ children }) {
         // Fallback: try one-time fetch if subscription fails
         try {
           const fallbackData = await apiService.getProjects(activeTenantId);
-          if (Array.isArray(fallbackData)) {
+          if (Array.isArray(fallbackData) && fallbackData.length > 0) {
             setProjects(fallbackData);
           }
         } catch (e) {
@@ -297,7 +345,7 @@ export function ProjectProvider({ children }) {
     setLoading(true);
     try {
       const updated = await apiService.getProjects(activeTenantIdRef.current);
-      if (Array.isArray(updated)) {
+      if (Array.isArray(updated) && updated.length > 0) {
         setProjects(updated);
       }
       const partnerTenants = ['green-invest', 'enr-courtage-energie', 'acama'].filter(t => t !== activeTenantIdRef.current);
@@ -323,18 +371,22 @@ export function ProjectProvider({ children }) {
     }
   }, [setProjects]);
 
-  // Écouter les changements du localStorage (sync entre onglets)
+  // Écouter les changements du localStorage (sync entre onglets uniquement)
   useEffect(() => {
-    const handleStorageChange = () => {
+    const handleStorageChange = (e) => {
+      // Ignorer si ce n'est pas un événement inter-onglets concernant le tenant actif
+      if (e && e.key && e.key !== getTenantLSKey(activeTenantIdRef.current)) {
+        return;
+      }
       const local = loadProjectsFromLS(activeTenantIdRef.current);
-      _setProjects(local); // Use _setProjects to avoid triggering another save
+      if (Array.isArray(local) && local.length > 0) {
+        _setProjects(local);
+      }
       setAllProjects(loadAllTenantProjectsFromLS());
     };
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('projectsUpdated', handleStorageChange);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('projectsUpdated', handleStorageChange);
     };
   }, []);
 

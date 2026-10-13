@@ -474,8 +474,9 @@ export const duplicateProject = async (projectId, targetTenantId, transferLinked
     const newProjectRef = doc(collection(db, 'projects'));
     
     // 1. Créer la copie du projet
+    const { id: oldId, ...cleanProjectData } = projectData;
     const newProjectData = {
-        ...projectData,
+        ...cleanProjectData,
         tenantId: targetTenantId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
