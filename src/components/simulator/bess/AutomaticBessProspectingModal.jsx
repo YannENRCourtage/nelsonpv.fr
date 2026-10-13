@@ -333,6 +333,7 @@ export default function AutomaticBessProspectingModal({
           section: parcel?.section || '',
           numero: parcel?.numero || '',
           contenanceM2: parcel?.contenance || 0,
+          parcelGeometry: parcel?.geometry || null,
           loyerAnnuel: 2000,
           dureeBailAns: 20,
           surfaceEmpriseM2: 20,

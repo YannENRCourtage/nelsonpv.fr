@@ -1,27 +1,110 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   BatteryCharging, Sparkles, MapPin, Search, CheckCircle2,
-  FileText, Euro, ShieldCheck, Download, Mail, Building, Zap
+  FileText, Euro, ShieldCheck, Download, Mail, Building, Zap,
+  Layers, Navigation, ExternalLink
 } from 'lucide-react';
+import L from 'leaflet';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+
 import AutomaticBessProspectingModal from './AutomaticBessProspectingModal.jsx';
 import { generateBessProspectingPdfBlob } from './BessPDFGenerator.jsx';
+import { fetchCadastralParcel } from '@/services/bessProspectingGisService.js';
+
+// ─── RECENTRAGE AUTOMATIQUE DE LA CARTE ─────────────────────────────────────────
+function MapRecenter({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center && center[0] && center[1] && !isNaN(Number(center[0])) && !isNaN(Number(center[1]))) {
+      map.setView(center, 18, { animate: true });
+      const t = setTimeout(() => {
+        map.invalidateSize();
+      }, 150);
+      return () => clearTimeout(t);
+    }
+  }, [center?.[0], center?.[1], map]);
+  return null;
+}
+
+// ─── REDIMENSIONNEMENT AUTOMATIQUE LEAFLET ─────────────────────────────────────
+function MapAutoResize() {
+  const map = useMap();
+  useEffect(() => {
+    const handleResize = () => map.invalidateSize();
+    window.addEventListener('resize', handleResize);
+    const t = setTimeout(() => map.invalidateSize(), 200);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(t);
+    };
+  }, [map]);
+  return null;
+}
+
+// ─── ICÔNE DU TRANSFORMATEUR SOL (CARRÉ ROUGE AVEC ÉCLAIR) ─────────────────────
+const createTransfoIcon = () => {
+  return L.divIcon({
+    className: 'bess-transfo-marker',
+    html: `
+      <div style="
+        position: relative;
+        width: 34px;
+        height: 34px;
+        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+        border: 3px solid #ffffff;
+        border-radius: 6px;
+        box-shadow: 0 0 16px rgba(239, 68, 68, 0.9), 0 4px 10px rgba(0,0,0,0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-weight: 900;
+        font-size: 16px;
+        cursor: pointer;
+      ">
+        ⚡
+        <span style="
+          position: absolute;
+          top: -9px;
+          right: -9px;
+          background: #10b981;
+          color: #000000;
+          font-size: 9px;
+          font-weight: 900;
+          padding: 1px 4px;
+          border-radius: 4px;
+          border: 1.5px solid #ffffff;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        ">SOL</span>
+      </div>
+    `,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    popupAnchor: [0, -20]
+  });
+};
 
 export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSimulation, onExportPDF }) {
   const [isAutomateOpen, setIsAutomateOpen] = useState(false);
-  const [searchAddress, setSearchAddress] = useState('');
-  const [addressResults, setAddressResults] = useState([]);
+  const [mapLayerType, setMapLayerType] = useState('satellite'); // 'satellite' | 'osm'
+
+  // Site par défaut : SCI DC (Département 10, Torcy-le-Grand / La Rivière-de-Corps, Image 5)
   const [selectedSite, setSelectedSite] = useState({
-    name: 'Projet BESS 500 kW Nontron',
-    address: 'Route Albert Doury',
-    commune: 'Nontron',
-    postalCode: '24470',
-    departement: '24',
-    lat: 45.5336,
-    lng: 0.6757,
-    parcelId: '24311000AX0065',
-    section: 'AX',
-    numero: '0065',
-    ownerName: 'Propriétaire Foncier',
+    name: 'Centrale BESS — La Rivière-de-Corps',
+    address: '77, AV GENERAL LECLERC',
+    commune: 'La Rivière-de-Corps',
+    postalCode: '10210',
+    departement: '10',
+    lat: 48.2893154,
+    lng: 4.0019689,
+    parcelId: '103210000A0237',
+    section: '0A',
+    numero: '0237',
+    distSouterrain: 1.1,
+    distAerien: 844.9,
+    parcelGeometry: null,
+    ownerName: 'SCI DC',
     loyerAnnuel: 2000,
     dureeBail: 20,
     surface: 20,
@@ -30,6 +113,23 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
   });
 
   const [includeBrochure, setIncludeBrochure] = useState(true);
+
+  // Charger la géométrie de la parcelle si manquante
+  useEffect(() => {
+    if (selectedSite?.lat && selectedSite?.lng && !selectedSite?.parcelGeometry) {
+      fetchCadastralParcel(selectedSite.lat, selectedSite.lng).then((p) => {
+        if (p && p.geometry) {
+          setSelectedSite((prev) => ({
+            ...prev,
+            parcelGeometry: p.geometry,
+            section: prev.section || p.section,
+            numero: prev.numero || p.numero,
+            parcelId: prev.parcelId || p.idu
+          }));
+        }
+      });
+    }
+  }, [selectedSite?.lat, selectedSite?.lng]);
 
   // Synchronisation avec l'état global du simulateur
   useEffect(() => {
@@ -74,170 +174,295 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div className="min-h-[calc(100vh-180px)] bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 rounded-3xl overflow-hidden border border-slate-800/60 shadow-2xl p-5 sm:p-8 flex flex-col justify-between">
-      <div>
-        {/* HEADER */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800/80">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
-              <BatteryCharging className="w-7 h-7 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
-                <span>Batteries de Soutien Réseau BESS</span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  HTA Sol
-                </span>
-              </h1>
-              <p className="text-sm sm:text-base text-slate-300 font-medium">
-                Sourcing foncier de transformateurs HTA/BT au sol &bull; Qualification des propriétaires &bull; Génération de courriers de bail 20 ans
-              </p>
-            </div>
-          </div>
+  const centerCoords = [selectedSite.lat || 48.2893, selectedSite.lng || 4.0020];
 
-          <button
-            type="button"
-            onClick={() => setIsAutomateOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
-            title="Lancer l'automate de prospection BESS sur le réseau Enedis"
-          >
-            <Sparkles className="w-4 h-4 fill-black shrink-0" />
-            <span>Automate BESS (Transfos Sol)</span>
-          </button>
+  return (
+    <div className="h-full flex-1 flex flex-col min-h-0 max-h-[calc(100vh-140px)] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl p-3 sm:p-4 text-slate-100">
+
+      {/* ─── 1. HEADER COMPACT (HAUTEUR FIXE SANS SCROLL) ────────────────────── */}
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-800 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+            <BatteryCharging className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
+                Batteries de Soutien Réseau BESS
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
+                HTA Sol
+              </span>
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0">
+                2 000 €/an • 20 m² • 20 ans
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 truncate">
+              Détection Enedis des postes au sol raccordés en souterrain &bull; Foncier &bull; Courrier AFNOR
+            </p>
+          </div>
         </div>
 
-        {/* 3 GRANDS BLOCS DE SYNTHÈSE */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 my-6">
+        <button
+          type="button"
+          onClick={() => setIsAutomateOpen(true)}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+          title="Ouvrir l'automate de sourcing de transformateurs Enedis"
+        >
+          <Sparkles className="w-3.5 h-3.5 fill-black shrink-0" />
+          <span>Automate BESS (Transfos Sol)</span>
+        </button>
+      </div>
 
-          {/* BLOC 1 : CONDITIONS DU BAIL NOTARIÉ */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+      {/* ─── 2. CORPS EN 2 COLONNES : CARTES À GAUCHE + CARTE DU TRANSFO À DROITE ─── */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 pt-3 overflow-hidden">
+
+        {/* COLONNE GAUCHE (5 colonnes) : INFORMATIONS ET BAILLEUR QUALIFIÉ */}
+        <div className="lg:col-span-5 xl:col-span-4 flex flex-col justify-between gap-2.5 min-h-0 overflow-y-auto pr-1">
+
+          {/* CARTE 1 : SITE & BAILLEUR ACTIF QUALIFIÉ */}
+          <div className="p-3 bg-gradient-to-br from-slate-900 to-slate-950 rounded-xl border border-amber-500/40 shadow-lg space-y-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                <Euro className="w-4 h-4" /> Conditions du Bail
-              </h3>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Garanti 20 Ans
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5" /> Site &amp; Bailleur Actif
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                Parcelle {selectedSite.section} {selectedSite.numero}
               </span>
             </div>
 
-            <div className="space-y-3">
-              <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 block font-bold">Loyer Foncier Annuel</span>
-                  <span className="text-xl font-black text-emerald-400">2 000 € / an</span>
-                </div>
-                <span className="text-xs text-slate-400 font-semibold">Net de charges</span>
-              </div>
-
-              <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 block font-bold">Emprise Foncière Requise</span>
-                  <span className="text-xl font-black text-white">20 m²</span>
-                </div>
-                <span className="text-xs text-slate-400 font-semibold">Dalle béton clôturée</span>
-              </div>
-
-              <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 block font-bold">Total Loyers Sur 20 Ans</span>
-                  <span className="text-xl font-black text-amber-400">40 000 €</span>
-                </div>
-                <span className="text-xs text-slate-400 font-semibold">Indexation annuelle</span>
-              </div>
-            </div>
-          </div>
-
-          {/* BLOC 2 : SPÉCIFICATIONS TECHNIQUES BESS */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-wider text-blue-400 flex items-center gap-2">
-                <Zap className="w-4 h-4" /> Spécifications Techniques
-              </h3>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                500 kW / 1 044 kWh
-              </span>
-            </div>
-
-            <div className="space-y-2 text-xs text-slate-300">
-              <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-                <span className="text-slate-400 font-medium">Configuration :</span>
-                <span className="font-bold text-white">4 armoires CESC Mercury 261 (125 kW / 261 kWh)</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-                <span className="text-slate-400 font-medium">Technologie :</span>
-                <span className="font-bold text-emerald-400">LiFePO4 certifié &bull; HVAC Liquide</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-                <span className="text-slate-400 font-medium">Sécurité Incendie :</span>
-                <span className="font-bold text-white">Aérosol asservi NFPA 855</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-                <span className="text-slate-400 font-medium">Clôture Périmétrique :</span>
-                <span className="font-bold text-white">Grillage rigide thermolaqué H 2.00m</span>
-              </div>
-            </div>
-          </div>
-
-          {/* BLOC 3 : SITE ACTIF SÉLECTIONNÉ & DOCUMENT */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                  <Building className="w-4 h-4" /> Site &amp; Bailleur Actif
-                </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  Parcelle {selectedSite.section} {selectedSite.numero}
+            <div className="p-2.5 bg-slate-950/90 rounded-lg border border-slate-800 text-xs space-y-1">
+              <div className="font-black text-white text-sm truncate flex items-center justify-between">
+                <span>{selectedSite.ownerName}</span>
+                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-1.5 py-0.5 rounded">
+                  Qualifié
                 </span>
               </div>
-
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-1.5">
-                <div className="font-bold text-white text-sm">{selectedSite.ownerName}</div>
-                <div className="text-slate-300">{selectedSite.address}</div>
-                <div className="text-slate-400">{selectedSite.postalCode} {selectedSite.commune}</div>
-                <div className="text-[11px] text-emerald-400 font-mono mt-1">
-                  Parcelle : {selectedSite.parcelId}
-                </div>
+              <div className="text-slate-300 text-[11px] truncate">{selectedSite.address}</div>
+              <div className="text-slate-400 text-[11px]">{selectedSite.postalCode} {selectedSite.commune}</div>
+              <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[10px]">
+                <span className="text-emerald-400 font-mono font-bold">
+                  IDU: {selectedSite.parcelId}
+                </span>
+                <span className="text-slate-400">
+                  Transfo sol : <strong className="text-emerald-300">{selectedSite.distSouterrain || '1.1'}m</strong> souterrain
+                </span>
               </div>
             </div>
 
-            <div className="space-y-2 pt-2">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer select-none">
+            <div className="space-y-1.5 pt-1">
+              <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-300 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={includeBrochure}
                   onChange={(e) => setIncludeBrochure(e.target.checked)}
-                  className="w-4 h-4 rounded text-emerald-500 bg-slate-950 border-slate-700 cursor-pointer"
+                  className="w-3.5 h-3.5 rounded text-emerald-500 bg-slate-950 border-slate-700 cursor-pointer"
                 />
-                <span>Joindre la Brochure ENR Courtage (V3)</span>
+                <span>Joindre la Brochure ENR Courtage (V3) en page 2</span>
               </label>
 
               <button
                 type="button"
                 onClick={handleDownloadPdf}
-                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
+                className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
               >
-                <Download className="w-4 h-4" />
-                <span>Télécharger le Courrier Personnalisé</span>
+                <Download className="w-3.5 h-3.5" />
+                <span>Télécharger le Courrier Personnalisé (PDF)</span>
               </button>
             </div>
           </div>
 
+          {/* CARTE 2 : CONDITIONS DU BAIL NOTARIÉ */}
+          <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <Euro className="w-3.5 h-3.5" /> Conditions du Bail Notarié
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                Garanti 20 Ans
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span className="text-[9.5px] text-slate-400 block font-bold">Loyer Annuel</span>
+                <strong className="text-xs sm:text-sm text-emerald-400 font-black block">2 000 €/an</strong>
+                <span className="text-[9px] text-slate-500 block">Net de charges</span>
+              </div>
+              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span className="text-[9.5px] text-slate-400 block font-bold">Emprise Sol</span>
+                <strong className="text-xs sm:text-sm text-white font-black block">20 m²</strong>
+                <span className="text-[9px] text-slate-500 block">Dalle clôturée</span>
+              </div>
+              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                <span className="text-[9.5px] text-slate-400 block font-bold">Total 20 Ans</span>
+                <strong className="text-xs sm:text-sm text-amber-400 font-black block">40 000 €</strong>
+                <span className="text-[9px] text-slate-500 block">Indexation an</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CARTE 3 : SPÉCIFICATIONS TECHNIQUES BESS */}
+          <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5" /> Spécifications Matériel BESS
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                500 kW / 1 044 kWh
+              </span>
+            </div>
+
+            <div className="space-y-1 text-[11px] text-slate-300">
+              <div className="p-1.5 rounded-lg bg-slate-950 border border-slate-800/80 flex justify-between">
+                <span className="text-slate-400">Configuration :</span>
+                <span className="font-bold text-white">4 armoires Mercury 261 (125 kW / 261 kWh)</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-950 border border-slate-800/80 flex justify-between">
+                <span className="text-slate-400">Technologie :</span>
+                <span className="font-bold text-emerald-400">LiFePO4 certifié &bull; HVAC Liquide</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-950 border border-slate-800/80 flex justify-between">
+                <span className="text-slate-400">Sécurité &amp; Clôture :</span>
+                <span className="font-bold text-white">Aérosol NFPA 855 &bull; Grillage thermolaqué H 2m</span>
+              </div>
+            </div>
+          </div>
+
+          {/* NOTE DE BAS DE PAGE GAUCHE */}
+          <div className="text-[10px] text-slate-400 flex items-center gap-1.5 px-1">
+            <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+            <span className="truncate">Régime délibéré CRE 2025-227 &bull; Réserve 50 Hz Enedis</span>
+          </div>
+
         </div>
+
+        {/* COLONNE DROITE (7 colonnes) : CARTE INTERACTIVE DU TRANSFORMATEUR */}
+        <div className="lg:col-span-7 xl:col-span-8 flex flex-col min-h-0 h-full relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl">
+
+          {/* BANDEAU FLOTTANT EN HAUT DE CARTE */}
+          <div className="absolute top-3 left-3 right-3 z-[1000] flex items-center justify-between gap-2 pointer-events-none">
+            <div className="bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/80 shadow-lg text-xs font-bold text-white flex items-center gap-2 pointer-events-auto">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="truncate">
+                Transformateur HTA/BT au Sol &bull; Parcelle {selectedSite.section} {selectedSite.numero} ({selectedSite.commune})
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 pointer-events-auto">
+              <button
+                type="button"
+                onClick={() => setMapLayerType((t) => (t === 'satellite' ? 'osm' : 'satellite'))}
+                className="px-2.5 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1 shadow cursor-pointer transition-all"
+                title="Basculer entre la vue Satellite et le Plan"
+              >
+                <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">{mapLayerType === 'satellite' ? 'Plan' : 'Satellite'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* LÉGENDE FLOTTANTE EN BAS DE CARTE */}
+          <div className="absolute bottom-3 left-3 z-[1000] bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 shadow-md text-[11px] text-slate-300 flex items-center gap-3 pointer-events-none">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-red-600 border border-white" />
+              <span>Transfo Sol (Enedis)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-cyan-500/30 border border-cyan-400" />
+              <span>Parcelle {selectedSite.section} {selectedSite.numero}</span>
+            </div>
+            <span className="text-slate-400 font-mono text-[10px]">
+              {selectedSite.lat?.toFixed(5)}, {selectedSite.lng?.toFixed(5)}
+            </span>
+          </div>
+
+          {/* MAPCONTAINER LEAFLET */}
+          <div className="w-full h-full min-h-[350px] relative">
+            <MapContainer
+              center={centerCoords}
+              zoom={19}
+              maxZoom={22}
+              scrollWheelZoom={true}
+              doubleClickZoom={true}
+              touchZoom={true}
+              zoomControl={false}
+              className="w-full h-full z-0"
+              style={{ width: '100%', height: '100%', background: '#0b1120' }}
+            >
+              <MapRecenter center={centerCoords} />
+              <MapAutoResize />
+
+              {/* TUILE CARTOGRAPHIQUE : SATELLITE OU PLAN */}
+              {mapLayerType === 'satellite' ? (
+                <TileLayer
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  maxNativeZoom={19}
+                  maxZoom={22}
+                  crossOrigin="anonymous"
+                  attribution="Esri, Maxar, Earthstar Geographics"
+                />
+              ) : (
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}.png"
+                  maxNativeZoom={19}
+                  maxZoom={20}
+                  attribution="&copy; OpenStreetMap contributors"
+                />
+              )}
+
+              {/* CONTOUR GÉOMÉTRIQUE DE LA PARCELLE CADASTRALE (CYAN FLUORESCENT) */}
+              {selectedSite.parcelGeometry && (
+                <GeoJSON
+                  key={`parcel_geom_${selectedSite.parcelId || `${selectedSite.lat}_${selectedSite.lng}`}`}
+                  data={{
+                    type: 'Feature',
+                    geometry: selectedSite.parcelGeometry,
+                    properties: {}
+                  }}
+                  style={{
+                    color: '#38bdf8', // cyan vif
+                    weight: 3,
+                    fillColor: '#0284c7',
+                    fillOpacity: 0.22,
+                    dashArray: '5, 5'
+                  }}
+                />
+              )}
+
+              {/* MARQUEUR DU TRANSFORMATEUR SOL (CARRÉ ROUGE AVEC ÉCLAIR ENEDIS) */}
+              <Marker
+                position={centerCoords}
+                icon={createTransfoIcon()}
+              >
+                <Popup className="bess-popup">
+                  <div className="p-1 text-xs text-slate-900 space-y-1">
+                    <div className="font-black text-red-600 flex items-center gap-1 text-sm">
+                      ⚡ Transformateur HTA/BT Sol
+                    </div>
+                    <div className="font-bold text-slate-800">
+                      {selectedSite.ownerName}
+                    </div>
+                    <div className="text-slate-600 text-[11px]">
+                      {selectedSite.address}, {selectedSite.postalCode} {selectedSite.commune}
+                    </div>
+                    <div className="text-emerald-700 font-mono text-[10px] font-bold">
+                      Cadastre : {selectedSite.section} {selectedSite.numero} ({selectedSite.parcelId})
+                    </div>
+                    <div className="text-slate-500 text-[10px] border-t pt-1">
+                      Raccordement souterrain HTA : {selectedSite.distSouterrain || '1.1'} m
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            </MapContainer>
+          </div>
+
+        </div>
+
       </div>
 
-      {/* PIED DE PAGE */}
-      <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Régime délibéré CRE 2025-227 &bull; Soutien tension &amp; réserve 50 Hz Enedis.</span>
-        </div>
-        <div className="text-slate-400 font-semibold">
-          ENR COURTAGE &bull; M&amp;A Infrastructure &amp; Stockage Stationnaire BESS
-        </div>
-      </div>
-
-      {/* MODAL DE PROSPECTION AUTOMATISÉE */}
+      {/* ─── 3. MODALE AUTOMATE DE PROSPECTION BESS ──────────────────────────── */}
       <AutomaticBessProspectingModal
         isOpen={isAutomateOpen}
         onClose={() => setIsAutomateOpen(false)}
@@ -254,6 +479,10 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
             parcelId: prospect.parcelId,
             section: prospect.section,
             numero: prospect.numero,
+            contenanceM2: prospect.contenanceM2,
+            parcelGeometry: prospect.parcelGeometry || null,
+            distSouterrain: prospect.distSouterrain,
+            distAerien: prospect.distAerien,
             ownerName: prospect.nom_societe || 'Propriétaire Foncier',
             loyerAnnuel: 2000,
             dureeBail: 20,

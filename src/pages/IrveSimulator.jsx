@@ -790,11 +790,11 @@ export default function IrveSimulator() {
         </div>
 
         {/* CONTENU PRINCIPAL */}
-        <div className="flex-1 p-3 sm:p-5 w-full min-w-0 max-w-full overflow-x-hidden">
+        <div className={`flex-1 w-full min-w-0 max-w-full ${activeSolution === 'bess' ? 'p-2 sm:p-2.5 flex flex-col min-h-0 overflow-hidden' : 'p-3 sm:p-5 overflow-x-hidden'}`}>
           
           {/* ═══ ONGLET 1 : SIMULATEURS (FRONT-OFFICE) ═══════════════════════ */}
           {activeMainTab === 'simulateurs' && (
-            <div>
+            <div className={activeSolution === 'bess' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : ''}>
               {activeSolution === 'bess' && (
                 <BessSimulator
                   selectedProject={selectedProject}
