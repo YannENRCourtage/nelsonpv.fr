@@ -25,16 +25,6 @@ export const DEFAULT_PORTFOLIOS = [
     createdAt: '2026-09-24T00:00:00.000Z'
   },
   {
-    id: 'hybride-louxor',
-    name: 'LOUXOR',
-    type: 'HYBRIDE',
-    spv: 'LOUXOR HYBRIDE 1',
-    description: 'Portefeuille Hybride LOUXOR (PV + Stockage BESS)',
-    color: '#06b6d4',
-    isDefault: true,
-    createdAt: '2026-09-25T00:00:00.000Z'
-  },
-  {
     id: 'bess-volta',
     name: 'VOLTA',
     type: 'BESS',
@@ -68,19 +58,22 @@ export function getPortfoliosFromLS() {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Retirer le portefeuille ACAMA
-      let list = parsed.filter(p => (p.name || '').toUpperCase() !== 'ACAMA');
+      // Retirer les portefeuilles obsolètes ACAMA et LOUXOR
+      let list = parsed.filter(p => {
+        const uName = (p.name || '').toUpperCase();
+        return uName !== 'ACAMA' && uName !== 'LOUXOR' && p.id !== 'hybride-louxor' && p.id !== 'bess-acama';
+      });
 
-      // S'assurer que CASSIOPEE et LOUXOR sont toujours présents
+      // S'assurer que CASSIOPEE et TESLA sont toujours présents
       const hasCassiopee = list.some(p => (p.name || '').toUpperCase() === 'CASSIOPEE');
       if (!hasCassiopee) {
         const c = DEFAULT_PORTFOLIOS.find(p => p.name === 'CASSIOPEE');
         if (c) list.push(c);
       }
-      const hasLouxor = list.some(p => (p.name || '').toUpperCase() === 'LOUXOR');
-      if (!hasLouxor) {
-        const l = DEFAULT_PORTFOLIOS.find(p => p.name === 'LOUXOR');
-        if (l) list.push(l);
+      const hasTesla = list.some(p => (p.name || '').toUpperCase() === 'TESLA');
+      if (!hasTesla) {
+        const t = DEFAULT_PORTFOLIOS.find(p => p.name === 'TESLA');
+        if (t) list.push(t);
       }
       savePortfoliosToLS(list);
       return list;
@@ -128,26 +121,35 @@ export function subscribeToPortfolios(callback) {
       if (!snapshot.empty) {
         let docs = snapshot.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .filter(p => (p.name || '').toUpperCase() !== 'ACAMA' && p.id !== 'bess-acama');
+          .filter(p => {
+            const uName = (p.name || '').toUpperCase();
+            return uName !== 'ACAMA' && p.id !== 'bess-acama' && uName !== 'LOUXOR' && p.id !== 'hybride-louxor';
+          });
 
-        // Nettoyage proactif de bess-acama dans Firestore si présent
+        // Nettoyage proactif de bess-acama et hybride-louxor dans Firestore si présents
         const acamaDoc = snapshot.docs.find(d => d.id === 'bess-acama' || (d.data()?.name || '').toUpperCase() === 'ACAMA');
         if (acamaDoc) {
           try {
             deleteDoc(doc(db, 'portfolios', acamaDoc.id)).catch(() => {});
           } catch (e) {}
         }
+        const louxorDoc = snapshot.docs.find(d => d.id === 'hybride-louxor' || (d.data()?.name || '').toUpperCase() === 'LOUXOR');
+        if (louxorDoc) {
+          try {
+            deleteDoc(doc(db, 'portfolios', louxorDoc.id)).catch(() => {});
+          } catch (e) {}
+        }
 
-        // S'assurer que CASSIOPEE et LOUXOR sont présents
+        // S'assurer que CASSIOPEE et TESLA sont présents
         const hasCassiopee = docs.some(p => (p.name || '').toUpperCase() === 'CASSIOPEE');
         if (!hasCassiopee) {
           const cassiopee = DEFAULT_PORTFOLIOS.find(p => p.name === 'CASSIOPEE');
           if (cassiopee) docs.push(cassiopee);
         }
-        const hasLouxor = docs.some(p => (p.name || '').toUpperCase() === 'LOUXOR');
-        if (!hasLouxor) {
-          const louxor = DEFAULT_PORTFOLIOS.find(p => p.name === 'LOUXOR');
-          if (louxor) docs.push(louxor);
+        const hasTesla = docs.some(p => (p.name || '').toUpperCase() === 'TESLA');
+        if (!hasTesla) {
+          const tesla = DEFAULT_PORTFOLIOS.find(p => p.name === 'TESLA');
+          if (tesla) docs.push(tesla);
         }
 
         savePortfoliosToLS(docs);

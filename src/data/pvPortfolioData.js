@@ -823,10 +823,11 @@ export function getProjectPvPortfolio(p) {
               p.bp_pv_data?.portfolio || 
               p.bp_pv_data?.pv_portfolio || 
               p.bpAcamaState?.pv_portfolio || 
-              p.bpAcamaState?.portfolio || 
               p.customFields?.pv_portfolio || 
               '';
-  return String(val).trim();
+  const str = String(val).trim();
+  if (str.toUpperCase() === 'LOUXOR') return '';
+  return str;
 }
 
 /**

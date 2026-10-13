@@ -31,10 +31,58 @@ function sanitizeProjectForLS(p) {
   return copy;
 }
 
+/**
+ * Migration automatique : suppression du portefeuille LOUXOR.
+ * - Tout dossier BESS affilié à LOUXOR est basculé vers TESLA.
+ * - Tout dossier PV affilié à LOUXOR (dont le dossier DUPORT) est retiré de LOUXOR.
+ */
+function migrateProjectsLouxorToTesla(list) {
+  if (!Array.isArray(list)) return list;
+  return list.map(p => {
+    if (!p) return p;
+    let updated = { ...p };
+    let changed = false;
+
+    // 1. Dossiers BESS affiliés à LOUXOR -> TESLA
+    const bessPort = (p.bess_portfolio || p.portfolio_bess || '').toUpperCase();
+    if (bessPort === 'LOUXOR') {
+      updated.bess_portfolio = 'TESLA';
+      changed = true;
+    }
+
+    // 2. Dossiers PV affiliés à LOUXOR -> retrait immédiat
+    const pvPort = (p.pv_portfolio || p.portfolio_pv || p.portfolio || '').toUpperCase();
+    if (pvPort === 'LOUXOR') {
+      updated.pv_portfolio = null;
+      changed = true;
+    }
+
+    // Retirer spécifiquement DUPORT du portefeuille PV s'il était sur LOUXOR
+    const pName = (p.name || '').toLowerCase();
+    const pClient = (p.client_name || p.client || '').toLowerCase();
+    if ((pName.includes('duport') || pClient.includes('duport')) && (pvPort === 'LOUXOR' || !updated.pv_portfolio)) {
+      if (updated.pv_portfolio) {
+        updated.pv_portfolio = null;
+        changed = true;
+      }
+    }
+
+    // Mise à jour asynchrone proactive de Firestore si le projet a changé
+    if (changed && p.id && p.id !== 'new') {
+      apiService.updateProject(p.id, {
+        bess_portfolio: updated.bess_portfolio || null,
+        pv_portfolio: null
+      }).catch(() => {});
+    }
+
+    return updated;
+  });
+}
+
 function loadProjectsFromLS(tenantId) {
   try {
     const raw = localStorage.getItem(getTenantLSKey(tenantId));
-    return raw ? JSON.parse(raw) : [];
+    return raw ? migrateProjectsLouxorToTesla(JSON.parse(raw)) : [];
   } catch (e) {
     console.warn('localStorage access blocked or unavailable:', e);
     return [];
@@ -43,7 +91,8 @@ function loadProjectsFromLS(tenantId) {
 
 function saveProjectsToLS(tenantId, list) {
   try {
-    const sanitized = Array.isArray(list) ? list.map(sanitizeProjectForLS) : list;
+    const migrated = migrateProjectsLouxorToTesla(list);
+    const sanitized = Array.isArray(migrated) ? migrated.map(sanitizeProjectForLS) : migrated;
     localStorage.setItem(getTenantLSKey(tenantId), JSON.stringify(sanitized));
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('projectsUpdated'));
@@ -110,7 +159,7 @@ export function loadAllTenantProjectsFromLS() {
       console.warn(`Error reading projects for tenant ${t}:`, e);
     }
   });
-  return Array.from(map.values());
+  return migrateProjectsLouxorToTesla(Array.from(map.values()));
 }
 
 export function saveAllProjectsToLS(tenantIdOrList, maybeList) {
@@ -154,7 +203,8 @@ export function ProjectProvider({ children }) {
   // Wrapper for setProjects that automatically syncs to localStorage and keeps allProjects updated
   const setProjects = useCallback((updater) => {
     _setProjects((prev) => {
-      const newProjects = typeof updater === 'function' ? updater(prev) : updater;
+      const rawProjects = typeof updater === 'function' ? updater(prev) : updater;
+      const newProjects = migrateProjectsLouxorToTesla(rawProjects);
       // Sync to localStorage immediately for the active tenant
       saveProjectsToLS(activeTenantIdRef.current, newProjects);
       // Synchroniser allProjects en mémoire
@@ -162,7 +212,7 @@ export function ProjectProvider({ children }) {
         const map = new Map();
         (prevAll || []).forEach(p => { if (p && p.id) map.set(p.id, p); });
         (newProjects || []).forEach(p => { if (p && p.id) map.set(p.id, { ...(map.get(p.id) || {}), ...p }); });
-        return Array.from(map.values());
+        return migrateProjectsLouxorToTesla(Array.from(map.values()));
       });
       return newProjects;
     });

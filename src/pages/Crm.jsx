@@ -158,20 +158,24 @@ export default function Crm() {
   // Listes mémoïsées des portefeuilles disponibles pour les filtres
   const pvPortfolioOptions = useMemo(() => {
     const set = new Set();
-    (pvPortfolios || []).forEach(p => { if (p.name) set.add(p.name); });
+    (pvPortfolios || []).forEach(p => { 
+      if (p.name && (p.name || '').toUpperCase() !== 'LOUXOR') set.add(p.name); 
+    });
     (projects || []).forEach(p => {
       const port = getProjectPvPortfolio(p);
-      if (port) set.add(port);
+      if (port && port.toUpperCase() !== 'LOUXOR') set.add(port);
     });
     return Array.from(set).sort();
   }, [pvPortfolios, projects]);
 
   const bessPortfolioOptions = useMemo(() => {
     const set = new Set();
-    (bessPortfolios || []).forEach(p => { if (p.name) set.add(p.name); });
+    (bessPortfolios || []).forEach(p => { 
+      if (p.name && (p.name || '').toUpperCase() !== 'LOUXOR' && (p.name || '').toUpperCase() !== 'ACAMA') set.add(p.name); 
+    });
     (projects || []).forEach(p => {
       const port = getProjectBessPortfolio(p);
-      if (port) set.add(port);
+      if (port && port.toUpperCase() !== 'LOUXOR' && port.toUpperCase() !== 'ACAMA') set.add(port);
     });
     return Array.from(set).sort();
   }, [bessPortfolios, projects]);

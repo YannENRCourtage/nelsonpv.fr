@@ -754,13 +754,18 @@ export function getProjectBessPortfolio(p) {
                  p.customFields?.bess_portfolio || 
                  p.portfolio ||
                  '';
-  const val = String(direct).trim();
-  const norm = normalizePortfolioName(val);
+  let val = String(direct).trim();
+  let norm = normalizePortfolioName(val);
+  // Migration automatique des dossiers BESS de LOUXOR vers TESLA
+  if (norm === 'LOUXOR') {
+    val = 'TESLA';
+    norm = 'TESLA';
+  }
   if (norm === 'AUCUN' || norm === 'NON AFFECTE' || norm === 'AUCUN / NON' || norm === 'NONE' || norm === 'NULL' || norm === 'UNDEFINED' || norm === 'NON' || !val) {
     return '';
   }
 
-  // Exclusion explicite DUPORT, LABEGUERIE, LARDY et CELERIE du portefeuille BESS / VOLTA
+  // Exclusion explicite DUPORT, LABEGUERIE, LARDY et CELERIE du portefeuille VOLTA
   const pName = (p.name || '').toLowerCase();
   const pClient = (p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`).toLowerCase();
   if (pName.includes('duport') || pClient.includes('duport') || 
@@ -789,7 +794,7 @@ export function getProjectBessPortfolio(p) {
  * - Aucun doublon n'est toléré.
  *
  * @param {Array} projects Liste des projets CRM (tenant actif)
- * @param {string} portfolioFilter 'ALL' | 'VOLTA' | 'TESLA' | 'LOUXOR' etc.
+ * @param {string} portfolioFilter 'ALL' | 'VOLTA' | 'TESLA' etc.
  * @returns {Array} Liste des sites BESS enrichis
  */
 export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
@@ -852,12 +857,14 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
       const pClientNorm = normalize(p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`);
       const pCityNorm = normalize(p.city || p.commune || '');
 
-      // Exclusion explicite DUPORT, LABEGUERIE, LARDY et CELERIE
-      if (pNameNorm.includes('duport') || pClientNorm.includes('duport') || 
-          pNameNorm.includes('labeguerie') || pClientNorm.includes('labeguerie') ||
-          pNameNorm.includes('lardy') || pClientNorm.includes('lardy') ||
-          pNameNorm.includes('celerie') || pClientNorm.includes('celerie')) {
-        return;
+      // Exclusion de LARDY, CELERIE, DUPORT et LABEGUERIE uniquement du portefeuille VOLTA
+      if (normTarget === 'VOLTA') {
+        if (pNameNorm.includes('duport') || pClientNorm.includes('duport') || 
+            pNameNorm.includes('labeguerie') || pClientNorm.includes('labeguerie') ||
+            pNameNorm.includes('lardy') || pClientNorm.includes('lardy') ||
+            pNameNorm.includes('celerie') || pClientNorm.includes('celerie')) {
+          return;
+        }
       }
 
       const pPort = getProjectBessPortfolio(p);
