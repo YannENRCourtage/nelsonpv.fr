@@ -261,63 +261,67 @@ export async function generateBessProspectingPdfBlob(prospect, options = {}) {
         }).join('')}
       </div>
 
-      <!-- CORPS DU COURRIER (TOP 93MM JUSQU'À BOTTOM 14MM) -->
-      <div style="position: absolute; top: 93mm; left: 20mm; right: 20mm; bottom: 14mm; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+      <!-- CORPS DU COURRIER (TOP 76MM JUSQU'À BOTTOM 14MM) -->
+      <div style="position: absolute; top: 76mm; left: 20mm; right: 20mm; bottom: 14mm; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
         <div>
           <!-- TEXTE PRINCIPAL SANS OBJET POUR GAGNER DE LA PLACE -->
           <div style="font-size: 8.7pt; line-height: 1.38; color: #1e293b; text-align: justify;">
             <p style="margin: 0 0 6px 0; font-weight: bold; color: #0f172a; font-size: 9.2pt;">Madame, Monsieur,</p>
 
             <p style="margin: 0 0 6px 0;">
-              Dans le cadre du renforcement et de la stabilisation du réseau public de distribution d'électricité (Enedis), notre analyse spatiale a identifié la présence d'un <strong>transformateur HTA/BT au sol directement raccordé en souterrain</strong> au réseau haute tension sur votre parcelle située au <strong>${targetAddress}${targetCity ? `, ${targetCity}` : ''}</strong>${parcelLabel ? ` (référence cadastrale : <strong>${parcelLabel}</strong>)` : ''}.
+              Dans le cadre du renforcement et de la stabilisation du réseau public de distribution d'électricité (Enedis), nous avons identifié la présence d'un <strong>transformateur HTA/BT au sol directement raccordé en souterrain</strong> au réseau haute tension sur votre parcelle située au <strong>${targetAddress}${targetCity ? `, ${targetCity}` : ''}</strong>${parcelLabel ? ` (référence cadastrale : <strong>${parcelLabel}</strong>)` : ''}.
             </p>
 
             <p style="margin: 0 0 6px 0;">
-              Cette proximité réseau immédiate rend votre terrain idéal pour l’accueil d’une <strong>unité autonome de stockage par batterie (BESS)</strong> de soutien réseau d’une puissance de <strong>500 kW / 1 044 kWh</strong> (4 armoires CESC de 125 kW).
+              Cette proximité réseau immédiate rend votre terrain idéal pour l’accueil d’une <strong>unité autonome de stockage par batterie (BESS)</strong> de soutien réseau d’une puissance de <strong>500 kW / 1 044 kWh</strong> (4 armoires de 125 kW).
             </p>
 
             <!-- ENCART CARTE DU TRANSFORMATEUR ET DE LA PARCELLE -->
             ${mapImageBase64 ? `
-              <div style="margin: 5px 0; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #0f172a; box-shadow: 0 1px 4px rgba(0,0,0,0.08); max-height: 52mm;">
-                <img src="${mapImageBase64}" style="width: 100%; max-height: 52mm; object-fit: cover; display: block;" />
+              <div style="margin: 8px 0 12px 0; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #0f172a; box-shadow: 0 1px 4px rgba(0,0,0,0.08); max-height: 50mm;">
+                <img src="${mapImageBase64}" style="width: 100%; max-height: 50mm; object-fit: cover; display: block;" />
               </div>
             ` : ''}
 
             <!-- CADRE OFFRE FINANCIÈRE -->
-            <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 6px; padding: 6px 11px; margin: 6px 0;">
-              <div style="font-size: 9.1pt; font-weight: 900; color: #15803d; margin-bottom: 2px; text-transform: uppercase;">
-                Notre proposition de bail notarié ferme :
+            <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 6px; padding: 7px 12px; margin: 12px 0 12px 0;">
+              <div style="font-size: 9.2pt; font-weight: 900; color: #15803d; margin-bottom: 3px; text-transform: uppercase;">
+                Notre proposition de bail notarié :
               </div>
-              <div style="font-size: 8.6pt; color: #166534; line-height: 1.35;">
+              <div style="font-size: 8.6pt; color: #166534; line-height: 1.38;">
                 &bull; <strong>Loyer garanti de 2 000 € net / an</strong> pendant <strong>20 ans</strong> (soit <strong>40 000 € garantis</strong> au total).<br/>
-                &bull; <strong>Emprise au sol très réduite : 20 m² seulement</strong> sur dalle béton clôturée.<br/>
+                &bull; <strong>Emprise au sol très réduite : 20 m² seulement</strong> sur dalle béton clôturée (Visuel ci-après).<br/>
                 &bull; <strong>Zéro investissement ni frais</strong> : ENR Courtage prend en charge 100 % des démarches, de l'installation, du raccordement et de la maintenance.
               </div>
             </div>
 
             <!-- CADRE ATOUTS BATTERIE DE SOUTIEN RÉSEAU -->
-            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 6px; padding: 6px 11px; margin: 6px 0;">
-              <div style="font-size: 8.8pt; font-weight: 800; color: #00429d; margin-bottom: 2px; text-transform: uppercase;">
+            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 6px; padding: 7px 12px; margin: 12px 0 10px 0;">
+              <div style="font-size: 8.9pt; font-weight: 800; color: #00429d; margin-bottom: 3px; text-transform: uppercase;">
                 Les atouts concrets de l'installation pour votre propriété :
               </div>
-              <div style="font-size: 8.3pt; line-height: 1.35; color: #334155;">
+              <div style="font-size: 8.4pt; line-height: 1.38; color: #334155;">
                 &bull; <strong>Soutien au réseau électrique :</strong> absorption des surplus et restitution aux heures de pointe pour stabiliser la tension (50 Hz).<br/>
                 &bull; <strong>Sécurité &amp; intégration soignée :</strong> zone clôturée (grillage rigide H 2m), extinction automatique NFPA 855 asservie.<br/>
                 &bull; <strong>Valorisation d'un délaissé foncier :</strong> aucun impact sur vos activités et aucune servitude gênante.
               </div>
             </div>
 
-            <p style="margin: 6px 0 0 0; font-size: 8.5pt;">
+            <p style="margin: 10px 0 4px 0; font-size: 8.7pt;">
+              Vous trouverez ci-joint notre brochure descriptive de présentation complète de la solution de soutien réseau.
+            </p>
+
+            <p style="margin: 0; font-size: 8.7pt;">
               Je me tiens à votre disposition au <strong>07 63 87 71 40</strong> pour échanger sur ce projet et répondre à toutes vos questions.
             </p>
           </div>
         </div>
 
         <!-- SIGNATURE -->
-        <div style="display: flex; justify-content: flex-end; align-items: flex-end; padding-top: 3px;">
+        <div style="display: flex; justify-content: flex-end; align-items: flex-end; padding-top: 6px;">
           <div style="text-align: right; min-width: 210px;">
             <div style="font-size: 10pt; font-weight: 900; color: #00429d;">Yann BARBERIS</div>
-            <div style="font-size: 8.6pt; color: #475569; font-weight: bold; margin-top: 1px;">Directeur Développement &amp; M&amp;A Infrastructure</div>
+            <div style="font-size: 8.6pt; color: #475569; font-weight: bold; margin-top: 1px;">Directeur Développement</div>
             <div style="font-size: 8.5pt; color: #0284c7; font-weight: bold; margin-top: 1px;">07 63 87 71 40</div>
             <div style="font-size: 8.1pt; color: #64748b;">y.barberis@enr-courtage.fr</div>
           </div>
