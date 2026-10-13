@@ -137,8 +137,8 @@ export default function IrveSimulator() {
     return false;
   });
 
-  // ─── Sous-solution active : 'autoconso' | 'toiture' | 'structure' | 'irve' | 'sechoir' ──
-  const [activeSolution, setActiveSolution] = useState('autoconso');
+  // ─── Sous-solution active : 'bess' | 'autoconso' | 'toiture' | 'structure' | 'irve' | 'sechoir' ──
+  const [activeSolution, setActiveSolution] = useState('bess');
   const tabsContainerRef = useRef(null);
   const tabRefs = useRef({});
 

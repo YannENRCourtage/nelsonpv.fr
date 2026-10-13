@@ -14,6 +14,7 @@ import {
   reverseGeocodeBAN,
   detectGroundTransformers,
   fetchCadastralParcel,
+  fetchNearbyCadastralParcels,
   fetchParcelOwners
 } from '@/services/bessProspectingGisService.js';
 
@@ -29,19 +30,19 @@ import {
 import ServicePostalModal from '@/components/simulator/ServicePostalModal.jsx';
 
 const DEFAULT_COMMUNE = {
-  id: '24111',
-  nom: 'La Chapelle-Montmoreau',
-  codeInsee: '24111',
-  postalCode: '24300',
+  id: '24311',
+  nom: 'Nontron',
+  codeInsee: '24311',
+  postalCode: '24470',
   departmentCode: '24',
-  center: [45.4510, 0.6537],
+  center: [45.529, 0.665],
   bbox: {
-    minLat: 45.4350,
-    minLng: 0.6250,
-    maxLat: 45.4700,
-    maxLng: 0.6800
+    minLat: 45.51,
+    minLng: 0.64,
+    maxLat: 45.56,
+    maxLng: 0.71
   },
-  population: 70
+  population: 3050
 };
 
 export default function AutomaticBessProspectingModal({
@@ -204,23 +205,33 @@ export default function AutomaticBessProspectingModal({
         setCurrentStepText(`Sourcing des communes du département ${deptCode} (${deptObj?.nom || ''})...`);
         appendLog(`🗺️ Zone ciblée : Département ${deptCode} - ${deptObj?.nom || ''}.`);
 
-        const communesInDept = await fetchDepartmentCommunes(deptCode, 15);
+        const communesInDept = await fetchDepartmentCommunes(deptCode, 25);
         if (communesInDept.length === 0) {
           throw new Error(`Aucune commune trouvée pour le département ${deptCode}.`);
         }
         bboxesToQuery = communesInDept.map((c) => ({
           nom: c.nom,
           bbox: c.bbox,
-          code: c.codeInsee
+          code: c.codeInsee,
+          population: c.population
         }));
-        appendLog(`🔍 ${bboxesToQuery.length} communes sélectionnées pour l'exploration Enedis.`);
+        appendLog(`🔍 ${bboxesToQuery.length} communes principales sélectionnées pour l'exploration Enedis.`);
       }
 
       setProgressPercent(15);
       const allGroundTransformers = [];
+      const targetCountNeeded = targetLimit === 'Tout' ? 100 : Number(targetLimit);
 
       for (let i = 0; i < bboxesToQuery.length; i++) {
         if (abortControllerRef.current) break;
+
+        // Si on a déjà collecté assez de transformateurs au sol pour satisfaire le quota cible,
+        // on passe à la qualification des dossiers pour un résultat rapide et pertinent
+        if (targetLimit !== 'Tout' && allGroundTransformers.length >= targetCountNeeded * 2) {
+          appendLog(`⚡ Quota de candidats atteint (${allGroundTransformers.length} transformateurs au sol identifiés).`);
+          break;
+        }
+
         const zone = bboxesToQuery[i];
         setCurrentStepText(`Détection des postes HTA/BT au sol : ${zone.nom} (${i + 1}/${bboxesToQuery.length})...`);
 
@@ -266,13 +277,28 @@ export default function AutomaticBessProspectingModal({
         // 1. Récupération de l'adresse postale BAN
         const banAddress = await reverseGeocodeBAN(transfo.lat, transfo.lng);
 
-        // 2. Identification de la parcelle cadastrale
-        const parcel = await fetchCadastralParcel(transfo.lat, transfo.lng);
+        // 2. Identification de la parcelle cadastrale (point exact)
+        let parcel = await fetchCadastralParcel(transfo.lat, transfo.lng);
 
         // 3. Recherche des propriétaires fonciers (Personnes Morales via Koumoul / DGFiP)
         let owners = [];
         if (parcel && parcel.idu) {
           owners = await fetchParcelOwners(parcel.idu);
+        }
+
+        // 4. Si aucun propriétaire personne morale sur le point exact (ex: accotement ou voirie),
+        // vérifier les parcelles immédiatement adjacentes (rayon 25m)
+        if (owners.length === 0) {
+          const nearbyParcels = await fetchNearbyCadastralParcels(transfo.lat, transfo.lng, 25);
+          for (const np of nearbyParcels) {
+            if (parcel && np.idu === parcel.idu) continue;
+            const npOwners = await fetchParcelOwners(np.idu);
+            if (npOwners && npOwners.length > 0) {
+              parcel = np;
+              owners = npOwners;
+              break;
+            }
+          }
         }
 
         const primaryOwner = owners[0] || null;

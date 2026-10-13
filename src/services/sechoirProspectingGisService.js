@@ -248,13 +248,17 @@ export async function searchCommunes(query) {
 export async function fetchDepartmentCommunes(deptCode, limit = 20) {
   if (!deptCode) return [];
   const cleanCode = String(deptCode).padStart(2, '0');
-  const url = `https://geo.api.gouv.fr/departements/${cleanCode}/communes?fields=nom,code,codesPostaux,centre,bbox,population&limit=${limit}`;
+  const url = `https://geo.api.gouv.fr/departements/${cleanCode}/communes?fields=nom,code,codesPostaux,centre,bbox,contour,population`;
 
   try {
     const res = await fetch(url);
     if (!res.ok) return [];
     const communes = await res.json();
-    return communes
+    // Trier par population décroissante pour cibler en priorité les zones d'activités, commerciales et industrielles
+    communes.sort((a, b) => (b.population || 0) - (a.population || 0));
+    const selected = typeof limit === 'number' && limit > 0 ? communes.slice(0, limit) : communes;
+
+    return selected
       .map(c => {
         let bbox = null;
         if (c.bbox && c.bbox.coordinates && c.bbox.coordinates[0]) {
@@ -266,6 +270,28 @@ export async function fetchDepartmentCommunes(deptCode, limit = 20) {
             minLng: Math.min(...lngs),
             maxLat: Math.max(...lats),
             maxLng: Math.max(...lngs)
+          };
+        } else if (c.contour && c.contour.coordinates) {
+          const coords = c.contour.type === 'MultiPolygon'
+            ? c.contour.coordinates.flat(2)
+            : (c.contour.coordinates[0] || []);
+          if (coords.length > 0) {
+            const lngs = coords.map(pt => pt[0]);
+            const lats = coords.map(pt => pt[1]);
+            bbox = {
+              minLat: Math.min(...lats),
+              minLng: Math.min(...lngs),
+              maxLat: Math.max(...lats),
+              maxLng: Math.max(...lngs)
+            };
+          }
+        } else if (c.centre && c.centre.coordinates) {
+          const [lng, lat] = c.centre.coordinates;
+          bbox = {
+            minLat: lat - 0.03,
+            minLng: lng - 0.04,
+            maxLat: lat + 0.03,
+            maxLng: lng + 0.04
           };
         }
         return {

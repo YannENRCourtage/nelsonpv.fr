@@ -64,15 +64,24 @@ function minDistanceToLines(pt, lines, lat0) {
 }
 
 /**
- * Récupère les entités d'un dataset Open Data Enedis par bbox
+ * Récupère les entités d'un dataset Open Data Enedis par bbox avec marge tampon
  */
-async function fetchEnedisDataset(dataset, bbox, selectFields = 'geometry,_id,code_commune,nom_commune,nom_poste') {
-  const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
+async function fetchEnedisDataset(dataset, bbox, selectFields = 'geometry,_id,code_commune,nom_commune,code_departement') {
+  if (!bbox) return [];
+  // Marge tampon de 0.005° (~400m) pour inclure les lignes HTA raccordant les postes en bordure de commune
+  const minLng = bbox.minLng - 0.005;
+  const minLat = bbox.minLat - 0.005;
+  const maxLng = bbox.maxLng + 0.005;
+  const maxLat = bbox.maxLat + 0.005;
+  const bboxStr = `${minLng},${minLat},${maxLng},${maxLat}`;
   const url = `${ENEDIS_BASE}/${dataset}/lines?size=1000&bbox=${bboxStr}&select=${selectFields}`;
 
   try {
     const res = await fetch(url);
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.warn(`[BessGIS] Réponse ${res.status} Enedis dataset ${dataset}`);
+      return [];
+    }
     const data = await res.json();
     return (data.results || []).map((r) => ({
       ...r,
@@ -110,6 +119,53 @@ export async function fetchCadastralParcel(lat, lng) {
   } catch (err) {
     console.warn('[BessGIS] Erreur récupération parcelle IGN:', err);
     return null;
+  }
+}
+
+/**
+ * Récupère les parcelles cadastrales situées dans un rayon tampon (ex: 25m)
+ * Utile pour identifier les parcelles privées attenantes quand le transformateur
+ * est positionné sur l'accotement de voirie ou en limite exacte de propriété.
+ */
+export async function fetchNearbyCadastralParcels(lat, lng, bufferMeters = 25) {
+  try {
+    const deltaLat = bufferMeters / 111000;
+    const deltaLng = bufferMeters / (111000 * Math.cos((lat * Math.PI) / 180));
+    const bboxPolygon = {
+      type: 'Polygon',
+      coordinates: [[
+        [lng - deltaLng, lat - deltaLat],
+        [lng + deltaLng, lat - deltaLat],
+        [lng + deltaLng, lat + deltaLat],
+        [lng - deltaLng, lat + deltaLat],
+        [lng - deltaLng, lat - deltaLat]
+      ]]
+    };
+    const geomParam = encodeURIComponent(JSON.stringify(bboxPolygon));
+    const url = `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${geomParam}&source_ign=PCI`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const parcels = [];
+    for (const feat of data.features || []) {
+      const p = feat.properties || {};
+      const idu = p.idu || p.id || `${p.code_insee || ''}${p.section || ''}${p.numero || ''}`;
+      if (idu && !parcels.some((existing) => existing.idu === idu)) {
+        parcels.push({
+          idu,
+          section: p.section || '',
+          numero: p.numero || '',
+          contenance: p.contenance || 0,
+          codeCommune: p.code_insee || p.code_dep || '',
+          nomCommune: p.nom_com || '',
+          geometry: feat.geometry
+        });
+      }
+    }
+    return parcels;
+  } catch (err) {
+    console.warn('[BessGIS] Erreur parcelles voisines IGN:', err);
+    return [];
   }
 }
 
@@ -165,11 +221,11 @@ export async function fetchParcelOwners(codeParcelle) {
 }
 
 /**
- * Analyse et qualifie les transformateurs HTA/BT sur une bbox donnée.
+ * Analyse et qualifie les transformateurs HTA/BT sur une zone bbox donnée.
  * RÈGLE FONDAMENTALE :
- * - Transfo SOL : ligne HTA souterraine (pointillés) arrivant au transformateur (distance <= 18m)
- *   ET aucune ligne HTA aérienne (pleine) ne le raccordant directement (distance aérienne > 15m).
- * - Transfo POTEAU : ligne HTA aérienne (pleine) arrivant directement (distance <= 15m).
+ * - Transfo SOL : ligne HTA souterraine (pointillés) arrivant au transformateur (distSouterrain <= 25m)
+ *   ET aucune ligne HTA aérienne (pleine) ne le raccordant directement (distAerien > 15m).
+ * - Transfo POTEAU : ligne HTA aérienne (pleine) arrivant directement (distAerien <= 15m).
  */
 export async function detectGroundTransformers(bbox, onProgress = null) {
   if (onProgress) onProgress('Interrogation du réseau Enedis HTA et Postes...');
@@ -181,7 +237,12 @@ export async function detectGroundTransformers(bbox, onProgress = null) {
   ]);
 
   if (!postes || postes.length === 0) {
-    return { allPostes: [], groundTransformers: [] };
+    return {
+      allPostesCount: 0,
+      souterrainLinesCount: (htaSouterrain || []).length,
+      aerienLinesCount: (htaAerien || []).length,
+      groundTransformers: []
+    };
   }
 
   const groundTransformers = [];
@@ -195,11 +256,16 @@ export async function detectGroundTransformers(bbox, onProgress = null) {
     const lat = coords[1];
     const lat0 = lat;
 
+    // Filtre pour ne garder que les postes inclus dans le périmètre d'origine
+    if (bbox && (lng < bbox.minLng || lng > bbox.maxLng || lat < bbox.minLat || lat > bbox.maxLat)) {
+      continue;
+    }
+
     const distSouterrain = minDistanceToLines([lng, lat], htaSouterrain, lat0);
     const distAerien = minDistanceToLines([lng, lat], htaAerien, lat0);
 
-    // Critère strict : desservi par ligne souterraine (<= 18m) et pas par ligne aérienne (distance aérienne > 15m)
-    const isGround = distSouterrain <= 18 && distAerien > 15;
+    // Critère strict : desservi par ligne souterraine (<= 25m) et pas par ligne aérienne (distance aérienne > 15m)
+    const isGround = distSouterrain <= 25 && distAerien > 15;
 
     if (isGround) {
       groundTransformers.push({
@@ -211,15 +277,15 @@ export async function detectGroundTransformers(bbox, onProgress = null) {
         distAerien: Math.round(distAerien * 10) / 10,
         codeCommune: poste.code_commune || '',
         nomCommune: poste.nom_commune || '',
-        nomPoste: poste.nom_poste || 'Poste HTA/BT Sol'
+        nomPoste: `Poste HTA/BT Sol (${poste.nom_commune || 'Enedis'})`
       });
     }
   }
 
   return {
     allPostesCount: postes.length,
-    souterrainLinesCount: htaSouterrain.length,
-    aerienLinesCount: htaAerien.length,
+    souterrainLinesCount: (htaSouterrain || []).length,
+    aerienLinesCount: (htaAerien || []).length,
     groundTransformers
   };
 }
