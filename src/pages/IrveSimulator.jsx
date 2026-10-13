@@ -6,11 +6,12 @@ import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy } from 'fir
 import {
   Calculator, FolderOpen, Database, Zap, Sun, Building2,
   Sliders, Search, X, ChevronLeft, ChevronRight, FileDown, Save,
-  Briefcase, Wheat
+  Briefcase, Wheat, BatteryCharging
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast.js';
 
 // Sous-composants
+import BessSimulator from '@/components/simulator/bess/BessSimulator';
 import IrveFrontSimulator from '@/components/simulator/IrveFrontSimulator';
 import SolarAutoconsoSimulator from '@/components/simulator/SolarAutoconsoSimulator';
 import SolarRoofSimulator from '@/components/simulator/SolarRoofSimulator';
@@ -303,7 +304,9 @@ export default function IrveSimulator() {
 
   // Charger depuis les archives
   const handleLoadSimulation = (sim) => {
-    if (sim.type === 'autoconsommation' || sim.projectType === 'solar') {
+    if (sim.type === 'bess' || sim.type === 'bess_prospecting') {
+      setActiveSolution('bess');
+    } else if (sim.type === 'autoconsommation' || sim.projectType === 'solar') {
       setActiveSolution('autoconso');
     } else if (sim.type === 'toiture_pv') {
       setActiveSolution('toiture');
@@ -469,7 +472,29 @@ export default function IrveSimulator() {
       return;
     }
 
-    // Solutions non solaires directes (séchoirs, ombrières de structure, IRVE)
+    // Solutions non solaires directes (séchoirs, ombrières de structure, IRVE, BESS)
+    if (activeSolution === 'bess' || targetSim?.type === 'bess') {
+      const { generateBessProspectingPdfBlob } = await import('@/components/simulator/bess/BessPDFGenerator.jsx');
+      const { blob, filename } = await generateBessProspectingPdfBlob({
+        nom_societe: targetSim.ownerName || targetSim.clientName || 'Propriétaire Foncier',
+        adresse_ligne1: targetSim.address || 'Votre parcelle',
+        code_postal: targetSim.postalCode || '',
+        ville: targetSim.cityName || '',
+        parcelId: targetSim.parcelId || '',
+        section: targetSim.section || '',
+        numero: targetSim.numero || ''
+      }, { includeBrochure: targetSim.includeBrochure !== undefined ? targetSim.includeBrochure : true });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
     await generateCommercialOfferPDF({
       simulation: targetSim,
       selectedProject,
@@ -682,12 +707,13 @@ export default function IrveSimulator() {
                 >
                   <div className="flex items-center gap-1.5 min-w-max pr-3 lg:pr-0">
                     {[
+                      { id: 'bess', label: 'BESS', icon: BatteryCharging, color: 'text-emerald-500' },
                       { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
                       { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
                       { id: 'structure', label: 'Structure Métallique', icon: Sliders, color: 'text-indigo-500' },
                       { id: 'irve', label: 'Borne IRVE', icon: Zap, color: 'text-emerald-500' },
                       { id: 'sechoir', label: 'Séchoir BatiTech®', icon: Wheat, color: 'text-orange-500' },
-                    ].filter(sol => isAcama ? sol.id !== 'sechoir' : true).map(sol => {
+                    ].filter(sol => isAcama ? (sol.id !== 'sechoir' && sol.id !== 'bess') : true).map(sol => {
                       const Icon = sol.icon;
                       const isSelected = activeSolution === sol.id;
                       return (
@@ -769,6 +795,15 @@ export default function IrveSimulator() {
           {/* ═══ ONGLET 1 : SIMULATEURS (FRONT-OFFICE) ═══════════════════════ */}
           {activeMainTab === 'simulateurs' && (
             <div>
+              {activeSolution === 'bess' && (
+                <BessSimulator
+                  selectedProject={selectedProject}
+                  onSaveSimulation={handleSaveCurrentSimulation}
+                  onExportPDF={() => handleExportPDF()}
+                  onStateUpdate={setActiveSimulationState}
+                />
+              )}
+
               {activeSolution === 'autoconso' && (
                 <SolarAutoconsoSimulator
                   selectedProject={selectedProject}
