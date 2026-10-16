@@ -18,7 +18,8 @@ import {
   Percent,
   Calendar,
   Sparkles,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Coins
 } from 'lucide-react';
 import { BESS_PORTFOLIO_SITES, getBessPortfolioSites } from '../../data/bessPortfolioData.js';
 import { getCreSubstationQualification } from '../../services/creZonesService.js';
@@ -42,9 +43,10 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedChronique, setExpandedChronique] = useState(false);
 
-  // Paramètres de dette senior modifiables
+  // Paramètres de dette senior et frais modifiables
   const [debtDuration, setDebtDuration] = useState(12); // en années (e.g. 10, 12, 15, 20)
   const [debtRate, setDebtRate] = useState(4.30); // en % (e.g. 3.80, 4.00, 4.30, 4.50, 5.00)
+  const [fraisCommerciauxPerSite, setFraisCommerciauxPerSite] = useState(2500); // 5 000 €/MW = 2 500 € pour 500 kW
 
   // Modèle unitaire standardisé (4 armoires CESC Mercury 261 = 500 kW / 1044 kWh)
   const unitPower = 500; // kW
@@ -72,7 +74,8 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
       const fin = computeBessFinancials(site, {
         debtDuration: durationYears,
         debtRate: debtRate || 4.30,
-        studyDuration: studyYears
+        studyDuration: studyYears,
+        fraisCommerciaux: site.fraisCommerciaux !== undefined ? site.fraisCommerciaux : fraisCommerciauxPerSite
       });
       const creQualification = getCreSubstationQualification(site.substation?.name || fin.posteSource, site.substation?.code);
 
@@ -180,7 +183,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
       },
       consolidatedChronique: chronique
     };
-  }, [debtDuration, debtRate, activeSites]);
+  }, [debtDuration, debtRate, fraisCommerciauxPerSite, activeSites]);
 
   // Propagation des données mises à jour au parent
   useEffect(() => {
@@ -188,13 +191,14 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
       onDataChange({
         debtDuration,
         debtRate,
+        fraisCommerciaux: fraisCommerciauxPerSite,
         analyzedSites,
         consolidatedTotals,
         consolidatedChronique,
         selectedPortfolio
       });
     }
-  }, [debtDuration, debtRate, analyzedSites, consolidatedTotals, consolidatedChronique, selectedPortfolio, onDataChange]);
+  }, [debtDuration, debtRate, fraisCommerciauxPerSite, analyzedSites, consolidatedTotals, consolidatedChronique, selectedPortfolio, onDataChange]);
 
   // Filtrage des sites
   const filteredSites = useMemo(() => {
@@ -247,6 +251,7 @@ const ODRE_CAPARESEAU_29_SITES = [
     exportBessPortfolioToExcel(activeSites, {
       debtDuration,
       debtRate,
+      fraisCommerciaux: fraisCommerciauxPerSite,
       studyDuration: studyYears,
       portfolioName: selectedPortfolio
     });
@@ -363,13 +368,13 @@ const ODRE_CAPARESEAU_29_SITES = [
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Ajustez la durée et le taux d'intérêt bancaire pour recalculer en temps réel le cash-flow, le DSCR, le payback et le dossier PDF.
+                Ajustez la durée, le taux d'intérêt bancaire et les frais commerciaux pour recalculer en temps réel le cash-flow, le DSCR, le payback et le dossier PDF.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {/* Contrôle Durée de la Dette */}
           <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200">
             <div className="flex items-center justify-between mb-2">
@@ -461,6 +466,55 @@ const ODRE_CAPARESEAU_29_SITES = [
               <span>2.00%</span>
               <span>4.30% (Standard)</span>
               <span>8.00%</span>
+            </div>
+          </div>
+
+          {/* Contrôle Frais Commerciaux */}
+          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                <Coins className="w-3.5 h-3.5 text-amber-600" />
+                Frais Commerciaux
+              </label>
+              <span className="text-xs font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
+                {fmtEur(fraisCommerciauxPerSite)} / site
+              </span>
+            </div>
+            
+            {/* Pills de sélection rapide */}
+            <div className="grid grid-cols-4 gap-1 mb-2.5">
+              {[0, 2500, 5000, 20000].map(f => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFraisCommerciauxPerSite(f)}
+                  className={`py-1 text-[11px] font-bold rounded-lg border transition-all ${
+                    fraisCommerciauxPerSite === f
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  title={f === 2500 ? 'Standard 5 000 €/MW (2 500 € pour 500 kW)' : `${f} €`}
+                >
+                  {f === 2500 ? '2 500 €' : (f === 0 ? '0 €' : `${f / 1000} k€`)}
+                </button>
+              ))}
+            </div>
+
+            {/* Input direct */}
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="0"
+                step="500"
+                value={fraisCommerciauxPerSite}
+                onChange={e => setFraisCommerciauxPerSite(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                className="w-full px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <span className="text-[11px] font-bold text-slate-500 shrink-0">€/site</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-slate-400 font-semibold mt-1">
+              <span>0 € (Invest. propre)</span>
+              <span className="text-amber-700 font-bold">5 000 €/MW (Std)</span>
             </div>
           </div>
 

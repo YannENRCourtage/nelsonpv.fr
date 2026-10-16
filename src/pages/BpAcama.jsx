@@ -540,7 +540,7 @@ function computeBatteryProfitability(config) {
     genieCivil = 9900,
     raccordement = 57650,
     developpement = 7500,
-    fraisCommerciaux = 20000,
+    fraisCommerciaux = 2500,
     tauxEmprunt = 4.3,
     dureeEmprunt = 12,
     apport = 0,
@@ -1362,7 +1362,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const newRaccordement = rCalc.raccordementCost;
     const newGenieCivil = 6000 + (qty - 1) * 1300;
     const newDeveloppement = 6000 + (qty - 1) * 500;
-    const fraisComm = 40 * p;
+    const fraisComm = 5 * p; // 5 €/kW = 5 000 €/MW (2 500 € pour 500 kW)
     
     const dispo = config.disponibilite || 98;
     const prixFCR = config.prixFCR ?? 20; // 20 €/MW/h
@@ -1526,7 +1526,11 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <button
             type="button"
             onClick={() => {
-              setPortfolioExportData(prev => ({ ...(prev || {}), autoExportType: 'complete' }));
+              setPortfolioExportData(prev => ({
+                ...(prev || {}),
+                autoExportType: 'complete',
+                fraisCommerciaux: config.fraisCommerciaux !== undefined ? config.fraisCommerciaux : 2500
+              }));
               setBessMode('portfolio');
               setIsDossierPdfOpen(true);
             }}
@@ -2849,7 +2853,7 @@ function TabBpProjets({
       batterieBms: 140000,
       genieCivil: 9900,
       developpement: 7500,
-      fraisCommerciaux: 20000,
+      fraisCommerciaux: 2500,
       raccordementHT: distMetersBess,
       distancePriv: 10,
       raccordement: raccordementCostBess,
@@ -5452,7 +5456,7 @@ export default function BpAcama() {
       distancePriv: 10,
       raccordement: 42900,
       developpement: 7500,
-      fraisCommerciaux: 20000,
+      fraisCommerciaux: 2500,
       coutRecharge: 0.030,
       spreadArbitrage: 0.040,
       prixFCR: 20,
@@ -5516,7 +5520,7 @@ export default function BpAcama() {
       raccordementHT: initialRaccordementHT,
       distancePriv: 10,
       developpement: 7500,
-      fraisCommerciaux: 20000,
+      fraisCommerciaux: 2500,
       arbitrageEnergie: 15242.4,
       reserveFCR: 85852.8,
       mecanismeCapacite: 8750,

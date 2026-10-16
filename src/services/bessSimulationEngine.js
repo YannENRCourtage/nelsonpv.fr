@@ -179,7 +179,8 @@ export function simulateBessFinancials(config = {}) {
   const raccordement = parseNum(config.raccordement, 57650);
   const developpement = parseNum(config.developpement, 7500);
   const isInvestPropre = Boolean(config.isInvestPropre);
-  const fraisCommerciaux = isInvestPropre ? 0 : parseNum(config.fraisCommerciaux, 20000);
+  const defaultFraisComm = Math.round((puissanceDemandee / 1000) * 5000); // 5 000 €/MW -> 2 500 € pour 500 kW
+  const fraisCommerciaux = isInvestPropre ? 0 : (config.fraisCommerciaux !== undefined ? parseNum(config.fraisCommerciaux, defaultFraisComm) : defaultFraisComm);
 
   const tauxEmprunt = parseNum(config.tauxEmprunt, 4.3);
   const dureeEmprunt = parseNum(config.dureeEmprunt, 12);
@@ -398,6 +399,12 @@ export function simulateBessFinancials(config = {}) {
 
   return {
     capexTotal,
+    batterieBms,
+    genieCivil,
+    raccordement,
+    developpement,
+    fraisCommerciaux,
+    isInvestPropre,
     emprunt,
     annuite,
     apport,
@@ -487,17 +494,19 @@ export function computeBessFinancials(siteOrConfig = {}, options = {}) {
     ? parseNum(rawRacc, 0)
     : raccCostResult.raccordementCost;
 
-  // 4. Décomposition du CAPEX unitaire (Standard Nelson / CESC Mercury 261 500 kW / 1044 kWh)
+  // 4. Paramètres de puissance & capacité
+  const puissanceDemandee = parseNum(site.powerKw ?? site.puissanceKw ?? site.power, 500);
+  const capaciteStockage = parseNum(site.capacityKwh ?? site.capaciteKwh ?? site.cap, 1044);
+  const defaultFraisComm = Math.round((puissanceDemandee / 1000) * 5000); // 5 000 €/MW -> 2 500 € pour 500 kW
+
+  // 5. Décomposition du CAPEX unitaire (Standard Nelson / CESC Mercury 261 500 kW / 1044 kWh)
   const isInvestPropre = Boolean(site.isInvestPropre ?? options.isInvestPropre ?? false);
   const batterieBms = parseNum(site.batterieBms, 140000);
   const genieCivil = parseNum(site.genieCivil, 9900);
   const developpement = parseNum(site.developpement, 7500);
-  const fraisCommerciaux = isInvestPropre ? 0 : (site.fraisCommerciaux !== undefined ? parseNum(site.fraisCommerciaux, 20000) : 20000);
+  const fraisCommerciaux = isInvestPropre ? 0 : (site.fraisCommerciaux !== undefined ? parseNum(site.fraisCommerciaux, defaultFraisComm) : (options.fraisCommerciaux !== undefined ? parseNum(options.fraisCommerciaux, defaultFraisComm) : defaultFraisComm));
   const capexTotal = batterieBms + genieCivil + developpement + fraisCommerciaux + raccordement;
 
-  // 5. Paramètres d'exploitation & de marché
-  const puissanceDemandee = parseNum(site.powerKw ?? site.puissanceKw ?? site.power, 500);
-  const capaciteStockage = parseNum(site.capacityKwh ?? site.capaciteKwh ?? site.cap, 1044);
   const loyerDalle = parseNum(site.rent ?? site.loyerDalle, 3000);
 
   // 6. Exécution du moteur de simulation physique et financière
@@ -556,6 +565,12 @@ export function computeBessFinancials(siteOrConfig = {}, options = {}) {
     zoneCre,
     storageZone,
     raccordementCost: raccordement,
+    batterieBms,
+    genieCivil,
+    raccordement,
+    developpement,
+    fraisCommerciaux,
+    isInvestPropre,
     capexTotal: sim?.capexTotal || capexTotal,
     caAnnuel: caBrutAn1,
     caBrutAn1,

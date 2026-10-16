@@ -22,14 +22,15 @@ const fmtPct = (n) => `${(n ?? 0).toFixed(1)}%`;
  * Rendu 1 Page A4 Paysage (1380 x 940 px) d'une Fiche BESS Unitaire
  * Utilisé pour la génération individuelle ou intégrée dans l'Étude Complète 39 Pages
  */
-export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 31, studyDuration = 20 }) {
+export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 31, studyDuration = 20, fraisCommerciaux }) {
   if (!site) return null;
 
   // Calcul unifié avec computeBessFinancials
   const fin = computeBessFinancials(site, {
     studyDuration: studyDuration || 20,
     debtDuration: 12,
-    debtRate: 4.30
+    debtRate: 4.30,
+    fraisCommerciaux: site?.fraisCommerciaux !== undefined ? site.fraisCommerciaux : fraisCommerciaux
   });
 
   // Données techniques unitaires
@@ -38,10 +39,10 @@ export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 3
   const distKm = fin.distanceKm;
 
   // CAPEX
-  const batterieBms = fin.rows[0] ? 140000 : 140000;
-  const genieCivil = 9900;
-  const developpement = 7500;
-  const fraisComm = 20000;
+  const batterieBms = fin.batterieBms || 140000;
+  const genieCivil = fin.genieCivil || 9900;
+  const developpement = fin.developpement || 7500;
+  const fraisComm = fin.fraisCommerciaux !== undefined ? fin.fraisCommerciaux : (site?.fraisCommerciaux !== undefined ? site.fraisCommerciaux : (fraisCommerciaux !== undefined ? fraisCommerciaux : 2500));
   const raccordement = fin.raccordementCost;
   const capexTotal = fin.capexTotal;
 

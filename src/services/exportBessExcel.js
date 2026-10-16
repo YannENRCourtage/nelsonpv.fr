@@ -37,7 +37,8 @@ export function generateBessPortfolioExcelData(sites = BESS_PORTFOLIO_SITES, opt
     const fin = computeBessFinancials(site, {
       debtDuration,
       debtRate,
-      studyDuration
+      studyDuration,
+      fraisCommerciaux: site.fraisCommerciaux !== undefined ? site.fraisCommerciaux : options.fraisCommerciaux
     });
 
     return {

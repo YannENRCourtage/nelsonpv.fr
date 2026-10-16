@@ -28,7 +28,8 @@ import {
   Square,
   SlidersHorizontal,
   AlertCircle,
-  Table as TableIcon
+  Table as TableIcon,
+  Coins
 } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -53,8 +54,9 @@ function MapBoundsUpdater({ bounds }) {
 }
 
 // Helper pour le calcul dynamique des métriques et du Payback réel de chaque site du répertoire
-const computeDynamicSiteMetrics = (site) => {
-  const fin = computeBessFinancials(site);
+const computeDynamicSiteMetrics = (site, fc = 2500) => {
+  const customFc = fc !== undefined ? fc : (site?.fraisCommerciaux !== undefined ? site.fraisCommerciaux : 2500);
+  const fin = computeBessFinancials(site, { fraisCommerciaux: customFc });
   return {
     capexTotal: fin.capexTotal,
     ebitdaAn1: fin.ebitdaAn1,
@@ -66,7 +68,8 @@ const computeDynamicSiteMetrics = (site) => {
     paybackFormatted: fin.paybackFormatted,
     triProjet: fin.triProjet,
     triProjetFormatted: fin.triProjetFormatted,
-    zoneCre: fin.zoneCre
+    zoneCre: fin.zoneCre,
+    fin
   };
 };
 
@@ -180,36 +183,43 @@ export default function BessDossierPDFGenerator({
   const [progressStep, setProgressStep] = useState('');
   const [activePageIndex, setActivePageIndex] = useState(0);
 
+  // Frais commerciaux configurables pour l'étude (Standard : 5 000 €/MW = 2 500 € pour 500 kW)
+  const [fraisCommerciaux, setFraisCommerciaux] = useState(() => {
+    return portfolioData?.fraisCommerciaux ?? batteryConfig?.fraisCommerciaux ?? 2500;
+  });
+
+  useEffect(() => {
+    if (portfolioData?.fraisCommerciaux !== undefined) {
+      setFraisCommerciaux(portfolioData.fraisCommerciaux);
+    } else if (batteryConfig?.fraisCommerciaux !== undefined) {
+      setFraisCommerciaux(batteryConfig.fraisCommerciaux);
+    }
+  }, [portfolioData?.fraisCommerciaux, batteryConfig?.fraisCommerciaux]);
+
   // Base de données consolidée des sites BESS (hydratée depuis portfolioData ou getBessPortfolioSites)
   const allAvailableSites = useMemo(() => {
-    if (portfolioData?.analyzedSites && portfolioData.analyzedSites.length > 0) {
-      return portfolioData.analyzedSites.map((s, idx) => ({
-        ...s,
-        id: s.id || `bess_site_${idx + 1}`,
-        client: s.client || s.client_name || 'Client',
-        cp: s.cp || s.postcode || '',
-        dept: s.dept || (s.cp || s.postcode || '').substring(0, 2) || 'FR',
-        gps: s.gps || (s.lat && s.lng ? `${Number(s.lat).toFixed(6)}, ${Number(s.lng).toFixed(6)}` : ''),
-        substation: typeof s.substation === 'object' ? (s.substation?.name || 'ODRE') : (s.substation || 'ODRE'),
-        dist: s.dist || (s.substation?.distanceKm ? `${s.substation.distanceKm} km` : '5.0 km'),
-        s3renr: s.s3renr || s.substation?.quotePartS3renr || "92.73 k€/MW",
-        power: s.power || `${s.powerKw || 500} kW`,
-        cap: s.cap || `${s.capacityKwh || 1044} kWh`,
-        rent: s.rent ? (typeof s.rent === 'number' ? fmtEur(s.rent) : s.rent) : "3 000 €",
-        ebitda: s.ebitda ? (typeof s.ebitda === 'number' ? fmtEur(s.ebitda) : s.ebitda) : fmtEur(s.ebitdaAn1 || 0),
-        ebitdaAn1: s.ebitdaAn1 || (typeof s.ebitda === 'number' ? s.ebitda : 0),
-        payback: s.paybackFormatted || (s.payback ? `${s.payback} ans` : '—'),
-        paybackAnnees: s.paybackAnnees || s.payback
-      }));
+    const targetPort = portfolioData?.selectedPortfolio || 'ALL';
+    const rawSites = (portfolioData?.analyzedSites && portfolioData.analyzedSites.length > 0)
+      ? portfolioData.analyzedSites
+      : getBessPortfolioSites(projects, targetPort);
+
+    if (!rawSites || rawSites.length === 0) {
+      return RAW_SITES_DATABASE.map((s, idx) => {
+        const m = computeDynamicSiteMetrics(s, fraisCommerciaux);
+        return {
+          ...s,
+          id: s.id || `bess_site_${idx + 1}`,
+          capexTotal: m.capexTotal,
+          ebitda: fmtEur(m.ebitdaAn1),
+          payback: m.paybackFormatted,
+          ebitdaAn1: m.ebitdaAn1,
+          paybackAnnees: m.paybackAnnees
+        };
+      });
     }
 
-    const targetPort = portfolioData?.selectedPortfolio || 'ALL';
-    const rawSites = getBessPortfolioSites(projects, targetPort);
-    if (!rawSites || rawSites.length === 0) {
-      return SITES_DATABASE;
-    }
     return rawSites.map((s, idx) => {
-      const m = computeDynamicSiteMetrics(s);
+      const m = computeDynamicSiteMetrics(s, fraisCommerciaux);
       const cp = s.cp || s.postcode || '';
       return {
         ...s,
@@ -221,16 +231,17 @@ export default function BessDossierPDFGenerator({
         substation: typeof s.substation === 'object' ? (s.substation?.name || 'ODRE') : (s.substation || 'ODRE'),
         dist: s.dist || (s.substation?.distanceKm ? `${s.substation.distanceKm} km` : '5.0 km'),
         s3renr: s.s3renr || s.substation?.quotePartS3renr || "92.73 k€/MW",
-        power: s.power || "500 kW",
-        cap: s.cap || "1044 kWh",
+        power: s.power || `${s.powerKw || 500} kW`,
+        cap: s.cap || `${s.capacityKwh || 1044} kWh`,
         rent: s.rent ? (typeof s.rent === 'number' ? fmtEur(s.rent) : s.rent) : "3 000 €",
+        capexTotal: m.capexTotal,
         ebitda: fmtEur(m.ebitdaAn1),
         payback: m.paybackFormatted,
         ebitdaAn1: m.ebitdaAn1,
         paybackAnnees: m.paybackAnnees
       };
     });
-  }, [portfolioData?.analyzedSites, portfolioData?.selectedPortfolio, projects]);
+  }, [portfolioData?.analyzedSites, portfolioData?.selectedPortfolio, projects, fraisCommerciaux]);
 
   const [selectedProjectIds, setSelectedProjectIds] = useState(() => allAvailableSites.map(s => s.id));
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
@@ -316,7 +327,8 @@ export default function BessDossierPDFGenerator({
       return computeBessFinancials(s, {
         studyDuration: 15,
         debtDuration: debtDuration || 12,
-        debtRate: debtRate || 4.30
+        debtRate: debtRate || 4.30,
+        fraisCommerciaux: s.fraisCommerciaux !== undefined ? s.fraisCommerciaux : fraisCommerciaux
       });
     });
 
@@ -354,7 +366,7 @@ export default function BessDossierPDFGenerator({
     }
 
     return { revFcr, revCapa, revArb, opexTurpe, opexRecharge, opexAgregateur, opexAutres, debtService };
-  }, [isPort, selectedBessSites, selectedSite, debtRate, debtDuration]);
+  }, [isPort, selectedBessSites, selectedSite, debtRate, debtDuration, fraisCommerciaux]);
 
   // Calcul dynamique du DSCR moyen
   const dscrArray = YEARS_15.map((_, i) => {
@@ -369,7 +381,7 @@ export default function BessDossierPDFGenerator({
   const avgDscr = validDscr.length > 0 ? (validDscr.reduce((a, b) => a + b, 0) / validDscr.length) : 1.98;
 
   // Totaux cumulés et métriques unifiées basés exclusivement sur les projets sélectionnés
-  const singleMetrics = !isPort ? computeDynamicSiteMetrics(selectedSite) : null;
+  const singleMetrics = !isPort ? computeDynamicSiteMetrics(selectedSite, fraisCommerciaux) : null;
 
   // Chronique 15 ans pour le Compte de Résultat Consolidé affiché en bas de Planche 1
   const bessP1Chronique = useMemo(() => {
@@ -393,8 +405,8 @@ export default function BessDossierPDFGenerator({
     });
   }, [dynamicFinancialMatrix]);
   const totalEbitdaAllSites = selectedBessSites.reduce((sum, s) => sum + s.ebitdaAn1, 0);
-  const totalCaAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s).caAnnuel, 0);
-  const totalCapexAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s).capexTotal, 0);
+  const totalCaAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s, fraisCommerciaux).caAnnuel, 0);
+  const totalCapexAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s, fraisCommerciaux).capexTotal, 0);
 
   // Totaux cumulés 15 ans
   const cumulRev = YEARS_15.reduce((acc, _, i) => acc + (dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i]), 0);
@@ -2179,6 +2191,7 @@ export default function BessDossierPDFGenerator({
                     siteIndex={sIdx + 1}
                     totalSites={selectedBessSites.length}
                     studyDuration={20}
+                    fraisCommerciaux={fraisCommerciaux}
                   />
                 </div>
               ))}
@@ -2352,6 +2365,63 @@ export default function BessDossierPDFGenerator({
                   Veuillez sélectionner au moins un projet
                 </span>
               )}
+            </div>
+
+            {/* Paramètre Frais commerciaux pour l'Étude */}
+            <div className="px-6 py-2.5 bg-amber-50/70 border-b border-amber-200/80 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
+              <div className="flex items-center gap-2.5">
+                <Coins className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="font-extrabold text-slate-800">Frais commerciaux :</span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="0"
+                    step="500"
+                    value={fraisCommerciaux}
+                    onChange={(e) => setFraisCommerciaux(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="w-24 px-2.5 py-1 text-xs font-black text-slate-900 bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none shadow-2xs"
+                  />
+                  <span className="font-bold text-slate-600">€ / projet</span>
+                </div>
+                <span className="text-[11px] text-slate-600 font-semibold bg-white/80 px-2 py-0.5 rounded border border-amber-200">
+                  {fraisCommerciaux === 2500 ? 'Standard 5 000 €/MW (2 500 € pour 500 kW)' : `${Math.round((fraisCommerciaux / 500) * 1000).toLocaleString('fr-FR')} €/MW`}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setFraisCommerciaux(2500)}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
+                    fraisCommerciaux === 2500
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  2 500 € (5 000 €/MW)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFraisCommerciaux(0)}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
+                    fraisCommerciaux === 0
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  0 € (Invest. propre)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFraisCommerciaux(5000)}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
+                    fraisCommerciaux === 5000
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  5 000 €
+                </button>
+              </div>
             </div>
 
             {/* Table list */}
