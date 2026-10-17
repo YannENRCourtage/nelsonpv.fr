@@ -1260,6 +1260,8 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
         const newUpdateObj = {
             id: `upd_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             author: authorName,
+            authorId: user?.uid || user?.id || 'unknown',
+            authorEmail: user?.email || '',
             avatar: authorAvatar,
             role: authorRole,
             text: text.trim(),
@@ -1299,6 +1301,50 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
             }
         } catch (err) {
             console.error("Erreur enregistrement mise à jour :", err);
+        }
+    };
+
+    const handleEditUpdate = async (rowId, updateId, newText) => {
+        if (!newText || !newText.trim()) return;
+        const targetRow = rows.find(r => r.id === rowId) || selectedRowForUpdates;
+        if (!targetRow) return;
+
+        const existingUpdates = Array.isArray(targetRow.data?.__updates)
+            ? targetRow.data.__updates
+            : Array.isArray(targetRow.updates)
+            ? targetRow.updates
+            : [];
+
+        const authorName = user?.displayName || user?.firstName || user?.name || 'Yann';
+
+        const newUpdates = existingUpdates.map(u => {
+            if (u.id === updateId) {
+                return {
+                    ...u,
+                    text: newText.trim(),
+                    isEdited: true,
+                    editedAt: new Date().toISOString(),
+                    editedBy: authorName
+                };
+            }
+            return u;
+        });
+
+        const updatedRow = {
+            ...targetRow,
+            data: {
+                ...targetRow.data,
+                __updates: newUpdates
+            }
+        };
+
+        setRows(prev => prev.map(r => r.id === rowId ? updatedRow : r));
+        setSelectedRowForUpdates(updatedRow);
+
+        try {
+            await apiService.updateMondayRow(data.id, rowId, { data: updatedRow.data });
+        } catch (err) {
+            console.error("Erreur modification mise à jour :", err);
         }
     };
 
@@ -2332,6 +2378,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName, targetRowId 
                     tabName={tabName || data.name || 'Tableau'}
                     onClose={() => setSelectedRowForUpdates(null)}
                     onAddUpdate={handleAddUpdate}
+                    onEditUpdate={handleEditUpdate}
                     onToggleLike={handleToggleLike}
                     onDeleteUpdate={handleDeleteUpdate}
                 />

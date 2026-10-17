@@ -3,7 +3,7 @@ import {
   Search, Download, RefreshCw, Plus, Filter, MessageSquare, 
   CheckCircle2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, 
   Building2, Zap, Euro, ShieldCheck, X, FileSpreadsheet, Eye, SlidersHorizontal, Trash2,
-  Clock, Check, Edit2, RotateCcw, ArrowLeftRight, ChevronLeft, ChevronRight
+  Clock, Check, Edit2, RotateCcw, ArrowLeftRight, ChevronLeft, ChevronRight, GripVertical
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { isShantiOneAuthorized } from '@/services/firebase/auth.service.js';
@@ -11,6 +11,7 @@ import {
   subscribeToShantiOneProjects, 
   updateShantiOneProject, 
   addShantiOneUpdate, 
+  editShantiOneUpdate,
   toggleLikeShantiOneUpdate, 
   deleteShantiOneUpdate, 
   exportShantiOneToExcel,
@@ -203,6 +204,13 @@ export default function ShantiOnePage() {
   const [newColName, setNewColName] = useState('');
   const [newColType, setNewColType] = useState('text');
 
+  // États pour réorganisation / déplacement latéral des colonnes
+  const [isOrganizeModalOpen, setIsOrganizeModalOpen] = useState(false);
+  const [draggedColId, setDraggedColId] = useState(null);
+  const [dragOverColId, setDragOverColId] = useState(null);
+  const [dragOverPosition, setDragOverPosition] = useState(null); // 'left' | 'right'
+  const [isResizing, setIsResizing] = useState(false);
+
   // État pour édition de cellule
   const [editingCell, setEditingCell] = useState(null); // { id, field, type }
   const [cellEditValue, setCellEditValue] = useState('');
@@ -340,6 +348,7 @@ export default function ShantiOnePage() {
         setIsCustomStatus(false);
         setRenamingColId(null);
         setIsAddColumnOpen(false);
+        setIsOrganizeModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -373,6 +382,7 @@ export default function ShantiOnePage() {
   const handleMouseDownResize = (e, colId, currentWidth) => {
     e.preventDefault();
     e.stopPropagation();
+    setIsResizing(true);
     const startX = e.clientX;
 
     const onMouseMove = (moveEvent) => {
@@ -382,12 +392,54 @@ export default function ShantiOnePage() {
     };
 
     const onMouseUp = () => {
+      setIsResizing(false);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Déplacement latéral d'une colonne avec flèches gauche/droite
+  const handleMoveColumnDirection = (colId, direction) => {
+    setColumns(prev => {
+      const idx = prev.findIndex(c => c.id === colId);
+      if (idx === -1) return prev;
+      const targetIdx = direction === 'left' ? idx - 1 : idx + 1;
+      // Les colonnes figées (index 0: no, 1: maj, 2: projet) ne peuvent pas être déplacées
+      if (targetIdx < 3 || targetIdx >= prev.length) return prev;
+      if (prev[targetIdx].fixed) return prev;
+
+      const newCols = [...prev];
+      const temp = newCols[idx];
+      newCols[idx] = newCols[targetIdx];
+      newCols[targetIdx] = temp;
+      return newCols;
+    });
+  };
+
+  // Déplacement latéral d'une colonne par Drag & Drop
+  const handleMoveColumn = (sourceId, targetId, position = 'before') => {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+    setColumns(prev => {
+      const sourceCol = prev.find(c => c.id === sourceId);
+      if (!sourceCol || sourceCol.fixed) return prev;
+      const targetCol = prev.find(c => c.id === targetId);
+      if (!targetCol || targetCol.fixed) return prev;
+
+      const filtered = prev.filter(c => c.id !== sourceId);
+      const targetIndex = filtered.findIndex(c => c.id === targetId);
+      if (targetIndex === -1) return prev;
+
+      const insertIndex = position === 'after' ? targetIndex + 1 : targetIndex;
+      // Ne jamais insérer avant les colonnes figées (index 3 minimum)
+      const safeInsertIndex = Math.max(3, insertIndex);
+
+      const newCols = [...filtered];
+      newCols.splice(safeInsertIndex, 0, sourceCol);
+      return newCols;
+    });
   };
 
   // Renommage d'une colonne
@@ -675,6 +727,17 @@ export default function ShantiOnePage() {
             >
               <Plus className="w-3.5 h-3.5 mr-1 text-blue-600" />
               Colonne
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsOrganizeModalOpen(true)}
+              title="Organiser et déplacer latéralement les colonnes"
+              className="text-xs font-semibold h-9 border-slate-300 text-slate-700 hover:bg-slate-50"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 mr-1 text-blue-600" />
+              Ordre colonnes
             </Button>
 
             <Button
@@ -1047,14 +1110,61 @@ export default function ShantiOnePage() {
               {/* EN-TÊTES */}
               <thead className="sticky top-0 z-30 bg-slate-900 text-white font-semibold text-[11px] shadow-sm uppercase tracking-wider">
                 <tr>
-                  {columns.map(col => {
+                  {columns.map((col, colIndex) => {
                     const isSticky = Boolean(col.sticky);
                     const leftPos = isSticky ? stickyOffsets[col.id] : undefined;
                     const isRenaming = renamingColId === col.id;
+                    const isMovable = !col.fixed;
+                    const canMoveLeft = isMovable && colIndex > 3;
+                    const canMoveRight = isMovable && colIndex < columns.length - 1;
+                    const isBeingDragged = draggedColId === col.id;
+                    const isDragTarget = dragOverColId === col.id && !isBeingDragged;
 
                     return (
                       <th
                         key={col.id}
+                        draggable={isMovable && !isRenaming && !isResizing}
+                        onDragStart={(e) => {
+                          if (!isMovable || isRenaming || isResizing) {
+                            e.preventDefault();
+                            return;
+                          }
+                          e.dataTransfer.setData('text/plain', col.id);
+                          e.dataTransfer.effectAllowed = 'move';
+                          setDraggedColId(col.id);
+                        }}
+                        onDragOver={(e) => {
+                          if (!isMovable || !draggedColId || draggedColId === col.id) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const isRight = (e.clientX - rect.left) > (rect.width / 2);
+                          setDragOverColId(col.id);
+                          setDragOverPosition(isRight ? 'right' : 'left');
+                        }}
+                        onDragLeave={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget)) {
+                            if (dragOverColId === col.id) {
+                              setDragOverColId(null);
+                              setDragOverPosition(null);
+                            }
+                          }
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (!isMovable || !draggedColId || draggedColId === col.id) return;
+                          const pos = dragOverPosition === 'right' ? 'after' : 'before';
+                          handleMoveColumn(draggedColId, col.id, pos);
+                          setDraggedColId(null);
+                          setDragOverColId(null);
+                          setDragOverPosition(null);
+                          toast({ title: 'Colonne déplacée', description: `La colonne "${col.label}" a été déplacée avec succès.` });
+                        }}
+                        onDragEnd={() => {
+                          setDraggedColId(null);
+                          setDragOverColId(null);
+                          setDragOverPosition(null);
+                        }}
                         style={{
                           width: `${col.width}px`,
                           minWidth: `${col.width}px`,
@@ -1062,8 +1172,12 @@ export default function ShantiOnePage() {
                           ...(isSticky ? { position: 'sticky', left: `${leftPos}px`, zIndex: 40 } : {})
                         }}
                         className={cn(
-                          "px-2.5 py-3 border-r border-slate-800 select-none relative group/th bg-slate-900",
-                          col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'
+                          "px-2.5 py-3 border-r border-slate-800 select-none relative group/th bg-slate-900 transition-all",
+                          col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
+                          isMovable && "cursor-grab active:cursor-grabbing",
+                          isBeingDragged && "opacity-40 bg-slate-800 ring-2 ring-blue-500/50",
+                          isDragTarget && dragOverPosition === 'left' && "border-l-4 border-l-blue-400 bg-blue-950/40",
+                          isDragTarget && dragOverPosition === 'right' && "border-r-4 border-r-blue-400 bg-blue-950/40"
                         )}
                       >
                         <div className="flex items-center justify-between gap-1 overflow-hidden pr-2">
@@ -1082,26 +1196,67 @@ export default function ShantiOnePage() {
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
-                            <span 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!col.fixed) handleStartRename(col);
-                              }}
-                              onDoubleClick={(e) => {
-                                e.stopPropagation();
-                                if (!col.fixed) handleStartRename(col);
-                              }}
-                              title={col.fixed ? col.label : "Cliquer pour modifier le titre"}
-                              className={cn(
-                                "truncate font-bold", 
-                                !col.fixed && "cursor-pointer hover:text-blue-300 transition-colors"
+                            <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                              {/* Poignée Grip pour déplacement par Drag & Drop */}
+                              {isMovable && (
+                                <span
+                                  className="opacity-0 group-hover/th:opacity-100 transition-opacity text-slate-500 hover:text-white shrink-0 -ml-0.5 mr-0.5 cursor-grab active:cursor-grabbing"
+                                  title="Glisser pour déplacer la colonne latéralement"
+                                >
+                                  <GripVertical className="w-3 h-3" />
+                                </span>
                               )}
-                            >
-                              {col.label}
-                            </span>
+                              <span 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!col.fixed) handleStartRename(col);
+                                }}
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!col.fixed) handleStartRename(col);
+                                }}
+                                title={col.fixed ? col.label : "Cliquer pour renommer • Glisser pour déplacer latéralement"}
+                                className={cn(
+                                  "truncate font-bold", 
+                                  !col.fixed && "cursor-pointer hover:text-blue-300 transition-colors"
+                                )}
+                              >
+                                {col.label}
+                              </span>
+                            </div>
                           )}
 
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {/* Flèche Déplacer vers la gauche */}
+                            {canMoveLeft && !isRenaming && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveColumnDirection(col.id, 'left');
+                                }}
+                                title="Déplacer vers la gauche"
+                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 text-slate-400 hover:text-blue-300 hover:bg-slate-800 rounded cursor-pointer"
+                              >
+                                <ChevronLeft className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {/* Flèche Déplacer vers la droite */}
+                            {canMoveRight && !isRenaming && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveColumnDirection(col.id, 'right');
+                                }}
+                                title="Déplacer vers la droite"
+                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 text-slate-400 hover:text-blue-300 hover:bg-slate-800 rounded cursor-pointer"
+                              >
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
                             {/* Bouton de tri dédié : Le tri ne se déclenche QUE lors du clic sur ce bouton */}
                             {col.sortable && !isRenaming && (
                               <button
@@ -1635,6 +1790,106 @@ export default function ShantiOnePage() {
         </div>
       )}
 
+      {/* ═══ MODAL RÉORGANISATION DE COLONNES ═══ */}
+      {isOrganizeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                  <ArrowLeftRight className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-800 text-sm">Ordre latéral des colonnes</h3>
+                  <p className="text-[11px] text-slate-500">Déplacez les colonnes vers la gauche ou la droite</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOrganizeModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-1.5 max-h-[380px] overflow-y-auto pr-1">
+              {columns.map((col, idx) => {
+                const isFixed = Boolean(col.fixed);
+                const canMoveLeft = !isFixed && idx > 3;
+                const canMoveRight = !isFixed && idx < columns.length - 1;
+
+                return (
+                  <div
+                    key={col.id}
+                    className={cn(
+                      "flex items-center justify-between px-3 py-2 rounded-xl text-xs border transition-colors",
+                      isFixed 
+                        ? "bg-slate-50 border-slate-200 text-slate-500" 
+                        : "bg-white border-slate-200 hover:border-blue-400 hover:bg-blue-50/20 text-slate-800"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] font-bold text-slate-400 w-5 text-right">{idx + 1}.</span>
+                      <span className="font-semibold truncate">{col.label}</span>
+                      {isFixed && (
+                        <span className="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold uppercase">
+                          Fixe
+                        </span>
+                      )}
+                    </div>
+
+                    {!isFixed && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          disabled={!canMoveLeft}
+                          onClick={() => handleMoveColumnDirection(col.id, 'left')}
+                          title="Déplacer vers la gauche (plus tôt dans le tableau)"
+                          className="p-1 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-100 disabled:opacity-20 disabled:pointer-events-none cursor-pointer transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!canMoveRight}
+                          onClick={() => handleMoveColumnDirection(col.id, 'right')}
+                          title="Déplacer vers la droite (plus tard dans le tableau)"
+                          className="p-1 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-100 disabled:opacity-20 disabled:pointer-events-none cursor-pointer transition-colors"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleResetColumns}
+                className="text-xs text-slate-500 hover:text-slate-800"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Réinitialiser
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsOrganizeModalOpen(false)}
+                className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Terminer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══ TIROIR LATÉRAL DE MISES À JOUR (DRAWER MONDAY) ═══ */}
       {selectedProjectForUpdates && (
         <MondayUpdatesDrawer
@@ -1662,6 +1917,31 @@ export default function ShantiOnePage() {
               return p;
             }));
             setSelectedProjectForUpdates(prev => prev ? { ...prev, __updates: [newUpd, ...(prev.__updates || [])] } : null);
+          }}
+          onEditUpdate={async (rowId, updateId, newText) => {
+            const project = projects.find(p => p.id === rowId) || selectedProjectForUpdates;
+            await editShantiOneUpdate(project, updateId, newText, user);
+            setProjects(prev => prev.map(p => {
+              if (p.id === rowId) {
+                const list = (p.__updates || []).map(u => u.id === updateId ? {
+                  ...u,
+                  text: newText.trim(),
+                  isEdited: true,
+                  editedAt: new Date().toISOString()
+                } : u);
+                return { ...p, __updates: list };
+              }
+              return p;
+            }));
+            setSelectedProjectForUpdates(prev => prev ? {
+              ...prev,
+              __updates: (prev.__updates || []).map(u => u.id === updateId ? {
+                ...u,
+                text: newText.trim(),
+                isEdited: true,
+                editedAt: new Date().toISOString()
+              } : u)
+            } : null);
           }}
           onToggleLike={async (rowId, updateId) => {
             const project = projects.find(p => p.id === rowId) || selectedProjectForUpdates;

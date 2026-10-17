@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, ArrowLeft, Send, ThumbsUp, Reply, Eye, MoreVertical, 
-  Trash2, MessageSquare, Plus, Sparkles
+  Trash2, MessageSquare, Plus, Sparkles, Edit2, Check
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import MentionTextarea from '@/components/MentionTextarea.jsx';
@@ -90,6 +90,7 @@ export default function MondayUpdatesDrawer({
   tabName = 'Suivi des dossiers',
   onClose,
   onAddUpdate,
+  onEditUpdate,
   onToggleLike,
   onDeleteUpdate
 }) {
@@ -97,6 +98,9 @@ export default function MondayUpdatesDrawer({
   const [newText, setNewText] = useState('');
   const [isComposing, setIsComposing] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingUpdateId, setEditingUpdateId] = useState(null);
+  const [editingText, setEditingText] = useState('');
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [activeTab, setActiveTab] = useState('updates'); // 'columns', 'emails', 'updates'
   const [menuOpenId, setMenuOpenId] = useState(null);
   const textareaRef = useRef(null);
@@ -341,6 +345,25 @@ export default function MondayUpdatesDrawer({
                     const isLiked = upd.liked === true;
                     const likesCount = Number(upd.likes || 0);
 
+                    // Vérification que l'utilisateur courant est l'auteur (ou administrateur)
+                    const currentAuthorId = user?.uid || user?.id || '';
+                    const currentEmail = user?.email || '';
+                    const isAdmin = user?.role === 'admin' || user?.role === 'Administrator';
+
+                    const isAuthor = Boolean(
+                      (upd.authorId && currentAuthorId && String(upd.authorId) === String(currentAuthorId)) ||
+                      (upd.authorEmail && currentEmail && upd.authorEmail.toLowerCase() === currentEmail.toLowerCase()) ||
+                      (upd.author && currentAuthor && upd.author.trim().toLowerCase() === currentAuthor.trim().toLowerCase()) ||
+                      (upd.author && user?.firstName && (
+                        upd.author.trim().toLowerCase().includes(user.firstName.trim().toLowerCase()) ||
+                        user.firstName.trim().toLowerCase().includes(upd.author.trim().toLowerCase())
+                      ))
+                    );
+
+                    const canEdit = isAuthor || isAdmin;
+                    const canDelete = isAuthor || isAdmin;
+                    const isCurrentlyEditing = editingUpdateId === upd.id;
+
                     return (
                       <div
                         key={upd.id}
@@ -359,9 +382,19 @@ export default function MondayUpdatesDrawer({
                               }}
                             />
                             <div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-sm text-white">{authorName}</span>
-                                <span className="text-xs text-slate-400 font-medium">{formatMondayDate(upd.timestamp)}</span>
+                                <span className="text-xs text-slate-400 font-medium">
+                                  {formatMondayDate(upd.timestamp || upd.createdAt)}
+                                </span>
+                                {(upd.isEdited || upd.editedAt) && (
+                                  <span 
+                                    className="text-[10px] text-slate-400 font-normal italic bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/60"
+                                    title={upd.editedAt ? `Modifié le ${new Date(upd.editedAt).toLocaleString('fr-FR')}` : 'Modifié'}
+                                  >
+                                    (modifié)
+                                  </span>
+                                )}
                               </div>
                               <span className="text-xs text-slate-400 font-normal block leading-tight">
                                 {authorRole}
@@ -369,41 +402,124 @@ export default function MondayUpdatesDrawer({
                             </div>
                           </div>
 
-                          {/* Menu 3 points (suppression d'une mise à jour) */}
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => setMenuOpenId(menuOpenId === upd.id ? null : upd.id)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition-colors cursor-pointer"
-                              title="Options"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
+                          {/* Menu 3 points (modification et suppression d'une mise à jour) */}
+                          {(canEdit || canDelete) && (
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setMenuOpenId(menuOpenId === upd.id ? null : upd.id)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition-colors cursor-pointer"
+                                title="Options"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
 
-                            {menuOpenId === upd.id && (
-                              <div className="absolute right-0 mt-1 w-36 bg-slate-900 border border-slate-700 rounded-xl shadow-xl py-1 z-20">
+                              {menuOpenId === upd.id && (
+                                <div className="absolute right-0 mt-1 w-36 bg-slate-900 border border-slate-700 rounded-xl shadow-xl py-1 z-30">
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setMenuOpenId(null);
+                                        setEditingUpdateId(upd.id);
+                                        setEditingText(upd.text || '');
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 text-xs text-blue-400 hover:bg-blue-950/40 hover:text-blue-300 flex items-center gap-2 font-medium cursor-pointer"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                      <span>Modifier</span>
+                                    </button>
+                                  )}
+
+                                  {canDelete && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setMenuOpenId(null);
+                                        if (confirm('Supprimer cette mise à jour ?')) {
+                                          onDeleteUpdate(row.id, upd.id);
+                                        }
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 flex items-center gap-2 font-medium cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Supprimer</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Corps du message ou formulaire d'édition inline */}
+                        {isCurrentlyEditing ? (
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              if (!editingText.trim() || isSubmittingEdit) return;
+                              setIsSubmittingEdit(true);
+                              try {
+                                await onEditUpdate?.(row.id, upd.id, editingText.trim());
+                                setEditingUpdateId(null);
+                                setEditingText('');
+                              } catch (err) {
+                                console.error('Erreur modification mise à jour :', err);
+                              } finally {
+                                setIsSubmittingEdit(false);
+                              }
+                            }}
+                            className="space-y-2 pt-1 animate-in fade-in duration-150"
+                          >
+                            <MentionTextarea
+                              value={editingText}
+                              onChange={(val) => setEditingText(val)}
+                              onKeyDown={(e) => {
+                                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                  e.preventDefault();
+                                  e.currentTarget.form?.requestSubmit?.();
+                                }
+                                if (e.key === 'Escape') {
+                                  setEditingUpdateId(null);
+                                  setEditingText('');
+                                }
+                              }}
+                              rows={3}
+                              className="w-full p-2.5 bg-[#181b20] border border-blue-500 rounded-xl text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none transition-all shadow-inner"
+                              darkMode={true}
+                              placeholder="Modifier votre message..."
+                            />
+
+                            <div className="flex items-center justify-between text-[11px] text-slate-400">
+                              <span className="text-[10px] text-slate-500">Ctrl + Entrée pour enregistrer, Échap pour annuler</span>
+                              <div className="flex items-center gap-2">
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setMenuOpenId(null);
-                                    if (confirm('Supprimer cette mise à jour ?')) {
-                                      onDeleteUpdate(row.id, upd.id);
-                                    }
+                                    setEditingUpdateId(null);
+                                    setEditingText('');
                                   }}
-                                  className="w-full text-left px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 flex items-center gap-2 font-medium cursor-pointer"
+                                  disabled={isSubmittingEdit}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-700/60 transition-colors cursor-pointer"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Supprimer</span>
+                                  Annuler
+                                </button>
+                                <button
+                                  type="submit"
+                                  disabled={!editingText.trim() || isSubmittingEdit}
+                                  className="px-3.5 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-md shadow-blue-600/30 flex items-center gap-1.5 cursor-pointer transition-all"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>{isSubmittingEdit ? 'Enregistrement...' : 'Enregistrer'}</span>
                                 </button>
                               </div>
-                            )}
+                            </div>
+                          </form>
+                        ) : (
+                          <div className="text-sm text-slate-100 whitespace-pre-wrap leading-relaxed select-text pt-0.5 font-normal">
+                            {renderTextWithMentions(upd.text)}
                           </div>
-                        </div>
-
-                        {/* Corps du message avec support des mentions */}
-                        <div className="text-sm text-slate-100 whitespace-pre-wrap leading-relaxed select-text pt-0.5 font-normal">
-                          {renderTextWithMentions(upd.text)}
-                        </div>
+                        )}
 
                         {/* Statistique de vue (Image 4 : 👁️ 1) */}
                         <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-1">

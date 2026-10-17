@@ -214,6 +214,52 @@ export const deleteShantiOneUpdate = async (project, updateId) => {
 };
 
 /**
+ * Modification d'un commentaire
+ */
+export const editShantiOneUpdate = async (project, updateId, newText, user) => {
+  const existingUpdates = Array.isArray(project.__updates) ? project.__updates : [];
+  const editorName = user?.firstName
+    ? `${user.firstName} ${user.lastName || ''}`.trim()
+    : user?.displayName || user?.email || 'Collaborateur';
+
+  const updatedList = existingUpdates.map((u) => {
+    if (u.id === updateId) {
+      return {
+        ...u,
+        text: newText.trim(),
+        isEdited: true,
+        editedAt: new Date().toISOString(),
+        editedBy: editorName
+      };
+    }
+    return u;
+  });
+
+  const projectRef = doc(db, COLLECTION_NAME, project.id);
+  await updateDoc(projectRef, {
+    __updates: updatedList,
+    updated_at: new Date().toISOString(),
+    updated_by: editorName,
+    updatedAt: serverTimestamp()
+  });
+
+  try {
+    const updateDocRef = doc(db, UPDATES_COLLECTION, updateId);
+    await updateDoc(updateDocRef, {
+      text: newText.trim(),
+      isEdited: true,
+      editedAt: new Date().toISOString(),
+      editedBy: editorName,
+      updatedAtTimestamp: serverTimestamp()
+    });
+  } catch (e) {
+    console.warn('[ShantiOne] Secondary update edit:', e);
+  }
+
+  return updatedList;
+};
+
+/**
  * Export au format Excel (.xlsx)
  */
 export const exportShantiOneToExcel = (projects, columnsOrFilename = null, optionalFilename = 'SUIVI_SHANTI_ONE.xlsx') => {
