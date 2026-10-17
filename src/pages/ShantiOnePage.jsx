@@ -134,26 +134,26 @@ const StatusBadge = ({ value }) => {
 // Configuration par défaut des colonnes du tableau
 const DEFAULT_COLUMNS = [
   { id: 'no', label: 'N°', width: 48, minWidth: 40, sticky: true, fixed: true },
-  { id: 'maj', label: 'MAJ', width: 56, minWidth: 50, sticky: true, fixed: true },
+  { id: 'maj', label: 'MAJ', width: 68, minWidth: 60, sticky: true, fixed: true },
   { id: 'projet', label: 'PROJET', width: 170, minWidth: 120, sticky: true, fixed: true, sortable: true },
   { id: 'spv', label: 'SPV', width: 120, minWidth: 80, sortable: true, editable: true, type: 'text' },
-  { id: 'puissance_kwc', label: 'kWc', width: 85, minWidth: 60, sortable: true, editable: true, type: 'number', align: 'right' },
-  { id: 'enr_courtage', label: 'ENR C.', width: 95, minWidth: 70, editable: true, type: 'badge_enr', align: 'center' },
-  { id: 'courtier', label: 'Courtier', width: 110, minWidth: 80, editable: true, type: 'text' },
+  { id: 'puissance_kwc', label: 'kWc', width: 110, minWidth: 70, sortable: true, editable: true, type: 'number', align: 'right' },
+  { id: 'enr_courtage', label: 'ENR C.', width: 110, minWidth: 75, editable: true, type: 'badge_enr', align: 'center' },
+  { id: 'courtier', label: 'Courtier', width: 120, minWidth: 80, editable: true, type: 'text' },
   { id: 'adresse_projet', label: 'Adresse Projet', width: 230, minWidth: 150, editable: true, type: 'text' },
-  { id: 'modele_base', label: 'Modèle', width: 100, minWidth: 80, editable: true, type: 'text' },
-  { id: 'plan_pc', label: 'Plan PC/DP', width: 110, minWidth: 80, editable: true, type: 'badge_plan', align: 'center' },
+  { id: 'modele_base', label: 'Modèle', width: 115, minWidth: 80, editable: true, type: 'text' },
+  { id: 'plan_pc', label: 'Plan PC/DP', width: 125, minWidth: 85, editable: true, type: 'badge_plan', align: 'center' },
   { id: 'gps', label: 'GPS', width: 130, minWidth: 90, editable: true, type: 'text' },
-  { id: 'tel', label: 'Tél', width: 110, minWidth: 80, editable: true, type: 'text' },
+  { id: 'tel', label: 'Tél', width: 120, minWidth: 80, editable: true, type: 'text' },
   { id: 'mail', label: 'Mail', width: 180, minWidth: 100, editable: true, type: 'text' },
-  { id: 'type_projet_categorie', label: 'Type Projet', width: 120, minWidth: 90, editable: true, type: 'text' },
+  { id: 'type_projet_categorie', label: 'Type Projet', width: 135, minWidth: 90, editable: true, type: 'text' },
   { id: 'type_projet_detail', label: 'Détail Type', width: 170, minWidth: 120, editable: true, type: 'text' },
   { id: 'retour_geometre', label: 'Retour Géomètre', width: 210, minWidth: 150, sortable: true, editable: true, type: 'badge_geometre' },
   { id: 'geometre', label: 'Géomètre', width: 130, minWidth: 90, sortable: true, editable: true, type: 'text' },
-  { id: 'mtt_ht_devis_geometre', label: 'Devis Géomètre HT', width: 140, minWidth: 100, sortable: true, editable: true, type: 'number', align: 'right' },
-  { id: 'devis_valide', label: 'Devis Validé', width: 115, minWidth: 90, sortable: true, editable: true, type: 'badge_devis', align: 'center' },
-  { id: 'geometre_ab6', label: 'Géomètre AB6', width: 115, minWidth: 90, editable: true, type: 'badge_ab6', align: 'center' },
-  { id: 'montant_ht_ab6', label: 'Montant AB6 HT', width: 125, minWidth: 95, sortable: true, editable: true, type: 'number', align: 'right' },
+  { id: 'mtt_ht_devis_geometre', label: 'Devis Géomètre HT', width: 160, minWidth: 100, sortable: true, editable: true, type: 'number', align: 'right' },
+  { id: 'devis_valide', label: 'Devis Validé', width: 125, minWidth: 90, sortable: true, editable: true, type: 'badge_devis', align: 'center' },
+  { id: 'geometre_ab6', label: 'Géomètre AB6', width: 125, minWidth: 90, editable: true, type: 'badge_ab6', align: 'center' },
+  { id: 'montant_ht_ab6', label: 'Montant AB6 HT', width: 140, minWidth: 95, sortable: true, editable: true, type: 'number', align: 'right' },
   { id: 'observ_geometre', label: 'Observ Géomètre', width: 230, minWidth: 140, editable: true, type: 'text' },
   { id: 'notaire', label: 'Notaire', width: 140, minWidth: 90, editable: true, type: 'text' },
 ];
@@ -169,17 +169,24 @@ export default function ShantiOnePage() {
   const [sortConfig, setSortConfig] = useState({ key: 'rowIdx', direction: 'asc' });
   const [selectedProjectForUpdates, setSelectedProjectForUpdates] = useState(null);
 
-  // Configuration dynamique des colonnes
+  // Configuration dynamique des colonnes (garantissant que chaque titre reste lisible sans écrasement)
   const [columns, setColumns] = useState(() => {
     try {
-      const saved = localStorage.getItem('shanti_one_columns_config_v3');
+      const saved = localStorage.getItem('shanti_one_columns_config_v4') || localStorage.getItem('shanti_one_columns_config_v3');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(c => {
-            const def = DEFAULT_COLUMNS.find(d => d.id === c.id);
-            return def ? { ...def, ...c } : c;
-          });
+          const existingIds = new Set(parsed.map(c => c.id));
+          const missingDefaults = DEFAULT_COLUMNS.filter(d => !existingIds.has(d.id));
+          return [
+            ...parsed.map(c => {
+              const def = DEFAULT_COLUMNS.find(d => d.id === c.id);
+              // Largeur minimale garantie par DEFAULT_COLUMNS pour que le titre soit toujours parfaitement visible
+              const width = Math.max(Number(c.width) || 0, def?.width || 100);
+              return def ? { ...def, ...c, width } : { ...c, width };
+            }),
+            ...missingDefaults
+          ];
         }
       }
     } catch (e) {
@@ -188,10 +195,10 @@ export default function ShantiOnePage() {
     return DEFAULT_COLUMNS;
   });
 
-  // Sauvegarde persistante des colonnes
+  // Sauvegarde persistante des colonnes (clé v4)
   useEffect(() => {
     try {
-      localStorage.setItem('shanti_one_columns_config_v3', JSON.stringify(columns));
+      localStorage.setItem('shanti_one_columns_config_v4', JSON.stringify(columns));
     } catch (_) {}
   }, [columns]);
 
@@ -465,7 +472,7 @@ export default function ShantiOnePage() {
 
   // Réinitialisation des colonnes par défaut
   const handleResetColumns = () => {
-    if (!window.confirm('Rétablir la disposition et la largeur d\'origine de toutes les colonnes ?')) return;
+    localStorage.removeItem('shanti_one_columns_config_v4');
     localStorage.removeItem('shanti_one_columns_config_v3');
     setColumns(DEFAULT_COLUMNS);
     toast({ title: 'Colonnes réinitialisées', description: 'Configuration d\'origine rétablie.' });
@@ -1172,7 +1179,7 @@ export default function ShantiOnePage() {
                           ...(isSticky ? { position: 'sticky', left: `${leftPos}px`, zIndex: 40 } : {})
                         }}
                         className={cn(
-                          "px-2.5 py-3 border-r border-slate-800 select-none relative group/th bg-slate-900 transition-all",
+                          "px-2 py-3 border-r border-slate-800 select-none relative group/th bg-slate-900 transition-all",
                           col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
                           isMovable && "cursor-grab active:cursor-grabbing",
                           isBeingDragged && "opacity-40 bg-slate-800 ring-2 ring-blue-500/50",
@@ -1180,7 +1187,7 @@ export default function ShantiOnePage() {
                           isDragTarget && dragOverPosition === 'right' && "border-r-4 border-r-blue-400 bg-blue-950/40"
                         )}
                       >
-                        <div className="flex items-center justify-between gap-1 overflow-hidden pr-2">
+                        <div className="flex items-center justify-between gap-1 w-full h-full overflow-hidden">
                           {isRenaming ? (
                             <input
                               autoFocus
@@ -1196,16 +1203,7 @@ export default function ShantiOnePage() {
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
-                            <div className="flex items-center gap-1 min-w-0 overflow-hidden">
-                              {/* Poignée Grip pour déplacement par Drag & Drop */}
-                              {isMovable && (
-                                <span
-                                  className="opacity-0 group-hover/th:opacity-100 transition-opacity text-slate-500 hover:text-white shrink-0 -ml-0.5 mr-0.5 cursor-grab active:cursor-grabbing"
-                                  title="Glisser pour déplacer la colonne latéralement"
-                                >
-                                  <GripVertical className="w-3 h-3" />
-                                </span>
-                              )}
+                            <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden pr-0.5">
                               <span 
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1215,110 +1213,116 @@ export default function ShantiOnePage() {
                                   e.stopPropagation();
                                   if (!col.fixed) handleStartRename(col);
                                 }}
-                                title={col.fixed ? col.label : "Cliquer pour renommer • Glisser pour déplacer latéralement"}
+                                title={col.fixed ? col.label : "Double-cliquer pour renommer • Glisser pour déplacer latéralement"}
                                 className={cn(
-                                  "truncate font-bold", 
+                                  "font-black text-white text-xs truncate select-none tracking-wide block",
                                   !col.fixed && "cursor-pointer hover:text-blue-300 transition-colors"
                                 )}
                               >
                                 {col.label}
                               </span>
-                            </div>
-                          )}
 
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            {/* Flèche Déplacer vers la gauche */}
-                            {canMoveLeft && !isRenaming && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleMoveColumnDirection(col.id, 'left');
-                                }}
-                                title="Déplacer vers la gauche"
-                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 text-slate-400 hover:text-blue-300 hover:bg-slate-800 rounded cursor-pointer"
-                              >
-                                <ChevronLeft className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-
-                            {/* Flèche Déplacer vers la droite */}
-                            {canMoveRight && !isRenaming && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleMoveColumnDirection(col.id, 'right');
-                                }}
-                                title="Déplacer vers la droite"
-                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 text-slate-400 hover:text-blue-300 hover:bg-slate-800 rounded cursor-pointer"
-                              >
-                                <ChevronRight className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-
-                            {/* Bouton de tri dédié : Le tri ne se déclenche QUE lors du clic sur ce bouton */}
-                            {col.sortable && !isRenaming && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSort(col.id);
-                                }}
-                                title={
-                                  sortConfig.key === col.id
-                                    ? (sortConfig.direction === 'asc' ? 'Trié croissant (cliquer pour décroissant)' : 'Trié décroissant (cliquer pour annuler le tri)')
-                                    : `Cliquer sur ce symbole pour trier par ${col.label}`
-                                }
-                                className={cn(
-                                  "p-1 rounded transition-colors flex items-center justify-center cursor-pointer",
-                                  sortConfig.key === col.id 
-                                    ? "text-blue-400 bg-slate-800 hover:bg-slate-700 ring-1 ring-blue-500/40" 
-                                    : "text-slate-400 hover:text-white hover:bg-slate-800"
-                                )}
-                              >
-                                {sortConfig.key === col.id ? (
-                                  sortConfig.direction === 'asc' ? (
+                              {/* Indicateur de tri actif (visible en permanence si actif) */}
+                              {col.sortable && sortConfig.key === col.id && (
+                                <span className="text-blue-400 shrink-0 ml-0.5" title={sortConfig.direction === 'asc' ? 'Tri croissant' : 'Tri décroissant'}>
+                                  {sortConfig.direction === 'asc' ? (
                                     <ArrowUp className="w-3.5 h-3.5 text-blue-400" />
                                   ) : (
                                     <ArrowDown className="w-3.5 h-3.5 text-blue-400" />
-                                  )
-                                ) : (
-                                  <ArrowUpDown className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-                            )}
-                            
-                            {/* Bouton pour renommer au survol */}
-                            {!isRenaming && !col.fixed && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStartRename(col);
-                                }}
-                                title="Renommer la colonne"
-                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 hover:text-blue-400 cursor-pointer"
-                              >
-                                <Edit2 className="w-2.5 h-2.5" />
-                              </button>
-                            )}
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          )}
 
-                            {/* Bouton pour masquer/supprimer au survol */}
-                            {!col.fixed && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteColumn(col.id, col.label);
-                                }}
-                                title="Masquer cette colonne"
-                                className="opacity-0 group-hover/th:opacity-100 transition-opacity p-0.5 hover:text-rose-400 cursor-pointer"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
+                          {/* Actions au survol : UNIQUEMENT rendues visibles au survol (hidden par défaut, 0px d'encombrement) */}
+                          {!isRenaming && (
+                            <div className="hidden group-hover/th:flex items-center gap-0.5 shrink-0 bg-slate-900/95 rounded px-0.5 border border-slate-700/60 shadow-xs ml-auto">
+                              {/* Flèche Déplacer vers la gauche */}
+                              {canMoveLeft && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveColumnDirection(col.id, 'left');
+                                  }}
+                                  title="Déplacer vers la gauche"
+                                  className="p-1 text-slate-300 hover:text-blue-300 hover:bg-slate-800 rounded cursor-pointer transition-colors"
+                                >
+                                  <ChevronLeft className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Flèche Déplacer vers la droite */}
+                              {canMoveRight && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveColumnDirection(col.id, 'right');
+                                  }}
+                                  title="Déplacer vers la droite"
+                                  className="p-1 text-slate-300 hover:text-blue-300 hover:bg-slate-800 rounded cursor-pointer transition-colors"
+                                >
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Bouton de tri */}
+                              {col.sortable && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSort(col.id);
+                                  }}
+                                  title={
+                                    sortConfig.key === col.id
+                                      ? (sortConfig.direction === 'asc' ? 'Trié croissant (cliquer pour décroissant)' : 'Trié décroissant (cliquer pour annuler le tri)')
+                                      : `Trier par ${col.label}`
+                                  }
+                                  className={cn(
+                                    "p-1 rounded transition-colors flex items-center justify-center cursor-pointer",
+                                    sortConfig.key === col.id 
+                                      ? "text-blue-400 bg-slate-800" 
+                                      : "text-slate-400 hover:text-white hover:bg-slate-800"
+                                  )}
+                                >
+                                  <ArrowUpDown className="w-3 h-3" />
+                                </button>
+                              )}
+                              
+                              {/* Bouton pour renommer au survol */}
+                              {!col.fixed && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartRename(col);
+                                  }}
+                                  title="Renommer la colonne"
+                                  className="p-1 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded cursor-pointer transition-colors"
+                                >
+                                  <Edit2 className="w-2.5 h-2.5" />
+                                </button>
+                              )}
+
+                              {/* Bouton pour masquer au survol */}
+                              {!col.fixed && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteColumn(col.id, col.label);
+                                  }}
+                                  title="Masquer cette colonne"
+                                  className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded cursor-pointer transition-colors"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Poignée de redimensionnement de la colonne */}
