@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   BatteryCharging, Sparkles, MapPin, Search, CheckCircle2,
   FileText, Euro, ShieldCheck, Download, Mail, Building, Zap,
-  Layers, Navigation, ExternalLink, Copy, Check
+  Layers, Navigation, ExternalLink, Copy, Check, ArrowLeft, Edit2
 } from 'lucide-react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
@@ -10,6 +10,8 @@ import 'leaflet/dist/leaflet.css';
 
 import { toast } from '@/components/ui/use-toast.js';
 import AutomaticBessProspectingModal from './AutomaticBessProspectingModal.jsx';
+import ManualBessAddressModal from './ManualBessAddressModal.jsx';
+import HTALayerEnedis from './HTALayerEnedis.jsx';
 import { generateBessProspectingPdfBlob } from './BessPDFGenerator.jsx';
 import { fetchCadastralParcel } from '@/services/bessProspectingGisService.js';
 
@@ -88,6 +90,9 @@ const createTransfoIcon = () => {
 
 export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSimulation, onExportPDF }) {
   const [isAutomateOpen, setIsAutomateOpen] = useState(false);
+  const [isManualAddressOpen, setIsManualAddressOpen] = useState(false);
+  const [showHtaLines, setShowHtaLines] = useState(true);
+  const [htaCounts, setHtaCounts] = useState({ aerienCount: 0, souterrainCount: 0 });
   const [mapLayerType, setMapLayerType] = useState('satellite'); // 'satellite' | 'osm'
 
   // Site par défaut : SCI DC (Département 10, Torcy-le-Grand / La Rivière-de-Corps, Image 5)
@@ -226,15 +231,29 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsAutomateOpen(true)}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
-          title="Ouvrir l'automate de sourcing de transformateurs Enedis"
-        >
-          <Sparkles className="w-3.5 h-3.5 fill-black shrink-0" />
-          <span>Automate BESS (Transfos Sol)</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsManualAddressOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+            title="Revenir en arrière pour saisir une nouvelle adresse manuellement"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="hidden sm:inline">Saisir une adresse manuelle</span>
+            <span className="sm:hidden">Adresse manuelle</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsAutomateOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+            title="Ouvrir l'automate de sourcing de transformateurs Enedis"
+          >
+            <Sparkles className="w-3.5 h-3.5 fill-black shrink-0" />
+            <span className="hidden md:inline">Automate BESS (Transfos Sol)</span>
+            <span className="md:hidden">Automate BESS</span>
+          </button>
+        </div>
       </div>
 
       {/* ─── 2. CORPS EN 2 COLONNES : CARTES À GAUCHE + CARTE DU TRANSFO À DROITE ─── */}
@@ -245,12 +264,30 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
 
           {/* CARTE 1 : SITE & BAILLEUR ACTIF QUALIFIÉ */}
           <div className="p-3 bg-gradient-to-br from-slate-900 to-slate-950 rounded-xl border border-amber-500/40 shadow-lg space-y-2">
+            
+            {/* BOUTON REVENIR EN ARRIÈRE / SAISIR UNE NOUVELLE ADRESSE MANUELLEMENT */}
+            <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => setIsManualAddressOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-[11px] font-black transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                title="Revenir en arrière pour saisir une nouvelle adresse manuellement"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>← Revenir en arrière : Saisir une autre adresse</span>
+              </button>
+
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+                Parcelle {selectedSite.section} {selectedSite.numero}
+              </span>
+            </div>
+
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                 <Building className="w-3.5 h-3.5" /> Site &amp; Bailleur Actif
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                Parcelle {selectedSite.section} {selectedSite.numero}
+              <span className="text-[10px] font-bold text-slate-400">
+                {selectedSite.commune} ({selectedSite.departement})
               </span>
             </div>
 
@@ -262,9 +299,9 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
                 </span>
               </div>
 
-              {/* Ligne Adresse avec bouton Copier en 1 clic */}
+              {/* Ligne Adresse avec bouton Changer et bouton Copier */}
               <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800/80 flex items-center justify-between gap-1.5">
-                <div className="min-w-0 pr-1">
+                <div className="min-w-0 pr-1 flex-1">
                   <div className="text-slate-200 font-semibold text-[11px] truncate" title={selectedSite.address}>
                     {selectedSite.address}
                   </div>
@@ -272,24 +309,37 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
                     {selectedSite.postalCode} {selectedSite.commune}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(`${selectedSite.address}, ${selectedSite.postalCode} ${selectedSite.commune}`, 'address')}
-                  className="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 flex items-center gap-1 text-[10px] font-bold shrink-0 transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
-                  title="Copier l'adresse complète en 1 clic"
-                >
-                  {copiedField === 'address' ? (
-                    <>
-                      <Check className="w-3 h-3 text-emerald-400" />
-                      <span className="text-emerald-400">Copié !</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3 text-slate-400" />
-                      <span>Copier</span>
-                    </>
-                  )}
-                </button>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsManualAddressOpen(true)}
+                    className="px-2 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-amber-200 border border-amber-500/40 flex items-center gap-1 text-[10px] font-bold shrink-0 transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                    title="Changer ou modifier cette adresse manuellement"
+                  >
+                    <Search className="w-3 h-3 text-amber-400" />
+                    <span>Changer</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(`${selectedSite.address}, ${selectedSite.postalCode} ${selectedSite.commune}`, 'address')}
+                    className="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 flex items-center gap-1 text-[10px] font-bold shrink-0 transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                    title="Copier l'adresse complète en 1 clic"
+                  >
+                    {copiedField === 'address' ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-400">Copié !</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3 text-slate-400" />
+                        <span>Copier</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Ligne GPS avec bouton Copier en 1 clic */}
@@ -432,6 +482,20 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
             <div className="flex items-center gap-1.5 pointer-events-auto">
               <button
                 type="button"
+                onClick={() => setShowHtaLines((v) => !v)}
+                className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer transition-all ${
+                  showHtaLines
+                    ? 'bg-amber-500/20 border-amber-400/80 text-amber-300'
+                    : 'bg-slate-900/90 hover:bg-slate-800 text-slate-400 border-slate-700'
+                }`}
+                title="Afficher ou masquer les lignes HTA Enedis"
+              >
+                <Zap className={`w-3.5 h-3.5 ${showHtaLines ? 'text-amber-400 fill-amber-400' : 'text-slate-400'}`} />
+                <span>Lignes HTA</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setMapLayerType((t) => (t === 'satellite' ? 'osm' : 'satellite'))}
                 className="px-2.5 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1 shadow cursor-pointer transition-all"
                 title="Basculer entre la vue Satellite et le Plan"
@@ -442,20 +506,34 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
             </div>
           </div>
 
-          {/* LÉGENDE FLOTTANTE EN BAS DE CARTE */}
-          <div className="absolute bottom-3 left-3 z-[1000] bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 shadow-md text-[11px] text-slate-300 flex items-center gap-3 pointer-events-auto">
+          {/* LÉGENDE FLOTTANTE EN BAS DE CARTE (TRANSFO, PARCELLE, LIGNES HTA) */}
+          <div className="absolute bottom-3 left-3 z-[1000] bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 shadow-md text-[11px] text-slate-300 flex flex-wrap items-center gap-2.5 sm:gap-3 pointer-events-auto">
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-red-600 border border-white" />
-              <span>Transfo Sol (Enedis)</span>
+              <div className="w-3 h-3 rounded bg-red-600 border border-white shrink-0" />
+              <span>Transfo Sol</span>
             </div>
+
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-cyan-500/30 border border-cyan-400" />
+              <div className="w-3 h-3 rounded bg-cyan-500/30 border border-cyan-400 shrink-0" />
               <span>Parcelle {selectedSite.section} {selectedSite.numero}</span>
             </div>
+
+            {/* TRACÉ HTA AÉRIEN : TRAIT PLEIN */}
+            <div className="flex items-center gap-1.5">
+              <span className="w-4 h-0 border-t-2 border-yellow-400 inline-block shrink-0" style={{ borderTopWidth: '3px' }} />
+              <span className="text-yellow-300 font-semibold">HTA Aérien (plein)</span>
+            </div>
+
+            {/* TRACÉ HTA SOUTERRAIN : POINTILLÉ */}
+            <div className="flex items-center gap-1.5">
+              <span className="w-4 h-0 border-t-2 border-dashed border-yellow-400 inline-block shrink-0" style={{ borderTopWidth: '3px' }} />
+              <span className="text-yellow-300 font-semibold">HTA Souterrain (pointillé)</span>
+            </div>
+
             <button
               type="button"
               onClick={() => handleCopy(`${selectedSite.lat?.toFixed(6)}, ${selectedSite.lng?.toFixed(6)}`, 'legend-gps')}
-              className="text-slate-400 hover:text-emerald-300 font-mono text-[10px] flex items-center gap-1 cursor-pointer transition-colors bg-slate-900/60 px-1.5 py-0.5 rounded border border-slate-700/60"
+              className="text-slate-400 hover:text-emerald-300 font-mono text-[10px] flex items-center gap-1 cursor-pointer transition-colors bg-slate-900/60 px-1.5 py-0.5 rounded border border-slate-700/60 shrink-0"
               title="Cliquer pour copier les coordonnées GPS"
             >
               {copiedField === 'legend-gps' ? (
@@ -476,7 +554,7 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
           <div className="w-full h-full min-h-[350px] relative">
             <MapContainer
               center={centerCoords}
-              zoom={19}
+              zoom={18}
               maxZoom={22}
               scrollWheelZoom={true}
               doubleClickZoom={true}
@@ -505,6 +583,12 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
                   attribution="&copy; OpenStreetMap contributors"
                 />
               )}
+
+              {/* COUCHE LIGNES HTA ENEDIS (TRAIT PLEIN AÉRIEN, POINTILLÉ SOUTERRAIN) */}
+              <HTALayerEnedis
+                active={showHtaLines}
+                onCountsChange={setHtaCounts}
+              />
 
               {/* CONTOUR GÉOMÉTRIQUE DE LA PARCELLE CADASTRALE (CYAN FLUORESCENT) */}
               {selectedSite.parcelGeometry && (
@@ -585,6 +669,16 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
             puissance: 500,
             capacite: 1044
           });
+        }}
+      />
+
+      {/* ─── 4. MODALE DE SAISIE MANUELLE D'ADRESSE (REVENIR EN ARRIÈRE) ─────────── */}
+      <ManualBessAddressModal
+        isOpen={isManualAddressOpen}
+        onClose={() => setIsManualAddressOpen(false)}
+        currentSite={selectedSite}
+        onSelectSite={(newSite) => {
+          setSelectedSite(newSite);
         }}
       />
     </div>
