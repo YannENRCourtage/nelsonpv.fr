@@ -10,7 +10,7 @@ import 'leaflet/dist/leaflet.css';
 
 import { toast } from '@/components/ui/use-toast.js';
 import AutomaticBessProspectingModal from './AutomaticBessProspectingModal.jsx';
-import ManualBessAddressModal from './ManualBessAddressModal.jsx';
+import BessAddressSearchPanel from './BessAddressSearchPanel.jsx';
 import HTALayerEnedis from './HTALayerEnedis.jsx';
 import { generateBessProspectingPdfBlob } from './BessPDFGenerator.jsx';
 import { fetchCadastralParcel } from '@/services/bessProspectingGisService.js';
@@ -45,54 +45,51 @@ function MapAutoResize() {
   return null;
 }
 
-// ─── ICÔNE DU TRANSFORMATEUR SOL (CARRÉ ROUGE AVEC ÉCLAIR) ─────────────────────
-const createTransfoIcon = () => {
+// ─── ICÔNE DU MARQUEUR DE L'ADRESSE RECHERCHÉE (PIN SKY AVEC ÉTIQUETTE) ─────────
+const createAddressMarkerIcon = () => {
   return L.divIcon({
-    className: 'bess-transfo-marker',
+    className: 'bess-address-marker',
     html: `
       <div style="
-        position: relative;
-        width: 34px;
-        height: 34px;
-        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-        border: 3px solid #ffffff;
-        border-radius: 6px;
-        box-shadow: 0 0 16px rgba(239, 68, 68, 0.9), 0 4px 10px rgba(0,0,0,0.6);
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        color: #ffffff;
-        font-weight: 900;
-        font-size: 16px;
         cursor: pointer;
+        filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
       ">
-        ⚡
-        <span style="
-          position: absolute;
-          top: -9px;
-          right: -9px;
-          background: #10b981;
-          color: #000000;
-          font-size: 9px;
-          font-weight: 900;
-          padding: 1px 4px;
-          border-radius: 4px;
+        <div style="
+          background: #0284c7;
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 800;
+          padding: 3px 8px;
+          border-radius: 6px;
           border: 1.5px solid #ffffff;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-        ">SOL</span>
+          white-space: nowrap;
+          box-shadow: 0 2px 8px rgba(2,132,199,0.5);
+        ">
+          📍 Adresse recherchée
+        </div>
+        <div style="
+          width: 0;
+          height: 0;
+          border-left: 6px solid transparent;
+          border-right: 6px solid transparent;
+          border-top: 7px solid #0284c7;
+        "></div>
       </div>
     `,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-    popupAnchor: [0, -20]
+    iconSize: [120, 32],
+    iconAnchor: [60, 32],
+    popupAnchor: [0, -32]
   });
 };
 
 export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSimulation, onExportPDF }) {
   const [isAutomateOpen, setIsAutomateOpen] = useState(false);
-  const [isManualAddressOpen, setIsManualAddressOpen] = useState(false);
+  const [isAddressSearchActive, setIsAddressSearchActive] = useState(false);
   const [showHtaLines, setShowHtaLines] = useState(true);
-  const [htaCounts, setHtaCounts] = useState({ aerienCount: 0, souterrainCount: 0 });
+  const [htaCounts, setHtaCounts] = useState({ aerienCount: 0, souterrainCount: 0, postesCount: 0 });
   const [mapLayerType, setMapLayerType] = useState('satellite'); // 'satellite' | 'osm'
 
   // Site par défaut : SCI DC (Département 10, Torcy-le-Grand / La Rivière-de-Corps, Image 5)
@@ -109,6 +106,8 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
     numero: '0237',
     distSouterrain: 1.1,
     distAerien: 844.9,
+    transfoDistance: null,
+    nearestTransfoName: null,
     parcelGeometry: null,
     ownerName: 'SCI DC',
     loyerAnnuel: 2000,
@@ -234,13 +233,13 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
-            onClick={() => setIsManualAddressOpen(true)}
+            onClick={() => setIsAddressSearchActive(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
-            title="Revenir en arrière pour saisir une nouvelle adresse manuellement"
+            title="Saisir une nouvelle adresse manuellement"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span className="hidden sm:inline">Saisir une adresse manuelle</span>
-            <span className="sm:hidden">Adresse manuelle</span>
+            <span className="hidden sm:inline">Saisir une nouvelle adresse</span>
+            <span className="sm:hidden">Nouvelle adresse</span>
           </button>
 
           <button
@@ -259,211 +258,217 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
       {/* ─── 2. CORPS EN 2 COLONNES : CARTES À GAUCHE + CARTE DU TRANSFO À DROITE ─── */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 pt-3 overflow-hidden">
 
-        {/* COLONNE GAUCHE (5 colonnes) : INFORMATIONS ET BAILLEUR QUALIFIÉ */}
+        {/* COLONNE GAUCHE (5 colonnes) : INFORMATIONS ET BAILLEUR QUALIFIÉ OU ÉCRAN DE SAISIE */}
         <div className="lg:col-span-5 xl:col-span-4 flex flex-col justify-between gap-2.5 min-h-0 overflow-y-auto pr-1">
 
-          {/* CARTE 1 : SITE & BAILLEUR ACTIF QUALIFIÉ */}
-          <div className="p-3 bg-gradient-to-br from-slate-900 to-slate-950 rounded-xl border border-amber-500/40 shadow-lg space-y-2">
-            
-            {/* BOUTON REVENIR EN ARRIÈRE / SAISIR UNE NOUVELLE ADRESSE MANUELLEMENT */}
-            <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-800/80">
-              <button
-                type="button"
-                onClick={() => setIsManualAddressOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-[11px] font-black transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
-                title="Revenir en arrière pour saisir une nouvelle adresse manuellement"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>← Revenir en arrière : Saisir une autre adresse</span>
-              </button>
-
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
-                Parcelle {selectedSite.section} {selectedSite.numero}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                <Building className="w-3.5 h-3.5" /> Site &amp; Bailleur Actif
-              </span>
-              <span className="text-[10px] font-bold text-slate-400">
-                {selectedSite.commune} ({selectedSite.departement})
-              </span>
-            </div>
-
-            <div className="p-2.5 bg-slate-950/90 rounded-lg border border-slate-800 text-xs space-y-1.5">
-              <div className="font-black text-white text-sm truncate flex items-center justify-between">
-                <span>{selectedSite.ownerName}</span>
-                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-1.5 py-0.5 rounded">
-                  Qualifié
-                </span>
-              </div>
-
-              {/* Ligne Adresse avec bouton Changer et bouton Copier */}
-              <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800/80 flex items-center justify-between gap-1.5">
-                <div className="min-w-0 pr-1 flex-1">
-                  <div className="text-slate-200 font-semibold text-[11px] truncate" title={selectedSite.address}>
-                    {selectedSite.address}
-                  </div>
-                  <div className="text-slate-400 text-[10.5px] truncate">
-                    {selectedSite.postalCode} {selectedSite.commune}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
+          {isAddressSearchActive ? (
+            <BessAddressSearchPanel
+              currentSite={selectedSite}
+              onSelectAddress={(newSite) => {
+                setSelectedSite((prev) => ({
+                  ...prev,
+                  ...newSite,
+                  transfoDistance: null,
+                  nearestTransfoName: null
+                }));
+                setIsAddressSearchActive(false);
+              }}
+              onCancel={() => setIsAddressSearchActive(false)}
+            />
+          ) : (
+            <>
+              {/* CARTE 1 : SITE & BAILLEUR ACTIF QUALIFIÉ */}
+              <div className="p-3 bg-gradient-to-br from-slate-900 to-slate-950 rounded-xl border border-amber-500/40 shadow-lg space-y-2">
+                
+                {/* BOUTON SAISIR UNE NOUVELLE ADRESSE */}
+                <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-800/80">
                   <button
                     type="button"
-                    onClick={() => setIsManualAddressOpen(true)}
-                    className="px-2 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-amber-200 border border-amber-500/40 flex items-center gap-1 text-[10px] font-bold shrink-0 transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
-                    title="Changer ou modifier cette adresse manuellement"
+                    onClick={() => setIsAddressSearchActive(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                    title="Saisir une nouvelle adresse manuellement"
                   >
-                    <Search className="w-3 h-3 text-amber-400" />
-                    <span>Changer</span>
+                    <ArrowLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Saisir une nouvelle adresse</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(`${selectedSite.address}, ${selectedSite.postalCode} ${selectedSite.commune}`, 'address')}
-                    className="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 flex items-center gap-1 text-[10px] font-bold shrink-0 transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
-                    title="Copier l'adresse complète en 1 clic"
-                  >
-                    {copiedField === 'address' ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-400" />
-                        <span className="text-emerald-400">Copié !</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3 text-slate-400" />
-                        <span>Copier</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Ligne GPS avec bouton Copier en 1 clic */}
-              <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800/80 flex items-center justify-between gap-1.5">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Navigation className="w-3 h-3 text-cyan-400 shrink-0" />
-                  <span className="text-slate-300 font-mono text-[10.5px] font-bold truncate">
-                    GPS : {selectedSite.lat?.toFixed(5)}, {selectedSite.lng?.toFixed(5)}
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+                    Parcelle {selectedSite.section} {selectedSite.numero}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(`${selectedSite.lat?.toFixed(6)}, ${selectedSite.lng?.toFixed(6)}`, 'gps')}
-                  className="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 flex items-center gap-1 text-[10px] font-bold shrink-0 transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
-                  title="Copier les coordonnées GPS en 1 clic"
-                >
-                  {copiedField === 'gps' ? (
-                    <>
-                      <Check className="w-3 h-3 text-emerald-400" />
-                      <span className="text-emerald-400">Copié !</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3 text-slate-400" />
-                      <span>Copier GPS</span>
-                    </>
-                  )}
-                </button>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                    <Building className="w-3.5 h-3.5" /> Site &amp; Bailleur Actif
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    {selectedSite.commune} ({selectedSite.departement})
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-slate-950/90 rounded-lg border border-slate-800 text-xs space-y-1.5">
+                  <div className="font-black text-white text-sm truncate flex items-center justify-between">
+                    <span>{selectedSite.ownerName}</span>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-1.5 py-0.5 rounded">
+                      Qualifié
+                    </span>
+                  </div>
+
+                  {/* Ligne Adresse avec bouton Copier uniquement (bouton Changer retiré) */}
+                  <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800/80 flex items-center justify-between gap-1.5">
+                    <div className="min-w-0 pr-1 flex-1">
+                      <div className="text-slate-200 font-semibold text-[11px] truncate" title={selectedSite.address}>
+                        {selectedSite.address}
+                      </div>
+                      <div className="text-slate-400 text-[10.5px] truncate">
+                        {selectedSite.postalCode} {selectedSite.commune}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(`${selectedSite.address}, ${selectedSite.postalCode} ${selectedSite.commune}`, 'address')}
+                      className="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 flex items-center gap-1 text-[10px] font-bold shrink-0 transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                      title="Copier l'adresse complète en 1 clic"
+                    >
+                      {copiedField === 'address' ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400">Copié !</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3 text-slate-400" />
+                          <span>Copier</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Ligne GPS avec bouton Copier en 1 clic */}
+                  <div className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800/80 flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Navigation className="w-3 h-3 text-cyan-400 shrink-0" />
+                      <span className="text-slate-300 font-mono text-[10.5px] font-bold truncate">
+                        GPS : {selectedSite.lat?.toFixed(5)}, {selectedSite.lng?.toFixed(5)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(`${selectedSite.lat?.toFixed(6)}, ${selectedSite.lng?.toFixed(6)}`, 'gps')}
+                      className="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 flex items-center gap-1 text-[10px] font-bold shrink-0 transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                      title="Copier les coordonnées GPS en 1 clic"
+                    >
+                      {copiedField === 'gps' ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400">Copié !</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3 text-slate-400" />
+                          <span>Copier GPS</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[10px]">
+                    <span className="text-emerald-400 font-mono font-bold">
+                      IDU: {selectedSite.parcelId}
+                    </span>
+                    <span className="text-slate-400">
+                      Transfo Enedis le plus proche : <strong className="text-emerald-300">{selectedSite.transfoDistance !== null && selectedSite.transfoDistance !== undefined ? `${selectedSite.transfoDistance}m` : `${selectedSite.distSouterrain || '1.1'}m`}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-1">
+                  <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-300 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={includeBrochure}
+                      onChange={(e) => setIncludeBrochure(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded text-emerald-500 bg-slate-950 border-slate-700 cursor-pointer"
+                    />
+                    <span>Joindre la Brochure ENR Courtage (V3) en page 2</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadPdf}
+                    className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Télécharger le Courrier Personnalisé (PDF)</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[10px]">
-                <span className="text-emerald-400 font-mono font-bold">
-                  IDU: {selectedSite.parcelId}
-                </span>
-                <span className="text-slate-400">
-                  Transfo sol : <strong className="text-emerald-300">{selectedSite.distSouterrain || '1.1'}m</strong> souterrain
-                </span>
-              </div>
-            </div>
+              {/* CARTE 2 : CONDITIONS DU BAIL NOTARIÉ */}
+              <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                    <Euro className="w-3.5 h-3.5" /> Conditions du Bail Notarié
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Garanti 20 Ans
+                  </span>
+                </div>
 
-            <div className="space-y-1.5 pt-1">
-              <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-300 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={includeBrochure}
-                  onChange={(e) => setIncludeBrochure(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded text-emerald-500 bg-slate-950 border-slate-700 cursor-pointer"
-                />
-                <span>Joindre la Brochure ENR Courtage (V3) en page 2</span>
-              </label>
-
-              <button
-                type="button"
-                onClick={handleDownloadPdf}
-                className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Télécharger le Courrier Personnalisé (PDF)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* CARTE 2 : CONDITIONS DU BAIL NOTARIÉ */}
-          <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                <Euro className="w-3.5 h-3.5" /> Conditions du Bail Notarié
-              </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Garanti 20 Ans
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                <span className="text-[9.5px] text-slate-400 block font-bold">Loyer Annuel</span>
-                <strong className="text-xs sm:text-sm text-emerald-400 font-black block">2 000 €/an</strong>
-                <span className="text-[9px] text-slate-500 block">Net de charges</span>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                    <span className="text-[9.5px] text-slate-400 block font-bold">Loyer Annuel</span>
+                    <strong className="text-xs sm:text-sm text-emerald-400 font-black block">2 000 €/an</strong>
+                    <span className="text-[9px] text-slate-500 block">Net de charges</span>
+                  </div>
+                  <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                    <span className="text-[9.5px] text-slate-400 block font-bold">Emprise Sol</span>
+                    <strong className="text-xs sm:text-sm text-white font-black block">20 m²</strong>
+                    <span className="text-[9px] text-slate-500 block">Dalle clôturée</span>
+                  </div>
+                  <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                    <span className="text-[9.5px] text-slate-400 block font-bold">Total 20 Ans</span>
+                    <strong className="text-xs sm:text-sm text-amber-400 font-black block">40 000 €</strong>
+                    <span className="text-[9px] text-slate-500 block">Indexation an</span>
+                  </div>
+                </div>
               </div>
-              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                <span className="text-[9.5px] text-slate-400 block font-bold">Emprise Sol</span>
-                <strong className="text-xs sm:text-sm text-white font-black block">20 m²</strong>
-                <span className="text-[9px] text-slate-500 block">Dalle clôturée</span>
-              </div>
-              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                <span className="text-[9.5px] text-slate-400 block font-bold">Total 20 Ans</span>
-                <strong className="text-xs sm:text-sm text-amber-400 font-black block">40 000 €</strong>
-                <span className="text-[9px] text-slate-500 block">Indexation an</span>
-              </div>
-            </div>
-          </div>
 
-          {/* CARTE 3 : SPÉCIFICATIONS TECHNIQUES BESS */}
-          <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5" /> Spécifications Matériel BESS
-              </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                500 kW / 1 044 kWh
-              </span>
-            </div>
+              {/* CARTE 3 : SPÉCIFICATIONS TECHNIQUES BESS */}
+              <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" /> Spécifications Matériel BESS
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    500 kW / 1 044 kWh
+                  </span>
+                </div>
 
-            <div className="space-y-1 text-[11px] text-slate-300">
-              <div className="p-1.5 rounded-lg bg-slate-950 border border-slate-800/80 flex justify-between">
-                <span className="text-slate-400">Configuration :</span>
-                <span className="font-bold text-white">4 armoires Mercury 261 (125 kW / 261 kWh)</span>
+                <div className="space-y-1 text-[11px] text-slate-300">
+                  <div className="p-1.5 rounded-lg bg-slate-950 border border-slate-800/80 flex justify-between">
+                    <span className="text-slate-400">Configuration :</span>
+                    <span className="font-bold text-white">4 armoires Mercury 261 (125 kW / 261 kWh)</span>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-slate-950 border border-slate-800/80 flex justify-between">
+                    <span className="text-slate-400">Technologie :</span>
+                    <span className="font-bold text-emerald-400">LiFePO4 certifié &bull; HVAC Liquide</span>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-slate-950 border border-slate-800/80 flex justify-between">
+                    <span className="text-slate-400">Sécurité &amp; Clôture :</span>
+                    <span className="font-bold text-white">Aérosol NFPA 855 &bull; Grillage thermolaqué H 2m</span>
+                  </div>
+                </div>
               </div>
-              <div className="p-1.5 rounded-lg bg-slate-950 border border-slate-800/80 flex justify-between">
-                <span className="text-slate-400">Technologie :</span>
-                <span className="font-bold text-emerald-400">LiFePO4 certifié &bull; HVAC Liquide</span>
-              </div>
-              <div className="p-1.5 rounded-lg bg-slate-950 border border-slate-800/80 flex justify-between">
-                <span className="text-slate-400">Sécurité &amp; Clôture :</span>
-                <span className="font-bold text-white">Aérosol NFPA 855 &bull; Grillage thermolaqué H 2m</span>
-              </div>
-            </div>
-          </div>
 
-          {/* NOTE DE BAS DE PAGE GAUCHE */}
-          <div className="text-[10px] text-slate-400 flex items-center gap-1.5 px-1">
-            <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
-            <span className="truncate">Régime délibéré CRE 2025-227 &bull; Réserve 50 Hz Enedis</span>
-          </div>
+              {/* NOTE DE BAS DE PAGE GAUCHE */}
+              <div className="text-[10px] text-slate-400 flex items-center gap-1.5 px-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span className="truncate">Régime délibéré CRE 2025-227 &bull; Réserve 50 Hz Enedis</span>
+              </div>
+            </>
+          )}
 
         </div>
 
@@ -506,11 +511,17 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
             </div>
           </div>
 
-          {/* LÉGENDE FLOTTANTE EN BAS DE CARTE (TRANSFO, PARCELLE, LIGNES HTA) */}
+          {/* LÉGENDE FLOTTANTE EN BAS DE CARTE (ADRESSE, TRANSFO, LIGNES HTA, PARCELLE) */}
           <div className="absolute bottom-3 left-3 z-[1000] bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 shadow-md text-[11px] text-slate-300 flex flex-wrap items-center gap-2.5 sm:gap-3 pointer-events-auto">
+            {/* MARQUEUR ADRESSE */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-sky-400 font-bold">📍 Adresse projet</span>
+            </div>
+
+            {/* TRANSFOS ENEDIS RÉELS */}
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded bg-red-600 border border-white shrink-0" />
-              <span>Transfo Sol</span>
+              <span>Transfos Enedis (HTA/BT)</span>
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -584,9 +595,18 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
                 />
               )}
 
-              {/* COUCHE LIGNES HTA ENEDIS (TRAIT PLEIN AÉRIEN, POINTILLÉ SOUTERRAIN) */}
+              {/* COUCHE LIGNES HTA ET TRANSFORMATEURS RÉELS ENEDIS (API ENEDIS OFFICIELLE) */}
               <HTALayerEnedis
                 active={showHtaLines}
+                searchedCoords={centerCoords}
+                onNearestTransfoFound={(closestTransfo, dist) => {
+                  setSelectedSite((prev) => ({
+                    ...prev,
+                    transfoDistance: dist,
+                    distSouterrain: dist,
+                    nearestTransfoName: closestTransfo.nom_poste || closestTransfo.type_poste
+                  }));
+                }}
                 onCountsChange={setHtaCounts}
               />
 
@@ -609,28 +629,32 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
                 />
               )}
 
-              {/* MARQUEUR DU TRANSFORMATEUR SOL (CARRÉ ROUGE AVEC ÉCLAIR ENEDIS) */}
+              {/* MARQUEUR DE L'ADRESSE DU PROJET RECHERCHÉE (📍) */}
               <Marker
                 position={centerCoords}
-                icon={createTransfoIcon()}
+                icon={createAddressMarkerIcon()}
               >
                 <Popup className="bess-popup">
-                  <div className="p-1 text-xs text-slate-900 space-y-1">
-                    <div className="font-black text-red-600 flex items-center gap-1 text-sm">
-                      ⚡ Transformateur HTA/BT Sol
+                  <div className="p-1 text-xs text-slate-900 space-y-1 min-w-[170px]">
+                    <div className="font-black text-sky-600 flex items-center gap-1 text-sm">
+                      📍 Adresse recherchée
                     </div>
                     <div className="font-bold text-slate-800">
-                      {selectedSite.ownerName}
+                      {selectedSite.address}
                     </div>
                     <div className="text-slate-600 text-[11px]">
-                      {selectedSite.address}, {selectedSite.postalCode} {selectedSite.commune}
+                      {selectedSite.postalCode} {selectedSite.commune}
                     </div>
-                    <div className="text-emerald-700 font-mono text-[10px] font-bold">
-                      Cadastre : {selectedSite.section} {selectedSite.numero} ({selectedSite.parcelId})
-                    </div>
-                    <div className="text-slate-500 text-[10px] border-t pt-1">
-                      Raccordement souterrain HTA : {selectedSite.distSouterrain || '1.1'} m
-                    </div>
+                    {selectedSite.section && (
+                      <div className="text-emerald-700 font-mono text-[10px] font-bold">
+                        Cadastre : {selectedSite.section} {selectedSite.numero} ({selectedSite.parcelId})
+                      </div>
+                    )}
+                    {selectedSite.transfoDistance !== null && selectedSite.transfoDistance !== undefined && (
+                      <div className="text-slate-700 text-[10.5px] border-t pt-1 font-semibold">
+                        Transfo Enedis le plus proche : <strong className="text-emerald-600">{selectedSite.transfoDistance} m</strong>
+                      </div>
+                    )}
                   </div>
                 </Popup>
               </Marker>
@@ -662,6 +686,8 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
             parcelGeometry: prospect.parcelGeometry || null,
             distSouterrain: prospect.distSouterrain,
             distAerien: prospect.distAerien,
+            transfoDistance: prospect.distSouterrain,
+            nearestTransfoName: null,
             ownerName: prospect.nom_societe || 'Propriétaire Foncier',
             loyerAnnuel: 2000,
             dureeBail: 20,
@@ -669,16 +695,6 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
             puissance: 500,
             capacite: 1044
           });
-        }}
-      />
-
-      {/* ─── 4. MODALE DE SAISIE MANUELLE D'ADRESSE (REVENIR EN ARRIÈRE) ─────────── */}
-      <ManualBessAddressModal
-        isOpen={isManualAddressOpen}
-        onClose={() => setIsManualAddressOpen(false)}
-        currentSite={selectedSite}
-        onSelectSite={(newSite) => {
-          setSelectedSite(newSite);
         }}
       />
     </div>
