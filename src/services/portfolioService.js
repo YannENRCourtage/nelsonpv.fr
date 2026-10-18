@@ -35,11 +35,11 @@ export const DEFAULT_PORTFOLIOS = [
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
-    id: 'bess-tesla',
-    name: 'TESLA',
+    id: 'bess-faraday',
+    name: 'FARADAY',
     type: 'BESS',
-    spv: 'SPV B (TESLA)',
-    description: 'Portefeuille Stockage BESS TESLA Megapack',
+    spv: 'SPV B (FARADAY)',
+    description: 'Portefeuille Stockage BESS FARADAY',
     color: '#ef4444',
     isDefault: true,
     createdAt: '2026-01-01T00:00:00.000Z'
@@ -58,22 +58,41 @@ export function getPortfoliosFromLS() {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Retirer les portefeuilles obsolètes ACAMA et LOUXOR
-      let list = parsed.filter(p => {
-        const uName = (p.name || '').toUpperCase();
-        return uName !== 'ACAMA' && uName !== 'LOUXOR' && p.id !== 'hybride-louxor' && p.id !== 'bess-acama';
-      });
+      // Retirer les portefeuilles obsolètes ACAMA et LOUXOR, et migrer TESLA vers FARADAY
+      let list = parsed
+        .filter(p => {
+          const uName = (p.name || '').toUpperCase();
+          return uName !== 'ACAMA' && uName !== 'LOUXOR' && p.id !== 'hybride-louxor' && p.id !== 'bess-acama';
+        })
+        .map(p => {
+          const uName = (p.name || '').toUpperCase();
+          if (uName === 'TESLA' || p.id === 'bess-tesla') {
+            return {
+              ...p,
+              id: 'bess-faraday',
+              name: 'FARADAY',
+              spv: p.spv && p.spv.includes('TESLA') ? p.spv.replace(/TESLA/g, 'FARADAY') : (p.spv || 'SPV B (FARADAY)'),
+              description: p.description && p.description.includes('TESLA') ? p.description.replace(/TESLA/g, 'FARADAY') : 'Portefeuille Stockage BESS FARADAY'
+            };
+          }
+          return p;
+        });
 
-      // S'assurer que CASSIOPEE et TESLA sont toujours présents
+      // S'assurer que CASSIOPEE, VOLTA et FARADAY sont toujours présents
       const hasCassiopee = list.some(p => (p.name || '').toUpperCase() === 'CASSIOPEE');
       if (!hasCassiopee) {
         const c = DEFAULT_PORTFOLIOS.find(p => p.name === 'CASSIOPEE');
         if (c) list.push(c);
       }
-      const hasTesla = list.some(p => (p.name || '').toUpperCase() === 'TESLA');
-      if (!hasTesla) {
-        const t = DEFAULT_PORTFOLIOS.find(p => p.name === 'TESLA');
-        if (t) list.push(t);
+      const hasVolta = list.some(p => (p.name || '').toUpperCase() === 'VOLTA');
+      if (!hasVolta) {
+        const v = DEFAULT_PORTFOLIOS.find(p => p.name === 'VOLTA');
+        if (v) list.push(v);
+      }
+      const hasFaraday = list.some(p => (p.name || '').toUpperCase() === 'FARADAY');
+      if (!hasFaraday) {
+        const f = DEFAULT_PORTFOLIOS.find(p => p.name === 'FARADAY');
+        if (f) list.push(f);
       }
       savePortfoliosToLS(list);
       return list;
@@ -124,6 +143,19 @@ export function subscribeToPortfolios(callback) {
           .filter(p => {
             const uName = (p.name || '').toUpperCase();
             return uName !== 'ACAMA' && p.id !== 'bess-acama' && uName !== 'LOUXOR' && p.id !== 'hybride-louxor';
+          })
+          .map(p => {
+            const uName = (p.name || '').toUpperCase();
+            if (uName === 'TESLA' || p.id === 'bess-tesla') {
+              return {
+                ...p,
+                id: 'bess-faraday',
+                name: 'FARADAY',
+                spv: p.spv && p.spv.includes('TESLA') ? p.spv.replace(/TESLA/g, 'FARADAY') : (p.spv || 'SPV B (FARADAY)'),
+                description: p.description && p.description.includes('TESLA') ? p.description.replace(/TESLA/g, 'FARADAY') : 'Portefeuille Stockage BESS FARADAY'
+              };
+            }
+            return p;
           });
 
         // Nettoyage proactif de bess-acama et hybride-louxor dans Firestore si présents
@@ -139,17 +171,38 @@ export function subscribeToPortfolios(callback) {
             deleteDoc(doc(db, 'portfolios', louxorDoc.id)).catch(() => {});
           } catch (e) {}
         }
+        const teslaDoc = snapshot.docs.find(d => d.id === 'bess-tesla' || (d.data()?.name || '').toUpperCase() === 'TESLA');
+        if (teslaDoc) {
+          try {
+            deleteDoc(doc(db, 'portfolios', teslaDoc.id)).catch(() => {});
+            setDoc(doc(db, 'portfolios', 'bess-faraday'), {
+              id: 'bess-faraday',
+              name: 'FARADAY',
+              type: 'BESS',
+              spv: 'SPV B (FARADAY)',
+              description: 'Portefeuille Stockage BESS FARADAY',
+              color: '#ef4444',
+              isDefault: true,
+              createdAt: '2026-01-01T00:00:00.000Z'
+            }, { merge: true }).catch(() => {});
+          } catch (e) {}
+        }
 
-        // S'assurer que CASSIOPEE et TESLA sont présents
+        // S'assurer que CASSIOPEE, VOLTA et FARADAY sont présents
         const hasCassiopee = docs.some(p => (p.name || '').toUpperCase() === 'CASSIOPEE');
         if (!hasCassiopee) {
           const cassiopee = DEFAULT_PORTFOLIOS.find(p => p.name === 'CASSIOPEE');
           if (cassiopee) docs.push(cassiopee);
         }
-        const hasTesla = docs.some(p => (p.name || '').toUpperCase() === 'TESLA');
-        if (!hasTesla) {
-          const tesla = DEFAULT_PORTFOLIOS.find(p => p.name === 'TESLA');
-          if (tesla) docs.push(tesla);
+        const hasVolta = docs.some(p => (p.name || '').toUpperCase() === 'VOLTA');
+        if (!hasVolta) {
+          const volta = DEFAULT_PORTFOLIOS.find(p => p.name === 'VOLTA');
+          if (volta) docs.push(volta);
+        }
+        const hasFaraday = docs.some(p => (p.name || '').toUpperCase() === 'FARADAY');
+        if (!hasFaraday) {
+          const faraday = DEFAULT_PORTFOLIOS.find(p => p.name === 'FARADAY');
+          if (faraday) docs.push(faraday);
         }
 
         savePortfoliosToLS(docs);
@@ -294,7 +347,7 @@ export async function deletePortfolio(id, user) {
     throw new Error("Portefeuille introuvable.");
   }
 
-  if (target.isDefault && (target.name === 'HELIOS' || target.name === 'VOLTA')) {
+  if (target.isDefault && (target.name === 'HELIOS' || target.name === 'VOLTA' || target.name === 'FARADAY')) {
     throw new Error(`Le portefeuille système "${target.name}" ne peut pas être supprimé car il sert de référence de base.`);
   }
 

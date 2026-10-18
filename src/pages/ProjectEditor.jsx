@@ -420,8 +420,9 @@ export default function ProjectEditor() {
         if (freshProject) {
           let cleaned = { ...freshProject };
           let mustUpdate = false;
-          if ((cleaned.bess_portfolio || '').toUpperCase() === 'LOUXOR') {
-            cleaned.bess_portfolio = 'TESLA';
+          const currentBessPort = (cleaned.bess_portfolio || '').toUpperCase();
+          if (currentBessPort === 'LOUXOR' || currentBessPort === 'TESLA') {
+            cleaned.bess_portfolio = 'FARADAY';
             mustUpdate = true;
           }
           if ((cleaned.pv_portfolio || '').toUpperCase() === 'LOUXOR') {
@@ -447,7 +448,8 @@ export default function ProjectEditor() {
           const foundRaw = projects && Array.isArray(projects) ? projects.find(p => p.id === projectId) : null;
           if (foundRaw) {
             let cleaned = { ...foundRaw };
-            if ((cleaned.bess_portfolio || '').toUpperCase() === 'LOUXOR') cleaned.bess_portfolio = 'TESLA';
+            const fallbackBessPort = (cleaned.bess_portfolio || '').toUpperCase();
+            if (fallbackBessPort === 'LOUXOR' || fallbackBessPort === 'TESLA') cleaned.bess_portfolio = 'FARADAY';
             if ((cleaned.pv_portfolio || '').toUpperCase() === 'LOUXOR') cleaned.pv_portfolio = null;
             setProject(cleaned);
             setRemountKey(k => k + 1);

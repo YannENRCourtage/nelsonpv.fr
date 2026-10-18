@@ -37,7 +37,7 @@ const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
 
 export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataChange, projects = [] }) {
   const { bessPortfolios, canManagePortfolios } = usePortfolios();
-  const [selectedPortfolio, setSelectedPortfolio] = useState('VOLTA'); // 'VOLTA' | 'TESLA' | 'ALL' etc.
+  const [selectedPortfolio, setSelectedPortfolio] = useState('VOLTA'); // 'VOLTA' | 'FARADAY' | 'ALL' etc.
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
   const [selectedSpv, setSelectedSpv] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,12 +54,12 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
   const nbCyclesJour = 2.0; // 2 cycles/jour
   const studyYears = 15;
 
-  // Harmonisation des sites BESS avec les projets CRM et attribution portefeuille VOLTA / TESLA
+  // Harmonisation des sites BESS avec les projets CRM et attribution portefeuille VOLTA / FARADAY
   const allPortfolioSites = useMemo(() => {
     return getBessPortfolioSites(projects, 'ALL');
   }, [projects]);
 
-  // Sites actifs filtrés par portefeuille (VOLTA vs TESLA vs TOUS)
+  // Sites actifs filtrés par portefeuille (VOLTA vs FARADAY vs TOUS)
   const activeSites = useMemo(() => {
     if (selectedPortfolio === 'ALL') return allPortfolioSites;
     return allPortfolioSites.filter(s => s.portfolio === selectedPortfolio);

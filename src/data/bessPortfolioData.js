@@ -756,10 +756,10 @@ export function getProjectBessPortfolio(p) {
                  '';
   let val = String(direct).trim();
   let norm = normalizePortfolioName(val);
-  // Migration automatique des dossiers BESS de LOUXOR vers TESLA
-  if (norm === 'LOUXOR') {
-    val = 'TESLA';
-    norm = 'TESLA';
+  // Migration automatique des dossiers BESS de LOUXOR ou TESLA vers FARADAY
+  if (norm === 'LOUXOR' || norm === 'TESLA') {
+    val = 'FARADAY';
+    norm = 'FARADAY';
   }
   if (norm === 'AUCUN' || norm === 'NON AFFECTE' || norm === 'AUCUN / NON' || norm === 'NONE' || norm === 'NULL' || norm === 'UNDEFINED' || norm === 'NON' || !val) {
     return '';
@@ -786,7 +786,7 @@ export function getProjectBessPortfolio(p) {
 }
 
 /**
- * Construit la liste harmonisée des centrales appartenant au portefeuille BESS (VOLTA, TESLA ou ALL).
+ * Construit la liste harmonisée des centrales appartenant au portefeuille BESS (VOLTA, FARADAY ou ALL).
  * RÈGLE STRICTE :
  * - Les projets dont la fiche comporte le portefeuille BESS sélectionné apparaissent dans la liste.
  * - Tout dossier abandonné (statut 'Abandonné') est STRICTEMENT exclu de tous les portefeuilles.
@@ -794,7 +794,7 @@ export function getProjectBessPortfolio(p) {
  * - Aucun doublon n'est toléré.
  *
  * @param {Array} projects Liste des projets CRM (tenant actif)
- * @param {string} portfolioFilter 'ALL' | 'VOLTA' | 'TESLA' etc.
+ * @param {string} portfolioFilter 'ALL' | 'VOLTA' | 'FARADAY' etc.
  * @returns {Array} Liste des sites BESS enrichis
  */
 export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
@@ -950,7 +950,7 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
         city,
         dept,
         address: p.address || `${cp} ${city}`.trim() || mock?.address || '',
-        spv: p.spv || mock?.spv || (normPort === 'TESLA' ? 'SPV B' : 'SPV A'),
+        spv: p.spv || mock?.spv || (normPort === 'FARADAY' ? 'SPV B' : 'SPV A'),
         rent: Number(p.rent || p.loyer_annuel || p.loyer || mock?.rent || 3000),
         lat,
         lng,
@@ -967,7 +967,7 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
 
   // 2. SI AUCUN PROJET CRM N'EST DISPONIBLE : Fallback sur BESS_PORTFOLIO_SITES (données démo)
   BESS_PORTFOLIO_SITES.forEach((site) => {
-    let port = site.bess_portfolio || (site.spv === 'SPV B' ? 'TESLA' : 'VOLTA');
+    let port = site.bess_portfolio || (site.spv === 'SPV B' ? 'FARADAY' : 'VOLTA');
     const normPort = normalizePortfolioName(port);
     if (normTarget !== 'ALL' && normTarget !== 'TOUS' && normPort !== normTarget) {
       return;

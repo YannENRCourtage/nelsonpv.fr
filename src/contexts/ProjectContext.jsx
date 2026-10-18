@@ -67,8 +67,8 @@ function sanitizeProjectForLS(p) {
 }
 
 /**
- * Migration automatique : suppression du portefeuille LOUXOR.
- * - Tout dossier BESS affilié à LOUXOR est basculé vers TESLA.
+ * Migration automatique : suppression du portefeuille LOUXOR et renommage de TESLA en FARADAY.
+ * - Tout dossier BESS affilié à LOUXOR ou TESLA est basculé vers FARADAY.
  * - Tout dossier PV affilié à LOUXOR (dont le dossier DUPORT) est retiré de LOUXOR.
  */
 function migrateProjectsLouxorToTesla(list) {
@@ -78,10 +78,10 @@ function migrateProjectsLouxorToTesla(list) {
     let updated = { ...p };
     let changed = false;
 
-    // 1. Dossiers BESS affiliés à LOUXOR -> TESLA
+    // 1. Dossiers BESS affiliés à LOUXOR ou TESLA -> FARADAY
     const bessPort = (p.bess_portfolio || p.portfolio_bess || '').toUpperCase();
-    if (bessPort === 'LOUXOR') {
-      updated.bess_portfolio = 'TESLA';
+    if (bessPort === 'LOUXOR' || bessPort === 'TESLA') {
+      updated.bess_portfolio = 'FARADAY';
       changed = true;
     }
 
