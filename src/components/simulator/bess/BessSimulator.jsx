@@ -45,43 +45,28 @@ function MapAutoResize() {
   return null;
 }
 
-// ─── ICÔNE DU MARQUEUR DE L'ADRESSE RECHERCHÉE (PIN SKY AVEC ÉTIQUETTE) ─────────
+// ─── ICÔNE DU MARQUEUR DE L'ADRESSE DU PROJET (PIN BLEU SANS TEXTE, DÉPLAÇABLE) ────────
 const createAddressMarkerIcon = () => {
   return L.divIcon({
-    className: 'bess-address-marker',
+    className: 'bess-address-pin',
     html: `
       <div style="
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        cursor: pointer;
-        filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
-      ">
-        <div style="
-          background: #0284c7;
-          color: #ffffff;
-          font-size: 11px;
-          font-weight: 800;
-          padding: 3px 8px;
-          border-radius: 6px;
-          border: 1.5px solid #ffffff;
-          white-space: nowrap;
-          box-shadow: 0 2px 8px rgba(2,132,199,0.5);
-        ">
-          📍 Adresse recherchée
-        </div>
-        <div style="
-          width: 0;
-          height: 0;
-          border-left: 6px solid transparent;
-          border-right: 6px solid transparent;
-          border-top: 7px solid #0284c7;
-        "></div>
+        position: relative;
+        width: 30px;
+        height: 40px;
+        cursor: grab;
+        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+        transition: transform 0.1s ease;
+      " title="Déplacer ce marqueur sur la carte">
+        <svg viewBox="0 0 24 32" width="30" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20c0-6.627-5.373-12-12-12z" fill="#0284c7" stroke="#ffffff" stroke-width="2"/>
+          <circle cx="12" cy="11" r="4.5" fill="#ffffff"/>
+        </svg>
       </div>
     `,
-    iconSize: [120, 32],
-    iconAnchor: [60, 32],
-    popupAnchor: [0, -32]
+    iconSize: [30, 40],
+    iconAnchor: [15, 40],
+    popupAnchor: [0, -40]
   });
 };
 
@@ -629,15 +614,64 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
                 />
               )}
 
-              {/* MARQUEUR DE L'ADRESSE DU PROJET RECHERCHÉE (📍) */}
+              {/* MARQUEUR DE L'ADRESSE DU PROJET (DÉPLAÇABLE, SANS TEXTE SUR LA CARTE) */}
               <Marker
                 position={centerCoords}
                 icon={createAddressMarkerIcon()}
+                draggable={true}
+                autoPan={true}
+                eventHandlers={{
+                  dragend: async (e) => {
+                    const latlng = e.target.getLatLng();
+                    const newLat = latlng.lat;
+                    const newLng = latlng.lng;
+
+                    // Mettre à jour immédiatement la position
+                    setSelectedSite((prev) => ({
+                      ...prev,
+                      lat: newLat,
+                      lng: newLng
+                    }));
+
+                    // Récupérer la parcelle cadastrale à cette nouvelle position
+                    try {
+                      const parcel = await fetchCadastralParcel(newLat, newLng);
+                      let ownerName = 'Propriétaire Foncier';
+                      if (parcel?.idu) {
+                        try {
+                          const owners = await fetchParcelOwners(parcel.idu);
+                          if (owners && owners.length > 0 && owners[0].denomination) {
+                            ownerName = owners[0].denomination;
+                          }
+                        } catch (err) {}
+                      }
+
+                      setSelectedSite((prev) => ({
+                        ...prev,
+                        lat: newLat,
+                        lng: newLng,
+                        parcelId: parcel?.idu || prev.parcelId,
+                        section: parcel?.section || prev.section,
+                        numero: parcel?.numero || prev.numero,
+                        parcelGeometry: parcel?.geometry || null,
+                        ownerName: ownerName !== 'Propriétaire Foncier' ? ownerName : prev.ownerName
+                      }));
+
+                      toast({
+                        title: 'Position du projet déplacée',
+                        description: parcel ? `Parcelle ${parcel.section} ${parcel.numero} (${parcel.idu})` : `GPS : ${newLat.toFixed(5)}, ${newLng.toFixed(5)}`,
+                        duration: 3000
+                      });
+                    } catch (err) {
+                      console.warn('Erreur mise à jour parcelle après déplacement:', err);
+                    }
+                  }
+                }}
               >
                 <Popup className="bess-popup">
                   <div className="p-1 text-xs text-slate-900 space-y-1 min-w-[170px]">
                     <div className="font-black text-sky-600 flex items-center gap-1 text-sm">
-                      📍 Adresse recherchée
+                      📍 Emplacement du projet (BESS)
                     </div>
                     <div className="font-bold text-slate-800">
                       {selectedSite.address}
@@ -655,6 +689,9 @@ export default function BessSimulator({ selectedProject, onStateUpdate, onSaveSi
                         Transfo Enedis le plus proche : <strong className="text-emerald-600">{selectedSite.transfoDistance} m</strong>
                       </div>
                     )}
+                    <div className="text-[10px] text-slate-400 italic pt-0.5">
+                      💡 Déplacez ce marqueur pour ajuster l'emplacement
+                    </div>
                   </div>
                 </Popup>
               </Marker>
