@@ -9,7 +9,8 @@ import {
     orderBy,
     onSnapshot,
     serverTimestamp,
-    updateDoc
+    updateDoc,
+    deleteDoc
 } from 'firebase/firestore';
 import { db } from '@/config/firebase.js';
 
@@ -196,6 +197,35 @@ export const subscribeToComments = (projectId, callback) => {
         });
         callback(comments);
     });
+};
+
+/**
+ * Update an existing comment
+ * @param {string} commentId - Comment doc ID
+ * @param {string} content - New comment text
+ */
+export const updateComment = async (commentId, content) => {
+    try {
+        await updateDoc(doc(db, 'comments', commentId), {
+            content,
+            isEdited: true,
+            updatedAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Update comment error:', error);
+    }
+};
+
+/**
+ * Delete a comment
+ * @param {string} commentId - Comment doc ID
+ */
+export const deleteComment = async (commentId) => {
+    try {
+        await deleteDoc(doc(db, 'comments', commentId));
+    } catch (error) {
+        console.error('Delete comment error:', error);
+    }
 };
 
 // ============================================================================
