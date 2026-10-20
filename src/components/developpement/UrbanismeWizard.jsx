@@ -12,7 +12,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { fetchUrbanismeMairiePortal } from '@/services/urbanismeRoutingService';
 import { exportDossierDepotZip } from '@/services/DPGeneratorService';
-import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames, parseFrenchAddress } from '@/services/SmartCerfaService';
+import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames, parseFrenchAddress, DEFAULT_BESS_CADRE_4_1 } from '@/services/SmartCerfaService';
 import { downloadPieceDwg } from '@/services/DwgExportService';
 import { cadastreService } from '@/services/CadastreService';
 import { getOrGenerateProjectMaps, generateStaticMapImage } from '@/services/AutoMapService';
@@ -20,7 +20,10 @@ import {
   getStructureHeights,
   drawDimensionLine,
   drawNorthArrow,
-  getBuildingDimensionLines
+  getBuildingDimensionLines,
+  getViewConePolygon,
+  drawViewpointCone,
+  drawAccessArrow
 } from '@/utils/mapCotations';
 import { useConfiguratorStore, useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import { cacheMediaLocal, getAllCachedMediaForProject, uploadUrbanismeDataUrl, persistProjectUrbanismeMedia } from '@/services/urbanismeMediaService';
@@ -228,7 +231,7 @@ function getOrientationLabel(deg) {
 }
 
 // Capture directe haute fidélité d'une carte Leaflet sans passer par html2canvas sur le SVG (élimine tout décalage)
-async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [], showDimensions = true, distances = [], sdisPoint = null) {
+async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [], showDimensions = true, distances = [], sdisPoint = null, viewpoints = null, accessPoint = null) {
   if (!map) return null;
   try {
     const size = map.getSize();
@@ -484,6 +487,24 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
       ctx.textBaseline = 'middle';
       ctx.fillText('🔥 BORNE SDIS', sdisPt.x, by + badgeH / 2);
       ctx.restore();
+    }
+
+    // 2d. Rendu des angles de vue DP07 & DP08
+    if (viewpoints) {
+      ['dp7', 'dp8'].forEach(k => {
+        const vp = viewpoints[k];
+        if (vp && vp.enabled && vp.lat && vp.lng) {
+          const pt = map.latLngToContainerPoint([vp.lat, vp.lng]);
+          const distPx = Math.max(30, (vp.dist || (k === 'dp7' ? 25 : 45)) * pxPerMeter);
+          drawViewpointCone(ctx, pt, vp.angle || 0, distPx, k === 'dp7' ? 'DP 07' : 'DP 08', k === 'dp7' ? '#1d4ed8' : '#0284c7');
+        }
+      });
+    }
+
+    // 2e. Rendu de la voie d'accès terrain
+    if (accessPoint && accessPoint.enabled && accessPoint.lat && accessPoint.lng) {
+      const pt = map.latLngToContainerPoint([accessPoint.lat, accessPoint.lng]);
+      drawAccessArrow(ctx, pt, accessPoint.angle || 0, 38, 'ACCÈS TERRAIN');
     }
 
     // 3. Flèche Nord officielle en haut à droite
@@ -914,6 +935,155 @@ function MasseSdisLayer({ sdisPoint, isPlacing, onSetSdisPoint }) {
   );
 }
 
+function MasseViewpointLayer({ viewpoints = {}, targetCenter = null, onUpdateViewpoint }) {
+  if (!viewpoints) return null;
+
+  return (
+    <>
+      {['dp7', 'dp8'].map(key => {
+        const vp = viewpoints[key];
+        if (!vp || !vp.enabled || !vp.lat || !vp.lng) return null;
+
+        const isDp7 = key === 'dp7';
+        const label = isDp7 ? 'DP 07' : 'DP 08';
+        const color = isDp7 ? '#1d4ed8' : '#0284c7';
+        const dist = Number(vp.dist || (isDp7 ? 25 : 45));
+        const angle = Number(vp.angle || 0);
+
+        const conePolygon = getViewConePolygon(vp.lat, vp.lng, angle, dist, 48);
+
+        return (
+          <React.Fragment key={`vp-${key}`}>
+            {/* Cône de prise de vue */}
+            <Polygon
+              positions={conePolygon}
+              pathOptions={{
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.18,
+                weight: 1.5,
+                dashArray: '4, 4',
+                interactive: false,
+              }}
+            />
+            {/* Flèche d'orientation centrale */}
+            {(() => {
+              const rad = (angle * Math.PI) / 180;
+              const mPerLat = 111139;
+              const mPerLng = 111139 * Math.cos((vp.lat * Math.PI) / 180);
+              const tipLat = vp.lat + (Math.cos(rad) * dist * 0.9) / mPerLat;
+              const tipLng = vp.lng + (Math.sin(rad) * dist * 0.9) / (mPerLng || 1);
+              return (
+                <Polyline
+                  positions={[[vp.lat, vp.lng], [tipLat, tipLng]]}
+                  pathOptions={{ color: color, weight: 2, dashArray: '3, 3' }}
+                />
+              );
+            })()}
+            {/* Marqueur Caméra déplaçable */}
+            <Marker
+              position={[vp.lat, vp.lng]}
+              draggable={true}
+              eventHandlers={{
+                dragend(e) {
+                  const pos = e.target.getLatLng();
+                  let newAngle = angle;
+                  if (targetCenter && targetCenter[0] && targetCenter[1]) {
+                    const dLng = targetCenter[1] - pos.lng;
+                    const dLat = (targetCenter[0] - pos.lat) * Math.cos((pos.lat * Math.PI) / 180);
+                    newAngle = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
+                  }
+                  if (onUpdateViewpoint) {
+                    onUpdateViewpoint(key, { ...vp, lat: pos.lat, lng: pos.lng, angle: Math.round(newAngle) });
+                  }
+                }
+              }}
+              icon={L.divIcon({
+                className: 'bg-transparent',
+                html: `
+                  <div style="transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none;">
+                    <div style="background: ${color}; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: 9999px; border: 1.5px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.35); white-space: nowrap; display: flex; align-items: center; gap: 4px; font-family: sans-serif;">
+                      <span style="font-size: 11px;">📷</span>
+                      <span>${label}</span>
+                    </div>
+                  </div>
+                `,
+                iconSize: [0, 0]
+              })}
+            >
+              <Tooltip sticky direction="top" offset={[0, -12]}>
+                <div className="text-[10px] font-bold p-1 bg-white text-slate-800 rounded shadow-xs">
+                  Angle : {Math.round(angle)}° (Glisser pour déplacer)
+                </div>
+              </Tooltip>
+            </Marker>
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+}
+
+function MasseAccessLayer({ accessPoint, targetCenter = null, onUpdateAccess }) {
+  if (!accessPoint || !accessPoint.enabled || !accessPoint.lat || !accessPoint.lng) return null;
+
+  const lat = accessPoint.lat;
+  const lng = accessPoint.lng;
+  const angle = Number(accessPoint.angle || 0);
+  const dist = 18;
+
+  const rad = (angle * Math.PI) / 180;
+  const mPerLat = 111139;
+  const mPerLng = 111139 * Math.cos((lat * Math.PI) / 180);
+  const tipLat = lat + (Math.cos(rad) * dist) / mPerLat;
+  const tipLng = lng + (Math.sin(rad) * dist) / (mPerLng || 1);
+
+  return (
+    <>
+      <Polyline
+        positions={[[lat, lng], [tipLat, tipLng]]}
+        pathOptions={{ color: '#16a34a', weight: 4 }}
+      />
+      <Marker
+        position={[lat, lng]}
+        draggable={true}
+        eventHandlers={{
+          dragend(e) {
+            const pos = e.target.getLatLng();
+            let newAngle = angle;
+            if (targetCenter && targetCenter[0] && targetCenter[1]) {
+              const dLng = targetCenter[1] - pos.lng;
+              const dLat = (targetCenter[0] - pos.lat) * Math.cos((pos.lat * Math.PI) / 180);
+              newAngle = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
+            }
+            if (onUpdateAccess) {
+              onUpdateAccess({ ...accessPoint, lat: pos.lat, lng: pos.lng, angle: Math.round(newAngle) });
+            }
+          }
+        }}
+        icon={L.divIcon({
+          className: 'bg-transparent',
+          html: `
+            <div style="transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none;">
+              <div style="background: #16a34a; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2.5px 8px; border-radius: 6px; border: 1.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.35); white-space: nowrap; display: flex; align-items: center; gap: 4px; font-family: sans-serif; letter-spacing: 0.5px;">
+                <span style="font-size: 12px; font-weight: bold;">➜</span>
+                <span>ACCÈS TERRAIN</span>
+              </div>
+            </div>
+          `,
+          iconSize: [0, 0]
+        })}
+      >
+        <Tooltip sticky direction="top" offset={[0, -12]}>
+          <div className="text-[10px] font-bold p-1 bg-white text-slate-800 rounded shadow-xs">
+            Voie d'accès (Glisser pour positionner)
+          </div>
+        </Tooltip>
+      </Marker>
+    </>
+  );
+}
+
 function DraggableMasseStructure({
   polygonPositions,
   centerLat,
@@ -1182,6 +1352,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [measuringMasseStrId, setMeasuringMasseStrId] = useState(null); // ID de structure en cours de cotation
   const [masseLockedMaps, setMasseLockedMaps] = useState({}); // { [strId]: boolean } - true par défaut (carte fixe)
   const [masseCapturedToast, setMasseCapturedToast] = useState({}); // { [strId]: string }
+  const [masseShowCadastre, setMasseShowCadastre] = useState({}); // { [strId]: boolean } - true par défaut
+  const [masseViewpoints, setMasseViewpoints] = useState({}); // { [strId]: { dp7?: { enabled, lat, lng, angle }, dp8?: { enabled, lat, lng, angle } } }
+  const [masseAccess, setMasseAccess] = useState({}); // { [strId]: { enabled, lat, lng, angle } }
   const [sdisPoint, setSdisPoint] = useState(project?.sdisPoint || null);
   const [isPlacingSdis, setIsPlacingSdis] = useState(false);
   const masseMapInstancesRef = useRef({});
@@ -1212,7 +1385,13 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     if (project?.masseDistances) {
       setMasseDistances(project.masseDistances);
     }
-  }, [project?.id, project?.masseDistances]);
+    if (project?.masseViewpoints) {
+      setMasseViewpoints(project.masseViewpoints);
+    }
+    if (project?.masseAccess) {
+      setMasseAccess(project.masseAccess);
+    }
+  }, [project?.id, project?.masseDistances, project?.masseViewpoints, project?.masseAccess]);
 
   const handleAddMasseDistance = useCallback((strId, newDistance) => {
     setMasseDistances(prev => {
@@ -1263,6 +1442,135 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
       }
     }, 150);
+  }, [masseViewTabs]);
+
+  const handleToggleMasseCadastre = useCallback((strId) => {
+    setMasseShowCadastre(prev => {
+      const isCurrentlyShown = prev[strId] !== undefined ? prev[strId] : true;
+      return {
+        ...prev,
+        [strId]: !isCurrentlyShown
+      };
+    });
+    setTimeout(() => {
+      if (typeof captureStructureMasseMapRef.current === 'function') {
+        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+      }
+    }, 250);
+  }, [masseViewTabs]);
+
+  const handleToggleMasseViewpoint = useCallback((strId, vpKey, targetLat, targetLng) => {
+    setMasseViewpoints(prev => {
+      const currentVps = prev[strId] || {};
+      const current = currentVps[vpKey] || {};
+      const isEnabled = !current.enabled;
+      let lat = current.lat;
+      let lng = current.lng;
+      let angle = current.angle;
+
+      if (isEnabled && (!lat || !lng)) {
+        const isDp7 = vpKey === 'dp7';
+        const dLat = isDp7 ? -0.00028 : -0.00065;
+        const dLng = isDp7 ? 0.00005 : -0.00045;
+        lat = Number(targetLat) + dLat;
+        lng = Number(targetLng) + dLng;
+        const cosLat = Math.cos((lat * Math.PI) / 180);
+        angle = Math.round((Math.atan2(targetLng - lng, (targetLat - lat) * cosLat) * 180 / Math.PI + 360) % 360);
+      }
+
+      const next = {
+        ...prev,
+        [strId]: {
+          ...currentVps,
+          [vpKey]: {
+            ...current,
+            enabled: isEnabled,
+            lat,
+            lng,
+            angle: angle || 0,
+            dist: vpKey === 'dp7' ? 25 : 45
+          }
+        }
+      };
+      setEditedProject(proj => ({ ...proj, masseViewpoints: next }));
+      return next;
+    });
+    setTimeout(() => {
+      if (typeof captureStructureMasseMapRef.current === 'function') {
+        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+      }
+    }, 200);
+  }, [masseViewTabs]);
+
+  const handleUpdateMasseViewpoint = useCallback((strId, vpKey, updatedVp) => {
+    setMasseViewpoints(prev => {
+      const currentVps = prev[strId] || {};
+      const next = {
+        ...prev,
+        [strId]: {
+          ...currentVps,
+          [vpKey]: updatedVp
+        }
+      };
+      setEditedProject(proj => ({ ...proj, masseViewpoints: next }));
+      return next;
+    });
+    setTimeout(() => {
+      if (typeof captureStructureMasseMapRef.current === 'function') {
+        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+      }
+    }, 200);
+  }, [masseViewTabs]);
+
+  const handleToggleMasseAccess = useCallback((strId, targetLat, targetLng) => {
+    setMasseAccess(prev => {
+      const current = prev[strId] || {};
+      const isEnabled = !current.enabled;
+      let lat = current.lat;
+      let lng = current.lng;
+      let angle = current.angle;
+
+      if (isEnabled && (!lat || !lng)) {
+        lat = Number(targetLat) - 0.00022;
+        lng = Number(targetLng) + 0.00025;
+        const cosLat = Math.cos((lat * Math.PI) / 180);
+        angle = Math.round((Math.atan2(targetLng - lng, (targetLat - lat) * cosLat) * 180 / Math.PI + 360) % 360);
+      }
+
+      const next = {
+        ...prev,
+        [strId]: {
+          ...current,
+          enabled: isEnabled,
+          lat,
+          lng,
+          angle: angle || 0
+        }
+      };
+      setEditedProject(proj => ({ ...proj, masseAccess: next }));
+      return next;
+    });
+    setTimeout(() => {
+      if (typeof captureStructureMasseMapRef.current === 'function') {
+        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+      }
+    }, 200);
+  }, [masseViewTabs]);
+
+  const handleUpdateMasseAccess = useCallback((strId, updatedAccess) => {
+    setMasseAccess(prev => {
+      const next = {
+        ...prev,
+        [strId]: updatedAccess
+      };
+      setEditedProject(proj => ({ ...proj, masseAccess: next }));
+      return next;
+    });
+    setTimeout(() => {
+      if (typeof captureStructureMasseMapRef.current === 'function') {
+        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+      }
+    }, 200);
   }, [masseViewTabs]);
 
   const handleToggleMasseLock = useCallback((strId) => {
@@ -1429,6 +1737,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       isNoticeUserModified: overrides.isNoticeUserModified !== undefined ? overrides.isNoticeUserModified : isNoticeUserModified,
       selectedStructureIds: overrides.selectedStructureIds || selectedStructureIds,
       masseDistances: overrides.masseDistances || masseDistances,
+      masseViewpoints: overrides.masseViewpoints || masseViewpoints,
+      masseAccess: overrides.masseAccess || masseAccess,
+      masseShowCadastre: overrides.masseShowCadastre || masseShowCadastre,
       masseLockedMaps: overrides.masseLockedMaps || masseLockedMaps,
       selectedPages: overrides.selectedPages || selectedPages,
       additionalRoof: overrides.additionalRoof || additionalRoof,
@@ -1520,6 +1831,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           isNoticeUserModified: overrides.isNoticeUserModified !== undefined ? overrides.isNoticeUserModified : isNoticeUserModified,
           selectedStructureIds: overrides.selectedStructureIds || selectedStructureIds,
           masseDistances: overrides.masseDistances || masseDistances,
+          masseViewpoints: overrides.masseViewpoints || masseViewpoints,
+          masseAccess: overrides.masseAccess || masseAccess,
           selectedPages: overrides.selectedPages || selectedPages,
           updatedAt: Date.now()
         };
@@ -2271,7 +2584,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
   // Générateur dynamique du texte détaillé pour "Objet des travaux" (Page de garde)
   const defaultObjetTravauxText = useMemo(() => {
     if (isBatActive) {
-      return "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.";
+      return DEFAULT_BESS_CADRE_4_1;
     }
 
     const retainedStructures = allConfiguredStructures.filter(s => selectedStructureIds.includes(s.id));
@@ -2435,8 +2748,8 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
         cadastre_surface: nextSurf,
         parcelles: nextParcelles,
         cadastre_parcelles: nextParcelles,
-        objet_travaux: "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.",
-        description: "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.",
+        objet_travaux: DEFAULT_BESS_CADRE_4_1,
+        description: DEFAULT_BESS_CADRE_4_1,
       }));
 
       setSolutions(sPrev => ({
@@ -3246,7 +3559,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
 
     const defaultObjetBySol = isBatterySolution
-      ? "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV."
+      ? DEFAULT_BESS_CADRE_4_1
       : (isRodierGarons
           ? image4ObjetTravaux
           : (isOmbriereSolution || isDP
@@ -3794,10 +4107,14 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const cZoom = Number(liveZoom || (viewNum === 2 ? targetStr?.masse_zoom_2 : targetStr?.masse_zoom) || defaultZoom);
 
     let dataUrl = null;
+    const strDistances = masseDistances[strId] || targetStr?.masseDistances || [];
+    const strViewpoints = masseViewpoints[strId] || targetStr?.masseViewpoints || null;
+    const strAccess = masseAccess[strId] || targetStr?.masseAccess || null;
+    const strShowCadastre = masseShowCadastre[strId] !== undefined ? masseShowCadastre[strId] : true;
+
     // 1. Si la vue demandée est actuellement affichée à l'écran, capture directe sur Leaflet
     if (map && isCurrentViewOnScreen) {
-      const strDistances = masseDistances[strId] || targetStr?.masseDistances || [];
-      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim, strDistances, sdisPoint);
+      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim, strDistances, sdisPoint, strViewpoints, strAccess);
     } else {
       // 2. Si la vue n'est PAS à l'écran : ne JAMAIS déplacer la carte Leaflet interactive en direct.
       // Vérifier d'abord si une capture existe déjà pour préserver le cadrage de l'utilisateur
@@ -3810,8 +4127,11 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       }
 
       // Génération statique propre hors-écran (sans toucher au Leaflet monté)
-      const strDistances = masseDistances[strId] || targetStr?.masseDistances || [];
-      dataUrl = await generateStaticMapImage(cLat, cLng, 'osm', cZoom, activeList, showDim, strDistances, sdisPoint);
+      dataUrl = await generateStaticMapImage(cLat, cLng, 'osm', cZoom, activeList, showDim, strDistances, sdisPoint, {
+        viewpoints: strViewpoints,
+        accessPoint: strAccess,
+        showCadastre: strShowCadastre
+      });
     }
 
     if (dataUrl) {
@@ -3819,7 +4139,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       return dataUrl;
     }
     return null;
-  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs, masseDistances, sdisPoint, captures, editedProject]);
+  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs, masseDistances, masseViewpoints, masseAccess, masseShowCadastre, sdisPoint, captures, editedProject]);
 
   useEffect(() => {
     captureStructureMasseMapRef.current = captureStructureMasseMap;
@@ -4372,7 +4692,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     
     // Objet synthétique pour Page 1
     const defaultObjet = isBattery
-      ? "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV."
+      ? DEFAULT_BESS_CADRE_4_1
       : (isDP
         ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
         : (isPC
@@ -4554,9 +4874,18 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       } else if (editedProject?.urbanisme_captures?.masse_projet) {
         masse1 = editedProject.urbanisme_captures.masse_projet;
       } else if (isView1OnMap) {
-        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances1, sdisPoint);
+        const strVps = masseViewpoints[b.id] || b.masseViewpoints || null;
+        const strAcc = masseAccess[b.id] || b.masseAccess || null;
+        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances1, sdisPoint, strVps, strAcc);
       } else {
-        masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'osm', bZoom, updatedBuildings, bShowDim, strDistances1, sdisPoint);
+        const strVps = masseViewpoints[b.id] || b.masseViewpoints || null;
+        const strAcc = masseAccess[b.id] || b.masseAccess || null;
+        const strCad = masseShowCadastre[b.id] !== undefined ? masseShowCadastre[b.id] : true;
+        masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'osm', bZoom, updatedBuildings, bShowDim, strDistances1, sdisPoint, {
+          viewpoints: strVps,
+          accessPoint: strAcc,
+          showCadastre: strCad
+        });
       }
 
       // --- VUE 2 (si demandée et capturée) ---
@@ -4575,6 +4904,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
       if (wantsVue2) {
         const strDistances2 = masseDistances[b.id] || b.masseDistances || [];
+        const strVps2 = masseViewpoints[b.id] || b.masseViewpoints || null;
+        const strAcc2 = masseAccess[b.id] || b.masseAccess || null;
         if (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50) {
           masse2 = b.masse_capture_2;
         } else if (captures?.masse_projet_2 && typeof captures.masse_projet_2 === 'string' && captures.masse_projet_2.length > 50) {
@@ -4587,7 +4918,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
           bZoom2 = Number(map.getZoom() || bZoom2);
           bCenterLat2 = Number(map.getCenter().lat || bCenterLat2);
           bCenterLng2 = Number(map.getCenter().lng || bCenterLng2);
-          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances2, sdisPoint);
+          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances2, sdisPoint, strVps2, strAcc2);
         }
       }
 
@@ -6686,6 +7017,89 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                      </button>
                                    )}
 
+                                    {/* Bouton Toggle Cadastre (IGN Parcellaire Express) */}
+                                    {(() => {
+                                      const isCadastreActive = masseShowCadastre[str.id] !== undefined ? masseShowCadastre[str.id] : true;
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleToggleMasseCadastre(str.id)}
+                                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
+                                            isCadastreActive
+                                              ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                          }`}
+                                          title="Afficher ou masquer les parcelles cadastrales officielles IGN sur le plan de masse"
+                                        >
+                                          <Layers className="w-3.5 h-3.5" />
+                                          <span>Cadastre</span>
+                                        </button>
+                                      );
+                                    })()}
+
+                                    {/* Bouton Angle de vue DP07 (Vue proche) */}
+                                    {(() => {
+                                      const vp7 = (masseViewpoints[str.id] && masseViewpoints[str.id].dp7) || {};
+                                      const isActive = Boolean(vp7.enabled);
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleToggleMasseViewpoint(str.id, 'dp7', strLat, strLng)}
+                                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
+                                            isActive
+                                              ? 'bg-blue-700 text-white border-blue-800 shadow-xs'
+                                              : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
+                                          }`}
+                                          title="Intégrer le cône de prise de vue DP07 (environnement proche) sur le plan de masse"
+                                        >
+                                          <Camera className="w-3.5 h-3.5" />
+                                          <span>{isActive ? '✓ Angle DP07' : '+ Angle DP07'}</span>
+                                        </button>
+                                      );
+                                    })()}
+
+                                    {/* Bouton Angle de vue DP08 (Vue lointaine) */}
+                                    {(() => {
+                                      const vp8 = (masseViewpoints[str.id] && masseViewpoints[str.id].dp8) || {};
+                                      const isActive = Boolean(vp8.enabled);
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleToggleMasseViewpoint(str.id, 'dp8', strLat, strLng)}
+                                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
+                                            isActive
+                                              ? 'bg-sky-600 text-white border-sky-700 shadow-xs'
+                                              : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
+                                          }`}
+                                          title="Intégrer le cône de prise de vue DP08 (paysage lointain) sur le plan de masse"
+                                        >
+                                          <Camera className="w-3.5 h-3.5" />
+                                          <span>{isActive ? '✓ Angle DP08' : '+ Angle DP08'}</span>
+                                        </button>
+                                      );
+                                    })()}
+
+                                    {/* Bouton Flèche Voie d'accès */}
+                                    {(() => {
+                                      const acc = masseAccess[str.id] || {};
+                                      const isActive = Boolean(acc.enabled);
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleToggleMasseAccess(str.id, strLat, strLng)}
+                                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
+                                            isActive
+                                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                                              : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+                                          }`}
+                                          title="Ajouter la flèche indiquant la voie d'accès sur le terrain"
+                                        >
+                                          <ArrowRight className="w-3.5 h-3.5" />
+                                          <span>{isActive ? '✓ Voie d\'accès' : '+ Voie d\'accès'}</span>
+                                        </button>
+                                      );
+                                    })()}
+
                                    {/* Bouton manuel de capture avec feedback */}
                                    {masseCapturedToast[str.id] && (
                                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 animate-fade-in">
@@ -6742,6 +7156,18 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                      maxZoom={21}
                                      maxNativeZoom={19}
                                    />
+                                   {((masseShowCadastre[str.id] !== undefined ? masseShowCadastre[str.id] : true)) && (
+                                     <TileLayer
+                                       key={`cadastre-layer-${str.id}`}
+                                       url="https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=PCI vecteur&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
+                                       attribution="&copy; IGN Cadastre"
+                                       opacity={0.85}
+                                       zIndex={10}
+                                       crossOrigin="anonymous"
+                                       maxZoom={21}
+                                       maxNativeZoom={19}
+                                     />
+                                   )}
                                    <MapResizer activeCount={activeStructures.length} center={[strLat, strLng]} />
                                    <MasseMapLockController isLocked={masseLockedMaps[str.id] !== false} />
                                    <MasseMapController 
@@ -6785,6 +7211,20 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                    <MasseDistanceDrawer
                                      isMeasuring={measuringMasseStrId === str.id}
                                      onAddDistance={(newDist) => handleAddMasseDistance(str.id, newDist)}
+                                   />
+
+                                   {/* Angles de vue des prises de vue DP07 & DP08 */}
+                                   <MasseViewpointLayer
+                                     viewpoints={masseViewpoints[str.id] || {}}
+                                     targetCenter={[strLat, strLng]}
+                                     onUpdateViewpoint={(vpKey, updatedVp) => handleUpdateMasseViewpoint(str.id, vpKey, updatedVp)}
+                                   />
+
+                                   {/* Flèche indiquant la voie d'accès sur le terrain */}
+                                   <MasseAccessLayer
+                                     accessPoint={masseAccess[str.id]}
+                                     targetCenter={[strLat, strLng]}
+                                     onUpdateAccess={(updatedAccess) => handleUpdateMasseAccess(str.id, updatedAccess)}
                                    />
 
                                    {/* Rendu intérieur des 4 armoires CESC 261 sur la dalle béton pour la Station Batteries */}
@@ -7545,7 +7985,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                             ? (
                                 (editedProject?.objet_travaux && !editedProject.objet_travaux.toLowerCase().includes('ombrière') && !editedProject.objet_travaux.toLowerCase().includes('bâtiment') && !editedProject.objet_travaux.toLowerCase().includes('hangar'))
                                   ? editedProject.objet_travaux
-                                  : "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV."
+                                  : DEFAULT_BESS_CADRE_4_1
                               )
                             : (
                                 (editedProject?.objet_travaux && editedProject.objet_travaux.trim().length > 30 && !/batterie|bess|stockage d'énergie/i.test(editedProject.objet_travaux))
@@ -7558,7 +7998,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                           setEditedProject(prev => ({ ...prev, objet_travaux: val, description: val }));
                           handleFieldChange('objet_travaux', val);
                         }}
-                        placeholder={isBatActive ? "Ex: Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV." : (solutionType === 'building' ? "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque" : (isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"))}
+                        placeholder={isBatActive ? DEFAULT_BESS_CADRE_4_1 : (solutionType === 'building' ? "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque" : (isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"))}
                         className="w-full flex-1 min-h-[260px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner resize-none"
                       />
                     </div>

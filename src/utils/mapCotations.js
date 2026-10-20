@@ -350,3 +350,169 @@ export function getBuildingDimensionLines(centerLat, centerLng, lengthMeters, wi
     widWitness2
   };
 }
+
+/**
+ * Calcule les coordonnées GPS d'un cône de prise de vue photographique (DP07 / DP08)
+ * @param {number} lat Latitude de l'appareil photo
+ * @param {number} lng Longitude de l'appareil photo
+ * @param {number} angleDeg Direction de visée (0° = Nord, 90° = Est)
+ * @param {number} distanceMeters Portée du cône en mètres
+ * @param {number} fovDeg Angle d'ouverture du champ visuel en degrés (ex: 48°)
+ */
+export function getViewConePolygon(lat, lng, angleDeg = 0, distanceMeters = 25, fovDeg = 48) {
+  const mPerLat = 111139;
+  const mPerLng = 111139 * Math.cos((lat * Math.PI) / 180);
+
+  const pts = [[lat, lng]];
+  const steps = 8;
+  const halfFov = fovDeg / 2;
+  const startAng = angleDeg - halfFov;
+  const endAng = angleDeg + halfFov;
+
+  for (let i = 0; i <= steps; i++) {
+    const a = startAng + (endAng - startAng) * (i / steps);
+    const rad = (a * Math.PI) / 180;
+    const dx = Math.sin(rad) * distanceMeters;
+    const dy = Math.cos(rad) * distanceMeters;
+    const pLat = lat + dy / mPerLat;
+    const pLng = lng + dx / (mPerLng || 1);
+    pts.push([pLat, pLng]);
+  }
+  return pts;
+}
+
+/**
+ * Dessine un cône de prise de vue photographique sur un canvas 2D
+ */
+export function drawViewpointCone(ctx, camPt, angleDeg = 0, distPx = 45, label = 'DP 07', color = '#1d4ed8') {
+  if (!camPt) return;
+  const rad = (angleDeg * Math.PI) / 180;
+  const fovRad = (48 * Math.PI) / 180;
+  const startRad = rad - fovRad / 2;
+  const endRad = rad + fovRad / 2;
+
+  ctx.save();
+
+  // 1. Cône de vision (secteur angulaire translucide)
+  ctx.beginPath();
+  ctx.moveTo(camPt.x, camPt.y);
+  const steps = 12;
+  for (let i = 0; i <= steps; i++) {
+    const a = startRad + (endRad - startRad) * (i / steps);
+    // Dans le repère écran Canvas : Y vers le bas donc cos(a) donne -Y
+    const px = camPt.x + Math.sin(a) * distPx;
+    const py = camPt.y - Math.cos(a) * distPx;
+    ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fillStyle = color === '#1d4ed8' ? 'rgba(29, 78, 216, 0.20)' : 'rgba(2, 132, 199, 0.20)';
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 2. Rayon central avec flèche directionnelle
+  const midX = camPt.x + Math.sin(rad) * (distPx * 0.9);
+  const midY = camPt.y - Math.cos(rad) * (distPx * 0.9);
+  ctx.beginPath();
+  ctx.moveTo(camPt.x, camPt.y);
+  ctx.lineTo(midX, midY);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Pointe de flèche
+  const arrLen = 7;
+  const arrAngle = Math.PI / 6;
+  const backAngle = rad + Math.PI;
+  ctx.beginPath();
+  ctx.moveTo(midX, midY);
+  ctx.lineTo(midX + Math.sin(backAngle - arrAngle) * arrLen, midY - Math.cos(backAngle - arrAngle) * arrLen);
+  ctx.lineTo(midX + Math.sin(backAngle + arrAngle) * arrLen, midY - Math.cos(backAngle + arrAngle) * arrLen);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // 3. Badge caméra / label au point d'observation
+  const badgeW = 56;
+  const badgeH = 18;
+  const bx = camPt.x - badgeW / 2;
+  const by = camPt.y - badgeH / 2;
+
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(bx, by, badgeW, badgeH, 9);
+  else ctx.rect(bx, by, badgeW, badgeH);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`📷 ${label}`, camPt.x, camPt.y);
+
+  ctx.restore();
+}
+
+/**
+ * Dessine une flèche d'accès terrain sur un canvas 2D
+ */
+export function drawAccessArrow(ctx, accPt, angleDeg = 0, lenPx = 38, label = 'ACCÈS TERRAIN') {
+  if (!accPt) return;
+  const rad = (angleDeg * Math.PI) / 180;
+  const targetX = accPt.x + Math.sin(rad) * lenPx;
+  const targetY = accPt.y - Math.cos(rad) * lenPx;
+
+  ctx.save();
+
+  // Corps de flèche large vert
+  ctx.beginPath();
+  ctx.moveTo(accPt.x, accPt.y);
+  ctx.lineTo(targetX, targetY);
+  ctx.strokeStyle = '#16a34a';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Pointe de flèche
+  const arrLen = 10;
+  const arrAngle = Math.PI / 5;
+  const backAngle = rad + Math.PI;
+  ctx.beginPath();
+  ctx.moveTo(targetX, targetY);
+  ctx.lineTo(targetX + Math.sin(backAngle - arrAngle) * arrLen, targetY - Math.cos(backAngle - arrAngle) * arrLen);
+  ctx.lineTo(targetX + Math.sin(backAngle + arrAngle) * arrLen, targetY - Math.cos(backAngle + arrAngle) * arrLen);
+  ctx.closePath();
+  ctx.fillStyle = '#16a34a';
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+
+  // Badge d'accès
+  const badgeW = 90;
+  const badgeH = 18;
+  const bx = accPt.x - badgeW / 2;
+  const by = accPt.y - 20;
+
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(bx, by, badgeW, badgeH, 5);
+  else ctx.rect(bx, by, badgeW, badgeH);
+  ctx.fillStyle = '#15803d';
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`➜ ${label}`, accPt.x, by + badgeH / 2);
+
+  ctx.restore();
+}

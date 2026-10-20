@@ -1,6 +1,6 @@
 import { PDFDocument, rgb, StandardFonts, PDFName, PDFBool } from 'pdf-lib';
 import html2canvas from 'html2canvas';
-import { smartFillCerfa, resolveDemandeurNames } from './SmartCerfaService';
+import { smartFillCerfa, resolveDemandeurNames, DEFAULT_BESS_CADRE_4_1 } from './SmartCerfaService';
 import { preloadProjectImages } from '@/utils/imageProxy';
 
 // ─── Types d'installation ────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ export function getInstallationTypeInfo(type, kwc, isNoBattery = false) {
     return {
       title: "Station de stockage d'énergie par batteries Stand-Alone",
       subtitle: "Puissance nominale : 500 kW — 4 armoires CESC Mercury 261",
-      cerfaText: "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.",
+      cerfaText: DEFAULT_BESS_CADRE_4_1,
       code: 'BATTERIE',
       isNewConstruction: true,
     };
@@ -345,7 +345,7 @@ async function drawCoverPage(doc, project, type, installationType) {
       : typeInfo.cerfaText;
 
   if (isBattery && (!project?.objet_travaux && !project?.objetTravaux || /ombrière|bâtiment|hangar/i.test(objetText))) {
-    objetText = "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.";
+    objetText = DEFAULT_BESS_CADRE_4_1;
   } else if (!isBattery && /batterie|bess|stockage d'énergie/i.test(objetText)) {
     objetText = typeInfo.cerfaText;
   }

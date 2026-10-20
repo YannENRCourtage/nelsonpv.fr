@@ -6,7 +6,7 @@
  */
 
 import { findBessOdreData } from '../data/bessOdreMatrix.js';
-import { resolveDemandeurNames } from './SmartCerfaService.js';
+import { resolveDemandeurNames, DEFAULT_BESS_CADRE_4_1 } from './SmartCerfaService.js';
 import { cadastreService } from './CadastreService.js';
 
 /**
@@ -87,7 +87,7 @@ export function initBessDpAutoConfig(project, cadastreOverride = null) {
 
   // 6. Rédaction de la Notice Descriptive DP3 & SDIS standardisée
   const noticeCustom = {
-    objet: `Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.`,
+    objet: DEFAULT_BESS_CADRE_4_1,
     site: `Le projet est implanté sur la commune de ${terrainCommune} (${terrainCp}), sur la parcelle cadastrée section ${primarySection} n° ${primaryNumero} d'une contenance de ${primarySurface.toLocaleString('fr-FR')} m². Le terrain d'assiette présente une topographie plane, sans covisibilité directe avec des monuments historiques.`,
     projet: `La station de stockage se compose de 4 armoires compactes CESC Mercury 261 (L 1,30 m x P 1,00 m x H 2,38 m) disposées sur une dalle béton armé étanche de 6,20 m x 3,20 m (emprise au sol : 19,84 m²). L'ensemble est ceinturé par une clôture rigide grillagée thermolaquée verte RAL 6005 d'une hauteur de 2,00 m avec portillon d'accès sécurisé sous cadenas.`,
     raccordement: `Le raccordement électrique s'effectue en HTA 20 kV vers le poste source Enedis "${posteSourceNom}" situé à une distance de ${distanceKmPoste} km, via un câble souterrain respectant les prescriptions techniques du distributeur Enedis.`,

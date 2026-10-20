@@ -125,6 +125,10 @@ const CERFA_16702_03_ALL_BORDEREAU = [
   'P1FP1', 'P4HG1', 'P4EG1', 'P8EA1', 'P9ZA1'
 ];
 
+export const DEFAULT_BESS_CADRE_4_1 = `Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.   
+Le projet comprend 4 armoires de batteries de technologie lithium-ion (plus précisément phosphate de fer lithié - LFP). Chaque unité (modèle Mercury 261 kWh) dispose d'une puissance nominale de 125 kW (137,5 kVA) et d'une capacité de 261 kWh.   
+Niveau sonore : Le niveau de bruit émis par chaque équipement en fonctionnement est inférieur ou égal à 72 dB.   Sécurité et ventilation : Les armoires intègrent un système de gestion thermique par refroidissement liquide, une ventilation anti-déflagrante, des détecteurs de gaz H2 ainsi qu'un système d'extinction automatique d'incendie par aérosol par compartiment.`;
+
 export function resolveDemandeurNames(project) {
   if (!project) return { lastName: '', firstName: '' };
 
@@ -379,8 +383,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
       ombriere:         `Installation d'une structure ombrière photovoltaïque${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
       toiture:          `Installation de modules solaires photovoltaïques en toiture${kwcStr ? ` d'une puissance de ${kwcStr}` : ''}.`,
-      batterie_standalone: `Installation d'une station de stockage d'énergie par batteries Stand-Alone composée de 4 armoires CESC Mercury 261 (500 kW / 1044 kWh) sur dalle béton (emprise 19.80 m² < 20 m²) ceinturée par un grillage métallique rigide (H 2.00m).`,
-      batterie:         `Installation d'une station de stockage d'énergie par batteries Stand-Alone composée de 4 armoires CESC Mercury 261 (500 kW / 1044 kWh) sur dalle béton (emprise 19.80 m² < 20 m²) ceinturée par un grillage métallique rigide (H 2.00m).`,
+      batterie_standalone: DEFAULT_BESS_CADRE_4_1,
+      batterie:            DEFAULT_BESS_CADRE_4_1,
     };
 
     const isBat = Boolean(
@@ -396,15 +400,15 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       (typeof project?.installationType === 'string' && /batterie|bess/i.test(project.installationType))
     ) && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
     let objet = project?.objet_travaux || project?.objetTravaux;
-    if (!objet || (!isBat && /batterie|bess|stockage d'énergie/i.test(objet))) {
-      if (isBat) {
-        objet = "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.";
-      } else {
-        const solType = project?.solutionType || (isDP ? 'ombriere' : 'batiment_solaire');
-        objet = (project?.description && !/batterie|bess/i.test(project.description) ? project.description : null) || typeLabels[solType] || typeLabels[installationType] || typeLabels[isDP ? 'ombriere' : 'batiment_solaire'];
-        if (isDP && objet && typeof objet === 'string') {
-          objet = objet.replace(/bâtiment\s+agricole/gi, 'ombrière photovoltaïque').replace(/bâtiments/gi, 'ombrières').replace(/bâtiment/gi, 'ombrière').replace(/Bâtiment/g, 'Ombrière');
-        }
+    if (isBat) {
+      if (!objet || objet.length < 150 || /ombrière|bâtiment/i.test(objet) || objet === "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.") {
+        objet = DEFAULT_BESS_CADRE_4_1;
+      }
+    } else if (!objet || /batterie|bess|stockage d'énergie/i.test(objet)) {
+      const solType = project?.solutionType || (isDP ? 'ombriere' : 'batiment_solaire');
+      objet = (project?.description && !/batterie|bess/i.test(project.description) ? project.description : null) || typeLabels[solType] || typeLabels[installationType] || typeLabels[isDP ? 'ombriere' : 'batiment_solaire'];
+      if (isDP && objet && typeof objet === 'string') {
+        objet = objet.replace(/bâtiment\s+agricole/gi, 'ombrière photovoltaïque').replace(/bâtiments/gi, 'ombrières').replace(/bâtiment/gi, 'ombrière').replace(/Bâtiment/g, 'Ombrière');
       }
     }
     if (rawKwc && kwcStr && !objet.includes(kwcStr) && !isBat) {
@@ -602,7 +606,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         setCheck(['C2ZC3_cloture', 'topmostSubform[0].Page4[0].C2ZC3_cloture[0]'], true);
         setField(['C2ZA7_autres'], 'Station technique de stockage batteries', 9);
       }
-      setField(fieldMap.description,    objet, 9.5);
+      setField(fieldMap.description,    objet, isBat ? 7.5 : 9.5);
 
       // 5. Puissance crête (ex: 499 kW), Destination, Matériaux, Fondations, Emprise au sol
       const kwcValue = cleanKwcVal || (isBat ? '500' : '499');
@@ -630,6 +634,32 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         empriseCreee = String(Math.round(bL * bW) || 2370);
       }
       setField(['W3ES2_creee', 'S1I_emprise', 'topmostSubform[0].Page7[0].W3ES2_creee[0]'], String(empriseCreee), 9.5);
+
+      // Tableau 4.4 : Destination, sous-destination des constructions et tableau des surfaces
+      // Pour les batteries : 4m² dans la colonne B de "Locaux techniques et industriels des administrations publiques et assimilés"
+      if (isBat) {
+        setField(['W2TB1', 'topmostSubform[0].Page6[0].W2TB1[0]'], '4', 9.5);
+        setField(['W2TF1', 'topmostSubform[0].Page6[0].W2TF1[0]'], '4', 9.5);
+        setField(['W2SB1', 'topmostSubform[0].Page6[0].W2SB1[0]'], '4', 9.5);
+        setField(['W2SF1', 'topmostSubform[0].Page6[0].W2SF1[0]'], '4', 9.5);
+      }
+
+      // Cadre 5 : Informations pour l'application d'une législation connexe — toujours cocher les cases "Non"
+      const NON_CONNEXE_CHECKBOXES = [
+        'X1T0_eau', 'X1E0_environnement', 'X1D0_derogation', 'X1C0_classe',
+        'X1A0_ABF', 'X1L0_legislation', 'X1U0_raccordement', 'X1V0_toiture'
+      ];
+      const OUI_CONNEXE_CHECKBOXES = [
+        'X1T_eau', 'X1E_environnement', 'X1D_derogation', 'X1C_classe',
+        'X1A_ABF', 'X1L_legislation', 'X1U_raccordement', 'X1V_toiture'
+      ];
+      NON_CONNEXE_CHECKBOXES.forEach(name => {
+        setCheck([name, `topmostSubform[0].Page8[0].${name}[0]`], true);
+      });
+      OUI_CONNEXE_CHECKBOXES.forEach(name => {
+        setCheck([name, `topmostSubform[0].Page8[0].${name}[0]`], false);
+      });
+      setField(['X1P_precisions', 'topmostSubform[0].Page8[0].X1P_precisions[0]'], '');
 
       // 6. Engagement & Signature (page 9/18 du CERFA : Ville, Date JJMMAAAA, Prénom & Nom)
       // Priorité : ville du terrain (commune du projet) > adresse parsée > ville du demandeur

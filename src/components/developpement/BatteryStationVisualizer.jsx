@@ -92,7 +92,7 @@ export default function BatteryStationVisualizer({
   const [internalMode, setInternalMode] = useState(viewMode || '3D');
   const [capturedFeedback, setCapturedFeedback] = useState(null);
   const [isCapturingAll, setIsCapturingAll] = useState(false);
-  const [showFence, setShowFence] = useState(true);
+  const [showFence, setShowFence] = useState(false);
 
   const threeContextRef = useRef(null);
   const controlsRef = useRef(null);
@@ -143,6 +143,7 @@ export default function BatteryStationVisualizer({
     if (!gl || !scene || !camera || !ctrl) return;
 
     setIsCapturingAll(true);
+    setShowFence(false);
     const savedMode = internalMode;
 
     const views = {};

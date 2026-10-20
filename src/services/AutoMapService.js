@@ -6,7 +6,9 @@
 import {
   getStructureHeights,
   drawDimensionLine,
-  drawNorthArrow
+  drawNorthArrow,
+  drawViewpointCone,
+  drawAccessArrow
 } from '@/utils/mapCotations';
 
 /**
@@ -406,6 +408,33 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
             ctx.textBaseline = 'middle';
             ctx.fillText('🔥 BORNE SDIS', sdisX, by + badgeH / 2);
             ctx.restore();
+          }
+
+          // Rendu des angles de vue DP07 & DP08
+          if (options?.viewpoints) {
+            ['dp7', 'dp8'].forEach(k => {
+              const vp = options.viewpoints[k];
+              if (vp && vp.enabled && vp.lat && vp.lng) {
+                const vpRad = (Number(vp.lat) * Math.PI) / 180;
+                const vpExactX = ((Number(vp.lng) + 180) / 360) * n;
+                const vpExactY = ((1 - Math.log(Math.tan(vpRad) + 1 / Math.cos(vpRad)) / Math.PI) / 2) * n;
+                const vpx = centerX + (vpExactX - exactX) * tileSize;
+                const vpy = centerY + (vpExactY - exactY) * tileSize;
+                const distPx = Math.max(30, (vp.dist || (k === 'dp7' ? 25 : 45)) * pxPerMeter);
+                drawViewpointCone(ctx, { x: vpx, y: vpy }, vp.angle || 0, distPx, k === 'dp7' ? 'DP 07' : 'DP 08', k === 'dp7' ? '#1d4ed8' : '#0284c7');
+              }
+            });
+          }
+
+          // Rendu de la voie d'accès terrain
+          if (options?.accessPoint && options.accessPoint.enabled && options.accessPoint.lat && options.accessPoint.lng) {
+            const acc = options.accessPoint;
+            const accRad = (Number(acc.lat) * Math.PI) / 180;
+            const accExactX = ((Number(acc.lng) + 180) / 360) * n;
+            const accExactY = ((1 - Math.log(Math.tan(accRad) + 1 / Math.cos(accRad)) / Math.PI) / 2) * n;
+            const ax = centerX + (accExactX - exactX) * tileSize;
+            const ay = centerY + (accExactY - exactY) * tileSize;
+            drawAccessArrow(ctx, { x: ax, y: ay }, acc.angle || 0, 38, 'ACCÈS TERRAIN');
           }
 
           // Flèche Nord officielle en haut à droite

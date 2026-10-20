@@ -1,7 +1,7 @@
 import React from 'react';
 import { getInstallationTypeInfo } from '@/services/UrbanismeDocService';
 import { getProxiedImageUrl } from '@/utils/imageProxy';
-import { resolveDemandeurNames } from '@/services/SmartCerfaService';
+import { resolveDemandeurNames, DEFAULT_BESS_CADRE_4_1 } from '@/services/SmartCerfaService';
 
 const batteryPhotoDefault = '/images/battery_photo.jpg';
 
@@ -163,7 +163,7 @@ export const PlateCover = ({ project, installationType }) => {
                             {(() => {
                                 const isBat = !isNoBattery && (project?.solutionType === 'battery' || installationType === 'battery' || installationType === 'batterie_standalone') && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
                                 if (isBat) {
-                                    return "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.";
+                                    return DEFAULT_BESS_CADRE_4_1;
                                 }
                                 if (project?.description && !/batterie|bess|stockage d'énergie/i.test(project.description)) {
                                     return project.description;
@@ -1223,7 +1223,7 @@ export const PlateSection = PlateCoupe;
 
 /**
  * VUES ARCHITECTURALES VECTORIELLES HD STANDARDISÉES POUR DP4 BESS (500 kW / 1044 kWh)
- * 4 Armoires CESC Mercury 261 + Clôture thermolaquée verte RAL 6005 + Poste HTA
+ * 4 Armoires CESC Mercury 261 + Dalle béton armé étanche (sans grillage)
  */
 export const BessElevationSud = () => (
     <svg viewBox="0 0 540 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
@@ -1232,10 +1232,10 @@ export const BessElevationSud = () => (
                 <stop offset="0%" stopColor="#334155" />
                 <stop offset="100%" stopColor="#1e293b" />
             </linearGradient>
-            <pattern id="f-mesh-s" width="6" height="6" patternUnits="userSpaceOnUse">
-                <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#2d6a4f" strokeWidth="0.5" opacity="0.6" />
-            </pattern>
         </defs>
+        {/* Titre vue */}
+        <text x="270" y="24" textAnchor="middle" fill="#334155" fontSize="7.5" fontWeight="bold">Façade Principale (Sud) — 4 armoires Mercury 261</text>
+
         {/* Ligne TN */}
         <line x1="15" y1="168" x2="525" y2="168" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
         <text x="25" y="180" fill="#64748b" fontSize="7.5" fontStyle="italic">Terrain Naturel TN ±0.00</text>
@@ -1264,15 +1264,6 @@ export const BessElevationSud = () => (
             );
         })}
 
-        {/* Clôture thermolaquée verte RAL 6005 (H 2.00m) */}
-        <rect x="45" y="66" width="450" height="102" fill="url(#f-mesh-s)" stroke="#1b4332" strokeWidth="1" />
-        <line x1="45" y1="66" x2="45" y2="168" stroke="#1b4332" strokeWidth="2.5" />
-        <line x1="157" y1="66" x2="157" y2="168" stroke="#1b4332" strokeWidth="1.5" />
-        <line x1="270" y1="66" x2="270" y2="168" stroke="#1b4332" strokeWidth="1.5" />
-        <line x1="382" y1="66" x2="382" y2="168" stroke="#1b4332" strokeWidth="1.5" />
-        <line x1="495" y1="66" x2="495" y2="168" stroke="#1b4332" strokeWidth="2.5" />
-        <text x="270" y="60" textAnchor="middle" fill="#1b4332" fontSize="7" fontWeight="bold">Clôture grillagée rigide thermolaquée verte RAL 6005 (H = 2,00 m)</text>
-
         {/* Cotes de Hauteur (2.38m) */}
         <line x1="28" y1="39" x2="28" y2="168" stroke="#ef4444" strokeWidth="1" />
         <line x1="24" y1="39" x2="32" y2="39" stroke="#ef4444" strokeWidth="1" />
@@ -1294,10 +1285,10 @@ export const BessElevationNord = () => (
                 <stop offset="0%" stopColor="#334155" />
                 <stop offset="100%" stopColor="#1e293b" />
             </linearGradient>
-            <pattern id="f-mesh-n" width="6" height="6" patternUnits="userSpaceOnUse">
-                <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#2d6a4f" strokeWidth="0.5" opacity="0.6" />
-            </pattern>
         </defs>
+        {/* Titre vue */}
+        <text x="270" y="24" textAnchor="middle" fill="#334155" fontSize="7.5" fontWeight="bold">Façade Arrière (Nord) — Échangeurs thermiques</text>
+
         {/* Ligne TN */}
         <line x1="15" y1="168" x2="525" y2="168" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
         <text x="25" y="180" fill="#64748b" fontSize="7.5" fontStyle="italic">Terrain Naturel TN ±0.00</text>
@@ -1321,15 +1312,6 @@ export const BessElevationNord = () => (
             );
         })}
 
-        {/* Clôture thermolaquée verte RAL 6005 (H 2.00m) */}
-        <rect x="45" y="66" width="450" height="102" fill="url(#f-mesh-n)" stroke="#1b4332" strokeWidth="1" />
-        <line x1="45" y1="66" x2="45" y2="168" stroke="#1b4332" strokeWidth="2.5" />
-        <line x1="157" y1="66" x2="157" y2="168" stroke="#1b4332" strokeWidth="1.5" />
-        <line x1="270" y1="66" x2="270" y2="168" stroke="#1b4332" strokeWidth="1.5" />
-        <line x1="382" y1="66" x2="382" y2="168" stroke="#1b4332" strokeWidth="1.5" />
-        <line x1="495" y1="66" x2="495" y2="168" stroke="#1b4332" strokeWidth="2.5" />
-        <text x="270" y="60" textAnchor="middle" fill="#1b4332" fontSize="7" fontWeight="bold">Façade Arrière (Nord) — Clôture RAL 6005</text>
-
         {/* Cotes de Longueur Dalle (6.20m) */}
         <line x1="65" y1="190" x2="475" y2="190" stroke="#2563eb" strokeWidth="1" />
         <line x1="65" y1="186" x2="65" y2="194" stroke="#2563eb" strokeWidth="1" />
@@ -1345,10 +1327,10 @@ export const BessElevationEst = () => (
                 <stop offset="0%" stopColor="#334155" />
                 <stop offset="100%" stopColor="#1e293b" />
             </linearGradient>
-            <pattern id="f-mesh-e" width="6" height="6" patternUnits="userSpaceOnUse">
-                <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#2d6a4f" strokeWidth="0.5" opacity="0.6" />
-            </pattern>
         </defs>
+        {/* Titre vue */}
+        <text x="170" y="24" textAnchor="middle" fill="#334155" fontSize="7.5" fontWeight="bold">Pignon Latéral Est (Gauche)</text>
+
         {/* Ligne TN */}
         <line x1="10" y1="168" x2="330" y2="168" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
         <text x="15" y="180" fill="#64748b" fontSize="7" fontStyle="italic">TN ±0.00</text>
@@ -1362,12 +1344,6 @@ export const BessElevationEst = () => (
         <rect x={123} y="39" width="94" height="5" fill="#0f172a" rx="0.8" />
         <rect x="135" y="55" width="70" height="35" fill="#0f172a" rx="0.5" opacity="0.85" />
         <text x="170" y="75" textAnchor="middle" fill="#93c5fd" fontSize="6.5" fontWeight="bold">P = 1,00 m</text>
-
-        {/* Clôture grillagée RAL 6005 */}
-        <rect x="30" y="66" width="280" height="102" fill="url(#f-mesh-e)" stroke="#1b4332" strokeWidth="1" />
-        <line x1="30" y1="66" x2="30" y2="168" stroke="#1b4332" strokeWidth="2.5" />
-        <line x1="310" y1="66" x2="310" y2="168" stroke="#1b4332" strokeWidth="2.5" />
-        <text x="170" y="60" textAnchor="middle" fill="#1b4332" fontSize="7" fontWeight="bold">Pignon Est (Gauche) — Clôture RAL 6005</text>
 
         {/* Cotes Largeur Dalle */}
         <line x1="45" y1="190" x2="295" y2="190" stroke="#2563eb" strokeWidth="1" />
@@ -1384,10 +1360,10 @@ export const BessElevationOuest = () => (
                 <stop offset="0%" stopColor="#334155" />
                 <stop offset="100%" stopColor="#1e293b" />
             </linearGradient>
-            <pattern id="f-mesh-w" width="6" height="6" patternUnits="userSpaceOnUse">
-                <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#2d6a4f" strokeWidth="0.5" opacity="0.6" />
-            </pattern>
         </defs>
+        {/* Titre vue */}
+        <text x="170" y="24" textAnchor="middle" fill="#334155" fontSize="7.5" fontWeight="bold">Pignon Latéral Ouest (Droit — Raccordement HTA)</text>
+
         {/* Ligne TN */}
         <line x1="10" y1="168" x2="330" y2="168" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
         <text x="15" y="180" fill="#64748b" fontSize="7" fontStyle="italic">TN ±0.00</text>
@@ -1401,16 +1377,6 @@ export const BessElevationOuest = () => (
         <rect x="180" y="70" width="35" height="87" fill="#e2e8f0" stroke="#475569" strokeWidth="1" rx="1" />
         <text x="197" y="115" textAnchor="middle" fill="#0f172a" fontSize="6.5" fontWeight="bold">HTA</text>
 
-        {/* Portillon sécurisé RAL 6005 */}
-        <rect x="230" y="66" width="65" height="102" fill="url(#f-mesh-w)" stroke="#1b4332" strokeWidth="1.5" />
-        <circle cx="285" cy="118" r="2.5" fill="#facc15" stroke="#854d0e" strokeWidth="0.8" />
-        <text x="262" y="150" textAnchor="middle" fill="#1b4332" fontSize="5.5" fontWeight="bold">Portillon</text>
-
-        {/* Clôture grillagée RAL 6005 */}
-        <line x1="30" y1="66" x2="30" y2="168" stroke="#1b4332" strokeWidth="2.5" />
-        <line x1="310" y1="66" x2="310" y2="168" stroke="#1b4332" strokeWidth="2.5" />
-        <text x="170" y="60" textAnchor="middle" fill="#1b4332" fontSize="7" fontWeight="bold">Pignon Ouest (Droit — Accès &amp; HTA)</text>
-
         {/* Cotes Largeur Dalle */}
         <line x1="45" y1="190" x2="295" y2="190" stroke="#2563eb" strokeWidth="1" />
         <line x1="45" y1="186" x2="45" y2="194" stroke="#2563eb" strokeWidth="1" />
@@ -1421,15 +1387,11 @@ export const BessElevationOuest = () => (
 
 export const BessElevationToiture = () => (
     <svg viewBox="0 0 400 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
-        <defs>
-            <pattern id="f-mesh-top" width="5" height="5" patternUnits="userSpaceOnUse">
-                <path d="M 0 5 L 5 0 M 0 0 L 5 5" fill="none" stroke="#2d6a4f" strokeWidth="0.5" opacity="0.4" />
-            </pattern>
-        </defs>
+        {/* Titre vue */}
+        <text x="200" y="32" textAnchor="middle" fill="#334155" fontSize="7.5" fontWeight="bold">Vue de dessus / Couverture — Emprise au sol dalle (19,84 m²)</text>
+
         {/* Périmètre Dalle béton 6.20m x 3.20m */}
         <rect x="40" y="45" width="320" height="120" fill="#f1f5f9" stroke="#3b82f6" strokeWidth="1.5" rx="2" />
-        <rect x="35" y="40" width="330" height="130" fill="url(#f-mesh-top)" stroke="#1b4332" strokeWidth="1.5" strokeDasharray="5 3" />
-        <text x="200" y="32" textAnchor="middle" fill="#1b4332" fontSize="7" fontWeight="bold">Plan d'emprise au sol dalle &amp; clôture (19,84 m²)</text>
 
         {/* 4 Armoires CESC Mercury 261 vues de dessus */}
         {[0, 1, 2, 3].map(i => {
