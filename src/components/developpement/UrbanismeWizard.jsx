@@ -42,7 +42,7 @@ import BatteryStationVisualizer from './BatteryStationVisualizer';
 import BatteryInsertionCompositor from './BatteryInsertionCompositor';
 import { findBessOdreData } from '@/data/bessOdreMatrix.js';
 import html2canvas from 'html2canvas';
-import { MapContainer, TileLayer, Marker, Polygon, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polygon, Polyline, Tooltip, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -935,7 +935,8 @@ function MasseSdisLayer({ sdisPoint, isPlacing, onSetSdisPoint }) {
   );
 }
 
-function MasseViewpointLayer({ viewpoints = {}, targetCenter = null, onUpdateViewpoint }) {
+function MasseViewpointLayer({ viewpoints = {}, targetCenter = null, onUpdateViewpoint, isLocked = false }) {
+  const map = useMap();
   if (!viewpoints) return null;
 
   return (
@@ -952,68 +953,201 @@ function MasseViewpointLayer({ viewpoints = {}, targetCenter = null, onUpdateVie
 
         const conePolygon = getViewConePolygon(vp.lat, vp.lng, angle, dist, 48);
 
+        const rad = (angle * Math.PI) / 180;
+        const mPerLat = 111139;
+        const mPerLng = 111139 * Math.cos((vp.lat * Math.PI) / 180);
+        const tipLat = vp.lat + (Math.cos(rad) * dist * 0.92) / mPerLat;
+        const tipLng = vp.lng + (Math.sin(rad) * dist * 0.92) / (mPerLng || 1);
+
         return (
           <React.Fragment key={`vp-${key}`}>
             {/* Cône de prise de vue */}
             <Polygon
               positions={conePolygon}
+              interactive={false}
               pathOptions={{
                 color: color,
                 fillColor: color,
                 fillOpacity: 0.18,
                 weight: 1.5,
                 dashArray: '4, 4',
-                interactive: false,
               }}
             />
-            {/* Flèche d'orientation centrale */}
-            {(() => {
-              const rad = (angle * Math.PI) / 180;
-              const mPerLat = 111139;
-              const mPerLng = 111139 * Math.cos((vp.lat * Math.PI) / 180);
-              const tipLat = vp.lat + (Math.cos(rad) * dist * 0.9) / mPerLat;
-              const tipLng = vp.lng + (Math.sin(rad) * dist * 0.9) / (mPerLng || 1);
-              return (
-                <Polyline
-                  positions={[[vp.lat, vp.lng], [tipLat, tipLng]]}
-                  pathOptions={{ color: color, weight: 2, dashArray: '3, 3' }}
-                />
-              );
-            })()}
-            {/* Marqueur Caméra déplaçable */}
+
+            {/* Rayon central avec flèche directionnelle */}
+            <Polyline
+              positions={[[vp.lat, vp.lng], [tipLat, tipLng]]}
+              interactive={false}
+              pathOptions={{ color: color, weight: 2, dashArray: '3, 3' }}
+            />
+
+            {/* 1. Marqueur Caméra déplaçable avec hitbox généreuse */}
             <Marker
               position={[vp.lat, vp.lng]}
               draggable={true}
               eventHandlers={{
+                dragstart() {
+                  map.dragging.disable();
+                },
+                drag(e) {
+                  const pos = e.target.getLatLng();
+                  if (onUpdateViewpoint) {
+                    onUpdateViewpoint(key, { ...vp, lat: pos.lat, lng: pos.lng }, true);
+                  }
+                },
                 dragend(e) {
                   const pos = e.target.getLatLng();
-                  let newAngle = angle;
-                  if (targetCenter && targetCenter[0] && targetCenter[1]) {
-                    const dLng = targetCenter[1] - pos.lng;
-                    const dLat = (targetCenter[0] - pos.lat) * Math.cos((pos.lat * Math.PI) / 180);
-                    newAngle = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
-                  }
                   if (onUpdateViewpoint) {
-                    onUpdateViewpoint(key, { ...vp, lat: pos.lat, lng: pos.lng, angle: Math.round(newAngle) });
+                    onUpdateViewpoint(key, { ...vp, lat: pos.lat, lng: pos.lng });
+                  }
+                  if (!isLocked) {
+                    map.dragging.enable();
                   }
                 }
               }}
               icon={L.divIcon({
                 className: 'bg-transparent',
                 html: `
-                  <div style="transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none;">
-                    <div style="background: ${color}; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: 9999px; border: 1.5px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.35); white-space: nowrap; display: flex; align-items: center; gap: 4px; font-family: sans-serif;">
-                      <span style="font-size: 11px;">📷</span>
+                  <div style="width: 124px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: grab; user-select: none;">
+                    <div style="background: ${color}; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 9999px; border: 2px solid #ffffff; box-shadow: 0 3px 8px rgba(0,0,0,0.4); white-space: nowrap; display: flex; align-items: center; gap: 5px; font-family: sans-serif;">
+                      <span style="font-size: 13px;">📷</span>
                       <span>${label}</span>
+                      <span style="font-size: 9.5px; opacity: 0.9; background: rgba(0,0,0,0.25); padding: 1px 5px; border-radius: 4px; font-family: monospace; font-weight: 900;">${Math.round(angle)}°</span>
                     </div>
                   </div>
                 `,
-                iconSize: [0, 0]
+                iconSize: [124, 38],
+                iconAnchor: [62, 19]
               })}
             >
-              <Tooltip sticky direction="top" offset={[0, -12]}>
+              <Tooltip direction="bottom" offset={[0, 10]}>
                 <div className="text-[10px] font-bold p-1 bg-white text-slate-800 rounded shadow-xs">
-                  Angle : {Math.round(angle)}° (Glisser pour déplacer)
+                  📷 {label} (${Math.round(angle)}°) • Glisser pour déplacer • Cliquer pour orienter
+                </div>
+              </Tooltip>
+              <Popup offset={[0, -18]} className="masse-viewpoint-popup">
+                <div className="p-2 text-center text-slate-800 select-none min-w-[190px]">
+                  <div className="font-extrabold text-xs mb-1 flex items-center justify-center gap-1.5" style={{ color }}>
+                    <span>📷 Prise de vue {label}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono font-black">${Math.round(angle)}°</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mb-2">
+                    Glissez la poignée ⟳ au bout du cône ou utilisez les boutons :
+                  </p>
+                  <div className="flex items-center justify-center gap-1 mb-2">
+                    <button
+                      type="button"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        const newA = (angle - 15 + 360) % 360;
+                        onUpdateViewpoint(key, { ...vp, angle: Math.round(newA) });
+                      }}
+                      className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-[10px] font-bold border border-slate-300 transition-colors cursor-pointer"
+                      title="Tourner de 15° vers la gauche"
+                    >
+                      ↺ -15°
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        const newA = (angle + 15) % 360;
+                        onUpdateViewpoint(key, { ...vp, angle: Math.round(newA) });
+                      }}
+                      className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-[10px] font-bold border border-slate-300 transition-colors cursor-pointer"
+                      title="Tourner de 15° vers la droite"
+                    >
+                      ↻ +15°
+                    </button>
+                    {targetCenter && targetCenter[0] && (
+                      <button
+                        type="button"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          const dLng = targetCenter[1] - vp.lng;
+                          const dLat = (targetCenter[0] - vp.lat) * Math.cos((vp.lat * Math.PI) / 180);
+                          const aimAngle = Math.round((Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360);
+                          onUpdateViewpoint(key, { ...vp, angle: aimAngle });
+                        }}
+                        className="px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-200 transition-colors cursor-pointer"
+                        title="Viser automatiquement le centre de la construction"
+                      >
+                        🎯 Viser projet
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 text-[9px] font-bold">
+                    {[
+                      { label: 'Nord', a: 0 },
+                      { label: 'Est', a: 90 },
+                      { label: 'Sud', a: 180 },
+                      { label: 'Ouest', a: 270 }
+                    ].map(card => (
+                      <button
+                        key={card.label}
+                        type="button"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          onUpdateViewpoint(key, { ...vp, angle: card.a });
+                        }}
+                        className={`py-0.5 rounded border transition-colors cursor-pointer ${Math.round(angle) === card.a ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'}`}
+                      >
+                        {card.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+
+            {/* 2. Poignée de rotation / orientation interactive à la pointe du cône */}
+            <Marker
+              position={[tipLat, tipLng]}
+              draggable={true}
+              eventHandlers={{
+                dragstart() {
+                  map.dragging.disable();
+                },
+                drag(e) {
+                  const pos = e.target.getLatLng();
+                  const dy = (pos.lat - vp.lat) * mPerLat;
+                  const dx = (pos.lng - vp.lng) * mPerLng;
+                  const newAngle = Math.round((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360);
+                  const newDist = Math.max(12, Math.min(90, Math.round(Math.sqrt(dx * dx + dy * dy))));
+                  if (onUpdateViewpoint) {
+                    onUpdateViewpoint(key, { ...vp, angle: newAngle, dist: newDist }, true);
+                  }
+                },
+                dragend(e) {
+                  const pos = e.target.getLatLng();
+                  const dy = (pos.lat - vp.lat) * mPerLat;
+                  const dx = (pos.lng - vp.lng) * mPerLng;
+                  const newAngle = Math.round((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360);
+                  const newDist = Math.max(12, Math.min(90, Math.round(Math.sqrt(dx * dx + dy * dy))));
+                  if (onUpdateViewpoint) {
+                    onUpdateViewpoint(key, { ...vp, angle: newAngle, dist: newDist });
+                  }
+                  if (!isLocked) {
+                    map.dragging.enable();
+                  }
+                }
+              }}
+              icon={L.divIcon({
+                className: 'bg-transparent',
+                html: `
+                  <div style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: crosshair; user-select: none;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background: #ffffff; border: 2.5px solid ${color}; box-shadow: 0 2px 8px rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: ${color};">
+                      ⟳
+                    </div>
+                  </div>
+                `,
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
+              })}
+            >
+              <Tooltip direction="top" offset={[0, -10]}>
+                <div className="text-[10px] font-bold p-1 bg-white text-slate-800 rounded shadow-xs">
+                  ⟳ Glisser pour réorienter l'angle (${Math.round(angle)}°)
                 </div>
               </Tooltip>
             </Marker>
@@ -1024,13 +1158,14 @@ function MasseViewpointLayer({ viewpoints = {}, targetCenter = null, onUpdateVie
   );
 }
 
-function MasseAccessLayer({ accessPoint, targetCenter = null, onUpdateAccess }) {
+function MasseAccessLayer({ accessPoint, targetCenter = null, onUpdateAccess, isLocked = false }) {
+  const map = useMap();
   if (!accessPoint || !accessPoint.enabled || !accessPoint.lat || !accessPoint.lng) return null;
 
   const lat = accessPoint.lat;
   const lng = accessPoint.lng;
   const angle = Number(accessPoint.angle || 0);
-  const dist = 18;
+  const dist = Number(accessPoint.dist || 20);
 
   const rad = (angle * Math.PI) / 180;
   const mPerLat = 111139;
@@ -1040,43 +1175,180 @@ function MasseAccessLayer({ accessPoint, targetCenter = null, onUpdateAccess }) 
 
   return (
     <>
+      {/* Ligne flèche verte */}
       <Polyline
         positions={[[lat, lng], [tipLat, tipLng]]}
-        pathOptions={{ color: '#16a34a', weight: 4 }}
+        interactive={false}
+        pathOptions={{ color: '#16a34a', weight: 4.5 }}
       />
+
+      {/* 1. Marqueur base Voie d'accès */}
       <Marker
         position={[lat, lng]}
         draggable={true}
         eventHandlers={{
+          dragstart() {
+            map.dragging.disable();
+          },
+          drag(e) {
+            const pos = e.target.getLatLng();
+            if (onUpdateAccess) {
+              onUpdateAccess({ ...accessPoint, lat: pos.lat, lng: pos.lng }, true);
+            }
+          },
           dragend(e) {
             const pos = e.target.getLatLng();
-            let newAngle = angle;
-            if (targetCenter && targetCenter[0] && targetCenter[1]) {
-              const dLng = targetCenter[1] - pos.lng;
-              const dLat = (targetCenter[0] - pos.lat) * Math.cos((pos.lat * Math.PI) / 180);
-              newAngle = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
-            }
             if (onUpdateAccess) {
-              onUpdateAccess({ ...accessPoint, lat: pos.lat, lng: pos.lng, angle: Math.round(newAngle) });
+              onUpdateAccess({ ...accessPoint, lat: pos.lat, lng: pos.lng });
+            }
+            if (!isLocked) {
+              map.dragging.enable();
             }
           }
         }}
         icon={L.divIcon({
           className: 'bg-transparent',
           html: `
-            <div style="transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none;">
-              <div style="background: #16a34a; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2.5px 8px; border-radius: 6px; border: 1.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.35); white-space: nowrap; display: flex; align-items: center; gap: 4px; font-family: sans-serif; letter-spacing: 0.5px;">
-                <span style="font-size: 12px; font-weight: bold;">➜</span>
+            <div style="width: 154px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: grab; user-select: none;">
+              <div style="background: #16a34a; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 8px; border: 2px solid #ffffff; box-shadow: 0 3px 8px rgba(0,0,0,0.4); white-space: nowrap; display: flex; align-items: center; gap: 5px; font-family: sans-serif; letter-spacing: 0.5px;">
+                <span style="font-size: 14px; font-weight: 900;">➜</span>
                 <span>ACCÈS TERRAIN</span>
+                <span style="font-size: 9.5px; opacity: 0.9; background: rgba(0,0,0,0.25); padding: 1px 5px; border-radius: 4px; font-family: monospace; font-weight: 900;">${Math.round(angle)}°</span>
               </div>
             </div>
           `,
-          iconSize: [0, 0]
+          iconSize: [154, 38],
+          iconAnchor: [77, 19]
         })}
       >
-        <Tooltip sticky direction="top" offset={[0, -12]}>
+        <Tooltip direction="bottom" offset={[0, 10]}>
           <div className="text-[10px] font-bold p-1 bg-white text-slate-800 rounded shadow-xs">
-            Voie d'accès (Glisser pour positionner)
+            ➜ Voie d'accès (${Math.round(angle)}°) • Glisser pour déplacer • Cliquer pour orienter
+          </div>
+        </Tooltip>
+        <Popup offset={[0, -18]} className="masse-access-popup">
+          <div className="p-2 text-center text-slate-800 select-none min-w-[190px]">
+            <div className="font-extrabold text-xs mb-1 flex items-center justify-center gap-1.5 text-emerald-700">
+              <span>➜ Voie d'accès terrain</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono font-black">${Math.round(angle)}°</span>
+            </div>
+            <p className="text-[10px] text-slate-500 mb-2">
+              Glissez la poignée ➜ au bout ou utilisez les boutons ci-dessous :
+            </p>
+            <div className="flex items-center justify-center gap-1 mb-2">
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  const newA = (angle - 15 + 360) % 360;
+                  onUpdateAccess({ ...accessPoint, angle: Math.round(newA) });
+                }}
+                className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-[10px] font-bold border border-slate-300 transition-colors cursor-pointer"
+                title="Tourner de 15° vers la gauche"
+              >
+                ↺ -15°
+              </button>
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  const newA = (angle + 15) % 360;
+                  onUpdateAccess({ ...accessPoint, angle: Math.round(newA) });
+                }}
+                className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-[10px] font-bold border border-slate-300 transition-colors cursor-pointer"
+                title="Tourner de 15° vers la droite"
+              >
+                ↻ +15°
+              </button>
+              {targetCenter && targetCenter[0] && (
+                <button
+                  type="button"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    const dLng = targetCenter[1] - lng;
+                    const dLat = (targetCenter[0] - lat) * Math.cos((lat * Math.PI) / 180);
+                    const aimAngle = Math.round((Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360);
+                    onUpdateAccess({ ...accessPoint, angle: aimAngle });
+                  }}
+                  className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold border border-emerald-200 transition-colors cursor-pointer"
+                  title="Pointer vers le projet"
+                >
+                  🎯 Viser terrain
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-4 gap-1 text-[9px] font-bold">
+              {[
+                { label: 'Nord', a: 0 },
+                { label: 'Est', a: 90 },
+                { label: 'Sud', a: 180 },
+                { label: 'Ouest', a: 270 }
+              ].map(card => (
+                <button
+                  key={card.label}
+                  type="button"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    onUpdateAccess({ ...accessPoint, angle: card.a });
+                  }}
+                  className={`py-0.5 rounded border transition-colors cursor-pointer ${Math.round(angle) === card.a ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'}`}
+                >
+                  {card.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </Popup>
+      </Marker>
+
+      {/* 2. Poignée de rotation / orientation interactive à la pointe de la flèche */}
+      <Marker
+        position={[tipLat, tipLng]}
+        draggable={true}
+        eventHandlers={{
+          dragstart() {
+            map.dragging.disable();
+          },
+          drag(e) {
+            const pos = e.target.getLatLng();
+            const dy = (pos.lat - lat) * mPerLat;
+            const dx = (pos.lng - lng) * mPerLng;
+            const newAngle = Math.round((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360);
+            const newDist = Math.max(10, Math.min(60, Math.round(Math.sqrt(dx * dx + dy * dy))));
+            if (onUpdateAccess) {
+              onUpdateAccess({ ...accessPoint, angle: newAngle, dist: newDist }, true);
+            }
+          },
+          dragend(e) {
+            const pos = e.target.getLatLng();
+            const dy = (pos.lat - lat) * mPerLat;
+            const dx = (pos.lng - lng) * mPerLng;
+            const newAngle = Math.round((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360);
+            const newDist = Math.max(10, Math.min(60, Math.round(Math.sqrt(dx * dx + dy * dy))));
+            if (onUpdateAccess) {
+              onUpdateAccess({ ...accessPoint, angle: newAngle, dist: newDist });
+            }
+            if (!isLocked) {
+              map.dragging.enable();
+            }
+          }
+        }}
+        icon={L.divIcon({
+          className: 'bg-transparent',
+          html: `
+            <div style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: crosshair; user-select: none;">
+              <div style="width: 24px; height: 24px; border-radius: 50%; background: #ffffff; border: 2.5px solid #16a34a; box-shadow: 0 2px 8px rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #16a34a;">
+                ➜
+              </div>
+            </div>
+          `,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18]
+        })}
+      >
+        <Tooltip direction="top" offset={[0, -10]}>
+          <div className="text-[10px] font-bold p-1 bg-white text-slate-800 rounded shadow-xs">
+            ➜ Glisser pour réorienter l'accès (${Math.round(angle)}°)
           </div>
         </Tooltip>
       </Marker>
@@ -1502,7 +1774,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     }, 200);
   }, [masseViewTabs]);
 
-  const handleUpdateMasseViewpoint = useCallback((strId, vpKey, updatedVp) => {
+  const handleUpdateMasseViewpoint = useCallback((strId, vpKey, updatedVp, skipCapture = false) => {
     setMasseViewpoints(prev => {
       const currentVps = prev[strId] || {};
       const next = {
@@ -1515,11 +1787,13 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       setEditedProject(proj => ({ ...proj, masseViewpoints: next }));
       return next;
     });
-    setTimeout(() => {
-      if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
-      }
-    }, 200);
+    if (!skipCapture) {
+      setTimeout(() => {
+        if (typeof captureStructureMasseMapRef.current === 'function') {
+          captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+        }
+      }, 200);
+    }
   }, [masseViewTabs]);
 
   const handleToggleMasseAccess = useCallback((strId, targetLat, targetLng) => {
@@ -1557,7 +1831,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     }, 200);
   }, [masseViewTabs]);
 
-  const handleUpdateMasseAccess = useCallback((strId, updatedAccess) => {
+  const handleUpdateMasseAccess = useCallback((strId, updatedAccess, skipCapture = false) => {
     setMasseAccess(prev => {
       const next = {
         ...prev,
@@ -1566,11 +1840,13 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       setEditedProject(proj => ({ ...proj, masseAccess: next }));
       return next;
     });
-    setTimeout(() => {
-      if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
-      }
-    }, 200);
+    if (!skipCapture) {
+      setTimeout(() => {
+        if (typeof captureStructureMasseMapRef.current === 'function') {
+          captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+        }
+      }, 200);
+    }
   }, [masseViewTabs]);
 
   const handleToggleMasseLock = useCallback((strId) => {
@@ -7041,20 +7317,51 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                     {(() => {
                                       const vp7 = (masseViewpoints[str.id] && masseViewpoints[str.id].dp7) || {};
                                       const isActive = Boolean(vp7.enabled);
+                                      const curAngle = Math.round(vp7.angle || 0);
                                       return (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleToggleMasseViewpoint(str.id, 'dp7', strLat, strLng)}
-                                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
-                                            isActive
-                                              ? 'bg-blue-700 text-white border-blue-800 shadow-xs'
-                                              : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
-                                          }`}
-                                          title="Intégrer le cône de prise de vue DP07 (environnement proche) sur le plan de masse"
-                                        >
-                                          <Camera className="w-3.5 h-3.5" />
-                                          <span>{isActive ? '✓ Angle DP07' : '+ Angle DP07'}</span>
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleToggleMasseViewpoint(str.id, 'dp7', strLat, strLng)}
+                                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs cursor-pointer ${
+                                              isActive
+                                                ? 'bg-blue-700 text-white border-blue-800 shadow-xs'
+                                                : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
+                                            }`}
+                                            title="Intégrer le cône de prise de vue DP07 (environnement proche) sur le plan de masse"
+                                          >
+                                            <Camera className="w-3.5 h-3.5" />
+                                            <span>{isActive ? `✓ Angle DP07 (${curAngle}°)` : '+ Angle DP07'}</span>
+                                          </button>
+                                          {isActive && (
+                                            <div className="flex items-center bg-blue-50 border border-blue-200 rounded-lg p-0.5 shadow-2xs">
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const newA = (curAngle - 15 + 360) % 360;
+                                                  handleUpdateMasseViewpoint(str.id, 'dp7', { ...vp7, angle: Math.round(newA) });
+                                                }}
+                                                className="px-1.5 py-0.5 rounded text-[10px] font-extrabold text-blue-800 hover:bg-blue-200 transition-colors cursor-pointer"
+                                                title="Tourner l'angle DP07 de 15° vers la gauche"
+                                              >
+                                                ↺
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const newA = (curAngle + 15) % 360;
+                                                  handleUpdateMasseViewpoint(str.id, 'dp7', { ...vp7, angle: Math.round(newA) });
+                                                }}
+                                                className="px-1.5 py-0.5 rounded text-[10px] font-extrabold text-blue-800 hover:bg-blue-200 transition-colors cursor-pointer"
+                                                title="Tourner l'angle DP07 de 15° vers la droite"
+                                              >
+                                                ↻
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
                                       );
                                     })()}
 
@@ -7062,20 +7369,51 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                     {(() => {
                                       const vp8 = (masseViewpoints[str.id] && masseViewpoints[str.id].dp8) || {};
                                       const isActive = Boolean(vp8.enabled);
+                                      const curAngle = Math.round(vp8.angle || 0);
                                       return (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleToggleMasseViewpoint(str.id, 'dp8', strLat, strLng)}
-                                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
-                                            isActive
-                                              ? 'bg-sky-600 text-white border-sky-700 shadow-xs'
-                                              : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
-                                          }`}
-                                          title="Intégrer le cône de prise de vue DP08 (paysage lointain) sur le plan de masse"
-                                        >
-                                          <Camera className="w-3.5 h-3.5" />
-                                          <span>{isActive ? '✓ Angle DP08' : '+ Angle DP08'}</span>
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleToggleMasseViewpoint(str.id, 'dp8', strLat, strLng)}
+                                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs cursor-pointer ${
+                                              isActive
+                                                ? 'bg-sky-600 text-white border-sky-700 shadow-xs'
+                                                : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
+                                            }`}
+                                            title="Intégrer le cône de prise de vue DP08 (paysage lointain) sur le plan de masse"
+                                          >
+                                            <Camera className="w-3.5 h-3.5" />
+                                            <span>{isActive ? `✓ Angle DP08 (${curAngle}°)` : '+ Angle DP08'}</span>
+                                          </button>
+                                          {isActive && (
+                                            <div className="flex items-center bg-sky-50 border border-sky-200 rounded-lg p-0.5 shadow-2xs">
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const newA = (curAngle - 15 + 360) % 360;
+                                                  handleUpdateMasseViewpoint(str.id, 'dp8', { ...vp8, angle: Math.round(newA) });
+                                                }}
+                                                className="px-1.5 py-0.5 rounded text-[10px] font-extrabold text-sky-800 hover:bg-sky-200 transition-colors cursor-pointer"
+                                                title="Tourner l'angle DP08 de 15° vers la gauche"
+                                              >
+                                                ↺
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const newA = (curAngle + 15) % 360;
+                                                  handleUpdateMasseViewpoint(str.id, 'dp8', { ...vp8, angle: Math.round(newA) });
+                                                }}
+                                                className="px-1.5 py-0.5 rounded text-[10px] font-extrabold text-sky-800 hover:bg-sky-200 transition-colors cursor-pointer"
+                                                title="Tourner l'angle DP08 de 15° vers la droite"
+                                              >
+                                                ↻
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
                                       );
                                     })()}
 
@@ -7083,20 +7421,51 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                     {(() => {
                                       const acc = masseAccess[str.id] || {};
                                       const isActive = Boolean(acc.enabled);
+                                      const curAngle = Math.round(acc.angle || 0);
                                       return (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleToggleMasseAccess(str.id, strLat, strLng)}
-                                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
-                                            isActive
-                                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
-                                              : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
-                                          }`}
-                                          title="Ajouter la flèche indiquant la voie d'accès sur le terrain"
-                                        >
-                                          <ArrowRight className="w-3.5 h-3.5" />
-                                          <span>{isActive ? '✓ Voie d\'accès' : '+ Voie d\'accès'}</span>
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleToggleMasseAccess(str.id, strLat, strLng)}
+                                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs cursor-pointer ${
+                                              isActive
+                                                ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                                                : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+                                            }`}
+                                            title="Ajouter la flèche indiquant la voie d'accès sur le terrain"
+                                          >
+                                            <ArrowRight className="w-3.5 h-3.5" />
+                                            <span>{isActive ? `✓ Voie d'accès (${curAngle}°)` : '+ Voie d\'accès'}</span>
+                                          </button>
+                                          {isActive && (
+                                            <div className="flex items-center bg-emerald-50 border border-emerald-200 rounded-lg p-0.5 shadow-2xs">
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const newA = (curAngle - 15 + 360) % 360;
+                                                  handleUpdateMasseAccess(str.id, { ...acc, angle: Math.round(newA) });
+                                                }}
+                                                className="px-1.5 py-0.5 rounded text-[10px] font-extrabold text-emerald-800 hover:bg-emerald-200 transition-colors cursor-pointer"
+                                                title="Tourner la direction de la voie d'accès de 15° vers la gauche"
+                                              >
+                                                ↺
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const newA = (curAngle + 15) % 360;
+                                                  handleUpdateMasseAccess(str.id, { ...acc, angle: Math.round(newA) });
+                                                }}
+                                                className="px-1.5 py-0.5 rounded text-[10px] font-extrabold text-emerald-800 hover:bg-emerald-200 transition-colors cursor-pointer"
+                                                title="Tourner la direction de la voie d'accès de 15° vers la droite"
+                                              >
+                                                ↻
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
                                       );
                                     })()}
 
@@ -7217,14 +7586,16 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                    <MasseViewpointLayer
                                      viewpoints={masseViewpoints[str.id] || {}}
                                      targetCenter={[strLat, strLng]}
-                                     onUpdateViewpoint={(vpKey, updatedVp) => handleUpdateMasseViewpoint(str.id, vpKey, updatedVp)}
+                                     onUpdateViewpoint={(vpKey, updatedVp, skipCapture) => handleUpdateMasseViewpoint(str.id, vpKey, updatedVp, skipCapture)}
+                                     isLocked={masseLockedMaps[str.id] !== false}
                                    />
 
                                    {/* Flèche indiquant la voie d'accès sur le terrain */}
                                    <MasseAccessLayer
                                      accessPoint={masseAccess[str.id]}
                                      targetCenter={[strLat, strLng]}
-                                     onUpdateAccess={(updatedAccess) => handleUpdateMasseAccess(str.id, updatedAccess)}
+                                     onUpdateAccess={(updatedAccess, skipCapture) => handleUpdateMasseAccess(str.id, updatedAccess, skipCapture)}
+                                     isLocked={masseLockedMaps[str.id] !== false}
                                    />
 
                                    {/* Rendu intérieur des 4 armoires CESC 261 sur la dalle béton pour la Station Batteries */}
