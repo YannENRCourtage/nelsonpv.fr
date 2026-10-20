@@ -2,450 +2,447 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Zap, Activity, Clock, ShieldCheck, Sun, Moon, Sunrise, Sunset, ArrowRight, ArrowLeft } from 'lucide-react';
 
 /**
- * Dictionnaire complet des 24 heures de la journée type d'une batterie BESS.
- * Aligné sur le modèle pédagogique Solaime Énergies et le modèle économique ENR COURTAGE.
+ * RÉFÉRENTIEL EXACT DES 24 HEURES D'UNE BATTERIE BESS (HOURLY_BESS_DATA)
+ * Conforme au modèle pédagogique Solaime Énergies et au modèle économique ENR COURTAGE.
  */
-export const BESS_24H_CYCLE = [
+export const HOURLY_BESS_DATA = [
   {
     hour: 0,
     time: '00:00',
     label: '00h',
-    ambience: { label: 'NUIT', type: 'nuit', icon: 'moon' },
+    periode: 'NUIT',
+    ambianceBadge: '🌙 NUIT',
+    etat: 'VEILLE ACTIVE • 50 HZ',
     soc: 40,
-    state: 'idle',
-    stateLabel: 'VEILLE ACTIVE • 50 HZ',
-    flow: 'idle',
-    priceColor: '#4ade80', // Vert creux
-    priceLabel: 'Prix bas',
-    actionColor: '#38bdf8', // Bleu
-    actionLabel: 'Stabilise la fréquence (50 Hz)',
-    activeMissions: ['fcr'],
-    narrative: 'La nuit est calme. La batterie veille sur le réseau : elle corrige en continu les petits écarts de fréquence pour que le courant reste exactement à 50 Hz.'
+    mission: 'FCR',
+    prixColor: '#65a30d',
+    actionColor: '#38bdf8',
+    texte: 'La nuit est calme. La batterie veille sur le réseau : elle corrige en continu les petits écarts de fréquence, pour que le courant reste exactement à 50 Hz.'
   },
   {
     hour: 1,
     time: '01:00',
     label: '01h',
-    ambience: { label: 'NUIT', type: 'nuit', icon: 'moon' },
+    periode: 'NUIT',
+    ambianceBadge: '🌙 NUIT',
+    etat: 'VEILLE ACTIVE • 50 HZ',
     soc: 40,
-    state: 'idle',
-    stateLabel: 'VEILLE ACTIVE • 50 HZ',
-    flow: 'idle',
-    priceColor: '#4ade80',
-    priceLabel: 'Prix bas',
+    mission: 'FCR',
+    prixColor: '#65a30d',
     actionColor: '#38bdf8',
-    actionLabel: 'Stabilise la fréquence (50 Hz)',
-    activeMissions: ['fcr'],
-    narrative: 'La nuit est calme. La batterie veille sur le réseau : elle corrige en continu les petits écarts de fréquence pour que le courant reste exactement à 50 Hz.'
+    texte: 'La nuit se poursuit. La batterie maintient sa veille active seconde par seconde pour stabiliser la fréquence à 50 Hz.'
   },
   {
     hour: 2,
     time: '02:00',
     label: '02h',
-    ambience: { label: 'NUIT', type: 'nuit', icon: 'moon' },
+    periode: 'NUIT',
+    ambianceBadge: '🌙 NUIT',
+    etat: 'SE CHARGE',
     soc: 55,
-    state: 'charge',
-    stateLabel: 'SE CHARGE (SOUTIRAGE)',
-    flow: 'charge',
-    priceColor: '#4ade80',
-    priceLabel: 'Creux nocturne / éolien',
-    actionColor: '#f59e0b', // Ambre
-    actionLabel: "Se charge quand c'est bon marché",
-    activeMissions: ['day_ahead'],
-    narrative: "L'électricité est abondante et bon marché (creux nocturne / éolien). La batterie fait le plein — un achat programmé la veille sur le marché Day-Ahead."
+    mission: 'DAY_AHEAD',
+    prixColor: '#4d7c0f',
+    actionColor: '#f59e0b',
+    texte: "L'électricité est abondante et bon marché. La batterie fait le plein — un achat programmé la veille, sur le marché Day-Ahead."
   },
   {
     hour: 3,
     time: '03:00',
     label: '03h',
-    ambience: { label: 'NUIT', type: 'nuit', icon: 'moon' },
+    periode: 'NUIT',
+    ambianceBadge: '🌙 NUIT',
+    etat: 'SE CHARGE',
     soc: 70,
-    state: 'charge',
-    stateLabel: 'SE CHARGE (SOUTIRAGE)',
-    flow: 'charge',
-    priceColor: '#4ade80',
-    priceLabel: 'Creux nocturne',
+    mission: 'DAY_AHEAD',
+    prixColor: '#3f6212',
     actionColor: '#f59e0b',
-    actionLabel: "Se charge quand c'est bon marché",
-    activeMissions: ['day_ahead'],
-    narrative: "L'électricité est abondante et bon marché (creux nocturne / éolien). La batterie fait le plein — un achat programmé la veille sur le marché Day-Ahead."
+    texte: 'Creux de consommation nocturne : la batterie poursuit sa recharge programmée au tarif le plus bas de la nuit.'
   },
   {
     hour: 4,
     time: '04:00',
     label: '04h',
-    ambience: { label: 'NUIT', type: 'nuit', icon: 'moon' },
+    periode: 'NUIT',
+    ambianceBadge: '🌙 NUIT',
+    etat: 'SE CHARGE',
     soc: 85,
-    state: 'charge',
-    stateLabel: 'SE CHARGE (SOUTIRAGE)',
-    flow: 'charge',
-    priceColor: '#4ade80',
-    priceLabel: 'Creux nocturne',
+    mission: 'DAY_AHEAD',
+    prixColor: '#4d7c0f',
     actionColor: '#f59e0b',
-    actionLabel: "Se charge quand c'est bon marché",
-    activeMissions: ['day_ahead'],
-    narrative: "L'électricité est abondante et bon marché (creux nocturne / éolien). La batterie fait le plein — un achat programmé la veille sur le marché Day-Ahead."
+    texte: 'Fin du cycle de charge nocturne : les réserves d\'énergie sont constituées avant le réveil du réseau.'
   },
   {
     hour: 5,
     time: '05:00',
     label: '05h',
-    ambience: { label: 'NUIT', type: 'nuit', icon: 'moon' },
+    periode: 'NUIT',
+    ambianceBadge: '🌙 NUIT',
+    etat: 'VEILLE ACTIVE • 50 HZ',
     soc: 85,
-    state: 'idle',
-    stateLabel: 'VEILLE ACTIVE • 50 HZ',
-    flow: 'idle',
-    priceColor: '#4ade80',
-    priceLabel: 'Prix modéré',
+    mission: 'FCR',
+    prixColor: '#65a30d',
     actionColor: '#38bdf8',
-    actionLabel: 'Stabilise la fréquence (50 Hz)',
-    activeMissions: ['fcr'],
-    narrative: 'Fin de charge nocturne. La batterie stabilise la fréquence à 50 Hz avant le réveil du réseau.'
+    texte: 'Pause avant la pointe matinale : la batterie veille sur l\'équilibre du réseau à 50 Hz.'
   },
   {
     hour: 6,
     time: '06:00',
     label: '06h',
-    ambience: { label: 'AUBE', type: 'aube', icon: 'sunrise' },
-    soc: 70,
-    state: 'discharge',
-    stateLabel: 'INJECTE DANS LE RÉSEAU',
-    flow: 'discharge',
-    priceColor: '#f59e0b', // Orange début de pointe
-    priceLabel: 'Pointe matin montante',
-    actionColor: '#f43f5e', // Corail
-    actionLabel: "Restitue quand c'est cher",
-    activeMissions: ['day_ahead'],
-    narrative: 'La France se réveille, la demande grimpe (Pointe Matin) : la batterie restitue son énergie au réseau au prix fort sur le marché Day-Ahead.'
+    periode: 'AUBE',
+    ambianceBadge: '🌅 AUBE',
+    etat: 'INJECTE DANS LE RÉSEAU',
+    soc: 68,
+    mission: 'DAY_AHEAD',
+    prixColor: '#a16207',
+    actionColor: '#f43f5e',
+    texte: 'La France se réveille, la demande grimpe : la batterie commence à restituer l\'énergie stockée cette nuit.'
   },
   {
     hour: 7,
     time: '07:00',
     label: '07h',
-    ambience: { label: 'AUBE', type: 'aube', icon: 'sunrise' },
-    soc: 50,
-    state: 'discharge',
-    stateLabel: 'INJECTE DANS LE RÉSEAU',
-    flow: 'discharge',
-    priceColor: '#d97706', // Orange foncé
-    priceLabel: 'Pointe Matin (Pic)',
+    periode: 'AUBE',
+    ambianceBadge: '🌅 AUBE',
+    etat: 'INJECTE DANS LE RÉSEAU',
+    soc: 52,
+    mission: 'DAY_AHEAD',
+    prixColor: '#b45309',
     actionColor: '#f43f5e',
-    actionLabel: "Restitue quand c'est cher",
-    activeMissions: ['day_ahead'],
-    narrative: 'La France se réveille, la demande grimpe (Pointe Matin) : la batterie restitue son énergie au réseau au prix fort sur le marché Day-Ahead.'
+    texte: 'Pointe du matin — elle injecte l\'énergie achetée pas chère, au moment où le réseau en a besoin.'
   },
   {
     hour: 8,
     time: '08:00',
     label: '08h',
-    ambience: { label: 'AUBE', type: 'aube', icon: 'sunrise' },
-    soc: 35,
-    state: 'discharge',
-    stateLabel: 'INJECTE DANS LE RÉSEAU',
-    flow: 'discharge',
-    priceColor: '#d97706',
-    priceLabel: 'Pointe Matin',
+    periode: 'AUBE',
+    ambianceBadge: '🌅 AUBE',
+    etat: 'INJECTE DANS LE RÉSEAU',
+    soc: 42,
+    mission: 'DAY_AHEAD',
+    prixColor: '#b45309',
     actionColor: '#f43f5e',
-    actionLabel: "Restitue quand c'est cher",
-    activeMissions: ['day_ahead'],
-    narrative: 'La France se réveille, la demande grimpe (Pointe Matin) : la batterie restitue son énergie au réseau au prix fort sur le marché Day-Ahead.'
+    texte: 'Dernières ventes de la matinée, avant l\'arrivée massive du solaire.'
   },
   {
     hour: 9,
     time: '09:00',
     label: '09h',
-    ambience: { label: 'PLEIN JOUR', type: 'jour', icon: 'sun' },
-    soc: 35,
-    state: 'idle',
-    stateLabel: 'VEILLE ACTIVE • 50 HZ',
-    flow: 'idle',
-    priceColor: '#86efac', // Vert clair
-    priceLabel: 'Détente post-pointe',
+    periode: 'PLEIN JOUR',
+    ambianceBadge: '☀️ PLEIN JOUR',
+    etat: 'VEILLE ACTIVE • 50 HZ',
+    soc: 42,
+    mission: 'FCR',
+    prixColor: '#a16207',
     actionColor: '#38bdf8',
-    actionLabel: 'Stabilise la fréquence (50 Hz)',
-    activeMissions: ['fcr'],
-    narrative: "La pointe du matin s'estompe. La batterie se repositionne en réserve de fréquence 50 Hz."
+    texte: 'Pause sur les marchés : la batterie stabilise la fréquence du réseau.'
   },
   {
     hour: 10,
     time: '10:00',
     label: '10h',
-    ambience: { label: 'PLEIN JOUR', type: 'jour', icon: 'sun' },
-    soc: 55,
-    state: 'charge',
-    stateLabel: 'SE CHARGE (SOUTIRAGE)',
-    flow: 'charge',
-    priceColor: '#4ade80',
-    priceLabel: 'Montée solaire',
+    periode: 'PLEIN JOUR',
+    ambianceBadge: '☀️ PLEIN JOUR',
+    etat: 'SE CHARGE',
+    soc: 58,
+    mission: 'DAY_AHEAD',
+    prixColor: '#4d7c0f',
     actionColor: '#f59e0b',
-    actionLabel: "Se charge quand c'est bon marché",
-    activeMissions: ['day_ahead'],
-    narrative: 'Le soleil monte, la production solaire s’accélère. Les prix baissent : la batterie commence sa 2e recharge au meilleur coût.'
+    texte: 'Plein soleil : les panneaux produisent en masse, l\'électricité redevient très bon marché — la batterie se recharge.'
   },
   {
     hour: 11,
     time: '11:00',
     label: '11h',
-    ambience: { label: 'PLEIN JOUR', type: 'jour', icon: 'sun' },
-    soc: 76,
-    state: 'charge',
-    stateLabel: 'SE CHARGE (SOUTIRAGE)',
-    flow: 'charge',
-    priceColor: '#22c55e', // Vert franc
-    priceLabel: 'Forte injection solaire',
+    periode: 'PLEIN JOUR',
+    ambianceBadge: '☀️ PLEIN JOUR',
+    etat: 'SE CHARGE',
+    soc: 74,
+    mission: 'DAY_AHEAD',
+    prixColor: '#15803d',
     actionColor: '#f59e0b',
-    actionLabel: "Se charge quand c'est bon marché",
-    activeMissions: ['day_ahead'],
-    narrative: 'Le soleil monte, la production solaire s’accélère. Les prix baissent : la batterie commence sa 2e recharge au meilleur coût.'
+    texte: 'Elle continue de stocker ce surplus solaire...'
   },
   {
     hour: 12,
     time: '12:00',
     label: '12h',
-    ambience: { label: 'PLEIN JOUR', type: 'jour', icon: 'sun' },
-    soc: 92,
-    state: 'charge',
-    stateLabel: 'SE CHARGE (SOUTIRAGE)',
-    flow: 'charge',
-    priceColor: '#16a34a', // Vert émeraude
-    priceLabel: 'Creux solaire méridien',
+    periode: 'PLEIN JOUR',
+    ambianceBadge: '☀️ PLEIN JOUR',
+    etat: 'SE CHARGE',
+    soc: 88,
+    mission: 'DAY_AHEAD',
+    prixColor: '#166534',
     actionColor: '#f59e0b',
-    actionLabel: "Se charge quand c'est bon marché",
-    activeMissions: ['day_ahead'],
-    narrative: 'Le soleil monte, la production solaire s’accélère. Les prix baissent : la batterie commence sa 2e recharge au meilleur coût.'
+    texte: 'Pic de production photovoltaïque méridien : la batterie absorbe l\'énergie solaire abondante.'
   },
   {
     hour: 13,
     time: '13:00',
     label: '13h',
-    ambience: { label: 'PLEIN JOUR', type: 'jour', icon: 'sun' },
+    periode: 'PLEIN JOUR',
+    ambianceBadge: '☀️ PLEIN JOUR',
+    etat: 'SE CHARGE',
     soc: 100,
-    state: 'charge',
-    stateLabel: 'SE CHARGE (SOUTIRAGE)',
-    flow: 'charge',
-    priceColor: '#15803d', // Vert très foncé (prix négatifs)
-    priceLabel: 'Prix négatifs / surplus PV',
+    mission: 'INTRADAY',
+    prixColor: '#14532d',
     actionColor: '#f59e0b',
-    actionLabel: "Se charge quand c'est bon marché",
-    activeMissions: ['intraday'],
-    narrative: "Pic de production solaire. L'électricité est au prix le plus bas de la journée (parfois négatif). La batterie absorbe le surplus sur l'Intraday."
+    texte: 'Il y a même trop d\'électricité : les prix deviennent négatifs. Sur le marché Intraday, la batterie est payée pour se charger !'
   },
   {
     hour: 14,
     time: '14:00',
     label: '14h',
-    ambience: { label: 'PLEIN JOUR', type: 'jour', icon: 'sun' },
+    periode: 'PLEIN JOUR',
+    ambianceBadge: '☀️ PLEIN JOUR',
+    etat: 'PRÊTE POUR LA POINTE',
     soc: 100,
-    state: 'ready',
-    stateLabel: 'PRÊTE POUR LA POINTE',
-    flow: 'ready',
-    priceColor: '#16a34a',
-    priceLabel: 'Prix bas',
-    actionColor: '#10b981', // Émeraude
-    actionLabel: 'Se tient prête pour la pointe',
-    activeMissions: ['capacity'],
-    narrative: 'Batterie pleine (100%). Elle bascule en veille active et se tient à disposition du gestionnaire de réseau (Mécanisme de Capacité).'
+    mission: 'CAPACITE',
+    prixColor: '#15803d',
+    actionColor: '#10b981',
+    texte: 'Batterie pleine. Elle se déclare disponible pour la pointe du soir : c\'est le mécanisme de capacité.'
   },
   {
     hour: 15,
     time: '15:00',
     label: '15h',
-    ambience: { label: 'PLEIN JOUR', type: 'jour', icon: 'sun' },
+    periode: 'PLEIN JOUR',
+    ambianceBadge: '☀️ PLEIN JOUR',
+    etat: 'INJECTE DANS LE RÉSEAU',
     soc: 90,
-    state: 'charge',
-    stateLabel: 'SE CHARGE (SOUTIRAGE)',
-    flow: 'charge',
-    priceColor: '#4ade80',
-    priceLabel: 'Ajustement intraday',
-    actionColor: '#f59e0b',
-    actionLabel: "Se charge quand c'est bon marché",
-    activeMissions: ['intraday'],
-    narrative: 'Le soleil décline doucement. La batterie ajuste son niveau et se prépare pour le grand pic de consommation du soir.'
+    mission: 'INTRADAY',
+    prixColor: '#65a30d',
+    actionColor: '#f43f5e',
+    texte: 'Une occasion se présente en temps réel : petite vente sur le marché Intraday.'
   },
   {
     hour: 16,
     time: '16:00',
     label: '16h',
-    ambience: { label: 'PLEIN JOUR', type: 'jour', icon: 'sun' },
+    periode: 'PLEIN JOUR',
+    ambianceBadge: '☀️ PLEIN JOUR',
+    etat: 'VEILLE ACTIVE • 50 HZ',
     soc: 90,
-    state: 'idle',
-    stateLabel: 'VEILLE ACTIVE • 50 HZ',
-    flow: 'idle',
-    priceColor: '#ca8a04', // Jaune ambre
-    priceLabel: 'Demande en hausse',
+    mission: 'FCR',
+    prixColor: '#a16207',
     actionColor: '#38bdf8',
-    actionLabel: 'Stabilise la fréquence (50 Hz)',
-    activeMissions: ['fcr'],
-    narrative: 'Le soleil décline doucement. La batterie ajuste son niveau et se prépare pour le grand pic de consommation du soir.'
+    texte: 'Retour en veille active : elle stabilise la fréquence en attendant le soir.'
   },
   {
     hour: 17,
     time: '17:00',
     label: '17h',
-    ambience: { label: 'PLEIN JOUR', type: 'jour', icon: 'sun' },
-    soc: 94,
-    state: 'ready',
-    stateLabel: 'PRÊTE POUR LA POINTE',
-    flow: 'ready',
-    priceColor: '#ca8a04',
-    priceLabel: 'Pré-pointe du soir',
+    periode: 'SOIR',
+    ambianceBadge: '🌆 SOIR',
+    etat: 'PRÊTE POUR LA POINTE',
+    soc: 90,
+    mission: 'CAPACITE',
+    prixColor: '#b45309',
     actionColor: '#10b981',
-    actionLabel: 'Se tient prête pour la pointe',
-    activeMissions: ['capacity'],
-    narrative: 'Le soleil décline doucement. La batterie ajuste son niveau et se prépare pour le grand pic de consommation du soir.'
+    texte: 'Avant la grande pointe, elle reste en réserve — son engagement de capacité envers le réseau.'
   },
   {
     hour: 18,
     time: '18:00',
     label: '18h',
-    ambience: { label: 'SOIR', type: 'soir', icon: 'sunset' },
-    soc: 88,
-    state: 'discharge',
-    stateLabel: 'INJECTE DANS LE RÉSEAU',
-    flow: 'discharge',
-    priceColor: '#ef4444', // Rouge
-    priceLabel: 'Pointe Soir débutante',
-    actionColor: '#f43f5e', // Corail
-    actionLabel: "Restitue quand c'est cher",
-    activeMissions: ['day_ahead'],
-    narrative: 'Pointe du Soir : tout le pays consomme. Les prix flambent. La batterie injecte toute sa puissance pour sécuriser le réseau au tarif maximum.'
+    periode: 'SOIR',
+    ambianceBadge: '🌆 SOIR',
+    etat: 'INJECTE DANS LE RÉSEAU',
+    soc: 68,
+    mission: 'DAY_AHEAD',
+    prixColor: '#c2410c',
+    actionColor: '#f43f5e',
+    texte: 'Début de la pointe du soir : les foyers rentrent, la demande s\'envole et la batterie injecte sur le réseau.'
   },
   {
     hour: 19,
     time: '19:00',
     label: '19h',
-    ambience: { label: 'SOIR', type: 'soir', icon: 'sunset' },
-    soc: 66,
-    state: 'discharge',
-    stateLabel: 'INJECTE DANS LE RÉSEAU',
-    flow: 'discharge',
-    priceColor: '#dc2626', // Rouge vif
-    priceLabel: 'Pic maximal journée',
+    periode: 'SOIR',
+    ambianceBadge: '🌆 SOIR',
+    etat: 'INJECTE DANS LE RÉSEAU',
+    soc: 44,
+    mission: 'DAY_AHEAD',
+    prixColor: '#b91c1c',
     actionColor: '#f43f5e',
-    actionLabel: "Restitue quand c'est cher",
-    activeMissions: ['day_ahead'],
-    narrative: 'Pointe du Soir : tout le pays consomme. Les prix flambent. La batterie injecte toute sa puissance pour sécuriser le réseau au tarif maximum.'
+    texte: 'Pic de consommation : c\'est maintenant que son énergie est la plus précieuse pour le réseau.'
   },
   {
     hour: 20,
     time: '20:00',
     label: '20h',
-    ambience: { label: 'SOIR', type: 'soir', icon: 'sunset' },
-    soc: 45,
-    state: 'discharge',
-    stateLabel: 'INJECTE DANS LE RÉSEAU',
-    flow: 'discharge',
-    priceColor: '#ef4444',
-    priceLabel: 'Pointe Soir',
+    periode: 'SOIR',
+    ambianceBadge: '🌆 SOIR',
+    etat: 'INJECTE DANS LE RÉSEAU',
+    soc: 24,
+    mission: 'DAY_AHEAD',
+    prixColor: '#991b1b',
     actionColor: '#f43f5e',
-    actionLabel: "Restitue quand c'est cher",
-    activeMissions: ['day_ahead'],
-    narrative: 'Pointe du Soir : tout le pays consomme. Les prix flambent. La batterie injecte toute sa puissance pour sécuriser le réseau au tarif maximum.'
+    texte: 'La pointe se prolonge — elle continue d\'alimenter le réseau.'
   },
   {
     hour: 21,
     time: '21:00',
     label: '21h',
-    ambience: { label: 'SOIR', type: 'soir', icon: 'sunset' },
-    soc: 25,
-    state: 'discharge',
-    stateLabel: 'INJECTE DANS LE RÉSEAU',
-    flow: 'discharge',
-    priceColor: '#ea580c', // Orange rouge
-    priceLabel: 'Fin de pointe',
+    periode: 'SOIR',
+    ambianceBadge: '🌆 SOIR',
+    etat: 'INJECTE DANS LE RÉSEAU',
+    soc: 15,
+    mission: 'DAY_AHEAD',
+    prixColor: '#b45309',
     actionColor: '#f43f5e',
-    actionLabel: "Restitue quand c'est cher",
-    activeMissions: ['day_ahead'],
-    narrative: 'Pointe du Soir : tout le pays consomme. Les prix flambent. La batterie injecte toute sa puissance pour sécuriser le réseau au tarif maximum.'
+    texte: 'Fin de la pointe vespérale : la batterie termine de restituer son énergie au prix fort.'
   },
   {
     hour: 22,
     time: '22:00',
     label: '22h',
-    ambience: { label: 'NUIT', type: 'nuit', icon: 'moon' },
+    periode: 'NUIT',
+    ambianceBadge: '🌙 NUIT',
+    etat: 'VEILLE ACTIVE • 50 HZ',
     soc: 25,
-    state: 'idle',
-    stateLabel: 'VEILLE ACTIVE • 50 HZ',
-    flow: 'idle',
-    priceColor: '#84cc16', // Vert lime
-    priceLabel: 'Retour au calme',
+    mission: 'FCR',
+    prixColor: '#a16207',
     actionColor: '#38bdf8',
-    actionLabel: 'Stabilise la fréquence (50 Hz)',
-    activeMissions: ['fcr'],
-    narrative: 'Le calme revient. La batterie se repositionne en réserve primaire 50 Hz pour la nuit. Le cycle complet est bouclé.'
+    texte: 'La consommation retombe : la batterie repasse en stabilisation de fréquence à 50 Hz.'
   },
   {
     hour: 23,
     time: '23:00',
     label: '23h',
-    ambience: { label: 'NUIT', type: 'nuit', icon: 'moon' },
-    soc: 30,
-    state: 'idle',
-    stateLabel: 'VEILLE ACTIVE • 50 HZ',
-    flow: 'idle',
-    priceColor: '#84cc16',
-    priceLabel: 'Nuit calme',
+    periode: 'NUIT',
+    ambianceBadge: '🌙 NUIT',
+    etat: 'VEILLE ACTIVE • 50 HZ',
+    soc: 35,
+    mission: 'FCR',
+    prixColor: '#65a30d',
     actionColor: '#38bdf8',
-    actionLabel: 'Stabilise la fréquence (50 Hz)',
-    activeMissions: ['fcr'],
-    narrative: 'Le calme revient. La batterie se repositionne en réserve primaire 50 Hz pour la nuit. Le cycle complet est bouclé.'
+    texte: 'Veille nocturne : la batterie maintient le 50 Hz et prépare le prochain cycle journalier.'
   }
 ];
 
-const MISSIONS_CONFIG = [
+// Alias de rétrocompatibilité
+export const BESS_24H_CYCLE = HOURLY_BESS_DATA;
+
+/**
+ * CONFIGURATION DES 4 MISSIONS DE MONÉTISATION (VALUE STACKING)
+ */
+export const MISSIONS_LIST = [
   {
-    id: 'fcr',
+    id: 'FCR',
     title: 'Régulation de fréquence',
-    subtitle: 'FCR 50 Hz / aFRR PICASSO',
-    desc: 'Stabilisation milliseconde du réseau',
-    colorKey: 'blue',
-    activeBorder: 'border-blue-500 bg-blue-50/90 text-blue-950 shadow-sm ring-1 ring-blue-300',
-    badgeClass: 'bg-blue-600 text-white'
+    code: 'FCR',
+    color: '#38bdf8',
+    borderClass: 'border-[#38bdf8]',
+    bgActiveClass: 'bg-sky-50/90 ring-2 ring-[#38bdf8]',
+    badgeActiveClass: 'bg-[#38bdf8] text-slate-950',
+    bulletColor: 'bg-[#38bdf8]',
+    description: 'La batterie stabilise le réseau seconde par seconde, pour maintenir le courant exactement à 50 Hz.'
   },
   {
-    id: 'capacity',
+    id: 'CAPACITE',
     title: 'Mécanisme de capacité',
-    subtitle: 'Garantie de puissance RTE',
-    desc: 'Disponibilité lors des pointes de tension',
-    colorKey: 'emerald',
-    activeBorder: 'border-emerald-500 bg-emerald-50/90 text-emerald-950 shadow-sm ring-1 ring-emerald-300',
-    badgeClass: 'bg-emerald-600 text-white'
+    code: 'CAPACITÉ',
+    color: '#10b981',
+    borderClass: 'border-[#10b981]',
+    bgActiveClass: 'bg-emerald-50/90 ring-2 ring-[#10b981]',
+    badgeActiveClass: 'bg-[#10b981] text-white',
+    bulletColor: 'bg-[#10b981]',
+    description: 'Elle garantit d\'être disponible et chargée aux heures où la France consomme le plus.'
   },
   {
-    id: 'day_ahead',
+    id: 'DAY_AHEAD',
     title: 'Marché Day-Ahead',
-    subtitle: 'Arbitrage sur prix spot EPEX',
-    desc: 'Achat creux nocturne & vente aux pointes',
-    colorKey: 'amber',
-    activeBorder: 'border-amber-500 bg-amber-50/90 text-amber-950 shadow-sm ring-1 ring-amber-300',
-    badgeClass: 'bg-amber-600 text-white'
+    code: 'DAY-AHEAD',
+    color: '#f59e0b',
+    borderClass: 'border-[#f59e0b]',
+    bgActiveClass: 'bg-amber-50/90 ring-2 ring-[#f59e0b]',
+    badgeActiveClass: 'bg-[#f59e0b] text-white',
+    bulletColor: 'bg-[#f59e0b]',
+    description: 'La veille, elle programme ses achats quand l\'électricité est abondante — et ses ventes aux heures chères.'
   },
   {
-    id: 'intraday',
+    id: 'INTRADAY',
     title: 'Marché Intraday',
-    subtitle: 'Ajustement temps réel & prix négatifs',
-    desc: 'Recharge sur excédents solaires à bas coût',
-    colorKey: 'yellow',
-    activeBorder: 'border-yellow-500 bg-yellow-50/90 text-yellow-950 shadow-sm ring-1 ring-yellow-300',
-    badgeClass: 'bg-yellow-600 text-white'
+    code: 'INTRADAY',
+    color: '#eab308',
+    borderClass: 'border-[#eab308]',
+    bgActiveClass: 'bg-yellow-50/90 ring-2 ring-[#eab308]',
+    badgeActiveClass: 'bg-[#eab308] text-slate-950',
+    bulletColor: 'bg-[#eab308]',
+    description: 'En cours de journée, elle saisit les occasions de dernière minute, au fil de l\'eau.'
   }
 ];
 
-const KEY_MOMENTS = [
-  { hour: 2, label: '02h • Nuit (Creux éolien)', time: '02:00', type: 'charge' },
-  { hour: 7, label: '07h • Pointe Matin (Pic)', time: '07:00', type: 'discharge' },
-  { hour: 13, label: '13h • Creux Solaire (Prix négatifs)', time: '13:00', type: 'charge' },
-  { hour: 19, label: '19h • Pointe Soir (Pic max)', time: '19:00', type: 'discharge' }
-];
+/**
+ * Mise en gras dynamique des mots-clés pédagogiques dans le texte narratif
+ */
+function renderHighlightedNarrative(text) {
+  if (!text) return null;
 
+  // Liste des expressions clés à valoriser
+  const keywords = [
+    '50 Hz',
+    'Day-Ahead',
+    'Intraday',
+    'mécanisme de capacité',
+    'prix négatifs',
+    'surplus solaire',
+    'panneaux produisent en masse',
+    'pointe du matin',
+    'pointe du soir',
+    'grande pointe',
+    'Pic de consommation',
+    'Fin de la pointe vespérale',
+    'bon marché',
+    'pas chère',
+    'plus précieuse',
+    'prix fort',
+    'se recharge',
+    'recharge programmée',
+    'fait le plein',
+    'restituer l\'énergie',
+    'injecte l\'énergie',
+    'injecte sur le réseau',
+    'veille active',
+    'veille sur le réseau',
+    'Veille nocturne',
+    'stabilise la fréquence',
+    'stabiliser la fréquence',
+    'engagement de capacité'
+  ];
+
+  // Construction de l'expression régulière
+  const escaped = keywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const regex = new RegExp(`(${escaped})`, 'gi');
+
+  const parts = text.split(regex);
+  return parts.map((part, index) => {
+    const isKw = keywords.some((kw) => kw.toLowerCase() === part.toLowerCase());
+    if (isKw) {
+      return (
+        <strong key={index} className="font-extrabold text-slate-950 underline decoration-amber-400 decoration-2 underline-offset-2">
+          {part}
+        </strong>
+      );
+    }
+    return part;
+  });
+}
+
+/**
+ * COMPOSANT PRINCIPAL : 24 HEURES DANS LA VIE D'UNE BATTERIE
+ * @param {number} defaultHour - Heure sélectionnée par défaut (0-23, défaut 13h)
+ * @param {boolean} compact - Mode compact si nécessaire
+ * @param {boolean} isPdf - Mode PDF statique haute définition
+ */
 export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = false, isPdf = false }) {
   const [selectedHour, setSelectedHour] = useState(defaultHour);
   const [isPlaying, setIsPlaying] = useState(false);
   const timerRef = useRef(null);
 
-  const current = BESS_24H_CYCLE[selectedHour] || BESS_24H_CYCLE[13];
+  const current = HOURLY_BESS_DATA[selectedHour] || HOURLY_BESS_DATA[13];
 
-  // Auto-play 1.5s
+  // Auto-play 1500ms : boucle 00h -> 23h
   useEffect(() => {
     if (isPlaying) {
       timerRef.current = setInterval(() => {
@@ -463,49 +460,53 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
     setIsPlaying((prev) => !prev);
   };
 
-  const renderAmbienceBadge = () => {
-    const { label, type } = current.ambience;
-    let badgeStyle = 'bg-slate-100 text-slate-800 border-slate-300';
-    let icon = <Sun className="w-3.5 h-3.5 text-amber-500" />;
-
-    if (type === 'nuit') {
-      badgeStyle = 'bg-indigo-50 text-indigo-900 border-indigo-200';
-      icon = <Moon className="w-3.5 h-3.5 text-indigo-600" />;
-    } else if (type === 'aube') {
-      badgeStyle = 'bg-amber-50 text-amber-900 border-amber-200';
-      icon = <Sunrise className="w-3.5 h-3.5 text-amber-600" />;
-    } else if (type === 'jour') {
-      badgeStyle = 'bg-sky-50 text-sky-900 border-sky-200';
-      icon = <Sun className="w-3.5 h-3.5 text-amber-500" />;
-    } else if (type === 'soir') {
-      badgeStyle = 'bg-rose-50 text-rose-900 border-rose-200';
-      icon = <Sunset className="w-3.5 h-3.5 text-rose-600" />;
+  // Icône et badge d'ambiance
+  const getAmbienceIcon = (periode) => {
+    switch (periode) {
+      case 'NUIT':
+        return <Moon className="w-3.5 h-3.5 text-indigo-500" />;
+      case 'AUBE':
+        return <Sunrise className="w-3.5 h-3.5 text-amber-500" />;
+      case 'PLEIN JOUR':
+        return <Sun className="w-3.5 h-3.5 text-yellow-500" />;
+      case 'SOIR':
+        return <Sunset className="w-3.5 h-3.5 text-rose-500" />;
+      default:
+        return <Sun className="w-3.5 h-3.5 text-amber-500" />;
     }
+  };
 
-    return (
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border shadow-2xs ${badgeStyle}`}>
-        {icon}
-        {label}
-      </span>
-    );
+  const getAmbienceBg = (periode) => {
+    switch (periode) {
+      case 'NUIT':
+        return 'bg-indigo-50 text-indigo-900 border-indigo-200';
+      case 'AUBE':
+        return 'bg-amber-50 text-amber-900 border-amber-200';
+      case 'PLEIN JOUR':
+        return 'bg-yellow-50 text-yellow-950 border-yellow-200';
+      case 'SOIR':
+        return 'bg-rose-50 text-rose-900 border-rose-200';
+      default:
+        return 'bg-slate-100 text-slate-900 border-slate-200';
+    }
   };
 
   return (
-    <div className="w-full bg-white border border-slate-200 rounded-2xl p-3 sm:p-3.5 text-slate-900 select-none shadow-xs">
+    <div className="w-full bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 text-slate-900 select-none shadow-xs">
       <style>{`
         @keyframes bessPulseRight {
-          0% { transform: translateX(0px); opacity: 0.2; }
-          50% { opacity: 1; transform: translateX(20px); }
-          100% { transform: translateX(40px); opacity: 0.1; }
+          0% { transform: translateX(0px); opacity: 0.3; }
+          50% { opacity: 1; transform: translateX(18px); }
+          100% { transform: translateX(36px); opacity: 0.15; }
         }
         @keyframes bessPulseLeft {
-          0% { transform: translateX(0px); opacity: 0.2; }
-          50% { opacity: 1; transform: translateX(-20px); }
-          100% { transform: translateX(-40px); opacity: 0.1; }
+          0% { transform: translateX(0px); opacity: 0.3; }
+          50% { opacity: 1; transform: translateX(-18px); }
+          100% { transform: translateX(-36px); opacity: 0.15; }
         }
         @keyframes bessPulseBi {
-          0%, 100% { transform: scale(0.9); opacity: 0.4; }
-          50% { transform: scale(1.3); opacity: 1; }
+          0%, 100% { transform: scale(0.9); opacity: 0.5; }
+          50% { transform: scale(1.25); opacity: 1; }
         }
         .anim-flow-right {
           animation: bessPulseRight 1.2s infinite ease-in-out;
@@ -514,70 +515,62 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
           animation: bessPulseLeft 1.2s infinite ease-in-out;
         }
         .anim-flow-bi {
-          animation: bessPulseBi 1.5s infinite ease-in-out;
+          animation: bessPulseBi 1.4s infinite ease-in-out;
         }
       `}</style>
 
-      {/* EN-TÊTE : Titre pédagogique + Contrôles (Play / Slider / Raccourcis / Badge) */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
-            <Activity className="w-4 h-4 text-blue-600" />
-          </div>
+      {/* ========================================================================= */}
+      {/* ÉTAGE A : EN-TÊTE ET CONTRÔLE TEMPOREL                                    */}
+      {/* ========================================================================= */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        {/* Titre avec pastille verte */}
+        <div className="flex items-center gap-2.5">
+          <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] shrink-0 animate-pulse" />
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight text-[#0b192c]">
                 24 HEURES DANS LA VIE D'UNE BATTERIE
               </h3>
-              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-800">
-                Double Cycle Quotidien
+              <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                Solaime &amp; ENR Courtage
               </span>
             </div>
-            <p className="text-[10px] text-slate-500 font-medium">
-              Une journée type d'arbitrage et de régulation Enedis/RTE, expliquée simplement
+            <p className="text-[10.5px] text-slate-500 font-medium">
+              Une journée type, expliquée simplement
             </p>
           </div>
         </div>
 
         {/* Barre de contrôle interactive */}
-        <div className="flex items-center gap-2">
-          {/* Boutons d'accès rapide aux 4 moments clés */}
-          <div className="hidden xl:flex items-center gap-1 text-[9px] font-bold">
-            {KEY_MOMENTS.map((km) => (
-              <button
-                key={km.hour}
-                type="button"
-                onClick={() => setSelectedHour(km.hour)}
-                className={`px-2 py-1 rounded-md border transition-all ${
-                  selectedHour === km.hour
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-2xs font-extrabold'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
-                }`}
-                title={`Aller à ${km.time}`}
-              >
-                {km.time}
-              </button>
-            ))}
-          </div>
-
+        <div className="flex items-center gap-2.5">
+          {/* Bouton ambre Suivre la journée */}
           <button
             type="button"
             onClick={togglePlay}
             data-html2canvas-ignore="true"
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black transition-all shadow-2xs ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all shadow-xs ${
               isPlaying
-                ? 'bg-amber-600 text-white hover:bg-amber-700'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+                ? 'bg-amber-600 hover:bg-amber-700 text-white ring-2 ring-amber-300'
+                : 'bg-amber-500 hover:bg-amber-600 text-white'
             }`}
-            title={isPlaying ? 'Mettre en pause' : 'Lancer le cycle automatique'}
+            title={isPlaying ? 'Mettre en pause la journée' : 'Lancer le parcours automatique 24h'}
           >
-            {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-            <span>{isPlaying ? 'Pause' : '▶ Suivre la journée'}</span>
+            {isPlaying ? (
+              <>
+                <Pause className="w-3.5 h-3.5 fill-current" />
+                <span>Pause</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Suivre la journée</span>
+              </>
+            )}
           </button>
 
-          {/* Slider horaire */}
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
-            <Clock className="w-3.5 h-3.5 text-slate-500" />
+          {/* Slider horizontal avec curseur rond ambre */}
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg shadow-2xs">
+            <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
             <input
               type="range"
               min="0"
@@ -585,237 +578,280 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
               step="1"
               value={selectedHour}
               onChange={(e) => setSelectedHour(parseInt(e.target.value, 10))}
-              className="w-20 sm:w-28 accent-blue-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
-              title="Sélectionner l'heure"
+              className="w-24 sm:w-32 accent-amber-500 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+              title="Sélectionner une heure"
             />
-            <span className="text-xs font-black text-[#0b192c] font-mono min-w-[34px] text-right">
-              {current.time}
+            {/* Affichage heure à droite */}
+            <span className="text-xs font-black text-amber-700 font-mono min-w-[36px] text-right">
+              {String(selectedHour).padStart(2, '0')} h
             </span>
           </div>
-
-          {/* Badge d'ambiance */}
-          {renderAmbienceBadge()}
         </div>
       </div>
 
-      {/* SYNOPTIQUE DES FLUX + NARRATIF (Réseau HTA <---> BESS) */}
-      <div className="grid grid-cols-12 gap-3 my-2.5 items-stretch">
-        {/* Synoptique des flux (7 colonnes) */}
-        <div className="col-span-12 lg:col-span-7 bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
-          {/* Gauche : Pylône Enedis HTA 20 kV */}
-          <div className="flex flex-col items-center text-center shrink-0 w-24">
-            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-2xs mb-1">
-              <svg viewBox="0 0 24 24" className="w-6 h-6 text-slate-700 stroke-current" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2v20" />
-                <path d="M7 6l10 0" />
-                <path d="M5 11l14 0" />
-                <path d="M4 17l16 0" />
-                <path d="M8 2l-4 20" />
-                <path d="M16 2l4 20" />
-                <path d="M8 6l8 5" />
-                <path d="M16 6l-8 5" />
-                <path d="M7 11l10 6" />
-                <path d="M17 11l-10 6" />
-              </svg>
-            </div>
-            <span className="text-[10px] font-black uppercase text-slate-900 leading-tight">Réseau Enedis</span>
-            <span className="text-[9px] font-semibold text-slate-500">HTA 20 kV</span>
+      {/* ========================================================================= */}
+      {/* ÉTAGE B & C : BANDEAU SYNOPTIQUE ANIMÉ + ENCADRÉ NARRATIF HORODATÉ        */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-12 gap-3 my-3 items-stretch">
+        {/* ÉTAGE B : BANDEAU SYNOPTIQUE ANIMÉ (7 colonnes) */}
+        <div className="col-span-12 lg:col-span-7 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between relative shadow-2xs">
+          {/* Badge d'ambiance en haut à droite */}
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">
+              Flux Énergétique HTA &amp; Stockage BESS
+            </span>
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs ${getAmbienceBg(
+                current.periode
+              )}`}
+            >
+              {getAmbienceIcon(current.periode)}
+              {current.ambianceBadge}
+            </span>
           </div>
 
-          {/* Centre : Directionnel animé & Label d'état */}
-          <div className="flex-1 px-3 flex flex-col items-center justify-center text-center">
-            {/* Label d'état dynamique */}
-            <div className="mb-1.5">
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wide border shadow-2xs ${
-                  current.state === 'charge'
-                    ? 'bg-amber-100 text-amber-900 border-amber-300'
-                    : current.state === 'discharge'
-                    ? 'bg-rose-100 text-rose-900 border-rose-300'
-                    : current.state === 'ready'
-                    ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                    : 'bg-blue-100 text-blue-900 border-blue-300'
-                }`}
-              >
-                {current.state === 'charge' && <ArrowRight className="w-3.5 h-3.5 text-amber-700" />}
-                {current.state === 'discharge' && <ArrowLeft className="w-3.5 h-3.5 text-rose-700" />}
-                {current.state === 'ready' && <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />}
-                {current.state === 'idle' && <Activity className="w-3.5 h-3.5 text-blue-700" />}
-                <span>{current.stateLabel}</span>
+          {/* Centre du bandeau : Pylône <---> Flux animé <---> Batterie */}
+          <div className="flex items-center justify-between gap-3 px-2 py-1">
+            {/* À gauche : Icône SVG Pylône HTA + label */}
+            <div className="flex flex-col items-center text-center shrink-0 w-28">
+              <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-xs mb-1">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-7 h-7 text-slate-700 stroke-current"
+                  fill="none"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 2v20" />
+                  <path d="M7 6l10 0" />
+                  <path d="M5 11l14 0" />
+                  <path d="M4 17l16 0" />
+                  <path d="M8 2l-4 20" />
+                  <path d="M16 2l4 20" />
+                  <path d="M8 6l8 5" />
+                  <path d="M16 6l-8 5" />
+                  <path d="M7 11l10 6" />
+                  <path d="M17 11l-10 6" />
+                </svg>
+              </div>
+              <span className="text-[10.5px] font-black text-slate-900 leading-tight">
+                Le réseau électrique
+              </span>
+              <span className="text-[9px] font-bold text-slate-500">
+                Enedis HTA 20 kV
               </span>
             </div>
 
-            {/* Flux de points lumineux animés */}
-            <div className="relative w-full max-w-[200px] h-5 flex items-center justify-center">
-              {/* Ligne conductrice */}
-              <div className="absolute inset-x-0 h-1 bg-slate-300 rounded-full"></div>
-
-              {current.state === 'charge' && (
-                <div className="relative flex items-center justify-center gap-4 anim-flow-right">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]"></span>
-                </div>
-              )}
-
-              {current.state === 'discharge' && (
-                <div className="relative flex items-center justify-center gap-4 anim-flow-left">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span>
-                </div>
-              )}
-
-              {current.state === 'idle' && (
-                <div className="relative flex items-center justify-center gap-4 anim-flow-bi">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.6)]"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.6)]"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.6)]"></span>
-                </div>
-              )}
-
-              {current.state === 'ready' && (
-                <div className="relative flex items-center justify-center gap-4">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] animate-ping"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
-                </div>
-              )}
-            </div>
-
-            <div className="text-[10px] text-slate-500 font-semibold mt-1">
-              {current.state === 'charge' && 'Électricité soutirée du réseau'}
-              {current.state === 'discharge' && 'Énergie restituée au réseau'}
-              {current.state === 'idle' && 'Réserve de puissance à disposition RTE'}
-              {current.state === 'ready' && 'Capacité 100% mobilisable pour le pic'}
-            </div>
-          </div>
-
-          {/* Droite : Batterie BESS avec jauge dynamique de SoC */}
-          <div className="flex flex-col items-center text-center shrink-0 w-28">
-            <div className="relative w-12 h-14 bg-white border-2 border-slate-700 rounded-md p-1 flex flex-col justify-end shadow-2xs mb-1">
-              {/* Borne supérieure batterie */}
-              <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-4 h-1 bg-slate-700 rounded-t-xs"></div>
-
-              {/* Jauge de remplissage dynamique */}
-              <div
-                className="w-full rounded-xs transition-all duration-500 ease-out flex items-center justify-center"
-                style={{
-                  height: `${Math.max(12, current.soc)}%`,
-                  backgroundColor:
-                    current.soc >= 80 ? '#10b981' : current.soc >= 40 ? '#38bdf8' : '#f59e0b'
-                }}
-              >
-                <Zap className="w-3 h-3 text-white fill-current opacity-90" />
-              </div>
-
-              {/* Pourcentage SoC centré */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span className="text-[11px] font-black text-slate-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]">
-                  {current.soc}%
+            {/* Au centre : Label d'état en majuscules + 3 points lumineux animés */}
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
+              {/* Label d'état dynamique en majuscules */}
+              <div className="mb-2">
+                <span
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wide border shadow-2xs"
+                  style={{
+                    backgroundColor: `${current.actionColor}18`,
+                    color: current.actionColor === '#38bdf8' ? '#0369a1' : current.actionColor,
+                    borderColor: `${current.actionColor}40`
+                  }}
+                >
+                  {current.actionColor === '#f59e0b' && <ArrowRight className="w-3.5 h-3.5 text-amber-600" />}
+                  {current.actionColor === '#f43f5e' && <ArrowLeft className="w-3.5 h-3.5 text-rose-600" />}
+                  {current.actionColor === '#10b981' && <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />}
+                  {current.actionColor === '#38bdf8' && <Activity className="w-3.5 h-3.5 text-sky-600" />}
+                  <span>{current.etat}</span>
                 </span>
               </div>
+
+              {/* Ligne conductrice avec 3 points lumineux animés */}
+              <div className="relative w-full max-w-[190px] h-6 flex items-center justify-center">
+                <div className="absolute inset-x-0 h-1 bg-slate-300 rounded-full" />
+
+                {/* Animation selon le sens de flux */}
+                {current.actionColor === '#f59e0b' && (
+                  <div className="relative flex items-center justify-center gap-4 anim-flow-right">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b] shadow-[0_0_8px_rgba(245,158,11,0.9)]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b] shadow-[0_0_8px_rgba(245,158,11,0.9)]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b] shadow-[0_0_8px_rgba(245,158,11,0.9)]" />
+                  </div>
+                )}
+
+                {current.actionColor === '#f43f5e' && (
+                  <div className="relative flex items-center justify-center gap-4 anim-flow-left">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e] shadow-[0_0_8px_rgba(244,63,94,0.9)]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e] shadow-[0_0_8px_rgba(244,63,94,0.9)]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e] shadow-[0_0_8px_rgba(244,63,94,0.9)]" />
+                  </div>
+                )}
+
+                {current.actionColor === '#38bdf8' && (
+                  <div className="relative flex items-center justify-center gap-4 anim-flow-bi">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8] shadow-[0_0_8px_rgba(56,189,248,0.9)]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8] shadow-[0_0_8px_rgba(56,189,248,0.9)]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8] shadow-[0_0_8px_rgba(56,189,248,0.9)]" />
+                  </div>
+                )}
+
+                {current.actionColor === '#10b981' && (
+                  <div className="relative flex items-center justify-center gap-4">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.9)]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-ping" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.9)]" />
+                  </div>
+                )}
+              </div>
+
+              <span className="text-[9.5px] font-semibold text-slate-500 mt-1">
+                {current.actionColor === '#f59e0b' && 'Recharge programmée (soutirage)'}
+                {current.actionColor === '#f43f5e' && 'Injection sur le réseau public'}
+                {current.actionColor === '#38bdf8' && 'Stabilisation réseau seconde par seconde'}
+                {current.actionColor === '#10b981' && 'Réserve de capacité disponible'}
+              </span>
             </div>
-            <span className="text-[10px] font-black uppercase text-slate-900 leading-tight">Batterie BESS</span>
-            <span className="text-[9px] font-semibold text-slate-500">SoC {current.soc}%</span>
+
+            {/* À droite : Icône SVG Batterie BESS verticale avec remplissage dynamique AMBRE */}
+            <div className="flex flex-col items-center text-center shrink-0 w-28">
+              <div className="relative w-12 h-16 bg-white border-2 border-slate-700 rounded-md p-0.5 flex flex-col justify-end shadow-xs mb-1 overflow-hidden">
+                {/* Borne supérieure batterie */}
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-1.5 bg-slate-700 rounded-t-xs" />
+
+                {/* Remplissage dynamique AMBRE proportionnel au SoC */}
+                <div
+                  className="w-full rounded-xs transition-all duration-300 ease-out flex items-center justify-center"
+                  style={{
+                    height: `${Math.max(10, current.soc)}%`,
+                    backgroundColor: '#f59e0b'
+                  }}
+                />
+
+                {/* Pourcentage SoC exact centré au milieu de la batterie */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-[11px] font-black text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]">
+                    {current.soc} %
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10.5px] font-black text-slate-900 leading-tight">
+                Batterie BESS
+              </span>
+              <span className="text-[9px] font-extrabold text-amber-600">
+                SoC {current.soc} %
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Narratif horodaté (5 colonnes) */}
-        <div className="col-span-12 lg:col-span-5 bg-blue-50/70 border border-blue-200 rounded-xl p-3 flex flex-col justify-between">
+        {/* ÉTAGE C : ENCADRÉ NARRATIF HORODATÉ (5 colonnes) */}
+        <div className="col-span-12 lg:col-span-5 border-l-4 border-amber-500 bg-amber-50/50 rounded-r-xl p-3 sm:p-3.5 flex flex-col justify-between shadow-2xs">
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="inline-flex items-center gap-1.5 text-xs font-black text-blue-900 uppercase tracking-wide">
-                <Clock className="w-3.5 h-3.5 text-blue-600" />
-                Créneau : {current.time}
-              </span>
-              <span className="text-[9px] font-extrabold text-blue-700 bg-white border border-blue-200 px-2 py-0.5 rounded-md">
-                Cycle {selectedHour < 12 ? '1 (Matin)' : '2 (Soir)'}
+            {/* Timestamp monospace ambre */}
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span className="text-base font-black font-mono text-amber-600 tracking-wider">
+                  {current.time}
+                </span>
+              </div>
+              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-white border border-amber-200 text-amber-800">
+                Mission {current.mission}
               </span>
             </div>
-            <p className="text-[11px] text-slate-800 font-medium leading-relaxed">
-              "{current.narrative}"
+
+            {/* Texte narratif avec mots-clés en gras */}
+            <p className="text-xs text-slate-800 leading-relaxed font-normal">
+              "{renderHighlightedNarrative(current.texte)}"
             </p>
           </div>
 
-          <div className="pt-1.5 border-t border-blue-200/70 mt-1.5 flex items-center justify-between text-[10px]">
-            <span className="text-slate-500 font-semibold">
-              Marché spot : <strong className="text-slate-900">{current.priceLabel}</strong>
+          {/* Pied de carte narratif */}
+          <div className="pt-2 border-t border-amber-200/80 mt-2 flex items-center justify-between text-[10px]">
+            <span className="text-slate-600 font-medium">
+              Période : <strong className="text-slate-900">{current.periode}</strong>
             </span>
-            <span className="text-slate-500 font-semibold">
-              Action : <strong className="text-slate-900">{current.actionLabel}</strong>
+            <span className="text-slate-600 font-medium">
+              SoC BESS : <strong className="text-amber-700 font-black">{current.soc}%</strong>
             </span>
           </div>
         </div>
       </div>
 
-      {/* LES 4 CARTES DE MISSION (VALUE STACKING DYNAMIQUE) */}
-      <div className="mb-2.5">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">
+      {/* ========================================================================= */}
+      {/* ÉTAGE D : GRILLE DES 4 CARTES DE MISSIONS (4 COLONNES)                     */}
+      {/* ========================================================================= */}
+      <div className="mb-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-600">
             Activation des 4 Piliers de Monétisation (Value Stacking)
           </span>
           <span className="text-[9px] font-semibold text-slate-400">
-            Missions actives mises en surbrillance à {current.time}
+            Mission en cours à {current.time} : <strong className="text-slate-800 uppercase">{current.mission}</strong>
           </span>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {MISSIONS_CONFIG.map((m) => {
-            const isActive = current.activeMissions.includes(m.id);
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {MISSIONS_LIST.map((m) => {
+            const isActive = current.mission === m.id;
             return (
               <div
                 key={m.id}
-                className={`rounded-lg p-2 border transition-all duration-200 ${
+                className={`rounded-xl p-2.5 border transition-all duration-200 flex flex-col justify-between ${
                   isActive
-                    ? m.activeBorder
+                    ? `${m.bgActiveClass} ${m.borderClass} shadow-xs`
                     : 'border-slate-200 bg-white/70 text-slate-500 opacity-60'
                 }`}
               >
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider">
-                    {m.id === 'fcr' && '58.7 % CA'}
-                    {m.id === 'day_ahead' && '31.8 % CA'}
-                    {m.id === 'intraday' && 'Inclus Arbitrage'}
-                    {m.id === 'capacity' && '9.5 % CA'}
-                  </span>
+                <div>
+                  {/* Titre et Pastille */}
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: m.color }}
+                    />
+                    <h4 className="text-[11px] font-black text-slate-900 leading-tight">
+                      {m.code} — <span className="font-extrabold">{m.title}</span>
+                    </h4>
+                  </div>
+
+                  {/* Description verbatim */}
+                  <p className="text-[9.5px] text-slate-700 leading-snug line-clamp-2">
+                    {m.description}
+                  </p>
+                </div>
+
+                {/* Badge en bas */}
+                <div className="mt-2 pt-1.5 border-t border-slate-200/60 flex items-center justify-between">
+                  <span className="text-[8.5px] font-bold text-slate-400 uppercase">Statut</span>
                   <span
-                    className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
-                      isActive ? m.badgeClass : 'bg-slate-100 text-slate-400'
+                    className={`text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      isActive
+                        ? m.badgeActiveClass
+                        : 'bg-slate-100 text-slate-400'
                     }`}
                   >
-                    {isActive ? '● En mission' : 'En veille'}
+                    {isActive ? '● EN MISSION' : 'EN VEILLE'}
                   </span>
                 </div>
-                <h4 className="text-[11px] font-black leading-tight text-[#0b192c]">
-                  {m.title}
-                </h4>
-                <p className="text-[9px] font-medium text-slate-600 mt-0.5 leading-snug line-clamp-1">
-                  {m.subtitle}
-                </p>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* DOUBLE FRISE CHRONOLOGIQUE 24 HEURES */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 sm:p-2.5">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-600">
-            Profil Chronologique 24h (Cliquez sur une heure pour naviguer)
-          </span>
-          <span className="text-[9px] font-bold text-blue-700">
-            Heure active : {current.time}
-          </span>
-        </div>
-
-        {/* Ligne 1 : Prix du marché */}
-        <div className="mb-1.5">
-          <div className="flex items-center justify-between text-[8px] font-bold text-slate-500 mb-0.5 px-0.5">
-            <span>PRIX MARCHÉ SPOT</span>
-            <span className="text-[8px] font-normal text-slate-400">Vert = Prix bas • Rouge = Pointes chères</span>
+      {/* ========================================================================= */}
+      {/* ÉTAGE E : DOUBLE FRISE INTERACTIVE DE 24 BLOCS (00H À 23H)                */}
+      {/* ========================================================================= */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3">
+        {/* LIGNE 1 : PRIX DE L'ÉLECTRICITÉ */}
+        <div className="mb-2">
+          <div className="flex items-center justify-between text-[9px] font-black text-slate-700 mb-1 px-0.5">
+            <span className="uppercase tracking-wide">
+              Prix de l'électricité • vert = bon marché, rouge = cher — cliquez sur une heure
+            </span>
+            <span className="text-slate-400 font-bold hidden sm:inline">
+              00h à 23h
+            </span>
           </div>
+
           <div
             style={{
               display: 'grid',
@@ -823,23 +859,23 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
               gap: '2px'
             }}
           >
-            {BESS_24H_CYCLE.map((h) => {
+            {HOURLY_BESS_DATA.map((h) => {
               const isSelected = h.hour === selectedHour;
               return (
                 <button
-                  key={`price-${h.hour}`}
+                  key={`prix-${h.hour}`}
                   type="button"
                   onClick={() => setSelectedHour(h.hour)}
-                  className={`h-5 rounded-xs flex items-center justify-center text-[8px] font-black transition-all ${
+                  className={`h-5 sm:h-5.5 rounded-xs flex items-center justify-center text-[8px] sm:text-[8.5px] font-black transition-all ${
                     isSelected
-                      ? 'ring-2 ring-slate-900 scale-110 z-10 shadow-md font-black'
-                      : 'hover:opacity-80'
+                      ? 'ring-2 ring-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] scale-105 z-10 font-black'
+                      : 'hover:opacity-85'
                   }`}
                   style={{
-                    backgroundColor: h.priceColor,
-                    color: ['#15803d', '#16a34a', '#dc2626', '#ef4444'].includes(h.priceColor) ? '#ffffff' : '#0f172a'
+                    backgroundColor: h.prixColor,
+                    color: '#ffffff'
                   }}
-                  title={`${h.time} : ${h.priceLabel}`}
+                  title={`${h.label} (${h.time}) : ${h.periode} — ${h.etat}`}
                 >
                   {h.label}
                 </button>
@@ -848,12 +884,17 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
           </div>
         </div>
 
-        {/* Ligne 2 : Ce que fait la batterie */}
-        <div>
-          <div className="flex items-center justify-between text-[8px] font-bold text-slate-500 mb-0.5 px-0.5">
-            <span>ACTION BATTERIE</span>
-            <span className="text-[8px] font-normal text-slate-400">Bleu = 50Hz • Ambre = Charge • Corail = Restitue • Vert = Prête</span>
+        {/* LIGNE 2 : CE QUE FAIT LA BATTERIE */}
+        <div className="mb-1">
+          <div className="flex items-center justify-between text-[9px] font-black text-slate-700 mb-1 px-0.5">
+            <span className="uppercase tracking-wide">
+              Ce que fait la batterie
+            </span>
+            <span className="text-amber-700 font-mono font-black text-[10px]">
+              Heure active : {current.time}
+            </span>
           </div>
+
           <div
             style={{
               display: 'grid',
@@ -861,51 +902,79 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
               gap: '2px'
             }}
           >
-            {BESS_24H_CYCLE.map((h) => {
+            {HOURLY_BESS_DATA.map((h) => {
               const isSelected = h.hour === selectedHour;
               return (
                 <button
                   key={`action-${h.hour}`}
                   type="button"
                   onClick={() => setSelectedHour(h.hour)}
-                  className={`h-5.5 rounded-xs flex items-center justify-center text-[9px] font-black transition-all ${
+                  className={`h-5 sm:h-5.5 rounded-xs flex items-center justify-center text-[9px] font-black transition-all ${
                     isSelected
-                      ? 'ring-2 ring-slate-900 scale-110 z-10 shadow-md text-white'
-                      : 'hover:opacity-80 text-white'
+                      ? 'ring-2 ring-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] scale-105 z-10 text-white font-black'
+                      : 'hover:opacity-85 text-white/90'
                   }`}
-                  style={{ backgroundColor: h.actionColor }}
-                  title={`${h.time} : ${h.actionLabel}`}
+                  style={{
+                    backgroundColor: h.actionColor
+                  }}
+                  title={`${h.label} : ${h.etat} (${h.mission})`}
                 >
                   {isSelected ? '●' : ''}
                 </button>
               );
             })}
           </div>
+
+          {/* GRADUATIONS HORAIRES SOUS LA 2E BARRE : 00, 03, 06, 09, 12, 15, 18, 21 */}
+          <div
+            className="mt-1"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(24, minmax(0, 1fr))',
+              gap: '2px'
+            }}
+          >
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].map((hr) => {
+              const showTick = hr % 3 === 0;
+              return (
+                <div key={`tick-${hr}`} className="text-center">
+                  {showTick ? (
+                    <span className="text-[8px] sm:text-[8.5px] font-mono font-bold text-slate-500">
+                      {String(hr).padStart(2, '0')}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Légende en bas */}
-        <div className="mt-1.5 pt-1.5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[9px] font-semibold text-slate-600">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#38bdf8]"></span>
-              Stabilise la fréquence (50 Hz)
+        {/* LÉGENDE HORIZONTALE EN BAS */}
+        <div className="mt-2 pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5 text-[9px] font-bold text-slate-700">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-xs bg-[#f59e0b] shadow-xs" />
+              <span>Se charge quand c'est bon marché</span>
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#f59e0b]"></span>
-              Se charge quand c'est bon marché
+
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-xs bg-[#f43f5e] shadow-xs" />
+              <span>Restitue quand c'est cher</span>
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#f43f5e]"></span>
-              Restitue quand c'est cher
+
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-xs bg-[#38bdf8] shadow-xs" />
+              <span>Stabilise la fréquence (50 Hz)</span>
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#10b981]"></span>
-              Se tient prête pour la pointe
+
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-xs bg-[#10b981] shadow-xs" />
+              <span>Se tient prête pour la pointe</span>
             </span>
           </div>
 
-          <span className="text-slate-400 font-medium">
-            2 cycles complets par 24h garantis
+          <span className="text-[8.5px] font-extrabold uppercase text-slate-400 tracking-wider">
+            Cycle 24h Algorithmique
           </span>
         </div>
       </div>

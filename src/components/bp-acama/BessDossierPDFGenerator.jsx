@@ -1284,7 +1284,7 @@ export default function BessDossierPDFGenerator({
               </div>
 
               {/* Disposition harmonisée : Les 3 flux de gauche légèrement réduits + Cadre Donut à droite agrandi à hauteur égale */}
-              <div className="grid grid-cols-12 gap-5 mb-5 items-stretch">
+              <div className="grid grid-cols-12 gap-4 mb-3 items-stretch">
                 {/* 3 Blocs de flux à gauche (7 colonnes) avec chiffres centrés sans espace au dessus */}
                 <div className="col-span-7 flex flex-col justify-between space-y-2.5">
                   {/* Flux 1 : FCR & PICASSO */}
@@ -1349,12 +1349,12 @@ export default function BessDossierPDFGenerator({
                 </div>
 
                 {/* Donut Chart SVG Vectoriel Agrandie à droite (5 colonnes) de hauteur égale aux 3 cadres de gauche */}
-                <div className="col-span-5 bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between items-center text-center h-full">
+                <div className="col-span-5 bg-white border-2 border-slate-200 rounded-2xl p-3.5 shadow-xs flex flex-col justify-between items-center text-center h-full">
                   <span className="text-xs font-black text-slate-700 uppercase tracking-wider">
                     STRUCTURE DES REVENUS AN 1
                   </span>
                   
-                  <div className="relative w-52 h-52 my-1">
+                  <div className="relative w-40 h-40 my-0.5">
                     <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
                       <circle cx="50" cy="50" r="38" fill="none" stroke="#2563eb" strokeWidth="15" strokeDasharray="140.0 238.7" strokeDashoffset="0" />
                       <circle cx="50" cy="50" r="38" fill="none" stroke="#06b6d4" strokeWidth="15" strokeDasharray="76.0 238.7" strokeDashoffset="-140.0" />
@@ -1381,7 +1381,7 @@ export default function BessDossierPDFGenerator({
               </div>
 
               {/* Schéma Pédagogique Interactif & Haute Définition : 24 HEURES DANS LA VIE D'UNE BATTERIE */}
-              <BessDailyCycleVisualizer defaultHour={13} isPdf={true} />
+              <BessDailyCycleVisualizer defaultHour={13} isPdf={isGenerating} />
             </div>
 
             {/* Pied de page institutionnel sans "(Paysage)" */}
