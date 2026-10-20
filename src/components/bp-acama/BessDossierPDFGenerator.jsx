@@ -37,6 +37,7 @@ import BatteryStationVisualizer from '../developpement/BatteryStationVisualizer.
 import { BESS_PORTFOLIO_SITES, getBessPortfolioSites } from '../../data/bessPortfolioData.js';
 import { calculatePmt, computeBessFinancials } from '../../services/bessSimulationEngine.js';
 import BessProjectSingleSheet from './BessProjectSingleSheet.jsx';
+import BessDailyCycleVisualizer from './BessDailyCycleVisualizer.jsx';
 
 // Composant interne Leaflet pour recentrer la carte sur les projets sélectionnés
 function MapBoundsUpdater({ bounds }) {
@@ -1379,41 +1380,8 @@ export default function BessDossierPDFGenerator({
                 </div>
               </div>
 
-              {/* Horodatage du profil de dispatching 24h à 2 cycles */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-2.5">
-                  <h4 className="font-extrabold text-[#0b192c] text-xs uppercase tracking-wide flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-blue-600" />
-                    Chronométrie Standardisée d'une Journée Type à 2 Cycles (Dispatching Heures Creuses / Pointes)
-                  </h4>
-                  <span className="text-[10px] font-bold text-slate-500">
-                    4 h de charge nocturne + 3 h de charge méridienne solaire
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-4 gap-3 text-xs">
-                  <div className="bg-white border border-slate-200 rounded-xl p-3">
-                    <span className="text-[10px] font-extrabold text-blue-700 uppercase block">01h00 – 05h00 (4h)</span>
-                    <span className="font-bold text-slate-900 block mt-0.5">Charge Cycle 1 (Creux Nuit)</span>
-                    <span className="text-[11px] text-slate-500 mt-0.5 block">Soutirage aux prix bas / éolien</span>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-3">
-                    <span className="text-[10px] font-extrabold text-amber-700 uppercase block">07h30 – 09h30 (2h)</span>
-                    <span className="font-bold text-slate-900 block mt-0.5">Décharge Cycle 1 (Pointe Matin)</span>
-                    <span className="text-[11px] text-slate-500 mt-0.5 block">Injection au pic de consommation</span>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-3">
-                    <span className="text-[10px] font-extrabold text-cyan-700 uppercase block">12h00 – 15h00 (3h)</span>
-                    <span className="font-bold text-slate-900 block mt-0.5">Charge Cycle 2 (Creux Solaire)</span>
-                    <span className="text-[11px] text-slate-500 mt-0.5 block">Absorption des prix négatifs PV</span>
-                  </div>
-                  <div className="bg-white border border-slate-200 rounded-xl p-3">
-                    <span className="text-[10px] font-extrabold text-emerald-700 uppercase block">18h30 – 21h00 (2.5h)</span>
-                    <span className="font-bold text-slate-900 block mt-0.5">Décharge Cycle 2 (Pointe Soir)</span>
-                    <span className="text-[11px] text-slate-500 mt-0.5 block">Restitution au tarif maximum journalier</span>
-                  </div>
-                </div>
-              </div>
+              {/* Schéma Pédagogique Interactif & Haute Définition : 24 HEURES DANS LA VIE D'UNE BATTERIE */}
+              <BessDailyCycleVisualizer defaultHour={13} isPdf={true} />
             </div>
 
             {/* Pied de page institutionnel sans "(Paysage)" */}
