@@ -36,11 +36,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Home
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast.js';
 
-// Haversine formula for distance calculation in meters
+// Haversine distance in meters
 function getDistanceInMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -56,22 +57,35 @@ function getDistanceInMeters(lat1, lon1, lat2, lon2) {
 }
 
 function formatKm(meters) {
-  if (meters < 1000) return `${meters} m`;
+  if (!meters && meters !== 0) return 'N/A';
+  if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
-// Map Controller for programmatic panning and zoom tracking
-function MapSyncController({ center, zoom, onZoomChange }) {
+// Leaflet Map Controller: handles resize invalidation and bounds events cleanly without reset loops
+function MapController({ onMapReady, onBoundsChange }) {
   const map = useMap();
+
   useEffect(() => {
-    if (center && center[0] && center[1]) {
-      map.setView(center, zoom || map.getZoom(), { animate: true });
-    }
-  }, [center, map]);
+    if (onMapReady) onMapReady(map);
+
+    // Multiple invalidateSize calls to ensure map fills container properly on tab change
+    map.invalidateSize();
+    const t1 = setTimeout(() => map.invalidateSize(), 100);
+    const t2 = setTimeout(() => map.invalidateSize(), 400);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [map, onMapReady]);
 
   useMapEvents({
+    moveend() {
+      if (onBoundsChange) onBoundsChange(map.getBounds(), map.getZoom());
+    },
     zoomend() {
-      if (onZoomChange) onZoomChange(map.getZoom());
+      if (onBoundsChange) onBoundsChange(map.getBounds(), map.getZoom());
     }
   });
 
@@ -85,199 +99,19 @@ function CadastreTileLayer({ active, currentZoom }) {
     <TileLayer
       url="https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
       maxZoom={22}
-      opacity={0.7}
-      attribution="IGN Géoplateforme Cadastre"
+      opacity={0.75}
+      attribution="IGN Cadastre"
     />
   );
 }
 
-// Component to dynamically fetch Enedis HTA lines on map move
-function HtaNetworkLinesFetcher({
-  active,
-  substations,
-  mode,
-  showCorridor,
-  onNetworkUpdated,
-  onLineClick
-}) {
-  const map = useMap();
-  const abortControllerRef = useRef(null);
-  const debounceTimerRef = useRef(null);
-  const [networkLines, setNetworkLines] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchLines = useCallback(async () => {
-    if (!active) {
-      setNetworkLines([]);
-      return;
-    }
-
-    const currentZoom = map.getZoom();
-    if (currentZoom < 11) {
-      // Don't flood Enedis API when zoomed out past commune level
-      setNetworkLines([]);
-      if (onNetworkUpdated) onNetworkUpdated([], currentZoom);
-      return;
-    }
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-
-    const bounds = map.getBounds();
-    const pad = bounds.pad(0.2);
-    const bbox = `${pad.getWest()},${pad.getSouth()},${pad.getEast()},${pad.getNorth()}`;
-
-    setLoading(true);
-
-    try {
-      const [aerienRes, souterrainRes] = await Promise.all([
-        fetch(
-          `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?size=800&bbox=${bbox}`,
-          { signal: abortControllerRef.current.signal }
-        )
-          .then((r) => (r.ok ? r.json() : { results: [] }))
-          .catch(() => ({ results: [] })),
-        fetch(
-          `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-souterrain-hta/lines?size=800&bbox=${bbox}`,
-          { signal: abortControllerRef.current.signal }
-        )
-          .then((r) => (r.ok ? r.json() : { results: [] }))
-          .catch(() => ({ results: [] }))
-      ]);
-
-      const aerien = aerienRes?.results || [];
-      const souterrain = souterrainRes?.results || [];
-
-      const parsedLines = [];
-
-      const processDataset = (items, isSouterrain) => {
-        items.forEach((item) => {
-          let geom = item.geometry;
-          if (typeof geom === 'string') {
-            try {
-              geom = JSON.parse(geom);
-            } catch (e) {
-              return;
-            }
-          }
-          if (!geom || !geom.coordinates) return;
-
-          const coordsList =
-            geom.type === 'MultiLineString' ? geom.coordinates : [geom.coordinates];
-
-          coordsList.forEach((lineCoords, lineIdx) => {
-            if (!lineCoords || lineCoords.length < 2) return;
-            const latlngs = lineCoords.map(([lng, lat]) => [lat, lng]);
-
-            // Calculate midpoint of segment
-            const midCoord = lineCoords[Math.floor(lineCoords.length / 2)];
-            const midLng = midCoord[0];
-            const midLat = midCoord[1];
-
-            // Find closest substation to this segment
-            let closestSub = null;
-            let minSubDist = Infinity;
-            if (substations && substations.length > 0) {
-              for (let i = 0; i < substations.length; i++) {
-                const s = substations[i];
-                if (!s.Y || !s.X) continue;
-                const d = getDistanceInMeters(midLat, midLng, s.Y, s.X);
-                if (d < minSubDist) {
-                  minSubDist = d;
-                  closestSub = s;
-                }
-              }
-            }
-
-            // Estimate injection and soutirage from substation headroom
-            const subVals = closestSub?.values || {};
-            const rawNa = parseFloat(subVals.INFO_NA);
-            const injection = !isNaN(rawNa) ? rawNa : 0;
-            // Soutirage capacity estimation (typically higher than injection in standard French grid)
-            const soutirage = injection > 0 ? parseFloat((injection * 1.35).toFixed(1)) : 0.8;
-            const bessCapacity = Math.min(injection, soutirage);
-
-            const displayCapacity =
-              mode === 'injection'
-                ? injection
-                : mode === 'soutirage'
-                ? soutirage
-                : bessCapacity;
-
-            // Color threshold based on capacity
-            let color = '#ef4444'; // < 1 MW (Rouge)
-            let capacityTier = '< 1 MW';
-            if (displayCapacity >= 5) {
-              color = '#15803d'; // >= 5 MW (Vert foncé)
-              capacityTier = '≥ 5 MW';
-            } else if (displayCapacity >= 2.5) {
-              color = '#0284c7'; // 2.5 - 5 MW (Bleu électrique)
-              capacityTier = '2.5 - 5 MW';
-            } else if (displayCapacity >= 1) {
-              color = '#f59e0b'; // 1 - 2 MW (Ambre)
-              capacityTier = '1 - 2 MW';
-            } else if (displayCapacity === 0) {
-              color = '#991b1b'; // 0 MW (Saturé)
-              capacityTier = 'Saturé';
-            }
-
-            parsedLines.push({
-              id: `${item._id || item.id || Math.random()}_${lineIdx}`,
-              latlngs,
-              midLat,
-              midLng,
-              isSouterrain,
-              commune: item.nom_commune || item.code_commune || '',
-              depart: item.nom_depart || `${closestSub?.name || 'HTA'}_C${Math.abs(lineIdx + 101)}`,
-              substationName: closestSub?.name || 'Poste source HTA',
-              substationCode: closestSub?.code || '',
-              quotePart: subVals.INFO_QP || '12.30 k€/MW',
-              distanceToSub: minSubDist !== Infinity ? minSubDist : null,
-              injection,
-              soutirage,
-              bessCapacity,
-              displayCapacity,
-              capacityTier,
-              color
-            });
-          });
-        });
-      };
-
-      processDataset(aerien, false);
-      processDataset(souterrain, true);
-
-      setNetworkLines(parsedLines);
-      if (onNetworkUpdated) onNetworkUpdated(parsedLines, currentZoom);
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.warn('[HtaCapacityMapTab] Error fetching lines:', err);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [active, map, substations, mode, onNetworkUpdated]);
-
-  useEffect(() => {
-    fetchLines();
-  }, [fetchLines]);
-
-  useMapEvents({
-    moveend() {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = setTimeout(() => {
-        fetchLines();
-      }, 350);
-    }
-  });
-
-  if (!active || networkLines.length === 0) return null;
+// HTA Lines renderer with internal debouncing
+function HtaLinesLayer({ active, lines, showCorridor, onLineClick }) {
+  if (!active || !lines || lines.length === 0) return null;
 
   return (
     <>
-      {networkLines.map((line) => {
+      {lines.map((line) => {
         const estRealKm = line.distanceToSub
           ? ((line.distanceToSub * 1.3) / 1000).toFixed(1)
           : null;
@@ -287,14 +121,14 @@ function HtaNetworkLinesFetcher({
 
         return (
           <React.Fragment key={line.id}>
-            {/* Corridor de 350m (halo semi-transparent) */}
+            {/* 350m Corridor buffer halo */}
             {showCorridor && (
               <Polyline
                 positions={line.latlngs}
                 pathOptions={{
                   color: line.color,
-                  weight: 32,
-                  opacity: 0.14,
+                  weight: 30,
+                  opacity: 0.15,
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
@@ -302,7 +136,7 @@ function HtaNetworkLinesFetcher({
               />
             )}
 
-            {/* Ligne HTA principale */}
+            {/* Main HTA Line */}
             <Polyline
               positions={line.latlngs}
               pathOptions={{
@@ -354,7 +188,7 @@ function HtaNetworkLinesFetcher({
                     )}
                   </div>
 
-                  {/* Bloc Capacités */}
+                  {/* Capacités */}
                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 mb-2 space-y-1">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold text-slate-600">Injection disponible :</span>
@@ -372,7 +206,7 @@ function HtaNetworkLinesFetcher({
                     </div>
                   </div>
 
-                  {/* Portée et distance */}
+                  {/* Portée */}
                   {line.distanceToSub && (
                     <div className="text-[11px] text-slate-500 bg-amber-50/60 border border-amber-200/60 rounded p-1.5 mb-2">
                       <div className="font-bold text-amber-900 flex items-center gap-1 mb-0.5">
@@ -401,7 +235,7 @@ function HtaNetworkLinesFetcher({
 export default function HtaCapacityMapTab({ project, activeTab }) {
   // Parsing GPS project coords
   const projectCoords = useMemo(() => {
-    if (!project?.gps) return [48.5907, 0.1905]; // Fallback (ex: SEES / Normandie)
+    if (!project?.gps) return [48.5907, 0.1905];
     const parts = project.gps.split(',');
     if (parts.length !== 2) return [48.5907, 0.1905];
     const lat = parseFloat(parts[0].trim());
@@ -410,11 +244,12 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
     return [lat, lng];
   }, [project?.gps]);
 
-  const [mapCenter, setMapCenter] = useState(projectCoords);
+  const mapInstanceRef = useRef(null);
   const [currentZoom, setCurrentZoom] = useState(14);
+  const [currentBounds, setCurrentBounds] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
-  // Filter States (matching Image 1)
+  // Filter States
   const [bessMode, setBessMode] = useState('bess'); // 'bess' | 'injection' | 'soutirage'
   const [selectedRegion, setSelectedRegion] = useState('Toutes les régions');
   const [substationColorFilter, setSubstationColorFilter] = useState('all'); // 'all' | 'green' | 'orange'
@@ -430,9 +265,9 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
 
   // Data States
   const [substations, setSubstations] = useState([]);
-  const [loadingSubstations, setLoadingSubstations] = useState(true);
   const [networkLines, setNetworkLines] = useState([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isFetchingLines, setIsFetchingLines] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCostCardOpen, setIsCostCardOpen] = useState(true);
 
   // Address Search State
@@ -440,15 +275,14 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Battery BESS Sizing for calculation
-  const [bessPowerKw, setBessPowerKw] = useState(500); // 500 kW = 0.5 MW standard
+  // Battery BESS Sizing
+  const [bessPowerKw, setBessPowerKw] = useState(500);
 
-  // Load Substation data from public/datas/capareseau_map.json
+  // Fetch Caparéseau substations once on mount
   useEffect(() => {
     let isMounted = true;
     const fetchSubstations = async () => {
       try {
-        setLoadingSubstations(true);
         const res = await fetch('/datas/capareseau_map.json');
         if (!res.ok) throw new Error('Impossible de charger capareseau_map.json');
         const data = await res.json();
@@ -457,8 +291,6 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
         }
       } catch (err) {
         console.error('[HtaCapacityMapTab] Erreur chargement postes sources:', err);
-      } finally {
-        if (isMounted) setLoadingSubstations(false);
       }
     };
     fetchSubstations();
@@ -467,10 +299,17 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
     };
   }, []);
 
-  // Sync center when project.gps changes
+  // Invalidate map size whenever activeTab changes to 'capa-hta'
   useEffect(() => {
-    setMapCenter(projectCoords);
-  }, [projectCoords]);
+    if (activeTab === 'capa-hta' && mapInstanceRef.current) {
+      setTimeout(() => {
+        mapInstanceRef.current?.invalidateSize();
+      }, 100);
+      setTimeout(() => {
+        mapInstanceRef.current?.invalidateSize();
+      }, 400);
+    }
+  }, [activeTab]);
 
   // Unique Regions from Substations
   const regionsList = useMemo(() => {
@@ -494,6 +333,25 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
       return true;
     });
   }, [substations, selectedRegion, substationColorFilter]);
+
+  // VISIBLE SUBSTATIONS ONLY (Prevents rendering 3,118 SVG nodes in Leaflet which freezes the DOM)
+  const visibleSubstations = useMemo(() => {
+    if (!filteredSubstations || filteredSubstations.length === 0) return [];
+    if (!currentBounds) {
+      // Prioritize closest 60 substations to project
+      return filteredSubstations
+        .map((s) => ({
+          ...s,
+          dist: s.Y && s.X ? getDistanceInMeters(projectCoords[0], projectCoords[1], s.Y, s.X) : 9999999
+        }))
+        .sort((a, b) => a.dist - b.dist)
+        .slice(0, 60);
+    }
+    const pad = currentBounds.pad(0.35);
+    return filteredSubstations
+      .filter((s) => s.Y && s.X && pad.contains([s.Y, s.X]))
+      .slice(0, 80);
+  }, [filteredSubstations, currentBounds, projectCoords]);
 
   // Nearest Substation to Project Location
   const nearestSubstation = useMemo(() => {
@@ -526,16 +384,14 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
     return closest;
   }, [networkLines, projectCoords]);
 
-  // Distance to nearest HTA line
-  const distToHtaMeters = nearestHtaLine ? nearestHtaLine.distanceMeters : 120; // default estimated 120m
+  const distToHtaMeters = nearestHtaLine ? nearestHtaLine.distanceMeters : 120;
   const isInsideCorridor = distToHtaMeters <= 350;
 
   // BESS Cost Estimation Engine
   const costEstimation = useMemo(() => {
-    const powerMw = bessPowerKw / 1000; // e.g. 0.5 MW
+    const powerMw = bessPowerKw / 1000;
 
-    // 1. Quote-part S3REnR
-    let qpPerMw = 12.3; // Default 12.3 k€/MW
+    let qpPerMw = 12.3;
     if (nearestSubstation?.values?.INFO_QP) {
       const match = nearestSubstation.values.INFO_QP.match(/[\d.,]+/);
       if (match) {
@@ -543,21 +399,11 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
       }
     }
     const costQuotePart = Math.round(powerMw * qpPerMw * 1000);
-
-    // 2. Coût de liaison HTA (Tranchée + Câble 20 kV HTA)
-    // Barème moyen Enedis : ~75 € / mètre linéaire
     const costLiaison = Math.round(distToHtaMeters * 75);
-
-    // 3. Frais de cellule de comptage / raccordement PSEM Enedis
     const costCelluleEnedis = 22000;
-
-    // 4. Poste de livraison / Disjoncteur HTA BESS
     const costPosteLivraison = 15000;
-
-    // Total HT
     const totalCost = costQuotePart + costLiaison + costCelluleEnedis + costPosteLivraison;
 
-    // Headroom check
     const rawNa = parseFloat(nearestSubstation?.values?.INFO_NA);
     const availableCapacityMw = !isNaN(rawNa) ? rawNa : 0;
     const isCapacitySufficient = availableCapacityMw >= powerMw;
@@ -575,7 +421,209 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
     };
   }, [bessPowerKw, nearestSubstation, distToHtaMeters]);
 
-  // Copy BESS summary to clipboard
+  // Fetch Lines function with clean abort and debounce
+  const fetchTimerRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const lastFetchedBboxRef = useRef(null);
+
+  const fetchEnedisLines = useCallback(
+    async (bounds, zoom) => {
+      if (!layers.linesHta || zoom < 11 || !bounds) {
+        setNetworkLines([]);
+        return;
+      }
+
+      const pad = bounds.pad(0.15);
+      const bbox = `${pad.getWest().toFixed(4)},${pad.getSouth().toFixed(4)},${pad.getEast().toFixed(4)},${pad.getNorth().toFixed(4)}`;
+
+      if (lastFetchedBboxRef.current === bbox) return;
+      lastFetchedBboxRef.current = bbox;
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
+      setIsFetchingLines(true);
+
+      try {
+        const [aerienRes, souterrainRes] = await Promise.all([
+          fetch(
+            `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?size=500&bbox=${bbox}`,
+            { signal: abortControllerRef.current.signal }
+          )
+            .then((r) => (r.ok ? r.json() : { results: [] }))
+            .catch(() => ({ results: [] })),
+          fetch(
+            `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-souterrain-hta/lines?size=500&bbox=${bbox}`,
+            { signal: abortControllerRef.current.signal }
+          )
+            .then((r) => (r.ok ? r.json() : { results: [] }))
+            .catch(() => ({ results: [] }))
+        ]);
+
+        const aerien = aerienRes?.results || [];
+        const souterrain = souterrainRes?.results || [];
+
+        const parsedLines = [];
+
+        const processDataset = (items, isSouterrain) => {
+          items.forEach((item) => {
+            let geom = item.geometry;
+            if (typeof geom === 'string') {
+              try {
+                geom = JSON.parse(geom);
+              } catch (e) {
+                return;
+              }
+            }
+            if (!geom || !geom.coordinates) return;
+
+            const coordsList =
+              geom.type === 'MultiLineString' ? geom.coordinates : [geom.coordinates];
+
+            coordsList.forEach((lineCoords, lineIdx) => {
+              if (!lineCoords || lineCoords.length < 2) return;
+              const latlngs = lineCoords.map(([lng, lat]) => [lat, lng]);
+
+              const midCoord = lineCoords[Math.floor(lineCoords.length / 2)];
+              const midLng = midCoord[0];
+              const midLat = midCoord[1];
+
+              let closestSub = null;
+              let minSubDist = Infinity;
+              if (substations && substations.length > 0) {
+                for (let i = 0; i < substations.length; i++) {
+                  const s = substations[i];
+                  if (!s.Y || !s.X) continue;
+                  const d = getDistanceInMeters(midLat, midLng, s.Y, s.X);
+                  if (d < minSubDist) {
+                    minSubDist = d;
+                    closestSub = s;
+                  }
+                }
+              }
+
+              const subVals = closestSub?.values || {};
+              const rawNa = parseFloat(subVals.INFO_NA);
+              const injection = !isNaN(rawNa) ? rawNa : 0;
+              const soutirage =
+                injection > 0 ? parseFloat((injection * 1.35).toFixed(1)) : 0.8;
+              const bessCapacity = Math.min(injection, soutirage);
+
+              const displayCapacity =
+                bessMode === 'injection'
+                  ? injection
+                  : bessMode === 'soutirage'
+                  ? soutirage
+                  : bessCapacity;
+
+              let color = '#ef4444';
+              let capacityTier = '< 1 MW';
+              if (displayCapacity >= 5) {
+                color = '#15803d';
+                capacityTier = '≥ 5 MW';
+              } else if (displayCapacity >= 2.5) {
+                color = '#0284c7';
+                capacityTier = '2.5 - 5 MW';
+              } else if (displayCapacity >= 1) {
+                color = '#f59e0b';
+                capacityTier = '1 - 2 MW';
+              } else if (displayCapacity === 0) {
+                color = '#991b1b';
+                capacityTier = 'Saturé';
+              }
+
+              parsedLines.push({
+                id: `${item._id || item.id || Math.random()}_${lineIdx}`,
+                latlngs,
+                midLat,
+                midLng,
+                isSouterrain,
+                commune: item.nom_commune || item.code_commune || '',
+                depart:
+                  item.nom_depart || `${closestSub?.name || 'HTA'}_C${Math.abs(lineIdx + 101)}`,
+                substationName: closestSub?.name || 'Poste source HTA',
+                substationCode: closestSub?.code || '',
+                quotePart: subVals.INFO_QP || '12.30 k€/MW',
+                distanceToSub: minSubDist !== Infinity ? minSubDist : null,
+                injection,
+                soutirage,
+                bessCapacity,
+                displayCapacity,
+                capacityTier,
+                color
+              });
+            });
+          });
+        };
+
+        processDataset(aerien, false);
+        processDataset(souterrain, true);
+
+        setNetworkLines(parsedLines);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('[HtaCapacityMapTab] Error fetching lines:', err);
+        }
+      } finally {
+        setIsFetchingLines(false);
+      }
+    },
+    [layers.linesHta, substations, bessMode]
+  );
+
+  const handleBoundsChange = useCallback(
+    (bounds, zoom) => {
+      setCurrentBounds(bounds);
+      setCurrentZoom(zoom);
+
+      if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
+      fetchTimerRef.current = setTimeout(() => {
+        fetchEnedisLines(bounds, zoom);
+      }, 400);
+    },
+    [fetchEnedisLines]
+  );
+
+  // Address search
+  const handleAddressSearch = async (query) => {
+    setSearchQuery(query);
+    if (!query || query.trim().length < 3) {
+      setSearchSuggestions([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await fetch(
+        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setSearchSuggestions(data.features || []);
+      }
+    } catch (e) {
+      console.warn('Address search error:', e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectAddress = (feature) => {
+    const coords = feature.geometry.coordinates;
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([coords[1], coords[0]], 15, { animate: true });
+    }
+    setSearchSuggestions([]);
+    setSearchQuery(feature.properties.label || '');
+  };
+
+  const handleGoToProject = () => {
+    if (mapInstanceRef.current && projectCoords) {
+      mapInstanceRef.current.setView(projectCoords, 15, { animate: true });
+    }
+  };
+
   const handleCopySummary = () => {
     const text = `=== FICHE CADRAGE RÉSEAU HTA & BESS (NELSON) ===
 Projet : ${project?.name || 'Projet BESS'}
@@ -610,85 +658,37 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
     });
   };
 
-  // Address search query
-  const handleAddressSearch = async (query) => {
-    setSearchQuery(query);
-    if (!query || query.trim().length < 3) {
-      setSearchSuggestions([]);
-      return;
-    }
-    setIsSearching(true);
-    try {
-      const res = await fetch(
-        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setSearchSuggestions(data.features || []);
-      }
-    } catch (e) {
-      console.warn('Address search error:', e);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleSelectAddress = (feature) => {
-    const coords = feature.geometry.coordinates; // [lng, lat]
-    setMapCenter([coords[1], coords[0]]);
-    setCurrentZoom(15);
-    setSearchSuggestions([]);
-    setSearchQuery(feature.properties.label || '');
-  };
-
   return (
     <div
       className={`relative w-full h-full flex flex-col bg-slate-900 overflow-hidden font-sans ${
-        isFullScreen ? 'fixed inset-0 z-50' : 'min-h-[600px] lg:h-[750px]'
+        isFullScreen ? 'fixed inset-0 z-50' : ''
       }`}
     >
-      {/* 1. TOP TOOLBAR */}
-      <div className="bg-slate-900 border-b border-slate-800 text-white px-3 py-2 flex flex-wrap items-center justify-between gap-2 z-20">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 px-3 py-1.5 rounded-lg text-slate-950 font-black text-xs shadow-md">
-            <Zap className="w-4 h-4 fill-slate-950" />
-            <span>CAPACITÉS DU RÉSEAU HTA</span>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-300">
-            <span className="font-semibold text-slate-400">Site :</span>
-            <span className="font-bold text-white truncate max-w-[200px]">
-              {project?.name || 'Projet BESS'}
-            </span>
-            <span className="text-slate-500 font-mono text-[11px]">
-              ({projectCoords[0].toFixed(4)}, {projectCoords[1].toFixed(4)})
-            </span>
-          </div>
-        </div>
-
-        {/* Address Search Bar */}
-        <div className="relative flex-1 max-w-xs sm:max-w-md">
-          <div className="relative flex items-center">
+      {/* 1. MAP AREA (Fills exactly the same space as MapEditor in Carte tab) */}
+      <div className="flex-1 min-h-[55vh] lg:min-h-0 relative w-full h-full">
+        {/* TOP FLOATING SEARCH BAR (Matching MapEditor layout) */}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-sm sm:max-w-md px-3">
+          <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => handleAddressSearch(e.target.value)}
-              placeholder="Explorer une commune ou adresse..."
-              className="w-full bg-slate-800/90 text-white placeholder-slate-400 text-xs rounded-lg pl-8 pr-3 py-1.5 border border-slate-700 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+              placeholder="Rechercher une adresse ou commune..."
+              className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-xs rounded-xl pl-9 pr-3 py-2 focus:outline-none"
             />
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
           </div>
 
           {searchSuggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl z-50 overflow-hidden text-xs">
+            <div className="absolute top-full left-3 right-3 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl z-[1001] overflow-hidden text-xs">
               {searchSuggestions.map((feat, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => handleSelectAddress(feat)}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-700 text-slate-200 border-b border-slate-700/50 last:border-b-0 flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-800 border-b border-slate-100 last:border-b-0 flex items-center gap-2 cursor-pointer"
                 >
-                  <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   <span className="truncate">{feat.properties.label}</span>
                 </button>
               ))}
@@ -696,44 +696,37 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
           )}
         </div>
 
-        {/* Quick Action Buttons */}
-        <div className="flex items-center gap-1.5">
+        {/* TOP RIGHT FLOATING CONTROLS (Matching MapEditor buttons) */}
+        <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-end">
           <button
             type="button"
-            onClick={() => {
-              setMapCenter([...projectCoords]);
-              setCurrentZoom(15);
-            }}
-            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Recentrer sur le projet"
+            onClick={handleGoToProject}
+            className="bg-white text-slate-800 hover:bg-slate-50 shadow-md rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 border border-slate-200 transition-colors cursor-pointer"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden md:inline">Centrer Projet</span>
+            <Home className="w-3.5 h-3.5 text-amber-500" />
+            <span>Adresse Projet</span>
           </button>
 
           <button
             type="button"
             onClick={handleCopySummary}
-            className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            className="bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md rounded-lg px-3 py-1.5 text-xs font-extrabold flex items-center gap-1.5 transition-colors cursor-pointer"
             title="Copier la fiche de cadrage réseau"
           >
             <Copy className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Fiche Réseau</span>
+            <span>Fiche Réseau</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsFullScreen(!isFullScreen)}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors cursor-pointer"
+            className="bg-white text-slate-700 hover:bg-slate-100 shadow-md rounded-lg p-2 text-xs border border-slate-200 transition-colors cursor-pointer"
             title={isFullScreen ? 'Réduire' : 'Plein écran'}
           >
             {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>
-      </div>
 
-      {/* 2. MAP AREA WITH FLOATING SIDEBAR & ESTIMATION CARD */}
-      <div className="relative flex-1 w-full h-full">
         {/* LEAFLET MAP CONTAINER */}
         <MapContainer
           center={projectCoords}
@@ -742,11 +735,12 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
           className="w-full h-full z-0"
           style={{ background: '#0f172a' }}
         >
-          <ScaleControl position="bottomright" metric={true} imperial={false} />
-          <MapSyncController
-            center={mapCenter}
-            zoom={currentZoom}
-            onZoomChange={(z) => setCurrentZoom(z)}
+          <ScaleControl position="bottomleft" metric={true} imperial={false} />
+          <MapController
+            onMapReady={(map) => {
+              mapInstanceRef.current = map;
+            }}
+            onBoundsChange={handleBoundsChange}
           />
 
           {/* BASEMAP TILE LAYER */}
@@ -767,7 +761,7 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
           {/* PARCELLES CADASTRALES IGN WMTS (ZOOM >= 14) */}
           <CadastreTileLayer active={layers.cadastre} currentZoom={currentZoom} />
 
-          {/* PROJECT LOCATION MARKER WITH 350M CORRIDOR RADIUS */}
+          {/* PROJECT LOCATION MARKER */}
           <Marker
             position={projectCoords}
             icon={L.divIcon({
@@ -841,17 +835,15 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
           )}
 
           {/* TRONÇONS HTA DYNAMIQUES AVEC CAPACITÉ ET CORRIDOR 350M */}
-          <HtaNetworkLinesFetcher
+          <HtaLinesLayer
             active={layers.linesHta}
-            substations={filteredSubstations}
-            mode={bessMode}
+            lines={networkLines}
             showCorridor={layers.corridor}
-            onNetworkUpdated={(lines) => setNetworkLines(lines)}
           />
 
-          {/* POSTES SOURCES RTE / ENEDIS (CAPARÉSEAU) */}
+          {/* POSTES SOURCES RTE / ENEDIS (VISIBLES SEULEMENT EN VUE) */}
           {layers.postesSources &&
-            filteredSubstations.map((sub) => {
+            visibleSubstations.map((sub) => {
               if (!sub.Y || !sub.X) return null;
               const vals = sub.values || {};
               const na = parseFloat(vals.INFO_NA);
@@ -935,49 +927,40 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
             })}
         </MapContainer>
 
-        {/* 3. LEFT CONTROL PANEL (MATCHING IMAGE 1 UI) */}
+        {/* 2. LEFT FLOATING CONTROL PANEL */}
         <div
-          className={`absolute top-3 left-3 z-10 transition-all duration-300 ${
-            isSidebarOpen ? 'w-72 sm:w-80' : 'w-10'
+          className={`absolute top-3 left-3 z-[1000] transition-all duration-300 ${
+            isSidebarOpen ? 'w-72 sm:w-80' : 'w-auto'
           }`}
         >
-          <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-2xl text-white overflow-hidden flex flex-col max-h-[calc(100vh-180px)]">
-            {/* Sidebar Header & Toggle */}
-            <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
-              {isSidebarOpen ? (
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-amber-400" />
-                  <span className="font-bold text-xs tracking-wider uppercase text-slate-200">
-                    Filtres & Couches Réseau
-                  </span>
-                </div>
-              ) : (
-                <Filter className="w-4 h-4 text-amber-400 mx-auto" />
-              )}
+          <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-2xl text-white overflow-hidden flex flex-col max-h-[calc(100vh-220px)]">
+            <div
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/40 cursor-pointer select-none"
+            >
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-amber-400" />
+                <span className="font-bold text-xs tracking-wider uppercase text-slate-200">
+                  {isSidebarOpen ? 'Filtres S3REnR' : 'Filtres'}
+                </span>
+              </div>
               <button
                 type="button"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
-                title={isSidebarOpen ? 'Replier le volet' : 'Déplier le volet'}
+                className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"
               >
-                {isSidebarOpen ? (
-                  <ChevronLeft className="w-4 h-4" />
-                ) : (
-                  <ChevronRight className="w-4 h-4" />
-                )}
+                {isSidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
             </div>
 
-            {/* Sidebar Content */}
             {isSidebarOpen && (
-              <div className="p-3.5 space-y-4 overflow-y-auto custom-scrollbar text-xs">
-                {/* Mode Selector (BESS, Injection, Soutirage) */}
+              <div className="p-3 space-y-3.5 overflow-y-auto custom-scrollbar text-xs">
+                {/* Mode Selector */}
                 <div>
                   <div className="grid grid-cols-3 gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700">
                     <button
                       type="button"
                       onClick={() => setBessMode('bess')}
-                      className={`py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                      className={`py-1 rounded-lg text-[10px] font-extrabold cursor-pointer transition-all ${
                         bessMode === 'bess'
                           ? 'bg-amber-500 text-slate-950 shadow-md'
                           : 'text-slate-400 hover:text-white'
@@ -988,7 +971,7 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                     <button
                       type="button"
                       onClick={() => setBessMode('injection')}
-                      className={`py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                      className={`py-1 rounded-lg text-[10px] font-extrabold cursor-pointer transition-all ${
                         bessMode === 'injection'
                           ? 'bg-emerald-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-white'
@@ -999,7 +982,7 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                     <button
                       type="button"
                       onClick={() => setBessMode('soutirage')}
-                      className={`py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                      className={`py-1 rounded-lg text-[10px] font-extrabold cursor-pointer transition-all ${
                         bessMode === 'soutirage'
                           ? 'bg-sky-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-white'
@@ -1022,7 +1005,7 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                   <select
                     value={selectedRegion}
                     onChange={(e) => setSelectedRegion(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 cursor-pointer"
                   >
                     {regionsList.map((reg) => (
                       <option key={reg} value={reg}>
@@ -1035,12 +1018,12 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                 {/* Couleur de raccordement du poste */}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    Couleur de raccordement du poste
+                    Couleur du poste source
                   </label>
                   <select
                     value={substationColorFilter}
                     onChange={(e) => setSubstationColorFilter(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 cursor-pointer"
                   >
                     <option value="all">Tous les postes</option>
                     <option value="green">Verte — capacité disponible</option>
@@ -1048,63 +1031,12 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                   </select>
                 </div>
 
-                {/* Checkboxes Couches */}
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                    Couches
-                  </div>
-                  <div className="space-y-2">
-                    {[
-                      {
-                        key: 'corridor',
-                        label: 'CORRIDOR 350 M (ZONE DE PROSPECTION)',
-                        active: layers.corridor
-                      },
-                      {
-                        key: 'cadastre',
-                        label: 'PARCELLES CADASTRALES (ZOOM ≥ 14)',
-                        active: layers.cadastre
-                      },
-                      {
-                        key: 'linesHta',
-                        label: 'TRONÇONS HTA AVEC CAPACITÉ',
-                        active: layers.linesHta
-                      },
-                      {
-                        key: 'postesSources',
-                        label: 'POSTES SOURCES (CAPARÉSEAU)',
-                        active: layers.postesSources
-                      },
-                      {
-                        key: 'orthophoto',
-                        label: 'FOND ORTHOPHOTO IGN SATELLITE',
-                        active: layers.orthophoto
-                      }
-                    ].map((c) => (
-                      <label
-                        key={c.key}
-                        className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300 hover:text-white select-none"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={c.active}
-                          onChange={(e) =>
-                            setLayers((prev) => ({ ...prev, [c.key]: e.target.checked }))
-                          }
-                          className="rounded border-slate-700 text-amber-500 focus:ring-amber-500 bg-slate-800 h-3.5 w-3.5 cursor-pointer accent-amber-500"
-                        />
-                        <span className="font-semibold">{c.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Légende des puissances (Exactement comme Image 1) */}
+                {/* Légende */}
                 <div className="pt-2 border-t border-slate-800">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                     Légende des capacités HTA
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
+                  <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
                     <div className="flex items-center gap-1.5">
                       <span className="w-3.5 h-1.5 rounded-sm bg-emerald-600"></span>
                       <span>≥ 5 MW</span>
@@ -1122,31 +1054,22 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                       <span>&lt; 1 MW (Saturé)</span>
                     </div>
                   </div>
-
-                  <div className="mt-2.5 p-2 bg-slate-800/60 rounded-lg border border-slate-700/60 text-[10px] text-slate-400 leading-snug">
-                    <div className="flex items-center gap-1.5 font-bold text-amber-400 mb-0.5">
-                      <span className="w-3 h-3 rounded-full bg-amber-500/30 border border-amber-400"></span>
-                      <span>Corridor 350 m de part et d'autre</span>
-                    </div>
-                    Le corridor délimite la zone de prospection économique : hors corridor, le réseau
-                    exploitable nécessite une extension de ligne plus coûteuse.
-                  </div>
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* 4. BOTTOM-RIGHT BESS CONNECTION ESTIMATOR CARD */}
+        {/* 3. BOTTOM-RIGHT BESS CONNECTION ESTIMATOR CARD */}
         <div
-          className={`absolute bottom-3 right-3 z-10 transition-all duration-300 ${
+          className={`absolute bottom-3 right-3 z-[1000] transition-all duration-300 ${
             isCostCardOpen ? 'w-80 sm:w-96' : 'w-auto'
           }`}
         >
           <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl text-white overflow-hidden font-sans">
             <div
               onClick={() => setIsCostCardOpen(!isCostCardOpen)}
-              className="p-3 bg-gradient-to-r from-slate-900 to-slate-950 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none"
+              className="p-2.5 bg-gradient-to-r from-slate-900 to-slate-950 border-b border-slate-800 flex items-center justify-between cursor-pointer select-none"
             >
               <div className="flex items-center gap-2">
                 <BatteryCharging className="w-4 h-4 text-amber-400" />
@@ -1220,7 +1143,7 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                 </div>
 
                 {/* Detailed Cost Table */}
-                <div className="space-y-1.5 pt-2 border-t border-slate-800 text-[11px]">
+                <div className="space-y-1.5 pt-1.5 border-t border-slate-800 text-[11px]">
                   <div className="flex justify-between items-center text-slate-300">
                     <span>
                       Quote-part S3REnR ({costEstimation.qpPerMw} k€/MW) :
@@ -1248,8 +1171,8 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                     </span>
                   </div>
 
-                  {/* Total Cost Highlight */}
-                  <div className="mt-2 pt-2 border-t border-slate-700 flex justify-between items-center bg-amber-500/10 p-2 rounded-lg border border-amber-500/30">
+                  {/* Total Cost */}
+                  <div className="mt-1.5 pt-1.5 border-t border-slate-700 flex justify-between items-center bg-amber-500/10 p-2 rounded-lg border border-amber-500/30">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
                         Budget Raccordement Total
@@ -1262,7 +1185,7 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center justify-between pt-0.5">
                   <span className="text-[10px] text-slate-400">
                     Délai raccordement :{' '}
                     <strong className="text-white">
@@ -1281,6 +1204,53 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* 4. BOTTOM LAYER BAR (Matching the exact look & height of the layer buttons bar in Carte tab) */}
+      <div className="hidden lg:flex p-2.5 bg-slate-900 border-t border-slate-800 flex-wrap items-center justify-between gap-2 text-xs select-none">
+        <div className="flex items-center flex-wrap gap-2">
+          <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider mr-1">
+            Couches :
+          </span>
+
+          {[
+            { key: 'corridor', label: 'Corridor 350 m' },
+            { key: 'linesHta', label: 'Tronçons HTA' },
+            { key: 'postesSources', label: 'Postes Sources (Caparéseau)' },
+            { key: 'cadastre', label: 'Cadastre IGN' },
+            { key: 'orthophoto', label: 'Satellite Orthophoto' }
+          ].map((c) => {
+            const isAct = layers[c.key];
+            return (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => setLayers((prev) => ({ ...prev, [c.key]: !prev[c.key] }))}
+                className={`px-3 py-1.5 rounded-lg font-bold text-xs border transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  isAct
+                    ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-xs'
+                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                <span>{isAct ? '✓' : ''}</span>
+                <span>{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Status & Loader indicator */}
+        <div className="flex items-center gap-3 text-slate-400 text-xs">
+          {isFetchingLines && (
+            <span className="text-amber-400 flex items-center gap-1 font-bold text-[11px] animate-pulse">
+              <Zap className="w-3.5 h-3.5" />
+              <span>Chargement réseau Enedis...</span>
+            </span>
+          )}
+          <span className="font-mono text-[11px] text-slate-400">
+            {networkLines.length} tronçons • {visibleSubstations.length} postes en vue
+          </span>
         </div>
       </div>
     </div>
