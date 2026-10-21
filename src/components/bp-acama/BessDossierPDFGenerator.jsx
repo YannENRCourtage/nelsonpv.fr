@@ -251,7 +251,7 @@ export default function BessDossierPDFGenerator({
   const scrollContainerRef = useRef(null);
 
   const isPort = activeMode === 'portfolio';
-  const totalPagesCount = isPort ? 8 : 6;
+  const totalPagesCount = isPort ? 9 : 7;
 
   // Synchronisation dynamique si allAvailableSites change
   useEffect(() => {
@@ -528,7 +528,7 @@ export default function BessDossierPDFGenerator({
 
       // Construction de la liste ordonnée des pages à capturer
       const pagesToCapture = [];
-      const planchesCount = isPort ? 8 : 6;
+      const planchesCount = totalPagesCount;
 
       // 1. Les planches du dossier portefeuille (8 planches)
       for (let i = 1; i <= planchesCount; i++) {
@@ -536,7 +536,7 @@ export default function BessDossierPDFGenerator({
         if (el) {
           pagesToCapture.push({
             containerId: `bess-planche-container-${i}`,
-            title: isPort ? `Planche ${i}/8 : ${plancheTitles[i - 1]}` : `Planche ${i}/6 : ${plancheTitles[i - 1]}`,
+            title: `Planche ${i}/${totalPagesCount} : ${plancheTitles[i - 1]}`,
             type: 'portfolio',
             index: i
           });
@@ -569,7 +569,7 @@ export default function BessDossierPDFGenerator({
 
         if (isComplete) {
           if (target.type === 'portfolio') {
-            setProgressStep(`Capture Planche Portefeuille ${target.index}/8 (${plancheTitles[target.index - 1] || ''}) [Page ${i + 1}/${totalTargetPages}]...`);
+            setProgressStep(`Capture Planche Portefeuille ${target.index}/${totalPagesCount} (${plancheTitles[target.index - 1] || ''}) [Page ${i + 1}/${totalTargetPages}]...`);
           } else {
             setProgressStep(`Capture Fiche Projet ${target.index}/${selectedBessSites.length} (${target.site?.name || ''}) [Page ${i + 1}/${totalTargetPages}]...`);
           }
@@ -683,7 +683,8 @@ export default function BessDossierPDFGenerator({
   const plancheTitles = isPort ? [
     "Synthèse Exécutive & Chiffres Clés",
     "Cadre Réglementaire & Barème TURPE 7",
-    "Value Stacking & 2 Cycles Quotidiens",
+    "L'Empilement de Valeur (Value Stacking)",
+    "24 Heures dans la Vie d'une Batterie",
     "Plan d'Affaires Prévisionnel 15 Ans",
     "Trajectoire EBITDA vs Cash-Flow Disponible",
     "Standard Technique DP & Cartographie Volta",
@@ -692,7 +693,8 @@ export default function BessDossierPDFGenerator({
   ] : [
     "Synthèse Exécutive & Chiffres Clés",
     "Cadre Réglementaire & Barème TURPE 7",
-    "Value Stacking & 2 Cycles Quotidiens",
+    "L'Empilement de Valeur (Value Stacking)",
+    "24 Heures dans la Vie d'une Batterie",
     "Plan d'Affaires Prévisionnel 15 Ans",
     "Trajectoire EBITDA vs Cash-Flow Disponible",
     "Standard Technique DP & Implantation Site"
@@ -1380,8 +1382,125 @@ export default function BessDossierPDFGenerator({
                 </div>
               </div>
 
-              {/* Schéma Pédagogique Interactif & Haute Définition : 24 HEURES DANS LA VIE D'UNE BATTERIE */}
-              <BessDailyCycleVisualizer defaultHour={13} isPdf={isGenerating} />
+              {/* Architecture Opérationnelle & Règles de Marché des 2 Cycles Quotidiens */}
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    <h3 className="text-sm font-black uppercase text-[#0b192c] tracking-tight">
+                      Architecture Opérationnelle des 2 Cycles Quotidiens &amp; Arbitrage Algorithmique
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    Pilotage Optimisé 24h/24
+                  </span>
+                </div>
+
+                {/* 4 Piliers Stratégiques */}
+                <div className="grid grid-cols-4 gap-3 mb-3.5">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-black text-blue-900">Cycle 1 • Nuit &amp; Réveil</span>
+                        <span className="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">02h - 08h</span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-600 leading-snug">
+                        Achat nocturne sur Day-Ahead au creux de demande. Restitution dynamique sur la pointe du matin (06h-08h) aux prix forts.
+                      </p>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-slate-200/70 text-[9.5px] font-bold text-blue-800">
+                      → Spread moyen capté : 45 à 90 €/MWh
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-black text-amber-900">Cycle 2 • Solaire &amp; Soir</span>
+                        <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">11h - 21h</span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-600 leading-snug">
+                        Recharge méridienne sur surplus PV (prix très bas ou négatifs). Injection lors de la pointe vespérale (18h-21h).
+                      </p>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-slate-200/70 text-[9.5px] font-bold text-amber-800">
+                      → Spread moyen capté : 80 à 160 €/MWh
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-black text-indigo-900">Trading Algorithmique</span>
+                        <span className="text-[9px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">Temps Réel</span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-600 leading-snug">
+                        Algorithme connecté en continu aux marchés européens (PICASSO / MARI / EPEX). Bascule dynamique selon opportunités.
+                      </p>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-slate-200/70 text-[9.5px] font-bold text-indigo-800">
+                      → Temps de réaction &lt; 600 ms
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-black text-emerald-900">Cyclabilité &amp; Sécurité</span>
+                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">LFP Li-ion</span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-600 leading-snug">
+                        Plage de SoC maîtrisée (10%-95%) et régulation thermique liquide (23°C ± 2°C). Garantie 15 ans et 6 000 cycles.
+                      </p>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-slate-200/70 text-[9.5px] font-bold text-emerald-800">
+                      → Dégradation modélisée à 2.2%/an
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tableau Synthétique des Marchés Monétisés */}
+                <div className="overflow-hidden rounded-xl border border-slate-200 shadow-2xs">
+                  <table className="w-full text-left text-[10px] border-collapse bg-white">
+                    <thead className="bg-slate-100 text-slate-800 font-extrabold border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3">Flux de Monétisation</th>
+                        <th className="py-2.5 px-3">Marché Cible &amp; Contrepartie</th>
+                        <th className="py-2.5 px-3">Engagement Opérationnel</th>
+                        <th className="py-2.5 px-3 text-center">Part du CA</th>
+                        <th className="py-2.5 px-3 text-right">CA Brut An 1</th>
+                        <th className="py-2.5 px-3">Profil de Risque &amp; Visibilité</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      <tr className="hover:bg-slate-50/70">
+                        <td className="py-2 px-3 font-bold text-blue-900">1. Réserve Primaire 50 Hz (FCR) &amp; PICASSO</td>
+                        <td className="py-2 px-3">RTE / Plateforme Européenne (Enchères 4h)</td>
+                        <td className="py-2 px-3">Veille active continue &amp; puissance symétrique (±500 kW)</td>
+                        <td className="py-2 px-3 text-center font-bold text-blue-700">58.7%</td>
+                        <td className="py-2 px-3 text-right font-black text-blue-900">{kpi.fcr}</td>
+                        <td className="py-2 px-3 text-emerald-700 font-semibold">Très faible • Rémunération capacitaire sécurisée</td>
+                      </tr>
+                      <tr className="hover:bg-slate-50/70">
+                        <td className="py-2 px-3 font-bold text-cyan-900">2. Arbitrage Spot EPEX (Day-Ahead &amp; Intraday)</td>
+                        <td className="py-2 px-3">Bourse EPEX Spot France (MWh Physique)</td>
+                        <td className="py-2 px-3">2 cycles de charge/décharge quotidiens (1 044 kWh)</td>
+                        <td className="py-2 px-3 text-center font-bold text-cyan-700">31.8%</td>
+                        <td className="py-2 px-3 text-right font-black text-cyan-900">{kpi.arb}</td>
+                        <td className="py-2 px-3 text-amber-700 font-semibold">Modéré • Volatilité positive des prix horaires</td>
+                      </tr>
+                      <tr className="hover:bg-slate-50/70">
+                        <td className="py-2 px-3 font-bold text-emerald-900">3. Mécanisme de Capacité RTE</td>
+                        <td className="py-2 px-3">Fournisseurs obligés / Enchères RTE</td>
+                        <td className="py-2 px-3">Mise à disposition garantie lors des jours PP2 d'hiver</td>
+                        <td className="py-2 px-3 text-center font-bold text-emerald-700">9.5%</td>
+                        <td className="py-2 px-3 text-right font-black text-emerald-900">{kpi.capa}</td>
+                        <td className="py-2 px-3 text-emerald-700 font-semibold">Nul • Garantie réglementaire (35 €/kW/an certifiés)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
             {/* Pied de page institutionnel sans "(Paysage)" */}
@@ -1394,7 +1513,7 @@ export default function BessDossierPDFGenerator({
           </div>
 
           {/* ========================================================================= */}
-          {/* PLANCHE 4 : PLAN D'AFFAIRES PRÉVISIONNEL SUR 15 ANS (TABLEAU SEUL, FOND BLANC) */}
+          {/* PLANCHE 4 : 24 HEURES DANS LA VIE D'UNE BATTERIE (FOND BLANC) */}
           {/* ========================================================================= */}
           <div
             id="bess-planche-container-4"
@@ -1408,6 +1527,70 @@ export default function BessDossierPDFGenerator({
                 </span>
                 <span className="font-bold text-slate-800 text-sm">
                   {plancheTitles[3]}
+                </span>
+              </div>
+            </div>
+            <section className="bess-render-page shrink-0 bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col justify-between" style={{ width: '1380px', minWidth: '1380px', maxWidth: '1380px', height: '940px', minHeight: '940px', maxHeight: '940px', flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box' }}>
+            <div className="flex flex-col h-full justify-between">
+              {/* En-tête de planche */}
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-2">
+                <div className="flex items-center gap-4">
+                  <img
+                    src="/logo-enr-courtage-inline.png"
+                    alt="ENR COURTAGE"
+                    className="h-11 w-auto object-contain"
+                  />
+                  <div>
+                    <h2 className="text-2xl sm:text-3xl font-black text-[#0b192c] tracking-tight mt-0.5">
+                      24 Heures dans la Vie d'une Batterie BESS
+                    </h2>
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 mt-0.5">
+                      Une journée type d'arbitrage et de régulation réseau : simulation heure par heure du comportement technique et économique.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-right">
+                    <span className="text-[10px] font-bold text-emerald-700 uppercase block">Disponibilité Opérationnelle</span>
+                    <span className="text-sm font-black text-emerald-900">98.5% (24h/24)</span>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-right">
+                    <span className="text-[10px] font-bold text-blue-700 uppercase block">Régime de cycles</span>
+                    <span className="text-sm font-black text-blue-900">2 Cycles Complets / Jour</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Composant Dédié Pleine Page */}
+              <div className="flex-1 flex flex-col justify-center">
+                <BessDailyCycleVisualizer defaultHour={13} isPdf={isGenerating} standalonePage={true} />
+              </div>
+
+              {/* Pied de page institutionnel */}
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                <div>ENR COURTAGE SAS • Modélisation Opérationnelle 24h &amp; Pilotage Marchés</div>
+                <div className="font-semibold text-slate-600">Double cycle quotidien &amp; arbitrage temps réel EPEX / RTE FCR</div>
+                <div className="font-bold text-[#0b192c]">Planche 4 / {totalPagesCount}</div>
+              </div>
+            </div>
+            </section>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* PLANCHE 5 : PLAN D'AFFAIRES PRÉVISIONNEL SUR 15 ANS (TABLEAU SEUL, FOND BLANC) */}
+          {/* ========================================================================= */}
+          <div
+            id="bess-planche-container-5"
+            style={{ display: 'flex' }}
+            className="w-full flex flex-col items-center shrink-0 mb-8"
+          >
+            <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
+                  Planche 5 sur {totalPagesCount}
+                </span>
+                <span className="font-bold text-slate-800 text-sm">
+                  {plancheTitles[4]}
                 </span>
               </div>
             </div>
@@ -1562,26 +1745,26 @@ export default function BessDossierPDFGenerator({
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
               <div>ENR COURTAGE SAS • Modélisation Financière Analytique</div>
               <div className="font-semibold text-slate-600">Plan d'affaires audité 15 ans • Inflation 2.0%</div>
-              <div className="font-bold text-[#0b192c]">Planche 4 / {totalPagesCount}</div>
+              <div className="font-bold text-[#0b192c]">Planche 5 / {totalPagesCount}</div>
             </div>
             </section>
           </div>
 
           {/* ========================================================================= */}
-          {/* PLANCHE 5 (NOUVELLE PLANCHE DÉDIÉE) : TRAJECTOIRE FINANCIÈRE 15 ANS (BAR-CHART) */}
+          {/* PLANCHE 6 (NOUVELLE PLANCHE DÉDIÉE) : TRAJECTOIRE FINANCIÈRE 15 ANS (BAR-CHART) */}
           {/* ========================================================================= */}
           <div
-            id="bess-planche-container-5"
+            id="bess-planche-container-6"
             style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
-                  Planche 5 sur {totalPagesCount}
+                  Planche 6 sur {totalPagesCount}
                 </span>
                 <span className="font-bold text-slate-800 text-sm">
-                  {plancheTitles[4]}
+                  {plancheTitles[5]}
                 </span>
               </div>
             </div>
@@ -1708,26 +1891,26 @@ export default function BessDossierPDFGenerator({
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
               <div>ENR COURTAGE SAS • Visualisation Graphique Haute Résolution</div>
               <div className="font-semibold text-slate-600">Trajectoire pluriannuelle certifiée • Cash-Flow post-dette</div>
-              <div className="font-bold text-[#0b192c]">Planche 5 / {totalPagesCount}</div>
+              <div className="font-bold text-[#0b192c]">Planche 6 / {totalPagesCount}</div>
             </div>
             </section>
           </div>
 
           {/* ========================================================================= */}
-          {/* PLANCHE 6 : CARTOGRAPHIE VOLTA (IMAGE 5) & VISUEL DALLE BÉTON DP (IMAGE 4) */}
+          {/* PLANCHE 7 : CARTOGRAPHIE VOLTA (IMAGE 5) & VISUEL DALLE BÉTON DP (IMAGE 4) */}
           {/* ========================================================================= */}
           <div
-            id="bess-planche-container-6"
+            id="bess-planche-container-7"
             style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
-                  Planche 6 sur {totalPagesCount}
+                  Planche 7 sur {totalPagesCount}
                 </span>
                 <span className="font-bold text-slate-800 text-sm">
-                  {plancheTitles[5]}
+                  {plancheTitles[6]}
                 </span>
               </div>
             </div>
@@ -1869,27 +2052,27 @@ export default function BessDossierPDFGenerator({
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
               <div>ENR COURTAGE SAS • Implantation Territoriale &amp; Ingénierie Pré-Construction</div>
               <div className="font-semibold text-slate-600">Cartographie VOLTA • Standard technique DP certifié</div>
-              <div className="font-bold text-[#0b192c]">Planche 6 / {totalPagesCount}</div>
+              <div className="font-bold text-[#0b192c]">Planche 7 / {totalPagesCount}</div>
             </div>
             </section>
           </div>
 
           {/* ========================================================================= */}
-          {/* PLANCHE 7 : RÉPERTOIRE FONCIER & RÉSEAU DES PROJETS (SITES 1 À 16) */}
+          {/* PLANCHE 8 : RÉPERTOIRE FONCIER & RÉSEAU DES PROJETS (SITES 1 À 16) */}
           {/* ========================================================================= */}
           {isPort && (
           <div
-            id="bess-planche-container-7"
+            id="bess-planche-container-8"
             style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
-                  Planche 7 sur {totalPagesCount}
+                  Planche 8 sur {totalPagesCount}
                 </span>
                 <span className="font-bold text-slate-800 text-sm">
-                  {plancheTitles[6]}
+                  {plancheTitles[7]}
                 </span>
               </div>
             </div>
@@ -1970,7 +2153,7 @@ export default function BessDossierPDFGenerator({
                       </tr>
                     ))}
 
-                    {/* Si 16 sites ou moins, totalisation consolidée directe en Planche 7 */}
+                    {/* Si 16 sites ou moins, totalisation consolidée directe en Planche 8 */}
                     {selectedBessSites.length <= 16 && (
                       <tr className="bg-gradient-to-r from-blue-900 via-indigo-950 to-[#0b192c] text-white font-black text-[11px]">
                         <td className="py-2 px-2 text-center text-amber-300 font-black">∑</td>
@@ -1995,28 +2178,28 @@ export default function BessDossierPDFGenerator({
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
               <div>ENR COURTAGE SAS • Audit Foncier &amp; Raccordement HTA (Partie 1)</div>
               <div className="font-semibold text-slate-600">{selectedBessSites.length} Promesses de Baux Notariées 20 Ans • Raccordements HTA Identifiés</div>
-              <div className="font-bold text-[#0b192c]">Planche 7 / {totalPagesCount}</div>
+              <div className="font-bold text-[#0b192c]">Planche 8 / {totalPagesCount}</div>
             </div>
               </section>
             </div>
           )}
 
           {/* ========================================================================= */}
-          {/* PLANCHE 8 : RÉPERTOIRE FONCIER & RÉSEAU DES PROJETS (SITES 17+ OU TOTAL) */}
+          {/* PLANCHE 9 : RÉPERTOIRE FONCIER & RÉSEAU DES PROJETS (SITES 17+ OU TOTAL) */}
           {/* ========================================================================= */}
           {isPort && (
           <div
-            id="bess-planche-container-8"
+            id="bess-planche-container-9"
             style={{ display: 'flex' }}
             className="w-full flex flex-col items-center shrink-0 mb-8"
           >
             <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 rounded-full bg-slate-900 text-white font-black text-xs shadow-xs">
-                  Planche 8 sur {totalPagesCount}
+                  Planche 9 sur {totalPagesCount}
                 </span>
                 <span className="font-bold text-slate-800 text-sm">
-                  {plancheTitles[7]}
+                  {plancheTitles[8]}
                 </span>
               </div>
             </div>
@@ -2097,7 +2280,7 @@ export default function BessDossierPDFGenerator({
                       {sitesP2.length === 0 && (
                         <tr>
                           <td colSpan={11} className="py-6 text-center text-slate-500 italic bg-slate-50">
-                            L'intégralité des {selectedBessSites.length} centrales BESS retenues est listée sur la Planche 7 précédente.
+                            L'intégralité des {selectedBessSites.length} centrales BESS retenues est listée sur la Planche 8 précédente.
                           </td>
                         </tr>
                       )}
@@ -2125,7 +2308,7 @@ export default function BessDossierPDFGenerator({
               <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
                 <div>ENR COURTAGE SAS • Audit Foncier &amp; Raccordement HTA (Partie 2)</div>
                 <div className="font-semibold text-slate-600">Consolidation Complète {selectedBessSites.length} Sites • {(selectedBessSites.length * 0.5).toFixed(2)} MW / {(selectedBessSites.length * 1.044).toFixed(2)} MWh</div>
-                <div className="font-bold text-[#0b192c]">Planche 8 / {totalPagesCount}</div>
+                <div className="font-bold text-[#0b192c]">Planche 9 / {totalPagesCount}</div>
               </div>
               </section>
             </div>
@@ -2146,7 +2329,7 @@ export default function BessDossierPDFGenerator({
                   <div className="w-[1380px] mb-2.5 flex items-center justify-between text-xs text-slate-600 font-semibold px-2" data-html2canvas-ignore="true">
                     <div className="flex items-center gap-2">
                       <span className="px-3 py-1 rounded-full bg-blue-700 text-white font-black text-xs shadow-xs">
-                        Fiche Projet {sIdx + 1} / {selectedBessSites.length} (Page {8 + sIdx + 1} / {8 + selectedBessSites.length})
+                        Fiche Projet {sIdx + 1} / {selectedBessSites.length} (Page {totalPagesCount + sIdx + 1} / {totalPagesCount + selectedBessSites.length})
                       </span>
                       <span className="font-bold text-slate-800 text-sm">
                         Fiche BESS Unitaire — Projet {site.name} ({site.city} - {site.dept})
@@ -2177,7 +2360,7 @@ export default function BessDossierPDFGenerator({
             </span>
             <span className="text-slate-300">|</span>
             <span className="text-xs text-slate-500 font-medium">
-              {isPort ? `8 Planches Portefeuille + ${selectedBessSites.length} Fiches Projets = ${8 + selectedBessSites.length} Pages` : `${totalPagesCount} Planches A4 Paysage`}
+              {isPort ? `${totalPagesCount} Planches Portefeuille + ${selectedBessSites.length} Fiches Projets = ${totalPagesCount + selectedBessSites.length} Pages` : `${totalPagesCount} Planches A4 Paysage`}
             </span>
           </div>
 
@@ -2203,10 +2386,10 @@ export default function BessDossierPDFGenerator({
                 onClick={() => setIsSelectModalOpen(true)}
                 disabled={isGenerating}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-                title={`Personnaliser le portefeuille et générer l'étude complète (${8 + selectedBessSites.length} pages)`}
+                title={`Personnaliser le portefeuille et générer l'étude complète (${totalPagesCount + selectedBessSites.length} pages)`}
               >
                 <Sparkles className="w-4 h-4 text-yellow-200" />
-                <span>ÉTUDE COMPLÈTE ({8 + selectedBessSites.length} PAGES)</span>
+                <span>ÉTUDE COMPLÈTE ({totalPagesCount + selectedBessSites.length} PAGES)</span>
               </button>
             )}
 
@@ -2224,7 +2407,7 @@ export default function BessDossierPDFGenerator({
               ) : (
                 <>
                   <Printer className="w-4 h-4" />
-                  <span>{isPort ? 'Dossier Portefeuille (8 Pages)' : 'Imprimer / Exporter en PDF'}</span>
+                  <span>{isPort ? `Dossier Portefeuille (${totalPagesCount} Pages)` : 'Imprimer / Exporter en PDF'}</span>
                 </>
               )}
             </button>
@@ -2489,7 +2672,7 @@ export default function BessDossierPDFGenerator({
                   className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4 text-yellow-200" />
-                  <span>Valider et Générer l'Étude (8 + {selectedBessSites.length} Pages)</span>
+                  <span>Valider et Générer l'Étude ({totalPagesCount} + {selectedBessSites.length} Pages)</span>
                 </button>
               </div>
             </div>

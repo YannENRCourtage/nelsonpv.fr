@@ -3,7 +3,7 @@ import { Play, Pause, Zap, Activity, Clock, ShieldCheck, Sun, Moon, Sunrise, Sun
 
 /**
  * RÉFÉRENTIEL EXACT DES 24 HEURES D'UNE BATTERIE BESS (HOURLY_BESS_DATA)
- * Conforme au modèle pédagogique Solaime Énergies et au modèle économique ENR COURTAGE.
+ * Modèle économique et algorithmique ENR COURTAGE SAS.
  */
 export const HOURLY_BESS_DATA = [
   {
@@ -379,7 +379,6 @@ export const MISSIONS_LIST = [
 function renderHighlightedNarrative(text) {
   if (!text) return null;
 
-  // Liste des expressions clés à valoriser
   const keywords = [
     '50 Hz',
     'Day-Ahead',
@@ -411,7 +410,6 @@ function renderHighlightedNarrative(text) {
     'engagement de capacité'
   ];
 
-  // Construction de l'expression régulière
   const escaped = keywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   const regex = new RegExp(`(${escaped})`, 'gi');
 
@@ -434,8 +432,9 @@ function renderHighlightedNarrative(text) {
  * @param {number} defaultHour - Heure sélectionnée par défaut (0-23, défaut 13h)
  * @param {boolean} compact - Mode compact si nécessaire
  * @param {boolean} isPdf - Mode PDF statique haute définition
+ * @param {boolean} standalonePage - Mode pleine page dédiée (Planche 4)
  */
-export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = false, isPdf = false }) {
+export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = false, isPdf = false, standalonePage = true }) {
   const [selectedHour, setSelectedHour] = useState(defaultHour);
   const [isPlaying, setIsPlaying] = useState(false);
   const timerRef = useRef(null);
@@ -444,7 +443,7 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
 
   // Auto-play 1500ms : boucle 00h -> 23h
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && !isPdf) {
       timerRef.current = setInterval(() => {
         setSelectedHour((prev) => (prev + 1) % 24);
       }, 1500);
@@ -454,13 +453,12 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying]);
+  }, [isPlaying, isPdf]);
 
   const togglePlay = () => {
     setIsPlaying((prev) => !prev);
   };
 
-  // Icône et badge d'ambiance
   const getAmbienceIcon = (periode) => {
     switch (periode) {
       case 'NUIT':
@@ -492,7 +490,7 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
   };
 
   return (
-    <div className="w-full bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 text-slate-900 select-none shadow-xs">
+    <div className={`w-full bg-white border border-slate-200 rounded-2xl ${standalonePage ? 'p-4 sm:p-5' : 'p-3 sm:p-4'} text-slate-900 select-none shadow-xs flex flex-col justify-between`}>
       <style>{`
         @keyframes bessPulseRight {
           0% { transform: translateX(0px); opacity: 0.3; }
@@ -525,25 +523,25 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
         {/* Titre avec pastille verte */}
         <div className="flex items-center gap-2.5">
-          <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] shrink-0 animate-pulse" />
+          <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] shrink-0 animate-pulse" />
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight text-[#0b192c]">
+              <h3 className="text-sm sm:text-base font-black uppercase tracking-tight text-[#0b192c]">
                 24 HEURES DANS LA VIE D'UNE BATTERIE
               </h3>
-              <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                Solaime &amp; ENR Courtage
+              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                ENR COURTAGE • Trading Algorithmique
               </span>
             </div>
-            <p className="text-[10.5px] text-slate-500 font-medium">
-              Une journée type, expliquée simplement
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Une journée type d'arbitrage et de régulation Enedis / RTE, expliquée simplement
             </p>
           </div>
         </div>
 
         {/* Barre de contrôle interactive */}
         <div className="flex items-center gap-2.5">
-          {/* Bouton ambre Suivre la journée */}
+          {/* Bouton ambre Suivre la journée (uniquement interactif à l'écran) */}
           <button
             type="button"
             onClick={togglePlay}
@@ -570,7 +568,7 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
 
           {/* Slider horizontal avec curseur rond ambre */}
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg shadow-2xs">
-            <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <Clock className="w-4 h-4 text-amber-600 shrink-0" />
             <input
               type="range"
               min="0"
@@ -578,11 +576,11 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
               step="1"
               value={selectedHour}
               onChange={(e) => setSelectedHour(parseInt(e.target.value, 10))}
-              className="w-24 sm:w-32 accent-amber-500 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+              className="w-28 sm:w-36 accent-amber-500 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
               title="Sélectionner une heure"
             />
             {/* Affichage heure à droite */}
-            <span className="text-xs font-black text-amber-700 font-mono min-w-[36px] text-right">
+            <span className="text-xs font-black text-amber-700 font-mono min-w-[38px] text-right">
               {String(selectedHour).padStart(2, '0')} h
             </span>
           </div>
@@ -592,16 +590,16 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
       {/* ========================================================================= */}
       {/* ÉTAGE B & C : BANDEAU SYNOPTIQUE ANIMÉ + ENCADRÉ NARRATIF HORODATÉ        */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-12 gap-3 my-3 items-stretch">
+      <div className="grid grid-cols-12 gap-4 my-3 items-stretch">
         {/* ÉTAGE B : BANDEAU SYNOPTIQUE ANIMÉ (7 colonnes) */}
-        <div className="col-span-12 lg:col-span-7 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between relative shadow-2xs">
+        <div className="col-span-12 lg:col-span-7 bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between relative shadow-2xs">
           {/* Badge d'ambiance en haut à droite */}
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
               Flux Énergétique HTA &amp; Stockage BESS
             </span>
             <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs ${getAmbienceBg(
+              className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider border shadow-2xs ${getAmbienceBg(
                 current.periode
               )}`}
             >
@@ -611,10 +609,10 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
           </div>
 
           {/* Centre du bandeau : Pylône <---> Flux animé <---> Batterie */}
-          <div className="flex items-center justify-between gap-3 px-2 py-1">
+          <div className="flex items-center justify-between gap-4 px-2 py-1.5">
             {/* À gauche : Icône SVG Pylône HTA + label */}
             <div className="flex flex-col items-center text-center shrink-0 w-28">
-              <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-xs mb-1">
+              <div className="w-13 h-13 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-xs mb-1">
                 <svg
                   viewBox="0 0 24 24"
                   className="w-7 h-7 text-slate-700 stroke-current"
@@ -635,20 +633,20 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
                   <path d="M17 11l-10 6" />
                 </svg>
               </div>
-              <span className="text-[10.5px] font-black text-slate-900 leading-tight">
+              <span className="text-[11px] font-black text-slate-900 leading-tight">
                 Le réseau électrique
               </span>
-              <span className="text-[9px] font-bold text-slate-500">
+              <span className="text-[9.5px] font-bold text-slate-500">
                 Enedis HTA 20 kV
               </span>
             </div>
 
             {/* Au centre : Label d'état en majuscules + 3 points lumineux animés */}
-            <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-2">
               {/* Label d'état dynamique en majuscules */}
-              <div className="mb-2">
+              <div className="mb-2.5">
                 <span
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wide border shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide border shadow-2xs"
                   style={{
                     backgroundColor: `${current.actionColor}18`,
                     color: current.actionColor === '#38bdf8' ? '#0369a1' : current.actionColor,
@@ -664,7 +662,7 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
               </div>
 
               {/* Ligne conductrice avec 3 points lumineux animés */}
-              <div className="relative w-full max-w-[190px] h-6 flex items-center justify-center">
+              <div className="relative w-full max-w-[210px] h-6 flex items-center justify-center">
                 <div className="absolute inset-x-0 h-1 bg-slate-300 rounded-full" />
 
                 {/* Animation selon le sens de flux */}
@@ -701,7 +699,7 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
                 )}
               </div>
 
-              <span className="text-[9.5px] font-semibold text-slate-500 mt-1">
+              <span className="text-[10px] font-semibold text-slate-500 mt-1.5">
                 {current.actionColor === '#f59e0b' && 'Recharge programmée (soutirage)'}
                 {current.actionColor === '#f43f5e' && 'Injection sur le réseau public'}
                 {current.actionColor === '#38bdf8' && 'Stabilisation réseau seconde par seconde'}
@@ -711,9 +709,9 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
 
             {/* À droite : Icône SVG Batterie BESS verticale avec remplissage dynamique AMBRE */}
             <div className="flex flex-col items-center text-center shrink-0 w-28">
-              <div className="relative w-12 h-16 bg-white border-2 border-slate-700 rounded-md p-0.5 flex flex-col justify-end shadow-xs mb-1 overflow-hidden">
+              <div className="relative w-13 h-17 bg-white border-2 border-slate-700 rounded-md p-0.5 flex flex-col justify-end shadow-xs mb-1 overflow-hidden">
                 {/* Borne supérieure batterie */}
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-1.5 bg-slate-700 rounded-t-xs" />
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-5 h-1.5 bg-slate-700 rounded-t-xs" />
 
                 {/* Remplissage dynamique AMBRE proportionnel au SoC */}
                 <div
@@ -726,15 +724,15 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
 
                 {/* Pourcentage SoC exact centré au milieu de la batterie */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="text-[11px] font-black text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]">
+                  <span className="text-xs font-black text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)]">
                     {current.soc} %
                   </span>
                 </div>
               </div>
-              <span className="text-[10.5px] font-black text-slate-900 leading-tight">
+              <span className="text-[11px] font-black text-slate-900 leading-tight">
                 Batterie BESS
               </span>
-              <span className="text-[9px] font-extrabold text-amber-600">
+              <span className="text-[9.5px] font-extrabold text-amber-600">
                 SoC {current.soc} %
               </span>
             </div>
@@ -742,29 +740,29 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
         </div>
 
         {/* ÉTAGE C : ENCADRÉ NARRATIF HORODATÉ (5 colonnes) */}
-        <div className="col-span-12 lg:col-span-5 border-l-4 border-amber-500 bg-amber-50/50 rounded-r-xl p-3 sm:p-3.5 flex flex-col justify-between shadow-2xs">
+        <div className="col-span-12 lg:col-span-5 border-l-4 border-amber-500 bg-amber-50/50 rounded-r-xl p-4 flex flex-col justify-between shadow-2xs">
           <div>
             {/* Timestamp monospace ambre */}
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-600" />
-                <span className="text-base font-black font-mono text-amber-600 tracking-wider">
+                <span className="text-lg font-black font-mono text-amber-600 tracking-wider">
                   {current.time}
                 </span>
               </div>
-              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-white border border-amber-200 text-amber-800">
+              <span className="text-[9.5px] font-black uppercase px-2.5 py-0.5 rounded-md bg-white border border-amber-200 text-amber-800">
                 Mission {current.mission}
               </span>
             </div>
 
-            {/* Texte narratif avec mots-clés en gras */}
-            <p className="text-xs text-slate-800 leading-relaxed font-normal">
+            {/* Texte narratif complet avec mots-clés en gras (sans coupure) */}
+            <p className="text-[12px] text-slate-800 leading-relaxed font-normal">
               "{renderHighlightedNarrative(current.texte)}"
             </p>
           </div>
 
           {/* Pied de carte narratif */}
-          <div className="pt-2 border-t border-amber-200/80 mt-2 flex items-center justify-between text-[10px]">
+          <div className="pt-2.5 border-t border-amber-200/80 mt-2.5 flex items-center justify-between text-[10.5px]">
             <span className="text-slate-600 font-medium">
               Période : <strong className="text-slate-900">{current.periode}</strong>
             </span>
@@ -776,25 +774,25 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
       </div>
 
       {/* ========================================================================= */}
-      {/* ÉTAGE D : GRILLE DES 4 CARTES DE MISSIONS (4 COLONNES)                     */}
+      {/* ÉTAGE D : GRILLE DES 4 CARTES DE MISSIONS (4 COLONNES - TEXTES COMPLETS)   */}
       {/* ========================================================================= */}
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[9.5px] font-black uppercase tracking-wider text-slate-600">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
             Activation des 4 Piliers de Monétisation (Value Stacking)
           </span>
-          <span className="text-[9px] font-semibold text-slate-400">
-            Mission en cours à {current.time} : <strong className="text-slate-800 uppercase">{current.mission}</strong>
+          <span className="text-[9.5px] font-semibold text-slate-400">
+            Mission active à {current.time} : <strong className="text-slate-800 uppercase">{current.mission}</strong>
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {MISSIONS_LIST.map((m) => {
             const isActive = current.mission === m.id;
             return (
               <div
                 key={m.id}
-                className={`rounded-xl p-2.5 border transition-all duration-200 flex flex-col justify-between ${
+                className={`rounded-xl p-3 border transition-all duration-200 flex flex-col justify-between ${
                   isActive
                     ? `${m.bgActiveClass} ${m.borderClass} shadow-xs`
                     : 'border-slate-200 bg-white/70 text-slate-500 opacity-60'
@@ -802,27 +800,27 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
               >
                 <div>
                   {/* Titre et Pastille */}
-                  <div className="flex items-center gap-1.5 mb-1">
+                  <div className="flex items-center gap-2 mb-1.5">
                     <span
                       className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: m.color }}
                     />
-                    <h4 className="text-[11px] font-black text-slate-900 leading-tight">
+                    <h4 className="text-xs font-black text-slate-900 leading-tight">
                       {m.code} — <span className="font-extrabold">{m.title}</span>
                     </h4>
                   </div>
 
-                  {/* Description verbatim */}
-                  <p className="text-[9.5px] text-slate-700 leading-snug line-clamp-2">
+                  {/* Description verbatim intégrale sans troncature */}
+                  <p className="text-[10px] text-slate-700 leading-relaxed font-medium">
                     {m.description}
                   </p>
                 </div>
 
                 {/* Badge en bas */}
-                <div className="mt-2 pt-1.5 border-t border-slate-200/60 flex items-center justify-between">
-                  <span className="text-[8.5px] font-bold text-slate-400 uppercase">Statut</span>
+                <div className="mt-2.5 pt-1.5 border-t border-slate-200/60 flex items-center justify-between">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">Statut</span>
                   <span
-                    className={`text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
                       isActive
                         ? m.badgeActiveClass
                         : 'bg-slate-100 text-slate-400'
@@ -838,17 +836,17 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
       </div>
 
       {/* ========================================================================= */}
-      {/* ÉTAGE E : DOUBLE FRISE INTERACTIVE DE 24 BLOCS (00H À 23H)                */}
+      {/* ÉTAGE E : DOUBLE FRISE 24 HEURES & LÉGENDE COMPLÈTE                       */}
       {/* ========================================================================= */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3">
-        {/* LIGNE 1 : PRIX DE L'ÉLECTRICITÉ */}
-        <div className="mb-2">
-          <div className="flex items-center justify-between text-[9px] font-black text-slate-700 mb-1 px-0.5">
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-3.5">
+        {/* LIGNE 1 : PRIX SPOT DE L'ÉLECTRICITÉ (LIBELLÉ DOCUMENT SANS 'CLIQUER') */}
+        <div className="mb-2.5">
+          <div className="flex items-center justify-between text-[9.5px] font-black text-slate-700 mb-1 px-0.5">
             <span className="uppercase tracking-wide">
-              Prix de l'électricité • vert = bon marché, rouge = cher — cliquez sur une heure
+              Prix spot de l'électricité (EPEX Spot) • Vert = bon marché, Rouge = pointes de prix
             </span>
             <span className="text-slate-400 font-bold hidden sm:inline">
-              00h à 23h
+              Profil horaire 00h à 23h
             </span>
           </div>
 
@@ -866,7 +864,7 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
                   key={`prix-${h.hour}`}
                   type="button"
                   onClick={() => setSelectedHour(h.hour)}
-                  className={`h-5 sm:h-5.5 rounded-xs flex items-center justify-center text-[8px] sm:text-[8.5px] font-black transition-all ${
+                  className={`h-6 sm:h-6.5 rounded-xs flex items-center justify-center text-[8.5px] font-black transition-all ${
                     isSelected
                       ? 'ring-2 ring-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] scale-105 z-10 font-black'
                       : 'hover:opacity-85'
@@ -885,13 +883,13 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
         </div>
 
         {/* LIGNE 2 : CE QUE FAIT LA BATTERIE */}
-        <div className="mb-1">
-          <div className="flex items-center justify-between text-[9px] font-black text-slate-700 mb-1 px-0.5">
+        <div className="mb-1.5">
+          <div className="flex items-center justify-between text-[9.5px] font-black text-slate-700 mb-1 px-0.5">
             <span className="uppercase tracking-wide">
-              Ce que fait la batterie
+              Cycle de fonctionnement de la batterie
             </span>
-            <span className="text-amber-700 font-mono font-black text-[10px]">
-              Heure active : {current.time}
+            <span className="text-amber-700 font-mono font-black text-[10.5px]">
+              Heure représentée : {current.time}
             </span>
           </div>
 
@@ -909,7 +907,7 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
                   key={`action-${h.hour}`}
                   type="button"
                   onClick={() => setSelectedHour(h.hour)}
-                  className={`h-5 sm:h-5.5 rounded-xs flex items-center justify-center text-[9px] font-black transition-all ${
+                  className={`h-6 sm:h-6.5 rounded-xs flex items-center justify-center text-[9.5px] font-black transition-all ${
                     isSelected
                       ? 'ring-2 ring-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] scale-105 z-10 text-white font-black'
                       : 'hover:opacity-85 text-white/90'
@@ -939,7 +937,7 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
               return (
                 <div key={`tick-${hr}`} className="text-center">
                   {showTick ? (
-                    <span className="text-[8px] sm:text-[8.5px] font-mono font-bold text-slate-500">
+                    <span className="text-[8.5px] sm:text-[9px] font-mono font-bold text-slate-500">
                       {String(hr).padStart(2, '0')}
                     </span>
                   ) : null}
@@ -949,33 +947,59 @@ export default function BessDailyCycleVisualizer({ defaultHour = 13, compact = f
           </div>
         </div>
 
-        {/* LÉGENDE HORIZONTALE EN BAS */}
-        <div className="mt-2 pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5 text-[9px] font-bold text-slate-700">
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[#f59e0b] shadow-xs" />
-              <span>Se charge quand c'est bon marché</span>
-            </span>
-
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[#f43f5e] shadow-xs" />
-              <span>Restitue quand c'est cher</span>
-            </span>
-
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[#38bdf8] shadow-xs" />
-              <span>Stabilise la fréquence (50 Hz)</span>
-            </span>
-
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-[#10b981] shadow-xs" />
-              <span>Se tient prête pour la pointe</span>
-            </span>
+        {/* ========================================================================= */}
+        {/* DOUBLE LÉGENDE COMPLÈTE ET EXPLICATIVE (PRIX & ACTIONS)                   */}
+        {/* ========================================================================= */}
+        <div className="mt-3 pt-3 border-t border-slate-200 space-y-2">
+          {/* Rangée 1 : Légende des Prix Spot de l'Électricité */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[9.5px] font-medium text-slate-700">
+            <div className="flex items-center gap-1.5 font-bold uppercase text-[9px] text-slate-500 tracking-wider">
+              <span>Légende Prix Spot :</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-xs bg-[#14532d] shadow-xs shrink-0" />
+                <span><strong>Vert très foncé</strong> : Prix négatifs &amp; surplus solaires</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-xs bg-[#4d7c0f] shadow-xs shrink-0" />
+                <span><strong>Vert clair / Kaki</strong> : Heures creuses &amp; prix bas</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-xs bg-[#a16207] shadow-xs shrink-0" />
+                <span><strong>Ocre / Ambre</strong> : Tarifs intermédiaires</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-xs bg-[#b91c1c] shadow-xs shrink-0" />
+                <span><strong>Rouge vif</strong> : Pointes maximales (prix fort)</span>
+              </span>
+            </div>
           </div>
 
-          <span className="text-[8.5px] font-extrabold uppercase text-slate-400 tracking-wider">
-            Cycle 24h Algorithmique
-          </span>
+          {/* Rangée 2 : Légende des Actions de la Batterie */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[9.5px] font-medium text-slate-700 pt-1.5 border-t border-slate-100">
+            <div className="flex items-center gap-1.5 font-bold uppercase text-[9px] text-slate-500 tracking-wider">
+              <span>Légende Batterie :</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-xs bg-[#f59e0b] shadow-xs shrink-0" />
+                <span><strong>Ambre</strong> : Se charge quand l'électricité est bon marché</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-xs bg-[#f43f5e] shadow-xs shrink-0" />
+                <span><strong>Corail</strong> : Restitue et injecte au réseau aux pointes chères</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-xs bg-[#38bdf8] shadow-xs shrink-0" />
+                <span><strong>Bleu</strong> : Stabilise la fréquence (50 Hz en continu)</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-xs bg-[#10b981] shadow-xs shrink-0" />
+                <span><strong>Émeraude</strong> : Se tient prête pour la pointe (Capacité RTE)</span>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
