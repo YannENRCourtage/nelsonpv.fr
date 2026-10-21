@@ -192,7 +192,7 @@ export async function uploadUrbanismeDataUrl(dataUrl, projectId, buildingKey = '
     const downloadUrl = await getDownloadURL(storageRef);
     return downloadUrl;
   } catch (err) {
-    console.error(`[UrbanismeMediaService] Échec upload Firebase Storage (${imageKey}):`, err);
+    console.warn(`[UrbanismeMediaService] Upload Firebase Storage non disponible (${imageKey}), conservation locale IndexedDB:`, err?.code || err?.message || err);
     // En cas d'erreur réseau / règles Firebase, conserver la Data URL en secours local
     return trimmed;
   }
