@@ -5,6 +5,7 @@ import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Bui
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
+import HtaCapacityMapTab from "../components/editor/HtaCapacityMapTab.jsx";
 
 import SubstationProximityCards from "../components/editor/SubstationProximityCards.jsx";
 
@@ -2166,6 +2167,21 @@ export default function ProjectEditor() {
 
             <button
               type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('capa-hta'); }}
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'capa-hta'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10 font-bold'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              <span className="flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                <span>Capacités HTA</span>
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('geoportail'); }}
               className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'geoportail'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
@@ -2510,6 +2526,13 @@ export default function ProjectEditor() {
             {activeTab === 'streetview' && (
               <div className='w-full h-full'>
                 <StreetViewTab project={project} activeTab={activeTab} />
+              </div>
+            )}
+
+            {/* Onglet Capacités HTA & Réseau BESS */}
+            {activeTab === 'capa-hta' && (
+              <div className='w-full h-full'>
+                <HtaCapacityMapTab project={project} activeTab={activeTab} />
               </div>
             )}
 
