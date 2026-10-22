@@ -95,36 +95,35 @@ export default function ItineraryPrintModal({
           {/* Printable Layout Container - Exact A4 Landscape (297mm x 210mm) on 1 single page */}
           <div 
             id="itinerary-print-layout"
-            className="bg-white p-5 rounded-xl border border-gray-300 shadow-sm w-full max-w-[1150px] text-gray-900 flex flex-col justify-between box-border"
-            style={{ height: '700px' }}
+            className="bg-white p-4 sm:p-5 rounded-xl border border-gray-300 shadow-sm w-full max-w-[1150px] text-gray-900 box-border flex flex-col justify-between"
+            style={{ minHeight: '680px' }}
           >
-            {/* Top Bar : Logo ENR COURTAGE & Titre "Feuille de route" */}
-            <div className="flex justify-between items-center border-b border-gray-200 pb-2.5 mb-3 shrink-0">
-              <div className="flex items-center gap-3">
-                <img 
-                  src="/logo-enr-courtage.png" 
-                  alt="ENR COURTAGE" 
-                  className="h-9 w-auto object-contain block"
-                  onError={(e) => {
-                    // Fallback to text if image error
-                    e.target.style.display = 'none';
-                  }}
-                />
-                <div className="h-6 w-[1px] bg-gray-300 mx-1"></div>
-                <h1 className="text-lg font-black tracking-tight text-gray-900 uppercase">
-                  Feuille de route
-                </h1>
-              </div>
-            </div>
-
-            {/* 2-Columns Layout : Left = Totals + Date + Map + Points A/Z | Right = Full Height Tronçons Details */}
-            <div className="print-cols-container flex gap-4 flex-1 min-h-0">
+            {/* 2-Columns Layout starting at the very top of the page */}
+            <div className="print-cols-container flex gap-4 w-full flex-1 min-h-0">
               
-              {/* LEFT COLUMN: Totals above map + Map + Points A & Z */}
-              <div className="print-left-col w-[54%] flex flex-col justify-between min-h-0">
+              {/* LEFT COLUMN: Header (Logo + Titre) + Totals + Map (agrandie en hauteur) + Points A/Z */}
+              <div className="print-left-col w-[54%] flex flex-col justify-between h-full min-h-0 pr-1">
                 
-                {/* Cadres métriques : Distance totale, Temps total et Date du document (sans l'heure) */}
-                <div className="grid grid-cols-3 gap-2 mb-2.5 shrink-0">
+                {/* 1. Header bar : confiné horizontalement à la largeur de la colonne gauche */}
+                <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-2 shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <img 
+                      src="/logo-enr-courtage.png" 
+                      alt="ENR COURTAGE" 
+                      className="h-8 w-auto object-contain block"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                    <div className="h-5 w-[1px] bg-gray-300 mx-1"></div>
+                    <h1 className="text-base font-black tracking-tight text-gray-900 uppercase">
+                      Feuille de route
+                    </h1>
+                  </div>
+                </div>
+
+                {/* 2. Cadres métriques : Distance totale, Temps total et Date du document (sans heure) */}
+                <div className="grid grid-cols-3 gap-2 mb-2 shrink-0">
                   <div className="p-2 bg-blue-50/80 border border-blue-200 rounded-lg">
                     <div className="text-[9px] font-bold text-blue-700 uppercase tracking-wider">Distance totale</div>
                     <div className="text-sm font-extrabold text-blue-950 mt-0.5">
@@ -145,8 +144,8 @@ export default function ItineraryPrintModal({
                   </div>
                 </div>
 
-                {/* Vue cartographique générale */}
-                <div className="flex-1 rounded-xl overflow-hidden border border-gray-300 shadow-xs bg-gray-50 relative flex items-center justify-center min-h-[260px] max-h-[380px]">
+                {/* 3. Vue cartographique générale : PREND PLUS DE PLACE EN HAUTEUR */}
+                <div className="flex-1 rounded-xl overflow-hidden border border-gray-300 shadow-xs bg-gray-50 relative flex items-center justify-center my-1 w-full min-h-[340px] max-h-[460px]">
                   {mapImageUrl ? (
                     <img 
                       src={mapImageUrl} 
@@ -160,8 +159,8 @@ export default function ItineraryPrintModal({
                   )}
                 </div>
 
-                {/* Cadre Départ Point A & Arrivée Point Final sous la carte */}
-                <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs shrink-0">
+                {/* 4. Cadre Départ Point A & Arrivée Point Final sous la carte */}
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs shrink-0">
                   <div className="p-2 bg-emerald-50/70 border border-emerald-200 rounded-lg flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 shadow-xs">
                       {startLabel}
@@ -184,8 +183,9 @@ export default function ItineraryPrintModal({
                 </div>
               </div>
 
-              {/* RIGHT COLUMN: Détail des tronçons prenant toute la hauteur */}
+              {/* RIGHT COLUMN: Détail des tronçons prenant TOUTE LA HAUTEUR DÈS LE HAUT DE LA PAGE */}
               <div className="print-right-col w-[46%] flex flex-col h-full min-h-0 pl-1">
+                {/* En-tête de la colonne droite tout en haut */}
                 <div className="flex items-center justify-between border-b border-gray-200 pb-1.5 mb-2 shrink-0">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-gray-800 flex items-center gap-1.5">
                     <Navigation size={13} className="text-blue-600" />
@@ -291,14 +291,13 @@ export default function ItineraryPrintModal({
             max-height: 210mm !important;
             box-sizing: border-box !important;
             margin: 0 !important;
-            padding: 8mm 10mm !important;
+            padding: 7mm 9mm !important;
             border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             background: white !important;
             display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
+            flex-direction: row !important;
             overflow: hidden !important;
             page-break-after: avoid !important;
             page-break-before: avoid !important;
@@ -312,19 +311,21 @@ export default function ItineraryPrintModal({
             display: flex !important;
             flex-direction: row !important;
             align-items: stretch !important;
+            width: 100% !important;
             height: 100% !important;
             gap: 16px !important;
           }
           .print-left-col {
-            width: 54% !important;
-            max-width: 54% !important;
+            width: 53% !important;
+            max-width: 53% !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
+            height: 100% !important;
           }
           .print-right-col {
-            width: 46% !important;
-            max-width: 46% !important;
+            width: 47% !important;
+            max-width: 47% !important;
             display: flex !important;
             flex-direction: column !important;
             height: 100% !important;
