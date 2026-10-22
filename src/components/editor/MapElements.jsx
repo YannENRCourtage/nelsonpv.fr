@@ -1694,14 +1694,6 @@ function RoutingLayerManager({ isRoutingActive, routingPoints, setRoutingPoints,
 
   return (
     <LayerGroup>
-      {/* Helper floating notice when 1 point is placed */}
-      {routingPoints.length === 1 && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[2000] bg-blue-900/90 text-white px-4 py-2 rounded-full shadow-lg text-xs font-medium flex items-center gap-2 pointer-events-none hide-on-capture">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-          <span>Point de départ défini. Cliquez sur la carte pour choisir la destination.</span>
-        </div>
-      )}
-
       {/* Markers for waypoints */}
       {routingPoints.map((p, i) => {
         const isStart = i === 0;
@@ -7230,7 +7222,7 @@ function MapSidePanel({
                 ) : (
                   <>
                     <Printer size={15} />
-                    <span>Imprimer l'itinéraire (A4 Paysage)</span>
+                    <span>Imprimer l'itinéraire</span>
                   </>
                 )}
               </Button>
