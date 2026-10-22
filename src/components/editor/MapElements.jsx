@@ -28,7 +28,8 @@ import html2canvas from "html2canvas";
 import SearchField from "./SearchField.jsx";
 import { toast } from "@/components/ui/use-toast.js";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
-import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, Building2, ShieldCheck, Search, AlertCircle, FileText, Map as MapIcon, ExternalLink, Loader2, GitBranch, Calendar, ChevronRight, History as HistoryIcon, Clock } from 'lucide-react';
+import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, Building2, ShieldCheck, Search, AlertCircle, FileText, Map as MapIcon, ExternalLink, Loader2, GitBranch, Calendar, ChevronRight, History as HistoryIcon, Clock, Trash2, Printer } from 'lucide-react';
+import ItineraryPrintModal from "./ItineraryPrintModal.jsx";
 import { mapData } from "@/lib/nomenclature.js";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
@@ -1570,7 +1571,56 @@ function BTLayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
-function RoutingLayerManager({ isRoutingActive, routingPoints, setRoutingPoints, onRouteUpdate }) {
+// Module-level cache for reverse geocoding
+const routingAddressCache = new Map();
+
+export async function fetchReverseAddress(lat, lng) {
+  if (lat == null || lng == null) return "Adresse inconnue";
+  const key = `${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
+  if (routingAddressCache.has(key)) {
+    return routingAddressCache.get(key);
+  }
+
+  // 1. Base Adresse Nationale (BAN)
+  try {
+    const res = await fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${lng}&lat=${lat}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.features && json.features.length > 0) {
+        const feat = json.features[0];
+        const label = feat.properties?.label || feat.properties?.name || `${feat.properties?.city || ''} ${feat.properties?.postcode || ''}`.trim();
+        if (label) {
+          routingAddressCache.set(key, label);
+          return label;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[Routing] BAN reverse error:", e);
+  }
+
+  // 2. Nominatim fallback
+  try {
+    const res2 = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
+      headers: { 'Accept-Language': 'fr' }
+    });
+    if (res2.ok) {
+      const data2 = await res2.json();
+      if (data2.display_name) {
+        const parts = data2.display_name.split(',').map(s => s.trim());
+        const shortName = parts.slice(0, 4).join(', ');
+        routingAddressCache.set(key, shortName);
+        return shortName;
+      }
+    }
+  } catch (e2) {}
+
+  const fallback = `${Number(lat).toFixed(4)}°, ${Number(lng).toFixed(4)}°`;
+  routingAddressCache.set(key, fallback);
+  return fallback;
+}
+
+function RoutingLayerManager({ isRoutingActive, routingPoints, setRoutingPoints, onRouteUpdate, pointAddresses = [], onRemovePoint }) {
   const map = useMap();
   const [routeData, setRouteData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -1584,7 +1634,6 @@ function RoutingLayerManager({ isRoutingActive, routingPoints, setRoutingPoints,
     }
   });
 
-  // Calculate route when points change
   // Calculate route when points change
   useEffect(() => {
     if (!isRoutingActive) {
@@ -1626,7 +1675,8 @@ function RoutingLayerManager({ isRoutingActive, routingPoints, setRoutingPoints,
           onRouteUpdate({
             totalDistance: data.distance,
             totalDuration: data.duration,
-            portions: data.portions || []
+            portions: data.portions || [],
+            geometry: data.geometry
           });
         }
       } catch (err) {
@@ -1644,44 +1694,87 @@ function RoutingLayerManager({ isRoutingActive, routingPoints, setRoutingPoints,
 
   return (
     <LayerGroup>
+      {/* Helper floating notice when 1 point is placed */}
+      {routingPoints.length === 1 && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[2000] bg-blue-900/90 text-white px-4 py-2 rounded-full shadow-lg text-xs font-medium flex items-center gap-2 pointer-events-none hide-on-capture">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+          <span>Point de départ défini. Cliquez sur la carte pour choisir la destination.</span>
+        </div>
+      )}
+
       {/* Markers for waypoints */}
-      {routingPoints.map((p, i) => (
-        <Marker 
-          key={`point-${i}`} 
-          position={p} 
-          icon={L.divIcon({
-            html: `<div class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-white shadow-md">${i + 1}</div>`,
-            className: 'bg-transparent',
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
-          })}
-        />
-      ))}
+      {routingPoints.map((p, i) => {
+        const isStart = i === 0;
+        const isEnd = i === routingPoints.length - 1 && routingPoints.length > 1;
+        const badgeColor = isStart ? 'bg-emerald-600' : isEnd ? 'bg-rose-600' : 'bg-blue-600';
+        const labelText = isStart ? 'D' : isEnd ? 'A' : (i + 1);
+
+        return (
+          <Marker 
+            key={`routing-point-${i}-${p.lat?.toFixed(5)}-${p.lng?.toFixed(5)}`} 
+            position={p} 
+            eventHandlers={{
+              click: (e) => {
+                if (e.originalEvent) e.originalEvent.stopPropagation();
+              }
+            }}
+            icon={L.divIcon({
+              html: `<div class="${badgeColor} text-white rounded-full w-7 h-7 flex items-center justify-center font-bold border-2 border-white shadow-lg text-xs cursor-pointer hover:scale-110 transition-transform">${labelText}</div>`,
+              className: 'bg-transparent',
+              iconSize: [28, 28],
+              iconAnchor: [14, 14]
+            })}
+          >
+            <Popup>
+              <div className="p-2 space-y-2 min-w-[210px] text-gray-900">
+                <div className="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wide text-gray-800">
+                  <MapPin size={14} className={isStart ? "text-emerald-600" : isEnd ? "text-rose-600" : "text-blue-600"} />
+                  <span>{isStart ? "Point de départ (1)" : isEnd ? `Destination finale (${i + 1})` : `Étape ${i + 1}`}</span>
+                </div>
+                <p className="text-xs text-gray-700 bg-gray-50 p-2 rounded border border-gray-200 leading-snug">
+                  {pointAddresses?.[i] || "Recherche de l'adresse..."}
+                </p>
+                <button
+                  type="button"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    if (onRemovePoint) onRemovePoint(i);
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors cursor-pointer"
+                >
+                  <Trash2 size={13} />
+                  Supprimer cette étape
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
 
       {/* Polyline for the route */}
       {routeData?.geometry && (
         <Polyline 
           positions={L.GeoJSON.coordsToLatLngs(routeData.geometry.coordinates)}
-          pathOptions={{ color: '#2563eb', weight: 5, opacity: 0.8 }}
+          pathOptions={{ color: '#2563eb', weight: 5, opacity: 0.85 }}
         >
           <Tooltip sticky>
-            <div className="p-1">
-              <p className="font-bold">Itinéraire</p>
-              <p>Distance: {(routeData.distance / 1000).toFixed(2)} km</p>
-              <p>Durée: {Math.round(routeData.duration)} min</p>
+            <div className="p-1 text-xs">
+              <p className="font-bold text-gray-900">Itinéraire</p>
+              <p className="text-blue-700">Distance : {(routeData.distance / 1000).toFixed(2)} km</p>
+              <p className="text-indigo-700">Durée : {Math.round(routeData.duration / 60)} min</p>
             </div>
           </Tooltip>
         </Polyline>
       )}
 
-      {/* Floating clear button overlay (optional, but requested implicitly by "clear" in plan) */}
+      {/* Floating clear button overlay */}
       {routingPoints.length > 0 && (
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[2000]">
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[2000] hide-on-capture">
           <Button 
             variant="destructive" 
             size="sm" 
             onClick={(e) => { e.stopPropagation(); setRoutingPoints([]); setRouteData(null); }}
-            className="shadow-lg"
+            className="shadow-lg text-xs"
           >
             Effacer l'itinéraire
           </Button>
@@ -1689,6 +1782,14 @@ function RoutingLayerManager({ isRoutingActive, routingPoints, setRoutingPoints,
       )}
     </LayerGroup>
   );
+}
+
+function MapInstanceCollector({ onMapReady }) {
+  const map = useMap();
+  useEffect(() => {
+    if (map && onMapReady) onMapReady(map);
+  }, [map, onMapReady]);
+  return null;
 }
 
 function HTALayerManager({ layersRef, activeLayers }) {
@@ -6348,6 +6449,70 @@ export default function MapElements({
   const [selectedParcelFiliation, setSelectedParcelFiliation] = useState(null);
   const [loadingFiliation, setLoadingFiliation] = useState(false);
   const [selectedRoutingData, setSelectedRoutingData] = useState(null);
+  const [pointAddresses, setPointAddresses] = useState([]);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [mapCaptureUrl, setMapCaptureUrl] = useState(null);
+  const [isCapturingMap, setIsCapturingMap] = useState(false);
+  const [mapInstance, setMapInstance] = useState(null);
+
+  // Synchronise les adresses des étapes de l'itinéraire
+  useEffect(() => {
+    if (!routingPoints || routingPoints.length === 0) {
+      setPointAddresses([]);
+      return;
+    }
+    let isCurrent = true;
+    Promise.all(routingPoints.map(p => fetchReverseAddress(p.lat, p.lng)))
+      .then(addrs => {
+        if (isCurrent) setPointAddresses(addrs);
+      })
+      .catch(err => {
+        console.warn("[Routing] Geocoding error:", err);
+      });
+    return () => { isCurrent = false; };
+  }, [routingPoints]);
+
+  const handleRemoveRoutingPoint = useCallback((index) => {
+    setRoutingPoints(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      if (updated.length < 2) {
+        setSelectedRoutingData(null);
+      }
+      return updated;
+    });
+  }, [setRoutingPoints]);
+
+  const handleOpenPrintItinerary = useCallback(async () => {
+    setIsCapturingMap(true);
+    try {
+      if (mapInstance) {
+        const container = mapInstance.getContainer();
+        const canvas = await html2canvas(container, {
+          useCORS: true,
+          logging: false,
+          scrollX: 0,
+          scrollY: 0,
+          ignoreElements: (el) => {
+            return (
+              el.classList?.contains('hide-on-capture') ||
+              el.classList?.contains('leaflet-control-container') ||
+              el.classList?.contains('map-side-panel') ||
+              el.closest?.('.hide-on-capture') !== null ||
+              el.closest?.('.map-side-panel') !== null
+            );
+          }
+        });
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        setMapCaptureUrl(dataUrl);
+      }
+      setIsPrintModalOpen(true);
+    } catch (err) {
+      console.error("[Routing] Error capturing map:", err);
+      setIsPrintModalOpen(true);
+    } finally {
+      setIsCapturingMap(false);
+    }
+  }, [mapInstance]);
   const [forceHideFeatures, setForceHideFeatures] = useState(false);
   const [targetPos, setTargetPos] = useState(null); // initialized in MapTargetInfo via useEffect
   const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
@@ -6780,24 +6945,34 @@ export default function MapElements({
             setHoverInfo={setHoverInfo}
           />
 
+          <MapInstanceCollector onMapReady={setMapInstance} />
+
           {/* --- Routing Tool --- */}
-        <RoutingLayerManager 
-          isRoutingActive={isRoutingActive}
-          routingPoints={routingPoints}
-          setRoutingPoints={setRoutingPoints}
-          onRouteUpdate={setSelectedRoutingData}
-        />
+          <RoutingLayerManager 
+            isRoutingActive={isRoutingActive}
+            routingPoints={routingPoints}
+            setRoutingPoints={setRoutingPoints}
+            onRouteUpdate={setSelectedRoutingData}
+            pointAddresses={pointAddresses}
+            onRemovePoint={handleRemoveRoutingPoint}
+          />
+        </MapContainer>
+
+        {/* Side Panels (Outside MapContainer for z-index/overlay reliability) */}
         <MapSidePanel 
           type="routing" 
           data={selectedRoutingData} 
+          routingPoints={routingPoints}
+          pointAddresses={pointAddresses}
+          onRemovePoint={handleRemoveRoutingPoint}
+          onPrint={handleOpenPrintItinerary}
+          isCapturingMap={isCapturingMap}
           onClose={() => {
             setSelectedRoutingData(null);
+            setRoutingPoints([]);
             setIsRoutingActive(false);
           }} 
         />
-      </MapContainer>
-
-        {/* New Side Panels (Outside MapContainer for z-index/overlay reliability) */}
         <MapSidePanel 
           type="company" 
           data={selectedCompany} 
@@ -6808,12 +6983,32 @@ export default function MapElements({
           data={selectedSubstation} 
           onClose={() => setSelectedSubstation(null)} 
         />
+
+        {/* Modal d'impression officielle de la feuille de route */}
+        <ItineraryPrintModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          mapImageUrl={mapCaptureUrl}
+          routeData={selectedRoutingData}
+          routingPoints={routingPoints}
+          pointAddresses={pointAddresses}
+          project={project}
+        />
       </div>
     </div>
   );
 }
 
-function MapSidePanel({ type, data, onClose }) {
+function MapSidePanel({ 
+  type, 
+  data, 
+  onClose,
+  routingPoints = [],
+  pointAddresses = [],
+  onRemovePoint,
+  onPrint,
+  isCapturingMap = false
+}) {
   if (!data) return null;
 
   const isCompany = type === 'company';
@@ -6844,7 +7039,7 @@ function MapSidePanel({ type, data, onClose }) {
 
   return (
     <div 
-      className={`absolute top-4 ${side}-4 z-[5000] w-[350px] max-h-[calc(100%-2rem)] bg-white shadow-2xl border border-gray-200 rounded-xl flex flex-col overflow-hidden`}
+      className={`absolute top-4 ${side}-4 z-[5000] w-[360px] max-h-[calc(100%-2rem)] bg-white shadow-2xl border border-gray-200 rounded-xl flex flex-col overflow-hidden map-side-panel hide-on-capture`}
       style={{ pointerEvents: 'auto', display: 'flex' }}
     >
       {/* Header */}
@@ -6859,6 +7054,27 @@ function MapSidePanel({ type, data, onClose }) {
       <div className="p-4 overflow-y-auto space-y-4">
         {isRouting ? (
           <div className="space-y-4">
+            {/* Bouton Impression Feuille de Route */}
+            <Button
+              type="button"
+              onClick={onPrint}
+              disabled={isCapturingMap}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center justify-center gap-2 shadow-sm text-xs py-2.5"
+            >
+              {isCapturingMap ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  <span>Préparation de l'impression...</span>
+                </>
+              ) : (
+                <>
+                  <Printer size={15} />
+                  <span>Imprimer l'itinéraire complet</span>
+                </>
+              )}
+            </Button>
+
+            {/* Totaux Distance & Durée */}
             <div className="grid grid-cols-2 gap-2">
               <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
                 <div className="text-[10px] text-blue-700 font-bold uppercase">Distance Totale</div>
@@ -6870,47 +7086,133 @@ function MapSidePanel({ type, data, onClose }) {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Étapes du trajet</label>
-              <div className="space-y-2">
-                {data.portions.map((portion, idx) => (
-                  <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="flex flex-col items-center">
-                      <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">
-                        {idx + 1}
-                      </div>
-                      {idx < data.portions.length - 1 && <div className="w-0.5 h-8 bg-gray-200 my-1"></div>}
-                      {idx === data.portions.length - 1 && (
-                        <>
-                           <div className="w-0.5 h-8 bg-gray-200 my-1"></div>
-                           <div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold">
-                            {idx + 2}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <div className="flex-1 pt-0.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-semibold text-gray-700">Portion {idx + 1}</span>
-                        <span className="text-[10px] bg-white px-2 py-0.5 rounded border text-blue-600 font-bold">
-                          {formatDuration(portion.duration)}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-gray-500 mt-1">
-                        {(portion.distance / 1000).toFixed(2)} km
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            {/* Synthèse Départ & Arrivée */}
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-2">
+              <div className="flex items-start gap-2">
+                <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 shadow-xs">
+                  D
+                </span>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Adresse de départ</span>
+                  <p className="text-xs font-semibold text-gray-800 leading-tight">
+                    {pointAddresses[0] || 'Point de départ'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center pl-2.5">
+                <div className="w-0.5 h-3 bg-gray-300"></div>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 shadow-xs">
+                  A
+                </span>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block">Adresse d'arrivée</span>
+                  <p className="text-xs font-semibold text-gray-800 leading-tight">
+                    {pointAddresses[pointAddresses.length - 1] || 'Destination finale'}
+                  </p>
+                </div>
               </div>
             </div>
+
+            {/* Tronçons du trajet avec adresses exactes de départ et arrivée */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                Tronçons du trajet ({data.portions?.length || 0})
+              </label>
+              <div className="space-y-2.5">
+                {data.portions?.map((portion, idx) => {
+                  const segStart = pointAddresses[idx] || `Point ${idx + 1}`;
+                  const segEnd = pointAddresses[idx + 1] || `Point ${idx + 2}`;
+
+                  return (
+                    <div key={idx} className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-2">
+                      <div className="flex justify-between items-center border-b border-gray-200/80 pb-1.5">
+                        <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                          <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-bold">
+                            {idx + 1}
+                          </span>
+                          Tronçon {idx + 1}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] bg-white px-1.5 py-0.5 rounded border text-blue-700 font-bold">
+                            {formatDuration(portion.duration)}
+                          </span>
+                          <span className="text-[10px] text-gray-500 font-medium">
+                            {(portion.distance / 1000).toFixed(2)} km
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-start gap-1.5">
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-100 shrink-0">
+                            DE
+                          </span>
+                          <span className="text-gray-700 leading-tight truncate" title={segStart}>
+                            {segStart}
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-1.5">
+                          <span className="text-[9px] font-bold text-rose-700 bg-rose-50 px-1 py-0.2 rounded border border-rose-100 shrink-0">
+                            À
+                          </span>
+                          <span className="text-gray-700 leading-tight truncate" title={segEnd}>
+                            {segEnd}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Liste des points / étapes avec bouton de suppression individuelle */}
+            {routingPoints.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-gray-200">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                  <span>Étapes & Points d'arrêt ({routingPoints.length})</span>
+                  <span className="text-[9px] font-normal text-gray-400">🗑 pour supprimer</span>
+                </label>
+                <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                  {routingPoints.map((pt, pIdx) => (
+                    <div 
+                      key={pIdx} 
+                      className="flex items-center justify-between gap-2 p-1.5 bg-white rounded border border-gray-100 hover:border-gray-300 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className={`w-4 h-4 rounded-full text-white flex items-center justify-center text-[9px] font-bold shrink-0 ${
+                          pIdx === 0 ? 'bg-emerald-600' : pIdx === routingPoints.length - 1 ? 'bg-rose-600' : 'bg-blue-600'
+                        }`}>
+                          {pIdx === 0 ? 'D' : pIdx === routingPoints.length - 1 ? 'A' : (pIdx + 1)}
+                        </span>
+                        <span className="text-xs text-gray-700 truncate" title={pointAddresses[pIdx]}>
+                          {pointAddresses[pIdx] || `Point ${pIdx + 1}`}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onRemovePoint) onRemovePoint(pIdx);
+                        }}
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors shrink-0"
+                        title={`Supprimer l'étape ${pIdx + 1}`}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             
             <Button 
               variant="outline" 
-              className="w-full text-red-600 border-red-200 hover:bg-red-50"
+              className="w-full text-red-600 border-red-200 hover:bg-red-50 text-xs"
               onClick={() => {
                 onClose();
-                // Clear state is handled by onClose parent logic if we pass the right props
               }}
             >
               Effacer le tracé
