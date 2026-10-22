@@ -2169,15 +2169,12 @@ export default function ProjectEditor() {
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('capa-hta'); }}
               className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'capa-hta'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10 font-bold'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
               tabIndex={-1}
             >
-              <span className="flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-                <span>Capacités HTA</span>
-              </span>
+              Capacités HTA
             </button>
 
             <button
@@ -2532,7 +2529,7 @@ export default function ProjectEditor() {
             {/* Onglet Capacités HTA & Réseau BESS */}
             {activeTab === 'capa-hta' && (
               <div className='w-full h-full'>
-                <HtaCapacityMapTab project={project} activeTab={activeTab} />
+                <HtaCapacityMapTab project={project} onUpdateProject={updateProject} activeTab={activeTab} />
               </div>
             )}
 

@@ -232,7 +232,7 @@ function HtaLinesLayer({ active, lines, showCorridor, onLineClick }) {
   );
 }
 
-export default function HtaCapacityMapTab({ project, activeTab }) {
+export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab }) {
   // Parsing GPS project coords
   const projectCoords = useMemo(() => {
     if (!project?.gps) return [48.5907, 0.1905];
@@ -275,8 +275,26 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Battery BESS Sizing
-  const [bessPowerKw, setBessPowerKw] = useState(500);
+  // Battery BESS Sizing (synchronized with project.kwc if matching one of the 4 standard tiers)
+  const [bessPowerKw, setBessPowerKw] = useState(() => {
+    const parsedKwc = parseInt(project?.kwc, 10);
+    if ([250, 500, 1000, 2000].includes(parsedKwc)) return parsedKwc;
+    return 500;
+  });
+
+  useEffect(() => {
+    const parsedKwc = parseInt(project?.kwc, 10);
+    if ([250, 500, 1000, 2000].includes(parsedKwc) && parsedKwc !== bessPowerKw) {
+      setBessPowerKw(parsedKwc);
+    }
+  }, [project?.kwc]);
+
+  const handleSelectBessPower = (kw) => {
+    setBessPowerKw(kw);
+    if (onUpdateProject && String(project?.kwc) !== String(kw)) {
+      onUpdateProject({ kwc: String(kw) });
+    }
+  };
 
   // Fetch Caparéseau substations once on mount
   useEffect(() => {
@@ -387,9 +405,10 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
   const distToHtaMeters = nearestHtaLine ? nearestHtaLine.distanceMeters : 120;
   const isInsideCorridor = distToHtaMeters <= 350;
 
-  // BESS Cost Estimation Engine
+  // BESS Cost Estimation Engine (Dynamic BT <= 250 kVA vs HTA 500 kW / 1 MW / 2 MW)
   const costEstimation = useMemo(() => {
     const powerMw = bessPowerKw / 1000;
+    const isBt = bessPowerKw <= 250;
 
     let qpPerMw = 12.3;
     if (nearestSubstation?.values?.INFO_QP) {
@@ -398,27 +417,124 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
         qpPerMw = parseFloat(match[0].replace(',', '.'));
       }
     }
-    const costQuotePart = Math.round(powerMw * qpPerMw * 1000);
-    const costLiaison = Math.round(distToHtaMeters * 75);
-    const costCelluleEnedis = 22000;
-    const costPosteLivraison = 15000;
-    const totalCost = costQuotePart + costLiaison + costCelluleEnedis + costPosteLivraison;
 
     const rawNa = parseFloat(nearestSubstation?.values?.INFO_NA);
     const availableCapacityMw = !isNaN(rawNa) ? rawNa : 0;
-    const isCapacitySufficient = availableCapacityMw >= powerMw;
+    const isCapacitySufficient = isBt ? true : availableCapacityMw >= powerMw;
 
-    return {
-      powerMw,
-      qpPerMw,
-      costQuotePart,
-      costLiaison,
-      costCelluleEnedis,
-      costPosteLivraison,
-      totalCost,
-      availableCapacityMw,
-      isCapacitySufficient
-    };
+    if (bessPowerKw <= 250) {
+      // CAS A — Palier 250 kW (Domaine Basse Tension BT <= 250 kVA / Tarif C4)
+      const costQuotePart = 0;
+      const linearRate = 45;
+      const costLiaison = Math.round(distToHtaMeters * linearRate);
+      const costCelluleEnedis = 4500;
+      const costPosteLivraison = 2500;
+      const totalCost = costQuotePart + costLiaison + costCelluleEnedis + costPosteLivraison;
+
+      return {
+        isBt: true,
+        domainBadge: 'Raccordement BT (≤ 250 kVA)',
+        powerMw,
+        qpPerMw,
+        linearRate,
+        quotePartLabel: 'Quote-part S3REnR (Exonéré BT ≤ 250 kVA) :',
+        liaisonLabel: `Liaison souterraine BT (${distToHtaMeters} m × ${linearRate} €) :`,
+        celluleLabel: 'Coffret comptage C4 & branchement BT Enedis :',
+        posteLabel: 'Armoire de protection & découplage BT (AGCP) :',
+        delaiLabel: '3 à 6 mois',
+        costQuotePart,
+        costLiaison,
+        costCelluleEnedis,
+        costPosteLivraison,
+        totalCost,
+        availableCapacityMw,
+        isCapacitySufficient
+      };
+    } else if (bessPowerKw <= 500) {
+      // CAS B — Palier 500 kW (Domaine HTA 20 kV — 0.5 MW)
+      const costQuotePart = Math.round(0.5 * qpPerMw * 1000);
+      const linearRate = 75;
+      const costLiaison = Math.round(distToHtaMeters * linearRate);
+      const costCelluleEnedis = 22000;
+      const costPosteLivraison = 15000;
+      const totalCost = costQuotePart + costLiaison + costCelluleEnedis + costPosteLivraison;
+
+      return {
+        isBt: false,
+        domainBadge: 'Raccordement HTA 20 kV (0.5 MW)',
+        powerMw,
+        qpPerMw,
+        linearRate,
+        quotePartLabel: `Quote-part S3REnR (${qpPerMw} k€/MW) :`,
+        liaisonLabel: `Liaison souterraine HTA (${distToHtaMeters} m × ${linearRate} €) :`,
+        celluleLabel: 'Cellule comptage & raccordement Enedis :',
+        posteLabel: 'Poste de livraison & disjoncteur HTA (630 kVA) :',
+        delaiLabel: '12 à 18 mois',
+        costQuotePart,
+        costLiaison,
+        costCelluleEnedis,
+        costPosteLivraison,
+        totalCost,
+        availableCapacityMw,
+        isCapacitySufficient
+      };
+    } else if (bessPowerKw <= 1000) {
+      // CAS C — Palier 1 MW (Domaine HTA 20 kV — 1.0 MW)
+      const costQuotePart = Math.round(1.0 * qpPerMw * 1000);
+      const linearRate = 85;
+      const costLiaison = Math.round(distToHtaMeters * linearRate);
+      const costCelluleEnedis = 25000;
+      const costPosteLivraison = 22000;
+      const totalCost = costQuotePart + costLiaison + costCelluleEnedis + costPosteLivraison;
+
+      return {
+        isBt: false,
+        domainBadge: 'Raccordement HTA 20 kV (1.0 MW)',
+        powerMw,
+        qpPerMw,
+        linearRate,
+        quotePartLabel: `Quote-part S3REnR (${qpPerMw} k€/MW) :`,
+        liaisonLabel: `Liaison souterraine HTA (${distToHtaMeters} m × ${linearRate} €) :`,
+        celluleLabel: 'Cellule comptage & raccordement Enedis :',
+        posteLabel: 'Poste de livraison & transfo HTA (1 250 kVA) :',
+        delaiLabel: '18 à 24 mois',
+        costQuotePart,
+        costLiaison,
+        costCelluleEnedis,
+        costPosteLivraison,
+        totalCost,
+        availableCapacityMw,
+        isCapacitySufficient
+      };
+    } else {
+      // CAS D — Palier 2 MW (Domaine HTA 20 kV — 2.0 MW)
+      const costQuotePart = Math.round(2.0 * qpPerMw * 1000);
+      const linearRate = 95;
+      const costLiaison = Math.round(distToHtaMeters * linearRate);
+      const costCelluleEnedis = 30000;
+      const costPosteLivraison = 35000;
+      const totalCost = costQuotePart + costLiaison + costCelluleEnedis + costPosteLivraison;
+
+      return {
+        isBt: false,
+        domainBadge: 'Raccordement HTA 20 kV (2.0 MW)',
+        powerMw,
+        qpPerMw,
+        linearRate,
+        quotePartLabel: `Quote-part S3REnR (${qpPerMw} k€/MW) :`,
+        liaisonLabel: `Liaison souterraine HTA (${distToHtaMeters} m × ${linearRate} €) :`,
+        celluleLabel: 'Cellules HTA & raccordement Enedis :',
+        posteLabel: 'Poste de livraison HTA & double transfo (2 500 kVA) :',
+        delaiLabel: '18 à 36 mois',
+        costQuotePart,
+        costLiaison,
+        costCelluleEnedis,
+        costPosteLivraison,
+        totalCost,
+        availableCapacityMw,
+        isCapacitySufficient
+      };
+    }
   }, [bessPowerKw, nearestSubstation, distToHtaMeters]);
 
   // Fetch Lines function with clean abort and debounce
@@ -625,13 +741,13 @@ export default function HtaCapacityMapTab({ project, activeTab }) {
   };
 
   const handleCopySummary = () => {
-    const text = `=== FICHE CADRAGE RÉSEAU HTA & BESS (NELSON) ===
+    const text = `=== FICHE CADRAGE RÉSEAU & BESS (NELSON) ===
 Projet : ${project?.name || 'Projet BESS'}
 Coordonnées GPS : ${projectCoords[0].toFixed(5)}, ${projectCoords[1].toFixed(5)}
-Puissance BESS : ${bessPowerKw} kW (${costEstimation.powerMw} MW)
+Puissance BESS : ${bessPowerKw >= 1000 ? `${bessPowerKw / 1000} MW` : `${bessPowerKw} kW`} (${costEstimation.domainBadge})
 
-1. PROXIMITÉ RÉSEAU HTA :
-• Distance ligne HTA : ${distToHtaMeters} m
+1. PROXIMITÉ RÉSEAU :
+• Distance réseau : ${distToHtaMeters} m
 • Corridor 350 m : ${isInsideCorridor ? 'CONFORME (Zone optimale)' : 'HORS CORRIDOR (> 350 m)'}
 
 2. POSTE SOURCE DE RATTACHEMENT :
@@ -640,21 +756,21 @@ Puissance BESS : ${bessPowerKw} kW (${costEstimation.powerMw} MW)
 • Capacité disponible (Reste à affecter) : ${costEstimation.availableCapacityMw} MW
 • Taux de saturation : ${nearestSubstation?.values?.INFO_TX || 'N/A'}
 • File d'attente S3REnR : ${nearestSubstation?.values?.INFO_FAS3R || '0'} MW
-• Faisabilité puissance : ${costEstimation.isCapacitySufficient ? 'RÉSEAU FAVORABLE' : 'RÉSEAU CONTRAINT (0 MW)'}
+• Faisabilité puissance : ${costEstimation.isBt ? 'EXONÉRÉ S3REnR (BT ≤ 250 kVA)' : costEstimation.isCapacitySufficient ? 'RÉSEAU FAVORABLE' : 'RÉSEAU CONTRAINT (0 MW)'}
 
-3. CHIFFRAGE RACCORDEMENT ESTIMÉ :
-• Quote-part S3REnR (${costEstimation.qpPerMw} k€/MW) : ${costEstimation.costQuotePart.toLocaleString('fr-FR')} € HT
-• Liaison HTA souterraine (${distToHtaMeters} m × 75 €) : ${costEstimation.costLiaison.toLocaleString('fr-FR')} € HT
-• Cellule comptage & raccordement Enedis : ${costEstimation.costCelluleEnedis.toLocaleString('fr-FR')} € HT
-• Poste de livraison & coupure HTA : ${costEstimation.costPosteLivraison.toLocaleString('fr-FR')} € HT
+3. CHIFFRAGE RACCORDEMENT ESTIMÉ (${costEstimation.domainBadge}) :
+• ${costEstimation.quotePartLabel} ${costEstimation.costQuotePart.toLocaleString('fr-FR')} € HT
+• ${costEstimation.liaisonLabel} ${costEstimation.costLiaison.toLocaleString('fr-FR')} € HT
+• ${costEstimation.celluleLabel} ${costEstimation.costCelluleEnedis.toLocaleString('fr-FR')} € HT
+• ${costEstimation.posteLabel} ${costEstimation.costPosteLivraison.toLocaleString('fr-FR')} € HT
 -----------------------------------------------
-TOTAL ESTIMÉ RACCORDEMENT HTA : ${costEstimation.totalCost.toLocaleString('fr-FR')} € HT
-Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' : '18 à 36 mois'}`;
+TOTAL ESTIMÉ RACCORDEMENT : ${costEstimation.totalCost.toLocaleString('fr-FR')} € HT
+Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
 
     navigator.clipboard.writeText(text);
     toast({
-      title: 'Fiche d’audit HTA copiée !',
-      description: 'Données réseau prêtes à être collées dans votre CRM ou dossier client.'
+      title: 'Fiche d’audit réseau copiée !',
+      description: `Données de raccordement (${bessPowerKw >= 1000 ? `${bessPowerKw / 1000} MW` : `${bessPowerKw} kW`}) copiées dans le presse-papier.`
     });
   };
 
@@ -1096,23 +1212,37 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
             {isCostCardOpen && (
               <div className="p-3 space-y-3 text-xs">
                 {/* Sizing Selector */}
-                <div className="flex items-center justify-between bg-slate-800/80 p-1.5 rounded-lg border border-slate-700">
-                  <span className="text-[11px] font-bold text-slate-300">Puissance BESS :</span>
-                  <div className="flex items-center gap-1">
-                    {[250, 500, 1000, 2000].map((kw) => (
-                      <button
-                        key={kw}
-                        type="button"
-                        onClick={() => setBessPowerKw(kw)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-black cursor-pointer transition-colors ${
-                          bessPowerKw === kw
-                            ? 'bg-amber-500 text-slate-950'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                        }`}
-                      >
-                        {kw >= 1000 ? `${kw / 1000} MW` : `${kw} kW`}
-                      </button>
-                    ))}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between bg-slate-800/80 p-1.5 rounded-lg border border-slate-700">
+                    <span className="text-[11px] font-bold text-slate-300">Puissance BESS :</span>
+                    <div className="flex items-center gap-1">
+                      {[250, 500, 1000, 2000].map((kw) => (
+                        <button
+                          key={kw}
+                          type="button"
+                          onClick={() => handleSelectBessPower(kw)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-black cursor-pointer transition-colors ${
+                            bessPowerKw === kw
+                              ? 'bg-amber-500 text-slate-950'
+                              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          }`}
+                        >
+                          {kw >= 1000 ? `${kw / 1000} MW` : `${kw} kW`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10px] text-slate-400">Domaine de tension :</span>
+                    <span
+                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                        costEstimation.isBt
+                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
+                          : 'bg-sky-950/80 text-sky-300 border-sky-700/60'
+                      }`}
+                    >
+                      {costEstimation.domainBadge}
+                    </span>
                   </div>
                 </div>
 
@@ -1130,7 +1260,9 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                   </div>
 
                   <div className="bg-slate-800/60 p-2 rounded-lg border border-slate-700/60">
-                    <span className="text-slate-400 text-[10px] block">Distance Réseau HTA</span>
+                    <span className="text-slate-400 text-[10px] block">
+                      {costEstimation.isBt ? 'Distance Réseau BT/HTA' : 'Distance Réseau HTA'}
+                    </span>
                     <span className="font-extrabold text-white block">{distToHtaMeters} m</span>
                     <span
                       className={`text-[10px] font-bold block ${
@@ -1144,29 +1276,39 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
 
                 {/* Detailed Cost Table */}
                 <div className="space-y-1.5 pt-1.5 border-t border-slate-800 text-[11px]">
-                  <div className="flex justify-between items-center text-slate-300">
-                    <span>
-                      Quote-part S3REnR ({costEstimation.qpPerMw} k€/MW) :
+                  <div className="flex justify-between items-center text-slate-300 gap-2">
+                    <span className="truncate" title={costEstimation.quotePartLabel}>
+                      {costEstimation.quotePartLabel}
                     </span>
-                    <span className="font-bold text-white font-mono">
+                    <span
+                      className={`font-bold font-mono shrink-0 ${
+                        costEstimation.isBt ? 'text-emerald-400' : 'text-white'
+                      }`}
+                    >
                       {costEstimation.costQuotePart.toLocaleString('fr-FR')} €
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-slate-300">
-                    <span>Liaison souterraine HTA ({distToHtaMeters} m × 75 €) :</span>
-                    <span className="font-bold text-white font-mono">
+                  <div className="flex justify-between items-center text-slate-300 gap-2">
+                    <span className="truncate" title={costEstimation.liaisonLabel}>
+                      {costEstimation.liaisonLabel}
+                    </span>
+                    <span className="font-bold text-white font-mono shrink-0">
                       {costEstimation.costLiaison.toLocaleString('fr-FR')} €
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-slate-300">
-                    <span>Cellule comptage & raccordement Enedis :</span>
-                    <span className="font-bold text-white font-mono">
+                  <div className="flex justify-between items-center text-slate-300 gap-2">
+                    <span className="truncate" title={costEstimation.celluleLabel}>
+                      {costEstimation.celluleLabel}
+                    </span>
+                    <span className="font-bold text-white font-mono shrink-0">
                       {costEstimation.costCelluleEnedis.toLocaleString('fr-FR')} €
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-slate-300">
-                    <span>Poste de livraison & disjoncteur HTA :</span>
-                    <span className="font-bold text-white font-mono">
+                  <div className="flex justify-between items-center text-slate-300 gap-2">
+                    <span className="truncate" title={costEstimation.posteLabel}>
+                      {costEstimation.posteLabel}
+                    </span>
+                    <span className="font-bold text-white font-mono shrink-0">
                       {costEstimation.costPosteLivraison.toLocaleString('fr-FR')} €
                     </span>
                   </div>
@@ -1177,7 +1319,9 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                       <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
                         Budget Raccordement Total
                       </span>
-                      <span className="text-[10px] text-slate-400">HT indicatif Enedis</span>
+                      <span className="text-[10px] text-slate-400">
+                        {costEstimation.isBt ? 'HT indicatif Enedis BT (C4)' : 'HT indicatif Enedis HTA'}
+                      </span>
                     </div>
                     <span className="text-base font-black text-amber-400 font-mono">
                       {costEstimation.totalCost.toLocaleString('fr-FR')} € HT
@@ -1188,9 +1332,7 @@ Délai moyen constaté : ${costEstimation.isCapacitySufficient ? '6 à 9 mois' :
                 <div className="flex items-center justify-between pt-0.5">
                   <span className="text-[10px] text-slate-400">
                     Délai raccordement :{' '}
-                    <strong className="text-white">
-                      {costEstimation.isCapacitySufficient ? '6 à 9 mois' : '18 à 36 mois'}
-                    </strong>
+                    <strong className="text-white">{costEstimation.delaiLabel}</strong>
                   </span>
                   <button
                     type="button"
