@@ -43,10 +43,22 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedChronique, setExpandedChronique] = useState(false);
 
-  // Paramètres de dette senior et frais modifiables
+  // Paramètres de dette senior, frais et loyer modifiables
   const [debtDuration, setDebtDuration] = useState(12); // en années (e.g. 10, 12, 15, 20)
   const [debtRate, setDebtRate] = useState(4.30); // en % (e.g. 3.80, 4.00, 4.30, 4.50, 5.00)
   const [fraisCommerciauxPerSite, setFraisCommerciauxPerSite] = useState(2500); // 5 000 €/MW = 2 500 € pour 500 kW
+  const [loyerBailleurPerSite, setLoyerBailleurPerSite] = useState(
+    selectedPortfolio === 'FARADAY' ? 2000 : 3000
+  );
+
+  // Basculement automatique du loyer bailleur par défaut selon le portefeuille (2 000 € Faraday, 3 000 € Volta)
+  useEffect(() => {
+    if (selectedPortfolio === 'FARADAY') {
+      setLoyerBailleurPerSite(2000);
+    } else if (selectedPortfolio === 'VOLTA') {
+      setLoyerBailleurPerSite(3000);
+    }
+  }, [selectedPortfolio]);
 
   // Modèle unitaire standardisé (4 armoires CESC Mercury 261 = 500 kW / 1044 kWh)
   const unitPower = 500; // kW
@@ -75,7 +87,8 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
         debtDuration: durationYears,
         debtRate: debtRate || 4.30,
         studyDuration: studyYears,
-        fraisCommerciaux: site.fraisCommerciaux !== undefined ? site.fraisCommerciaux : fraisCommerciauxPerSite
+        fraisCommerciaux: site.fraisCommerciaux !== undefined ? site.fraisCommerciaux : fraisCommerciauxPerSite,
+        loyerDalle: loyerBailleurPerSite
       });
       const creQualification = getCreSubstationQualification(site.substation?.name || fin.posteSource, site.substation?.code);
 
@@ -117,7 +130,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
     const totalCaAn1 = sites.reduce((sum, s) => sum + s.caAnnuel, 0);
     const totalOpexAn1 = sites.reduce((sum, s) => sum + s.opexAnnuel, 0);
     const totalEbitdaAn1 = sites.reduce((sum, s) => sum + s.ebitda, 0);
-    const totalLoyersAn1 = sites.reduce((sum, s) => sum + (s.rent || 3000), 0);
+    const totalLoyersAn1 = sites.reduce((sum, s) => sum + (loyerBailleurPerSite !== undefined ? loyerBailleurPerSite : (s.rent || 3000)), 0);
     const totalAnnuite = Math.abs(calculatePmt(rateDecimal, durationYears, totalCapex));
 
     // Chronique consolidée 15 ans
@@ -174,6 +187,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
         totalOpexAn1,
         totalEbitdaAn1,
         totalLoyersAn1,
+        loyerBailleur: loyerBailleurPerSite,
         totalAnnuite,
         avgDscr,
         debtDuration: durationYears,
@@ -183,7 +197,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
       },
       consolidatedChronique: chronique
     };
-  }, [debtDuration, debtRate, fraisCommerciauxPerSite, activeSites]);
+  }, [debtDuration, debtRate, fraisCommerciauxPerSite, loyerBailleurPerSite, activeSites]);
 
   // Propagation des données mises à jour au parent
   useEffect(() => {
@@ -192,13 +206,14 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
         debtDuration,
         debtRate,
         fraisCommerciaux: fraisCommerciauxPerSite,
+        loyerBailleur: loyerBailleurPerSite,
         analyzedSites,
         consolidatedTotals,
         consolidatedChronique,
         selectedPortfolio
       });
     }
-  }, [debtDuration, debtRate, fraisCommerciauxPerSite, analyzedSites, consolidatedTotals, consolidatedChronique, selectedPortfolio, onDataChange]);
+  }, [debtDuration, debtRate, fraisCommerciauxPerSite, loyerBailleurPerSite, analyzedSites, consolidatedTotals, consolidatedChronique, selectedPortfolio, onDataChange]);
 
   // Filtrage des sites
   const filteredSites = useMemo(() => {
@@ -252,6 +267,7 @@ const ODRE_CAPARESEAU_29_SITES = [
       debtDuration,
       debtRate,
       fraisCommerciaux: fraisCommerciauxPerSite,
+      loyerDalle: loyerBailleurPerSite,
       studyDuration: studyYears,
       portfolioName: selectedPortfolio
     });
@@ -368,13 +384,13 @@ const ODRE_CAPARESEAU_29_SITES = [
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Ajustez la durée, le taux d'intérêt bancaire et les frais commerciaux pour recalculer en temps réel le cash-flow, le DSCR, le payback et le dossier PDF.
+                Ajustez la durée, le taux d'intérêt bancaire, les frais commerciaux et le loyer bailleur pour recalculer en temps réel le cash-flow, le DSCR, le payback et le dossier PDF.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
           {/* Contrôle Durée de la Dette */}
           <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200">
             <div className="flex items-center justify-between mb-2">
@@ -515,6 +531,56 @@ const ODRE_CAPARESEAU_29_SITES = [
             <div className="flex justify-between text-[10px] text-slate-400 font-semibold mt-1">
               <span>0 € (Invest. propre)</span>
               <span className="text-amber-700 font-bold">5 000 €/MW (Std)</span>
+            </div>
+          </div>
+
+          {/* Contrôle Loyer Donné au Bailleur */}
+          <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                Loyer Donné au Bailleur
+              </label>
+              <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                {fmtEur(loyerBailleurPerSite)} / an
+              </span>
+            </div>
+            
+            {/* Pills de sélection rapide */}
+            <div className="grid grid-cols-4 gap-1 mb-2.5">
+              {[1500, 2000, 2500, 3000].map(l => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLoyerBailleurPerSite(l)}
+                  className={`py-1 text-[11px] font-bold rounded-lg border transition-all ${
+                    loyerBailleurPerSite === l
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  title={`${l} € / an`}
+                >
+                  {l === 2000 ? '2 000 €' : (l === 3000 ? '3 000 €' : `${l} €`)}
+                </button>
+              ))}
+            </div>
+
+            {/* Input direct */}
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="0"
+                step="250"
+                value={loyerBailleurPerSite}
+                onChange={e => setLoyerBailleurPerSite(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                className="w-full px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-[11px] font-bold text-slate-500 shrink-0">€/site</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-slate-400 font-semibold mt-1">
+              <span>0 €</span>
+              <span className="text-emerald-700 font-bold">2k€ (Faraday) / 3k€ (Volta)</span>
+              <span>6 000 €</span>
             </div>
           </div>
 
@@ -697,6 +763,7 @@ const ODRE_CAPARESEAU_29_SITES = [
                 <th className="p-2.5 text-right">CAPEX</th>
                 <th className="p-2.5 text-right">CA An 1</th>
                 <th className="p-2.5 text-right">EBITDA</th>
+                <th className="p-2.5 text-right">Loyer Bailleur</th>
                 <th className="p-2.5 text-center">TRI</th>
                 <th className="p-2.5 text-center">Payback</th>
                 <th className="p-2.5 text-center" data-html2canvas-ignore="true">Action</th>
@@ -731,6 +798,7 @@ const ODRE_CAPARESEAU_29_SITES = [
                   <td className="p-2.5 text-right font-semibold text-slate-800">{fmtEur(s.capexTotal)}</td>
                   <td className="p-2.5 text-right font-bold text-emerald-600">{fmtEur(s.caAnnuel)}</td>
                   <td className="p-2.5 text-right font-black text-blue-700">{fmtEur(s.ebitda)}</td>
+                  <td className="p-2.5 text-right font-bold text-emerald-700">{fmtEur(s.fin?.loyerDalle ?? loyerBailleurPerSite ?? s.rent ?? 2000)}</td>
                   <td className="p-2.5 text-center font-black text-purple-700">{fmtPct(s.triProjet)}</td>
                   <td className="p-2.5 text-center font-bold text-slate-600">{s.payback.toFixed(1)} ans</td>
                   <td className="p-2.5 text-center" data-html2canvas-ignore="true">

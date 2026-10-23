@@ -405,6 +405,7 @@ export function simulateBessFinancials(config = {}) {
     developpement,
     fraisCommerciaux,
     isInvestPropre,
+    loyerDalle,
     emprunt,
     annuite,
     apport,
@@ -507,7 +508,8 @@ export function computeBessFinancials(siteOrConfig = {}, options = {}) {
   const fraisCommerciaux = isInvestPropre ? 0 : (site.fraisCommerciaux !== undefined ? parseNum(site.fraisCommerciaux, defaultFraisComm) : (options.fraisCommerciaux !== undefined ? parseNum(options.fraisCommerciaux, defaultFraisComm) : defaultFraisComm));
   const capexTotal = batterieBms + genieCivil + developpement + fraisCommerciaux + raccordement;
 
-  const loyerDalle = parseNum(site.rent ?? site.loyerDalle, 3000);
+  const defaultLoyer = (site.portfolio === 'FARADAY' || site.bess_portfolio === 'FARADAY' || site.spv === 'SPV B') ? 2000 : 3000;
+  const loyerDalle = parseNum(options.loyerDalle !== undefined ? options.loyerDalle : (site.rent ?? site.loyerDalle), defaultLoyer);
 
   // 6. Exécution du moteur de simulation physique et financière
   const sim = simulateBessFinancials({
@@ -539,6 +541,7 @@ export function computeBessFinancials(siteOrConfig = {}, options = {}) {
     developpement,
     fraisCommerciaux,
     isInvestPropre,
+    loyerDalle,
     tauxEmprunt: parseNum(options.debtRate ?? site.tauxEmprunt, 4.30),
     dureeEmprunt: parseNum(options.debtDuration ?? site.dureeEmprunt, 12),
     apport: parseNum(site.apport ?? options.apport, 0),
@@ -571,6 +574,7 @@ export function computeBessFinancials(siteOrConfig = {}, options = {}) {
     developpement,
     fraisCommerciaux,
     isInvestPropre,
+    loyerDalle,
     capexTotal: sim?.capexTotal || capexTotal,
     caAnnuel: caBrutAn1,
     caBrutAn1,

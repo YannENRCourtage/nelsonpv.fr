@@ -951,7 +951,7 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
         dept,
         address: p.address || `${cp} ${city}`.trim() || mock?.address || '',
         spv: p.spv || mock?.spv || (normPort === 'FARADAY' ? 'SPV B' : 'SPV A'),
-        rent: Number(p.rent || p.loyer_annuel || p.loyer || mock?.rent || 3000),
+        rent: Number(p.rent || p.loyer_annuel || p.loyer || mock?.rent || (normPort === 'FARADAY' ? 2000 : 3000)),
         lat,
         lng,
         gps: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
@@ -972,8 +972,10 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
     if (normTarget !== 'ALL' && normTarget !== 'TOUS' && normPort !== normTarget) {
       return;
     }
+    const rent = site.rent !== undefined ? site.rent : (normPort === 'FARADAY' ? 2000 : 3000);
     resultSites.push({
       ...site,
+      rent,
       portfolio: port,
       bess_portfolio: port,
       crmProject: null

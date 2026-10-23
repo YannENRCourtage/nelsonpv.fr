@@ -1243,11 +1243,38 @@ function MasseViewpointLayer({ viewpoints = {}, targetCenter = null, onUpdateVie
         const vp = viewpoints[key];
         if (!vp || !vp.enabled || !vp.lat || !vp.lng) return null;
 
+        // Auto-correction si les coordonnées sont orphelines (ex: issues d'un projet précédent à des kilomètres)
+        let effectiveVp = vp;
+        if (targetCenter && targetCenter[0] && targetCenter[1]) {
+          const tLat = Number(targetCenter[0]);
+          const tLng = Number(targetCenter[1]);
+          const distDegrees = Math.hypot(vp.lat - tLat, vp.lng - tLng);
+          if (distDegrees > 0.003) {
+            const isDp7 = key === 'dp7';
+            const dLat = isDp7 ? -0.00028 : -0.00065;
+            const dLng = isDp7 ? 0.00005 : -0.00045;
+            const newLat = tLat + dLat;
+            const newLng = tLng + dLng;
+            const cosLat = Math.cos((newLat * Math.PI) / 180);
+            const newAngle = Math.round((Math.atan2(tLng - newLng, (tLat - newLat) * cosLat) * 180 / Math.PI + 360) % 360);
+            effectiveVp = {
+              ...vp,
+              lat: newLat,
+              lng: newLng,
+              angle: newAngle,
+              dist: isDp7 ? 25 : 45
+            };
+            setTimeout(() => {
+              if (onUpdateViewpoint) onUpdateViewpoint(key, effectiveVp, true);
+            }, 0);
+          }
+        }
+
         return (
           <SingleViewpointItem
             key={`vp-${key}`}
             viewpointKey={key}
-            vp={vp}
+            vp={effectiveVp}
             targetCenter={targetCenter}
             onUpdateViewpoint={onUpdateViewpoint}
             isLocked={isLocked}
@@ -1519,9 +1546,31 @@ function MasseAccessLayer({ accessPoint, targetCenter = null, onUpdateAccess, is
   const map = useMap();
   if (!accessPoint || !accessPoint.enabled || !accessPoint.lat || !accessPoint.lng) return null;
 
+  let effectiveAccess = accessPoint;
+  if (targetCenter && targetCenter[0] && targetCenter[1]) {
+    const tLat = Number(targetCenter[0]);
+    const tLng = Number(targetCenter[1]);
+    const distDegrees = Math.hypot(accessPoint.lat - tLat, accessPoint.lng - tLng);
+    if (distDegrees > 0.003) {
+      const newLat = tLat - 0.00022;
+      const newLng = tLng + 0.00025;
+      const cosLat = Math.cos((newLat * Math.PI) / 180);
+      const newAngle = Math.round((Math.atan2(tLng - newLng, (tLat - newLat) * cosLat) * 180 / Math.PI + 360) % 360);
+      effectiveAccess = {
+        ...accessPoint,
+        lat: newLat,
+        lng: newLng,
+        angle: newAngle
+      };
+      setTimeout(() => {
+        if (onUpdateAccess) onUpdateAccess(effectiveAccess, true);
+      }, 0);
+    }
+  }
+
   return (
     <SingleAccessItem
-      accessPoint={accessPoint}
+      accessPoint={effectiveAccess}
       targetCenter={targetCenter}
       onUpdateAccess={onUpdateAccess}
       isLocked={isLocked}
@@ -1830,16 +1879,11 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
   // Synchronisation des cotations personnalisées enregistrées sur le projet
   useEffect(() => {
-    if (project?.masseDistances) {
-      setMasseDistances(project.masseDistances);
-    }
-    if (project?.masseViewpoints) {
-      setMasseViewpoints(project.masseViewpoints);
-    }
-    if (project?.masseAccess) {
-      setMasseAccess(project.masseAccess);
-    }
-  }, [project?.id, project?.masseDistances, project?.masseViewpoints, project?.masseAccess]);
+    setMasseDistances(project?.masseDistances || {});
+    setMasseViewpoints(project?.masseViewpoints || {});
+    setMasseAccess(project?.masseAccess || {});
+    setSdisPoint(project?.sdisPoint || null);
+  }, [project?.id]);
 
   const handleAddMasseDistance = useCallback((strId, newDistance) => {
     setMasseDistances(prev => {
@@ -1916,7 +1960,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       let lng = current.lng;
       let angle = current.angle;
 
-      if (isEnabled && (!lat || !lng)) {
+      const isTooFar = Boolean(lat && lng && targetLat && targetLng && (Math.hypot(lat - Number(targetLat), lng - Number(targetLng)) > 0.003));
+
+      if (isEnabled && (!lat || !lng || isTooFar)) {
         const isDp7 = vpKey === 'dp7';
         const dLat = isDp7 ? -0.00028 : -0.00065;
         const dLng = isDp7 ? 0.00005 : -0.00045;
@@ -1981,7 +2027,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       let lng = current.lng;
       let angle = current.angle;
 
-      if (isEnabled && (!lat || !lng)) {
+      const isTooFar = Boolean(lat && lng && targetLat && targetLng && (Math.hypot(lat - Number(targetLat), lng - Number(targetLng)) > 0.003));
+
+      if (isEnabled && (!lat || !lng || isTooFar)) {
         lat = Number(targetLat) - 0.00022;
         lng = Number(targetLng) + 0.00025;
         const cosLat = Math.cos((lat * Math.PI) / 180);

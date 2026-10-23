@@ -31,6 +31,7 @@ export function generateBessPortfolioExcelData(sites = BESS_PORTFOLIO_SITES, opt
   const debtDuration = options.debtDuration || 12;
   const debtRate = options.debtRate || 4.30;
   const studyDuration = options.studyDuration || 15;
+  const loyerDalle = options.loyerDalle !== undefined ? options.loyerDalle : options.rent;
 
   // Calcul dynamique de chaque site via computeBessFinancials
   const siteResults = sites.map((site, index) => {
@@ -38,7 +39,8 @@ export function generateBessPortfolioExcelData(sites = BESS_PORTFOLIO_SITES, opt
       debtDuration,
       debtRate,
       studyDuration,
-      fraisCommerciaux: site.fraisCommerciaux !== undefined ? site.fraisCommerciaux : options.fraisCommerciaux
+      fraisCommerciaux: site.fraisCommerciaux !== undefined ? site.fraisCommerciaux : options.fraisCommerciaux,
+      loyerDalle: loyerDalle !== undefined ? loyerDalle : (site.rent ?? (options.portfolioName === 'FARADAY' ? 2000 : 3000))
     });
 
     return {
@@ -68,7 +70,7 @@ export function generateBessPortfolioExcelData(sites = BESS_PORTFOLIO_SITES, opt
     'EBITDA An 1 (€)': Math.round(fin.ebitdaAn1),
     'TRI Projet (%)': Number(fin.triProjet.toFixed(2)),
     'Payback (ans)': Number(fin.payback.toFixed(1)),
-    'Loyer Dalle (€/an)': siteRaw.rent || 3000
+    'Loyer Dalle (€/an)': fin.loyerDalle ?? loyerDalle ?? siteRaw.rent ?? (options.portfolioName === 'FARADAY' ? 2000 : 3000)
   }));
 
   // Chronique financière consolidée (Feuille 2)

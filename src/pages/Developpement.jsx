@@ -761,6 +761,7 @@ export default function Developpement() {
       {/* ═══ MODALS ══════════════════════════════════════════════════ */}
       {/* 1. Modal Urbanisme Wizard (CU, DP, PC) */}
       <UrbanismeWizard
+        key={selectedProject?.id || 'urbanisme-wizard'}
         isOpen={urbanismeModal.open}
         onClose={() => setUrbanismeModal({ open: false, type: 'dp' })}
         type={urbanismeModal.type}
