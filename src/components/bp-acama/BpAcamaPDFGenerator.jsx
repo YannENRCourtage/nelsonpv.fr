@@ -170,7 +170,9 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                             s.style.width = '1000px'; 
                         } else {
                             // Détection dynamique du nombre d'années pour garder la même échelle (Image 1)
-                            if (id === 'pdf-section-battery') {
+                            if (id.startsWith('pdf-bess-page-')) {
+                                s.style.width = id === 'pdf-bess-page-3' ? '1920px' : '1600px';
+                            } else if (id === 'pdf-section-battery') {
                                 const yearThs = s.querySelectorAll('thead tr:first-child th, thead tr:first-child td').length - 1; 
                                 if (yearThs > 12) {
                                     s.style.width = `${1600 + (yearThs - 12) * 80}px`;

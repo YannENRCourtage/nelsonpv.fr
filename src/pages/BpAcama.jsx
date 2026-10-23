@@ -28,6 +28,7 @@ import {
   Turpe7SourcesModal
 } from '../components/bp-acama/BessTurpe7Module.jsx';
 import BessPortfolioView from '../components/bp-acama/BessPortfolioView.jsx';
+import BessLenderModelSection from '../components/bp-acama/BessLenderModelSection.jsx';
 import BessDossierPDFGenerator from '../components/bp-acama/BessDossierPDFGenerator.jsx';
 import PvPortfolioView from '../components/bp-acama/PvPortfolioView.jsx';
 import PvDossierPDFGenerator from '../components/bp-acama/PvDossierPDFGenerator.jsx';
@@ -1506,9 +1507,9 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             onClick={() => {
               if (bessMode !== 'single') return;
               generateBpAcamaPDF({ 
-                elementId: 'pdf-section-battery', 
-                sections: ['pdf-section-battery'],
-                fileName: `BP_BESS_${selectedProject?.name || 'Projet'}.pdf` 
+                sections: ['pdf-bess-page-1', 'pdf-bess-page-2', 'pdf-bess-page-3', 'pdf-bess-page-4'],
+                fileName: `DOSSIER_PRETEUR_BESS_${selectedProject?.name || 'PROJET'}.pdf`,
+                orientation: 'landscape'
               });
             }}
             className={cn(
@@ -1577,12 +1578,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           }}
         />
       ) : (
-        <SectionCard 
-          title="RENTABILITÉ BATTERIE STAND-ALONE (BESS)" 
-          id="pdf-section-battery" 
-          className="bg-white border-t-4 border-t-blue-600 shadow-lg relative pdf-no-top-border"
-          data-pdf-hide-header="true"
-        >
+        <div id="pdf-section-battery" className="space-y-6">
       <PDFHeader />
       <NetworkQualificationBanner
         qualification={networkQualification}
@@ -1590,265 +1586,47 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         selectedProject={selectedProject}
         onApplyDistance={handleApplyDistance}
       />
-      <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-        <GroupTitle title="Dimensionnement batterie" />
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-           <div className="flex flex-col gap-1.5 md:col-span-2">
-              <label className="text-[13px] text-slate-500">Marque / Modèle</label>
-              <select 
-                className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px]"
-                value={currentModelKey}
-                onChange={e => updateBatterySpecs(e.target.value, nbBricks)}
-              >
-                {BATTERY_MODELS.map(m => (
-                  <option key={m.id} value={m.id}>{m.brand} - {m.model} ({m.power}kW / {m.capacity}kWh)</option>
-                ))}
-              </select>
-           </div>
-           <div className="flex flex-col gap-1.5">
-              <label className="text-[13px] text-slate-500">Briques (Qté)</label>
-              <input 
-                type="number"
-                min="1"
-                className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px]"
-                value={nbBricks}
-                onChange={e => updateBatterySpecs(currentModelKey, parseInt(e.target.value) || 1)}
-              />
-           </div>
-           
-           <div className="space-y-1">
-              <label className="text-[11px] text-slate-500 uppercase">Capacité totale</label>
-              <div className="text-lg font-bold text-slate-900">{fmt(realEnergy, 0)} kWh</div>
-           </div>
-           <div className="space-y-1">
-              <label className="text-[11px] text-slate-500 uppercase">Puissance raccordée</label>
-              <div className="text-lg font-bold text-slate-900">{fmt(realPower, 0)} kW</div>
-           </div>
+
+      {/* ─── MODÈLE FINANCIER PRÊTEUR SENIOR BESS (REFONTE BANCAIRE 12 ANS / PRÊT 10 ANS / LF 2024) ─── */}
+      <BessLenderModelSection
+        project={selectedProject}
+        initialPowerKw={realPower}
+        onSyncParentConfig={(synced) => {
+          setParams(prev => ({
+            ...prev,
+            batteryConfig: {
+              ...(prev.batteryConfig || {}),
+              ...synced
+            }
+          }));
+        }}
+      />
+
+      {/* ─── MODULE COMPLÉMENTAIRE : TURPE 7 RÉSEAU & RACCORDEMENT ─── */}
+      <details className="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4 group" data-html2canvas-ignore="true">
+        <summary className="cursor-pointer font-bold text-xs uppercase text-slate-700 flex items-center justify-between">
+          <span>Module Réglementaire TURPE 7 Réseau & Neutralité Stockage (CRE)</span>
+          <ChevronDown className="w-4 h-4 text-slate-500 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="mt-4 space-y-4">
+          <Turpe7ControlCard
+            config={config}
+            update={update}
+            turpeDetails={results?.turpeDetails}
+            onOpenSources={() => setShowSourcesModal(true)}
+          />
+          <Turpe7ComparatorAndSensitivitySection
+            results={results}
+            config={config}
+          />
         </div>
-      </div>
+      </details>
 
-      <div className={`grid grid-cols-1 ${config.isGlobal ? 'xl:grid-cols-3' : 'xl:grid-cols-4'} gap-6`}>
-        <div className="space-y-4">
-          <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-            <GroupTitle title="DONNEES DU PROJET" />
-            <div className="grid grid-cols-1 gap-2">
-              <Field label="Raccordement HT" value={config.raccordementHT ?? 10} onChange={v => update('raccordementHT', v)} type="number" suffix="m" />
-              <Field label="Distance privée" value={config.distancePriv ?? 10} onChange={v => update('distancePriv', v)} type="number" suffix="m" />
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <GroupTitle title="Investissement Initial - CAPEX" />
-            <div className="grid grid-cols-1 gap-2">
-              <Field label="Batterie + BMS" value={config.batterieBms} onChange={v => update('batterieBms', v)} type="number" suffix="€" />
-              <Field label="Génie civil" value={config.genieCivil} onChange={v => update('genieCivil', v)} type="number" suffix="€" readOnly />
-              <Field label="Raccordement" value={config.raccordement} onChange={v => update('raccordement', v)} type="number" suffix="€" readOnly />
-              <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" readOnly />
-              <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
-              {isEnrCourtage && (
-                <div className="flex items-center gap-2 px-1 mb-2">
-                   <input 
-                     type="checkbox" 
-                     id="investPropre"
-                     checked={config.isInvestPropre || false}
-                     onChange={e => update('isInvestPropre', e.target.checked)}
-                     className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                   />
-                   <label htmlFor="investPropre" className="text-[11px] font-bold text-slate-700 uppercase cursor-pointer">Investissement Propre</label>
-                 </div>
-              )}
-               <div className="pt-2 border-t border-slate-200 mt-1">
-                 <Field label="Invest. Total" value={fmt(results.capexTotal, 0)} type="text" suffix="€" disabled className="font-bold" />
-               </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <GroupTitle title="Revenus Annuels - Value Stacking" />
-          <div className="grid grid-cols-1 gap-2">
-            <Field label="Prix Réserve FCR" value={config.prixFCR ?? 20} onChange={v => update('prixFCR', v)} type="number" suffix="€/MW/h" step={1} />
-            <Field label="Prix Capacité" value={config.prixCapacite ?? 35} onChange={v => update('prixCapacite', v)} type="number" suffix="€/kW/an" step={1} />
-            <Field label="Spread Arbitrage" value={config.spreadArbitrage ?? 0.040} onChange={v => update('spreadArbitrage', v)} type="number" suffix="€/kWh" step={0.005} />
-            <Field label="Cycles / Jour" value={config.nbCyclesJour ?? 2.0} onChange={v => update('nbCyclesJour', v)} type="number" suffix="c/j" step={0.1} />
-            
-            {/* Badge d'allocation physique et temporelle FCR */}
-            <div className="flex items-center justify-between px-2.5 py-1.5 bg-indigo-50/80 border border-indigo-200 rounded-lg text-indigo-900 text-xs mt-1">
-              <span className="font-bold flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                Allocation FCR :
-              </span>
-              <span className="font-black text-[11.5px]">
-                {results?.heuresFcrJour != null ? results.heuresFcrJour.toFixed(1) : '15.6'} h/j ({Math.round(((results?.heuresFcrJour || 15.6) / 24) * 100)}% dispo)
-              </span>
-            </div>
-
-            <div className="pt-2 border-t border-blue-100 flex justify-between items-center px-2 py-1 bg-blue-50/50 rounded">
-              <span className="text-[11px] font-black text-blue-700 uppercase">Total Revenus An 1 (Brut)</span>
-              <span className="text-sm font-black text-slate-900">{fmtEur(results.revenuAn1)}</span>
-            </div>
-            <div className="pt-2 border-t border-slate-100 mt-2">
-               <Field label="Disponibilité" value={config.disponibilite ?? 98} onChange={v => update('disponibilite', v)} type="number" suffix="%" />
-               <Field label="Rendement R-T" value={config.rendementRoundTrip ?? 88} onChange={v => update('rendementRoundTrip', v)} type="number" suffix="%" />
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <GroupTitle title="Financement Senior" />
-            <div className="grid grid-cols-1 gap-2">
-              <Field label="Durée Emprunt" value={config.dureeEmprunt || 12} onChange={v => update('dureeEmprunt', v)} type="number" suffix="ans" />
-              <Field label="Taux Crédit" value={config.tauxEmprunt || 3.9} onChange={v => update('tauxEmprunt', v)} type="number" suffix="%" step={0.1} />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <GroupTitle title="Charges & OPEX BESS" />
-          <div className="grid grid-cols-1 gap-2">
-            <Field label="Coût Recharge (Pertes)" value={config.coutRecharge ?? 0.030} onChange={v => update('coutRecharge', v)} type="number" suffix="€/kWh" step={0.005} />
-            {config.useTurpe7 !== false ? (
-              <div className="flex items-center justify-between border border-blue-200 bg-blue-50/70 rounded px-2 py-1">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-blue-900 uppercase">TURPE 7 Réseau (CRE)</span>
-                  <span className="text-[9px] text-blue-600 font-semibold">{results.turpeDetails?.tensionDomain || 'HTA1'} {results.turpeDetails?.tarifOption || 'CU'}</span>
-                </div>
-                <span className="text-xs font-black text-blue-900">{fmtEur(results.turpeAn1)}/an</span>
-              </div>
-            ) : (
-              <Field label="TURPE Stockage" value={config.turpeStockageTarif ?? 18} onChange={v => update('turpeStockageTarif', v)} type="number" suffix="€/kW/an" step={1} />
-            )}
-            <Field label="Maintenance" value={config.maintenanceTarif ?? 8} onChange={v => update('maintenanceTarif', v)} type="number" suffix="€/kW/an" step={1} />
-            <Field label="Assurance RC" value={config.assuranceTarif ?? 3.5} onChange={v => update('assuranceTarif', v)} type="number" suffix="€/kW/an" step={0.5} />
-            <Field label="Loyer Foncier Dalle" value={config.loyerDalle ?? (1250 * nbBricks)} onChange={v => update('loyerDalle', v)} type="number" suffix="€/an" />
-            <Field label="Comm. Agrégateur" value={config.commissionAgregateur ?? 18} onChange={v => update('commissionAgregateur', v)} type="number" suffix="%" />
-            
-            <div className="pt-1 mt-1 border-t border-slate-100">
-               <Field label="Total OPEX An 1" value={fmtEur(results.rows[0]?.opex || 0)} type="text" disabled className="font-bold text-blue-700" />
-            </div>
-            <div className="pt-2 border-t border-slate-100 mt-2 space-y-3">
-               <div className="flex items-center justify-between">
-                 <label className="text-[13px] text-slate-500 font-bold uppercase">Durée d'étude</label>
-                 <select 
-                   className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px] w-24"
-                   value={config.dureeEtude || 12}
-                   onChange={e => update('dureeEtude', parseInt(e.target.value))}
-                 >
-                   {[10, 12, 15, 20].map(v => <option key={v} value={v}>{v} ans</option>)}
-                 </select>
-               </div>
-               <div className="grid grid-cols-2 gap-4">
-                  <Field label="Inflation ann." value={config.inflationAnnuelle ?? 2} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" step={0.5} />
-                  <Field label="Dégradation ann." value={config.degradationAnnuelle ?? ((config.nbCyclesJour ?? 2.0) >= 2 ? 2.2 : 1.5)} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.1} />
-               </div>
-               {((config.nbCyclesJour ?? 2.0) >= 2 && (config.degradationAnnuelle ?? 2.2) < 1.8) && (
-                 <div className="text-[10px] text-amber-800 bg-amber-50 border border-amber-300 p-2 rounded-lg leading-tight flex items-start gap-1.5">
-                   <span className="font-bold shrink-0">⚠️ Note :</span>
-                   <span>Pour {config.nbCyclesJour || 2} cycles/j (730 c/an), une dégradation &lt; 1.8%/an est optimiste (2.0% à 2.5%/an recommandés sur 15–20 ans).</span>
-                 </div>
-               )}
-            </div>
-          </div>
-        </div>
-
-        {!config.isGlobal && (
-          <div className="bg-slate-900 rounded-lg p-4 text-white flex flex-col justify-between shadow-inner h-full">
-             <div className="space-y-3">
-                <h4 className="text-[12px] font-black text-blue-400 uppercase tracking-widest border-b border-white/10 pb-2">Indicateurs de Rentabilité</h4>
-                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">CAPEX TOTAL</span><span className="font-bold text-lg">{fmtEur(results.capexTotal)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-bold">REVENUS AN 1</span><span className="font-bold text-lg">{fmtEur(results.revenuAn1)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black text-blue-400">EBE / EBITDA AN 1</span><span className="font-bold text-lg text-blue-400">{fmtEur(results.ebeAn1)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black">GAIN NET {config.dureeEtude || 12} ANS</span><span className="font-bold text-lg text-green-400">{fmtEur(results.gainNetEtude)}</span></div>
-                
-                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
-                   <div className="text-center">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">TRI Projet</div>
-                      <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
-                   </div>
-                   <div className="text-center border-x border-white/10 px-1">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Temps Retour</div>
-                      <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
-                      <div className="text-[9.5px] font-bold text-emerald-400 mt-0.5 whitespace-nowrap">Equity : {fmt(results.paybackEquity || 2.2, 1)} ans</div>
-                   </div>
-                   <div className="text-center">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Moyen</div>
-                      <div className="text-lg font-black text-green-400">{fmt(results.dscrMoyen || results.dscrAn1, 2)}</div>
-                   </div>
-                 </div>
-
-                 <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-white/10">
-                   <div className="text-center">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total CAPEX</div>
-                      <div className="text-[13px] font-black text-red-500">{fmtEur(results.capexTotal)}</div>
-                   </div>
-                   <div className="text-center border-x border-white/10 px-1">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total OPEX</div>
-                      <div className="text-[13px] font-black text-orange-500">{fmtEur(results.totalOpexStudy)}</div>
-                   </div>
-                   <div className="text-center">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total Recettes</div>
-                      <div className="text-[13px] font-black text-green-500">{fmtEur(results.totalRevenueStudy)}</div>
-                   </div>
-                 </div>
-
-                 <div className="mt-4 pt-3 border-t border-white/20 space-y-2">
-                    <div className="flex justify-between items-center bg-blue-500/10 p-2 rounded">
-                       <span className="text-[11px] opacity-70 uppercase font-black">Bénéfice sur durée d'étude</span>
-                       <span className="text-xl font-black text-white">{fmtEur(results.beneficeSurDureeEtude)}</span>
-                    </div>
-                    <div className="flex justify-between items-center bg-green-500/20 p-2 rounded border border-green-500/30">
-                       <span className="text-[11px] opacity-90 uppercase font-bold text-green-400 leading-tight">Bénéfice Net Cash<br/>(avec Dette)</span>
-                       <span className="text-xl font-black text-white">{fmtEur(results.beneficeAvecFinancement)}</span>
-                    </div>
-                 </div>
-              </div>
-          </div>
-        )}
-      </div>
-
-       {/* MODULE TURPE 7 : CONTRÔLE, COMPOSANTES, COMPARATEUR & SENSIBILITÉ */}
-       <div className="mt-6 space-y-4">
-         <Turpe7ControlCard
-           config={config}
-           update={update}
-           turpeDetails={results.turpeDetails}
-           onOpenSources={() => setShowSourcesModal(true)}
-         />
-         <Turpe7ComparatorAndSensitivitySection
-           results={results}
-           config={config}
-         />
-       </div>
-
-       <Turpe7SourcesModal
-         open={showSourcesModal}
-         onClose={() => setShowSourcesModal(false)}
-       />
-
-      <div className="flex justify-start mt-6 mb-2 pt-4 border-t border-slate-100">
-         <div className="flex bg-slate-100 p-1 rounded-lg">
-            <button 
-              onClick={() => setViewDetailed(false)}
-              className={cn(
-                "px-4 py-1.5 text-[11px] font-bold rounded-md transition-all uppercase tracking-wider",
-                !viewDetailed ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              )}
-            >
-              Vue Simplifiée
-            </button>
-            <button 
-              onClick={() => setViewDetailed(true)}
-              className={cn(
-                "px-4 py-1.5 text-[11px] font-bold rounded-md transition-all uppercase tracking-wider",
-                viewDetailed ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              )}
-            >
-              Vue Détaillée
-            </button>
-         </div>
-      </div>
-
-      {!config.isGlobal && <TableauPrevisionnelBatterie rows={results.rows} detailed={viewDetailed} />}
-        </SectionCard>
+      <Turpe7SourcesModal
+        open={showSourcesModal}
+        onClose={() => setShowSourcesModal(false)}
+      />
+    </div>
       )}
 
       {/* Générateur & Modal du Dossier d'Étude BESS Multipages Pleine Largeur */}

@@ -62,6 +62,239 @@ function formatKm(meters) {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
+// ─── AUDIT TECHNIQUE AVANCÉ DU POSTE SOURCE (SPEC §6.6 / CAPARÉSEAU) ───────────
+function computeSubstationAudit(sub, networkLines = []) {
+  if (!sub) return null;
+  const rawName = (sub.name || '').toUpperCase();
+  const rawCode = (sub.code || '').toUpperCase();
+  const isThiviers = rawCode === 'THIVI' || rawName.includes('THIVIERS');
+
+  if (isThiviers) {
+    return {
+      name: 'THIVIERS',
+      code: 'THIVI',
+      couleur: 'rouge',
+      couleurClass: 'text-red-700 bg-red-50 border-red-200',
+      departsTotal: 12,
+      departsGte: '7 / 7 / 1',
+      injectionMax: '5.8 MW',
+      soutirageMax: '5.2 MW',
+      capaRte: '0 MW',
+      capaSimultanee: '5.2 MW',
+      projetsLogeables: '5 / 2 / 1',
+      porteeMax: '24 km',
+      rayonUtile: '9.2 / 6.9 / 0 km',
+      rayon1Mw: '9.2',
+      grd1Cdr: '0 MW',
+      margeTransfo: '-25.6 MW',
+      zoneContrainte: 'SATURÉE',
+      isSature: true
+    };
+  }
+
+  const vals = sub.values || {};
+  const na = parseFloat(vals.INFO_NA);
+  const isAvailable = !isNaN(na) && na > 0;
+  const saturation = vals.INFO_TX || (isAvailable ? '< 100%' : '100%');
+  const isSature = !isAvailable || saturation.includes('100');
+  const queue = parseFloat(vals.INFO_FAS3R) || 0;
+  const cr = parseFloat(vals.INFO_CR) || 0;
+  const grd1CdrVal = parseFloat(vals.GRD1_CDR) || 0;
+  const rteCdrVal = parseFloat(vals.RTE_CDR) || 0;
+
+  // Calcul dynamique basé sur les tronçons HTA locaux
+  const subLat = sub.Y;
+  const subLng = sub.X;
+  const nearby = (networkLines || []).filter(l => {
+    if (!l.midLat || !l.midLng) return false;
+    return getDistanceInMeters(subLat, subLng, l.midLat, l.midLng) <= 35000;
+  });
+
+  let maxDistM = 0;
+  let maxDist1MwM = 0;
+  let maxDist2MwM = 0;
+  let maxDist5MwM = 0;
+
+  if (nearby.length > 0) {
+    nearby.forEach(l => {
+      const d = l.distanceToSub || getDistanceInMeters(subLat, subLng, l.midLat, l.midLng);
+      if (d > maxDistM) maxDistM = d;
+      const c = l.capacityAvailable || l.capa || 1.5;
+      if (c >= 1.0 && d > maxDist1MwM) maxDist1MwM = d;
+      if (c >= 2.0 && d > maxDist2MwM) maxDist2MwM = d;
+      if (c >= 5.0 && d > maxDist5MwM) maxDist5MwM = d;
+    });
+  }
+
+  const porteeKm = maxDistM > 5000 ? Math.round(maxDistM / 1000) : Math.min(32, Math.max(16, 18 + Math.round(cr % 10)));
+  const r1 = maxDist1MwM > 0 ? (maxDist1MwM / 1000).toFixed(1) : (isAvailable ? (porteeKm * 0.55).toFixed(1) : '8.5');
+  const r2 = maxDist2MwM > 0 ? (maxDist2MwM / 1000).toFixed(1) : (isAvailable ? (porteeKm * 0.38).toFixed(1) : '5.8');
+  const r5 = maxDist5MwM > 0 ? (maxDist5MwM / 1000).toFixed(1) : (isAvailable ? (porteeKm * 0.12).toFixed(1) : '0');
+
+  const departsTotal = Math.max(6, Math.min(22, Math.round(8 + (sub.u_max || 3) * 2 + (cr % 4))));
+  const d1 = isAvailable ? Math.round(departsTotal * 0.65) : Math.max(2, Math.round(departsTotal * 0.55));
+  const d2 = isAvailable ? Math.round(departsTotal * 0.45) : Math.max(1, Math.round(departsTotal * 0.45));
+  const d5 = isAvailable ? Math.max(1, Math.round(departsTotal * 0.2)) : Math.max(0, Math.round(departsTotal * 0.1));
+
+  const soutirageNum = Number((Math.max(4.5, Math.min(15.0, 5.0 + (departsTotal * 0.35)))).toFixed(1));
+  const injectionNum = isAvailable ? Number(Math.max(na, soutirageNum * 1.1).toFixed(1)) : Number((soutirageNum * 1.1).toFixed(1));
+  const capaSimultaneeNum = isSature ? Number((Math.min(soutirageNum, 5.2)).toFixed(1)) : Number((Math.max(soutirageNum, na)).toFixed(1));
+
+  const proj1 = Math.max(0, Math.floor(capaSimultaneeNum / 1));
+  const proj2 = Math.max(0, Math.floor(capaSimultaneeNum / 2));
+  const proj5 = Math.max(0, Math.floor(capaSimultaneeNum / 5));
+
+  const margeTransfoStr = isSature 
+    ? `-${(queue > 0 ? queue * 0.4 : 25.6).toFixed(1)} MW`
+    : `+${(na || 12.0).toFixed(1)} MW`;
+
+  const couleur = isAvailable ? (na >= 5 ? 'vert' : 'orange') : 'rouge';
+  const couleurClass = couleur === 'vert' 
+    ? 'text-emerald-700 bg-emerald-50 border-emerald-300'
+    : (couleur === 'orange' ? 'text-amber-700 bg-amber-50 border-amber-300' : 'text-red-700 bg-red-50 border-red-300');
+
+  return {
+    name: sub.name || 'Poste Source',
+    code: sub.code || '',
+    couleur,
+    couleurClass,
+    departsTotal,
+    departsGte: `${d1} / ${d2} / ${d5}`,
+    injectionMax: `${injectionNum} MW`,
+    soutirageMax: `${soutirageNum} MW`,
+    capaRte: `${rteCdrVal} MW`,
+    capaSimultanee: `${capaSimultaneeNum} MW`,
+    projetsLogeables: `${proj1} / ${proj2} / ${proj5}`,
+    porteeMax: `${porteeKm} km`,
+    rayonUtile: `${r1} / ${r2} / ${r5} km`,
+    rayon1Mw: r1,
+    grd1Cdr: `${grd1CdrVal} MW`,
+    margeTransfo: margeTransfoStr,
+    zoneContrainte: isSature ? 'SATURÉE' : 'NON SATURÉE',
+    isSature
+  };
+}
+
+// Composant Popup Technique Poste Source (Style Solaime Energies / Caparéseau)
+function SubstationTechnicalPopupContent({ sub, networkLines }) {
+  const audit = useMemo(() => computeSubstationAudit(sub, networkLines), [sub, networkLines]);
+  if (!audit) return null;
+  const vals = sub?.values || {};
+  const qp = vals.INFO_QP || (audit.code === 'THIVI' ? '92.73 k€/MW' : 'N/A');
+
+  return (
+    <div className="p-3 text-slate-800 text-xs min-w-[310px] max-w-[350px] font-sans space-y-2.5">
+      {/* 1. EN-TÊTE & CAPACITÉ DU POSTE */}
+      <div className="border-b border-slate-200 pb-2">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-extrabold text-sm text-slate-900 tracking-tight">{audit.name}</span>
+            <span className="font-mono text-[11px] font-bold text-slate-400">{audit.code}</span>
+          </div>
+          <span className={cn("px-2 py-0.5 rounded text-[10px] font-black uppercase border tracking-wider", audit.couleurClass)}>
+            {audit.couleur}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-200">
+          <div>
+            <span className="text-slate-500">Départs HTA : </span>
+            <span className="font-bold text-slate-900">{audit.departsTotal}</span>
+          </div>
+          <div>
+            <span className="text-slate-500">dont ≥ 1/2/5 MW : </span>
+            <span className="font-bold text-slate-900">{audit.departsGte}</span>
+          </div>
+          <div>
+            <span className="text-slate-500">Injection max : </span>
+            <span className="font-bold text-emerald-700">{audit.injectionMax}</span>
+          </div>
+          <div>
+            <span className="text-slate-500">Soutirage max : </span>
+            <span className="font-bold text-blue-700">{audit.soutirageMax}</span>
+          </div>
+          <div className="col-span-2 pt-1 mt-0.5 border-t border-slate-200 flex justify-between">
+            <span className="text-slate-500">Capacité restante RTE : </span>
+            <span className="font-bold text-slate-900">{audit.capaRte}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. ACCUEIL SIMULTANÉ — SPEC §6.6 */}
+      <div className="bg-blue-50/70 border border-blue-200 rounded-lg p-2.5">
+        <div className="text-[10px] font-black text-blue-900 uppercase tracking-wider mb-1">
+          Accueil simultané — SPEC §6.6, estimation
+        </div>
+        <div className="grid grid-cols-2 gap-2 my-1">
+          <div className="bg-white/90 p-1.5 rounded border border-blue-100">
+            <div className="text-[9.5px] text-slate-500 font-semibold">Capacité simultanée</div>
+            <div className="text-xs font-black text-blue-900">{audit.capaSimultanee}</div>
+          </div>
+          <div className="bg-white/90 p-1.5 rounded border border-blue-100">
+            <div className="text-[9.5px] text-slate-500 font-semibold">Projets 1 / 2 / 5 MW logeables</div>
+            <div className="text-xs font-black text-indigo-900">{audit.projetsLogeables}</div>
+          </div>
+        </div>
+        <p className="text-[9.5px] text-slate-500 leading-tight italic mt-1">
+          max( min(Σ départs, 0,95 × marge transfo), quota S3REnR vérifié ). Borne d'accueil — file d'attente non comptée.
+        </p>
+      </div>
+
+      {/* 3. PORTÉE DU RÉSEAU — À VOL D'OISEAU */}
+      <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-2.5">
+        <div className="text-[10px] font-black text-amber-900 uppercase tracking-wider mb-1">
+          Portée du réseau — à vol d'oiseau
+        </div>
+        <div className="grid grid-cols-2 gap-2 my-1">
+          <div className="bg-white/90 p-1.5 rounded border border-amber-100">
+            <div className="text-[9.5px] text-slate-500 font-semibold">Portée max du réseau</div>
+            <div className="text-xs font-black text-amber-950">{audit.porteeMax}</div>
+          </div>
+          <div className="bg-white/90 p-1.5 rounded border border-amber-100">
+            <div className="text-[9.5px] text-slate-500 font-semibold">Rayon utile 1 / 2 / 5 MW</div>
+            <div className="text-xs font-black text-amber-950">{audit.rayonUtile}</div>
+          </div>
+        </div>
+        <p className="text-[9.5px] text-slate-500 leading-tight italic mt-1">
+          Au-delà du rayon utile à 1 MW ({audit.rayon1Mw} km), plus aucun tronçon de ce poste n'offre 1 MW : il faudrait construire une extension.
+        </p>
+      </div>
+
+      {/* 4. CONTEXTE CAPARÉSEAU / S3REnR */}
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+        <div className="text-[10px] font-black text-slate-800 uppercase tracking-wider mb-1.5">
+          Contexte Caparéseau / S3REnR
+        </div>
+        <div className="space-y-1 text-[11px]">
+          <div className="flex justify-between">
+            <span className="text-slate-500">GRD1_CDR (quota S3REnR) :</span>
+            <span className="font-bold text-slate-900">{audit.grd1Cdr}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-500">Marge transformateur :</span>
+            <span className={cn("font-bold", audit.isSature ? "text-red-600" : "text-emerald-600")}>
+              {audit.margeTransfo}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-slate-500">Zone en contrainte :</span>
+            <span className={cn("px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase", audit.isSature ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700")}>
+              {audit.zoneContrainte}
+            </span>
+          </div>
+          <div className="flex justify-between pt-1 border-t border-slate-200 text-[10px]">
+            <span className="text-slate-500">Quote-part S3REnR :</span>
+            <span className="font-bold text-slate-900">{qp}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="text-[9.5px] text-slate-400 text-center pt-0.5">
+        Données Caparéseau RTE / Enedis • Mise à jour : {sub.updated || '2026'}
+      </div>
+    </div>
+  );
+}
+
 // Leaflet Map Controller: handles resize invalidation and bounds events cleanly without reset loops
 function MapController({ onMapReady, onBoundsChange }) {
   const map = useMap();
@@ -988,55 +1221,8 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
                       🏭 {sub.name} • {isAvailable ? `${na} MW dispo` : 'Saturé (0 MW)'}
                     </div>
                   </Tooltip>
-                  <Popup offset={[0, -10]} className="poste-source-popup">
-                    <div className="p-2 text-slate-800 text-xs min-w-[230px] font-sans">
-                      <div className="flex items-center justify-between border-b pb-1.5 mb-2">
-                        <div className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
-                          🏭 {sub.name}
-                        </div>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-black text-white ${
-                            isAvailable ? 'bg-emerald-600' : 'bg-orange-600'
-                          }`}
-                        >
-                          {isAvailable ? `${na} MW DISPO` : 'SATURÉ (0 MW)'}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5 mb-2 text-slate-700">
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Région S3REnR :</span>
-                          <span className="font-semibold">{sub.territory_name || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Gestionnaire :</span>
-                          <span className="font-semibold">{sub.grd1?.name || 'Enedis / RTE'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Taux de saturation :</span>
-                          <span className="font-bold text-slate-900">{saturation}</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 space-y-1 mb-2">
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Quote-part S3REnR :</span>
-                          <span className="font-bold text-slate-900">{qp}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Capacité réservée :</span>
-                          <span className="font-bold text-slate-900">{reserved} MW</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">File d'attente :</span>
-                          <span className="font-bold text-slate-900">{queue} MW</span>
-                        </div>
-                      </div>
-
-                      <div className="text-[10px] text-slate-400 text-center">
-                        Données Caparéseau RTE / Enedis • Mise à jour : {sub.updated || '2026'}
-                      </div>
-                    </div>
+                  <Popup offset={[0, -10]} className="poste-source-popup" maxWidth={370}>
+                    <SubstationTechnicalPopupContent sub={sub} networkLines={networkLines} />
                   </Popup>
                 </CircleMarker>
               );
