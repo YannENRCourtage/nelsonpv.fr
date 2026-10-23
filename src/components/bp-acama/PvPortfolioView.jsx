@@ -11,6 +11,7 @@ import {
   Download,
   Filter,
   CheckCircle2,
+  ShieldCheck,
   Building2,
   Table as TableIcon,
   Landmark,
@@ -24,6 +25,7 @@ import { exportPvPortfolioToExcel, exportPvOdreMatrixToExcel } from '../../servi
 import { calculatePmt, calculateProjectPayback, calculateIrr } from '../../services/bessSimulationEngine.js';
 import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
 import PortfolioManagerModal from '@/components/portfolios/PortfolioManagerModal.jsx';
+import PvPortfolioLenderModal from './PvPortfolioLenderModal.jsx';
 import { Plus, Settings } from 'lucide-react';
 
 const fmtEur = (v) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(v || 0))} €`;
@@ -35,6 +37,7 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
   const { pvPortfolios, canManagePortfolios } = usePortfolios();
   const [selectedPortfolio, setSelectedPortfolio] = useState(initialPortfolio || 'HELIOS');
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+  const [isLenderModalOpen, setIsLenderModalOpen] = useState(false);
   const [selectedSpv, setSelectedSpv] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedChronique, setExpandedChronique] = useState(false);
@@ -321,6 +324,14 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
             >
               <FileSpreadsheet className="w-4 h-4 text-cyan-300" />
               Matrice ODRE
+            </button>
+            <button
+              onClick={() => setIsLenderModalOpen(true)}
+              className="px-3.5 py-2 text-xs font-black bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-800 text-white rounded-lg border border-amber-500/40 transition-all flex items-center gap-2 shadow-sm"
+              title={`Ouvrir et générer le Dossier Prêteur Consolidé Photovoltaïque (${selectedPortfolio}) pour les banques`}
+            >
+              <ShieldCheck className="w-4 h-4 text-amber-200" />
+              Dossier Prêteur ({selectedPortfolio})
             </button>
           </div>
         </div>
@@ -688,6 +699,17 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
         open={isPortfolioModalOpen}
         onClose={() => setIsPortfolioModalOpen(false)}
         projects={projects}
+      />
+
+      <PvPortfolioLenderModal
+        isOpen={isLenderModalOpen}
+        onClose={() => setIsLenderModalOpen(false)}
+        portfolioName={selectedPortfolio}
+        sites={analyzedSites}
+        consolidatedTotals={consolidatedTotals}
+        consolidatedChronique={consolidatedChronique}
+        debtDuration={debtDuration}
+        debtRate={debtRate}
       />
     </div>
   );

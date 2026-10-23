@@ -28,6 +28,7 @@ import { exportBessPortfolioToExcel, exportBessOdreMatrixToExcel } from '../../s
 import * as XLSX from 'xlsx';
 import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
 import PortfolioManagerModal from '@/components/portfolios/PortfolioManagerModal.jsx';
+import BessPortfolioLenderModal from './BessPortfolioLenderModal.jsx';
 import { Plus } from 'lucide-react';
 
 const fmtEur = (v) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(v || 0))} €`;
@@ -39,6 +40,7 @@ export default function BessPortfolioView({ onSelectSite, onExportPdf, onDataCha
   const { bessPortfolios, canManagePortfolios } = usePortfolios();
   const [selectedPortfolio, setSelectedPortfolio] = useState('VOLTA'); // 'VOLTA' | 'FARADAY' | 'ALL' etc.
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
+  const [isLenderModalOpen, setIsLenderModalOpen] = useState(false);
   const [selectedSpv, setSelectedSpv] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedChronique, setExpandedChronique] = useState(false);
@@ -365,6 +367,14 @@ const ODRE_CAPARESEAU_29_SITES = [
           >
             <FileSpreadsheet className="w-4 h-4 text-cyan-300" />
             Matrice CAPARESEAU ODRE ({selectedPortfolio === 'ALL' ? 'TOUS' : selectedPortfolio})
+          </button>
+          <button
+            onClick={() => setIsLenderModalOpen(true)}
+            className="px-3.5 py-2 text-xs font-black bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white rounded-lg border border-blue-500/40 transition-all flex items-center gap-2 shadow-sm"
+            title={`Ouvrir et générer le Dossier Prêteur Consolidé pour Banques et Financeurs (${selectedPortfolio})`}
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-300" />
+            Dossier Prêteur ({selectedPortfolio === 'ALL' ? 'TOUS' : selectedPortfolio})
           </button>
         </div>
       </div>
@@ -825,6 +835,19 @@ const ODRE_CAPARESEAU_29_SITES = [
         open={isPortfolioModalOpen}
         onClose={() => setIsPortfolioModalOpen(false)}
         projects={projects}
+      />
+
+      <BessPortfolioLenderModal
+        isOpen={isLenderModalOpen}
+        onClose={() => setIsLenderModalOpen(false)}
+        portfolioName={selectedPortfolio}
+        sites={analyzedSites}
+        consolidatedTotals={consolidatedTotals}
+        consolidatedChronique={consolidatedChronique}
+        debtDuration={debtDuration}
+        debtRate={debtRate}
+        loyerBailleurPerSite={loyerBailleurPerSite}
+        fraisCommerciauxPerSite={fraisCommerciauxPerSite}
       />
     </div>
   );

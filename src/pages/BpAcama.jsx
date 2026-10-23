@@ -30,8 +30,10 @@ import {
 import BessPortfolioView from '../components/bp-acama/BessPortfolioView.jsx';
 import BessLenderModelSection from '../components/bp-acama/BessLenderModelSection.jsx';
 import BessDossierPDFGenerator from '../components/bp-acama/BessDossierPDFGenerator.jsx';
+import BessPortfolioLenderModal from '../components/bp-acama/BessPortfolioLenderModal.jsx';
 import PvPortfolioView from '../components/bp-acama/PvPortfolioView.jsx';
 import PvDossierPDFGenerator from '../components/bp-acama/PvDossierPDFGenerator.jsx';
+import PvPortfolioLenderModal from '../components/bp-acama/PvPortfolioLenderModal.jsx';
 import { PV_PORTFOLIO_SITES, getPvPortfolioSites, normalizePortfolioName, getProjectPvPortfolio } from '../data/pvPortfolioData.js';
 import { getBessPortfolioSites } from '../data/bessPortfolioData.js';
 import { usePortfolios } from '@/contexts/PortfolioContext.jsx';
@@ -1284,6 +1286,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   const [isLoadingNetwork, setIsLoadingNetwork] = useState(false);
   const [showSourcesModal, setShowSourcesModal] = useState(false);
   const [isDossierPdfOpen, setIsDossierPdfOpen] = useState(false);
+  const [isBessPortfolioLenderModalOpen, setIsBessPortfolioLenderModalOpen] = useState(false);
   const [portfolioExportData, setPortfolioExportData] = useState(null);
 
   const activeBessSites = useMemo(() => {
@@ -1501,28 +1504,33 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            disabled={bessMode !== 'single'}
-            onClick={() => {
-              if (bessMode !== 'single') return;
-              generateBpAcamaPDF({ 
-                sections: ['pdf-bess-page-1', 'pdf-bess-page-2'],
-                fileName: `DOSSIER_PRETEUR_BESS_${selectedProject?.name || 'PROJET'}.pdf`,
-                orientation: 'landscape'
-              });
-            }}
-            className={cn(
-              "px-3.5 py-2 text-xs font-black rounded-lg border transition-all flex items-center gap-2",
-              bessMode === 'single'
-                ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm hover:shadow cursor-pointer"
-                : "bg-slate-100 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed"
-            )}
-            title={bessMode === 'single' ? `Exporter le PDF BESS du projet ${selectedProject?.name || ''}` : "Actif uniquement en mode Simulation Unitaire"}
-          >
-            <FileDown className={cn("w-4 h-4", bessMode === 'single' ? "text-blue-600" : "text-slate-400")} />
-            <span>PDF BESS {selectedProject?.name ? selectedProject.name.toUpperCase() : 'PROJET'}</span>
-          </button>
+          {bessMode === 'single' ? (
+            <button
+              type="button"
+              onClick={() => {
+                generateBpAcamaPDF({ 
+                  sections: ['pdf-bess-page-1', 'pdf-bess-page-2'],
+                  fileName: `DOSSIER_PRETEUR_BESS_${selectedProject?.name || 'PROJET'}.pdf`,
+                  orientation: 'landscape'
+                });
+              }}
+              className="px-3.5 py-2 text-xs font-black rounded-lg border transition-all flex items-center gap-2 bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm hover:shadow cursor-pointer"
+              title={`Exporter le Dossier Prêteur BESS du projet ${selectedProject?.name || ''}`}
+            >
+              <FileDown className="w-4 h-4 text-blue-600" />
+              <span>PDF BESS {selectedProject?.name ? selectedProject.name.toUpperCase() : 'PROJET'}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsBessPortfolioLenderModalOpen(true)}
+              className="px-3.5 py-2 text-xs font-black rounded-lg border transition-all flex items-center gap-2 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white shadow-sm hover:shadow hover:from-blue-800 hover:to-indigo-900 cursor-pointer border-blue-800"
+              title={`Dossier Prêteur Consolidé BESS (${selectedBessPortfolio}) pour Banques et Financeurs`}
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-300" />
+              <span>DOSSIER PRÊTEUR {selectedBessPortfolio.toUpperCase()} ({activeBessSites.length} SITES)</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -1640,6 +1648,20 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         networkQualification={networkQualification}
         portfolioData={portfolioExportData}
         projects={projects}
+      />
+
+      {/* Modal du Dossier Prêteur Consolidé BESS pour Banques & Financeurs */}
+      <BessPortfolioLenderModal
+        isOpen={isBessPortfolioLenderModalOpen}
+        onClose={() => setIsBessPortfolioLenderModalOpen(false)}
+        portfolioName={selectedBessPortfolio}
+        sites={portfolioExportData?.analyzedSites || activeBessSites}
+        consolidatedTotals={portfolioExportData?.consolidatedTotals || {}}
+        consolidatedChronique={portfolioExportData?.consolidatedChronique || []}
+        debtDuration={portfolioExportData?.debtDuration ?? 12}
+        debtRate={portfolioExportData?.debtRate ?? 4.30}
+        loyerBailleurPerSite={portfolioExportData?.loyerBailleurPerSite ?? 3000}
+        fraisCommerciauxPerSite={portfolioExportData?.fraisCommerciaux ?? (config.fraisCommerciaux !== undefined ? config.fraisCommerciaux : 2500)}
       />
     </div>
   );
@@ -2224,6 +2246,7 @@ function TabBpProjets({
   const [networkQualificationPv, setNetworkQualificationPv] = useState(null);
   const [isLoadingNetworkPv, setIsLoadingNetworkPv] = useState(false);
   const [isPvDossierPdfOpen, setIsPvDossierPdfOpen] = useState(false);
+  const [isPvPortfolioLenderModalOpen, setIsPvPortfolioLenderModalOpen] = useState(false);
   const [pvPortfolioExportData, setPvPortfolioExportData] = useState(null);
   const [isProjectDetailModalOpen, setIsProjectDetailModalOpen] = useState(false);
 
@@ -2820,28 +2843,33 @@ function TabBpProjets({
           </div>
 
           <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              disabled={pvMode !== 'single'}
-              onClick={() => {
-                if (pvMode !== 'single') return;
-                generateBpAcamaPDF({ 
-                  elementId: 'bp-acama-content', 
-                  sections: ['pdf-section-1'],
-                  fileName: `BP_PV_${selectedProject?.name || 'Projet'}.pdf` 
-                });
-              }}
-              className={cn(
-                "px-3.5 py-2 text-xs font-black rounded-lg border transition-all flex items-center gap-2",
-                pvMode === 'single'
-                  ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm hover:shadow cursor-pointer"
-                  : "bg-slate-100 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed"
-              )}
-              title={pvMode === 'single' ? `Exporter le PDF PV du projet ${selectedProject?.name || ''}` : "Actif uniquement en mode Simulation Unitaire"}
-            >
-              <FileDown className={cn("w-4 h-4", pvMode === 'single' ? "text-amber-500" : "text-slate-400")} />
-              <span>PDF PV {selectedProject?.name ? selectedProject.name.toUpperCase() : 'PROJET'}</span>
-            </button>
+            {pvMode === 'single' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  generateBpAcamaPDF({ 
+                    elementId: 'bp-acama-content', 
+                    sections: ['pdf-section-1'],
+                    fileName: `BP_PV_${selectedProject?.name || 'Projet'}.pdf` 
+                  });
+                }}
+                className="px-3.5 py-2 text-xs font-black rounded-lg border transition-all flex items-center gap-2 bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm hover:shadow cursor-pointer"
+                title={`Exporter le Dossier Prêteur PV du projet ${selectedProject?.name || ''}`}
+              >
+                <FileDown className="w-4 h-4 text-amber-500" />
+                <span>PDF PV {selectedProject?.name ? selectedProject.name.toUpperCase() : 'PROJET'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsPvPortfolioLenderModalOpen(true)}
+                className="px-3.5 py-2 text-xs font-black rounded-lg border transition-all flex items-center gap-2 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white shadow-sm hover:shadow hover:from-amber-700 hover:to-orange-800 cursor-pointer border-amber-700"
+                title={`Dossier Prêteur Consolidé PV (${selectedPvPortfolio}) pour Banques et Financeurs`}
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-100" />
+                <span>DOSSIER PRÊTEUR {selectedPvPortfolio.toUpperCase()} ({pvHeliosSites.length} SITES)</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -3433,6 +3461,18 @@ function TabBpProjets({
     onClose={() => setIsPvDossierPdfOpen(false)}
     portfolioData={pvPortfolioExportData}
     projects={projects}
+  />
+
+  {/* Modal Dossier Prêteur Consolidé PV pour Banques & Financeurs */}
+  <PvPortfolioLenderModal
+    isOpen={isPvPortfolioLenderModalOpen}
+    onClose={() => setIsPvPortfolioLenderModalOpen(false)}
+    portfolioName={selectedPvPortfolio}
+    sites={pvPortfolioExportData?.analyzedSites || pvHeliosSites}
+    consolidatedTotals={pvPortfolioExportData?.consolidatedTotals || { totalSites: pvHeliosSites.length, totalPowerMw: pvHeliosPowerMw }}
+    consolidatedChronique={pvPortfolioExportData?.consolidatedChronique || []}
+    debtDuration={pvPortfolioExportData?.debtDuration ?? 20}
+    debtRate={pvPortfolioExportData?.debtRate ?? 4.20}
   />
 
   {/* Modal Gestion des Portefeuilles PV & BESS (Admin) */}

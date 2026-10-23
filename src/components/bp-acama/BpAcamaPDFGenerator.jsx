@@ -227,8 +227,8 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                             s.style.width = '1000px'; 
                         } else {
                             // Détection dynamique du nombre d'années pour garder la même échelle (Image 1)
-                            if (id.startsWith('pdf-bess-page-')) {
-                                s.style.width = (id === 'pdf-bess-page-2' || id === 'pdf-bess-page-3') ? '1920px' : '1600px';
+                            if (id.startsWith('pdf-bess-page-') || id.startsWith('pdf-bess-port-lender-') || id.startsWith('pdf-pv-port-lender-')) {
+                                s.style.width = (id.includes('page-2') || id.includes('lender-2')) ? '1920px' : '1600px';
                             } else if (id === 'pdf-section-battery') {
                                 const yearThs = s.querySelectorAll('thead tr:first-child th, thead tr:first-child td').length - 1; 
                                 if (yearThs > 12) {
@@ -285,8 +285,8 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
             const finalHeight = imgProps.height * bestRatio;
             
             const xPos = margin + (targetWidth - finalWidth) / 2;
-            // Aligner verticalement en haut pour les pages BESS du dossier prêteur
-            const isBess = id.startsWith('pdf-bess-page-') || id === 'pdf-section-battery';
+            // Aligner verticalement en haut pour les pages du dossier prêteur (unitaire et portefeuille)
+            const isBess = id.startsWith('pdf-bess-page-') || id === 'pdf-section-battery' || id.includes('lender');
             const yPos = isBess ? margin : margin + (targetHeight - finalHeight) / 2;
 
             if (isNewPage) {

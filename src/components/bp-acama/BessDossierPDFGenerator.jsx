@@ -251,7 +251,16 @@ export default function BessDossierPDFGenerator({
   const scrollContainerRef = useRef(null);
 
   const isPort = activeMode === 'portfolio';
-  const totalPagesCount = isPort ? 9 : 7;
+
+  // 1. Projets BESS filtrés selon la sélection de l'utilisateur
+  const selectedBessSites = isPort
+    ? allAvailableSites.filter(s => selectedProjectIds.includes(s.id))
+    : allAvailableSites;
+  const mult = isPort ? selectedBessSites.length : 1;
+  const portName = portfolioData?.selectedPortfolio || 'VOLTA';
+
+  // Si tous les projets tiennent sur la planche 8 (<= 16 sites), on omet la planche 9
+  const totalPagesCount = isPort ? (selectedBessSites.length > 16 ? 9 : 8) : 7;
 
   // Synchronisation dynamique si allAvailableSites change
   useEffect(() => {
@@ -288,13 +297,6 @@ export default function BessDossierPDFGenerator({
       return () => clearTimeout(timer);
     }
   }, [isOpen, initialMode, portfolioData]);
-
-  // 1. Projets BESS filtrés selon la sélection de l'utilisateur
-  const selectedBessSites = isPort
-    ? allAvailableSites.filter(s => selectedProjectIds.includes(s.id))
-    : allAvailableSites;
-  const mult = isPort ? selectedBessSites.length : 1;
-  const portName = portfolioData?.selectedPortfolio || 'VOLTA';
 
   // Recherche du site unitaire
   const selectedSite = allAvailableSites.find(s => s.name?.toUpperCase() === (projectData?.name || '').toUpperCase()) || allAvailableSites[0] || SITES_DATABASE[7]; // Concèze
@@ -838,17 +840,28 @@ export default function BessDossierPDFGenerator({
     }
   };
 
-  const plancheTitles = isPort ? [
-    "Synthèse Exécutive & Chiffres Clés",
-    "Cadre Réglementaire & Barème TURPE 7",
-    "L'Empilement de Valeur (Value Stacking)",
-    "24 Heures dans la Vie d'une Batterie",
-    "Plan d'Affaires Prévisionnel 15 Ans",
-    "Trajectoire EBITDA vs Cash-Flow Disponible",
-    "Standard Technique DP & Cartographie Volta",
-    "Répertoire Foncier & Réseau (Sites #1 à #16)",
-    "Répertoire Foncier & Réseau (Sites #17 à #31 & Total)"
-  ] : [
+  const plancheTitles = isPort ? (
+    selectedBessSites.length > 16 ? [
+      "Synthèse Exécutive & Chiffres Clés",
+      "Cadre Réglementaire & Barème TURPE 7",
+      "L'Empilement de Valeur (Value Stacking)",
+      "24 Heures dans la Vie d'une Batterie",
+      "Plan d'Affaires Prévisionnel 15 Ans",
+      "Trajectoire EBITDA vs Cash-Flow Disponible",
+      "Standard Technique DP & Cartographie Volta",
+      "Répertoire Foncier & Réseau (Sites #1 à #16)",
+      "Répertoire Foncier & Réseau (Sites #17 à #31 & Total)"
+    ] : [
+      "Synthèse Exécutive & Chiffres Clés",
+      "Cadre Réglementaire & Barème TURPE 7",
+      "L'Empilement de Valeur (Value Stacking)",
+      "24 Heures dans la Vie d'une Batterie",
+      "Plan d'Affaires Prévisionnel 15 Ans",
+      "Trajectoire EBITDA vs Cash-Flow Disponible",
+      "Standard Technique DP & Cartographie Volta",
+      `Répertoire Foncier & Réseau (${selectedBessSites.length} Sites & Total)`
+    ]
+  ) : [
     "Synthèse Exécutive & Chiffres Clés",
     "Cadre Réglementaire & Barème TURPE 7",
     "L'Empilement de Valeur (Value Stacking)",
@@ -2256,7 +2269,9 @@ export default function BessDossierPDFGenerator({
 
                     <h2 className="text-xl sm:text-2xl font-black text-[#0b192c] tracking-tight mt-0.5">
                       {isPort
-                        ? `Répertoire Foncier & Réseau des ${selectedBessSites.length} Projets BESS (Sites #1 à #${Math.min(16, selectedBessSites.length)})`
+                        ? (selectedBessSites.length > 16
+                            ? `Répertoire Foncier & Réseau des ${selectedBessSites.length} Projets BESS (Sites #1 à #16)`
+                            : `Répertoire Foncier & Réseau des ${selectedBessSites.length} Projets BESS`)
                         : `Fiche Projet Détaillée & Sécurisation Foncière (${selectedSite.name})`}
                     </h2>
                     <p className="text-xs font-medium text-slate-600 mt-0.5">
@@ -2342,7 +2357,7 @@ export default function BessDossierPDFGenerator({
 
             {/* Pied de page institutionnel sans "(Paysage)" */}
             <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <div>ENR COURTAGE SAS • Audit Foncier &amp; Raccordement HTA (Partie 1)</div>
+              <div>ENR COURTAGE SAS • Audit Foncier &amp; Raccordement HTA {selectedBessSites.length > 16 ? '(Partie 1)' : ''}</div>
               <div className="font-semibold text-slate-600">{selectedBessSites.length} Promesses de Baux Notariées 20 Ans • Raccordements HTA Identifiés</div>
               <div className="font-bold text-[#0b192c]">Planche 8 / {totalPagesCount}</div>
             </div>
@@ -2353,7 +2368,7 @@ export default function BessDossierPDFGenerator({
           {/* ========================================================================= */}
           {/* PLANCHE 9 : RÉPERTOIRE FONCIER & RÉSEAU DES PROJETS (SITES 17+ OU TOTAL) */}
           {/* ========================================================================= */}
-          {isPort && (
+          {isPort && selectedBessSites.length > 16 && (
           <div
             id="bess-planche-container-9"
             style={{ display: 'flex' }}
