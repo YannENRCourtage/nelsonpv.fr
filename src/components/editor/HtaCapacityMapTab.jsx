@@ -298,8 +298,9 @@ function SubstationTechnicalPopupContent({ sub, networkLines }) {
 }
 
 // Leaflet Map Controller: handles resize invalidation and bounds events cleanly without reset loops
-function MapController({ onMapReady, onBoundsChange }) {
+function MapController({ onMapReady, onBoundsChange, center, activeTab }) {
   const map = useMap();
+  const lastCenterKeyRef = useRef('');
 
   useEffect(() => {
     if (onMapReady) onMapReady(map);
@@ -315,6 +316,25 @@ function MapController({ onMapReady, onBoundsChange }) {
     };
   }, [map, onMapReady]);
 
+  // Centrage initial sur le projet au zoom 15 (comme à l'image 4)
+  useEffect(() => {
+    if (!center || !center[0] || !center[1]) return;
+    const centerKey = `${center[0].toFixed(5)},${center[1].toFixed(5)}`;
+    if (centerKey !== lastCenterKeyRef.current) {
+      lastCenterKeyRef.current = centerKey;
+      map.setView(center, 15, { animate: false });
+    }
+  }, [center, map]);
+
+  // Invalidation au focus de l'onglet
+  useEffect(() => {
+    if (activeTab === 'capa-hta' && map) {
+      map.invalidateSize();
+      const t = setTimeout(() => map.invalidateSize(), 80);
+      return () => clearTimeout(t);
+    }
+  }, [activeTab, map]);
+
   useMapEvents({
     moveend() {
       if (onBoundsChange) onBoundsChange(map.getBounds(), map.getZoom());
@@ -329,7 +349,7 @@ function MapController({ onMapReady, onBoundsChange }) {
 
 // Cadastre Tile Layer with Zoom Threshold
 function CadastreTileLayer({ active, currentZoom }) {
-  if (!active || currentZoom < 14) return null;
+  if (!active || currentZoom < 13) return null;
   return (
     <TileLayer
       url="https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
@@ -480,7 +500,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
   }, [project?.gps]);
 
   const mapInstanceRef = useRef(null);
-  const [currentZoom, setCurrentZoom] = useState(14);
+  const [currentZoom, setCurrentZoom] = useState(15);
   const [currentBounds, setCurrentBounds] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -1178,7 +1198,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
         {/* LEAFLET MAP CONTAINER */}
         <MapContainer
           center={projectCoords}
-          zoom={14}
+          zoom={15}
           scrollWheelZoom={true}
           preferCanvas={true}
           className="w-full h-full z-0"
@@ -1190,6 +1210,8 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
               mapInstanceRef.current = map;
             }}
             onBoundsChange={handleBoundsChange}
+            center={projectCoords}
+            activeTab={activeTab}
           />
 
           {/* BASEMAP TILE LAYER */}

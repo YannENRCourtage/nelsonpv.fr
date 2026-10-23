@@ -6207,12 +6207,14 @@ function MapStateSync({ project, setProject }) {
 
   // 1. RESTAURATION : Force la vue au changement de projet
   useEffect(() => {
-    if (!project?.id) return;
+    if (!project) return;
+    const projectIdentifier = project.id || project._id || project.name || (project.gps ? `gps-${project.gps}` : null);
+    if (!projectIdentifier) return;
 
     // Détection changement de projet
-    if (project.id !== lastProjectIdRef.current) {
-      console.log(`[MapStateSync] New project detected (${project.id}). Updating view...`);
-      lastProjectIdRef.current = project.id;
+    if (projectIdentifier !== lastProjectIdRef.current) {
+      console.log(`[MapStateSync] New project detected (${projectIdentifier}). Updating view...`);
+      lastProjectIdRef.current = projectIdentifier;
       isRestoringRef.current = true;
 
       if (project.mapView) {
@@ -6343,6 +6345,19 @@ function MapInternalController({ layersRef, activeLayers, setSelectedCompany, se
       }
     });
   }, [map, activeLayers, layersRef, activeTab]);
+
+  // 3. Invalidation et rafraîchissement au retour sur l'onglet Carte (préserve la vue et la taille)
+  useEffect(() => {
+    if (activeTab === 'map' && map) {
+      map.invalidateSize();
+      const t1 = setTimeout(() => map.invalidateSize(), 60);
+      const t2 = setTimeout(() => map.invalidateSize(), 200);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [activeTab, map]);
 
   return null;
 }

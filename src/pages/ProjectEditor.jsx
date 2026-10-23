@@ -2284,8 +2284,7 @@ export default function ProjectEditor() {
             </div>
           </div>
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1 min-h-[60vh] lg:h-[750px] relative">
-            {/* Onglet Carte - On le garde monté si l'onglet DP est actif pour permettre les captures et la persistance du zoom */}
-            {(activeTab === 'map' || activeTab === 'urbanisme_dp') && (
+            {/* Onglet Carte - On le garde TOUJOURS monté pour préserver la position, les calques, les tracés et le zoom exact */}
               <div className={`w-full h-full flex flex-col ${activeTab !== 'map' ? 'absolute inset-0 pointer-events-none opacity-0' : ''}`}>
                 <div className="flex-1 min-h-[55vh] lg:min-h-0">
                   <MapEditor
@@ -2469,7 +2468,6 @@ export default function ProjectEditor() {
                   )}
                 </div>
               </div>
-            )}
 
 
 
