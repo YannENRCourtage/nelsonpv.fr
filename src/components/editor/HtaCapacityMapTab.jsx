@@ -504,6 +504,10 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
   const [isFetchingLines, setIsFetchingLines] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCostCardOpen, setIsCostCardOpen] = useState(true);
+  const isCostCardOpenRef = useRef(isCostCardOpen);
+  useEffect(() => {
+    isCostCardOpenRef.current = isCostCardOpen;
+  }, [isCostCardOpen]);
 
   // Address Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -535,24 +539,62 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
   useEffect(() => {
     const handleHtaCaptureRequest = async (e) => {
       const slotIndex = e.detail?.slotIndex !== undefined ? e.detail.slotIndex : 0;
-      const map = mapInstanceRef.current;
-      const container = map ? map.getContainer() : document.querySelector('#hta-capacity-map-container');
+      const container = document.querySelector('#hta-capacity-map-container') || (mapInstanceRef.current ? mapInstanceRef.current.getContainer() : null);
       if (!container) {
         toast({ title: "Erreur", description: "Conteneur cartographique introuvable.", variant: "destructive" });
         return;
       }
 
+      // S'assurer que le cadre Chiffrage Raccordement BESS est bien déplié pour la capture
+      const wasClosed = !isCostCardOpenRef.current;
+      if (wasClosed) {
+        setIsCostCardOpen(true);
+        await new Promise((res) => setTimeout(res, 80));
+      }
+
       try {
         toast({ title: "Capture en cours...", description: "Génération de l'image de la carte Capacité HTA..." });
+        
+        // Laisser un court délai de stabilisation
+        await new Promise((res) => setTimeout(res, 60));
+
         const canvas = await html2canvas(container, {
           useCORS: true,
           allowTaint: true,
           logging: false,
           scale: 2,
+          scrollX: 0,
+          scrollY: 0,
           backgroundColor: '#0f172a',
           onclone: (clonedDoc) => {
-            clonedDoc.querySelectorAll('.leaflet-control-zoom, .hide-on-capture').forEach(el => {
+            // 1. Masquer les éléments parasites de l'UI (recherche, contrôles d'action, zoom, filtres)
+            clonedDoc.querySelectorAll('.leaflet-control-zoom, .hide-on-capture, .leaflet-control-attribution').forEach(el => {
               el.style.display = 'none';
+              el.style.visibility = 'hidden';
+            });
+
+            // 2. Garantir un arrière-plan sombre, net et sans transparence sur le widget BESS
+            const bessCard = clonedDoc.querySelector('#hta-bess-cost-card > div');
+            if (bessCard) {
+              bessCard.style.backgroundColor = '#0f172a';
+              bessCard.style.backdropFilter = 'none';
+              bessCard.style.webkitBackdropFilter = 'none';
+              bessCard.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.7)';
+            }
+
+            // 3. Garantir la fidélité de rendu de tout canvas (notamment le Canvas Leaflet des tronçons HTA)
+            const origCanvases = container.querySelectorAll('canvas');
+            const clonedCanvases = clonedDoc.querySelectorAll('canvas');
+            origCanvases.forEach((orig, idx) => {
+              const cloned = clonedCanvases[idx];
+              if (cloned && orig && typeof cloned.getContext === 'function') {
+                try {
+                  const ctx = cloned.getContext('2d');
+                  if (ctx) ctx.drawImage(orig, 0, 0);
+                } catch (cErr) {
+                  console.warn('Canvas clone drawImage error:', cErr);
+                }
+              }
             });
           }
         });
@@ -561,6 +603,10 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
       } catch (err) {
         console.error('[HtaCapacityMapTab] Erreur capture:', err);
         toast({ title: "Erreur", description: "Impossible de capturer la carte HTA.", variant: "destructive" });
+      } finally {
+        if (wasClosed) {
+          setIsCostCardOpen(false);
+        }
       }
     };
 
@@ -1055,7 +1101,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
       {/* 1. MAP AREA (Fills exactly the same space as MapEditor in Carte tab) */}
       <div id="hta-capacity-map-container" className="flex-1 min-h-[55vh] lg:min-h-0 relative w-full h-full">
         {/* TOP FLOATING SEARCH BAR (Matching MapEditor layout) */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-sm sm:max-w-md px-3">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-sm sm:max-w-md px-3 hide-on-capture">
           <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
             <input
@@ -1085,7 +1131,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
         </div>
 
         {/* TOP RIGHT FLOATING CONTROLS (Matching MapEditor buttons) */}
-        <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-end">
+        <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-end hide-on-capture">
           <button
             type="button"
             onClick={handleGoToProject}
@@ -1098,7 +1144,9 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
           <button
             type="button"
             onClick={() => {
-              window.dispatchEvent(new CustomEvent("hta-map:capture-request", { detail: { slotIndex: 0 } }));
+              const nextEmptySlot = (project?.captures || []).findIndex(c => !c);
+              const slotIndex = nextEmptySlot !== -1 ? nextEmptySlot : 0;
+              window.dispatchEvent(new CustomEvent("hta-map:capture-request", { detail: { slotIndex } }));
             }}
             className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md rounded-lg px-3 py-1.5 text-xs font-extrabold flex items-center gap-1.5 transition-colors cursor-pointer"
             title="Prendre une capture de la carte Capacité HTA pour la fiche projet PDF"
@@ -1132,6 +1180,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
           center={projectCoords}
           zoom={14}
           scrollWheelZoom={true}
+          preferCanvas={true}
           className="w-full h-full z-0"
           style={{ background: '#0f172a' }}
         >
@@ -1284,7 +1333,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
 
         {/* 2. LEFT FLOATING CONTROL PANEL */}
         <div
-          className={`absolute top-3 left-3 z-[1000] transition-all duration-300 ${
+          className={`absolute top-3 left-3 z-[1000] transition-all duration-300 hide-on-capture ${
             isSidebarOpen ? 'w-72 sm:w-80' : 'w-auto'
           }`}
         >
@@ -1417,6 +1466,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
 
         {/* 3. BOTTOM-RIGHT BESS CONNECTION ESTIMATOR CARD */}
         <div
+          id="hta-bess-cost-card"
           className={`absolute bottom-3 right-3 z-[1000] transition-all duration-300 ${
             isCostCardOpen ? 'w-80 sm:w-96' : 'w-auto'
           }`}
@@ -1439,7 +1489,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
                   {isInsideCorridor ? 'Corridor OK' : 'Ext. > 350m'}
                 </span>
               </div>
-              <button type="button" className="text-slate-400 hover:text-white">
+              <button type="button" className="text-slate-400 hover:text-white hide-on-capture">
                 {isCostCardOpen ? (
                   <span className="text-xs font-bold">▲</span>
                 ) : (
@@ -1576,7 +1626,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
                   <button
                     type="button"
                     onClick={handleCopySummary}
-                    className="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                    className="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer hide-on-capture"
                   >
                     <Copy className="w-3 h-3" />
                     <span>Copier l'audit</span>
