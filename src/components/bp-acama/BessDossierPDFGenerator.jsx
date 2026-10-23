@@ -408,6 +408,10 @@ export default function BessDossierPDFGenerator({
   const totalEbitdaAllSites = selectedBessSites.reduce((sum, s) => sum + s.ebitdaAn1, 0);
   const totalCaAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s, fraisCommerciaux).caAnnuel, 0);
   const totalCapexAllSites = selectedBessSites.reduce((sum, s) => sum + computeDynamicSiteMetrics(s, fraisCommerciaux).capexTotal, 0);
+  const totalRentAllSites = selectedBessSites.reduce((sum, s) => {
+    const val = typeof s.rent === 'number' ? s.rent : parseFloat(String(s.rent || '0').replace(/[^0-9]/g, ''));
+    return sum + (isNaN(val) || val === 0 ? (s.portfolio === 'FARADAY' ? 2000 : 3000) : val);
+  }, 0);
 
   // Totaux cumulés 15 ans
   const cumulRev = YEARS_15.reduce((acc, _, i) => acc + (dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i]), 0);
@@ -430,7 +434,7 @@ export default function BessDossierPDFGenerator({
     capexSub: isPort ? `~${Math.round(totalCapexAllSites / (mult || 1) / 1000)} k€ / site raccordé` : '585 € / kW installé',
     turpeGain: isPort ? `+${Math.round(mult * 14183).toLocaleString('fr-FR')} €` : '+14 183 €',
     turpeSub: isPort ? 'Gain annuel réseau consolidé' : 'Économie directe vs barème',
-    rent: isPort ? `${(mult * 3000).toLocaleString('fr-FR')} € / an` : '3 000 € / an',
+    rent: isPort ? `${totalRentAllSites.toLocaleString('fr-FR')} € / an` : '3 000 € / an',
     rentSub: isPort ? `${mult} baux notariés 20 ans verrouillés` : 'Bail notarié 20 ans (750 €/brique)',
     fcr: isPort ? `${Math.round(mult * 53936).toLocaleString('fr-FR')} € / an` : '53 936 € / an',
     arb: isPort ? `${Math.round(mult * 30485).toLocaleString('fr-FR')} € / an` : '30 485 € / an',
@@ -1356,16 +1360,24 @@ export default function BessDossierPDFGenerator({
                     STRUCTURE DES REVENUS AN 1
                   </span>
                   
-                  <div className="relative w-40 h-40 my-0.5">
-                    <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="#2563eb" strokeWidth="15" strokeDasharray="140.0 238.7" strokeDashoffset="0" />
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="#06b6d4" strokeWidth="15" strokeDasharray="76.0 238.7" strokeDashoffset="-140.0" />
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="#10b981" strokeWidth="15" strokeDasharray="22.7 238.7" strokeDashoffset="-216.0" />
+                  <div className="relative w-40 h-40 my-0.5 flex items-center justify-center">
+                    <svg viewBox="0 0 100 100" className="w-full h-full">
+                      {/* Anneau de fond */}
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="#f1f5f9" strokeWidth="15" />
+                      {/* FCR 58.7% - Démarre à 12h (offset +59.7) sans rotation CSS */}
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="#2563eb" strokeWidth="15" strokeDasharray="140.2 238.8" strokeDashoffset="59.7" />
+                      {/* Arbitrage 31.8% */}
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="#06b6d4" strokeWidth="15" strokeDasharray="75.9 238.8" strokeDashoffset="-80.5" />
+                      {/* Capacité 9.5% */}
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="#10b981" strokeWidth="15" strokeDasharray="22.7 238.8" strokeDashoffset="-156.4" />
+                      {/* Texte au centre vectoriel direct garanti sans décalage html2canvas */}
+                      <text x="50" y="47" textAnchor="middle" dominantBaseline="middle" fill="#0b192c" style={{ fontSize: '13px', fontWeight: 900, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                        {isPort ? kpi.revenue : '92 k€'}
+                      </text>
+                      <text x="50" y="58" textAnchor="middle" dominantBaseline="middle" fill="#94a3b8" style={{ fontSize: '5px', fontWeight: 800, letterSpacing: '0.5px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                        CA BRUT TOTAL
+                      </text>
                     </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black text-[#0b192c]">{isPort ? kpi.revenue : '92 k€'}</span>
-                      <span className="text-[10px] font-extrabold text-slate-400 uppercase">CA Brut Total</span>
-                    </div>
                   </div>
 
                   <div className="w-full pt-3 border-t border-slate-100 flex justify-around text-xs font-bold">
@@ -1626,98 +1638,98 @@ export default function BessDossierPDFGenerator({
               </div>
 
               {/* Tableau Financier Pleine Page sur les 15 Années d'Étude avec police adaptée anti-retour à la ligne pour le € */}
-              <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-xs mb-4">
-                <table className="w-full text-right text-[10px] border-collapse bg-white">
+              <div className="w-full overflow-hidden rounded-xl border border-slate-200 shadow-xs mb-4">
+                <table className="w-full table-fixed text-right border-collapse bg-white">
                   <thead>
                     <tr className="bg-slate-50 text-slate-800 font-extrabold border-b border-slate-200">
-                      <th className="p-2.5 text-left font-black w-44 sticky left-0 bg-slate-50 z-10 whitespace-nowrap">Ligne Financière (€)</th>
+                      <th className="w-[190px] p-2 text-left font-black bg-slate-50 sticky left-0 z-10 whitespace-nowrap text-[9px]">Ligne Financière (€)</th>
                       {YEARS_15.map((y) => (
-                        <th key={y} className="p-2 text-center font-bold whitespace-nowrap">{y}</th>
+                        <th key={y} className="py-2 px-0.5 text-center font-bold whitespace-nowrap text-[8.5px] w-[calc((100%-190px)/15)]">{y}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                     <tr className="bg-blue-50/50 font-bold text-blue-900">
-                      <td className="p-2.5 text-left sticky left-0 bg-blue-50/90 z-10 whitespace-nowrap">1. Chiffre d'Affaires Brut</td>
+                      <td className="w-[190px] p-1.5 pl-2.5 text-left sticky left-0 bg-blue-50/90 z-10 whitespace-nowrap text-[8.5px] font-bold">1. Chiffre d'Affaires Brut</td>
                       {YEARS_15.map((_, i) => {
                         const val = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
-                        return <td key={i} className="p-2 whitespace-nowrap">{fmtEur(val)}</td>;
+                        return <td key={i} className="py-1.5 px-0.5 whitespace-nowrap text-[8px] tabular-nums">{fmtEur(val)}</td>;
                       })}
                     </tr>
-                    <tr className="text-slate-600 text-[9.5px]">
-                      <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Dont Réserve FCR &amp; PICASSO</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">{fmtEur(dynamicFinancialMatrix.revFcr[i])}</td>)}
+                    <tr className="text-slate-600">
+                      <td className="w-[190px] p-1 pl-3.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap text-[8px]">• Dont Réserve FCR &amp; PICASSO</td>
+                      {YEARS_15.map((_, i) => <td key={i} className="py-1 px-0.5 whitespace-nowrap text-[7.5px] tabular-nums">{fmtEur(dynamicFinancialMatrix.revFcr[i])}</td>)}
                     </tr>
-                    <tr className="text-slate-600 text-[9.5px]">
-                      <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Dont Capacité RTE PP2</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">{fmtEur(dynamicFinancialMatrix.revCapa[i])}</td>)}
+                    <tr className="text-slate-600">
+                      <td className="w-[190px] p-1 pl-3.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap text-[8px]">• Dont Capacité RTE PP2</td>
+                      {YEARS_15.map((_, i) => <td key={i} className="py-1 px-0.5 whitespace-nowrap text-[7.5px] tabular-nums">{fmtEur(dynamicFinancialMatrix.revCapa[i])}</td>)}
                     </tr>
-                    <tr className="text-slate-600 text-[9.5px]">
-                      <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Dont Arbitrage Spot 2 c/j</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">{fmtEur(dynamicFinancialMatrix.revArb[i])}</td>)}
+                    <tr className="text-slate-600">
+                      <td className="w-[190px] p-1 pl-3.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap text-[8px]">• Dont Arbitrage Spot 2 c/j</td>
+                      {YEARS_15.map((_, i) => <td key={i} className="py-1 px-0.5 whitespace-nowrap text-[7.5px] tabular-nums">{fmtEur(dynamicFinancialMatrix.revArb[i])}</td>)}
                     </tr>
 
                     <tr className="bg-red-50/40 font-bold text-red-900">
-                      <td className="p-2.5 text-left sticky left-0 bg-red-50/90 z-10 whitespace-nowrap">2. OPEX d'Exploitation Total</td>
+                      <td className="w-[190px] p-1.5 pl-2.5 text-left sticky left-0 bg-red-50/90 z-10 whitespace-nowrap text-[8.5px] font-bold">2. OPEX d'Exploitation Total</td>
                       {YEARS_15.map((_, i) => {
                         const val = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
-                        return <td key={i} className="p-2 whitespace-nowrap">-{fmtEur(val)}</td>;
+                        return <td key={i} className="py-1.5 px-0.5 whitespace-nowrap text-[8px] tabular-nums">-{fmtEur(val)}</td>;
                       })}
                     </tr>
-                    <tr className="text-slate-600 text-[9.5px]">
-                      <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Coût Énergie Recharge (Pertes de cycle non réinjectées)</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(dynamicFinancialMatrix.opexRecharge[i])}</td>)}
+                    <tr className="text-slate-600">
+                      <td className="w-[190px] p-1 pl-3.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap text-[8px]" title="Coût Énergie Recharge (Pertes de cycle non réinjectées)">• Coût Énergie Recharge</td>
+                      {YEARS_15.map((_, i) => <td key={i} className="py-1 px-0.5 whitespace-nowrap text-[7.5px] tabular-nums">-{fmtEur(dynamicFinancialMatrix.opexRecharge[i])}</td>)}
                     </tr>
-                    <tr className="text-slate-600 text-[9.5px]">
-                      <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Commission Agrégateur 18%</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(dynamicFinancialMatrix.opexAgregateur[i])}</td>)}
+                    <tr className="text-slate-600">
+                      <td className="w-[190px] p-1 pl-3.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap text-[8px]">• Commission Agrégateur 18%</td>
+                      {YEARS_15.map((_, i) => <td key={i} className="py-1 px-0.5 whitespace-nowrap text-[7.5px] tabular-nums">-{fmtEur(dynamicFinancialMatrix.opexAgregateur[i])}</td>)}
                     </tr>
-                    <tr className="text-slate-600 text-[9.5px]">
-                      <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• TURPE 7 Réseau Abattu</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(dynamicFinancialMatrix.opexTurpe[i])}</td>)}
+                    <tr className="text-slate-600">
+                      <td className="w-[190px] p-1 pl-3.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap text-[8px]">• TURPE 7 Réseau Abattu</td>
+                      {YEARS_15.map((_, i) => <td key={i} className="py-1 px-0.5 whitespace-nowrap text-[7.5px] tabular-nums">-{fmtEur(dynamicFinancialMatrix.opexTurpe[i])}</td>)}
                     </tr>
-                    <tr className="text-slate-600 text-[9.5px]">
-                      <td className="p-1.5 pl-4 text-left sticky left-0 bg-white z-10 whitespace-nowrap">• Baux 20 ans + Maint + Assurance</td>
-                      {YEARS_15.map((_, i) => <td key={i} className="p-1.5 whitespace-nowrap">-{fmtEur(dynamicFinancialMatrix.opexAutres[i])}</td>)}
+                    <tr className="text-slate-600">
+                      <td className="w-[190px] p-1 pl-3.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap text-[8px]">• Baux 20 ans + Maint + Assurance</td>
+                      {YEARS_15.map((_, i) => <td key={i} className="py-1 px-0.5 whitespace-nowrap text-[7.5px] tabular-nums">-{fmtEur(dynamicFinancialMatrix.opexAutres[i])}</td>)}
                     </tr>
 
-                    <tr className="bg-emerald-50/60 font-black text-emerald-950 text-[10.5px]">
-                      <td className="p-2.5 text-left sticky left-0 bg-emerald-50/90 z-10 whitespace-nowrap">3. EBITDA Net d'Exploitation</td>
+                    <tr className="bg-emerald-50/60 font-black text-emerald-950">
+                      <td className="w-[190px] p-1.5 pl-2.5 text-left sticky left-0 bg-emerald-50/90 z-10 whitespace-nowrap text-[9px] font-black">3. EBITDA Net d'Exploitation</td>
                       {YEARS_15.map((_, i) => {
                         const rev = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
                         const opex = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
-                        return <td key={i} className="p-2 text-emerald-800 whitespace-nowrap">{fmtEur(rev - opex)}</td>;
+                        return <td key={i} className="py-1.5 px-0.5 text-emerald-800 whitespace-nowrap text-[8px] font-bold tabular-nums">{fmtEur(rev - opex)}</td>;
                       })}
                     </tr>
 
-                    <tr className="text-slate-600 text-[9.5px]">
-                      <td className="p-1.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap">4. Service Dette Senior ({debtDuration} ans à {debtRate.toFixed(2)}%)</td>
+                    <tr className="text-slate-600">
+                      <td className="w-[190px] p-1 pl-2.5 text-left sticky left-0 bg-white z-10 whitespace-nowrap text-[8px]">4. Service Dette Senior ({debtDuration} ans à {debtRate.toFixed(2)}%)</td>
                       {YEARS_15.map((_, i) => {
                         const val = dynamicFinancialMatrix.debtService[i];
-                        return <td key={i} className="p-1.5 whitespace-nowrap">{val > 0 ? `-${fmtEur(val)}` : '0 €'}</td>;
+                        return <td key={i} className="py-1 px-0.5 whitespace-nowrap text-[7.5px] tabular-nums">{val > 0 ? `-${fmtEur(val)}` : '0 €'}</td>;
                       })}
                     </tr>
 
-                    <tr className="bg-cyan-50/60 font-black text-cyan-950 text-[10.5px]">
-                      <td className="p-2.5 text-left sticky left-0 bg-cyan-50/90 z-10 whitespace-nowrap">5. Cash-Flow Net Disponible</td>
+                    <tr className="bg-cyan-50/60 font-black text-cyan-950">
+                      <td className="w-[190px] p-1.5 pl-2.5 text-left sticky left-0 bg-cyan-50/90 z-10 whitespace-nowrap text-[9px] font-black">5. Cash-Flow Net Disponible</td>
                       {YEARS_15.map((_, i) => {
                         const rev = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
                         const opex = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
                         const ebitda = rev - opex;
                         const debt = dynamicFinancialMatrix.debtService[i];
-                        return <td key={i} className="p-2 text-cyan-800 whitespace-nowrap">{fmtEur(ebitda - debt)}</td>;
+                        return <td key={i} className="py-1.5 px-0.5 text-cyan-800 whitespace-nowrap text-[8px] font-bold tabular-nums">{fmtEur(ebitda - debt)}</td>;
                       })}
                     </tr>
 
-                    <tr className="bg-slate-50 text-[9.5px] font-bold text-slate-800">
-                      <td className="p-2 text-left sticky left-0 bg-slate-50 z-10 whitespace-nowrap">Ratio DSCR de Dette Senior</td>
+                    <tr className="bg-slate-50 font-bold text-slate-800">
+                      <td className="w-[190px] p-1.5 pl-2.5 text-left sticky left-0 bg-slate-50 z-10 whitespace-nowrap text-[8.5px] font-bold">Ratio DSCR de Dette Senior</td>
                       {YEARS_15.map((_, i) => {
                         const val = dynamicFinancialMatrix.debtService[i];
-                        if (val === 0) return <td key={i} className="p-1.5 text-slate-400 whitespace-nowrap">—</td>;
+                        if (val === 0) return <td key={i} className="py-1.5 px-0.5 text-slate-400 whitespace-nowrap text-[8px] text-center">—</td>;
                         const rev = dynamicFinancialMatrix.revFcr[i] + dynamicFinancialMatrix.revCapa[i] + dynamicFinancialMatrix.revArb[i];
                         const opex = dynamicFinancialMatrix.opexTurpe[i] + dynamicFinancialMatrix.opexRecharge[i] + dynamicFinancialMatrix.opexAgregateur[i] + dynamicFinancialMatrix.opexAutres[i];
                         const dscr = ((rev - opex) / val).toFixed(2);
-                        return <td key={i} className="p-1.5 text-emerald-700 font-extrabold whitespace-nowrap">{dscr}x</td>;
+                        return <td key={i} className="py-1.5 px-0.5 text-emerald-700 font-extrabold whitespace-nowrap text-[8px] tabular-nums text-center">{dscr}x</td>;
                       })}
                     </tr>
                   </tbody>
@@ -2164,7 +2176,7 @@ export default function BessDossierPDFGenerator({
                         <td className="py-2 px-2 text-center text-slate-300">7.2 km moy.</td>
                         <td className="py-2 px-2 text-right text-slate-300">90.1 k€ moy.</td>
                         <td className="py-2 px-2 text-center text-cyan-300 font-extrabold leading-tight">{(selectedBessSites.length * 0.5).toFixed(1)} MW /<br />{(selectedBessSites.length * 1.044).toFixed(2)} MWh</td>
-                        <td className="py-2 px-2 text-right text-amber-300 font-black">{(selectedBessSites.length * 3000).toLocaleString('fr-FR')} €/an</td>
+                        <td className="py-2 px-2 text-right text-amber-300 font-black">{totalRentAllSites.toLocaleString('fr-FR')} €/an</td>
                         <td className="py-2 px-2 text-right text-emerald-400 font-black text-xs">{(totalEbitdaAllSites / 1000000).toFixed(2)} M€</td>
                         <td className="py-2 px-2 text-center text-emerald-300 font-black">5.0 ans</td>
                       </tr>
@@ -2285,20 +2297,22 @@ export default function BessDossierPDFGenerator({
                         </tr>
                       )}
 
-                      {/* LIGNE DE TOTAL CONSOLIDÉ */}
-                      <tr className="bg-gradient-to-r from-blue-900 via-indigo-950 to-[#0b192c] text-white font-black text-[11px]">
-                        <td className="py-2 px-2 text-center text-amber-300 font-black">∑</td>
-                        <td className="py-2 px-2 uppercase tracking-wider text-amber-300 leading-tight">Total Consolidé<br />({selectedBessSites.length} Projets)</td>
-                        <td className="py-2 px-2 text-slate-300">Grand Sud-Ouest</td>
-                        <td className="py-2 px-2 font-mono text-[9.5px] text-cyan-300">Grappe Nouvelle-Aquitaine / Occitanie</td>
-                        <td className="py-2 px-2 text-emerald-300 font-extrabold">{selectedBessSites.length} Postes HTA</td>
-                        <td className="py-2 px-2 text-center text-slate-300">7.2 km moy.</td>
-                        <td className="py-2 px-2 text-right text-slate-300">90.1 k€ moy.</td>
-                        <td className="py-2 px-2 text-center text-cyan-300 font-extrabold leading-tight">{(selectedBessSites.length * 0.5).toFixed(1)} MW /<br />{(selectedBessSites.length * 1.044).toFixed(2)} MWh</td>
-                        <td className="py-2 px-2 text-right text-amber-300 font-black">{(selectedBessSites.length * 3000).toLocaleString('fr-FR')} €/an</td>
-                        <td className="py-2 px-2 text-right text-emerald-400 font-black text-xs">{(totalEbitdaAllSites / 1000000).toFixed(2)} M€</td>
-                        <td className="py-2 px-2 text-center text-emerald-300 font-black">5.0 ans</td>
-                      </tr>
+                      {/* LIGNE DE TOTAL CONSOLIDÉ (affichée uniquement si sitesP2.length > 0 afin d'éviter tout doublon avec la Planche 8) */}
+                      {sitesP2.length > 0 && (
+                        <tr className="bg-gradient-to-r from-blue-900 via-indigo-950 to-[#0b192c] text-white font-black text-[11px]">
+                          <td className="py-2 px-2 text-center text-amber-300 font-black">∑</td>
+                          <td className="py-2 px-2 uppercase tracking-wider text-amber-300 leading-tight">Total Consolidé<br />({selectedBessSites.length} Projets)</td>
+                          <td className="py-2 px-2 text-slate-300">Grand Sud-Ouest</td>
+                          <td className="py-2 px-2 font-mono text-[9.5px] text-cyan-300">Grappe Nouvelle-Aquitaine / Occitanie</td>
+                          <td className="py-2 px-2 text-emerald-300 font-extrabold">{selectedBessSites.length} Postes HTA</td>
+                          <td className="py-2 px-2 text-center text-slate-300">7.2 km moy.</td>
+                          <td className="py-2 px-2 text-right text-slate-300">90.1 k€ moy.</td>
+                          <td className="py-2 px-2 text-center text-cyan-300 font-extrabold leading-tight">{(selectedBessSites.length * 0.5).toFixed(1)} MW /<br />{(selectedBessSites.length * 1.044).toFixed(2)} MWh</td>
+                          <td className="py-2 px-2 text-right text-amber-300 font-black">{totalRentAllSites.toLocaleString('fr-FR')} €/an</td>
+                          <td className="py-2 px-2 text-right text-emerald-400 font-black text-xs">{(totalEbitdaAllSites / 1000000).toFixed(2)} M€</td>
+                          <td className="py-2 px-2 text-center text-emerald-300 font-black">5.0 ans</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
