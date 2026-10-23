@@ -1507,7 +1507,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             onClick={() => {
               if (bessMode !== 'single') return;
               generateBpAcamaPDF({ 
-                sections: ['pdf-bess-page-1', 'pdf-bess-page-2', 'pdf-bess-page-3', 'pdf-bess-page-4'],
+                sections: ['pdf-bess-page-1', 'pdf-bess-page-2'],
                 fileName: `DOSSIER_PRETEUR_BESS_${selectedProject?.name || 'PROJET'}.pdf`,
                 orientation: 'landscape'
               });

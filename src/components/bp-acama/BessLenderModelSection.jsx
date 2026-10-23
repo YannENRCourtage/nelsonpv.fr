@@ -32,7 +32,7 @@ function fmtPct(val, dec = 1) {
 }
 
 // En-tête imprimé standard pour chaque page PDF
-function BessPDFPageHeader({ pageNumber, pageTitle, project, presetKey }) {
+function BessPDFPageHeader({ pageNumber, totalPages = 2, pageTitle, project, presetKey }) {
   return (
     <div className="pdf-header hidden flex flex-col w-full mb-3 pb-2 border-b-2 border-slate-200">
       <div className="flex items-center justify-between">
@@ -52,7 +52,7 @@ function BessPDFPageHeader({ pageNumber, pageTitle, project, presetKey }) {
             {project?.name || project?.client_name || 'PROJET BESS STAND-ALONE'}
           </div>
           <div className="text-[10px] text-slate-400 font-semibold">
-            {new Date().toLocaleDateString('fr-FR')} • Page {pageNumber} / 4
+            {new Date().toLocaleDateString('fr-FR')} • Page {pageNumber} / {totalPages}
           </div>
         </div>
       </div>
@@ -142,12 +142,17 @@ export default function BessLenderModelSection({
     }
   };
 
-  // Export du dossier 4 pages PDF
+  // Export du dossier 2 pages PDF
   const handleExportPdf = async () => {
+    const prevTab = activeTab;
     try {
       setIsExportingPdf(true);
+      if (activeTab !== 'all') {
+        setActiveTab('all');
+        await new Promise(r => setTimeout(r, 120));
+      }
       await generateBpAcamaPDF({
-        sections: ['pdf-bess-page-1', 'pdf-bess-page-2', 'pdf-bess-page-3', 'pdf-bess-page-4'],
+        sections: ['pdf-bess-page-1', 'pdf-bess-page-2'],
         fileName: `DOSSIER_PRETEUR_BESS_${project?.name || 'PROJET'}_${presetKey}MW.pdf`,
         orientation: 'landscape'
       });
@@ -155,6 +160,7 @@ export default function BessLenderModelSection({
       console.error('[BessLenderModelSection] Erreur export PDF:', err);
       alert('Une erreur est survenue lors de la génération du dossier PDF.');
     } finally {
+      setActiveTab(prevTab);
       setIsExportingPdf(false);
     }
   };
@@ -216,7 +222,7 @@ export default function BessLenderModelSection({
           </button>
         </div>
 
-        {/* Navigation des blocs & bouton export 4 pages */}
+        {/* Navigation des volets & bouton export 2 pages */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
             <button
@@ -224,35 +230,21 @@ export default function BessLenderModelSection({
               onClick={() => setActiveTab('all')}
               className={cn("px-2.5 py-1 rounded font-bold transition-all", activeTab === 'all' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
             >
-              Tous les blocs
+              Tous les volets
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('block1')}
-              className={cn("px-2.5 py-1 rounded font-bold transition-all", activeTab === 'block1' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
+              className={cn("px-2.5 py-1 rounded font-bold transition-all", (activeTab === 'block1' || activeTab === 'page1') ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
             >
-              1. Synthèse Prêteur
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('block2')}
-              className={cn("px-2.5 py-1 rounded font-bold transition-all", activeTab === 'block2' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
-            >
-              2. Hypothèses
+              1. Synthèse, Hypothèses & Risque
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('block3')}
-              className={cn("px-2.5 py-1 rounded font-bold transition-all", activeTab === 'block3' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
+              className={cn("px-2.5 py-1 rounded font-bold transition-all", (activeTab === 'block3' || activeTab === 'page2') ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
             >
-              3. Tableau 12 ans
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('block4')}
-              className={cn("px-2.5 py-1 rounded font-bold transition-all", activeTab === 'block4' ? "bg-white text-blue-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}
-            >
-              4. Stress-Tests
+              2. Tableau Financier 12 ans
             </button>
           </div>
 
@@ -263,20 +255,21 @@ export default function BessLenderModelSection({
             className="px-4 py-2 bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white text-xs font-black rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-2"
           >
             <FileDown className="w-4 h-4 text-blue-200" />
-            <span>{isExportingPdf ? 'GÉNÉRATION...' : 'DOSSIER PRÊTEUR BESS (4P)'}</span>
+            <span>{isExportingPdf ? 'GÉNÉRATION...' : 'DOSSIER PRÊTEUR BESS (2P)'}</span>
           </button>
         </div>
       </div>
 
-      {/* ─── BLOC 1 : SYNTHÈSE FINANCIÈRE POUR LE PRÊTEUR (20 KPIS) ───────────── */}
-      {(activeTab === 'all' || activeTab === 'block1') && (
+      {/* ─── VOLET 1 : SYNTHÈSE, HYPOTHÈSES & ANALYSE DE RISQUE (PAGE 1) ─────── */}
+      {(activeTab === 'all' || activeTab === 'block1' || activeTab === 'block2' || activeTab === 'block4' || activeTab === 'page1') && (
         <section
           id="pdf-bess-page-1"
           className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md space-y-4"
         >
           <BessPDFPageHeader
             pageNumber={1}
-            pageTitle="Volet 1 : Synthèse Financière pour le Prêteur"
+            totalPages={2}
+            pageTitle="Volet 1 : Synthèse Financière, Hypothèses & Analyse de Risque"
             project={project}
             presetKey={presetKey}
           />
@@ -457,32 +450,19 @@ export default function BessLenderModelSection({
               </div>
             </div>
           </div>
-        </section>
-      )}
 
-      {/* ─── BLOC 2 : HYPOTHÈSES DU MODÈLE FINANCIER & LEVIERS OPÉRATIONNELS ── */}
-      {(activeTab === 'all' || activeTab === 'block2') && (
-        <section
-          id="pdf-bess-page-2"
-          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md space-y-4"
-        >
-          <BessPDFPageHeader
-            pageNumber={2}
-            pageTitle="Volet 2 : Hypothèses du Modèle Financier & Leviers Opérationnels"
-            project={project}
-            presetKey={presetKey}
-          />
-
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                <Sliders className="w-5 h-5 text-blue-600" />
-                Hypothèses du Modèle Financier
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Les cellules en bleu clair sont éditables et servent de leviers de sensibilité dynamique.
-              </p>
-            </div>
+          {/* ─── SOUS-SECTION : HYPOTHÈSES DU MODÈLE FINANCIER & LEVIERS OPÉRATIONNELS ── */}
+          <div className="pt-3 border-t border-slate-200 space-y-3">
+            <div className="border-b border-slate-100 pb-2 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-blue-600" />
+                  Hypothèses du Modèle Financier & Leviers Opérationnels
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Les cellules en bleu clair sont éditables et servent de leviers de sensibilité dynamique.
+                </p>
+              </div>
             <button
               type="button"
               onClick={handleResetToPreset}
@@ -703,21 +683,135 @@ export default function BessLenderModelSection({
               </div>
             </div>
           </div>
-        </section>
-      )}
+        </div>
 
-      {/* ─── BLOC 3 : TABLEAU FINANCIER & SERVICE DE LA DETTE (12 ANS + CUMUL) ── */}
-      {(activeTab === 'all' || activeTab === 'block3') && (
-        <section
-          id="pdf-bess-page-3"
-          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md space-y-4 overflow-x-auto"
-        >
-          <BessPDFPageHeader
-            pageNumber={3}
-            pageTitle="Volet 3 : Tableau Financier Prévisionnel & Service de la Dette"
-            project={project}
-            presetKey={presetKey}
-          />
+        {/* ─── SOUS-SECTION : ANALYSE DE SENSIBILITÉ & STRESS-TESTS BANCAIRES ──── */}
+        <div className="pt-3 border-t border-slate-200 space-y-3">
+          <div className="border-b border-slate-100 pb-2.5 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-600" />
+                Analyse de Sensibilité & Stress-Tests Bancaires
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Matrice des 8 scénarios d'audit prêteur et marges de sécurité aux points de rupture bancaire.
+              </p>
+            </div>
+            <span className="text-xs font-bold text-slate-500">
+              Seuil d'alerte prêteur : DSCR min &lt; 1,10x
+            </span>
+          </div>
+
+          {/* Tableau des 8 scénarios */}
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-900 text-white font-bold text-left">
+                  <th className="p-2.5">Scénario de Stress-Test</th>
+                  <th className="p-2.5 text-center">DSCR Min</th>
+                  <th className="p-2.5 text-center">DSCR Moyen</th>
+                  <th className="p-2.5 text-right">VAN Projet (@7%)</th>
+                  <th className="p-2.5 text-right">Résultat Net Cumulé</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {scenarios.map((sc, idx) => {
+                  const isBase = idx === 0;
+                  const isOk = sc.dscrMin >= 1.10;
+                  return (
+                    <tr
+                      key={sc.id}
+                      className={cn(
+                        "hover:bg-slate-50 transition-colors",
+                        isBase ? "bg-blue-50/60 font-black text-blue-950" : "text-slate-800"
+                      )}
+                    >
+                      <td className="p-2.5 flex items-center gap-2">
+                        {isBase && <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />}
+                        <span>{sc.name}</span>
+                      </td>
+                      <td className="p-2.5 text-center">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full font-black text-xs inline-flex items-center gap-1",
+                          isOk ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+                        )}>
+                          {isOk ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                          {fmt(sc.dscrMin, 2)}x
+                        </span>
+                      </td>
+                      <td className="p-2.5 text-center font-bold">
+                        {fmt(sc.dscrAvg, 2)}x
+                      </td>
+                      <td className={cn("p-2.5 text-right font-bold", sc.projectNpv < 0 ? "text-red-600" : "text-slate-900")}>
+                        {fmtEur(sc.projectNpv)}
+                      </td>
+                      <td className="p-2.5 text-right font-black text-slate-900">
+                        {fmtEur(sc.cumulNetIncome)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Encadré : Marges de sécurité (point de rupture) */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+            <div className="text-xs font-black uppercase tracking-wider text-slate-700 mb-2.5 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              Marges de Sécurité (Point de Rupture Bancaire)
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                <div className="text-[10px] text-slate-500 font-bold uppercase">Baisse revenus tolérée avant DSCR = 1,10x</div>
+                <div className="text-lg font-black text-emerald-700 mt-1">
+                  -{fmtPct((stress?.baisseToleree110 ?? rupture?.baisseToleree110 ?? 0), 1)}
+                </div>
+                <div className="text-[9.5px] text-slate-400 mt-0.5">Seuil critique d'alerte bancaire</div>
+              </div>
+
+              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                <div className="text-[10px] text-slate-500 font-bold uppercase">Baisse revenus tolérée avant DSCR = 1,00x</div>
+                <div className="text-lg font-black text-blue-700 mt-1">
+                  -{fmtPct((stress?.baisseToleree100 ?? rupture?.baisseToleree100 ?? 0), 1)}
+                </div>
+                <div className="text-[9.5px] text-slate-400 mt-0.5">Point de rupture de trésorerie pure</div>
+              </div>
+
+              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                <div className="text-[10px] text-slate-500 font-bold uppercase">DSCR minimum du cas de base</div>
+                <div className="text-lg font-black text-slate-900 mt-1">
+                  {fmt(kpis.dscrMin, 2)}x
+                </div>
+                <div className="text-[9.5px] text-slate-400 mt-0.5">Atteint en Année 1</div>
+              </div>
+
+              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                <div className="text-[10px] text-slate-500 font-bold uppercase">Années de prêt avec DSCR ≥ 1,20x</div>
+                <div className="text-lg font-black text-emerald-800 mt-1">
+                  {(stress?.anneesDscrGte120 ?? rupture?.anneesDscrSuperieur120 ?? "10/10")} / 10 ans
+                </div>
+                <div className="text-[9.5px] text-slate-400 mt-0.5">Couverture optimale du service dette</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )}
+
+    {/* ─── VOLET 2 : TABLEAU FINANCIER & SERVICE DE LA DETTE (12 ANS + CUMUL) ── */}
+    {(activeTab === 'all' || activeTab === 'block3' || activeTab === 'page2') && (
+      <section
+        id="pdf-bess-page-2"
+        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md space-y-4 overflow-x-auto"
+      >
+        <BessPDFPageHeader
+          pageNumber={2}
+          totalPages={2}
+          pageTitle="Volet 2 : Tableau Financier Prévisionnel & Service de la Dette"
+          project={project}
+          presetKey={presetKey}
+        />
 
           <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
             <div>
@@ -907,130 +1001,6 @@ export default function BessLenderModelSection({
                 </tr>
               </tbody>
             </table>
-          </div>
-        </section>
-      )}
-
-      {/* ─── BLOC 4 : ANALYSE DE SENSIBILITÉ & STRESS-TESTS BANCAIRES ─────────── */}
-      {(activeTab === 'all' || activeTab === 'block4') && (
-        <section
-          id="pdf-bess-page-4"
-          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md space-y-5"
-        >
-          <BessPDFPageHeader
-            pageNumber={4}
-            pageTitle="Volet 4 : Analyse de Sensibilité & Stress-Tests Bancaires"
-            project={project}
-            presetKey={presetKey}
-          />
-
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                <Activity className="w-5 h-5 text-blue-600" />
-                Analyse de Sensibilité & Stress-Tests Bancaires
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Matrice des 8 scénarios d'audit prêteur et marges de sécurité aux points de rupture.
-              </p>
-            </div>
-            <span className="text-xs font-bold text-slate-500">
-              Seuil d'alerte prêteur : DSCR min &lt; 1,10x
-            </span>
-          </div>
-
-          {/* Tableau des 8 scénarios */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-900 text-white font-bold text-left">
-                  <th className="p-2.5 rounded-l-lg">Scénario de Stress-Test</th>
-                  <th className="p-2.5 text-center">DSCR Min</th>
-                  <th className="p-2.5 text-center">DSCR Moyen</th>
-                  <th className="p-2.5 text-right">VAN Projet (@7%)</th>
-                  <th className="p-2.5 text-right rounded-r-lg">Résultat Net Cumulé</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {scenarios.map((sc, idx) => {
-                  const isBase = idx === 0;
-                  const isOk = sc.dscrMin >= 1.10;
-                  return (
-                    <tr
-                      key={sc.id}
-                      className={cn(
-                        "hover:bg-slate-50 transition-colors",
-                        isBase ? "bg-blue-50/60 font-black text-blue-950" : "text-slate-800"
-                      )}
-                    >
-                      <td className="p-2.5 flex items-center gap-2">
-                        {isBase && <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />}
-                        <span>{sc.name}</span>
-                      </td>
-                      <td className="p-2.5 text-center">
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-full font-black text-xs inline-flex items-center gap-1",
-                          isOk ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
-                        )}>
-                          {isOk ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                          {fmt(sc.dscrMin, 2)}x
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-center font-bold">
-                        {fmt(sc.dscrAvg, 2)}x
-                      </td>
-                      <td className={cn("p-2.5 text-right font-bold", sc.projectNpv < 0 ? "text-red-600" : "text-slate-900")}>
-                        {fmtEur(sc.projectNpv)}
-                      </td>
-                      <td className="p-2.5 text-right font-black text-slate-900">
-                        {fmtEur(sc.cumulNetIncome)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Encadré : Marges de sécurité (point de rupture) */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-            <div className="text-xs font-black uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Marges de Sécurité (Point de Rupture Bancaire)
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
-                <div className="text-[10px] text-slate-500 font-bold uppercase">Baisse revenus tolérée avant DSCR = 1,10x</div>
-                <div className="text-lg font-black text-emerald-700 mt-1">
-                  -{fmtPct((stress?.baisseToleree110 ?? rupture?.baisseToleree110 ?? 0), 1)}
-                </div>
-                <div className="text-[9.5px] text-slate-400 mt-0.5">Seuil critique d'alerte bancaire</div>
-              </div>
-
-              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
-                <div className="text-[10px] text-slate-500 font-bold uppercase">Baisse revenus tolérée avant DSCR = 1,00x</div>
-                <div className="text-lg font-black text-blue-700 mt-1">
-                  -{fmtPct((stress?.baisseToleree100 ?? rupture?.baisseToleree100 ?? 0), 1)}
-                </div>
-                <div className="text-[9.5px] text-slate-400 mt-0.5">Point de rupture de trésorerie pure</div>
-              </div>
-
-              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
-                <div className="text-[10px] text-slate-500 font-bold uppercase">DSCR minimum du cas de base</div>
-                <div className="text-lg font-black text-slate-900 mt-1">
-                  {fmt(kpis.dscrMin, 2)}x
-                </div>
-                <div className="text-[9.5px] text-slate-400 mt-0.5">Atteint en Année 1</div>
-              </div>
-
-              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
-                <div className="text-[10px] text-slate-500 font-bold uppercase">Années de prêt avec DSCR ≥ 1,20x</div>
-                <div className="text-lg font-black text-emerald-800 mt-1">
-                  {(stress?.anneesDscrGte120 ?? rupture?.anneesDscrSuperieur120 ?? "10/10")} / 10 ans
-                </div>
-                <div className="text-[9.5px] text-slate-400 mt-0.5">Couverture optimale du service dette</div>
-              </div>
-            </div>
           </div>
         </section>
       )}

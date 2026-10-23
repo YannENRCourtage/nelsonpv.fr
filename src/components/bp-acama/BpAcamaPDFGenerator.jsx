@@ -1,6 +1,45 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+let cachedAppCss = null;
+
+async function getAppStyles() {
+    if (cachedAppCss && cachedAppCss.length > 50000) return cachedAppCss;
+    let css = '';
+    const imports = ["@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');"];
+    try {
+        for (let i = 0; i < document.styleSheets.length; i++) {
+            try {
+                const s = document.styleSheets[i];
+                if (s?.cssRules) {
+                    for (let j = 0; j < s.cssRules.length; j++) {
+                        const r = s.cssRules[j];
+                        if (r.type === CSSRule.IMPORT_RULE) imports.push(r.cssText);
+                        else css += r.cssText + '\n';
+                    }
+                }
+            } catch (e) {}
+        }
+    } catch (e) {}
+    if (css.length < 25000) {
+        try {
+            const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+            for (const l of links) {
+                if (l.href) {
+                    try {
+                        const res = await fetch(l.href, { cache: 'force-cache' });
+                        if (res.ok) css += '\n' + await res.text();
+                    } catch (e) {}
+                }
+            }
+        } catch (e) {}
+    }
+    const styles = document.querySelectorAll('style');
+    styles.forEach(st => { if (st.textContent) css += '\n' + st.textContent; });
+    cachedAppCss = imports.join('\n') + '\n\n' + css;
+    return cachedAppCss;
+}
+
 /**
  * Génère un PDF pour la page BP (ou BP ACAMA selon le tenant)
  * @param {string} elementId - ID de l'élément à capturer
@@ -12,6 +51,11 @@ import html2canvas from 'html2canvas';
 export async function generateBpAcamaPDF({ elementId, sections, fileName, orientation = 'landscape', clean = false }) {
     try {
         const isPortrait = orientation === 'portrait';
+        const appCss = await getAppStyles();
+        try {
+            if (document.fonts?.ready) await document.fonts.ready;
+        } catch (e) {}
+
         const pdf = new jsPDF({
             orientation: orientation,
             unit: 'mm',
@@ -37,7 +81,20 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff',
+                windowWidth: 1920,
                 onclone: (clonedDoc) => {
+                    // Injecter les styles complets pour garantir 100% de fidélité
+                    if (appCss) {
+                        const st = clonedDoc.createElement('style');
+                        st.type = 'text/css';
+                        st.appendChild(clonedDoc.createTextNode(appCss));
+                        clonedDoc.head.appendChild(st);
+                    }
+                    clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(l => l.remove());
+                    const base = clonedDoc.createElement('base');
+                    base.href = window.location.origin;
+                    clonedDoc.head.appendChild(base);
+
                     // Masquer explicitement les éléments à ignorer et les détruire du DOM cloné
                     clonedDoc.querySelectorAll('[data-html2canvas-ignore="true"]').forEach(el => {
                         el.remove();
@@ -171,7 +228,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         } else {
                             // Détection dynamique du nombre d'années pour garder la même échelle (Image 1)
                             if (id.startsWith('pdf-bess-page-')) {
-                                s.style.width = id === 'pdf-bess-page-3' ? '1920px' : '1600px';
+                                s.style.width = (id === 'pdf-bess-page-2' || id === 'pdf-bess-page-3') ? '1920px' : '1600px';
                             } else if (id === 'pdf-section-battery') {
                                 const yearThs = s.querySelectorAll('thead tr:first-child th, thead tr:first-child td').length - 1; 
                                 if (yearThs > 12) {
@@ -228,7 +285,9 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
             const finalHeight = imgProps.height * bestRatio;
             
             const xPos = margin + (targetWidth - finalWidth) / 2;
-            const yPos = margin + (targetHeight - finalHeight) / 2;
+            // Aligner verticalement en haut pour les pages BESS du dossier prêteur
+            const isBess = id.startsWith('pdf-bess-page-') || id === 'pdf-section-battery';
+            const yPos = isBess ? margin : margin + (targetHeight - finalHeight) / 2;
 
             if (isNewPage) {
                 pdf.addPage();
