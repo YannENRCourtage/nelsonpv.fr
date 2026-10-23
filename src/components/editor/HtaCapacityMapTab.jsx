@@ -37,8 +37,10 @@ import {
   CheckCircle2,
   Sparkles,
   ArrowRight,
-  Home
+  Home,
+  Camera
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
 import { toast } from '@/components/ui/use-toast.js';
 
 // Haversine distance in meters
@@ -529,6 +531,43 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
     }
   };
 
+  // Listener pour la capture d'écran de l'onglet Capacité HTA pour la fiche projet PDF
+  useEffect(() => {
+    const handleHtaCaptureRequest = async (e) => {
+      const slotIndex = e.detail?.slotIndex !== undefined ? e.detail.slotIndex : 0;
+      const map = mapInstanceRef.current;
+      const container = map ? map.getContainer() : document.querySelector('#hta-capacity-map-container');
+      if (!container) {
+        toast({ title: "Erreur", description: "Conteneur cartographique introuvable.", variant: "destructive" });
+        return;
+      }
+
+      try {
+        toast({ title: "Capture en cours...", description: "Génération de l'image de la carte Capacité HTA..." });
+        const canvas = await html2canvas(container, {
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          scale: 2,
+          backgroundColor: '#0f172a',
+          onclone: (clonedDoc) => {
+            clonedDoc.querySelectorAll('.leaflet-control-zoom, .hide-on-capture').forEach(el => {
+              el.style.display = 'none';
+            });
+          }
+        });
+        const dataUrl = canvas.toDataURL('image/png');
+        window.dispatchEvent(new CustomEvent("map:capture-done", { detail: { slotIndex, dataUrl } }));
+      } catch (err) {
+        console.error('[HtaCapacityMapTab] Erreur capture:', err);
+        toast({ title: "Erreur", description: "Impossible de capturer la carte HTA.", variant: "destructive" });
+      }
+    };
+
+    window.addEventListener("hta-map:capture-request", handleHtaCaptureRequest);
+    return () => window.removeEventListener("hta-map:capture-request", handleHtaCaptureRequest);
+  }, []);
+
   // Fetch Caparéseau substations once on mount
   useEffect(() => {
     let isMounted = true;
@@ -1014,7 +1053,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
       }`}
     >
       {/* 1. MAP AREA (Fills exactly the same space as MapEditor in Carte tab) */}
-      <div className="flex-1 min-h-[55vh] lg:min-h-0 relative w-full h-full">
+      <div id="hta-capacity-map-container" className="flex-1 min-h-[55vh] lg:min-h-0 relative w-full h-full">
         {/* TOP FLOATING SEARCH BAR (Matching MapEditor layout) */}
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-sm sm:max-w-md px-3">
           <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200">
@@ -1054,6 +1093,18 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
           >
             <Home className="w-3.5 h-3.5 text-amber-500" />
             <span>Adresse Projet</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("hta-map:capture-request", { detail: { slotIndex: 0 } }));
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md rounded-lg px-3 py-1.5 text-xs font-extrabold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Prendre une capture de la carte Capacité HTA pour la fiche projet PDF"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>Capturer la vue</span>
           </button>
 
           <button
@@ -1098,12 +1149,14 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
               url="https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
               maxZoom={20}
               attribution="IGN © OpenStreetMap"
+              crossOrigin="anonymous"
             />
           ) : (
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               maxZoom={19}
               attribution="© OpenStreetMap contributors | Enedis Open Data | RTE"
+              crossOrigin="anonymous"
             />
           )}
 

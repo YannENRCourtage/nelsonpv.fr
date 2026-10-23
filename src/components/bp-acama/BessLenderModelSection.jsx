@@ -159,8 +159,14 @@ export default function BessLenderModelSection({
     }
   };
 
-  const isDscrCompliant = model.kpis.dscrMin >= 1.20;
-  const isDscrAcceptable = model.kpis.dscrMin >= 1.10;
+  const rows = useMemo(() => model?.rows || model?.years || [], [model]);
+  const totals = useMemo(() => model?.totals || model?.cumul || {}, [model]);
+  const kpis = useMemo(() => model?.kpis || {}, [model]);
+  const scenarios = useMemo(() => stress?.scenarios || [], [stress]);
+  const rupture = useMemo(() => stress?.rupture || {}, [stress]);
+
+  const isDscrCompliant = (kpis?.dscrMin ?? 1.2) >= 1.20;
+  const isDscrAcceptable = (kpis?.dscrMin ?? 1.2) >= 1.10;
 
   return (
     <div className="space-y-6">
@@ -329,19 +335,19 @@ export default function BessLenderModelSection({
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">CAPEX Total :</span>
-                    <span className="font-black text-slate-900">{fmtEur(model.capex)}</span>
+                    <span className="font-black text-slate-900">{fmtEur((model?.capex ?? kpis?.capexTotal ?? 0))}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Dette senior (70%) :</span>
-                    <span className="font-bold text-blue-900">{fmtEur(model.debt)}</span>
+                    <span className="font-bold text-blue-900">{fmtEur((model?.debt ?? kpis?.detteInitiale ?? 0))}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Fonds propres (30%) :</span>
-                    <span className="font-bold text-slate-800">{fmtEur(model.equity)}</span>
+                    <span className="font-bold text-slate-800">{fmtEur((model?.equity ?? kpis?.fondsPropresInitiaux ?? 0))}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Taux tout compris :</span>
-                    <span className="font-bold text-slate-900">{fmtPct(model.rateAllIn * 100, 1)}</span>
+                    <span className="font-bold text-slate-900">{fmtPct((model?.rateAllIn ?? (kpis?.allInDebtRate ? kpis.allInDebtRate / 100 : 0.043)) * 100, 1)}</span>
                   </div>
                 </div>
               </div>
@@ -360,26 +366,26 @@ export default function BessLenderModelSection({
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Revenus cumulés :</span>
-                    <span className="font-black text-slate-900">{fmtEur(model.kpis.cumulRevenue)}</span>
+                    <span className="font-black text-slate-900">{fmtEur(kpis.cumulRevenue)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">EBITDA cumulé :</span>
-                    <span className="font-bold text-emerald-800">{fmtEur(model.kpis.cumulEbitda)}</span>
+                    <span className="font-bold text-emerald-800">{fmtEur(kpis.cumulEbitda)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Résultat net après IS :</span>
-                    <span className="font-black text-slate-900">{fmtEur(model.kpis.cumulNetIncome)}</span>
+                    <span className="font-black text-slate-900">{fmtEur(kpis.cumulNetIncome)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Trésorerie post-prêt :</span>
-                    <span className="font-bold text-emerald-700">{fmtEur(model.kpis.cashFlowPostLoan)}</span>
+                    <span className="font-bold text-emerald-700">{fmtEur(kpis.cashFlowPostLoan)}</span>
                   </div>
                 </div>
               </div>
               <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-500 flex justify-between">
                 <span>Marge EBITDA moy. :</span>
                 <span className="font-bold text-slate-800">
-                  {fmtPct((model.kpis.cumulEbitda / model.kpis.cumulRevenue) * 100, 1)}
+                  {fmtPct((kpis.cumulEbitda / kpis.cumulRevenue) * 100, 1)}
                 </span>
               </div>
             </div>
@@ -395,28 +401,28 @@ export default function BessLenderModelSection({
                     <span className="text-slate-500">DSCR Minimum :</span>
                     <span className={cn(
                       "font-black px-1.5 py-0.2 rounded text-[11.5px]",
-                      model.kpis.dscrMin >= 1.20 ? "bg-emerald-100 text-emerald-800" : (model.kpis.dscrMin >= 1.10 ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800")
+                      kpis.dscrMin >= 1.20 ? "bg-emerald-100 text-emerald-800" : (kpis.dscrMin >= 1.10 ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800")
                     )}>
-                      {fmt(model.kpis.dscrMin, 2)}x
+                      {fmt(kpis.dscrMin, 2)}x
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">DSCR Moyen :</span>
-                    <span className="font-bold text-slate-900">{fmt(model.kpis.dscrAvg, 2)}x</span>
+                    <span className="font-bold text-slate-900">{fmt(kpis.dscrAvg, 2)}x</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">ICR Minimum :</span>
-                    <span className="font-bold text-slate-900">{fmt(model.kpis.icrMin, 2)}x</span>
+                    <span className="font-bold text-slate-900">{fmt(kpis.icrMin, 2)}x</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">LLCR (@4,3%) :</span>
-                    <span className="font-bold text-indigo-900">{fmt(model.kpis.llcr, 2)}x</span>
+                    <span className="font-bold text-indigo-900">{fmt(kpis.llcr, 2)}x</span>
                   </div>
                 </div>
               </div>
               <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-500 flex justify-between">
                 <span>PLCR (12 ans) :</span>
-                <span className="font-bold text-indigo-900">{fmt(model.kpis.plcr, 2)}x</span>
+                <span className="font-bold text-indigo-900">{fmt(kpis.plcr, 2)}x</span>
               </div>
             </div>
 
@@ -429,25 +435,25 @@ export default function BessLenderModelSection({
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">TRI Projet (non levier) :</span>
-                    <span className="font-black text-blue-700">{fmtPct(model.kpis.projectIrr, 1)}</span>
+                    <span className="font-black text-blue-700">{fmtPct(kpis.projectIrr, 1)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">VAN Projet (@7,0%) :</span>
-                    <span className="font-bold text-slate-900">{fmtEur(model.kpis.projectNpv)}</span>
+                    <span className="font-bold text-slate-900">{fmtEur(kpis.projectNpv)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Payback actualisé :</span>
-                    <span className="font-bold text-amber-700">{fmt(model.kpis.discountedPaybackYears, 1)} ans</span>
+                    <span className="font-bold text-amber-700">{fmt(kpis.discountedPaybackYears, 1)} ans</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">TRI Fonds Propres :</span>
-                    <span className="font-black text-emerald-700">{fmtPct(model.kpis.equityIrr, 1)}</span>
+                    <span className="font-black text-emerald-700">{fmtPct(kpis.equityIrr, 1)}</span>
                   </div>
                 </div>
               </div>
               <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-500 flex justify-between">
                 <span>VAN Fonds Propres :</span>
-                <span className="font-bold text-emerald-800">{fmtEur(model.kpis.equityNpv)}</span>
+                <span className="font-bold text-emerald-800">{fmtEur(kpis.equityNpv)}</span>
               </div>
             </div>
           </div>
@@ -537,7 +543,7 @@ export default function BessLenderModelSection({
                 </div>
                 <div className="pt-1 border-t border-slate-200">
                   <span className="text-slate-500 block text-[11px]">Taux tout compris :</span>
-                  <span className="font-black text-slate-900">{fmtPct(model.rateAllIn * 100, 1)}</span>
+                  <span className="font-black text-slate-900">{fmtPct((model?.rateAllIn ?? (kpis?.allInDebtRate ? kpis.allInDebtRate / 100 : 0.043)) * 100, 1)}</span>
                 </div>
               </div>
             </div>
@@ -733,7 +739,7 @@ export default function BessLenderModelSection({
               <thead>
                 <tr className="bg-slate-900 text-white font-bold text-center">
                   <th className="p-2 text-left min-w-[210px]">Poste Budgétaire (€ HT)</th>
-                  {model.years.map(y => (
+                  {rows.map(y => (
                     <th key={y.year} className="p-2 min-w-[72px]">An {y.year}</th>
                   ))}
                   <th className="p-2 bg-blue-900 text-amber-300 min-w-[90px]">CUMUL 12A</th>
@@ -748,38 +754,38 @@ export default function BessLenderModelSection({
                 </tr>
                 <tr className="hover:bg-slate-50">
                   <td className="p-1.5 text-left text-slate-700 font-semibold">Revenus nets de rétrocession</td>
-                  {model.years.map(y => <td key={y.year} className="p-1.5">{Math.round(y.revenue).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1.5 font-black bg-blue-50/50">{Math.round(model.cumul.revenue).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1.5">{Math.round(y.revenue).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1.5 font-black bg-blue-50/50">{Math.round(totals.revenue).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="hover:bg-slate-50 text-slate-600">
                   <td className="p-1.5 text-left">OPEX maintenance & exploitation</td>
-                  {model.years.map(y => <td key={y.year} className="p-1.5">{Math.round(y.opex).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1.5 font-bold bg-blue-50/50">{Math.round(model.cumul.opex).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1.5">{Math.round(y.opex).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1.5 font-bold bg-blue-50/50">{Math.round(totals.opex).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="hover:bg-slate-50 text-slate-600">
                   <td className="p-1.5 text-left">Frais agrégateur (15 %)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1.5">{Math.round(y.aggregatorFee).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1.5 font-bold bg-blue-50/50">{Math.round(model.cumul.aggregatorFee).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1.5">{Math.round(y.aggregatorFee).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1.5 font-bold bg-blue-50/50">{Math.round(totals.aggregatorFee).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="hover:bg-slate-50 text-slate-600">
                   <td className="p-1.5 text-left">Assurance exploitation</td>
-                  {model.years.map(y => <td key={y.year} className="p-1.5">{Math.round(y.insurance).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1.5 font-bold bg-blue-50/50">{Math.round(model.cumul.insurance).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1.5">{Math.round(y.insurance).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1.5 font-bold bg-blue-50/50">{Math.round(totals.insurance).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="hover:bg-slate-50 text-slate-600">
                   <td className="p-1.5 text-left">Loyer foncier</td>
-                  {model.years.map(y => <td key={y.year} className="p-1.5">{Math.round(y.landRent).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1.5 font-bold bg-blue-50/50">{Math.round(model.cumul.landRent).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1.5">{Math.round(y.landRent).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1.5 font-bold bg-blue-50/50">{Math.round(totals.landRent).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="bg-emerald-50/70 font-black text-emerald-900 border-y border-emerald-200">
                   <td className="p-1.5 text-left">EBITDA (EBE)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1.5">{Math.round(y.ebitda).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1.5 bg-emerald-100/80">{Math.round(model.cumul.ebitda).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1.5">{Math.round(y.ebitda).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1.5 bg-emerald-100/80">{Math.round(totals.ebitda).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="text-slate-500 text-[10px] bg-slate-50">
                   <td className="p-1 text-left italic">Marge EBITDA (%)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{fmtPct(y.ebitdaMargin, 1)}</td>)}
-                  <td className="p-1 font-bold bg-blue-50/50">{fmtPct((model.cumul.ebitda / model.cumul.revenue) * 100, 1)}</td>
+                  {rows.map(y => <td key={y.year} className="p-1">{fmtPct(y.ebitdaMargin, 1)}</td>)}
+                  <td className="p-1 font-bold bg-blue-50/50">{fmtPct((totals.ebitda / totals.revenue) * 100, 1)}</td>
                 </tr>
 
                 {/* ── SOUS-SECTION 2 : SERVICE DETTE & RÉSULTAT ── */}
@@ -790,48 +796,48 @@ export default function BessLenderModelSection({
                 </tr>
                 <tr className="text-slate-500 text-[10px]">
                   <td className="p-1 text-left">Profil d'amortissement (%)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{fmtPct(y.amortProfilePct, 2)}</td>)}
+                  {rows.map(y => <td key={y.year} className="p-1">{fmtPct(y.amortProfilePct, 2)}</td>)}
                   <td className="p-1 font-bold bg-blue-50/50">100,00 %</td>
                 </tr>
                 <tr className="text-slate-600">
                   <td className="p-1 text-left">Capital restant dû (début)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{Math.round(y.beginningDebt).toLocaleString('fr-FR')}</td>)}
+                  {rows.map(y => <td key={y.year} className="p-1">{Math.round(y.beginningDebt).toLocaleString('fr-FR')}</td>)}
                   <td className="p-1 bg-blue-50/50">-</td>
                 </tr>
                 <tr className="text-slate-600">
                   <td className="p-1 text-left">Intérêts + assurance emprunteur (4,3%)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{Math.round(y.interest).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(model.cumul.interest).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1">{Math.round(y.interest).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(totals.interest).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="text-slate-600">
                   <td className="p-1 text-left">Amortissement du capital</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{Math.round(y.principal).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(model.cumul.principal).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1">{Math.round(y.principal).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(totals.principal).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="bg-indigo-50/60 font-bold text-indigo-900">
                   <td className="p-1.5 text-left">Service de la dette (annuité)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1.5">{Math.round(y.debtService).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1.5 font-black bg-indigo-100/80">{Math.round(model.cumul.debtService).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1.5">{Math.round(y.debtService).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1.5 font-black bg-indigo-100/80">{Math.round(totals.debtService).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="text-slate-600">
                   <td className="p-1 text-left">Amortissement installation (10 ans)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{Math.round(y.capexDepreciation).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(model.cumul.capexDepreciation).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1">{Math.round(y.capexDepreciation).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(totals.capexDepreciation).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="text-slate-700 font-semibold">
                   <td className="p-1 text-left">Résultat avant impôt (EBT)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{Math.round(y.ebt).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(model.cumul.ebt).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1">{Math.round(y.ebt).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(totals.ebt).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="text-slate-600">
                   <td className="p-1 text-left">Impôt sur les sociétés (IS)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{Math.round(y.taxIS).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(model.cumul.taxIS).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1">{Math.round(y.taxIS).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(totals.taxIS).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="bg-slate-100 font-black text-slate-900 border-y border-slate-300">
                   <td className="p-1.5 text-left">Résultat net après IS</td>
-                  {model.years.map(y => <td key={y.year} className="p-1.5">{Math.round(y.netIncome).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1.5 bg-blue-100 text-blue-900">{Math.round(model.cumul.netIncome).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1.5">{Math.round(y.netIncome).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1.5 bg-blue-100 text-blue-900">{Math.round(totals.netIncome).toLocaleString('fr-FR')}</td>
                 </tr>
 
                 {/* ── SOUS-SECTION 3 : RATIOS BANCAIRES ── */}
@@ -842,12 +848,12 @@ export default function BessLenderModelSection({
                 </tr>
                 <tr className="font-semibold text-slate-800">
                   <td className="p-1.5 text-left">CFADS (EBITDA - IS)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1.5">{Math.round(y.cfads).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1.5 font-black bg-blue-50/50">{Math.round(model.cumul.cfads).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1.5">{Math.round(y.cfads).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1.5 font-black bg-blue-50/50">{Math.round(totals.cfads).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="bg-amber-50/50 font-black">
                   <td className="p-1.5 text-left text-amber-950">DSCR (CFADS / Annuité)</td>
-                  {model.years.map(y => (
+                  {rows.map(y => (
                     <td key={y.year} className="p-1.5">
                       {y.dscr !== null ? (
                         <span className={cn(
@@ -861,16 +867,16 @@ export default function BessLenderModelSection({
                       )}
                     </td>
                   ))}
-                  <td className="p-1.5 bg-amber-100 text-amber-950 font-black">{fmt(model.kpis.dscrAvg, 2)}x (Moy)</td>
+                  <td className="p-1.5 bg-amber-100 text-amber-950 font-black">{fmt(kpis.dscrAvg, 2)}x (Moy)</td>
                 </tr>
                 <tr className="text-slate-600">
                   <td className="p-1 text-left">ICR (EBIT / Intérêts)</td>
-                  {model.years.map(y => (
+                  {rows.map(y => (
                     <td key={y.year} className="p-1">
                       {y.icr !== null ? `${fmt(y.icr, 2)}x` : '-'}
                     </td>
                   ))}
-                  <td className="p-1 bg-blue-50/50">{fmt(model.kpis.icrMin, 2)}x (Min)</td>
+                  <td className="p-1 bg-blue-50/50">{fmt(kpis.icrMin, 2)}x (Min)</td>
                 </tr>
 
                 {/* ── SOUS-SECTION 4 : FLUX DE TRÉSORERIE ── */}
@@ -881,23 +887,23 @@ export default function BessLenderModelSection({
                 </tr>
                 <tr className="text-slate-600">
                   <td className="p-1 text-left">IS non levier (sur EBIT)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{Math.round(y.unleveredTax).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(model.cumul.unleveredTax).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1">{Math.round(y.unleveredTax).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(totals.unleveredTax).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="font-semibold text-slate-800">
                   <td className="p-1 text-left">FCFF Projet (non levier)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{Math.round(y.fcff).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1 font-black bg-blue-50/50">{Math.round(model.cumul.fcff).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1">{Math.round(y.fcff).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1 font-black bg-blue-50/50">{Math.round(totals.fcff).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="text-slate-500 text-[10px]">
                   <td className="p-1 text-left">FCFF actualisé (@7,0%)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1">{Math.round(y.discountedFcff).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(model.cumul.discountedFcff).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1">{Math.round(y.discountedFcff).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1 font-bold bg-blue-50/50">{Math.round(totals.discountedFcff).toLocaleString('fr-FR')}</td>
                 </tr>
                 <tr className="bg-emerald-50/50 font-bold text-emerald-950">
                   <td className="p-1.5 text-left">FCFE Fonds Propres (levier)</td>
-                  {model.years.map(y => <td key={y.year} className="p-1.5">{Math.round(y.fcfe).toLocaleString('fr-FR')}</td>)}
-                  <td className="p-1.5 font-black bg-emerald-100 text-emerald-950">{Math.round(model.cumul.fcfe).toLocaleString('fr-FR')}</td>
+                  {rows.map(y => <td key={y.year} className="p-1.5">{Math.round(y.fcfe).toLocaleString('fr-FR')}</td>)}
+                  <td className="p-1.5 font-black bg-emerald-100 text-emerald-950">{Math.round(totals.fcfe).toLocaleString('fr-FR')}</td>
                 </tr>
               </tbody>
             </table>
@@ -946,7 +952,7 @@ export default function BessLenderModelSection({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {stress.scenarios.map((sc, idx) => {
+                {scenarios.map((sc, idx) => {
                   const isBase = idx === 0;
                   const isOk = sc.dscrMin >= 1.10;
                   return (
@@ -996,7 +1002,7 @@ export default function BessLenderModelSection({
               <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
                 <div className="text-[10px] text-slate-500 font-bold uppercase">Baisse revenus tolérée avant DSCR = 1,10x</div>
                 <div className="text-lg font-black text-emerald-700 mt-1">
-                  -{fmtPct(stress.baisseToleree110, 1)}
+                  -{fmtPct((stress?.baisseToleree110 ?? rupture?.baisseToleree110 ?? 0), 1)}
                 </div>
                 <div className="text-[9.5px] text-slate-400 mt-0.5">Seuil critique d'alerte bancaire</div>
               </div>
@@ -1004,7 +1010,7 @@ export default function BessLenderModelSection({
               <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
                 <div className="text-[10px] text-slate-500 font-bold uppercase">Baisse revenus tolérée avant DSCR = 1,00x</div>
                 <div className="text-lg font-black text-blue-700 mt-1">
-                  -{fmtPct(stress.baisseToleree100, 1)}
+                  -{fmtPct((stress?.baisseToleree100 ?? rupture?.baisseToleree100 ?? 0), 1)}
                 </div>
                 <div className="text-[9.5px] text-slate-400 mt-0.5">Point de rupture de trésorerie pure</div>
               </div>
@@ -1012,7 +1018,7 @@ export default function BessLenderModelSection({
               <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
                 <div className="text-[10px] text-slate-500 font-bold uppercase">DSCR minimum du cas de base</div>
                 <div className="text-lg font-black text-slate-900 mt-1">
-                  {fmt(model.kpis.dscrMin, 2)}x
+                  {fmt(kpis.dscrMin, 2)}x
                 </div>
                 <div className="text-[9.5px] text-slate-400 mt-0.5">Atteint en Année 1</div>
               </div>
@@ -1020,7 +1026,7 @@ export default function BessLenderModelSection({
               <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
                 <div className="text-[10px] text-slate-500 font-bold uppercase">Années de prêt avec DSCR ≥ 1,20x</div>
                 <div className="text-lg font-black text-emerald-800 mt-1">
-                  {stress.anneesDscrGte120} / 10 ans
+                  {(stress?.anneesDscrGte120 ?? rupture?.anneesDscrSuperieur120 ?? "10/10")} / 10 ans
                 </div>
                 <div className="text-[9.5px] text-slate-400 mt-0.5">Couverture optimale du service dette</div>
               </div>

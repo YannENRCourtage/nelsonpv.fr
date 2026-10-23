@@ -595,6 +595,12 @@ export default function ProjectEditor() {
       return;
     }
 
+    // For HTA capacity tab, use the HTA map capture event
+    if (activeTab === 'capa-hta') {
+      window.dispatchEvent(new CustomEvent("hta-map:capture-request", { detail: { slotIndex } }));
+      return;
+    }
+
     // Liste des onglets utilisant des iframes externes
     const iframeTabs = ['capareseau', 'terravisu', 'geoportail', 'dvf', 'windy'];
     if (iframeTabs.includes(activeTab)) {
@@ -2779,8 +2785,8 @@ export default function ProjectEditor() {
                 type="button"
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); captureNow(); }}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={activeTab !== 'map'}
-                title={activeTab !== 'map' ? "Captures disponibles uniquement sur l'onglet Carte" : "Prendre une capture"}
+                disabled={activeTab !== 'map' && activeTab !== 'capa-hta'}
+                title={activeTab !== 'map' && activeTab !== 'capa-hta' ? "Captures disponibles sur les onglets Carte et Capacités HTA" : "Prendre une capture"}
                 tabIndex={-1}
               >
                 <Camera size={16} className="mr-2" />
@@ -2984,7 +2990,7 @@ export default function ProjectEditor() {
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); captureNow(); }}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
-                  disabled={activeTab !== 'map'}
+                  disabled={activeTab !== 'map' && activeTab !== 'capa-hta'}
                   tabIndex={-1}
                 >
                   <Camera size={16} className="mr-2" />
