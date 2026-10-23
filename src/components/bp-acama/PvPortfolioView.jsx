@@ -246,7 +246,7 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg sm:text-xl font-black tracking-tight">
-                PORTEFEUILLE MULTI-PROJETS PV — {selectedPortfolio === 'ALL' ? 'CONSOLIDÉ' : selectedPortfolio} ({consolidatedTotals.totalSites} SITES / {consolidatedTotals.totalPowerMw.toFixed(2)} MWc)
+                PORTEFEUILLE MULTI-PROJETS PV — {selectedPortfolio === 'ALL' ? 'CONSOLIDÉ' : selectedPortfolio} ({consolidatedTotals?.totalSites || 0} SITES / {Number(consolidatedTotals?.totalPowerMw || 0).toFixed(2)} MWc)
               </h2>
               <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-black uppercase">
                 {selectedPortfolio === 'ALL' ? 'TOUS LES PORTFOLIOS' : `PORTFOLIO ${selectedPortfolio}`}
@@ -469,7 +469,7 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
               Ratio DSCR Moyen
             </div>
             <div className="text-2xl font-black text-emerald-600 my-1">
-              {consolidatedTotals.avgDscr.toFixed(2)}x
+              {Number(consolidatedTotals?.avgDscr || 0).toFixed(2)}x
             </div>
             <div className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
               Couverture bancaire ({debtDuration} ans) • Seuil min: 1.17x
@@ -482,38 +482,38 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Puissance Globale</div>
-          <div className="text-xl font-black text-slate-900 mt-1">{consolidatedTotals.totalPowerMw.toFixed(2)} MWc</div>
-          <div className="text-[10px] font-semibold text-amber-600 mt-0.5">{consolidatedTotals.totalSites} centrales PV</div>
+          <div className="text-xl font-black text-slate-900 mt-1">{Number(consolidatedTotals?.totalPowerMw || 0).toFixed(2)} MWc</div>
+          <div className="text-[10px] font-semibold text-amber-600 mt-0.5">{consolidatedTotals?.totalSites || 0} centrales PV</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Production Annuelle</div>
-          <div className="text-xl font-black text-slate-900 mt-1">{Math.round(consolidatedTotals.totalProdMwh).toLocaleString('fr-FR')} MWh</div>
+          <div className="text-xl font-black text-slate-900 mt-1">{Math.round(consolidatedTotals?.totalProdMwh || 0).toLocaleString('fr-FR')} MWh</div>
           <div className="text-[10px] font-semibold text-orange-600 mt-0.5">Moyenne: ~1 160 kWh/kWc</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CAPEX Consolidé</div>
-          <div className="text-xl font-black text-slate-900 mt-1">{fmtM(consolidatedTotals.totalCapex)}</div>
+          <div className="text-xl font-black text-slate-900 mt-1">{fmtM(consolidatedTotals?.totalCapex || 0)}</div>
           <div className="text-[10px] font-semibold text-slate-500 mt-0.5">Centrale + Bâtiment + Réseau</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CA Annuel An 1</div>
-          <div className="text-xl font-black text-emerald-600 mt-1">{fmtM(consolidatedTotals.totalCaAn1)}</div>
+          <div className="text-xl font-black text-emerald-600 mt-1">{fmtM(consolidatedTotals?.totalCaAn1 || 0)}</div>
           <div className="text-[10px] font-semibold text-emerald-700 mt-0.5">Tarif S21 / ACC</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">EBITDA An 1</div>
-          <div className="text-xl font-black text-blue-600 mt-1">{fmtM(consolidatedTotals.totalEbitdaAn1)}</div>
+          <div className="text-xl font-black text-blue-600 mt-1">{fmtM(consolidatedTotals?.totalEbitdaAn1 || 0)}</div>
           <div className="text-[10px] font-semibold text-blue-700 mt-0.5">Marge: ~88%</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TRI / Payback</div>
-          <div className="text-xl font-black text-purple-600 mt-1">{fmtPct(consolidatedTotals.triConsolide)}</div>
-          <div className="text-[10px] font-bold text-purple-700 mt-0.5">Retour: {consolidatedTotals.paybackConsol.toFixed(1)} ans</div>
+          <div className="text-xl font-black text-purple-600 mt-1">{fmtPct(consolidatedTotals?.triConsolide)}</div>
+          <div className="text-[10px] font-bold text-purple-700 mt-0.5">Retour: {Number(consolidatedTotals?.paybackConsol || 0).toFixed(1)} ans</div>
         </div>
       </div>
 
@@ -701,16 +701,18 @@ export default function PvPortfolioView({ onSelectSite, onExportPdf, onDataChang
         projects={projects}
       />
 
-      <PvPortfolioLenderModal
-        isOpen={isLenderModalOpen}
-        onClose={() => setIsLenderModalOpen(false)}
-        portfolioName={selectedPortfolio}
-        sites={analyzedSites}
-        consolidatedTotals={consolidatedTotals}
-        consolidatedChronique={consolidatedChronique}
-        debtDuration={debtDuration}
-        debtRate={debtRate}
-      />
+      {isLenderModalOpen && (
+        <PvPortfolioLenderModal
+          isOpen={isLenderModalOpen}
+          onClose={() => setIsLenderModalOpen(false)}
+          portfolioName={selectedPortfolio}
+          sites={analyzedSites}
+          consolidatedTotals={consolidatedTotals}
+          consolidatedChronique={consolidatedChronique}
+          debtDuration={debtDuration}
+          debtRate={debtRate}
+        />
+      )}
     </div>
   );
 }

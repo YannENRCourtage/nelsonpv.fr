@@ -1651,18 +1651,20 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
       />
 
       {/* Modal du Dossier Prêteur Consolidé BESS pour Banques & Financeurs */}
-      <BessPortfolioLenderModal
-        isOpen={isBessPortfolioLenderModalOpen}
-        onClose={() => setIsBessPortfolioLenderModalOpen(false)}
-        portfolioName={selectedBessPortfolio}
-        sites={portfolioExportData?.analyzedSites || activeBessSites}
-        consolidatedTotals={portfolioExportData?.consolidatedTotals || {}}
-        consolidatedChronique={portfolioExportData?.consolidatedChronique || []}
-        debtDuration={portfolioExportData?.debtDuration ?? 12}
-        debtRate={portfolioExportData?.debtRate ?? 4.30}
-        loyerBailleurPerSite={portfolioExportData?.loyerBailleurPerSite ?? 3000}
-        fraisCommerciauxPerSite={portfolioExportData?.fraisCommerciaux ?? (config.fraisCommerciaux !== undefined ? config.fraisCommerciaux : 2500)}
-      />
+      {isBessPortfolioLenderModalOpen && (
+        <BessPortfolioLenderModal
+          isOpen={isBessPortfolioLenderModalOpen}
+          onClose={() => setIsBessPortfolioLenderModalOpen(false)}
+          portfolioName={selectedBessPortfolio}
+          sites={portfolioExportData?.analyzedSites || activeBessSites}
+          consolidatedTotals={portfolioExportData?.consolidatedTotals || {}}
+          consolidatedChronique={portfolioExportData?.consolidatedChronique || []}
+          debtDuration={portfolioExportData?.debtDuration ?? 12}
+          debtRate={portfolioExportData?.debtRate ?? 4.30}
+          loyerBailleurPerSite={portfolioExportData?.loyerBailleurPerSite ?? 3000}
+          fraisCommerciauxPerSite={portfolioExportData?.fraisCommerciaux ?? (config.fraisCommerciaux !== undefined ? config.fraisCommerciaux : 2500)}
+        />
+      )}
     </div>
   );
 }
@@ -3464,16 +3466,18 @@ function TabBpProjets({
   />
 
   {/* Modal Dossier Prêteur Consolidé PV pour Banques & Financeurs */}
-  <PvPortfolioLenderModal
-    isOpen={isPvPortfolioLenderModalOpen}
-    onClose={() => setIsPvPortfolioLenderModalOpen(false)}
-    portfolioName={selectedPvPortfolio}
-    sites={pvPortfolioExportData?.analyzedSites || pvHeliosSites}
-    consolidatedTotals={pvPortfolioExportData?.consolidatedTotals || { totalSites: pvHeliosSites.length, totalPowerMw: pvHeliosPowerMw }}
-    consolidatedChronique={pvPortfolioExportData?.consolidatedChronique || []}
-    debtDuration={pvPortfolioExportData?.debtDuration ?? 20}
-    debtRate={pvPortfolioExportData?.debtRate ?? 4.20}
-  />
+  {isPvPortfolioLenderModalOpen && (
+    <PvPortfolioLenderModal
+      isOpen={isPvPortfolioLenderModalOpen}
+      onClose={() => setIsPvPortfolioLenderModalOpen(false)}
+      portfolioName={selectedPvPortfolio}
+      sites={pvPortfolioExportData?.analyzedSites || pvHeliosSites}
+      consolidatedTotals={pvPortfolioExportData?.consolidatedTotals || { totalSites: pvHeliosSites.length, totalPowerMw: Number(pvHeliosPowerMw || 0) }}
+      consolidatedChronique={pvPortfolioExportData?.consolidatedChronique || []}
+      debtDuration={pvPortfolioExportData?.debtDuration ?? 20}
+      debtRate={pvPortfolioExportData?.debtRate ?? 4.20}
+    />
+  )}
 
   {/* Modal Gestion des Portefeuilles PV & BESS (Admin) */}
   <PortfolioManagerModal

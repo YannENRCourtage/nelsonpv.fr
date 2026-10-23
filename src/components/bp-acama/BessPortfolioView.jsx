@@ -293,7 +293,7 @@ const ODRE_CAPARESEAU_29_SITES = [
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg sm:text-xl font-black tracking-tight">
-                PORTEFEUILLE MULTI-PROJETS BESS — {selectedPortfolio === 'ALL' ? 'CONSOLIDÉ' : selectedPortfolio} ({consolidatedTotals.totalSites} SITES / {consolidatedTotals.totalPowerMw.toFixed(1)} MW)
+                PORTEFEUILLE MULTI-PROJETS BESS — {selectedPortfolio === 'ALL' ? 'CONSOLIDÉ' : selectedPortfolio} ({consolidatedTotals?.totalSites || 0} SITES / {Number(consolidatedTotals?.totalPowerMw || 0).toFixed(1)} MW)
               </h2>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
@@ -628,14 +628,14 @@ const ODRE_CAPARESEAU_29_SITES = [
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Puissance Globale</div>
-          <div className="text-xl font-black text-slate-900 mt-1">{consolidatedTotals.totalPowerMw.toFixed(1)} MW</div>
-          <div className="text-[10px] font-semibold text-blue-600 mt-0.5">{consolidatedTotals.totalSites} × 500 kW HTA</div>
+          <div className="text-xl font-black text-slate-900 mt-1">{Number(consolidatedTotals?.totalPowerMw || 0).toFixed(1)} MW</div>
+          <div className="text-[10px] font-semibold text-blue-600 mt-0.5">{consolidatedTotals?.totalSites || 0} × 500 kW HTA</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Capacité Stockage</div>
-          <div className="text-xl font-black text-slate-900 mt-1">{consolidatedTotals.totalCapacityMwh.toFixed(2)} MWh</div>
-          <div className="text-[10px] font-semibold text-indigo-600 mt-0.5">{consolidatedTotals.totalSites} × 1044 kWh (2h)</div>
+          <div className="text-xl font-black text-slate-900 mt-1">{Number(consolidatedTotals?.totalCapacityMwh || 0).toFixed(2)} MWh</div>
+          <div className="text-[10px] font-semibold text-indigo-600 mt-0.5">{consolidatedTotals?.totalSites || 0} × 1044 kWh (2h)</div>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
@@ -837,18 +837,20 @@ const ODRE_CAPARESEAU_29_SITES = [
         projects={projects}
       />
 
-      <BessPortfolioLenderModal
-        isOpen={isLenderModalOpen}
-        onClose={() => setIsLenderModalOpen(false)}
-        portfolioName={selectedPortfolio}
-        sites={analyzedSites}
-        consolidatedTotals={consolidatedTotals}
-        consolidatedChronique={consolidatedChronique}
-        debtDuration={debtDuration}
-        debtRate={debtRate}
-        loyerBailleurPerSite={loyerBailleurPerSite}
-        fraisCommerciauxPerSite={fraisCommerciauxPerSite}
-      />
+      {isLenderModalOpen && (
+        <BessPortfolioLenderModal
+          isOpen={isLenderModalOpen}
+          onClose={() => setIsLenderModalOpen(false)}
+          portfolioName={selectedPortfolio}
+          sites={analyzedSites}
+          consolidatedTotals={consolidatedTotals}
+          consolidatedChronique={consolidatedChronique}
+          debtDuration={debtDuration}
+          debtRate={debtRate}
+          loyerBailleurPerSite={loyerBailleurPerSite}
+          fraisCommerciauxPerSite={fraisCommerciauxPerSite}
+        />
+      )}
     </div>
   );
 }

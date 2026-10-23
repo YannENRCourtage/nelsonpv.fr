@@ -86,13 +86,15 @@ export default function BessPortfolioLenderModal({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Totaux agrégés du portefeuille
-  const nbSites = sites.length || consolidatedTotals.totalSites || 1;
-  const totalPowerMw = (consolidatedTotals.totalPowerMw || nbSites * 0.5).toFixed(2);
-  const totalCapacityMwh = (consolidatedTotals.totalCapacityMwh || nbSites * 1.044).toFixed(2);
-  const totalCapex = consolidatedTotals.totalCapex || (nbSites * 270000);
-  const totalCaAn1 = consolidatedTotals.totalCaAn1 || (nbSites * 93171);
-  const totalOpexAn1 = consolidatedTotals.totalOpexAn1 || (nbSites * 35900);
-  const totalLoyersAn1 = consolidatedTotals.totalLoyersAn1 || (nbSites * (loyerBailleurPerSite || 3000));
+  const nbSites = Math.max(1, Number(sites?.length || consolidatedTotals?.totalSites || 1));
+  const rawPowerMw = Number(consolidatedTotals?.totalPowerMw);
+  const totalPowerMw = (Number.isFinite(rawPowerMw) && rawPowerMw > 0 ? rawPowerMw : (nbSites * 0.5)).toFixed(2);
+  const rawCapacityMwh = Number(consolidatedTotals?.totalCapacityMwh);
+  const totalCapacityMwh = (Number.isFinite(rawCapacityMwh) && rawCapacityMwh > 0 ? rawCapacityMwh : (nbSites * 1.044)).toFixed(2);
+  const totalCapex = Number(consolidatedTotals?.totalCapex) || (nbSites * 270000);
+  const totalCaAn1 = Number(consolidatedTotals?.totalCaAn1) || (nbSites * 93171);
+  const totalOpexAn1 = Number(consolidatedTotals?.totalOpexAn1) || (nbSites * 35900);
+  const totalLoyersAn1 = Number(consolidatedTotals?.totalLoyersAn1) || (nbSites * (Number(loyerBailleurPerSite) || 3000));
 
   // Calcul du modèle bancaire prêteur consolidé
   const model = useMemo(() => {

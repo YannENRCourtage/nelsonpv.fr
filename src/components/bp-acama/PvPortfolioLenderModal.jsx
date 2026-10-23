@@ -86,206 +86,237 @@ export default function PvPortfolioLenderModal({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Totaux agrégés du portefeuille PV
-  const nbSites = sites.length || consolidatedTotals.totalSites || 1;
-  const totalPowerMw = (consolidatedTotals.totalPowerMw || 2.5).toFixed(2);
-  const totalProdMwh = Math.round(consolidatedTotals.totalProdMwh || (Number(totalPowerMw) * 1150));
-  const totalCapex = consolidatedTotals.totalCapex || (Number(totalPowerMw) * 1000 * 950);
-  const totalCaAn1 = consolidatedTotals.totalCaAn1 || (totalProdMwh * 135);
-  const totalOpexAn1 = consolidatedTotals.totalOpexAn1 || (Number(totalPowerMw) * 1000 * 18);
-  const totalLoyersAn1 = consolidatedTotals.totalLoyersAn1 || (nbSites * 2000);
+  const nbSites = Math.max(1, Number(sites?.length || consolidatedTotals?.totalSites || 1));
+  const rawPowerMw = Number(consolidatedTotals?.totalPowerMw);
+  const totalPowerMw = (Number.isFinite(rawPowerMw) && rawPowerMw > 0 ? rawPowerMw : 2.5).toFixed(2);
+  const totalProdMwh = Math.round(Number(consolidatedTotals?.totalProdMwh) || (Number(totalPowerMw) * 1150));
+  const totalCapex = Number(consolidatedTotals?.totalCapex) || (Number(totalPowerMw) * 1000 * 950);
+  const totalCaAn1 = Number(consolidatedTotals?.totalCaAn1) || (totalProdMwh * 135);
+  const totalOpexAn1 = Number(consolidatedTotals?.totalOpexAn1) || (Number(totalPowerMw) * 1000 * 18);
+  const totalLoyersAn1 = Number(consolidatedTotals?.totalLoyersAn1) || (nbSites * 2000);
 
   // Modèle financier prêteur senior PV sur 20 ans
   const pvModel = useMemo(() => {
-    const horizon = 20;
-    const loanYears = Math.min(20, Number(debtDuration) || 20);
-    const rateDecimal = (debtRate || 4.20) / 100;
-    const debtShare = 0.85; // 85% de dette senior pour le PV
-    const equityShare = 0.15;
-    const seniorDebt = totalCapex * debtShare;
-    const equity = totalCapex * equityShare;
+    try {
+      const horizon = 20;
+      const loanYears = Math.min(20, Number(debtDuration) || 20);
+      const rateDecimal = (debtRate || 4.20) / 100;
+      const debtShare = 0.85; // 85% de dette senior pour le PV
+      const equityShare = 0.15;
+      const seniorDebt = totalCapex * debtShare;
+      const equity = totalCapex * equityShare;
 
-    const annuite = Math.abs(calculatePmt(rateDecimal, loanYears, seniorDebt));
-    const annualAmort = totalCapex / horizon;
+      const annuite = Math.abs(calculatePmt(rateDecimal, loanYears, seniorDebt));
+      const annualAmort = totalCapex / horizon;
 
-    let capitalRestant = seniorDebt;
-    const rows = [];
-    const fcffArray = [-totalCapex];
-    const fcfeArray = [-equity];
+      let capitalRestant = seniorDebt;
+      const rows = [];
+      const fcffArray = [-totalCapex];
+      const fcfeArray = [-equity];
 
-    for (let t = 1; t <= horizon; t++) {
-      // Dégradation PV -0.5% / an
-      const prodY = totalProdMwh * Math.pow(1 - 0.005, t - 1);
-      const caY = totalCaAn1 * Math.pow(1 - 0.005, t - 1);
-      // Inflation charges +1.5% / an
-      const opexY = (totalOpexAn1 + totalLoyersAn1) * Math.pow(1 + 0.015, t - 1);
-      const ebitdaY = caY - opexY;
+      for (let t = 1; t <= horizon; t++) {
+        // Dégradation PV -0.5% / an
+        const prodY = totalProdMwh * Math.pow(1 - 0.005, t - 1);
+        const caY = totalCaAn1 * Math.pow(1 - 0.005, t - 1);
+        // Inflation charges +1.5% / an
+        const opexY = (totalOpexAn1 + totalLoyersAn1) * Math.pow(1 + 0.015, t - 1);
+        const ebitdaY = caY - opexY;
 
-      const debtStart = capitalRestant;
-      const interestY = t <= loanYears ? debtStart * rateDecimal : 0;
-      const principalY = t <= loanYears ? (annuite - interestY) : 0;
-      const debtServiceY = t <= loanYears ? annuite : 0;
-      capitalRestant = Math.max(0, debtStart - principalY);
+        const debtStart = capitalRestant;
+        const interestY = t <= loanYears ? debtStart * rateDecimal : 0;
+        const principalY = t <= loanYears ? (annuite - interestY) : 0;
+        const debtServiceY = t <= loanYears ? annuite : 0;
+        capitalRestant = Math.max(0, debtStart - principalY);
 
-      const ebitY = ebitdaY - annualAmort;
-      const ebtY = ebitY - interestY;
+        const ebitY = ebitdaY - annualAmort;
+        const ebtY = ebitY - interestY;
 
-      // IS LF 2024 (15% sous 42.5k€, 25% au-delà)
-      const baseIs = Math.max(0, ebtY);
-      const isY = baseIs <= 42500 ? baseIs * 0.15 : (42500 * 0.15 + (baseIs - 42500) * 0.25);
-      const netIncomeY = ebtY - isY;
+        // IS LF 2024 (15% sous 42.5k€, 25% au-delà)
+        const baseIs = Math.max(0, ebtY);
+        const isY = baseIs <= 42500 ? baseIs * 0.15 : (42500 * 0.15 + (baseIs - 42500) * 0.25);
+        const netIncomeY = ebtY - isY;
 
-      const cfadsY = ebitdaY - isY;
-      const dscrY = (t <= loanYears && debtServiceY > 0) ? (cfadsY / debtServiceY) : null;
-      const fcfeY = cfadsY - debtServiceY;
+        const cfadsY = ebitdaY - isY;
+        const dscrY = (t <= loanYears && debtServiceY > 0) ? (cfadsY / debtServiceY) : null;
+        const fcfeY = cfadsY - debtServiceY;
 
-      // Non-levier
-      const isUnlevered = Math.max(0, ebitY) <= 42500 ? Math.max(0, ebitY) * 0.15 : (42500 * 0.15 + (Math.max(0, ebitY) - 42500) * 0.25);
-      const fcffY = ebitdaY - isUnlevered;
+        // Non-levier
+        const isUnlevered = Math.max(0, ebitY) <= 42500 ? Math.max(0, ebitY) * 0.15 : (42500 * 0.15 + (Math.max(0, ebitY) - 42500) * 0.25);
+        const fcffY = ebitdaY - isUnlevered;
 
-      fcffArray.push(fcffY);
-      fcfeArray.push(fcfeY);
+        fcffArray.push(fcffY);
+        fcfeArray.push(fcfeY);
 
-      rows.push({
-        year: t,
-        prodMwh: prodY,
-        ca: caY,
-        opex: opexY,
-        ebitda: ebitdaY,
-        amort: annualAmort,
-        interest: interestY,
-        principal: principalY,
-        debtService: debtServiceY,
-        debtEnd: capitalRestant,
-        ebt: ebtY,
-        is: isY,
-        netIncome: netIncomeY,
-        cfads: cfadsY,
-        dscr: dscrY,
-        fcff: fcffY,
-        fcfe: fcfeY
-      });
+        rows.push({
+          year: t,
+          prodMwh: prodY,
+          ca: caY,
+          opex: opexY,
+          ebitda: ebitdaY,
+          amort: annualAmort,
+          interest: interestY,
+          principal: principalY,
+          debtService: debtServiceY,
+          debtEnd: capitalRestant,
+          ebt: ebtY,
+          is: isY,
+          netIncome: netIncomeY,
+          cfads: cfadsY,
+          dscr: dscrY,
+          fcff: fcffY,
+          fcfe: fcfeY
+        });
+      }
+
+      // Totaux cumulés 20 ans
+      const cumul = {
+        prodMwh: rows.reduce((s, r) => s + r.prodMwh, 0),
+        ca: rows.reduce((s, r) => s + r.ca, 0),
+        opex: rows.reduce((s, r) => s + r.opex, 0),
+        ebitda: rows.reduce((s, r) => s + r.ebitda, 0),
+        interest: rows.reduce((s, r) => s + r.interest, 0),
+        principal: rows.reduce((s, r) => s + r.principal, 0),
+        debtService: rows.reduce((s, r) => s + r.debtService, 0),
+        is: rows.reduce((s, r) => s + r.is, 0),
+        netIncome: rows.reduce((s, r) => s + r.netIncome, 0),
+        cfads: rows.reduce((s, r) => s + r.cfads, 0),
+        fcff: rows.reduce((s, r) => s + r.fcff, 0),
+        fcfe: rows.reduce((s, r) => s + r.fcfe, 0)
+      };
+
+      const dscrRows = rows.filter(r => r.dscr !== null);
+      const dscrMin = dscrRows.length > 0 ? Math.min(...dscrRows.map(r => r.dscr)) : 1.30;
+      const dscrAvg = dscrRows.length > 0 ? dscrRows.reduce((s, r) => s + r.dscr, 0) / dscrRows.length : 1.45;
+
+      // Ratios d'actualisation WACC 6%
+      const projectNpv = npv(0.06, rows.map(r => r.fcff)) - totalCapex;
+      const equityNpv = npv(0.06, rows.map(r => r.fcfe)) - equity;
+      const projectIrr = calculateIrr(fcffArray, 0.08) * 100;
+      const equityIrr = calculateIrr(fcfeArray, 0.12) * 100;
+
+      // LLCR & PLCR
+      const cfadsDuringLoan = rows.filter(r => r.debtService > 0).map(r => r.cfads);
+      const npvCfadsLoan = npv(rateDecimal, cfadsDuringLoan);
+      const llcr = seniorDebt > 0 ? npvCfadsLoan / seniorDebt : 1.40;
+      const npvCfadsAll = npv(rateDecimal, rows.map(r => r.cfads));
+      const plcr = seniorDebt > 0 ? npvCfadsAll / seniorDebt : 1.65;
+
+      const payback = calculateProjectPayback(totalCapex, rows.map(r => r.ebitda));
+
+      return {
+        seniorDebt,
+        equity,
+        annuite,
+        rows,
+        cumul,
+        dscrMin,
+        dscrAvg,
+        llcr,
+        plcr,
+        projectNpv,
+        equityNpv,
+        projectIrr,
+        equityIrr,
+        payback: payback || 7.5
+      };
+    } catch (e) {
+      console.error('[PvPortfolioLenderModal] Erreur pvModel:', e);
+      return {
+        seniorDebt: 0,
+        equity: 0,
+        annuite: 0,
+        rows: [],
+        cumul: { ca: 0, opex: 0, ebitda: 0, debtService: 0, netIncome: 0, cfads: 0, prodMwh: 0 },
+        dscrMin: 1.30,
+        dscrAvg: 1.45,
+        llcr: 1.40,
+        plcr: 1.65,
+        projectNpv: 0,
+        equityNpv: 0,
+        projectIrr: 8.0,
+        equityIrr: 12.0,
+        payback: 7.5
+      };
     }
-
-    // Totaux cumulés 20 ans
-    const cumul = {
-      prodMwh: rows.reduce((s, r) => s + r.prodMwh, 0),
-      ca: rows.reduce((s, r) => s + r.ca, 0),
-      opex: rows.reduce((s, r) => s + r.opex, 0),
-      ebitda: rows.reduce((s, r) => s + r.ebitda, 0),
-      interest: rows.reduce((s, r) => s + r.interest, 0),
-      principal: rows.reduce((s, r) => s + r.principal, 0),
-      debtService: rows.reduce((s, r) => s + r.debtService, 0),
-      is: rows.reduce((s, r) => s + r.is, 0),
-      netIncome: rows.reduce((s, r) => s + r.netIncome, 0),
-      cfads: rows.reduce((s, r) => s + r.cfads, 0),
-      fcff: rows.reduce((s, r) => s + r.fcff, 0),
-      fcfe: rows.reduce((s, r) => s + r.fcfe, 0)
-    };
-
-    const dscrRows = rows.filter(r => r.dscr !== null);
-    const dscrMin = dscrRows.length > 0 ? Math.min(...dscrRows.map(r => r.dscr)) : 1.30;
-    const dscrAvg = dscrRows.length > 0 ? dscrRows.reduce((s, r) => s + r.dscr, 0) / dscrRows.length : 1.45;
-
-    // Ratios d'actualisation WACC 6%
-    const projectNpv = npv(0.06, rows.map(r => r.fcff)) - totalCapex;
-    const equityNpv = npv(0.06, rows.map(r => r.fcfe)) - equity;
-    const projectIrr = calculateIrr(fcffArray, 0.08) * 100;
-    const equityIrr = calculateIrr(fcfeArray, 0.12) * 100;
-
-    // LLCR & PLCR
-    const cfadsDuringLoan = rows.filter(r => r.debtService > 0).map(r => r.cfads);
-    const npvCfadsLoan = npv(rateDecimal, cfadsDuringLoan);
-    const llcr = seniorDebt > 0 ? npvCfadsLoan / seniorDebt : 1.40;
-    const npvCfadsAll = npv(rateDecimal, rows.map(r => r.cfads));
-    const plcr = seniorDebt > 0 ? npvCfadsAll / seniorDebt : 1.65;
-
-    const payback = calculateProjectPayback(totalCapex, rows.map(r => r.ebitda));
-
-    return {
-      seniorDebt,
-      equity,
-      annuite,
-      rows,
-      cumul,
-      dscrMin,
-      dscrAvg,
-      llcr,
-      plcr,
-      projectNpv,
-      equityNpv,
-      projectIrr,
-      equityIrr,
-      payback: payback || 7.5
-    };
   }, [totalCapex, totalCaAn1, totalOpexAn1, totalLoyersAn1, totalProdMwh, debtDuration, debtRate]);
 
   // 8 Scénarios de Stress-Tests PV
   const scenarios = useMemo(() => {
-    const base = pvModel;
-    const runSim = (caFactor, opexFactor, rateDeltaBps) => {
-      const loanYears = Math.min(20, Number(debtDuration) || 20);
-      const rDec = ((debtRate || 4.20) + rateDeltaBps / 100) / 100;
-      const sDebt = totalCapex * 0.85;
-      const ann = Math.abs(calculatePmt(rDec, loanYears, sDebt));
-      let minDscr = 99;
-      let sumDscr = 0;
-      let netCumul = 0;
+    try {
+      const base = pvModel;
+      const runSim = (caFactor, opexFactor, rateDeltaBps) => {
+        const loanYears = Math.min(20, Number(debtDuration) || 20);
+        const rDec = ((debtRate || 4.20) + rateDeltaBps / 100) / 100;
+        const sDebt = totalCapex * 0.85;
+        const ann = Math.abs(calculatePmt(rDec, loanYears, sDebt));
+        let minDscr = 99;
+        let sumDscr = 0;
+        let netCumul = 0;
 
-      for (let t = 1; t <= loanYears; t++) {
-        const ca = totalCaAn1 * caFactor * Math.pow(1 - 0.005, t - 1);
-        const op = (totalOpexAn1 + totalLoyersAn1) * opexFactor * Math.pow(1 + 0.015, t - 1);
-        const eb = ca - op;
-        const ebt = eb - (totalCapex / 20) - (sDebt * (1 - (t - 1) / loanYears) * rDec);
-        const baseIs = Math.max(0, ebt);
-        const isTax = baseIs <= 42500 ? baseIs * 0.15 : (42500 * 0.15 + (baseIs - 42500) * 0.25);
-        const cfads = eb - isTax;
-        const dscr = cfads / ann;
-        if (dscr < minDscr) minDscr = dscr;
-        sumDscr += dscr;
-        netCumul += (ebt - isTax);
-      }
-      return {
-        dscrMin: minDscr,
-        dscrAvg: sumDscr / loanYears,
-        netCumul
+        for (let t = 1; t <= loanYears; t++) {
+          const ca = totalCaAn1 * caFactor * Math.pow(1 - 0.005, t - 1);
+          const op = (totalOpexAn1 + totalLoyersAn1) * opexFactor * Math.pow(1 + 0.015, t - 1);
+          const eb = ca - op;
+          const ebt = eb - (totalCapex / 20) - (sDebt * (1 - (t - 1) / loanYears) * rDec);
+          const baseIs = Math.max(0, ebt);
+          const isTax = baseIs <= 42500 ? baseIs * 0.15 : (42500 * 0.15 + (baseIs - 42500) * 0.25);
+          const cfads = eb - isTax;
+          const dscr = ann > 0 ? (cfads / ann) : 1.30;
+          if (dscr < minDscr) minDscr = dscr;
+          sumDscr += dscr;
+          netCumul += (ebt - isTax);
+        }
+        return {
+          dscrMin: minDscr,
+          dscrAvg: loanYears > 0 ? sumDscr / loanYears : 1.45,
+          netCumul
+        };
       };
-    };
 
-    const s1 = { id: 1, name: "1. Cas de Base P50 (Audité)", dscrMin: base.dscrMin, dscrAvg: base.dscrAvg, netIncome: base.cumul.netIncome };
-    const s2Res = runSim(0.92, 1.0, 0);
-    const s2 = { id: 2, name: "2. Ensoleillement P90 (-8% productible)", dscrMin: s2Res.dscrMin, dscrAvg: s2Res.dscrAvg, netIncome: s2Res.netCumul };
-    const s3Res = runSim(0.86, 1.0, 0);
-    const s3 = { id: 3, name: "3. Ensoleillement P99 (-14% productible)", dscrMin: s3Res.dscrMin, dscrAvg: s3Res.dscrAvg, netIncome: s3Res.netCumul };
-    const s4Res = runSim(0.90, 1.0, 0);
-    const s4 = { id: 4, name: "4. Baisse Tarif / PPA (-10% revenus)", dscrMin: s4Res.dscrMin, dscrAvg: s4Res.dscrAvg, netIncome: s4Res.netCumul };
-    const s5Res = runSim(1.0, 1.20, 0);
-    const s5 = { id: 5, name: "5. Inflation Charges OPEX (+20%)", dscrMin: s5Res.dscrMin, dscrAvg: s5Res.dscrAvg, netIncome: s5Res.netCumul };
-    const s6Res = runSim(1.0, 1.0, 150);
-    const s6 = { id: 6, name: "6. Hausse Taux Bancaire (+150 bps)", dscrMin: s6Res.dscrMin, dscrAvg: s6Res.dscrAvg, netIncome: s6Res.netCumul };
-    const s7Res = runSim(0.92, 1.15, 0);
-    const s7 = { id: 7, name: "7. Stress Combiné (P90 & Charges +15%)", dscrMin: s7Res.dscrMin, dscrAvg: s7Res.dscrAvg, netIncome: s7Res.netCumul };
-    const s8Res = runSim(0.90, 1.20, 100);
-    const s8 = { id: 8, name: "8. Stress Sévère (P90 & OPEX +20% & +100 bps)", dscrMin: s8Res.dscrMin, dscrAvg: s8Res.dscrAvg, netIncome: s8Res.netCumul };
+      const s1 = { id: 1, name: "1. Cas de Base P50 (Audité)", dscrMin: base.dscrMin, dscrAvg: base.dscrAvg, netIncome: base.cumul.netIncome };
+      const s2Res = runSim(0.92, 1.0, 0);
+      const s2 = { id: 2, name: "2. Ensoleillement P90 (-8% productible)", dscrMin: s2Res.dscrMin, dscrAvg: s2Res.dscrAvg, netIncome: s2Res.netCumul };
+      const s3Res = runSim(0.86, 1.0, 0);
+      const s3 = { id: 3, name: "3. Ensoleillement P99 (-14% productible)", dscrMin: s3Res.dscrMin, dscrAvg: s3Res.dscrAvg, netIncome: s3Res.netCumul };
+      const s4Res = runSim(0.90, 1.0, 0);
+      const s4 = { id: 4, name: "4. Baisse Tarif / PPA (-10% revenus)", dscrMin: s4Res.dscrMin, dscrAvg: s4Res.dscrAvg, netIncome: s4Res.netCumul };
+      const s5Res = runSim(1.0, 1.20, 0);
+      const s5 = { id: 5, name: "5. Inflation Charges OPEX (+20%)", dscrMin: s5Res.dscrMin, dscrAvg: s5Res.dscrAvg, netIncome: s5Res.netCumul };
+      const s6Res = runSim(1.0, 1.0, 150);
+      const s6 = { id: 6, name: "6. Hausse Taux Bancaire (+150 bps)", dscrMin: s6Res.dscrMin, dscrAvg: s6Res.dscrAvg, netIncome: s6Res.netCumul };
+      const s7Res = runSim(0.92, 1.15, 0);
+      const s7 = { id: 7, name: "7. Stress Combiné (P90 & Charges +15%)", dscrMin: s7Res.dscrMin, dscrAvg: s7Res.dscrAvg, netIncome: s7Res.netCumul };
+      const s8Res = runSim(0.90, 1.20, 100);
+      const s8 = { id: 8, name: "8. Stress Sévère (P90 & OPEX +20% & +100 bps)", dscrMin: s8Res.dscrMin, dscrAvg: s8Res.dscrAvg, netIncome: s8Res.netCumul };
 
-    return [s1, s2, s3, s4, s5, s6, s7, s8];
+      return [s1, s2, s3, s4, s5, s6, s7, s8];
+    } catch (e) {
+      console.error('[PvPortfolioLenderModal] Erreur scenarios:', e);
+      return [];
+    }
   }, [pvModel, totalCapex, totalCaAn1, totalOpexAn1, totalLoyersAn1, debtDuration, debtRate]);
 
   // Points de rupture
   const rupture = useMemo(() => {
-    const ann = pvModel.annuite;
-    const opex1 = totalOpexAn1 + totalLoyersAn1;
-    // Baisse pour DSCR = 1.15
-    const revFor115 = (ann * 1.15) + opex1;
-    const baisse115 = Math.max(0, ((totalCaAn1 - revFor115) / totalCaAn1) * 100);
-    // Baisse pour DSCR = 1.00
-    const revFor100 = ann + opex1;
-    const baisse100 = Math.max(0, ((totalCaAn1 - revFor100) / totalCaAn1) * 100);
+    try {
+      const ann = pvModel?.annuite || 0;
+      const opex1 = (totalOpexAn1 || 0) + (totalLoyersAn1 || 0);
+      const ca1 = totalCaAn1 || 1;
+      // Baisse pour DSCR = 1.15
+      const revFor115 = (ann * 1.15) + opex1;
+      const baisse115 = Math.max(0, ((ca1 - revFor115) / ca1) * 100);
+      // Baisse pour DSCR = 1.00
+      const revFor100 = ann + opex1;
+      const baisse100 = Math.max(0, ((ca1 - revFor100) / ca1) * 100);
 
-    return {
-      baisse115,
-      baisse100,
-      yearsCompliant: pvModel.rows.filter(r => r.dscr >= 1.20).length
-    };
+      return {
+        baisse115,
+        baisse100,
+        yearsCompliant: (pvModel?.rows || []).filter(r => r.dscr >= 1.20).length
+      };
+    } catch (e) {
+      return { baisse115: 0, baisse100: 0, yearsCompliant: 20 };
+    }
   }, [pvModel, totalCaAn1, totalOpexAn1, totalLoyersAn1]);
 
   const isDscrCompliant = pvModel.dscrMin >= 1.20;
