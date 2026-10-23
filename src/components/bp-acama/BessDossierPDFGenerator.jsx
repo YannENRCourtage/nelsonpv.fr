@@ -512,14 +512,96 @@ export default function BessDossierPDFGenerator({
     return { year: y, ebitda, cf };
   });
 
-  // Moteur d'export PDF A4 Paysage Pleine Largeur (Supporte Portfolio 8 planches ou Étude Complète 39 pages)
+  /**
+   * Extrait et agrège toutes les règles CSS de l'application (Vite/Tailwind, styles inline et balises distantes)
+   * pour injection synchrone dans le sandbox html2canvas via une balise <style> dédiée.
+   */
+  const getHighFidelityStyles = async () => {
+    let cssOutput = '';
+    const fontImports = [
+      "@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');"
+    ];
+
+    // 1. Lire document.styleSheets
+    try {
+      for (let i = 0; i < document.styleSheets.length; i++) {
+        try {
+          const sheet = document.styleSheets[i];
+          if (sheet && sheet.cssRules) {
+            for (let j = 0; j < sheet.cssRules.length; j++) {
+              const rule = sheet.cssRules[j];
+              if (rule.type === CSSRule.IMPORT_RULE) {
+                fontImports.push(rule.cssText);
+              } else {
+                cssOutput += rule.cssText + '\n';
+              }
+            }
+          }
+        } catch (errSheet) {
+          // Ignorer SecurityError sur les feuilles cross-origin
+        }
+      }
+    } catch (err) {
+      console.warn('[PDF] Erreur lecture document.styleSheets:', err);
+    }
+
+    // 2. Si le CSS extrait est insuffisant (< 25 000 caractères, typique quand le CSS externe n'a pas pu être lu directement)
+    // Fetcher directement tous les fichiers <link rel="stylesheet">
+    if (cssOutput.length < 25000) {
+      try {
+        const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+        for (const link of links) {
+          if (link.href) {
+            try {
+              const res = await fetch(link.href, { cache: 'force-cache' });
+              if (res.ok) {
+                const text = await res.text();
+                cssOutput += '\n' + text;
+              }
+            } catch (fetchErr) {
+              console.warn('[PDF] Impossible de charger le CSS distant:', link.href, fetchErr);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[PDF] Erreur globale lors du fetch des link stylesheets:', err);
+      }
+    }
+
+    // 3. Ajouter également toutes les balises <style> inline du document actuel
+    try {
+      const inlineStyles = document.querySelectorAll('style');
+      inlineStyles.forEach(s => {
+        if (s.textContent) {
+          cssOutput += '\n' + s.textContent;
+        }
+      });
+    } catch (err) {
+      console.warn('[PDF] Erreur inline styles:', err);
+    }
+
+    return fontImports.join('\n') + '\n\n' + cssOutput;
+  };
+
+  // Moteur d'export PDF A4 Paysage Pleine Largeur (Supporte Portfolio planches ou Étude Complète fiches)
   const handleGeneratePdf = async (exportType = 'portfolio') => {
     setIsGenerating(true);
     const isComplete = exportType === 'complete';
-    setProgressStep(isComplete ? 'Initialisation de l\'Étude Complète BESS (39 pages)...' : 'Initialisation du moteur d’impression...');
-    await new Promise(r => setTimeout(r, 250));
+    setProgressStep(isComplete ? 'Initialisation de l\'Étude Complète BESS...' : 'Initialisation du moteur d’impression...');
+    await new Promise(r => setTimeout(r, 200));
 
     try {
+      // 1. Précharger tous les styles CSS haute fidélité et attendre les polices web
+      setProgressStep('Chargement des polices et des styles haute fidélité...');
+      const appStyles = await getHighFidelityStyles();
+      try {
+        if (document.fonts?.ready) {
+          await document.fonts.ready;
+        }
+      } catch (fontErr) {
+        // Ignorer si l'API document.fonts n'est pas supportée
+      }
+
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -534,7 +616,7 @@ export default function BessDossierPDFGenerator({
       const pagesToCapture = [];
       const planchesCount = totalPagesCount;
 
-      // 1. Les planches du dossier portefeuille (8 planches)
+      // 1. Les planches du dossier portefeuille (Planches 1 à totalPagesCount)
       for (let i = 1; i <= planchesCount; i++) {
         const el = document.getElementById(`bess-planche-container-${i}`);
         if (el) {
@@ -578,14 +660,17 @@ export default function BessDossierPDFGenerator({
             setProgressStep(`Capture Fiche Projet ${target.index}/${selectedBessSites.length} (${target.site?.name || ''}) [Page ${i + 1}/${totalTargetPages}]...`);
           }
         } else {
-          setProgressStep(`Capture planche ${i + 1} / ${totalTargetPages} (${target.title})...`);
+          setProgressStep(`Capture Planche ${i + 1} / ${totalTargetPages} (${target.title})...`);
         }
 
         // Forcer temporairement l'affichage du conteneur pour la capture
         const prevDisplay = container.style.display;
         container.style.display = 'flex';
         page.scrollIntoView({ block: 'start', inline: 'nearest' });
-        await new Promise(r => setTimeout(r, 60));
+
+        // Laisser un court temps de rendu pour le DOM, la carte et le visualiseur 3D
+        const waitMs = (target.type === 'portfolio' && target.index === 7) ? 250 : 70;
+        await new Promise(r => setTimeout(r, waitMs));
 
         const canvas = await html2canvas(page, {
           scale: 2,
@@ -594,13 +679,42 @@ export default function BessDossierPDFGenerator({
           backgroundColor: '#ffffff',
           width: 1380,
           height: 940,
+          windowWidth: 1440,
+          windowHeight: 1024,
+          scrollX: 0,
+          scrollY: 0,
           allowTaint: true,
           onclone: (clonedDoc) => {
-            // Isoler strictement la page courante en masquant tous les autres conteneurs
+            // 1. Injecter l'intégralité du CSS sous forme de balise <style> synchrone dans clonedDoc.head
+            if (appStyles) {
+              const styleTag = clonedDoc.createElement('style');
+              styleTag.setAttribute('type', 'text/css');
+              styleTag.appendChild(clonedDoc.createTextNode(appStyles));
+              clonedDoc.head.appendChild(styleTag);
+            }
+
+            // 2. Nettoyer les balises <link rel="stylesheet"> qui risquent d'échouer ou de bloquer le sandbox
+            clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(l => l.remove());
+
+            // 3. Base URL pour résoudre logos et images relatives
+            const baseTag = clonedDoc.createElement('base');
+            baseTag.href = window.location.origin;
+            clonedDoc.head.appendChild(baseTag);
+
+            // 4. Supprimer explicitement les éléments marqués ignore
+            clonedDoc.querySelectorAll('[data-html2canvas-ignore="true"]').forEach(el => el.remove());
+
+            // 5. Forcer la police globale sur le document cloné
+            clonedDoc.documentElement.style.fontFamily = "'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+            clonedDoc.body.style.fontFamily = "'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+            // 6. Isoler strictement la page courante en masquant tous les autres conteneurs
             const allContainers = clonedDoc.querySelectorAll('[id^="bess-planche-container-"], [id^="bess-single-site-container-"]');
             allContainers.forEach((c) => {
               if (c.id === target.containerId) {
                 c.style.display = 'flex';
+                c.style.flexDirection = 'column';
+                c.style.alignItems = 'center';
                 c.style.margin = '0';
                 c.style.padding = '0';
               } else {
@@ -608,7 +722,14 @@ export default function BessDossierPDFGenerator({
               }
             });
 
-            // Réinitialiser les marges et scrolls du conteneur parent
+            // 7. Réinitialiser les marges et scrolls du document cloné
+            clonedDoc.documentElement.scrollTop = 0;
+            clonedDoc.body.scrollTop = 0;
+            clonedDoc.documentElement.style.margin = '0';
+            clonedDoc.documentElement.style.padding = '0';
+            clonedDoc.body.style.margin = '0';
+            clonedDoc.body.style.padding = '0';
+
             const scrollBox = clonedDoc.querySelector('[class*="overflow-y-auto"]');
             if (scrollBox) {
               scrollBox.style.padding = '0';
@@ -616,7 +737,40 @@ export default function BessDossierPDFGenerator({
               scrollBox.scrollTop = 0;
             }
 
-            // Correction Leaflet : convertir translate3d en top/left pour html2canvas
+            // 8. Forcer les dimensions exactes sur l'élément de page cloné
+            const targetContainer = clonedDoc.getElementById(target.containerId);
+            const clonedPage = targetContainer?.querySelector('.bess-render-page');
+            if (clonedPage) {
+              clonedPage.style.width = '1380px';
+              clonedPage.style.minWidth = '1380px';
+              clonedPage.style.maxWidth = '1380px';
+              clonedPage.style.height = '940px';
+              clonedPage.style.minHeight = '940px';
+              clonedPage.style.maxHeight = '940px';
+              clonedPage.style.boxSizing = 'border-box';
+              clonedPage.style.overflow = 'hidden';
+
+              // Copier le contenu de tous les <canvas> (WebGL Three.js, Leaflet Canvas) depuis le DOM réel
+              const origCanvases = page.querySelectorAll('canvas');
+              const clonedCanvases = clonedPage.querySelectorAll('canvas');
+              origCanvases.forEach((origCanvas, idx) => {
+                const clonedCanvas = clonedCanvases[idx];
+                if (clonedCanvas && origCanvas.width > 0 && origCanvas.height > 0) {
+                  try {
+                    clonedCanvas.width = origCanvas.width;
+                    clonedCanvas.height = origCanvas.height;
+                    const ctx = clonedCanvas.getContext('2d');
+                    if (ctx) {
+                      ctx.drawImage(origCanvas, 0, 0);
+                    }
+                  } catch (e) {
+                    console.warn('[PDF] Impossible de copier le canvas:', e);
+                  }
+                }
+              });
+            }
+
+            // 9. Correction Leaflet : convertir translate3d en top/left pour html2canvas
             const leafletPanes = clonedDoc.querySelectorAll('.leaflet-map-pane, .leaflet-tile-pane, .leaflet-overlay-pane, .leaflet-marker-pane, .leaflet-tooltip-pane, .leaflet-popup-pane, .leaflet-shadow-pane');
             leafletPanes.forEach(pane => {
               const transform = pane.style.transform || '';
@@ -667,7 +821,7 @@ export default function BessDossierPDFGenerator({
       const fileDate = new Date().toISOString().slice(0, 10);
       let fileName = '';
       if (isComplete) {
-        fileName = `Etude_Complete_BESS_Portefeuille_${selectedBessSites.length}_Sites_${8 + selectedBessSites.length}_Pages_${fileDate}.pdf`;
+        fileName = `Etude_Complete_BESS_Portefeuille_${selectedBessSites.length}_Sites_${totalPagesCount + selectedBessSites.length}_Pages_${fileDate}.pdf`;
       } else if (isPort) {
         fileName = `Dossier_Investissement_BESS_Portefeuille_${selectedBessSites.length}_Sites_${(selectedBessSites.length * 0.5).toFixed(1)}MW_TURPE7_${fileDate}.pdf`;
       } else {
@@ -2357,6 +2511,7 @@ export default function BessDossierPDFGenerator({
                     totalSites={selectedBessSites.length}
                     studyDuration={20}
                     fraisCommerciaux={fraisCommerciaux}
+                    plancheOffset={totalPagesCount}
                   />
                 </div>
               ))}

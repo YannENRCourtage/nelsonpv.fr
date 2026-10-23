@@ -22,7 +22,7 @@ const fmtPct = (n) => `${(n ?? 0).toFixed(1)}%`;
  * Rendu 1 Page A4 Paysage (1380 x 940 px) d'une Fiche BESS Unitaire
  * Utilisé pour la génération individuelle ou intégrée dans l'Étude Complète 39 Pages
  */
-export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 31, studyDuration = 20, fraisCommerciaux }) {
+export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 31, studyDuration = 20, fraisCommerciaux, plancheOffset = 9 }) {
   if (!site) return null;
 
   // Calcul unifié avec computeBessFinancials
@@ -348,7 +348,7 @@ export default function BessProjectSingleSheet({ site, siteIndex, totalSites = 3
       <div className="pt-1.5 border-t border-slate-200 flex items-center justify-between text-[9.5px] text-slate-500 font-medium">
         <div>ENR COURTAGE • Fiche Projet BESS Unitaire #{siteIndex} ({site.name})</div>
         <div className="font-semibold text-slate-600">Délibération CRE 2025-227 • TURPE 7 HTA1 CU</div>
-        <div className="font-bold text-[#0b192c]">Page {8 + siteIndex} / {8 + totalSites}</div>
+        <div className="font-bold text-[#0b192c]">Page {plancheOffset + siteIndex} / {plancheOffset + totalSites}</div>
       </div>
     </div>
   );
