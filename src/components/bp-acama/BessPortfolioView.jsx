@@ -273,9 +273,11 @@ const ODRE_CAPARESEAU_29_SITES = [
     });
   };
 
-  // Export Excel de la Matrice Caparéseau ODRE des 31 postes sources
+  // Export Excel de la Matrice Caparéseau ODRE des postes sources pour le portefeuille actif
   const handleExportOdreMatrix = () => {
-    exportBessOdreMatrixToExcel();
+    exportBessOdreMatrixToExcel(activeSites, {
+      portfolioName: selectedPortfolio
+    });
   };
 
   return (
@@ -359,10 +361,10 @@ const ODRE_CAPARESEAU_29_SITES = [
           <button
             onClick={handleExportOdreMatrix}
             className="px-3 py-2 text-xs font-bold bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-100 rounded-lg border border-emerald-500/30 transition-all flex items-center gap-1.5 shadow-xs"
-            title="Télécharger la matrice Caparéseau ODRE des 31 postes sources au format Excel"
+            title={`Télécharger la matrice Caparéseau ODRE des ${activeSites.length} postes sources (${selectedPortfolio}) au format Excel`}
           >
             <FileSpreadsheet className="w-4 h-4 text-cyan-300" />
-            Matrice CAPARESEAU ODRE
+            Matrice CAPARESEAU ODRE ({selectedPortfolio === 'ALL' ? 'TOUS' : selectedPortfolio})
           </button>
         </div>
       </div>

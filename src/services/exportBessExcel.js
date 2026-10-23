@@ -149,28 +149,52 @@ export function exportBessPortfolioToExcel(sites = BESS_PORTFOLIO_SITES, options
 }
 
 /**
- * Déclenche le téléchargement de la matrice ODRE Caparéseau
+ * Déclenche le téléchargement de la matrice ODRE Caparéseau pour le portefeuille actif
+ * @param {Array} [sites] Sites du portefeuille actif (ex: activeSites FARADAY ou VOLTA)
+ * @param {Object} [options] Options d'export dont options.portfolioName
  */
-export function exportBessOdreMatrixToExcel() {
-  const dataRows = BESS_ODRE_MATRIX.map(s => ({
-    'N°': s.id,
-    'Site / Bailleur': s.siteName,
-    'Client': s.client,
-    'Commune': s.commune,
-    'Code Postal': s.codePostal,
-    'Département': s.departement,
-    'Latitude': s.latitude,
-    'Longitude': s.longitude,
-    'Poste Source Enedis': s.posteSourceEnedis,
-    'Tension': s.tension,
-    'Distance Réseau (km)': s.distanceKm,
-    'Quote-Part S3REnR': s.quotePartS3REnR,
-    'Capacité Résiduelle ODRE (MW)': s.capaciteResiduelleOdreMw,
-    'Typologie Zone CRE 2025-227': s.typologieZoneCre,
-    'Puissance BESS (kW)': s.puissanceKw,
-    'Capacité BESS (kWh)': s.capaciteKwh,
-    'Statut Raccordement / Transfo': s.statutRaccordement
-  }));
+export function exportBessOdreMatrixToExcel(sites = null, options = {}) {
+  const targetSites = (Array.isArray(sites) && sites.length > 0) ? sites : BESS_ODRE_MATRIX;
+
+  const dataRows = targetSites.map((s, idx) => {
+    const id = s.id || (idx + 1);
+    const siteName = s.siteName || s.name || `Projet BESS ${idx + 1}`;
+    const client = s.client || s.client_name || '';
+    const commune = s.commune || s.city || '';
+    const codePostal = s.codePostal || s.postcode || s.cp || '';
+    const departement = s.departement || s.dept || (codePostal ? String(codePostal).substring(0, 2) : '');
+    const latitude = s.latitude ?? s.lat;
+    const longitude = s.longitude ?? s.lng;
+    const posteSourceEnedis = s.posteSourceEnedis || s.substation?.name || s.poste_source || 'ODRE';
+    const tension = s.tension || s.substation?.voltageLevel || 'HTA 20 kV';
+    const distanceKm = s.distanceKm ?? s.substation?.distanceKm ?? 5.0;
+    const quotePartS3REnR = s.quotePartS3REnR || s.substation?.quotePartS3renr || '92.73 k€/MW';
+    const capaciteResiduelleOdreMw = s.capaciteResiduelleOdreMw ?? s.substation?.resteAffecterMw ?? 0;
+    const typologieZoneCre = s.typologieZoneCre || s.creQualification?.label || s.substation?.typologieZoneCre || 'Zone standard Enedis';
+    const puissanceKw = s.puissanceKw || s.powerKw || 500;
+    const capaciteKwh = s.capaciteKwh || s.capacityKwh || 1044;
+    const statutRaccordement = s.statutRaccordement || s.substation?.statutRaccordement || 'Transfo sol libre - Dépôt PTF';
+
+    return {
+      'N°': id,
+      'Site / Bailleur': siteName,
+      'Client': client,
+      'Commune': commune,
+      'Code Postal': codePostal,
+      'Département': departement,
+      'Latitude': latitude,
+      'Longitude': longitude,
+      'Poste Source Enedis': posteSourceEnedis,
+      'Tension': tension,
+      'Distance Réseau (km)': distanceKm,
+      'Quote-Part S3REnR': quotePartS3REnR,
+      'Capacité Résiduelle ODRE (MW)': capaciteResiduelleOdreMw,
+      'Typologie Zone CRE 2025-227': typologieZoneCre,
+      'Puissance BESS (kW)': puissanceKw,
+      'Capacité BESS (kWh)': capaciteKwh,
+      'Statut Raccordement / Transfo': statutRaccordement
+    };
+  });
 
   const ws = XLSX.utils.json_to_sheet(dataRows);
   const headers = Object.keys(dataRows[0] || {});
@@ -182,7 +206,12 @@ export function exportBessOdreMatrixToExcel() {
     return { wch: Math.max(maxLen + 3, 10) };
   });
 
+  const portfolioTag = options.portfolioName ? options.portfolioName.toUpperCase() : (targetSites === BESS_ODRE_MATRIX ? 'VOLTA' : `${targetSites.length}_Sites`);
+  const count = targetSites.length;
+  const sheetName = `Capareseau_ODRE_${portfolioTag}_${count}_Sites`.slice(0, 31);
+  const fileName = `Matrice_Capareseau_ODRE_${portfolioTag}_${count}_Postes_Sources_ENR_COURTAGE.xlsx`;
+
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, `Capareseau_ODRE_${BESS_ODRE_MATRIX.length}_Sites`);
-  XLSX.writeFile(wb, `Matrice_Capareseau_ODRE_${BESS_ODRE_MATRIX.length}_Postes_Sources_ENR_COURTAGE.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, fileName);
 }

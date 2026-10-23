@@ -64,6 +64,9 @@ function formatKm(meters) {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
+// Niveau de zoom initial resserré pour faire apparaître immédiatement les tronçons HTA de proximité
+const DEFAULT_HTA_ZOOM = 16.5;
+
 // ─── AUDIT TECHNIQUE AVANCÉ DU POSTE SOURCE (SPEC §6.6 / CAPARÉSEAU) ───────────
 function computeSubstationAudit(sub, networkLines = []) {
   if (!sub) return null;
@@ -316,13 +319,13 @@ function MapController({ onMapReady, onBoundsChange, center, activeTab }) {
     };
   }, [map, onMapReady]);
 
-  // Centrage initial sur le projet au zoom 15 (comme à l'image 4)
+  // Centrage initial sur le projet au zoom augmenté (16.5) pour faire apparaître les tronçons HTA présents
   useEffect(() => {
     if (!center || !center[0] || !center[1]) return;
     const centerKey = `${center[0].toFixed(5)},${center[1].toFixed(5)}`;
     if (centerKey !== lastCenterKeyRef.current) {
       lastCenterKeyRef.current = centerKey;
-      map.setView(center, 15, { animate: false });
+      map.setView(center, DEFAULT_HTA_ZOOM, { animate: false });
     }
   }, [center, map]);
 
@@ -500,7 +503,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
   }, [project?.gps]);
 
   const mapInstanceRef = useRef(null);
-  const [currentZoom, setCurrentZoom] = useState(15);
+  const [currentZoom, setCurrentZoom] = useState(DEFAULT_HTA_ZOOM);
   const [currentBounds, setCurrentBounds] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -1066,7 +1069,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
   const handleSelectAddress = (feature) => {
     const coords = feature.geometry.coordinates;
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView([coords[1], coords[0]], 15, { animate: true });
+      mapInstanceRef.current.setView([coords[1], coords[0]], DEFAULT_HTA_ZOOM, { animate: true });
     }
     setSearchSuggestions([]);
     setSearchQuery(feature.properties.label || '');
@@ -1074,7 +1077,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
 
   const handleGoToProject = () => {
     if (mapInstanceRef.current && projectCoords) {
-      mapInstanceRef.current.setView(projectCoords, 15, { animate: true });
+      mapInstanceRef.current.setView(projectCoords, DEFAULT_HTA_ZOOM, { animate: true });
     }
   };
 
@@ -1198,7 +1201,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
         {/* LEAFLET MAP CONTAINER */}
         <MapContainer
           center={projectCoords}
-          zoom={15}
+          zoom={DEFAULT_HTA_ZOOM}
           scrollWheelZoom={true}
           preferCanvas={true}
           className="w-full h-full z-0"

@@ -1,4 +1,6 @@
 import { findBessOdreData } from './bessOdreMatrix.js';
+import { findClosestCapareseauSubstation } from './capareseauSubstations.js';
+import { getCreSubstationQualification } from '../services/creZonesService.js';
 
 export const BESS_PORTFOLIO_SITES = [
   {
@@ -923,21 +925,96 @@ export function getBessPortfolioSites(projects = [], portfolioFilter = 'ALL') {
       if (lat === null || isNaN(lat)) lat = 45.0;
       if (lng === null || isNaN(lng)) lng = 1.0;
 
-      const distKm = Number(odre?.distanceKm || p.distance_raccordement_km || p.distancePoste || p.substation?.distanceKm || mock?.substation?.distanceKm || 5.0);
+      // Recherche automatique du poste source le plus proche via Caparéseau si non trouvé dans la matrice ODRE VOLTA
+      const closestSubstation = (lat && lng && (lat !== 45.0 || lng !== 1.0)) 
+        ? findClosestCapareseauSubstation(lat, lng) 
+        : null;
 
-      const substation = (typeof p.substation === 'object' && p.substation?.name) ? p.substation : {
-        name: odre?.posteSourceEnedis || p.poste_source || p.substationName || mock?.substation?.name || "ODRE",
-        code: odre?.codePoste || p.code_poste || mock?.substation?.code || "ODRE",
-        voltageLevel: odre?.tension || mock?.substation?.voltageLevel || "HTA / 20 kV",
+      // Distance réseau réelle calculée géographiquement (pas de 5.0 km forfaitaire statique si coordonnées disponibles)
+      const distKm = Number(
+        odre?.distanceKm || 
+        (p.distance_raccordement_km && p.distance_raccordement_km !== 5.0 ? p.distance_raccordement_km : null) || 
+        (p.distancePoste && p.distancePoste !== 5.0 ? p.distancePoste : null) || 
+        (p.substation?.distanceKm && p.substation.distanceKm !== 5.0 && p.substation?.name && p.substation.name !== 'ODRE' ? p.substation.distanceKm : null) || 
+        closestSubstation?.distanceKm || 
+        mock?.substation?.distanceKm || 
+        5.0
+      );
+
+      const substationName = odre?.posteSourceEnedis || 
+        (p.substation?.name && p.substation.name !== 'ODRE' ? p.substation.name : null) || 
+        (p.poste_source && p.poste_source !== 'ODRE' ? p.poste_source : null) || 
+        (p.substationName && p.substationName !== 'ODRE' ? p.substationName : null) || 
+        closestSubstation?.name || 
+        mock?.substation?.name || 
+        "ODRE";
+
+      const substationCode = odre?.codePoste || 
+        (p.substation?.code && p.substation.code !== 'ODRE' ? p.substation.code : null) || 
+        closestSubstation?.code || 
+        p.code_poste || 
+        mock?.substation?.code || 
+        substationName.substring(0, 5).toUpperCase();
+
+      const voltageLevel = odre?.tension || 
+        (p.substation?.name && p.substation.name !== 'ODRE' ? p.substation.voltageLevel : null) || 
+        closestSubstation?.voltageLevel || 
+        mock?.substation?.voltageLevel || 
+        "HTA 20 kV";
+
+      const quotePartS3renr = odre?.quotePartS3REnR || 
+        closestSubstation?.quotePartS3renr || 
+        (p.substation?.name && p.substation.name !== 'ODRE' ? p.substation.quotePartS3renr : null) || 
+        mock?.substation?.quotePartS3renr || 
+        "92.73  k€/MW";
+
+      const quotePartS3renrEur = odre?.quotePartS3renrEur || 
+        closestSubstation?.quotePartS3renrEur || 
+        (p.substation?.name && p.substation.name !== 'ODRE' ? p.substation.quotePartS3renrEur : null) || 
+        mock?.substation?.quotePartS3renrEur || 
+        92730;
+
+      const capaciteReserveeMw = odre?.capaciteReserveeMw || 
+        closestSubstation?.capaciteReserveeMw || 
+        (p.substation?.name && p.substation.name !== 'ODRE' ? p.substation.capaciteReserveeMw : null) || 
+        mock?.substation?.capaciteReserveeMw || 
+        0;
+
+      const resteAffecterMw = odre?.capaciteResiduelleOdreMw ?? 
+        closestSubstation?.resteAffecterMw ?? 
+        (p.substation?.name && p.substation.name !== 'ODRE' ? p.substation.resteAffecterMw : null) ?? 
+        mock?.substation?.resteAffecterMw ?? 
+        0;
+
+      const fileAttenteMw = closestSubstation?.fileAttenteMw || (p.substation?.name && p.substation.name !== 'ODRE' ? p.substation.fileAttenteMw : 0) || 0;
+
+      const statutRaccordement = odre?.statutRaccordement || 
+        closestSubstation?.statutRaccordement || 
+        (p.substation?.name && p.substation.name !== 'ODRE' ? p.substation.statutRaccordement : null) || 
+        mock?.substation?.statutRaccordement || 
+        "Transfo sol libre - Dépôt PTF";
+
+      const typologieZoneCre = odre?.typologieZoneCre || 
+        getCreSubstationQualification(substationName, substationCode)?.label || 
+        (p.substation?.name && p.substation.name !== 'ODRE' ? p.substation.typologieZoneCre : null) || 
+        mock?.substation?.typologieZoneCre || 
+        "Zone standard Enedis";
+
+      const substation = {
+        name: substationName,
+        code: substationCode,
+        voltageLevel,
         gestionnaire: "Enedis",
         distanceKm: distKm,
-        quotePartS3renr: odre?.quotePartS3REnR || mock?.substation?.quotePartS3renr || "92.73  k€/MW",
-        quotePartS3renrEur: odre?.quotePartS3renrEur || mock?.substation?.quotePartS3renrEur || 92730,
-        capaciteReserveeMw: odre?.capaciteReserveeMw || mock?.substation?.capaciteReserveeMw || 0,
-        resteAffecterMw: odre?.capaciteResiduelleOdreMw ?? mock?.substation?.resteAffecterMw ?? 0,
-        fileAttenteMw: 0,
-        statutRaccordement: odre?.statutRaccordement || mock?.substation?.statutRaccordement || "Zone standard Enedis",
-        typologieZoneCre: odre?.typologieZoneCre || mock?.substation?.typologieZoneCre || "Zone standard Enedis"
+        quotePartS3renr,
+        quotePartS3renrEur,
+        capaciteReserveeMw,
+        resteAffecterMw,
+        fileAttenteMw,
+        statutRaccordement,
+        typologieZoneCre,
+        lat: closestSubstation?.lat ?? p.substation?.lat,
+        lng: closestSubstation?.lng ?? p.substation?.lng
       };
 
       resultSites.push({
