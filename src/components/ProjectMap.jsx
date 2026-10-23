@@ -27,11 +27,19 @@ export default function ProjectMap({ onGpsUpdate }) {
   // Écoute l'événement de retour de MapElements
   useEffect(() => {
     const handleCaptureDone = (e) => {
-        const { slotIndex, dataUrl } = e.detail;
+        const { slotIndex, dataUrl, type, tab } = e.detail || {};
         const next = [...captures];
         next[slotIndex] = dataUrl;
         // Met à jour l'objet projet principal
-        setProject(prev => ({ ...prev, captures: next }));
+        setProject(prev => {
+          const captureTypes = { ...(prev?.captureTypes || {}) };
+          if (type === 'capa-hta' || tab === 'capa-hta') {
+            captureTypes[slotIndex] = 'capa-hta';
+          } else {
+            delete captureTypes[slotIndex];
+          }
+          return { ...prev, captures: next, captureTypes };
+        });
     };
     
     // Le nom de l'événement est "map:capture-done"

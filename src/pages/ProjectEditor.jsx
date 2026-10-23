@@ -648,21 +648,29 @@ export default function ProjectEditor() {
     const next = [...captures];
     next[index] = null;
     setCaptures(next);
-    updateProject({ captures: next });
+    const captureTypes = { ...(project?.captureTypes || {}) };
+    delete captureTypes[index];
+    updateProject({ captures: next, captureTypes });
   };
 
   useEffect(() => {
     const handleCaptureDone = (e) => {
-      const { slotIndex, dataUrl } = e.detail;
+      const { slotIndex, dataUrl, type, tab } = e.detail || {};
       const next = [...captures];
       next[slotIndex] = dataUrl;
       setCaptures(next);
-      updateProject({ captures: next });
+      const captureTypes = { ...(project?.captureTypes || {}) };
+      if (type === 'capa-hta' || tab === 'capa-hta') {
+        captureTypes[slotIndex] = 'capa-hta';
+      } else {
+        delete captureTypes[slotIndex];
+      }
+      updateProject({ captures: next, captureTypes });
       toast({ title: "Capture réussie !", description: `La vue a été enregistrée dans l'emplacement ${slotIndex + 1}.` });
     };
     window.addEventListener("map:capture-done", handleCaptureDone);
     return () => window.removeEventListener("map:capture-done", handleCaptureDone);
-  }, [captures, updateProject]);
+  }, [captures, project?.captureTypes, updateProject]);
 
   const handleAddressFound = (location) => {
     const { label, lat, lng, feature, properties } = location;

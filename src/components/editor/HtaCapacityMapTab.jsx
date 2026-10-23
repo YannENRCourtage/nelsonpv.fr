@@ -619,7 +619,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
           }
         });
         const dataUrl = canvas.toDataURL('image/png');
-        window.dispatchEvent(new CustomEvent("map:capture-done", { detail: { slotIndex, dataUrl } }));
+        window.dispatchEvent(new CustomEvent("map:capture-done", { detail: { slotIndex, dataUrl, type: 'capa-hta', tab: 'capa-hta' } }));
       } catch (err) {
         console.error('[HtaCapacityMapTab] Erreur capture:', err);
         toast({ title: "Erreur", description: "Impossible de capturer la carte HTA.", variant: "destructive" });

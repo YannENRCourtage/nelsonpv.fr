@@ -11,7 +11,7 @@ import jsPDF from "jspdf";
 import html2canvas from 'html2canvas';
 import QuoteEditorModal from './devis/QuoteEditorModal.jsx';
 // CHEMIN CORRIGÉ et IMPORT DE LA LÉGENDE
-import PDFGenerator, { PDFSymbolLegend } from './PDFGenerator.jsx';
+import PDFGenerator, { PDFSymbolLegend, PDFSubstationProximityCards } from './PDFGenerator.jsx';
 import ReactDOMServer from 'react-dom/server';
 import useNotifications from '../hooks/useNotifications.jsx';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover.jsx';
@@ -33,6 +33,78 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const toastStyle = { className: "bg-white text-gray-900 p-4 border border-gray-300 rounded-lg shadow-lg" };
+
+let cachedCapareseauData = null;
+
+async function getClosestSubstationsForProject(gps) {
+  if (!gps || typeof gps !== 'string') return [];
+  const parts = gps.split(',');
+  if (parts.length !== 2) return [];
+  const lat = parseFloat(parts[0].trim());
+  const lng = parseFloat(parts[1].trim());
+  if (isNaN(lat) || isNaN(lng)) return [];
+
+  try {
+    if (!cachedCapareseauData) {
+      const response = await fetch('/datas/capareseau_map.json');
+      if (response.ok) {
+        cachedCapareseauData = await response.json();
+      }
+    }
+    if (!Array.isArray(cachedCapareseauData) || cachedCapareseauData.length === 0) return [];
+
+    const R = 6371000;
+    const toRad = (d) => (d * Math.PI) / 180;
+    const haversine = (lat1, lon1, lat2, lon2) => {
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    return cachedCapareseauData
+      .map(s => ({
+        ...s,
+        distance: haversine(lat, lng, parseFloat(s.Y), parseFloat(s.X))
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 4);
+  } catch (err) {
+    console.error("Erreur calcul postes sources proches pour PDF:", err);
+    return [];
+  }
+}
+
+function isHtaMapImage(img) {
+  try {
+    if (!img || !img.naturalWidth || !img.naturalHeight) return false;
+    const canvas = document.createElement('canvas');
+    canvas.width = 100;
+    canvas.height = 100;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+    ctx.drawImage(img, 0, 0, 100, 100);
+
+    // Look at bottom-right corner (around x: 80..95, y: 80..95) where the BESS cost card is
+    // The BESS cost card in HtaCapacityMapTab has solid backgroundColor: '#0f172a' (rgb: 15, 23, 42)
+    const samplePoints = [
+      [88, 88], [90, 85], [85, 90], [92, 92], [82, 86]
+    ];
+    let matchCount = 0;
+    for (const [sx, sy] of samplePoints) {
+      const p = ctx.getImageData(sx, sy, 1, 1).data;
+      if (p[0] >= 5 && p[0] <= 35 && p[1] >= 12 && p[1] <= 45 && p[2] >= 25 && p[2] <= 65) {
+        matchCount++;
+      }
+    }
+    return matchCount >= 3;
+  } catch (err) {
+    console.warn("isHtaMapImage check error:", err);
+    return false;
+  }
+}
 
 export const generatePdfForProject = async (projectData) => {
   if (!projectData) {
@@ -68,11 +140,13 @@ export const generatePdfForProject = async (projectData) => {
 
   // --- PAGES SUIVANTES : CAPTURES D'ÉCRAN (OPTIMISÉ) ---
   const captures = projectData.captures || [];
-  const validCaptures = captures.filter(c => c); // Filtrer les captures vides
-  const totalPages = validCaptures.length + 1;
+  const activeCaptures = captures
+    .map((url, originalSlot) => ({ url, originalSlot }))
+    .filter(item => Boolean(item.url));
+  const totalPages = activeCaptures.length + 1;
 
-  if (validCaptures.length > 0) {
-    // 1. Préparation de la légende (Render & Capture unique)
+  if (activeCaptures.length > 0) {
+    // 1. Préparation de la légende des symboles (pour les cartes standard)
     const legendContainer = document.createElement('div');
     legendContainer.style.width = "1123px";
     legendContainer.style.position = "absolute";
@@ -101,7 +175,43 @@ export const generatePdfForProject = async (projectData) => {
     } catch (err) {
       console.error("Erreur génération légende PDF", err);
     } finally {
-      document.body.removeChild(legendContainer);
+      if (legendContainer.parentNode) {
+        document.body.removeChild(legendContainer);
+      }
+    }
+
+    // 1b. Préparation du bloc des 4 postes sources proches (pour la carte Capacité HTA)
+    let substationsImgData = null;
+    let substationsPdfWidth = doc.internal.pageSize.getWidth() - 24; // 273 mm
+    let substationsPdfHeight = 36;
+    let substationsX = 12;
+    let substationsY = doc.internal.pageSize.getHeight() - 46;
+
+    try {
+      const closestSubstations = await getClosestSubstationsForProject(projectData.gps);
+      if (closestSubstations && closestSubstations.length > 0) {
+        const subContainer = document.createElement('div');
+        subContainer.style.width = "1123px";
+        subContainer.style.position = "absolute";
+        subContainer.style.left = "-9999px";
+        subContainer.innerHTML = ReactDOMServer.renderToString(
+          <PDFSubstationProximityCards substations={closestSubstations} />
+        );
+        document.body.appendChild(subContainer);
+
+        const subCanvas = await html2canvas(subContainer.firstChild, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        });
+        substationsImgData = subCanvas.toDataURL('image/png');
+        const subProps = doc.getImageProperties(substationsImgData);
+        substationsPdfHeight = (subProps.height / subProps.width) * substationsPdfWidth;
+        substationsY = doc.internal.pageSize.getHeight() - substationsPdfHeight - 9;
+        document.body.removeChild(subContainer);
+      }
+    } catch (err) {
+      console.error("Erreur préparation postes sources PDF:", err);
     }
 
     // 2. Téléchargement via PROXY SERVERLESS (Rapide + Fiable + Contourne CORS/Timeout client)
@@ -120,7 +230,6 @@ export const generatePdfForProject = async (projectData) => {
           const downloadURL = await getDownloadURL(storageRef);
 
           // 2. Passer par notre PROXY Vercel pour le téléchargement réel
-          // Le client appelle son propre serveur (/api/proxy-image)
           const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(downloadURL)}`;
 
           // Timeout Proxy de 60s
@@ -148,16 +257,18 @@ export const generatePdfForProject = async (projectData) => {
       return { error: "Format URL non supporté" };
     };
 
-    // Retour au chargement parallèle (Batch de 5) car le Proxy est RAPIDE (Backbone network)
-    const activeCaptures = validCaptures.map((url, i) => ({ url, index: i }));
+    // Chargement parallèle (Batch de 5)
     const loadedImages = new Array(activeCaptures.length);
     const BATCH_SIZE = 5;
 
     for (let i = 0; i < activeCaptures.length; i += BATCH_SIZE) {
       const batch = activeCaptures.slice(i, i + BATCH_SIZE);
-      const results = await Promise.all(batch.map(item => fetchImageViaProxy(item.url, item.index)));
+      const results = await Promise.all(batch.map(item => fetchImageViaProxy(item.url, item.originalSlot)));
       results.forEach((res, batchIndex) => {
-        loadedImages[i + batchIndex] = res;
+        loadedImages[i + batchIndex] = {
+          data: res,
+          originalSlot: batch[batchIndex].originalSlot
+        };
       });
     }
 
@@ -169,9 +280,11 @@ export const generatePdfForProject = async (projectData) => {
       const pageNumber = i + 2;
       doc.setFontSize(10);
       doc.setTextColor(150);
-      doc.text(`Page ${pageNumber} / ${totalPages}`, doc.internal.pageSize.getWidth() - 25, doc.internal.pageSize.getHeight() - 10);
+      doc.text(`Page ${pageNumber} / ${totalPages}`, doc.internal.pageSize.getWidth() - 25, doc.internal.pageSize.getHeight() - 7);
 
-      const result = loadedImages[i];
+      const item = loadedImages[i];
+      const result = item?.data;
+      const slotIndex = item?.originalSlot;
 
       // Si c'est une string (DataURL), c'est une image valide
       if (typeof result === 'string' && result.startsWith('data:image')) {
@@ -184,18 +297,53 @@ export const generatePdfForProject = async (projectData) => {
             img.onerror = resolve;
           });
 
+          const isHtaPage = (
+            projectData.captureTypes?.[slotIndex] === 'capa-hta' ||
+            isHtaMapImage(img)
+          );
+
           const imgPropsCap = doc.getImageProperties(img);
-          const capturePdfWidth = doc.internal.pageSize.getWidth() - 30;
-          const maxH = doc.internal.pageSize.getHeight() - 25 - (legendPdfHeight || 0);
 
-          const ratio = Math.min(capturePdfWidth / imgPropsCap.width, maxH / imgPropsCap.height);
-          const finalW = imgPropsCap.width * ratio;
-          const finalH = imgPropsCap.height * ratio;
+          if (isHtaPage) {
+            // Pour la page Capacité HTA :
+            // 1. On n'affiche PAS la légende des symboles
+            // 2. On affiche le bloc des 4 postes sources à proximité en bas
+            // 3. La carte prend tout l'espace disponible au-dessus (tout tient sur cette seule page)
+            const bottomMargin = substationsImgData ? (substationsPdfHeight + 14) : 15;
+            const capturePdfWidth = doc.internal.pageSize.getWidth() - 24;
+            const maxH = doc.internal.pageSize.getHeight() - 10 - bottomMargin;
 
-          const x = (doc.internal.pageSize.getWidth() - finalW) / 2;
-          const y = 15;
+            const ratio = Math.min(capturePdfWidth / imgPropsCap.width, maxH / imgPropsCap.height);
+            const finalW = imgPropsCap.width * ratio;
+            const finalH = imgPropsCap.height * ratio;
 
-          doc.addImage(result, 'PNG', x, y, finalW, finalH);
+            const x = (doc.internal.pageSize.getWidth() - finalW) / 2;
+            const y = 8;
+
+            doc.addImage(result, 'PNG', x, y, finalW, finalH);
+
+            if (substationsImgData) {
+              doc.addImage(substationsImgData, 'PNG', substationsX, substationsY, substationsPdfWidth, substationsPdfHeight);
+            }
+          } else {
+            // Pour les autres pages de capture (carte satellite standard) :
+            // Comportement standard inchangé avec la légende des symboles
+            const capturePdfWidth = doc.internal.pageSize.getWidth() - 30;
+            const maxH = doc.internal.pageSize.getHeight() - 25 - (legendPdfHeight || 0);
+
+            const ratio = Math.min(capturePdfWidth / imgPropsCap.width, maxH / imgPropsCap.height);
+            const finalW = imgPropsCap.width * ratio;
+            const finalH = imgPropsCap.height * ratio;
+
+            const x = (doc.internal.pageSize.getWidth() - finalW) / 2;
+            const y = 15;
+
+            doc.addImage(result, 'PNG', x, y, finalW, finalH);
+
+            if (legendImgData) {
+              doc.addImage(legendImgData, 'PNG', legendX, legendY, legendPdfWidth, legendPdfHeight);
+            }
+          }
         } catch (e) {
           console.error("Erreur ajout image au PDF", e);
           doc.setFontSize(12);
@@ -209,12 +357,7 @@ export const generatePdfForProject = async (projectData) => {
         doc.setTextColor(255, 0, 0);
         doc.text(`Image non disponible`, 105, 90);
         doc.setFontSize(10);
-        doc.text(`Raison: ${msg}`, 105, 100); // Affiche la raison exacte (Timeout, 404, etc)
-      }
-
-      // Ajout légende si dispo
-      if (legendImgData) {
-        doc.addImage(legendImgData, 'PNG', legendX, legendY, legendPdfWidth, legendPdfHeight);
+        doc.text(`Raison: ${msg}`, 105, 100);
       }
     }
   }

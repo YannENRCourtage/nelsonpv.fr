@@ -3,6 +3,98 @@ import { formatGps } from '@/utils/formatGps.js';
 
 // Ce composant est maintenant prêt à être importé
 // dans votre fichier d'assemblage PDF principal pour les pages de carte.
+// Composant pour les 4 cartes de postes sources a proximite (pour la page Capacite HTA du PDF)
+export const PDFSubstationProximityCards = ({ substations = [] }) => {
+  if (!substations || substations.length === 0) return null;
+
+  return (
+    <div style={{ width: '100%', fontFamily: 'Arial, sans-serif', color: '#0f172a', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="#f97316" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b' }}>
+          Postes sources à proximité (Caparéseau)
+        </span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', width: '100%', boxSizing: 'border-box' }}>
+        {substations.map((s, idx) => {
+          const vals = s.values || {};
+          const na = parseFloat(vals.INFO_NA) || 0;
+          const hasReste = na > 0;
+          const qp = vals.INFO_QP || 'N/A';
+          const reserved = vals.INFO_ESS3R ? `${vals.INFO_ESS3R} MW` : '0 MW';
+          const queue = vals.INFO_FAS3R ? `${vals.INFO_FAS3R} MW` : '0 MW';
+
+          const distStr = s.distance < 1000 
+            ? `${Math.round(s.distance)} M` 
+            : `${(s.distance / 1000).toFixed(2)} KM`;
+
+          return (
+            <div 
+              key={s.code || idx} 
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '10px',
+                border: '1px solid #cbd5e1',
+                padding: '10px 12px',
+                position: 'relative',
+                boxSizing: 'border-box'
+              }}
+            >
+              {/* Status Dot */}
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: '50%',
+                  backgroundColor: hasReste ? '#22c55e' : '#f97316'
+                }}
+              />
+
+              {/* Substation Header */}
+              <div style={{ marginBottom: '8px', paddingRight: '16px' }}>
+                <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {distStr}
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {s.name}
+                </div>
+              </div>
+
+              {/* Values grid */}
+              <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '3px', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ color: '#64748b' }}>Quote part unitaire</span>
+                  <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{qp}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '3px', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ color: '#64748b' }}>Capacité réservée</span>
+                  <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{reserved}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '3px', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ color: '#64748b' }}>Reste à affecter</span>
+                  <span style={{ fontWeight: 'bold', color: hasReste ? '#16a34a' : '#ea580c' }}>
+                    {na} MW
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#64748b' }}>Fil d'attente</span>
+                  <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{queue}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export const PDFSymbolLegend = ({ isForCapturePage = false }) => {
   const symbols = [
     { label: 'Lieu Projet', icon: '📍' }, { label: 'Accès', icon: '🚪' },
