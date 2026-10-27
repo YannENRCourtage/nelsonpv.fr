@@ -115,11 +115,12 @@ export default function PvPortfolioLenderModal({
       const fcfeArray = [-equity];
 
       for (let t = 1; t <= horizon; t++) {
+        const chr = consolidatedChronique?.[t - 1];
         // Dégradation PV -0.5% / an
         const prodY = totalProdMwh * Math.pow(1 - 0.005, t - 1);
-        const caY = totalCaAn1 * Math.pow(1 - 0.005, t - 1);
-        // Inflation charges +1.5% / an
-        const opexY = (totalOpexAn1 + totalLoyersAn1) * Math.pow(1 + 0.015, t - 1);
+        const caY = chr?.ca || (totalCaAn1 * Math.pow(1 - 0.005, t - 1));
+        // Inflation charges +1.5% / an (totalOpexAn1 inclut déjà les loyers dans PvPortfolioView)
+        const opexY = chr?.opex || (totalOpexAn1 * Math.pow(1 + 0.015, t - 1));
         const ebitdaY = caY - opexY;
 
         const debtStart = capitalRestant;
@@ -137,7 +138,7 @@ export default function PvPortfolioLenderModal({
         const netIncomeY = ebtY - isY;
 
         const cfadsY = ebitdaY - isY;
-        const dscrY = (t <= loanYears && debtServiceY > 0) ? (cfadsY / debtServiceY) : null;
+        const dscrY = (t <= loanYears && debtServiceY > 0) ? (ebitdaY / debtServiceY) : null;
         const fcfeY = cfadsY - debtServiceY;
 
         // Non-levier
@@ -255,13 +256,12 @@ export default function PvPortfolioLenderModal({
 
         for (let t = 1; t <= loanYears; t++) {
           const ca = totalCaAn1 * caFactor * Math.pow(1 - 0.005, t - 1);
-          const op = (totalOpexAn1 + totalLoyersAn1) * opexFactor * Math.pow(1 + 0.015, t - 1);
+          const op = totalOpexAn1 * opexFactor * Math.pow(1 + 0.015, t - 1);
           const eb = ca - op;
           const ebt = eb - (totalCapex / 20) - (sDebt * (1 - (t - 1) / loanYears) * rDec);
           const baseIs = Math.max(0, ebt);
           const isTax = baseIs <= 42500 ? baseIs * 0.15 : (42500 * 0.15 + (baseIs - 42500) * 0.25);
-          const cfads = eb - isTax;
-          const dscr = ann > 0 ? (cfads / ann) : 1.30;
+          const dscr = ann > 0 ? (eb / ann) : 1.30;
           if (dscr < minDscr) minDscr = dscr;
           sumDscr += dscr;
           netCumul += (ebt - isTax);
@@ -300,7 +300,7 @@ export default function PvPortfolioLenderModal({
   const rupture = useMemo(() => {
     try {
       const ann = pvModel?.annuite || 0;
-      const opex1 = (totalOpexAn1 || 0) + (totalLoyersAn1 || 0);
+      const opex1 = totalOpexAn1 || 0;
       const ca1 = totalCaAn1 || 1;
       // Baisse pour DSCR = 1.15
       const revFor115 = (ann * 1.15) + opex1;
@@ -317,7 +317,7 @@ export default function PvPortfolioLenderModal({
     } catch (e) {
       return { baisse115: 0, baisse100: 0, yearsCompliant: 20 };
     }
-  }, [pvModel, totalCaAn1, totalOpexAn1, totalLoyersAn1]);
+  }, [pvModel, totalCaAn1, totalOpexAn1]);
 
   const isDscrCompliant = pvModel.dscrMin >= 1.20;
   const isDscrAcceptable = pvModel.dscrMin >= 1.15;
@@ -348,8 +348,8 @@ export default function PvPortfolioLenderModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200">
-      <div className="relative w-full max-w-[1580px] h-[calc(100vh-40px)] bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
+    <div className="fixed inset-x-0 bottom-0 top-[64px] z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-5 overflow-hidden animate-in fade-in duration-200">
+      <div className="relative w-full max-w-[1560px] h-[calc(100vh-100px)] max-h-[85vh] bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
         {/* Header Modal */}
         <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-6 py-3.5 shadow-xs flex flex-wrap items-center justify-between gap-4" data-html2canvas-ignore="true">
           <div className="flex items-center gap-4">
@@ -1041,7 +1041,7 @@ export default function PvPortfolioLenderModal({
                         {fmtEur(totalCaAn1)}
                       </td>
                       <td className="py-2 px-2 text-right text-emerald-300 font-black text-xs">
-                        {fmtEur(totalCaAn1 - totalOpexAn1 - totalLoyersAn1)}
+                        {fmtEur(Number(consolidatedTotals?.totalEbitdaAn1) || (totalCaAn1 - totalOpexAn1))}
                       </td>
                       <td className="py-2 px-2 text-center text-yellow-300 font-black">
                         {fmt(pvModel.payback, 1)} ans

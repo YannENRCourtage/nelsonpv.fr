@@ -739,9 +739,9 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-[60px] z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200">
+    <div className="fixed inset-x-0 bottom-0 top-[64px] z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200">
       {/* Conteneur Modal Global Repositionné strictement sous le Header Nelson */}
-      <div className="relative w-full max-w-[1540px] h-[calc(100vh-76px)] bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-[1540px] h-[calc(100vh-96px)] max-h-[86vh] bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
         
         {/* ========================================================================= */}
         {/* BARRE SUPÉRIEURE DE NAVIGATION ET COMMUTATEUR (FOND BLANC PUR) */}
@@ -907,60 +907,69 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                   </div>
                 </div>
 
-                {/* Les 6 grands chiffres clés visuels avec bordures micro-dégradées (identique BESS) */}
-                <div className="grid grid-cols-6 gap-3.5 mb-5">
-                  <div className="bg-white border-2 border-purple-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                {/* Les 7 grands chiffres clés visuels avec bordures micro-dégradées (DSCR à droite de Temps de retour) */}
+                <div className="grid grid-cols-7 gap-2.5 mb-5">
+                  <div className="bg-white border-2 border-purple-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-indigo-600"></div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-purple-700">TRI Projet & Equity</div>
-                      <div className="text-2xl font-black text-purple-900 mt-1">{kpi.triLabel}</div>
+                      <div className="text-[9.5px] uppercase tracking-wider font-extrabold text-purple-700">TRI Projet & Equity</div>
+                      <div className="text-xl font-black text-purple-900 mt-1">{kpi.triLabel}</div>
                     </div>
-                    <div className="text-[11px] font-bold text-purple-600 mt-1">TRI Equity : > 14.5%</div>
+                    <div className="text-[10px] font-bold text-purple-600 mt-1">TRI Equity : &gt; 14.5%</div>
                   </div>
 
-                  <div className="bg-white border-2 border-emerald-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                  <div className="bg-white border-2 border-emerald-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 to-teal-600"></div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700">Temps de Retour Net</div>
-                      <div className="text-2xl font-black text-emerald-900 mt-1">{kpi.paybackLabel}</div>
+                      <div className="text-[9.5px] uppercase tracking-wider font-extrabold text-emerald-700">Temps de Retour Net</div>
+                      <div className="text-xl font-black text-emerald-900 mt-1">{kpi.paybackLabel}</div>
                     </div>
-                    <div className="text-[11px] font-bold text-emerald-600 mt-1">Sur Fonds Propres : 2.5 ans</div>
+                    <div className="text-[10px] font-bold text-emerald-600 mt-1">Sur Fonds Propres : 2.5 ans</div>
                   </div>
 
-                  <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                  <div className="bg-white border-2 border-indigo-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 to-blue-600"></div>
+                    <div>
+                      <div className="text-[9.5px] uppercase tracking-wider font-extrabold text-indigo-700">Ratio DSCR Moyen</div>
+                      <div className="text-xl font-black text-indigo-900 mt-1">{kpi.dscrLabel}</div>
+                    </div>
+                    <div className="text-[10px] font-bold text-indigo-600 mt-1">Couverture dette {kpi.debtDuration} ans</div>
+                  </div>
+
+                  <div className="bg-white border-2 border-amber-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-500 to-orange-500"></div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-amber-700">EBITDA Net An 1</div>
-                      <div className="text-2xl font-black text-amber-900 mt-1">{kpi.ebitdaLabel}</div>
+                      <div className="text-[9.5px] uppercase tracking-wider font-extrabold text-amber-700">EBITDA Net An 1</div>
+                      <div className="text-xl font-black text-amber-900 mt-1">{kpi.ebitdaLabel}</div>
                     </div>
-                    <div className="text-[11px] font-bold text-amber-600 mt-1">{isPort ? `EBITDA consolidé net (${portfolioTotals.totalSites} sites)` : 'EBITDA net annuel'}</div>
+                    <div className="text-[10px] font-bold text-amber-600 mt-1">{isPort ? `EBITDA consolidé (${portfolioTotals.totalSites} sites)` : 'EBITDA net annuel'}</div>
                   </div>
 
-                  <div className="bg-white border-2 border-blue-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                  <div className="bg-white border-2 border-blue-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-cyan-500"></div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-blue-700">Chiffre d'Affaires Brut</div>
-                      <div className="text-2xl font-black text-blue-900 mt-1">{kpi.caLabel}</div>
+                      <div className="text-[9.5px] uppercase tracking-wider font-extrabold text-blue-700">Chiffre d'Affaires Brut</div>
+                      <div className="text-xl font-black text-blue-900 mt-1">{kpi.caLabel}</div>
                     </div>
-                    <div className="text-[11px] font-bold text-blue-600 mt-1">{isPort ? `Production ${Math.round(portfolioTotals.totalProdMwh).toLocaleString('fr-FR')} MWh/an` : `Production ${Math.round(singleProdMwh).toLocaleString('fr-FR')} MWh/an`}</div>
+                    <div className="text-[10px] font-bold text-blue-600 mt-1">{isPort ? `Production ${Math.round(portfolioTotals.totalProdMwh).toLocaleString('fr-FR')} MWh/an` : `Production ${Math.round(singleProdMwh).toLocaleString('fr-FR')} MWh/an`}</div>
                   </div>
 
-                  <div className="bg-white border-2 border-slate-300 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                  <div className="bg-white border-2 border-slate-300 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-600 to-slate-800"></div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-slate-700">CAPEX Clé en Main</div>
-                      <div className="text-2xl font-black text-slate-900 mt-1">{kpi.capexLabel}</div>
+                      <div className="text-[9.5px] uppercase tracking-wider font-extrabold text-slate-700">CAPEX Clé en Main</div>
+                      <div className="text-xl font-black text-slate-900 mt-1">{kpi.capexLabel}</div>
                     </div>
-                    <div className="text-[11px] font-bold text-slate-600 mt-1">{isPort ? `~${Math.round(portfolioTotals.totalCapex / (portfolioTotals.totalPowerMw * 1000))} €/kWc raccordé` : `~${Math.round(singleCapex / (singleKwc || 1))} €/kWc`}</div>
+                    <div className="text-[10px] font-bold text-slate-600 mt-1">{isPort ? `~${Math.round(portfolioTotals.totalCapex / (portfolioTotals.totalPowerMw * 1000))} €/kWc raccordé` : `~${Math.round(singleCapex / (singleKwc || 1))} €/kWc`}</div>
                   </div>
 
-                  <div className="bg-white border-2 border-cyan-200 rounded-2xl p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                  <div className="bg-white border-2 border-cyan-200 rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex flex-col justify-between">
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 to-teal-500"></div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider font-extrabold text-cyan-700">Puissance Installée</div>
-                      <div className="text-2xl font-black text-cyan-900 mt-1">{kpi.powerLabel}</div>
+                      <div className="text-[9.5px] uppercase tracking-wider font-extrabold text-cyan-700">Puissance Installée</div>
+                      <div className="text-xl font-black text-cyan-900 mt-1">{kpi.powerLabel}</div>
                     </div>
-                    <div className="text-[11px] font-bold text-cyan-600 mt-1">{isPort ? `${portfolioTotals.totalSites} Centrales solaires` : 'Centrale toiture'}</div>
+                    <div className="text-[10px] font-bold text-cyan-600 mt-1">{isPort ? `${portfolioTotals.totalSites} Centrales solaires` : 'Centrale toiture'}</div>
                   </div>
                 </div>
 

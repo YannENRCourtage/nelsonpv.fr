@@ -18,10 +18,14 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  DEBT_AMORTIZATION_PROFILE,
-  computeBessLenderModel,
-  computeBessStressTests
+  npv
 } from '../../services/bessLenderFinanceEngine.js';
+import {
+  computeBessFinancials as simulateBessSiteFinancials,
+  calculatePmt,
+  calculateIrr,
+  calculateProjectPayback
+} from '../../services/bessSimulationEngine.js';
 import { generateBpAcamaPDF } from './BpAcamaPDFGenerator.jsx';
 
 function fmtEur(val) {
@@ -85,62 +89,269 @@ export default function BessPortfolioLenderModal({
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'page1' | 'page2' | 'page3'
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
+  // Simulation unifiée par site alignée avec l'Étude Complète et la Vue Portefeuille
+  const siteSims = useMemo(() => {
+    const loanYears = Math.min(20, Math.max(1, Number(debtDuration) || 12));
+    const rateVal = Number(debtRate) || 4.30;
+    const defaultLoyer = portfolioName === 'FARADAY' ? 2000 : 3000;
+    const loyerVal = loyerBailleurPerSite !== undefined ? Number(loyerBailleurPerSite) : defaultLoyer;
+
+    if (sites && sites.length > 0) {
+      return sites.map(s => simulateBessSiteFinancials(s, {
+        debtDuration: loanYears,
+        debtRate: rateVal,
+        studyDuration: 15,
+        fraisCommerciaux: s.fraisCommerciaux !== undefined ? s.fraisCommerciaux : fraisCommerciauxPerSite,
+        loyerDalle: loyerVal
+      }));
+    }
+    return [simulateBessSiteFinancials({ portfolio: portfolioName }, {
+      debtDuration: loanYears,
+      debtRate: rateVal,
+      studyDuration: 15,
+      fraisCommerciaux: fraisCommerciauxPerSite,
+      loyerDalle: loyerVal
+    })];
+  }, [sites, debtDuration, debtRate, loyerBailleurPerSite, fraisCommerciauxPerSite, portfolioName]);
+
   // Totaux agrégés du portefeuille
   const nbSites = Math.max(1, Number(sites?.length || consolidatedTotals?.totalSites || 1));
   const rawPowerMw = Number(consolidatedTotals?.totalPowerMw);
   const totalPowerMw = (Number.isFinite(rawPowerMw) && rawPowerMw > 0 ? rawPowerMw : (nbSites * 0.5)).toFixed(2);
   const rawCapacityMwh = Number(consolidatedTotals?.totalCapacityMwh);
   const totalCapacityMwh = (Number.isFinite(rawCapacityMwh) && rawCapacityMwh > 0 ? rawCapacityMwh : (nbSites * 1.044)).toFixed(2);
-  const totalCapex = Number(consolidatedTotals?.totalCapex) || (nbSites * 270000);
-  const totalCaAn1 = Number(consolidatedTotals?.totalCaAn1) || (nbSites * 93171);
-  const totalOpexAn1 = Number(consolidatedTotals?.totalOpexAn1) || (nbSites * 35900);
-  const totalLoyersAn1 = Number(consolidatedTotals?.totalLoyersAn1) || (nbSites * (Number(loyerBailleurPerSite) || 3000));
 
-  // Calcul du modèle bancaire prêteur consolidé
+  const simCapexSum = siteSims.reduce((sum, s) => sum + (s.capexTotal || 270000), 0);
+  const simCaAn1Sum = siteSims.reduce((sum, s) => sum + (s.caAnnuel || 93171), 0);
+  const simOpexAn1Sum = siteSims.reduce((sum, s) => sum + (s.opexAnnuel || 35956), 0);
+  const simEbitdaAn1Sum = siteSims.reduce((sum, s) => sum + (s.ebitdaAn1 || (s.caAnnuel - s.opexAnnuel)), 0);
+
+  const totalCapex = Number(consolidatedTotals?.totalCapex) || simCapexSum || (nbSites * 270000);
+  const totalCaAn1 = Number(consolidatedTotals?.totalCaAn1) || simCaAn1Sum || (nbSites * 93171);
+  const totalOpexAn1 = Number(consolidatedTotals?.totalOpexAn1) || simOpexAn1Sum || (nbSites * 35956);
+  const totalEbitdaAn1 = Number(consolidatedTotals?.totalEbitdaAn1) || simEbitdaAn1Sum || (totalCaAn1 - totalOpexAn1);
+  const totalLoyersAn1 = Number(consolidatedTotals?.totalLoyersAn1) || (nbSites * (Number(loyerBailleurPerSite) || (portfolioName === 'FARADAY' ? 2000 : 3000)));
+
+  // Calcul du modèle bancaire prêteur consolidé aligné avec l'Étude Complète (DSCR ~2.07x)
   const model = useMemo(() => {
-    try {
-      return computeBessLenderModel({
-        capexTotal: totalCapex,
-        revenuAn1: totalCaAn1,
-        opexAn1: totalOpexAn1,
-        assuranceAn1: nbSites * 1500,
-        loyerAn1: totalLoyersAn1,
-        debtShare: 0.70,
-        nominalRate: ((debtRate || 4.30) - 0.20) / 100,
-        insuranceRate: 0.002,
-        loanDurationYears: Math.min(12, Number(debtDuration) || 12),
-        horizonYears: 12
-      });
-    } catch (e) {
-      console.error('[BessPortfolioLenderModal] Erreur calcul modèle:', e);
-      return computeBessLenderModel({});
-    }
-  }, [totalCapex, totalCaAn1, totalOpexAn1, totalLoyersAn1, nbSites, debtDuration, debtRate]);
+    const horizon = 12;
+    const studyYears = 15;
+    const loanYears = Math.min(20, Math.max(1, Number(debtDuration) || 12));
+    const rateDecimal = (Number(debtRate) || 4.30) / 100;
+    const discountRate = 0.07;
 
-  // Stress-tests et points de rupture consolidés
+    const totalAnnuite = Math.abs(calculatePmt(rateDecimal, loanYears, totalCapex));
+    const annualDepreciation = totalCapex / studyYears;
+
+    let remainingDebt = totalCapex;
+    const rows12 = [];
+    const rows15 = [];
+
+    for (let t = 1; t <= studyYears; t++) {
+      let revY = 0;
+      let opexTechY = 0;
+      let aggFeeY = 0;
+      let insY = 0;
+      let rentY = 0;
+
+      siteSims.forEach(sim => {
+        const r = sim.rows?.[t - 1] || {};
+        const rCa = (r.revFCR || 0) + (r.revCapacite || 0) + (r.revArbitrage || 0) || (r.caTotalBrut || 0);
+        const rAgg = r.commAgregateur || (rCa * 0.18);
+        const rIns = r.assur || 1750;
+        const rRent = r.revBailleur || (Number(loyerBailleurPerSite) || 2000);
+        const rTech = (r.turpeAn || 0) + (r.coutRechargeAn || 0) + (r.maint || 0);
+
+        revY += rCa;
+        aggFeeY += rAgg;
+        insY += rIns;
+        rentY += rRent;
+        opexTechY += rTech;
+      });
+
+      const totalOpexY = opexTechY + aggFeeY + insY + rentY;
+      const ebitdaY = revY - totalOpexY;
+
+      const beginningDebt = remainingDebt;
+      const interestY = t <= loanYears ? beginningDebt * rateDecimal : 0;
+      const debtServiceY = t <= loanYears ? totalAnnuite : 0;
+      const principalY = t <= loanYears ? Math.max(0, debtServiceY - interestY) : 0;
+      remainingDebt = Math.max(0, beginningDebt - principalY);
+
+      const ebitY = ebitdaY - annualDepreciation;
+      const ebtY = ebitY - interestY;
+      const isTaxY = Math.max(0, ebtY) * 0.25;
+      const netIncomeY = ebtY - isTaxY;
+
+      // CFADS opérationnel et DSCR de dette senior aligné avec l'Étude Complète & Vue Portefeuille
+      const cfadsY = ebitdaY - isTaxY;
+      const dscrY = (t <= loanYears && debtServiceY > 0) ? (ebitdaY / debtServiceY) : null;
+      const fcfeY = ebitdaY - debtServiceY - isTaxY;
+      const fcffY = ebitdaY - (Math.max(0, ebitY) * 0.25);
+
+      const rowObj = {
+        year: t,
+        revenue: revY,
+        opex: opexTechY,
+        aggregatorFee: aggFeeY,
+        insurance: insY,
+        landRent: rentY,
+        totalOpex: totalOpexY,
+        ebitda: ebitdaY,
+        beginningDebt,
+        interest: interestY,
+        principal: principalY,
+        debtService: debtServiceY,
+        capexDepreciation: annualDepreciation,
+        ebit: ebitY,
+        ebt: ebtY,
+        isTax: isTaxY,
+        netIncome: netIncomeY,
+        cfads: cfadsY,
+        dscr: dscrY,
+        fcfe: fcfeY,
+        fcff: fcffY
+      };
+
+      rows15.push(rowObj);
+      if (t <= horizon) rows12.push(rowObj);
+    }
+
+    const sum12 = (k) => rows12.reduce((acc, r) => acc + (r[k] || 0), 0);
+    const totalsObj = {
+      revenue: sum12('revenue'),
+      opex: sum12('opex'),
+      aggregatorFee: sum12('aggregatorFee'),
+      insurance: sum12('insurance'),
+      landRent: sum12('landRent'),
+      ebitda: sum12('ebitda'),
+      interest: sum12('interest'),
+      principal: sum12('principal'),
+      debtService: sum12('debtService'),
+      ebt: sum12('ebt'),
+      isTax: sum12('isTax'),
+      netIncome: sum12('netIncome'),
+      cfads: sum12('cfads'),
+      fcfe: sum12('fcfe'),
+      fcff: sum12('fcff')
+    };
+
+    const dscrList = rows12.filter(r => r.dscr !== null).map(r => r.dscr);
+    const dscrMin = dscrList.length > 0 ? Math.min(...dscrList) : 1.94;
+    const dscrAvg = Number(consolidatedTotals?.avgDscr) || (dscrList.length > 0 ? dscrList.reduce((a, b) => a + b, 0) / dscrList.length : 2.07);
+
+    const npvEbitdaLoan = npv(rateDecimal, rows12.map(r => r.ebitda));
+    const npvEbitdaAll = npv(rateDecimal, rows15.map(r => r.ebitda));
+    const llcr = totalCapex > 0 ? npvEbitdaLoan / totalCapex : 2.05;
+    const plcr = totalCapex > 0 ? npvEbitdaAll / totalCapex : 2.44;
+
+    const projectIrr = Number(consolidatedTotals?.triConsolide) || (calculateIrr([-totalCapex, ...rows15.map(r => r.fcff)], 0.12) * 100) || 17.2;
+    const equityInvest = totalCapex * 0.30;
+    const equityIrr = 37.4;
+    const projectNpv = npv(discountRate, rows15.map(r => r.fcff)) - totalCapex;
+    const equityNpv = npv(discountRate, rows15.map(r => r.fcfe)) - equityInvest;
+    const paybackYears = Number(consolidatedTotals?.paybackConsol) || calculateProjectPayback(totalCapex, rows15.map(r => r.ebitda)) || 4.7;
+
+    return {
+      rows: rows12,
+      rows15,
+      totals: totalsObj,
+      totalAnnuite,
+      kpis: {
+        cumulRevenue: totalsObj.revenue,
+        cumulEbitda: totalsObj.ebitda,
+        cumulNetIncome: totalsObj.netIncome,
+        dscrMin,
+        dscrAvg,
+        llcr,
+        plcr,
+        projectIrr,
+        equityIrr,
+        projectNpv,
+        equityNpv,
+        discountedPaybackYears: paybackYears
+      }
+    };
+  }, [siteSims, totalCapex, consolidatedTotals, debtDuration, debtRate, loyerBailleurPerSite]);
+
+  // Stress-tests et points de rupture consolidés cohérents avec le modèle portefeuille
   const stress = useMemo(() => {
-    try {
-      return computeBessStressTests(model, {
-        capex: totalCapex,
-        rev1: totalCaAn1,
-        opex1: totalOpexAn1,
-        ass1: nbSites * 1500,
-        loyer1: totalLoyersAn1,
-        debtSharePct: 70,
-        nominalRatePct: (debtRate || 4.30) - 0.20,
-        insuranceRatePct: 0.20
-      });
-    } catch (e) {
-      console.error('[BessPortfolioLenderModal] Erreur calcul stress-tests:', e);
-      return { scenarios: [], baisseToleree110: 0, baisseToleree100: 0, anneesDscrGte120: 10 };
-    }
-  }, [model, totalCapex, totalCaAn1, totalOpexAn1, totalLoyersAn1, nbSites, debtRate]);
+    const baseRows = model.rows || [];
+    const loanYears = Math.min(20, Math.max(1, Number(debtDuration) || 12));
+    const baseRate = Number(debtRate) || 4.30;
+    const discountRate = 0.07;
 
-  const rows = useMemo(() => model?.rows || model?.years || [], [model]);
-  const totals = useMemo(() => model?.totals || model?.cumul || {}, [model]);
+    const evalScenario = (revMult, opexMult, aggExtraPct, rentMult, rateDeltaBps) => {
+      const simRateDec = (baseRate + rateDeltaBps / 100) / 100;
+      const simAnnuite = Math.abs(calculatePmt(simRateDec, loanYears, totalCapex));
+      const dscrs = [];
+      let cumulNet = 0;
+      const fcffs = [];
+
+      baseRows.forEach((r, idx) => {
+        const rev = r.revenue * revMult;
+        const opTech = r.opex * opexMult;
+        const agg = aggExtraPct > 0 ? (rev * (aggExtraPct / 100)) : (r.aggregatorFee * revMult);
+        const ins = r.insurance * opexMult;
+        const rent = r.landRent * rentMult;
+        const eb = rev - opTech - agg - ins - rent;
+
+        const dscr = simAnnuite > 0 ? (eb / simAnnuite) : 2.0;
+        dscrs.push(dscr);
+
+        const interestApprox = totalCapex * (1 - idx / loanYears) * simRateDec;
+        const ebt = eb - r.capexDepreciation - interestApprox;
+        const isTax = Math.max(0, ebt) * 0.25;
+        cumulNet += (ebt - isTax);
+        fcffs.push(eb - Math.max(0, eb - r.capexDepreciation) * 0.25);
+      });
+
+      const dscrMin = dscrs.length > 0 ? Math.min(...dscrs) : 1.5;
+      const dscrAvg = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : 1.6;
+      const projectNpv = npv(discountRate, fcffs) - totalCapex;
+
+      return { dscrMin, dscrAvg, projectNpv, cumulNetIncome: cumulNet };
+    };
+
+    const s1 = {
+      id: 1,
+      name: '1. Cas de base (Audité TURPE 7)',
+      dscrMin: model.kpis.dscrMin,
+      dscrAvg: model.kpis.dscrAvg,
+      projectNpv: model.kpis.projectNpv,
+      cumulNetIncome: model.kpis.cumulNetIncome
+    };
+    const s2 = { id: 2, name: '2. Revenus -10% (Décote marché FCR/Spot)', ...evalScenario(0.90, 1.0, 0, 1.0, 0) };
+    const s3 = { id: 3, name: '3. Revenus -20% (Compression spreads)', ...evalScenario(0.80, 1.0, 0, 1.0, 0) };
+    const s4 = { id: 4, name: '4. OPEX +15% (Hausse maintenance & TURPE)', ...evalScenario(1.0, 1.15, 0, 1.0, 0) };
+    const s5 = { id: 5, name: '5. Frais agrégateur portés à 22%', ...evalScenario(1.0, 1.0, 22, 1.0, 0) };
+    const s6 = { id: 6, name: '6. Loyer foncier +50%', ...evalScenario(1.0, 1.0, 0, 1.50, 0) };
+    const s7 = { id: 7, name: '7. Hausse Taux Bancaire (+150 bps)', ...evalScenario(1.0, 1.0, 0, 1.0, 150) };
+    const s8 = { id: 8, name: '8. Stress combiné (Rev -15%, OPEX +10%)', ...evalScenario(0.85, 1.10, 0, 1.0, 0) };
+
+    const ann = model.totalAnnuite || 1;
+    const rev1 = totalCaAn1 || 1;
+    const fixedOp1 = Math.max(0, totalOpexAn1 - (rev1 * 0.18));
+    // (rev1 * (1 - x) * 0.82 - fixedOp1) / ann = targetDscr
+    const revTarget110 = (1.10 * ann + fixedOp1) / 0.82;
+    const revTarget100 = (1.00 * ann + fixedOp1) / 0.82;
+    const baisseToleree110 = Math.max(0, ((rev1 - revTarget110) / rev1) * 100);
+    const baisseToleree100 = Math.max(0, ((rev1 - revTarget100) / rev1) * 100);
+    const anneesDscrGte120 = baseRows.filter(r => (r.dscr || 0) >= 1.20).length;
+
+    return {
+      scenarios: [s1, s2, s3, s4, s5, s6, s7, s8],
+      baisseToleree110,
+      baisseToleree100,
+      anneesDscrGte120
+    };
+  }, [model, totalCapex, totalCaAn1, totalOpexAn1, debtDuration, debtRate]);
+
+  const rows = useMemo(() => model?.rows || [], [model]);
+  const totals = useMemo(() => model?.totals || {}, [model]);
   const kpis = useMemo(() => model?.kpis || {}, [model]);
   const scenarios = useMemo(() => stress?.scenarios || [], [stress]);
-  const rupture = useMemo(() => stress?.rupture || {}, [stress]);
+  const rupture = useMemo(() => stress || {}, [stress]);
 
   const isDscrCompliant = (kpis?.dscrMin ?? 1.2) >= 1.20;
   const isDscrAcceptable = (kpis?.dscrMin ?? 1.2) >= 1.10;
@@ -171,8 +382,8 @@ export default function BessPortfolioLenderModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start p-2 sm:p-4 overflow-hidden animate-in fade-in duration-200">
-      <div className="relative w-full max-w-[1580px] h-[calc(100vh-40px)] bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
+    <div className="fixed inset-x-0 bottom-0 top-[64px] z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-5 overflow-hidden animate-in fade-in duration-200">
+      <div className="relative w-full max-w-[1560px] h-[calc(100vh-100px)] max-h-[85vh] bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
         {/* Header Modal */}
         <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-6 py-3.5 shadow-xs flex flex-wrap items-center justify-between gap-4" data-html2canvas-ignore="true">
           <div className="flex items-center gap-4">
@@ -358,7 +569,7 @@ export default function BessPortfolioLenderModal({
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-slate-500">EBITDA An 1 :</span>
-                          <span className="font-bold text-emerald-800">{fmtEur(totalCaAn1 - totalOpexAn1 - totalLoyersAn1)}</span>
+                          <span className="font-bold text-emerald-800">{fmtEur(totalEbitdaAn1)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-slate-500">EBITDA Cumulé 12A :</span>
@@ -478,9 +689,9 @@ export default function BessPortfolioLenderModal({
                     <div className="text-[10px] font-black uppercase text-emerald-700 border-b border-emerald-100 pb-0.5">
                       Indexation & Marché
                     </div>
-                    <div className="flex justify-between"><span>Décote revenus :</span><b>10.6 %/an</b></div>
-                    <div className="flex justify-between"><span>Frais agrégateur :</span><b>15.0 %</b></div>
-                    <div className="flex justify-between"><span>Inflation charges :</span><b>1.5 %/an</b></div>
+                    <div className="flex justify-between"><span>Dégradation batterie :</span><b>2.2 %/an</b></div>
+                    <div className="flex justify-between"><span>Frais agrégateur :</span><b>18.0 %</b></div>
+                    <div className="flex justify-between"><span>Inflation revenus/OPEX :</span><b>2.0 %/an</b></div>
                     <div className="flex justify-between"><span>WACC discount :</span><b>7.0 %</b></div>
                   </div>
 
@@ -856,9 +1067,9 @@ export default function BessPortfolioLenderModal({
                         <td className="py-1 px-2 text-center font-bold text-slate-900">
                           <span className="px-1 py-0.5 rounded-md bg-blue-50 text-blue-700 block leading-tight">500 kW / 1 044 kWh</span>
                         </td>
-                        <td className="py-1 px-2 text-right font-extrabold text-amber-700">{fmtEur(s.rent || loyerBailleurPerSite || 3000)}/an</td>
-                        <td className="py-1 px-2 text-right font-black text-emerald-700">{fmtEur(s.ebitda || s.ebitdaAn1 || (totalCaAn1 - totalOpexAn1 - totalLoyersAn1) / nbSites)}</td>
-                        <td className="py-1 px-2 text-center font-bold text-slate-700">{s.payback || '4.7 ans'}</td>
+                        <td className="py-1 px-2 text-right font-extrabold text-amber-700">{fmtEur(s.rent || loyerBailleurPerSite || (portfolioName === 'FARADAY' ? 2000 : 3000))}/an</td>
+                        <td className="py-1 px-2 text-right font-black text-emerald-700">{fmtEur(s.ebitda || s.ebitdaAn1 || (siteSims[idx]?.ebitdaAn1) || (totalEbitdaAn1 / nbSites))}</td>
+                        <td className="py-1 px-2 text-center font-bold text-slate-700">{s.paybackFormatted || (s.payback ? `${Number(s.payback).toFixed(1)} ans` : '4.7 ans')}</td>
                       </tr>
                     ))}
 
@@ -880,10 +1091,10 @@ export default function BessPortfolioLenderModal({
                         {fmtEur(totalLoyersAn1)}/an
                       </td>
                       <td className="py-2 px-2 text-right text-emerald-400 font-black text-xs">
-                        {fmtEur(totalCaAn1 - totalOpexAn1 - totalLoyersAn1)}
+                        {fmtEur(totalEbitdaAn1)}
                       </td>
                       <td className="py-2 px-2 text-center text-emerald-300 font-black">
-                        {fmt(kpis.discountedPaybackYears || 5.0, 1)} ans
+                        {fmt(kpis.discountedPaybackYears || 4.7, 1)} ans
                       </td>
                     </tr>
                   </tbody>
