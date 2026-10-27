@@ -75,25 +75,49 @@ export default function DownloadHistoryMenu() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [recentBadge, setRecentBadge] = useState(false);
+  const [showTextLabel, setShowTextLabel] = useState(false);
   const [previewItem, setPreviewItem] = useState(null);
   const containerRef = useRef(null);
+  const labelTimerRef = useRef(null);
 
   useEffect(() => {
     initDownloadHistoryInterceptor();
-    setDownloads(getDownloadsList());
+    const initialList = getDownloadsList();
+    setDownloads(initialList);
+
+    if (initialList.length > 0 && Date.now() - (initialList[0]?.timestamp || 0) < 10000) {
+      const remaining = 10000 - (Date.now() - initialList[0].timestamp);
+      setShowTextLabel(true);
+      labelTimerRef.current = setTimeout(() => {
+        setShowTextLabel(false);
+      }, remaining);
+    }
 
     const handleUpdate = (e) => {
       const list = e.detail?.downloads || getDownloadsList();
       setDownloads(list);
       if (e.detail?.latestDownload) {
         setRecentBadge(true);
+        setShowTextLabel(true);
         setShowDownloadsPanel(true);
         setShowMoreMenu(false);
+        if (labelTimerRef.current) {
+          clearTimeout(labelTimerRef.current);
+        }
+        labelTimerRef.current = setTimeout(() => {
+          setShowTextLabel(false);
+          setRecentBadge(false);
+        }, 10000);
       }
     };
 
     window.addEventListener('nelson:downloads-updated', handleUpdate);
-    return () => window.removeEventListener('nelson:downloads-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('nelson:downloads-updated', handleUpdate);
+      if (labelTimerRef.current) {
+        clearTimeout(labelTimerRef.current);
+      }
+    };
   }, []);
 
   // Raccourci clavier Ctrl+J comme dans le navigateur pour ouvrir "Téléchargements"
@@ -188,7 +212,9 @@ export default function DownloadHistoryMenu() {
 
   return (
     <div className="relative flex items-center gap-1" ref={containerRef}>
-      {/* Bouton direct "Téléchargements" dans la barre supérieure */}
+      {/* Bouton direct "Téléchargements" dans la barre supérieure :
+          Affiche le mot "Téléchargements" uniquement pendant 10 secondes après un téléchargement,
+          puis se réduit au seul symbole d'icône à gauche */}
       <button
         type="button"
         onClick={() => {
@@ -196,7 +222,9 @@ export default function DownloadHistoryMenu() {
           setShowMoreMenu(false);
           setRecentBadge(false);
         }}
-        className={`relative h-8 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-bold border transition-all shadow-2xs cursor-pointer ${
+        className={`relative h-8 rounded-full flex items-center justify-center text-xs font-bold border transition-all duration-300 shadow-2xs cursor-pointer ${
+          showTextLabel ? 'px-2.5 gap-1.5' : 'w-8 p-0'
+        } ${
           showDownloadsPanel
             ? 'bg-blue-600 text-white border-blue-700'
             : recentBadge
@@ -205,16 +233,18 @@ export default function DownloadHistoryMenu() {
         }`}
         title="Téléchargements (Ctrl+J) — Voir tous les documents téléchargés"
       >
-        <Download className="w-3.5 h-3.5 shrink-0" />
-        <span className="hidden xl:inline">Téléchargements</span>
-        {downloads.length > 0 && (
+        <Download className="w-4 h-4 shrink-0" />
+        {showTextLabel && (
+          <span className="whitespace-nowrap animate-in fade-in duration-200">
+            Téléchargements
+          </span>
+        )}
+        {showTextLabel && downloads.length > 0 && (
           <span
             className={`px-1.5 py-0.2 rounded-full text-[10px] font-black leading-tight ${
               showDownloadsPanel
                 ? 'bg-white text-blue-700'
-                : recentBadge
-                  ? 'bg-emerald-600 text-white animate-pulse'
-                  : 'bg-blue-100 text-blue-800'
+                : 'bg-emerald-600 text-white animate-pulse'
             }`}
           >
             {downloads.length}
