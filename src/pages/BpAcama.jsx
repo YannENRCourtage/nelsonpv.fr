@@ -11,7 +11,7 @@ import {
   BarChart3, FileText, Calculator, TrendingUp, Users, Building,
   FileDown, Save, ChevronDown, Search, X, CheckCircle, AlertCircle,
   AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download, Menu,
-  Sun, BatteryCharging, Zap, Layers, Sparkles, ExternalLink
+  Sun, BatteryCharging, Zap, Layers, Sparkles, ExternalLink, ShieldCheck
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
@@ -1387,7 +1387,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const fcr = p * (fcrHoursDay * 365) * (dispo / 100) * (prixFCR / 1000);
     const cap = p * derating * prixCap;
     const arb = cycles * 365 * c * spread;
-    const degAnnuelle = cycles >= 2 ? 2.2 : (prev.batteryConfig?.degradationAnnuelle || 1.5);
+    const degAnnuelle = cycles >= 2 ? 2.2 : (config?.degradationAnnuelle || 1.5);
 
     setParams(prev => ({
       ...prev,
