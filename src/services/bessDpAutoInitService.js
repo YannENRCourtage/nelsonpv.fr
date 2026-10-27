@@ -154,6 +154,7 @@ export function initBessDpAutoConfig(project, cadastreOverride = null) {
       dp7: existingConfig.pieces_jointes?.dp7 || true,
       dp8: existingConfig.pieces_jointes?.dp8 || true,
       dp11: existingConfig.pieces_jointes?.dp11 || true,
+      notice_incendie: existingConfig.pieces_jointes?.notice_incendie !== false,
       cerfa: true,
       photos: existingConfig.pieces_jointes?.photos || project.photos || project.pc_photos || {}
     },
@@ -246,6 +247,7 @@ export function buildExpressBessProjectPayload(project, dpConfigOverride = null)
       dp7: true,
       dp8: true,
       dp_notice: true,
+      notice_incendie: dpConfig.pieces_jointes?.notice_incendie !== false,
       cerfa: true
     }
   };

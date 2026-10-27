@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { FileText, Map as MapIcon, Image as ImageIcon, Download, Loader2, CheckCircle2, Camera } from 'lucide-react';
 import { cadastreService } from "@/services/CadastreService";
 import { toast } from "@/components/ui/use-toast";
-import { PlateSituation, PlateMasse, PlateNotice, PlateCover, PlateSection, PlateFacades, PlateInsertionNotice, PlateAspect, PlateInsertion, PlateEnvProche, PlateEnvLointain } from './DPPlates';
+import { PlateSituation, PlateMasse, PlateNotice, PlateCover, PlateSection, PlateFacades, PlateInsertionNotice, PlateAspect, PlateInsertion, PlateEnvProche, PlateEnvLointain, PlateNoticeSecuriteIncendieBess } from './DPPlates';
 import html2canvas from 'html2canvas';
 import { preloadProjectImages } from '@/utils/imageProxy';
 
@@ -182,7 +182,9 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
                 'dp-plate-insertion',
                 'dp-plate-env-proche',
                 'dp-plate-env-lointain',
-                'dp-plate-notice-insertion'
+                'dp-plate-notice-insertion',
+                'dp-plate-notice-incendie-p1',
+                'dp-plate-notice-incendie-p2'
             ];
             
             // Préchargement sécurisé des images via le proxy
@@ -474,6 +476,8 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
                 <div id="dp-plate-env-proche"><PlateEnvProche project={project} captures={captures} /></div>
                 <div id="dp-plate-env-lointain"><PlateEnvLointain project={project} captures={captures} /></div>
                 <div id="dp-plate-notice-insertion"><PlateInsertionNotice project={project} /></div>
+                <div id="dp-plate-notice-incendie-p1" style={{ width: '210mm' }} data-portrait="true"><PlateNoticeSecuriteIncendieBess project={project} docType="dp" page={1} /></div>
+                <div id="dp-plate-notice-incendie-p2" style={{ width: '210mm' }} data-portrait="true"><PlateNoticeSecuriteIncendieBess project={project} docType="dp" page={2} /></div>
             </div>
         </div>
     );

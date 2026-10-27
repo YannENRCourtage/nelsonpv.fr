@@ -743,8 +743,37 @@ export default function DpWizardModal({
                   </h4>
                 </div>
                 <p className="text-xs text-emerald-800">
-                  L'ensemble des pièces graphiques réglementaires (DP1 à DP8, Notice descriptive et CERFA 16702*03 pré-rempli) sont configurées.
+                  L'ensemble des pièces graphiques réglementaires (DP1 à DP8, Notice descriptive, Notice de Sécurité Incendie DFCI/SDIS et CERFA 16702*03 pré-rempli) sont configurées.
                 </p>
+              </div>
+
+              <div className="p-3.5 bg-rose-50/70 border border-rose-200 rounded-xl flex items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-black text-rose-950 uppercase tracking-tight">
+                      Pièce additionnelle incluse : Notice de Sécurité Incendie, DFCI &amp; Dispositions SDIS (2 pages A4)
+                    </div>
+                    <p className="text-[11px] text-rose-800 mt-0.5">
+                      Justification Article R.111-2 du Code de l'urbanisme (Chimie LFP, Extinction NFPA 855, Coupure DFCI &amp; OLD 50 m) personnalisée au dossier.
+                    </p>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={dpConfig.pieces_jointes?.notice_incendie !== false}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setDpConfig(prev => ({
+                      ...prev,
+                      pieces_jointes: {
+                        ...(prev.pieces_jointes || {}),
+                        notice_incendie: checked
+                      }
+                    }));
+                  }}
+                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer shrink-0"
+                />
               </div>
 
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">

@@ -472,7 +472,8 @@ async function captureplate(doc, elementId, landscape = true) {
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
     const img = await doc.embedJpg(dataUrl);
-    const dims = landscape ? [841.89, 595.28] : [595.28, 841.89];
+    const isPortrait = !landscape || el.getAttribute('data-portrait') === 'true' || Boolean(el.querySelector('[data-portrait="true"]')) || elementId.includes('notice-incendie');
+    const dims = isPortrait ? [595.28, 841.89] : [841.89, 595.28];
     const page = doc.addPage(dims);
     page.drawImage(img, { x: 0, y: 0, width: dims[0], height: dims[1] });
   } catch (err) {

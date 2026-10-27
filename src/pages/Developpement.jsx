@@ -39,6 +39,7 @@ import {
   PlateEnv,
   PlateEnvProche,
   PlateEnvLointain,
+  PlateNoticeSecuriteIncendieBess,
 } from '@/components/editor/DPPlates';
 
 import {
@@ -453,6 +454,9 @@ export default function Developpement() {
             const suffix = bIdx === 0 ? '' : `-${bIdx}`;
             plateIds.push(isPC ? `${prefix}plate-env-lointain${suffix}` : `dev-plate-env-lointain${suffix}`);
           }
+        } else if (pieceId === 'notice_incendie') {
+          plateIds.push(isPC ? 'dev-pc-plate-notice-incendie-p1' : 'dev-plate-notice-incendie-p1');
+          plateIds.push(isPC ? 'dev-pc-plate-notice-incendie-p2' : 'dev-plate-notice-incendie-p2');
         }
       } else {
         includeCover = selectedPages ? selectedPages.cover !== false : true;
@@ -486,6 +490,9 @@ export default function Developpement() {
             if (wantPC7) plateIds.push(`${prefix}plate-env-proche${suffix}`);
             if (wantPC8) plateIds.push(`${prefix}plate-env-lointain${suffix}`);
           }
+          if (isBatteryProject && (!selectedPages || selectedPages.notice_incendie !== false)) {
+            plateIds.push('dev-pc-plate-notice-incendie-p1', 'dev-pc-plate-notice-incendie-p2');
+          }
         } else if (isCU) {
           if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
           if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
@@ -516,6 +523,9 @@ export default function Developpement() {
             const wantDP8 = !selectedPages || (selectedPages.env !== false && selectedPages.dp8 !== false && selectedPages.env_lointain !== false);
             if (wantDP7) plateIds.push(`dev-plate-env-proche${suffix}`);
             if (wantDP8) plateIds.push(`dev-plate-env-lointain${suffix}`);
+          }
+          if (isBatteryProject && (!selectedPages || selectedPages.notice_incendie !== false)) {
+            plateIds.push('dev-plate-notice-incendie-p1', 'dev-plate-notice-incendie-p2');
           }
         }
       }
@@ -725,7 +735,8 @@ export default function Developpement() {
                       notice: true,
                       insertion: true,
                       envProche: true,
-                      envLointain: true
+                      envLointain: true,
+                      notice_incendie: true
                     });
                   }}
                   onOpenDpWizard={(project) => {
@@ -868,6 +879,12 @@ export default function Developpement() {
                 project={activeProj} 
                 noticeText={activeProj.noticeText || activeProj.noticeAgricole || activeProj.pc_notice || activeProj.description} 
               />
+            </div>
+            <div id="dev-plate-notice-incendie-p1" style={{ width: '210mm' }} data-portrait="true">
+              <PlateNoticeSecuriteIncendieBess project={activeProj} docType="dp" page={1} />
+            </div>
+            <div id="dev-plate-notice-incendie-p2" style={{ width: '210mm' }} data-portrait="true">
+              <PlateNoticeSecuriteIncendieBess project={activeProj} docType="dp" page={2} />
             </div>
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
@@ -1014,6 +1031,12 @@ export default function Developpement() {
             {/* PC Plates — Multi-Bâtiments */}
             <div id="dev-pc-plate-cover"><PCPlateCover project={activeProj} installationType={activeProj.type || 'batiment_solaire'} /></div>
             <div id="dev-pc-plate-situation"><PCPlateSituation project={activeProj} captures={activeProj.urbanisme_captures || {}} /></div>
+            <div id="dev-pc-plate-notice-incendie-p1" style={{ width: '210mm' }} data-portrait="true">
+              <PlateNoticeSecuriteIncendieBess project={activeProj} docType="pc" page={1} />
+            </div>
+            <div id="dev-pc-plate-notice-incendie-p2" style={{ width: '210mm' }} data-portrait="true">
+              <PlateNoticeSecuriteIncendieBess project={activeProj} docType="pc" page={2} />
+            </div>
 
             {((activeProj.buildings && activeProj.buildings.length > 0) ? activeProj.buildings : [activeProj]).map((b, bIdx) => {
               const bRawZoom = Number(b.masse_zoom || activeProj.masse_zoom || 18);

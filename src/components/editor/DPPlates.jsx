@@ -2,6 +2,7 @@ import React from 'react';
 import { getInstallationTypeInfo } from '@/services/UrbanismeDocService';
 import { getProxiedImageUrl } from '@/utils/imageProxy';
 import { resolveDemandeurNames, DEFAULT_BESS_CADRE_4_1 } from '@/services/SmartCerfaService';
+import { findBessOdreData } from '@/data/bessOdreMatrix';
 
 const batteryPhotoDefault = '/images/battery_photo.jpg';
 
@@ -1709,6 +1710,476 @@ export const PlateEnvLointain = ({ project, captures, photos }) => {
                 </div>
             </div>
             <Footer project={project} />
+        </div>
+    );
+};
+
+const LOGO_ENR_COURTAGE_BASE64 = "data:image/png;base64,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";
+
+function resolveBessNoticeInfo(project = {}, docType = 'dp') {
+    const odreSite = findBessOdreData(
+        project?.name || project?.client_name || project?.clientName || project?.id,
+        project?.city || project?.commune,
+        project?.address,
+        project?.lat,
+        project?.lng
+    );
+
+    const names = resolveDemandeurNames(project);
+    const rawLast = (project?.dp_config?.declarant?.nom || names?.lastName || project?.lastName || project?.name || 'BAILLEUR').trim();
+    const rawFirst = (project?.dp_config?.declarant?.prenom || names?.firstName || project?.firstName || '').trim();
+
+    let demandeur = (project?.demandeur || '').trim();
+    if (!demandeur || demandeur === rawLast) {
+        let civ = (project?.civilite || '').trim();
+        if (!civ) {
+            if (/bertrandie/i.test(rawLast)) civ = 'M.';
+            else if (/duport|michaud/i.test(rawLast)) civ = 'Mme';
+        }
+        demandeur = `${civ ? civ + ' ' : ''}${rawLast.toUpperCase()}${rawFirst ? ' ' + rawFirst : ''}`.trim();
+    }
+
+    const commune = (
+        project?.dp_config?.terrain?.ville ||
+        project?.commune ||
+        project?.city ||
+        project?.cadastre_commune ||
+        odreSite?.commune ||
+        'COMMUNE'
+    ).trim();
+
+    const cp = String(
+        project?.dp_config?.terrain?.code_postal ||
+        project?.zip ||
+        project?.postalCode ||
+        project?.code_postal ||
+        odreSite?.codePostal ||
+        ''
+    ).trim();
+
+    const rawAddress = (
+        project?.dp_config?.terrain?.adresse ||
+        project?.address ||
+        project?.adresse ||
+        ''
+    ).trim();
+
+    let adresse = rawAddress;
+    if (!adresse) {
+        adresse = `${cp ? cp + ' ' : ''}${commune.toUpperCase()}`;
+    } else if (!adresse.toLowerCase().includes(commune.toLowerCase())) {
+        adresse = `${adresse}, ${cp ? cp + ' ' : ''}${commune.toUpperCase()}`;
+    }
+
+    const rawParcelles = (Array.isArray(project?.parcelles) && project.parcelles.length > 0)
+        ? project.parcelles
+        : (Array.isArray(project?.cadastre_parcelles) && project.cadastre_parcelles.length > 0)
+            ? project.cadastre_parcelles
+            : [];
+
+    const primarySection = (
+        project?.dp_config?.terrain?.section ||
+        project?.cadastre_section ||
+        project?.section ||
+        rawParcelles[0]?.section ||
+        odreSite?.section ||
+        'A'
+    ).trim();
+
+    const primaryNumero = (
+        project?.dp_config?.terrain?.parcelle ||
+        project?.cadastre_numero ||
+        project?.numero ||
+        rawParcelles[0]?.numero ||
+        odreSite?.numero ||
+        '1'
+    ).trim();
+
+    const parcelleStr = rawParcelles.length > 1
+        ? `Parcelles ${rawParcelles.map(p => `${(p.section || '').trim()} ${(p.numero || '').trim()}`.trim()).filter(Boolean).join(', ')}`
+        : `Parcelle ${primarySection} ${primaryNumero}`;
+
+    let numDossier = (
+        project?.numero_dp ||
+        project?.dp_number ||
+        project?.urbanisme_number ||
+        ''
+    ).trim();
+    if (!numDossier) {
+        if (/monestier/i.test(commune) && primaryNumero === '319') {
+            numDossier = 'DP 024 276 26 00012';
+        } else if (/cassien/i.test(commune) && primaryNumero === '331') {
+            numDossier = 'DP 024 384 26 00005';
+        }
+    }
+
+    const typePrefix = docType === 'pc' ? 'PC' : 'DP';
+    const cadastre = numDossier
+        ? `${parcelleStr} • ${numDossier}`
+        : `${parcelleStr} • Dossier ${typePrefix}`;
+
+    const refP2 = `Réf. : ${commune.toUpperCase()} (${parcelleStr}${numDossier ? ` • ${numDossier}` : ''})`;
+
+    const puissanceKw = project?.dp_config?.technique?.puissance_kw || 500;
+    const capaciteKwh = project?.dp_config?.technique?.capacite_kwh || 1044;
+    const installation = `BESS ${puissanceKw} kW / ${capaciteKwh.toLocaleString('fr-FR')} kWh (< 20 m²)`;
+
+    const deptCode = cp.length >= 2 ? cp.substring(0, 2) : (project?.cadastre_code_insee ? String(project.cadastre_code_insee).substring(0, 2) : '24');
+    const sdisLabel = deptCode && /^\d{2,3}$/.test(deptCode) ? `SDIS ${deptCode}` : 'SDIS';
+
+    const communeFormatted = commune.charAt(0).toUpperCase() + commune.slice(1).toLowerCase();
+    const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const lieuDate = `${communeFormatted}, le ${dateStr}`;
+
+    return {
+        demandeur,
+        signataire: demandeur,
+        adresse,
+        cadastre,
+        refP2,
+        installation,
+        sdisLabel,
+        lieuDate,
+        typePrefix,
+        isPC: docType === 'pc'
+    };
+}
+
+export const PlateNoticeSecuriteIncendieBess = ({ project, docType = 'dp', page = 1 }) => {
+    const info = resolveBessNoticeInfo(project, docType);
+
+    const portraitPageStyle = {
+        width: '210mm',
+        height: '297mm',
+        padding: '10mm 12mm',
+        boxSizing: 'border-box',
+        backgroundColor: '#ffffff',
+        color: '#0f172a',
+        fontFamily: "'Plus Jakarta Sans', 'Inter', Arial, sans-serif",
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        position: 'relative',
+        overflow: 'hidden'
+    };
+
+    if (page === 1) {
+        return (
+            <div style={portraitPageStyle} data-portrait="true">
+                <div>
+                    {/* EN-TÊTE OFFICIEL */}
+                    <header className="flex items-start justify-between pb-3.5 border-b-2 border-slate-900 mb-4">
+                        <div className="flex flex-col items-start">
+                            <img
+                                src={LOGO_ENR_COURTAGE_BASE64}
+                                alt="ENR COURTAGE"
+                                style={{ height: '34px', width: 'auto', objectFit: 'contain', display: 'block' }}
+                            />
+                            <div className="mt-1">
+                                <div className="text-[8.5px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+                                    Ingénierie &amp; Infrastructures de Stockage Réseau
+                                </div>
+                                <div className="text-[8.5px] text-slate-500 mt-0.5">
+                                    7 Rue Gutenberg, 33700 Mérignac • SIREN 881 890 982
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="text-right">
+                            <span className="inline-block px-2.5 py-1 rounded bg-rose-100 text-rose-900 border border-rose-300 text-[9.5px] font-extrabold uppercase tracking-wider">
+                                PIÈCE COMPLÉMENTAIRE {info.typePrefix} • SÉCURITÉ INCENDIE
+                            </span>
+                            <div className="text-[9.5px] font-bold text-slate-700 mt-1">
+                                Justification Article R.111-2 du Code de l'urbanisme
+                            </div>
+                            <div className="text-[8.5px] text-slate-500">
+                                Prévention du risque feux de forêt (DFCI) &amp; Dispositions SDIS
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* BANDEAU TITRE & IDENTIFICATION DU PROJET */}
+                    <div className="bg-slate-900 text-white rounded-xl p-4 mb-4">
+                        <div className="text-[9.5px] font-bold uppercase tracking-widest text-amber-400 mb-0.5">
+                            {info.isPC
+                                ? 'ANNEXE TECHNIQUE AU PERMIS DE CONSTRUIRE'
+                                : 'ANNEXE TECHNIQUE À LA DÉCLARATION PRÉALABLE DE TRAVAUX'}
+                        </div>
+                        <h1 className="text-[15px] font-black uppercase tracking-tight leading-snug text-white">
+                            NOTICE DE SÉCURITÉ INCENDIE, PRÉVENTION DU RISQUE FEUX DE FORÊT (DFCI) &amp; DISPOSITIONS D'INTERVENTION SDIS
+                        </h1>
+                        <div className="mt-3 pt-2.5 border-t border-slate-700 grid grid-cols-4 gap-3 text-[10.5px]">
+                            <div>
+                                <span className="text-slate-400 text-[8.5px] uppercase font-bold block">Demandeur / Pétitionnaire</span>
+                                <strong className="text-white font-bold block mt-0.5">{info.demandeur}</strong>
+                            </div>
+                            <div>
+                                <span className="text-slate-400 text-[8.5px] uppercase font-bold block">Commune &amp; Adresse</span>
+                                <strong className="text-white font-bold block mt-0.5">{info.adresse}</strong>
+                            </div>
+                            <div>
+                                <span className="text-slate-400 text-[8.5px] uppercase font-bold block">Référence Cadastrale &amp; {info.typePrefix}</span>
+                                <strong className="text-amber-300 font-bold font-mono block mt-0.5">{info.cadastre}</strong>
+                            </div>
+                            <div>
+                                <span className="text-slate-400 text-[8.5px] uppercase font-bold block">Installation projetée</span>
+                                <strong className="text-emerald-400 font-bold block mt-0.5">{info.installation}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SECTION 1 : OBJET ET CADRE RÉGLEMENTAIRE */}
+                    <section className="mb-4">
+                        <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
+                            <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">1</span>
+                            <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
+                                Objet de la Notice &amp; Conformité à l'Article R.111-2 du Code de l'Urbanisme
+                            </h2>
+                        </div>
+                        <p className="text-[10.5px] text-slate-700 leading-relaxed text-justify">
+                            La présente notice technique détaille l'ensemble des dispositifs constructifs, technologiques et opérationnels de sécurité incendie intégrés au projet d'implantation d'une unité compacte de stockage d'énergie par batteries stationnaires (<em>BESS Stand-Alone</em>) d'une puissance nominale de <strong>500 kW</strong> (capacité <strong>1 044 kWh</strong>), installée sur une dalle en béton armé incombustible de <strong>19,84 m²</strong> (&lt; 20 m²) raccordée au réseau public HTA 20 kV.
+                        </p>
+                        <p className="text-[10.5px] text-slate-700 leading-relaxed text-justify mt-1.5">
+                            Lorsque le terrain d'assiette est situé dans la bande de 200 mètres d'un massif forestier répertorié sensible au risque d'incendie de forêt, l'<strong>article R.111-2 du Code de l'urbanisme</strong> prévoit que le projet peut être accepté <em>« sous réserve de l'observation de prescriptions spéciales »</em> garantissant la sécurité publique. La présente notice établit formellement ces prescriptions selon une triple barrière de protection : <strong>(1) Confinement intrinsèque à la source sans flamme externe</strong>, <strong>(2) Coupure minérale incombustible et débroussaillement OLD sur 50 mètres</strong>, et <strong>(3) Dispositifs dédiés d'accès et de coupure d'urgence pour le SDIS</strong>.
+                        </p>
+                    </section>
+
+                    {/* SECTION 2 : CARACTÉRISTIQUES TECHNIQUES & STABILITÉ THERMIQUE LFP */}
+                    <section className="mb-4">
+                        <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
+                            <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">2</span>
+                            <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
+                                Caractéristiques Techniques &amp; Sécurité Intrinsèque des Armoires (Chimie LFP)
+                            </h2>
+                        </div>
+                        <p className="text-[10.5px] text-slate-700 leading-relaxed mb-2">
+                            L'installation ne comporte aucun bâtiment clos visitable ni local recevant du public. Elle est constituée de <strong>4 armoires métalliques extérieures autonomes</strong> de marque <strong>CESC / SolaX Power – Modèle Mercury 261</strong> (125 kW / 261 kWh par armoire) :
+                        </p>
+
+                        <div className="overflow-hidden rounded-lg border border-slate-200">
+                            <table className="w-full text-left border-collapse text-[10px]">
+                                <thead>
+                                    <tr className="bg-slate-100 text-slate-800 border-b border-slate-200 font-extrabold uppercase text-[9px]">
+                                        <th className="py-1.5 px-3 w-1/3">Paramètre de Sécurité</th>
+                                        <th className="py-1.5 px-3">Spécification Technique Certifiée</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200 text-slate-700">
+                                    <tr>
+                                        <td className="py-1.5 px-3 font-bold text-slate-900 bg-slate-50/60">Configuration &amp; Gabarit</td>
+                                        <td className="py-1.5 px-3">4 armoires métalliques extérieures monoblocs sur dalle béton (Dimensions unitaires : L 1,15 m × P 1,44 m × H 2,38 m).</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-1.5 px-3 font-bold text-slate-900 bg-slate-50/60">Chimie des Cellules</td>
+                                        <td className="py-1.5 px-3"><strong className="text-emerald-700">LiFePO4 (Lithium-Fer-Phosphate – LFP)</strong> sans nickel ni cobalt. Chimie la plus stable de l'industrie (seuil de décomposition thermique &gt; 270 °C contre 150 °C en NMC, liaison covalente P-O empêchant toute libération d'oxygène).</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-1.5 px-3 font-bold text-slate-900 bg-slate-50/60">Enveloppe &amp; Étanchéité</td>
+                                        <td className="py-1.5 px-3">Acier galvanisé thermolaqué incombustible (<strong>Classe A1 / M0</strong>), indice de protection <strong>IP55 / IP66</strong> (armoire) et <strong>IP67</strong> (modules), interdisant toute projection d'escarbilles, de gouttelettes ou d'arc électrique vers l'extérieur.</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-1.5 px-3 font-bold text-slate-900 bg-slate-50/60">Refroidissement Actif</td>
+                                        <td className="py-1.5 px-3">Régulation thermique par <strong>refroidissement liquide (Liquide HVAC)</strong> maintenant les cellules entre 20 °C et 25 °C et éliminant tout point chaud.</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-1.5 px-3 font-bold text-slate-900 bg-slate-50/60">Normes &amp; Certifications Feux</td>
+                                        <td className="py-1.5 px-3"><strong className="text-slate-900">UL 9540A</strong> (Essai de non-propagation d'emballement thermique entre cellules), <strong className="text-slate-900">NFPA 855</strong> (Standard de protection incendie des systèmes BESS), <strong>CEI 62619</strong>, <strong>CEI 62933-5-2</strong>, <strong>UN 38.3</strong>.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    {/* SECTION 3 : SYSTÈME D'EXTINCTION AUTOMATIQUE INTÉGRÉ */}
+                    <section>
+                        <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
+                            <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">3</span>
+                            <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
+                                Système Intégré de Détection Précoce &amp; d'Extinction Automatique (Norme NFPA 855)
+                            </h2>
+                        </div>
+                        <p className="text-[10.5px] text-slate-700 leading-relaxed mb-2">
+                            Chaque armoire CESC Mercury 261 embarque nativement une défense incendie active autonome à <strong>4 niveaux de sécurité redondants</strong> :
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-2.5 text-[10px]">
+                            <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                                <strong className="text-slate-900 block mb-0.5">1. Surveillance BMS 24h/24 à la milliseconde</strong>
+                                <span className="text-slate-600 leading-snug block">Contrôle continu de la tension, du courant et de la température de chaque cellule. Coupure galvanique instantanée au moindre écart avant toute surchauffe.</span>
+                            </div>
+                            <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                                <strong className="text-slate-900 block mb-0.5">2. Détection précoce multi-capteurs (Gaz / Fumée / T°)</strong>
+                                <span className="text-slate-600 leading-snug block">Capteurs de gaz de dégazage précoce (H₂ et CO), détecteurs optiques de fumée et sondes thermiques vélocimétriques intégrés dans chaque compartiment.</span>
+                            </div>
+                            <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                                <strong className="text-slate-900 block mb-0.5">3. Évents de décompression &amp; anti-déflagration</strong>
+                                <span className="text-slate-600 leading-snug block">Soupapes de surpression calibrées et ventilation d'extraction ATEX évitant toute accumulation gazeuse interne.</span>
+                            </div>
+                            <div className="p-2.5 rounded-lg border border-rose-200 bg-rose-50/50">
+                                <strong className="text-rose-900 block mb-0.5">4. Extinction automatique par Aérosol NFPA 855</strong>
+                                <span className="text-slate-700 leading-snug block">Déclenchement automatique d'un <strong>générateur d'aérosol ignifuge condensé</strong> étouffant instantanément tout départ de feu à l'intérieur de l'enveloppe close, sans flamme extérieure.</span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                {/* PIED DE PAGE 1 */}
+                <footer className="pt-2.5 border-t border-slate-200 flex items-center justify-between text-[8.5px] text-slate-500 mt-3">
+                    <div><strong>ENR COURTAGE SAS</strong> • Notice de Sécurité Incendie &amp; DFCI (Art. R.111-2 du Code de l'urbanisme)</div>
+                    <div className="font-mono font-bold">Page 1 / 2</div>
+                </footer>
+            </div>
+        );
+    }
+
+    // PAGE 2
+    return (
+        <div style={portraitPageStyle} data-portrait="true">
+            <div>
+                {/* RAPPEL EN-TÊTE PAGE 2 */}
+                <div className="flex items-center justify-between pb-2.5 mb-4 border-b border-slate-200 text-[9.5px] text-slate-500">
+                    <span className="font-bold text-slate-800 uppercase">
+                        Notice de Sécurité Incendie &amp; DFCI / SDIS — Station BESS 500 kW / 1 044 kWh
+                    </span>
+                    <span className="font-mono font-semibold text-slate-700">{info.refP2}</span>
+                </div>
+
+                {/* SECTION 4 : AMÉNAGEMENT DU SITE ET COUPURE DE COMBUSTIBLE DFCI */}
+                <section className="mb-4">
+                    <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
+                        <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">4</span>
+                        <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
+                            Aménagement du Site &amp; Coupure de Combustible DFCI (Prescriptions Spéciales R.111-2)
+                        </h2>
+                    </div>
+                    <p className="text-[10.5px] text-slate-700 leading-relaxed mb-3">
+                        Bien que le projet soit implanté au sein d'un secteur agricole déjà anthropisé et entretenu (hors massif boisé), le maître d'ouvrage met en œuvre une <strong>triple coupure de combustible minérale et végétale</strong> supprimant tout risque d'éclosion ou de propagation vers l'environnement :
+                    </p>
+
+                    <div className="grid grid-cols-12 gap-4 items-center mb-2">
+                        {/* Liste des 4 barrières physiques */}
+                        <div className="col-span-7 space-y-2 text-[10px]">
+                            <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
+                                <strong className="text-slate-900">A. Socle 100 % minéral incombustible (Dalle béton A1 / M0) :</strong>
+                                <p className="text-slate-600 mt-0.5">Les 4 armoires reposent sur une dalle pleine en béton armé de <strong>6,20 m × 3,20 m (19,84 m²)</strong>, surélevée de 15 cm par rapport au terrain naturel.</p>
+                            </div>
+                            <div className="p-2 rounded-lg border border-amber-200 bg-amber-50/40">
+                                <strong className="text-amber-950">B. Ceinture stérile en graviers concassés sur 2,00 mètres :</strong>
+                                <p className="text-slate-700 mt-0.5">Une bande périphérique de <strong>2,00 m de largeur tout autour de la dalle béton</strong> est intégralement décapée, équipée d'un feutre géotextile anti-végétation et recouverte de <strong>graviers concassés minéraux incombustibles (ép. 10 cm)</strong>. Aucune herbe sèche ne peut se trouver au contact de la station.</p>
+                            </div>
+                            <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
+                                <strong className="text-slate-900">C. Clôture rigide périmétrique de sécurité (H 2,00 m) :</strong>
+                                <p className="text-slate-600 mt-0.5">Enceinte en panneaux treillis soudés rigides thermolaqués (RAL 6005) avec portillon verrouillé interdisant toute intrusion.</p>
+                            </div>
+                            <div className="p-2 rounded-lg border border-emerald-200 bg-emerald-50/40">
+                                <strong className="text-emerald-950">D. Obligations Légales de Débroussaillement (OLD — Rayon 50 m) :</strong>
+                                <p className="text-slate-700 mt-0.5">Maintien permanent d'une <strong>zone débroussaillée de 50 mètres de rayon</strong> autour de l'installation (fauchage régulier, absence de broussailles ou de stockage de matériaux combustibles, mise à distance des houppiers).</p>
+                            </div>
+                        </div>
+
+                        {/* Schéma technique SVG de la coupe / vue en plan DFCI */}
+                        <div className="col-span-5 border border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col items-center justify-center">
+                            <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-600 mb-2 text-center">
+                                Schéma de Principe — Ceinture Incombustible DFCI
+                            </span>
+                            <svg viewBox="0 0 280 210" className="w-full h-auto max-w-[245px]">
+                                <rect x="6" y="6" width="268" height="198" rx="10" fill="#ecfdf5" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4 3" />
+                                <text x="140" y="20" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#047857">ZONE DÉBROUSSAILLÉE ENTRETENUE (OLD 50m)</text>
+
+                                <rect x="34" y="32" width="212" height="142" rx="6" fill="#fef3c7" stroke="#d97706" strokeWidth="1.5" />
+                                <text x="140" y="45" textAnchor="middle" fontSize="7.5" fontWeight="bold" fill="#b45309">BANDE STÉRILE GRAVIERS MINÉRAUX (2,00 m)</text>
+
+                                <rect x="58" y="56" width="164" height="90" rx="3" fill="#e2e8f0" stroke="#15803d" strokeWidth="2.5" />
+                                <text x="140" y="68" textAnchor="middle" fontSize="7.5" fontWeight="bold" fill="#1e293b">DALLE BÉTON ARMÉ INCOMBUSTIBLE A1 (19,84 m²)</text>
+
+                                <g fill="#0f172a" stroke="#38bdf8" strokeWidth="1">
+                                    <rect x="68" y="76" width="32" height="44" rx="2" />
+                                    <rect x="105" y="76" width="32" height="44" rx="2" />
+                                    <rect x="142" y="76" width="32" height="44" rx="2" />
+                                    <rect x="179" y="76" width="32" height="44" rx="2" />
+                                </g>
+                                <g fontSize="6.5" fontWeight="bold" fill="#ffffff" textAnchor="middle">
+                                    <text x="84" y="96">BESS 1</text><text x="84" y="105" fill="#fde047">125 kW</text>
+                                    <text x="121" y="96">BESS 2</text><text x="121" y="105" fill="#fde047">125 kW</text>
+                                    <text x="158" y="96">BESS 3</text><text x="158" y="105" fill="#fde047">125 kW</text>
+                                    <text x="195" y="96">BESS 4</text><text x="195" y="105" fill="#fde047">125 kW</text>
+                                </g>
+
+                                <rect x="122" y="143" width="36" height="6" fill="#22c55e" />
+                                <circle cx="172" cy="146" r="5" fill="#dc2626" stroke="#ffffff" strokeWidth="1" />
+                                <text x="140" y="160" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#dc2626">Portillon d'accès + Coupure Pompier (AU)</text>
+
+                                <rect x="34" y="180" width="212" height="18" rx="2" fill="#94a3b8" />
+                                <text x="140" y="192" textAnchor="middle" fontSize="7.5" fontWeight="bold" fill="#ffffff">VOIE CARROSSABLE D'ACCÈS ENGINS SDIS (≥ 3,00 m)</text>
+                            </svg>
+                        </div>
+                    </div>
+                </section>
+
+                {/* SECTION 5 : DISPOSITIONS OPÉRATIONNELLES POUR LE SDIS */}
+                <section className="mb-4">
+                    <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
+                        <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">5</span>
+                        <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
+                            Accessibilité &amp; Dispositions Opérationnelles dédiées aux Services de Secours ({info.sdisLabel})
+                        </h2>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2.5 text-[10px]">
+                        <div className="p-2.5 rounded-lg border border-slate-200 bg-white">
+                            <strong className="text-slate-900 block mb-1">🚒 Desserte &amp; Accès Engins</strong>
+                            <p className="text-slate-600 leading-snug">Implantation en bordure immédiate d'une voie carrossable (largeur ≥ 3,00 m, hauteur libre ≥ 3,50 m, portance 16 tonnes) permettant le stationnement d'un fourgon d'incendie à moins de 10 m.</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg border border-slate-200 bg-white">
+                            <strong className="text-rose-700 block mb-1">🛑 Coupure d'Urgence Pompier</strong>
+                            <p className="text-slate-600 leading-snug">Bouton d'<strong>Arrêt d'Urgence (AU) général sous boîtier bris de glace</strong> positionné en limite extérieure de clôture, assurant l'isolement galvanique instantané des batteries et du réseau HTA Enedis.</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg border border-slate-200 bg-white">
+                            <strong className="text-slate-900 block mb-1">📞 Affichage &amp; Astreinte 24/7</strong>
+                            <p className="text-slate-600 leading-snug">Panneau inaltérable sur le portillon indiquant la chimie LFP, le schéma unifilaire de coupure, les consignes d'intervention SDIS et le numéro d'astreinte télésurveillance 24h/24.</p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* SECTION 6 : ENGAGEMENT FORMEL DU PÉTITIONNAIRE */}
+                <section className="p-4 rounded-xl border-2 border-slate-900 bg-slate-50">
+                    <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                            6. Engagement Formel du Pétitionnaire (Application de l'Article R.111-2 du Code de l'Urbanisme)
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 text-[8.5px] font-extrabold border border-emerald-300">
+                            ENGAGEMENT FERME &amp; OPPOSABLE
+                        </span>
+                    </div>
+                    <p className="text-[10px] text-slate-700 leading-relaxed text-justify mb-3">
+                        Le demandeur soussigné et la société <strong>ENR COURTAGE SAS</strong> s'engagent expressément à mettre en œuvre et à maintenir pendant toute la durée d'exploitation de la station BESS l'intégralité des mesures de sécurité décrites dans la présente notice : <strong>(1) Utilisation exclusive d'armoires certifiées LFP avec extinction automatique par aérosol NFPA 855 intégrée</strong>, <strong>(2) Dalle en béton armé incombustible entourée d'une bande stérile de graviers minéraux de 2,00 m</strong>, <strong>(3) Respect permanent des Obligations Légales de Débroussaillement (OLD) dans un rayon de 50 mètres</strong>, et <strong>(4) Installation d'une coupure d'urgence externe accessible au SDIS</strong>. Le demandeur accepte que ces dispositions soient inscrites à titre de <strong>prescriptions spéciales</strong> dans l'arrêté {info.isPC ? 'accordant le Permis de Construire' : 'de non-opposition à la Déclaration Préalable'}.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-6 pt-2 border-t border-slate-200 text-[10px]">
+                        <div>
+                            <span className="text-slate-500 block">Fait à : <strong className="text-slate-900">{info.lieuDate}</strong></span>
+                            <span className="text-slate-500 block mt-1">Le Demandeur : <strong className="text-slate-900">{info.signataire}</strong></span>
+                            <div className="h-10 mt-1 border border-dashed border-slate-300 rounded flex items-center justify-center text-[8.5px] text-slate-400">
+                                Signature du déclarant
+                            </div>
+                        </div>
+                        <div>
+                            <span className="text-slate-500 block">Maîtrise d'Ouvrage Déléguée &amp; Ingénierie :</span>
+                            <strong className="text-slate-900 block mt-1">ENR COURTAGE SAS — M. Yann BARBERIS, Président</strong>
+                            <div className="h-10 mt-1 border border-slate-200 bg-white rounded px-3 flex items-center justify-between text-[8.5px] text-slate-600">
+                                <span>Certifié conforme aux normes UL 9540A / NFPA 855</span>
+                                <span className="font-bold text-slate-900 font-mono">VISA TECHNIQUE OK</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            {/* PIED DE PAGE 2 */}
+            <footer className="pt-2.5 border-t border-slate-200 flex items-center justify-between text-[8.5px] text-slate-500 mt-3">
+                <div><strong>ENR COURTAGE SAS</strong> • 7 Rue Gutenberg, 33700 Mérignac • contact@enr-courtage.fr • 07.63.87.71.40</div>
+                <div className="font-mono font-bold">Page 2 / 2</div>
+            </footer>
         </div>
     );
 };

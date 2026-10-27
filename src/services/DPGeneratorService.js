@@ -46,12 +46,65 @@ async function captureDomElementToPdfBytes(elementId, landscape = true) {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
     const doc = await PDFDocument.create();
     const img = await doc.embedJpg(dataUrl);
-    const dims = landscape ? [841.89, 595.28] : [595.28, 841.89];
+    const isPortrait = !landscape || el.getAttribute('data-portrait') === 'true' || Boolean(el.querySelector('[data-portrait="true"]')) || elementId.includes('notice-incendie');
+    const dims = isPortrait ? [595.28, 841.89] : [841.89, 595.28];
     const page = doc.addPage(dims);
     page.drawImage(img, { x: 0, y: 0, width: dims[0], height: dims[1] });
     return await doc.save();
   } catch (err) {
     console.error(`[exportDossierDepotZip] Erreur capture #${elementId}:`, err);
+    return null;
+  }
+}
+
+async function captureDomElementsToMultiPagePdfBytes(elementIds = [], landscape = false) {
+  try {
+    const doc = await PDFDocument.create();
+    let added = 0;
+
+    for (const elementId of elementIds) {
+      const el = document.getElementById(elementId);
+      if (!el) continue;
+
+      const images = Array.from(el.querySelectorAll('img'));
+      await Promise.all(
+        images.map(img => {
+          if (!img.src) return Promise.resolve();
+          if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            if (img.decode) {
+              img.decode().then(resolve).catch(resolve);
+            }
+            setTimeout(resolve, 1500);
+          });
+        })
+      );
+
+      await new Promise(r => setTimeout(r, 200));
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        imageTimeout: 20000,
+      });
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
+      const img = await doc.embedJpg(dataUrl);
+      const isPortrait = !landscape || el.getAttribute('data-portrait') === 'true' || Boolean(el.querySelector('[data-portrait="true"]')) || elementId.includes('notice-incendie');
+      const dims = isPortrait ? [595.28, 841.89] : [841.89, 595.28];
+      const page = doc.addPage(dims);
+      page.drawImage(img, { x: 0, y: 0, width: dims[0], height: dims[1] });
+      added++;
+    }
+
+    if (added === 0) return null;
+    return await doc.save();
+  } catch (err) {
+    console.error('[exportDossierDepotZip] Erreur capture multi-pages:', err);
     return null;
   }
 }
@@ -405,6 +458,18 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
       zip.file('Notice_Descriptive_Projet.pdf', noticeBytes);
     }
 
+    // I. Notice de Sécurité Incendie, DFCI & Dispositions SDIS (Pièce additionnelle BESS)
+    if (isBat && (!selectedPages || selectedPages.notice_incendie !== false)) {
+      notify('Export de la Notice de Sécurité Incendie, DFCI & SDIS (BESS)...');
+      const incIds = isPC
+        ? ['dev-pc-plate-notice-incendie-p1', 'dev-pc-plate-notice-incendie-p2']
+        : ['dev-plate-notice-incendie-p1', 'dev-plate-notice-incendie-p2'];
+      const incBytes = await captureDomElementsToMultiPagePdfBytes(incIds, false);
+      if (incBytes) {
+        zip.file(`${prefix}_Piece_Complementaire_Notice_Securite_Incendie_DFCI_SDIS.pdf`, incBytes);
+      }
+    }
+
     // ── 3. Fichier récapitulatif INSTRUCTIONS_DEPOT.txt ────────────────────────
     notify('Génération des instructions de dépôt...');
     const names = resolveDemandeurNames(safeProject);
@@ -453,7 +518,7 @@ Lien d'accès direct au téléservice :
 - ${prefix}6_Document_Insertion_Paysagere.pdf : Simulation photomontage d'intégration dans le site futur
 - ${prefix}7_Environnement_Proche.pdf : Photographie intégrée dans son environnement proche
 - ${prefix}8_Environnement_Lointain.pdf : Photographie intégrée dans le paysage lointain
-- Notice_Descriptive_Projet.pdf : Notice explicative détaillée des matériaux et aspects architecturaux
+- Notice_Descriptive_Projet.pdf : Notice explicative détaillée des matériaux et aspects architecturaux${isBat ? `\n- ${prefix}_Piece_Complementaire_Notice_Securite_Incendie_DFCI_SDIS.pdf : Notice de Sécurité Incendie, DFCI & Dispositions SDIS (Art. R.111-2)` : ''}
 
 5. RECOURS DE SECOURS — OPTION DEPOT PAPIER (LETTRE RECOMMANDEE AR)
 --------------------------------------------------------------------------------
@@ -560,7 +625,9 @@ export async function generateDPDossier(project, plates) {
         'dp-plate-insertion',
         'dp-plate-env-proche',
         'dp-plate-env-lointain',
-        'dp-plate-notice-insertion'
+        'dp-plate-notice-insertion',
+        'dp-plate-notice-incendie-p1',
+        'dp-plate-notice-incendie-p2'
       ];
       for (const id of plateIds) {
         if (plates[id]) {
@@ -573,12 +640,14 @@ export async function generateDPDossier(project, plates) {
               plateImg = await finalDoc.embedPng(plateData);
             }
 
-            const page = finalDoc.addPage([841.89, 595.28]);
+            const isPortrait = id.includes('notice-incendie');
+            const dims = isPortrait ? [595.28, 841.89] : [841.89, 595.28];
+            const page = finalDoc.addPage(dims);
             page.drawImage(plateImg, {
               x: 0,
               y: 0,
-              width: 841.89,
-              height: 595.28,
+              width: dims[0],
+              height: dims[1],
             });
           } catch (err) {
             console.error(`Erreur sur la planche ${id}:`, err);

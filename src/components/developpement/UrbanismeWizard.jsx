@@ -1809,6 +1809,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     dp8: true,
     pc7: true,
     pc8: true,
+    notice_incendie: true,
     cerfa: true,
   });
 
@@ -8189,6 +8190,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                             env: true,
                             dp_notice: true,
                             dp8: true,
+                            notice_incendie: true,
                             cerfa: true,
                           })}
                           className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
@@ -8208,6 +8210,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                             env: false,
                             dp_notice: false,
                             dp8: false,
+                            notice_incendie: false,
                             cerfa: false,
                           })}
                           className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
@@ -8227,6 +8230,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         { id: 'insertion', code: 'PC6', title: 'Insertion paysagère', desc: 'Vue avant / simulation 3D après', badge: (photos?.avant || photos?.apres) ? 'Prêt' : 'Photo 3D', color: 'emerald' },
                         { id: 'env_proche', code: 'PC7', title: 'Environnement proche', desc: 'Photographie dans le paysage proche', badge: (photos?.proche || editedProject?.pc_photos?.proche) ? 'Prêt' : 'Optionnel', color: 'purple' },
                         { id: 'env_lointain', code: 'PC8', title: 'Paysage lointain', desc: 'Photographie dans le paysage lointain', badge: (photos?.lointain || editedProject?.pc_photos?.lointain) ? 'Prêt' : 'Optionnel', color: 'purple' },
+                        ...(isBatActive ? [{ id: 'notice_incendie', code: 'SDIS / DFCI', title: 'Notice Sécurité Incendie & DFCI', desc: 'Notice sécurité incendie, DFCI & dispositions SDIS (Art. R.111-2 — 2 pages)', badge: 'Pièce additionnelle', color: 'rose' }] : []),
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA', desc: 'CERFA 13404 officiel pré-rempli', badge: 'Administratif', color: 'amber' },
                       ] : type === 'dp' ? [
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte & synthèse', badge: 'Recommandé', color: 'blue' },
@@ -8249,6 +8253,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         { id: 'insertion', code: 'DP6', title: 'Insertion paysagère', desc: 'Simulation d\'intégration paysagère', badge: (photos?.avant || photos?.apres) ? 'Prêt' : 'Photo 3D', color: 'emerald' },
                         { id: 'env_proche', code: 'DP7', title: 'Environnement proche', desc: 'Photographie de l\'environnement proche', badge: (photos?.proche || editedProject?.pc_photos?.proche) ? 'Prêt' : 'Optionnel', color: 'purple' },
                         { id: 'env_lointain', code: 'DP8', title: 'Paysage lointain', desc: 'Photographie du paysage lointain', badge: (photos?.lointain || editedProject?.pc_photos?.lointain) ? 'Prêt' : 'Optionnel', color: 'purple' },
+                        ...(isBatActive ? [{ id: 'notice_incendie', code: 'SDIS / DFCI', title: 'Notice Sécurité Incendie & DFCI', desc: 'Notice sécurité incendie, DFCI & dispositions SDIS (Art. R.111-2 — 2 pages)', badge: 'Pièce additionnelle', color: 'rose' }] : []),
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA DP', desc: 'Déclaration préalable officielle', badge: 'Administratif', color: 'amber' },
                       ] : [
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte', badge: 'Recommandé', color: 'blue' },
@@ -8335,7 +8340,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                     </>
                                   )}
                                 </button>
-                                {item.id !== 'cover' && item.id !== 'cerfa' && (
+                                {item.id !== 'cover' && item.id !== 'cerfa' && item.id !== 'notice_incendie' && (
                                   <button
                                     type="button"
                                     disabled={isGenerating}

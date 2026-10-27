@@ -125,6 +125,14 @@ export default function UrbanismeModal({ isOpen, onClose, type, project, onGener
                     <span className="text-sm text-gray-700">{doc}</span>
                   </div>
                 ))}
+                {selectedProjectType === 'batterie' && (type === 'dp' || type === 'pc') && (
+                  <div className="flex items-center gap-3 p-3 bg-rose-50/50">
+                    <CheckCircle2 className="w-5 h-5 text-rose-600 flex-shrink-0" />
+                    <span className="text-sm font-semibold text-rose-900">
+                      Pièce additionnelle — Notice de Sécurité Incendie, DFCI &amp; Dispositions SDIS (Station BESS 500 kW)
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
