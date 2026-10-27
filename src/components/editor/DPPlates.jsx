@@ -2184,27 +2184,9 @@ export const PlateNoticeSecuriteIncendieBess = ({ project, docType = 'dp', page 
                             ENGAGEMENT FERME &amp; OPPOSABLE
                         </span>
                     </div>
-                    <p className="text-[10px] text-slate-700 leading-relaxed text-justify mb-3">
-                        Le demandeur soussigné et la société <strong>ENR COURTAGE SAS</strong> s'engagent expressément à mettre en œuvre et à maintenir pendant toute la durée d'exploitation de la station BESS l'intégralité des mesures de sécurité décrites dans la présente notice : <strong>(1) Utilisation exclusive d'armoires certifiées LFP avec extinction automatique par aérosol NFPA 855 intégrée</strong>, <strong>(2) Dalle en béton armé incombustible entourée d'une bande stérile de graviers minéraux de 2,00 m</strong>, <strong>(3) Respect permanent des Obligations Légales de Débroussaillement (OLD) dans un rayon de 50 mètres</strong>, et <strong>(4) Installation d'une coupure d'urgence externe accessible au SDIS</strong>. Le demandeur accepte que ces dispositions soient inscrites à titre de <strong>prescriptions spéciales</strong> dans l'arrêté {info.isPC ? 'accordant le Permis de Construire' : 'de non-opposition à la Déclaration Préalable'}.
+                    <p className="text-[10px] text-slate-700 leading-relaxed text-justify">
+                        Le demandeur et la société <strong>ENR COURTAGE SAS</strong> s'engagent expressément à mettre en œuvre et à maintenir pendant toute la durée d'exploitation de la station BESS l'intégralité des mesures de sécurité décrites dans la présente notice : <strong>(1) Utilisation exclusive d'armoires certifiées LFP avec extinction automatique par aérosol NFPA 855 intégrée</strong>, <strong>(2) Dalle en béton armé incombustible entourée d'une bande stérile de graviers minéraux de 2,00 m</strong>, <strong>(3) Respect permanent des Obligations Légales de Débroussaillement (OLD) dans un rayon de 50 mètres</strong>, et <strong>(4) Installation d'une coupure d'urgence externe accessible au SDIS</strong>. Le demandeur accepte que ces dispositions soient inscrites à titre de <strong>prescriptions spéciales</strong> dans l'arrêté {info.isPC ? 'accordant le Permis de Construire' : 'de non-opposition à la Déclaration Préalable'}.
                     </p>
-
-                    <div className="grid grid-cols-2 gap-6 pt-2 border-t border-slate-200 text-[10px]">
-                        <div>
-                            <span className="text-slate-500 block">Fait à : <strong className="text-slate-900">{info.lieuDate}</strong></span>
-                            <span className="text-slate-500 block mt-1">Le Demandeur : <strong className="text-slate-900">{info.signataire}</strong></span>
-                            <div className="h-10 mt-1 border border-dashed border-slate-300 rounded flex items-center justify-center text-[8.5px] text-slate-400">
-                                Signature du déclarant
-                            </div>
-                        </div>
-                        <div>
-                            <span className="text-slate-500 block">Maîtrise d'Ouvrage Déléguée &amp; Ingénierie :</span>
-                            <strong className="text-slate-900 block mt-1">ENR COURTAGE SAS — M. Yann BARBERIS, Président</strong>
-                            <div className="h-10 mt-1 border border-slate-200 bg-white rounded px-3 flex items-center justify-between text-[8.5px] text-slate-600">
-                                <span>Certifié conforme aux normes UL 9540A / NFPA 855</span>
-                                <span className="font-bold text-slate-900 font-mono">VISA TECHNIQUE OK</span>
-                            </div>
-                        </div>
-                    </div>
                 </section>
             </div>
 
