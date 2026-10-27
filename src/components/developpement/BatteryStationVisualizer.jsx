@@ -82,6 +82,8 @@ export default function BatteryStationVisualizer({
   showCaptureButtons = true,
   showTopBar = true,
   showFenceToggle = true,
+  initialShowFence = false,
+  onFenceChange = null,
   onCaptureViews = null,
   onCaptureSnapshot = null,
   onCapture = null,
@@ -92,7 +94,19 @@ export default function BatteryStationVisualizer({
   const [internalMode, setInternalMode] = useState(viewMode || '3D');
   const [capturedFeedback, setCapturedFeedback] = useState(null);
   const [isCapturingAll, setIsCapturingAll] = useState(false);
-  const [showFence, setShowFence] = useState(false);
+  const [showFence, setShowFence] = useState(Boolean(initialShowFence));
+  const showFenceRef = useRef(Boolean(initialShowFence));
+
+  useEffect(() => {
+    showFenceRef.current = showFence;
+  }, [showFence]);
+
+  useEffect(() => {
+    if (typeof initialShowFence === 'boolean') {
+      setShowFence(initialShowFence);
+      showFenceRef.current = initialShowFence;
+    }
+  }, [initialShowFence]);
 
   const threeContextRef = useRef(null);
   const controlsRef = useRef(null);
@@ -136,20 +150,23 @@ export default function BatteryStationVisualizer({
   };
 
   // Capture séquentielle automatique des 5 vues réglementaires pour DP4
-  const handleCaptureAll5 = async () => {
+  const handleCaptureAll5 = async (fenceOverride) => {
     if (!threeContextRef.current || !controlsRef.current) return;
     const { gl, scene, camera } = threeContextRef.current;
     const ctrl = controlsRef.current;
     if (!gl || !scene || !camera || !ctrl) return;
 
+    const effectiveFence = typeof fenceOverride === 'boolean' ? fenceOverride : showFenceRef.current;
     setIsCapturingAll(true);
-    setShowFence(false);
     const savedMode = internalMode;
 
     const views = {};
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     try {
+      // Laisser Three.js mettre à jour le maillage (notamment la clôture RAL 6005 si activée)
+      await delay(100);
+
       // 1. Façade Sud (Face avant armoires)
       camera.up.set(0, 1, 0);
       camera.position.set(0, 1.25, Math.max(dLen * 1.45, 9.2));
@@ -209,7 +226,8 @@ export default function BatteryStationVisualizer({
         nord: views.nord,
         est: views.est,
         ouest: views.ouest,
-        dessus: views.dessus
+        dessus: views.dessus,
+        showFence: Boolean(effectiveFence),
       };
 
       if (onCaptureViews) {
@@ -219,7 +237,7 @@ export default function BatteryStationVisualizer({
         onCapture(views.sud);
       }
 
-      setCapturedFeedback('✓ 5 Vues DP4 capturées !');
+      setCapturedFeedback(effectiveFence ? '✓ 5 Vues DP4 (avec clôture RAL 6005) !' : '✓ 5 Vues DP4 capturées !');
       setTimeout(() => setCapturedFeedback(null), 3000);
     } catch (err) {
       console.error('Erreur capture 5 vues:', err);
@@ -406,8 +424,20 @@ export default function BatteryStationVisualizer({
             <input
               type="checkbox"
               checked={showFence}
-              onChange={(e) => setShowFence(e.target.checked)}
-              className="w-3.5 h-3.5 accent-purple-600 rounded"
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setShowFence(checked);
+                showFenceRef.current = checked;
+                if (onFenceChange) {
+                  onFenceChange(checked);
+                }
+                if (onCaptureViews && !isCapturingAll) {
+                  setTimeout(() => {
+                    handleCaptureAll5(checked);
+                  }, 180);
+                }
+              }}
+              className="w-3.5 h-3.5 accent-emerald-700 rounded"
             />
             <span>Clôture rigide vert RAL 6005</span>
           </label>
@@ -435,7 +465,7 @@ export default function BatteryStationVisualizer({
 
             <button
               type="button"
-              onClick={handleCaptureAll5}
+              onClick={() => handleCaptureAll5(showFenceRef.current)}
               disabled={isCapturingAll}
               className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-extrabold rounded-xl shadow-md flex items-center gap-1.5 transition-all disabled:opacity-50"
               title="Prendre automatiquement les 5 vues réglementaires pour DP4"

@@ -35,6 +35,9 @@ import TawkMessenger from './components/TawkMessenger.jsx';
 import CrispChat from './components/CrispChat.jsx';
 import GoogleAnalytics from './components/GoogleAnalytics.jsx';
 import SecurityShield from './components/SecurityShield.jsx';
+import { initDownloadHistoryInterceptor } from './services/downloadHistoryService.js';
+
+initDownloadHistoryInterceptor();
 
 function AppContent() {
   const { isAuthenticated, user } = useAuth();

@@ -803,7 +803,7 @@ export default function BessLenderModelSection({
     {(activeTab === 'all' || activeTab === 'block3' || activeTab === 'page2') && (
       <section
         id="pdf-bess-page-2"
-        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md space-y-4 overflow-x-auto"
+        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full shrink-0"
       >
         <BessPDFPageHeader
           pageNumber={2}
@@ -828,15 +828,15 @@ export default function BessLenderModelSection({
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-[11px] text-right border-collapse">
+          <div className="w-full">
+            <table className="w-full table-fixed text-[10.5px] text-right border-collapse">
               <thead>
                 <tr className="bg-slate-900 text-white font-bold text-center">
-                  <th className="p-2 text-left min-w-[210px]">Poste Budgétaire (€ HT)</th>
+                  <th className="py-2 px-2 text-left w-[20%]">Poste Budgétaire (€ HT)</th>
                   {rows.map(y => (
-                    <th key={y.year} className="p-2 min-w-[72px]">An {y.year}</th>
+                    <th key={y.year} className="py-2 px-1 w-[6%]">An {y.year}</th>
                   ))}
-                  <th className="p-2 bg-blue-900 text-amber-300 min-w-[90px]">CUMUL 12A</th>
+                  <th className="py-2 px-1.5 bg-blue-900 text-amber-300 w-[8%]">CUMUL 12A</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">

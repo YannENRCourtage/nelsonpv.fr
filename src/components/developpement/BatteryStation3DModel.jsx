@@ -339,6 +339,49 @@ export default function BatteryStation3DModel({
   // Textures haute définition procédurales fidèles aux photos
   const frontTexture = useMemo(() => createMercury261FrontTexture(), []);
   const sideTexture = useMemo(() => createMercury261SideTexture(), []);
+  const fenceGridTexture = useMemo(() => {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 512);
+    // Léger voile vert mousse RAL 6005 pour bien matérialiser le panneau sur fond blanc
+    ctx.fillStyle = 'rgba(21, 128, 61, 0.22)';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Cadre périphérique épais vert RAL 6005
+    ctx.strokeStyle = '#14532d';
+    ctx.lineWidth = 14;
+    ctx.strokeRect(7, 7, 498, 498);
+
+    // Barreaux verticaux du treillis soudé rigide
+    ctx.strokeStyle = '#166534';
+    ctx.lineWidth = 5;
+    for (let x = 16; x < 512; x += 24) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 512);
+      ctx.stroke();
+    }
+
+    // Fils horizontaux et plis de rigidité (V)
+    for (let y = 24; y < 512; y += 48) {
+      ctx.lineWidth = (y === 96 || y === 416) ? 9 : 4.5;
+      ctx.strokeStyle = (y === 96 || y === 416) ? '#14532d' : '#15803d';
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(512, y);
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(3, 1);
+    tex.needsUpdate = true;
+    return tex;
+  }, []);
 
   // Matériaux pleins et opaques
   const materials = useMemo(() => {
@@ -413,23 +456,25 @@ export default function BatteryStation3DModel({
       }),
       // Poteaux clôture (Vert mousse RAL 6005)
       fencePost: new THREE.MeshStandardMaterial({
-        color: '#166534',
+        color: '#15803d',
         roughness: 0.35,
         metalness: 0.45,
         transparent: isTrans,
         opacity,
       }),
-      // Treillis soudé rigide
+      // Treillis soudé rigide vert RAL 6005
       fenceMesh: new THREE.MeshStandardMaterial({
-        color: '#14532d',
+        map: fenceGridTexture,
+        color: '#ffffff',
         roughness: 0.4,
-        metalness: 0.5,
+        metalness: 0.3,
         transparent: true,
-        opacity: Math.min(opacity, 0.75),
+        opacity: Math.min(opacity, 0.96),
+        depthWrite: false,
         side: THREE.DoubleSide,
       }),
     };
-  }, [opacity, wireframe, frontTexture, sideTexture]);
+  }, [opacity, wireframe, frontTexture, sideTexture, fenceGridTexture]);
 
   // Positions des armoires centrées sur la dalle
   const cabinets = useMemo(() => {

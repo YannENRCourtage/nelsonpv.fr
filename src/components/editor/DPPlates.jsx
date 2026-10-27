@@ -1226,7 +1226,7 @@ export const PlateSection = PlateCoupe;
  * VUES ARCHITECTURALES VECTORIELLES HD STANDARDISÉES POUR DP4 BESS (500 kW / 1044 kWh)
  * 4 Armoires CESC Mercury 261 + Dalle béton armé étanche (sans grillage)
  */
-export const BessElevationSud = () => (
+export const BessElevationSud = ({ showFence = false }) => (
     <svg viewBox="0 0 540 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
         <defs>
             <linearGradient id="bess-grad-s" x1="0" y1="0" x2="0" y2="1">
@@ -1265,12 +1265,34 @@ export const BessElevationSud = () => (
             );
         })}
 
+        {showFence && (
+            <g>
+                <rect x="67" y="62" width="406" height="95" fill="rgba(21,128,61,0.14)" stroke="#15803d" strokeWidth="1.8" />
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(k => (
+                    <line key={k} x1={67 + k * 25.3} y1="62" x2={67 + k * 25.3} y2="157" stroke="#15803d" strokeWidth={k % 4 === 0 ? "2" : "0.8"} opacity="0.85" />
+                ))}
+                <line x1="67" y1="88" x2="473" y2="88" stroke="#15803d" strokeWidth="1.2" />
+                <line x1="67" y1="132" x2="473" y2="132" stroke="#15803d" strokeWidth="1.2" />
+                <text x="470" y="58" textAnchor="end" fill="#15803d" fontSize="6.5" fontWeight="bold">Clôture rigide vert RAL 6005 (H: 2,00 m)</text>
+            </g>
+        )}
         {/* Cotes de Hauteur (2.38m) */}
         <line x1="28" y1="39" x2="28" y2="168" stroke="#ef4444" strokeWidth="1" />
         <line x1="24" y1="39" x2="32" y2="39" stroke="#ef4444" strokeWidth="1" />
         <line x1="24" y1="168" x2="32" y2="168" stroke="#ef4444" strokeWidth="1" />
         <text x="24" y="104" textAnchor="end" fill="#ef4444" fontSize="7.5" fontWeight="bold">H : 2,38 m</text>
 
+        {showFence && (
+            <g>
+                <rect x="67" y="62" width="406" height="95" fill="rgba(21,128,61,0.14)" stroke="#15803d" strokeWidth="1.8" />
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(k => (
+                    <line key={k} x1={67 + k * 25.3} y1="62" x2={67 + k * 25.3} y2="157" stroke="#15803d" strokeWidth={k % 4 === 0 ? "2" : "0.8"} opacity="0.85" />
+                ))}
+                <line x1="67" y1="88" x2="473" y2="88" stroke="#15803d" strokeWidth="1.2" />
+                <line x1="67" y1="132" x2="473" y2="132" stroke="#15803d" strokeWidth="1.2" />
+                <text x="470" y="58" textAnchor="end" fill="#15803d" fontSize="6.5" fontWeight="bold">Clôture rigide vert RAL 6005 (H: 2,00 m)</text>
+            </g>
+        )}
         {/* Cotes de Longueur Dalle (6.20m) */}
         <line x1="65" y1="190" x2="475" y2="190" stroke="#2563eb" strokeWidth="1" />
         <line x1="65" y1="186" x2="65" y2="194" stroke="#2563eb" strokeWidth="1" />
@@ -1279,7 +1301,7 @@ export const BessElevationSud = () => (
     </svg>
 );
 
-export const BessElevationNord = () => (
+export const BessElevationNord = ({ showFence = false }) => (
     <svg viewBox="0 0 540 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
         <defs>
             <linearGradient id="bess-grad-n" x1="0" y1="0" x2="0" y2="1">
@@ -1321,7 +1343,7 @@ export const BessElevationNord = () => (
     </svg>
 );
 
-export const BessElevationEst = () => (
+export const BessElevationEst = ({ showFence = false }) => (
     <svg viewBox="0 0 340 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
         <defs>
             <linearGradient id="bess-grad-e" x1="0" y1="0" x2="0" y2="1">
@@ -1346,6 +1368,17 @@ export const BessElevationEst = () => (
         <rect x="135" y="55" width="70" height="35" fill="#0f172a" rx="0.5" opacity="0.85" />
         <text x="170" y="75" textAnchor="middle" fill="#93c5fd" fontSize="6.5" fontWeight="bold">P = 1,00 m</text>
 
+        {showFence && (
+            <g>
+                <rect x="47" y="62" width="246" height="95" fill="rgba(21,128,61,0.14)" stroke="#15803d" strokeWidth="1.8" />
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(k => (
+                    <line key={k} x1={47 + k * 24.6} y1="62" x2={47 + k * 24.6} y2="157" stroke="#15803d" strokeWidth={k % 5 === 0 ? "2" : "0.8"} opacity="0.85" />
+                ))}
+                <line x1="47" y1="88" x2="293" y2="88" stroke="#15803d" strokeWidth="1.2" />
+                <line x1="47" y1="132" x2="293" y2="132" stroke="#15803d" strokeWidth="1.2" />
+                <text x="290" y="58" textAnchor="end" fill="#15803d" fontSize="6" fontWeight="bold">Clôture RAL 6005</text>
+            </g>
+        )}
         {/* Cotes Largeur Dalle */}
         <line x1="45" y1="190" x2="295" y2="190" stroke="#2563eb" strokeWidth="1" />
         <line x1="45" y1="186" x2="45" y2="194" stroke="#2563eb" strokeWidth="1" />
@@ -1354,7 +1387,7 @@ export const BessElevationEst = () => (
     </svg>
 );
 
-export const BessElevationOuest = () => (
+export const BessElevationOuest = ({ showFence = false }) => (
     <svg viewBox="0 0 340 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
         <defs>
             <linearGradient id="bess-grad-w" x1="0" y1="0" x2="0" y2="1">
@@ -1386,7 +1419,7 @@ export const BessElevationOuest = () => (
     </svg>
 );
 
-export const BessElevationToiture = () => (
+export const BessElevationToiture = ({ showFence = false }) => (
     <svg viewBox="0 0 400 210" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
         {/* Titre vue */}
         <text x="200" y="32" textAnchor="middle" fill="#334155" fontSize="7.5" fontWeight="bold">Vue de dessus / Couverture — Emprise au sol dalle (19,84 m²)</text>
@@ -1476,13 +1509,13 @@ export const PlateFacades = ({ project, captures }) => {
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>1. FAÇADE SUD (FACE AVANT)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            {renderSlot(sud, "Façade Sud", "Façade Sud non capturée", <BessElevationSud />)}
+                            {renderSlot(sud, "Façade Sud", "Façade Sud non capturée", <BessElevationSud showFence={Boolean(safeCaptures.showFence || project?.bessShowFence)} />)}
                         </div>
                     </div>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>2. FAÇADE NORD (FACE ARRIÈRE)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
-                            {renderSlot(nord, "Façade Nord", "Façade Nord non capturée", <BessElevationNord />)}
+                            {renderSlot(nord, "Façade Nord", "Façade Nord non capturée", <BessElevationNord showFence={Boolean(safeCaptures.showFence || project?.bessShowFence)} />)}
                         </div>
                     </div>
                 </div>
@@ -1495,7 +1528,7 @@ export const PlateFacades = ({ project, captures }) => {
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON GAUCHE)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
-                            {renderSlot(est, "Façade Est", "Façade Est non capturée", <BessElevationEst />)}
+                            {renderSlot(est, "Façade Est", "Façade Est non capturée", <BessElevationEst showFence={Boolean(safeCaptures.showFence || project?.bessShowFence)} />)}
                         </div>
                     </div>
                     {/* Ouest */}
@@ -1505,14 +1538,14 @@ export const PlateFacades = ({ project, captures }) => {
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON DROIT &amp; ACCÈS)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
-                            {renderSlot(ouest, "Façade Ouest", "Façade Ouest non capturée", <BessElevationOuest />)}
+                            {renderSlot(ouest, "Façade Ouest", "Façade Ouest non capturée", <BessElevationOuest showFence={Boolean(safeCaptures.showFence || project?.bessShowFence)} />)}
                         </div>
                     </div>
                     {/* Toiture / Dessus */}
                     <div style={{ flex: 1.35, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>5. VUE DU DESSUS / PLAN D'EMPRISE</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1.5mm 0.5mm' }}>
-                            {renderSlot(toiture, "Vue Toiture", "Vue Toiture non capturée", <BessElevationToiture />)}
+                            {renderSlot(toiture, "Vue Toiture", "Vue Toiture non capturée", <BessElevationToiture showFence={Boolean(safeCaptures.showFence || project?.bessShowFence)} />)}
                         </div>
                     </div>
                 </div>

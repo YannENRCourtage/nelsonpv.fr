@@ -434,7 +434,7 @@ export default function PvPortfolioLenderModal({
           {(activeTab === 'all' || activeTab === 'page1') && (
             <section
               id="pdf-pv-port-lender-1"
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full max-w-[1440px]"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full max-w-[1520px] shrink-0"
             >
               <PvPortfolioLenderHeader
                 pageNumber={1}
@@ -798,7 +798,7 @@ export default function PvPortfolioLenderModal({
           {(activeTab === 'all' || activeTab === 'page2') && (
             <section
               id="pdf-pv-port-lender-2"
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full max-w-[1440px] overflow-x-auto"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full max-w-[1520px] shrink-0"
             >
               <PvPortfolioLenderHeader
                 pageNumber={2}
@@ -825,15 +825,15 @@ export default function PvPortfolioLenderModal({
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-[10.5px] text-right border-collapse">
+              <div className="w-full">
+                <table className="w-full table-fixed text-[9.5px] text-right border-collapse">
                   <thead>
                     <tr className="bg-slate-900 text-white font-bold text-center">
-                      <th className="p-2 text-left min-w-[210px]">Poste Budgétaire PV Consolidé (€ HT)</th>
+                      <th className="py-1.5 px-1.5 text-left w-[17%]">Poste Budgétaire PV Consolidé (€ HT)</th>
                       {pvModel.rows.map(y => (
-                        <th key={y.year} className="p-1.5 min-w-[65px]">An {y.year}</th>
+                        <th key={y.year} className="py-1.5 px-0.5 w-[3.75%]">An {y.year}</th>
                       ))}
-                      <th className="p-2 bg-amber-900 text-yellow-300 min-w-[95px]">CUMUL 20A</th>
+                      <th className="py-1.5 px-1 bg-amber-900 text-yellow-300 w-[8%]">CUMUL 20A</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -940,7 +940,7 @@ export default function PvPortfolioLenderModal({
           {(activeTab === 'all' || activeTab === 'page3') && (
             <section
               id="pdf-pv-port-lender-3"
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full max-w-[1440px]"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-4 w-full max-w-[1520px] shrink-0"
             >
               <PvPortfolioLenderHeader
                 pageNumber={3}

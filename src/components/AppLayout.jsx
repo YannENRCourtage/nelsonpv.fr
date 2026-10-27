@@ -16,6 +16,7 @@ import ReactDOMServer from 'react-dom/server';
 import useNotifications from '../hooks/useNotifications.jsx';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover.jsx';
 import NotificationBell from './NotificationBell.jsx';
+import DownloadHistoryMenu from './DownloadHistoryMenu.jsx';
 import TransferProjectModal from './TransferProjectModal.jsx';
 import CookieBanner from './CookieBanner.jsx';
 import { apiService } from '@/services/api';
@@ -788,6 +789,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             </span>
           )}
 
+          <DownloadHistoryMenu />
           <NotificationBell />
           {/* Bouton Déconnexion */}
           <Button 

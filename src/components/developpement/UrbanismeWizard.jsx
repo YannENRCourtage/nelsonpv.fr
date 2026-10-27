@@ -3865,26 +3865,58 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       lng: bessLng || defLng,
       gps: `${bessLat || defLat},${bessLng || defLng}`,
       rotation: 0,
-      captures: project.urbanisme_captures || project.captures || {},
-      photos: project.pc_photos || project.photos || {}
+      captures: {
+        ...(project.urbanisme_captures || project.captures || {}),
+        ...(savedState?.captures || {}),
+        ...(savedState?.solutions?.battery?.buildings?.[0]?.captures || {}),
+      },
+      photos: {
+        ...(project.pc_photos || project.photos || {}),
+        ...(savedState?.photos || {}),
+        ...(savedState?.solutions?.battery?.buildings?.[0]?.photos || {}),
+      }
     };
 
     // Partitionner et structurer les bâtiments par solution (Bâtiment vs Ombrière vs Battery)
     let loadedSolutions;
     if (savedState?.solutions) {
+      const savedBat0 = savedState.solutions?.battery?.buildings?.[0] || {};
       loadedSolutions = {
         ...savedState.solutions,
         battery: {
           activeBuildingIndex: 0,
-          buildings: [cleanBatteryStation]
+          buildings: [{
+            ...cleanBatteryStation,
+            ...savedBat0,
+            captures: {
+              ...cleanBatteryStation.captures,
+              ...(savedBat0.captures || {}),
+            },
+            photos: {
+              ...cleanBatteryStation.photos,
+              ...(savedBat0.photos || {}),
+            },
+          }]
         }
       };
     } else if (project?.solutions) {
+      const projBat0 = project.solutions?.battery?.buildings?.[0] || {};
       loadedSolutions = {
         ...project.solutions,
         battery: {
           activeBuildingIndex: 0,
-          buildings: [cleanBatteryStation]
+          buildings: [{
+            ...cleanBatteryStation,
+            ...projBat0,
+            captures: {
+              ...cleanBatteryStation.captures,
+              ...(projBat0.captures || {}),
+            },
+            photos: {
+              ...cleanBatteryStation.photos,
+              ...(projBat0.photos || {}),
+            },
+          }]
         }
       };
     } else {
@@ -4953,6 +4985,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
   const handleCaptureAll5ViewsPC5 = (fiveViewsObj) => {
     if (!fiveViewsObj) return;
+    const hasFenceFlag = typeof fiveViewsObj.showFence === 'boolean';
     const normalized = {
       ...fiveViewsObj,
       facade_sud: fiveViewsObj.facade_sud || fiveViewsObj.sud,
@@ -4960,13 +4993,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       facade_est: fiveViewsObj.facade_est || fiveViewsObj.est,
       facade_ouest: fiveViewsObj.facade_ouest || fiveViewsObj.ouest,
       vue_couverture: fiveViewsObj.vue_couverture || fiveViewsObj.toiture || fiveViewsObj.dessus,
-      facades_projet: fiveViewsObj.facades_projet || fiveViewsObj.facade_sud || fiveViewsObj.sud
+      facades_projet: fiveViewsObj.facades_projet || fiveViewsObj.facade_sud || fiveViewsObj.sud,
+      ...(hasFenceFlag ? { showFence: fiveViewsObj.showFence } : {}),
     };
     const bKey = buildings[activeBuildingIndex]?.id || `bat-${activeBuildingIndex + 1}`;
     if (activeBuildingIndex === 0) {
       setCaptures(prev => ({ ...prev, ...normalized, facades_projet: normalized.facade_sud || normalized.vue_couverture }));
       setEditedProject(prev => ({
         ...prev,
+        ...(hasFenceFlag ? { bessShowFence: fiveViewsObj.showFence } : {}),
         urbanisme_captures: { 
           ...(prev.urbanisme_captures || {}), 
           ...normalized, 
@@ -4986,7 +5021,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       return updated;
     });
     Object.entries(normalized).forEach(([k, v]) => {
-      if (v) persistMediaItem(bKey, k, v, 'captures');
+      if (v && typeof v === 'string') persistMediaItem(bKey, k, v, 'captures');
     });
   };
 
@@ -6479,6 +6514,18 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                           viewMode={viewMode}
                           showDimensions={config.showDimensions !== false}
                           showCaptureButtons={false}
+                          initialShowFence={Boolean(captures?.showFence || editedProject?.bessShowFence || editedProject?.urbanisme_captures?.showFence)}
+                          onFenceChange={(checked) => {
+                            setCaptures(prev => ({ ...prev, showFence: checked }));
+                            setEditedProject(prev => ({
+                              ...prev,
+                              bessShowFence: checked,
+                              urbanisme_captures: {
+                                ...(prev.urbanisme_captures || {}),
+                                showFence: checked,
+                              },
+                            }));
+                          }}
                           onCapture={(dataUrl) => {
                             setCaptures(prev => ({
                               ...prev,
@@ -6847,6 +6894,24 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                 cabinetModel={batteryStorage?.model || 'CESC Mercury 261'}
                                 dalleLength={batteryStorage?.dalleLength || activeB.length || 6.20}
                                 dalleWidth={batteryStorage?.dalleWidth || activeB.width || 3.20}
+                                initialShowFence={Boolean(captures?.showFence || activeB?.captures?.showFence || editedProject?.bessShowFence || editedProject?.urbanisme_captures?.showFence)}
+                                onFenceChange={(checked) => {
+                                  setCaptures(prev => ({ ...prev, showFence: checked }));
+                                  setEditedProject(prev => ({
+                                    ...prev,
+                                    bessShowFence: checked,
+                                    urbanisme_captures: {
+                                      ...(prev.urbanisme_captures || {}),
+                                      showFence: checked,
+                                    },
+                                  }));
+                                  updateActiveBuilding({
+                                    captures: {
+                                      ...(activeB.captures || {}),
+                                      showFence: checked,
+                                    },
+                                  });
+                                }}
                                 onCaptureViews={handleCaptureAll5ViewsPC5}
                                 onCaptureSnapshot={handleCaptureSnapshotPC5}
                                 height={270}
