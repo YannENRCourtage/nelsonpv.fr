@@ -658,103 +658,37 @@ export async function analyzeHtaBtTransformer(lat, lng, props = {}, cachedNetwor
  * Combine l'analyse automatique, le forçage manuel éventuel et la distance à la dalle BESS
  * pour produire le verdict final de raccordement BESS 250 kW (BT C4) et le chiffrage estimatif.
  */
-export function computeFinalHtaBtAudit(analysis, manualOverride, distanceEval) {
-  const effectiveType = manualOverride?.physicalType || analysis.physicalCategory; // 'sol' | 'poteau'
-  const effectivePower = manualOverride?.powerKva || analysis.defaultPowerSelector;
-  const isManual = Boolean(manualOverride?.physicalType || manualOverride?.powerKva);
+export function computeFinalHtaBtAudit(analysis) {
+  const detectedTypeLabel = analysis.detectedTypeLabel;
+  const shortBadge = analysis.shortBadge;
+  const estimatedPowerLabel = analysis.estimatedPowerLabel;
+  const bessCompatibilityLabel = analysis.bessCompatibilityLabel;
+  const bessCompatibilityStatus = analysis.bessCompatibilityStatus;
+  const badgeTheme = analysis.badgeTheme;
 
-  let detectedTypeLabel = analysis.detectedTypeLabel;
-  let shortBadge = analysis.shortBadge;
-  let estimatedPowerLabel = analysis.estimatedPowerLabel;
-  let bessCompatibilityLabel = analysis.bessCompatibilityLabel;
-  let bessCompatibilityStatus = analysis.bessCompatibilityStatus;
-  let badgeTheme = analysis.badgeTheme;
-
-  if (isManual) {
-    if (effectiveType === 'poteau' || effectivePower === '50-160 kVA') {
-      shortBadge = 'Poste sur Poteau (H61)';
-      detectedTypeLabel = 'Poste H61 sur Poteau (Aérien)';
-      estimatedPowerLabel = effectivePower === '50-160 kVA' ? '50 kVA à 160 kVA max' : `${effectivePower} (Forcé sur poteau)`;
-      bessCompatibilityLabel = '❌ INCOMPATIBLE 250 kW (Mutation en poste au sol requise)';
-      bessCompatibilityStatus = 'incompatible';
-      badgeTheme = { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5', dot: '#ef4444' };
-    } else if (effectivePower === '250 kVA') {
-      shortBadge = 'Poste au Sol (Simplifié)';
-      detectedTypeLabel = 'Poste Bas Simplifié au Sol (Rural / Périurbain)';
-      estimatedPowerLabel = '250 kVA (Confirmé — Limite basse C4 250 kW)';
-      bessCompatibilityLabel = '⚠️ SOUS RÉSERVE (250 kVA min requis)';
-      bessCompatibilityStatus = 'reserve';
-      badgeTheme = { bg: '#fef3c7', text: '#b45309', border: '#fcd34d', dot: '#f59e0b' };
-    } else {
-      shortBadge = 'Poste au Sol (Cabine)';
-      detectedTypeLabel = 'Poste Cabine au Sol (Type PAC / PRM maçonné)';
-      estimatedPowerLabel = `${effectivePower} (Confirmé — Plage sol : 250 – 1 000 kVA)`;
-      bessCompatibilityLabel = '✅ ÉLIGIBLE 250 kW BT (Capacité transfo suffisante)';
-      bessCompatibilityStatus = 'eligible';
-      badgeTheme = { bg: '#dcfce7', text: '#15803d', border: '#86efac', dot: '#16a34a' };
-    }
-  }
-
-  // Calcul du coût estimatif de branchement BT C4 (250 kVA) et du verdict global
-  const dist = distanceEval?.distance ?? 45;
   let costEstimateLabel = '';
   let costDetailLabel = '';
   let globalVerdictTitle = '';
   let globalVerdictTheme = { bg: '#dcfce7', text: '#15803d', border: '#86efac' };
 
   if (bessCompatibilityStatus === 'incompatible') {
-    const mutationCostMin = 32000 + Math.round(dist * 95);
-    const mutationCostMax = 48000 + Math.round(dist * 130);
-    costEstimateLabel = `${mutationCostMin.toLocaleString('fr-FR')} € – ${mutationCostMax.toLocaleString('fr-FR')} € HT`;
+    costEstimateLabel = '35 000 € – 55 000 € HT';
     costDetailLabel = 'Mutation H61 → Poste PAC au sol 400 kVA + reprise HTA/BT requise';
     globalVerdictTitle = '❌ NON VIABLE EN BT DIRECT (Mutation poste H61 requise)';
     globalVerdictTheme = { bg: '#fef2f2', text: '#b91c1c', border: '#fca5a5' };
-  } else if (distanceEval?.tier === 'too_far') {
-    const farCost = 3800 + Math.round(dist * 145);
-    costEstimateLabel = `~${farCost.toLocaleString('fr-FR')} € HT (> 18 000 € HT)`;
-    costDetailLabel = `Tranchée BT longue (${dist} m > 150 m) — Chute de tension > 3% rédhibitoire`;
-    globalVerdictTitle = '🔴 DÉCONSEILLÉ EN BT (> 150 m) — Rapprocher la dalle BESS';
-    globalVerdictTheme = { bg: '#fef2f2', text: '#b91c1c', border: '#fca5a5' };
-  } else if (distanceEval?.tier === 'limit') {
-    const limitCost = 3600 + Math.round(dist * 130);
-    costEstimateLabel = `~${limitCost.toLocaleString('fr-FR')} € HT (Plage : 12 500 – 18 500 €)`;
-    costDetailLabel = `Forfait C4 250 kVA + tranchée ${dist} m avec doublage 2×240 mm² Alu`;
-    globalVerdictTitle =
-      bessCompatibilityStatus === 'eligible'
-        ? '🟠 VIABLE AVEC DOUBLAGE CÂBLE BT (100–150 m)'
-        : '🟠 SOUS RÉSERVE CAPACITÉ TRANSFO & DOUBLAGE CÂBLE';
-    globalVerdictTheme = { bg: '#fff7ed', text: '#c2410c', border: '#fdba74' };
-  } else if (distanceEval?.tier === 'standard') {
-    const stdCost = 3200 + Math.round(dist * 90);
-    costEstimateLabel = `~${stdCost.toLocaleString('fr-FR')} € HT (Plage : 7 500 – 12 000 €)`;
-    costDetailLabel = `Branchement C4 250 kVA + liaison souterraine ${dist} m (1×240 mm² Alu)`;
-    globalVerdictTitle =
-      bessCompatibilityStatus === 'eligible'
-        ? '✅ RACCORDEMENT BESS 250 kW BT (C4) VIABLE'
-        : '⚠️ VIABLE SOUS RÉSERVE (Vérifier transfo ≥ 250 kVA)';
-    globalVerdictTheme =
-      bessCompatibilityStatus === 'eligible'
-        ? { bg: '#dcfce7', text: '#15803d', border: '#86efac' }
-        : { bg: '#fef3c7', text: '#b45309', border: '#fcd34d' };
+  } else if (bessCompatibilityStatus === 'reserve') {
+    costEstimateLabel = '4 500 € – 12 000 € HT';
+    costDetailLabel = 'Branchement C4 250 kVA + liaison souterraine BT (selon distance)';
+    globalVerdictTitle = '⚠️ VIABLE SOUS RÉSERVE (Vérifier transfo ≥ 250 kVA)';
+    globalVerdictTheme = { bg: '#fef3c7', text: '#b45309', border: '#fcd34d' };
   } else {
-    // Distance idéale <= 50 m
-    const idealCost = 2800 + Math.round(dist * 80);
-    costEstimateLabel = `~${idealCost.toLocaleString('fr-FR')} € HT (Plage : 4 000 – 7 500 €)`;
-    costDetailLabel = `Branchement C4 250 kVA court (${dist} m ≤ 50 m) en 1×240 mm² Alu`;
-    globalVerdictTitle =
-      bessCompatibilityStatus === 'eligible'
-        ? '✅ RACCORDEMENT BESS 250 kW BT (C4) OPTIMAL'
-        : '⚠️ DISTANCE IDÉALE — VÉRIFIER PUISSANCE TRANSFO (≥ 250 kVA)';
-    globalVerdictTheme =
-      bessCompatibilityStatus === 'eligible'
-        ? { bg: '#dcfce7', text: '#15803d', border: '#86efac' }
-        : { bg: '#fef3c7', text: '#b45309', border: '#fcd34d' };
+    costEstimateLabel = '4 000 € – 12 000 € HT';
+    costDetailLabel = 'Forfait C4 250 kVA + liaison BT 240 mm² Alu (selon distance ≤ 100 m)';
+    globalVerdictTitle = '✅ RACCORDEMENT BESS 250 kW BT (C4) OPTIMAL';
+    globalVerdictTheme = { bg: '#dcfce7', text: '#15803d', border: '#86efac' };
   }
 
   return {
-    effectiveType,
-    effectivePower,
-    isManual,
     shortBadge,
     detectedTypeLabel,
     estimatedPowerLabel,
@@ -769,9 +703,9 @@ export function computeFinalHtaBtAudit(analysis, manualOverride, distanceEval) {
 }
 
 /**
- * Monte et gère l'interface interactive de la popup "⚡ Analyse Poste HTA/BT Enedis"
+ * Monte et gère l'interface de la popup "⚡ Analyse Poste HTA/BT Enedis"
  */
-export function renderHtaTransformerPopupDOM(container, { lat, lng, props, getContext, cachedNetworkLayers }) {
+export function renderHtaTransformerPopupDOM(container, { lat, lng, props, cachedNetworkLayers }) {
   if (!container) return;
 
   const cacheKey = `${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
@@ -806,14 +740,7 @@ export function renderHtaTransformerPopupDOM(container, { lat, lng, props, getCo
   };
 
   const renderFullAudit = (analysis) => {
-    const ctx = typeof getContext === 'function' ? getContext() : {};
-    const refPoint = findProjectBessReference(ctx);
-    const distanceMeters = refPoint
-      ? calculateHaversineMeters(lat, lng, refPoint.lat, refPoint.lng)
-      : null;
-    const distanceEval = evaluateBtDistanceRule(distanceMeters);
-    const currentOverride = manualOverrideCache.get(cacheKey) || { physicalType: null, powerKva: null };
-    const audit = computeFinalHtaBtAudit(analysis, currentOverride, distanceEval);
+    const audit = computeFinalHtaBtAudit(analysis);
 
     const t = analysis.telemetry;
     const htaLineBadge = t.hasHtaSouterraine
@@ -824,10 +751,8 @@ export function renderHtaTransformerPopupDOM(container, { lat, lng, props, getCo
 
     const btLineBadge = `<span style="background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px;font-weight:700;">BT ≤ 25m : ${t.btSouterrainCount} sout. / ${t.btAerienCount} aér.</span>`;
 
-    const powerOptions = ['50-160 kVA', '250 kVA', '400 kVA', '630 kVA', '1000 kVA'];
-
     container.innerHTML = `
-      <div style="font-family: Inter, system-ui, -apple-system, sans-serif; width: 365px; max-width: 100%; color: #0f172a; background: #ffffff; border-radius: 10px; overflow: hidden;">
+      <div style="font-family: Inter, system-ui, -apple-system, sans-serif; width: 355px; max-width: 100%; color: #0f172a; background: #ffffff; border-radius: 10px; overflow: hidden;">
         <!-- EN-TÊTE SOMBRE -->
         <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff; padding: 10px 12px; border-radius: 8px 8px 0 0;">
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
@@ -844,18 +769,13 @@ export function renderHtaTransformerPopupDOM(container, { lat, lng, props, getCo
           </div>
         </div>
 
-        <div style="padding: 10px 10px 6px 10px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="padding: 10px; display: flex; flex-direction: column; gap: 8px;">
           <!-- 1. TYPOLOGIE PHYSIQUE & PUISSANCE ESTIMÉE -->
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
               <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.4px;">
-                1. Typologie Physique ${audit.isManual ? '(Forcé manuellement)' : '(Détection SIG Auto)'}
+                1. Typologie Physique (Détection SIG Auto)
               </span>
-              ${
-                audit.isManual
-                  ? `<button type="button" data-action="reset-auto" style="font-size: 9.5px; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; padding: 1px 6px; cursor: pointer; font-weight: 700;">↺ Auto</button>`
-                  : ''
-              }
             </div>
             <div style="font-size: 12px; font-weight: 800; color: ${audit.badgeTheme.text}; margin-bottom: 4px;">
               ${audit.detectedTypeLabel}
@@ -880,88 +800,15 @@ export function renderHtaTransformerPopupDOM(container, { lat, lng, props, getCo
             </div>
 
             <!-- Compatibilité Transfo -->
-            <div style="background: ${audit.badgeTheme.bg}; border: 1px solid ${audit.badgeTheme.border}; color: ${audit.badgeTheme.text}; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; margin-bottom: 7px;">
+            <div style="background: ${audit.badgeTheme.bg}; border: 1px solid ${audit.badgeTheme.border}; color: ${audit.badgeTheme.text}; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 800;">
               ${audit.bessCompatibilityLabel}
             </div>
-
-            <!-- SÉLECTEUR MANUEL RAPIDE (Type + Puissance kVA) -->
-            <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px;">
-              <div style="font-size: 9.5px; font-weight: 700; color: #64748b; margin-bottom: 4px;">
-                Validation manuelle après contrôle visuel :
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 5px;">
-                <button
-                  type="button"
-                  data-type-override="sol"
-                  style="padding: 4px 6px; font-size: 10.5px; font-weight: 800; border-radius: 5px; cursor: pointer; transition: all 0.15s; border: 1.5px solid ${
-                    audit.effectiveType === 'sol' ? '#16a34a' : '#cbd5e1'
-                  }; background: ${audit.effectiveType === 'sol' ? '#dcfce7' : '#ffffff'}; color: ${
-      audit.effectiveType === 'sol' ? '#15803d' : '#475569'
-    };"
-                >
-                  🏢 Au sol (Cabine)
-                </button>
-                <button
-                  type="button"
-                  data-type-override="poteau"
-                  style="padding: 4px 6px; font-size: 10.5px; font-weight: 800; border-radius: 5px; cursor: pointer; transition: all 0.15s; border: 1.5px solid ${
-                    audit.effectiveType === 'poteau' ? '#dc2626' : '#cbd5e1'
-                  }; background: ${audit.effectiveType === 'poteau' ? '#fee2e2' : '#ffffff'}; color: ${
-      audit.effectiveType === 'poteau' ? '#b91c1c' : '#475569'
-    };"
-                >
-                  🗼 Poteau (H61)
-                </button>
-              </div>
-              <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px;">
-                ${powerOptions
-                  .map((p) => {
-                    const isSelected = audit.effectivePower === p;
-                    return `<button
-                      type="button"
-                      data-power-override="${p}"
-                      style="padding: 3px 2px; font-size: 9.5px; font-weight: 700; border-radius: 4px; cursor: pointer; border: 1px solid ${
-                        isSelected ? '#2563eb' : '#cbd5e1'
-                      }; background: ${isSelected ? '#2563eb' : '#ffffff'}; color: ${
-                      isSelected ? '#ffffff' : '#334155'
-                    }; text-align: center;"
-                    >${p.replace(' kVA', '')}<div style="font-size:8px;opacity:0.85;">kVA</div></button>`;
-                  })
-                  .join('')}
-              </div>
-            </div>
           </div>
 
-          <!-- 2. DISTANCE À LA DALLE BESS & CHUTE DE TENSION NF C 14-100 -->
-          <div style="background: ${distanceEval.bgHex}; border: 1px solid ${distanceEval.borderHex}; border-radius: 8px; padding: 8px 10px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
-              <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #475569; letter-spacing: 0.3px;">
-                2. Distance à la Dalle BESS (NF C 14-100)
-              </span>
-              <span style="font-size: 12.5px; font-weight: 900; color: ${distanceEval.colorHex};">
-                ${distanceEval.distance != null ? `${distanceEval.distance} m` : 'N/A'}
-              </span>
-            </div>
-            <div style="font-size: 9.5px; color: #64748b; margin-bottom: 4px; display: flex; justify-content: space-between;">
-              <span>Réf : <strong>${refPoint?.label || 'Projet'}</strong></span>
-              <span>Max 100–150 m en BT 250 kW</span>
-            </div>
-            <!-- Jauge visuelle de distance -->
-            <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-bottom: 5px; position: relative;">
-              <div style="width: ${distanceEval.gaugePercent}%; height: 100%; background: ${distanceEval.barColor || '#64748b'}; border-radius: 999px;"></div>
-            </div>
-            <div style="font-size: 10.5px; font-weight: 800; color: ${distanceEval.colorHex}; line-height: 1.35;">
-              ${distanceEval.statusText}
-            </div>
-            <div style="font-size: 9.5px; color: #475569; margin-top: 2px;">
-              Section type : <strong>${distanceEval.cableRecommendation}</strong>
-            </div>
-          </div>
-
-          <!-- 3. VERDICT RACCORDEMENT BESS 250 kW (BT C4) & COÛT ESTIMÉ -->
+          <!-- 2. VERDICT RACCORDEMENT BESS 250 kW (BT C4) & COÛT ESTIMÉ -->
           <div style="background: #0f172a; color: #ffffff; border-radius: 8px; padding: 8px 10px;">
             <div style="font-size: 9.5px; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.4px; margin-bottom: 4px;">
-              3. Verdict Raccordement BESS 250 kW (BT C4)
+              2. Verdict Raccordement BESS 250 kW (BT C4)
             </div>
             <div style="background: ${audit.globalVerdictTheme.bg}; color: ${audit.globalVerdictTheme.text}; border: 1px solid ${audit.globalVerdictTheme.border}; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: 900; margin-bottom: 6px;">
               ${audit.globalVerdictTitle}
@@ -974,79 +821,9 @@ export function renderHtaTransformerPopupDOM(container, { lat, lng, props, getCo
               ${audit.costDetailLabel}
             </div>
           </div>
-
-          <!-- 4. BOUTON D'ACTION STREET VIEW -->
-          <button
-            type="button"
-            data-action="open-streetview"
-            style="width: 100%; padding: 8px 10px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); hover: #1e40af; color: #ffffff; font-size: 11.5px; font-weight: 800; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);"
-          >
-            <span>👁️ Vérifier ce transfo dans Street View</span>
-          </button>
         </div>
       </div>
     `;
-
-    // Attacher les écouteurs d'événements interactifs sans fermer la popup Leaflet
-    const btnReset = container.querySelector('[data-action="reset-auto"]');
-    if (btnReset) {
-      btnReset.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        manualOverrideCache.delete(cacheKey);
-        renderFullAudit(analysis);
-      });
-    }
-
-    container.querySelectorAll('[data-type-override]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const chosenType = btn.getAttribute('data-type-override');
-        const prev = manualOverrideCache.get(cacheKey) || {};
-        const defaultPowerForType =
-          chosenType === 'poteau'
-            ? '50-160 kVA'
-            : prev.powerKva && prev.powerKva !== '50-160 kVA'
-            ? prev.powerKva
-            : '400 kVA';
-        manualOverrideCache.set(cacheKey, {
-          physicalType: chosenType,
-          powerKva: defaultPowerForType
-        });
-        renderFullAudit(analysis);
-      });
-    });
-
-    container.querySelectorAll('[data-power-override]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const chosenPower = btn.getAttribute('data-power-override');
-        const inferredType = chosenPower === '50-160 kVA' ? 'poteau' : 'sol';
-        manualOverrideCache.set(cacheKey, {
-          physicalType: inferredType,
-          powerKva: chosenPower
-        });
-        renderFullAudit(analysis);
-      });
-    });
-
-    const btnStreetView = container.querySelector('[data-action="open-streetview"]');
-    if (btnStreetView) {
-      btnStreetView.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        window.__streetViewTargetCoords = { lat: Number(lat), lng: Number(lng) };
-        const svUrl = `https://www.google.com/maps?layer=c&cbll=${lat},${lng}`;
-        window.open(svUrl, '_blank', 'noopener,noreferrer');
-        window.dispatchEvent(
-          new CustomEvent('editor:open-streetview-transfo', {
-            detail: { lat, lng, url: svUrl }
-          })
-        );
-      });
-    }
   };
 
   // Si déjà en cache, rendu immédiat sans squelette
