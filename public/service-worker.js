@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nelson-pwa-v3';
+const CACHE_NAME = 'nelson-pwa-v6-20261028';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -52,7 +52,7 @@ self.addEventListener('fetch', (event) => {
 
   if (isCodeAsset) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-cache' })
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();

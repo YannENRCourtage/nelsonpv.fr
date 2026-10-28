@@ -68,6 +68,7 @@ export default function BessLenderModelSection({
   // Déterminer le palier initial en fonction de la puissance demandée
   const defaultPresetKey = useMemo(() => {
     const kw = Number(initialPowerKw);
+    if (isNaN(kw) || kw <= 0) return '0.25';
     if (kw <= 125) return '0.125';
     if (kw <= 350) return '0.25';
     if (kw <= 750) return '0.50';
@@ -75,7 +76,8 @@ export default function BessLenderModelSection({
   }, [initialPowerKw]);
 
   const [presetKey, setPresetKey] = useState(defaultPresetKey);
-  const [inputs, setInputs] = useState(() => ({ ...BESS_PRESETS[defaultPresetKey] }));
+  const currentPreset = BESS_PRESETS[presetKey] || BESS_PRESETS['0.50'];
+  const [inputs, setInputs] = useState(() => ({ ...(BESS_PRESETS[defaultPresetKey] || BESS_PRESETS['0.50']) }));
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'block1' | 'block2' | 'block3' | 'block4'
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
@@ -301,7 +303,7 @@ export default function BessLenderModelSection({
                   Synthèse Financière pour le Prêteur
                 </h3>
                 <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                  Palier {inputs.powerMw} MW • {inputs.capacityMwh} MWh
+                  Palier {inputs.powerMw ?? currentPreset.powerMw ?? presetKey} MW • {inputs.capacityMwh ?? currentPreset.capacityMwh ?? (Number(presetKey) * 2).toFixed(2)} MWh
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -651,7 +653,7 @@ export default function BessLenderModelSection({
                   <input
                     type="number"
                     step="1000"
-                    value={inputs.capex ?? inputs.capexTotal ?? ''}
+                    value={inputs.capex ?? inputs.capexTotal ?? currentPreset.capexTotal ?? 324000}
                     onChange={e => updateInput('capex', e.target.value)}
                     className="w-full mt-0.5 px-2 py-1 text-xs font-bold bg-blue-50/70 border border-blue-300 rounded text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -661,7 +663,7 @@ export default function BessLenderModelSection({
                   <input
                     type="number"
                     step="500"
-                    value={inputs.rev1 ?? inputs.revenuAn1 ?? ''}
+                    value={inputs.rev1 ?? inputs.revenuAn1 ?? currentPreset.revenuAn1 ?? 141568}
                     onChange={e => updateInput('rev1', e.target.value)}
                     className="w-full mt-0.5 px-2 py-1 text-xs font-bold bg-blue-50/70 border border-blue-300 rounded text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -671,7 +673,7 @@ export default function BessLenderModelSection({
                   <input
                     type="number"
                     step="100"
-                    value={inputs.opex1 ?? inputs.opexAn1 ?? ''}
+                    value={inputs.opex1 ?? inputs.opexAn1 ?? currentPreset.opexAn1 ?? 20200}
                     onChange={e => updateInput('opex1', e.target.value)}
                     className="w-full mt-0.5 px-2 py-1 text-xs font-bold bg-blue-50/70 border border-blue-300 rounded text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -681,7 +683,7 @@ export default function BessLenderModelSection({
                   <input
                     type="number"
                     step="10"
-                    value={inputs.ass1 ?? inputs.assuranceAn1 ?? ''}
+                    value={inputs.ass1 ?? inputs.assuranceAn1 ?? currentPreset.assuranceAn1 ?? 1501}
                     onChange={e => updateInput('ass1', e.target.value)}
                     className="w-full mt-0.5 px-2 py-1 text-xs font-bold bg-blue-50/70 border border-blue-300 rounded text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -691,7 +693,7 @@ export default function BessLenderModelSection({
                   <input
                     type="number"
                     step="50"
-                    value={inputs.loyer1 ?? inputs.loyerAn1 ?? ''}
+                    value={inputs.loyer1 ?? inputs.loyerAn1 ?? currentPreset.loyerAn1 ?? 3000}
                     onChange={e => updateInput('loyer1', e.target.value)}
                     className="w-full mt-0.5 px-2 py-1 text-xs font-bold bg-blue-50/70 border border-blue-300 rounded text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -756,13 +758,13 @@ export default function BessLenderModelSection({
                         </span>
                       </td>
                       <td className="p-2.5 text-center font-bold">
-                        {fmt(sc.dscrAvg, 2)}x
+                        {fmt(sc.dscrAvg ?? sc.dscrMoyen, 2)}x
                       </td>
-                      <td className={cn("p-2.5 text-right font-bold", sc.projectNpv < 0 ? "text-red-600" : "text-slate-900")}>
-                        {fmtEur(sc.projectNpv)}
+                      <td className={cn("p-2.5 text-right font-bold", (sc.projectNpv ?? sc.vanProjet) < 0 ? "text-red-600" : "text-slate-900")}>
+                        {fmtEur(sc.projectNpv ?? sc.vanProjet)}
                       </td>
                       <td className="p-2.5 text-right font-black text-slate-900">
-                        {fmtEur(sc.cumulNetIncome)}
+                        {fmtEur(sc.cumulNetIncome ?? sc.resultatNetCumule)}
                       </td>
                     </tr>
                   );
