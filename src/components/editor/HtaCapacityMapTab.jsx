@@ -743,7 +743,9 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
     return closest;
   }, [networkLines, projectCoords]);
 
-  const distToHtaMeters = nearestHtaLine ? nearestHtaLine.distanceMeters : 120;
+  const [customDistanceMeters, setCustomDistanceMeters] = useState(null);
+  const rawDistToHtaMeters = nearestHtaLine ? nearestHtaLine.distanceMeters : 25;
+  const distToHtaMeters = customDistanceMeters !== null ? customDistanceMeters : rawDistToHtaMeters;
   const isInsideCorridor = distToHtaMeters <= 350;
 
   // BESS Cost Estimation Engine (Dynamic BT <= 250 kVA vs HTA 500 kW / 1 MW / 2 MW)
@@ -767,10 +769,12 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
       // CAS A — Palier 250 kW (Domaine Basse Tension BT <= 250 kVA / Tarif C4)
       const costQuotePart = 0;
       const linearRate = 45;
-      const costLiaison = Math.round(distToHtaMeters * linearRate);
-      const costCelluleEnedis = 4500;
-      const costPosteLivraison = 2500;
+      const effectiveDistMeters = Math.min(distToHtaMeters, 30);
+      const costLiaison = Math.round(effectiveDistMeters * linearRate);
+      const costCelluleEnedis = 4500; // Coffret comptage C4 & raccordement Enedis
+      const costPosteLivraison = 3500; // Armoire de protection & découplage BT / AGCP
       const totalCost = costQuotePart + costLiaison + costCelluleEnedis + costPosteLivraison;
+      const isDistanceOver30m = distToHtaMeters > 30;
 
       return {
         isBt: true,
@@ -778,9 +782,14 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
         powerMw,
         qpPerMw,
         linearRate,
+        distToHtaMeters,
+        effectiveDistMeters,
+        isDistanceOver30m,
+        costRangeLabel: '8 500 € – 9 500 € HT',
+        distanceAlert: isDistanceOver30m ? 'Attention : Distance au poste > 30m (limite BT conseillée)' : null,
         quotePartLabel: 'Quote-part S3REnR (Exonéré BT ≤ 250 kVA) :',
-        liaisonLabel: `Liaison souterraine BT (${distToHtaMeters} m × ${linearRate} €) :`,
-        celluleLabel: 'Coffret comptage C4 & branchement BT Enedis :',
+        liaisonLabel: `Liaison souterraine BT (${effectiveDistMeters} m max 30m × ${linearRate} €) :`,
+        celluleLabel: 'Coffret comptage C4 & raccordement Enedis :',
         posteLabel: 'Armoire de protection & découplage BT (AGCP) :',
         delaiLabel: '3 à 6 mois',
         costQuotePart,
@@ -1088,7 +1097,7 @@ Coordonnées GPS : ${projectCoords[0].toFixed(5)}, ${projectCoords[1].toFixed(5)
 Puissance BESS : ${bessPowerKw >= 1000 ? `${bessPowerKw / 1000} MW` : `${bessPowerKw} kW`} (${costEstimation.domainBadge})
 
 1. PROXIMITÉ RÉSEAU :
-• Distance réseau : ${distToHtaMeters} m
+• Distance réseau : ${distToHtaMeters} m ${costEstimation.isBt ? `(limite max BT conseillée : 30 m${costEstimation.isDistanceOver30m ? ' — ⚠️ DÉPASSÉE' : ' — ✅ CONFORME'})` : ''}
 • Corridor 350 m : ${isInsideCorridor ? 'CONFORME (Zone optimale)' : 'HORS CORRIDOR (> 350 m)'}
 
 2. POSTE SOURCE DE RATTACHEMENT :
@@ -1100,12 +1109,22 @@ Puissance BESS : ${bessPowerKw >= 1000 ? `${bessPowerKw / 1000} MW` : `${bessPow
 • Faisabilité puissance : ${costEstimation.isBt ? 'EXONÉRÉ S3REnR (BT ≤ 250 kVA)' : costEstimation.isCapacitySufficient ? 'RÉSEAU FAVORABLE' : 'RÉSEAU CONTRAINT (0 MW)'}
 
 3. CHIFFRAGE RACCORDEMENT ESTIMÉ (${costEstimation.domainBadge}) :
-• ${costEstimation.quotePartLabel} ${costEstimation.costQuotePart.toLocaleString('fr-FR')} € HT
+${
+  costEstimation.isBt
+    ? `• Fourchette standard raccordement BT : 8 500 € – 9 500 € HT
+• Coffret comptage C4 & raccordement Enedis : ${costEstimation.costCelluleEnedis.toLocaleString('fr-FR')} € HT
+• Armoire de protection & découplage BT (AGCP) : ${costEstimation.costPosteLivraison.toLocaleString('fr-FR')} € HT
+• Liaison souterraine BT (${costEstimation.effectiveDistMeters} m max 30m × ${costEstimation.linearRate} €) : ${costEstimation.costLiaison.toLocaleString('fr-FR')} € HT
+-----------------------------------------------
+TOTAL ESTIMÉ RACCORDEMENT : 8 500 € – 9 500 € HT (Détail calculé : ${costEstimation.totalCost.toLocaleString('fr-FR')} € HT)
+${costEstimation.isDistanceOver30m ? '⚠️ Attention : Distance au poste > 30m (limite BT conseillée)\n' : ''}`
+    : `• ${costEstimation.quotePartLabel} ${costEstimation.costQuotePart.toLocaleString('fr-FR')} € HT
 • ${costEstimation.liaisonLabel} ${costEstimation.costLiaison.toLocaleString('fr-FR')} € HT
 • ${costEstimation.celluleLabel} ${costEstimation.costCelluleEnedis.toLocaleString('fr-FR')} € HT
 • ${costEstimation.posteLabel} ${costEstimation.costPosteLivraison.toLocaleString('fr-FR')} € HT
 -----------------------------------------------
-TOTAL ESTIMÉ RACCORDEMENT : ${costEstimation.totalCost.toLocaleString('fr-FR')} € HT
+TOTAL ESTIMÉ RACCORDEMENT : ${costEstimation.totalCost.toLocaleString('fr-FR')} € HT`
+}
 Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
 
     navigator.clipboard.writeText(text);
@@ -1574,19 +1593,67 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
                   </div>
 
                   <div className="bg-slate-800/60 p-2 rounded-lg border border-slate-700/60">
-                    <span className="text-slate-400 text-[10px] block">
-                      {costEstimation.isBt ? 'Distance Réseau BT/HTA' : 'Distance Réseau HTA'}
-                    </span>
-                    <span className="font-extrabold text-white block">{distToHtaMeters} m</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[10px] block">
+                        {costEstimation.isBt ? 'Distance Poste BT' : 'Distance Réseau HTA'}
+                      </span>
+                      {customDistanceMeters !== null && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomDistanceMeters(null)}
+                          className="text-[9px] text-amber-400 hover:underline cursor-pointer"
+                          title="Réinitialiser à la distance mesurée"
+                        >
+                          Auto
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 my-0.5">
+                      <input
+                        type="number"
+                        min="1"
+                        max="1000"
+                        value={distToHtaMeters}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          setCustomDistanceMeters(!isNaN(val) && val >= 0 ? val : 0);
+                        }}
+                        className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs font-extrabold text-white font-mono focus:border-amber-400 focus:outline-hidden"
+                      />
+                      <span className="text-xs font-bold text-white">m</span>
+                      {costEstimation.isBt && (
+                        <span className="text-[10px] text-slate-400 font-semibold">(max 30m)</span>
+                      )}
+                    </div>
                     <span
                       className={`text-[10px] font-bold block ${
-                        isInsideCorridor ? 'text-emerald-400' : 'text-amber-400'
+                        costEstimation.isBt
+                          ? costEstimation.isDistanceOver30m
+                            ? 'text-amber-400'
+                            : 'text-emerald-400'
+                          : isInsideCorridor
+                          ? 'text-emerald-400'
+                          : 'text-amber-400'
                       }`}
                     >
-                      {isInsideCorridor ? '✅ Dans corridor 350m' : '⚠️ Hors corridor'}
+                      {costEstimation.isBt
+                        ? costEstimation.isDistanceOver30m
+                          ? '⚠️ > 30 m (limite BT dépassée)'
+                          : '✅ ≤ 30 m (optimal)'
+                        : isInsideCorridor
+                        ? '✅ Dans corridor 350m'
+                        : '⚠️ Hors corridor'}
                     </span>
                   </div>
                 </div>
+
+                {/* Alerte Distance Maximale 30m en BT */}
+                {costEstimation.isBt && costEstimation.isDistanceOver30m && (
+                  <div className="bg-amber-500/15 border border-amber-500/40 text-amber-300 p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>Attention : Distance au poste &gt; 30m (limite BT conseillée)</span>
+                  </div>
+                )}
 
                 {/* Detailed Cost Table */}
                 <div className="space-y-1.5 pt-1.5 border-t border-slate-800 text-[11px]">
@@ -1634,12 +1701,25 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
                         Budget Raccordement Total
                       </span>
                       <span className="text-[10px] text-slate-400">
-                        {costEstimation.isBt ? 'HT indicatif Enedis BT (C4)' : 'HT indicatif Enedis HTA'}
+                        {costEstimation.isBt ? 'Fourchette standard BT (≤ 30 m)' : 'HT indicatif Enedis HTA'}
                       </span>
                     </div>
-                    <span className="text-base font-black text-amber-400 font-mono">
-                      {costEstimation.totalCost.toLocaleString('fr-FR')} € HT
-                    </span>
+                    <div className="text-right">
+                      {costEstimation.isBt ? (
+                        <div>
+                          <span className="text-base font-black text-amber-400 font-mono block">
+                            8 500 € – 9 500 € HT
+                          </span>
+                          <span className="text-[9.5px] text-slate-400 font-mono">
+                            Fixe 8 000 € + liaison {costEstimation.costLiaison.toLocaleString('fr-FR')} € ({costEstimation.totalCost.toLocaleString('fr-FR')} € HT)
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-base font-black text-amber-400 font-mono">
+                          {costEstimation.totalCost.toLocaleString('fr-FR')} € HT
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

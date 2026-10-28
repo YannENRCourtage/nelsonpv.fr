@@ -231,6 +231,7 @@ export function findProjectBessReference({ features = [], targetPos = null, proj
 
 /**
  * Évalue la règle de distance et de chute de tension NF C 14-100 pour un BESS 250 kW en BT (C4)
+ * Règle stricte Enedis : distance maximale linéaire de 30 mètres entre dalle BESS et poste HTA/BT.
  */
 export function evaluateBtDistanceRule(distanceMeters) {
   if (distanceMeters == null || isNaN(distanceMeters)) {
@@ -238,6 +239,8 @@ export function evaluateBtDistanceRule(distanceMeters) {
       distance: null,
       tier: 'unknown',
       statusText: 'Distance non calculable (aucun point projet défini)',
+      isViable: true,
+      alertText: null,
       voltageDropPct: 0,
       gaugePercent: 0,
       colorHex: '#64748b',
@@ -248,67 +251,39 @@ export function evaluateBtDistanceRule(distanceMeters) {
   }
 
   const dist = Math.round(distanceMeters);
-  // Chute de tension en 250 kW triphasé 400V (I ≈ 361 A) sur câble Alu 240 mm² (~0.0234 % / m en simple, ~0.0117 % / m en doublé)
   const dropSingle240 = Math.round(dist * 0.0234 * 10) / 10;
-  const gaugePercent = Math.min(100, Math.round((dist / 160) * 100));
+  const gaugePercent = Math.min(100, Math.round((dist / 30) * 100));
 
-  if (dist <= 50) {
+  if (dist <= 30) {
     return {
       distance: dist,
-      tier: 'ideal',
-      statusText: `🟢 Distance idéale (${dist} m ≤ 50 m) — Chute de tension < 1.5%, coût liaison BT minimal`,
+      tier: 'optimal',
+      isViable: true,
+      statusText: `🟢 Distance optimale (${dist} m ≤ 30 m) — Liaison BT directe & raccordement 250 kW viable`,
+      alertText: null,
       voltageDropPct: dropSingle240,
       gaugePercent,
       colorHex: '#15803d',
       bgHex: '#f0fdf4',
       borderHex: '#86efac',
       barColor: '#22c55e',
-      cableRecommendation: `1 × 240 mm² Alu (ΔU estimée : ~${dropSingle240.toFixed(1)}%)`
-    };
-  }
-
-  if (dist <= 100) {
-    return {
-      distance: dist,
-      tier: 'standard',
-      statusText: `🟡 Distance standard (${dist} m ≤ 100 m) — Raccordement BT viable (câble 240 mm²)`,
-      voltageDropPct: dropSingle240,
-      gaugePercent,
-      colorHex: '#a16207',
-      bgHex: '#fefce8',
-      borderHex: '#fde047',
-      barColor: '#eab308',
-      cableRecommendation: `1 × 240 mm² Alu (ΔU estimée : ~${dropSingle240.toFixed(1)}%)`
-    };
-  }
-
-  if (dist <= 150) {
-    const dropDoubled = Math.round((dropSingle240 / 2) * 10) / 10;
-    return {
-      distance: dist,
-      tier: 'limit',
-      statusText: `🟠 Distance limite (${dist} m) — Risque de chute de tension (> 3%), doublage câble requis`,
-      voltageDropPct: dropSingle240,
-      gaugePercent,
-      colorHex: '#c2410c',
-      bgHex: '#fff7ed',
-      borderHex: '#fdba74',
-      barColor: '#f97316',
-      cableRecommendation: `2 × 240 mm² Alu requis (ΔU : ${dropSingle240.toFixed(1)}% → ${dropDoubled.toFixed(1)}% doublé)`
+      cableRecommendation: `Liaison BT souterraine 240 mm² Alu (${dist} m × 45 €/m)`
     };
   }
 
   return {
     distance: dist,
-    tier: 'too_far',
-    statusText: `🔴 Trop éloigné en BT (${dist} m > 150 m max) — Raccordement BT 250 kW déconseillé`,
+    tier: 'exceeded',
+    isViable: false,
+    statusText: `⚠️ Attention : Distance au poste > 30m (limite BT conseillée — mesurée : ${dist} m)`,
+    alertText: 'Attention : Distance au poste > 30m (limite BT conseillée)',
     voltageDropPct: dropSingle240,
     gaugePercent: 100,
     colorHex: '#b91c1c',
     bgHex: '#fef2f2',
     borderHex: '#fca5a5',
     barColor: '#ef4444',
-    cableRecommendation: `Hors gabarit NF C 14-100 en 250 kW BT (ΔU ~${dropSingle240.toFixed(1)}% > 3%)`
+    cableRecommendation: `Distance ${dist} m > 30 m max — Raccordement BT 250 kW déconseillé`
   };
 }
 
@@ -656,9 +631,9 @@ export async function analyzeHtaBtTransformer(lat, lng, props = {}, cachedNetwor
 
 /**
  * Combine l'analyse automatique, le forçage manuel éventuel et la distance à la dalle BESS
- * pour produire le verdict final de raccordement BESS 250 kW (BT C4) et le chiffrage estimatif.
+ * pour produire le verdict final de raccordement BESS 250 kW (BT C4) et le chiffrage estimatif resserré (8 500 € – 9 500 € HT).
  */
-export function computeFinalHtaBtAudit(analysis) {
+export function computeFinalHtaBtAudit(analysis, distanceToProject = null) {
   const detectedTypeLabel = analysis.detectedTypeLabel;
   const shortBadge = analysis.shortBadge;
   const estimatedPowerLabel = analysis.estimatedPowerLabel;
@@ -670,6 +645,15 @@ export function computeFinalHtaBtAudit(analysis) {
   let costDetailLabel = '';
   let globalVerdictTitle = '';
   let globalVerdictTheme = { bg: '#dcfce7', text: '#15803d', border: '#86efac' };
+  let isDistanceOver30m = false;
+  let distanceAlert = null;
+
+  if (distanceToProject !== null && !isNaN(distanceToProject)) {
+    if (distanceToProject > 30) {
+      isDistanceOver30m = true;
+      distanceAlert = 'Attention : Distance au poste > 30m (limite BT conseillée)';
+    }
+  }
 
   if (bessCompatibilityStatus === 'incompatible') {
     costEstimateLabel = '35 000 € – 55 000 € HT';
@@ -677,13 +661,13 @@ export function computeFinalHtaBtAudit(analysis) {
     globalVerdictTitle = '❌ NON VIABLE EN BT DIRECT (Mutation poste H61 requise)';
     globalVerdictTheme = { bg: '#fef2f2', text: '#b91c1c', border: '#fca5a5' };
   } else if (bessCompatibilityStatus === 'reserve') {
-    costEstimateLabel = '4 500 € – 12 000 € HT';
-    costDetailLabel = 'Branchement C4 250 kVA + liaison souterraine BT (selon distance)';
+    costEstimateLabel = '8 500 € – 9 500 € HT';
+    costDetailLabel = 'Coffret C4 4 500 € + AGCP 3 500 € (8 000 € fixe) + liaison BT 45 €/m (max 30 m)';
     globalVerdictTitle = '⚠️ VIABLE SOUS RÉSERVE (Vérifier transfo ≥ 250 kVA)';
     globalVerdictTheme = { bg: '#fef3c7', text: '#b45309', border: '#fcd34d' };
   } else {
-    costEstimateLabel = '4 000 € – 12 000 € HT';
-    costDetailLabel = 'Forfait C4 250 kVA + liaison BT 240 mm² Alu (selon distance ≤ 100 m)';
+    costEstimateLabel = '8 500 € – 9 500 € HT';
+    costDetailLabel = 'Coffret C4 4 500 € + AGCP 3 500 € (8 000 € fixe) + liaison BT 45 €/m (max 30 m)';
     globalVerdictTitle = '✅ RACCORDEMENT BESS 250 kW BT (C4) OPTIMAL';
     globalVerdictTheme = { bg: '#dcfce7', text: '#15803d', border: '#86efac' };
   }
@@ -698,14 +682,17 @@ export function computeFinalHtaBtAudit(analysis) {
     costEstimateLabel,
     costDetailLabel,
     globalVerdictTitle,
-    globalVerdictTheme
+    globalVerdictTheme,
+    distanceToProject,
+    isDistanceOver30m,
+    distanceAlert
   };
 }
 
 /**
  * Monte et gère l'interface de la popup "⚡ Analyse Poste HTA/BT Enedis"
  */
-export function renderHtaTransformerPopupDOM(container, { lat, lng, props, cachedNetworkLayers }) {
+export function renderHtaTransformerPopupDOM(container, { lat, lng, props, getContext, cachedNetworkLayers }) {
   if (!container) return;
 
   const cacheKey = `${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
@@ -715,6 +702,41 @@ export function renderHtaTransformerPopupDOM(container, { lat, lng, props, cache
   const refLabel = nomPoste
     ? `${nomPoste} (${codeCommune})`
     : `Code Commune : ${codeCommune}${nomCommune ? ` — ${nomCommune}` : ''}`;
+
+  // Calcul dynamique de la distance entre le transfo et la dalle BESS ou le centre du projet
+  let distanceToProject = null;
+  if (typeof getContext === 'function') {
+    try {
+      const ctx = getContext();
+      let targetCoords = null;
+      if (ctx?.targetPos && Array.isArray(ctx.targetPos) && ctx.targetPos.length === 2) {
+        targetCoords = ctx.targetPos;
+      } else if (ctx?.features && Array.isArray(ctx.features)) {
+        const batteryFeature = ctx.features.find((f) => f.type === 'battery' || f.properties?.type === 'battery');
+        if (batteryFeature?.geometry?.coordinates) {
+          const c = batteryFeature.geometry.coordinates;
+          if (Array.isArray(c) && typeof c[0] === 'number') {
+            targetCoords = [c[1], c[0]];
+          }
+        }
+      }
+      if (!targetCoords && ctx?.project?.gps) {
+        const parts = ctx.project.gps.split(',');
+        if (parts.length === 2) {
+          const pLat = parseFloat(parts[0]);
+          const pLng = parseFloat(parts[1]);
+          if (!isNaN(pLat) && !isNaN(pLng)) {
+            targetCoords = [pLat, pLng];
+          }
+        }
+      }
+      if (targetCoords) {
+        distanceToProject = calculateHaversineMeters(lat, lng, targetCoords[0], targetCoords[1]);
+      }
+    } catch (e) {
+      console.warn('[HTA Analyzer] Erreur calcul distance transfo-projet:', e);
+    }
+  }
 
   // État d'affichage initial pendant le croisement SIG (quelques centaines de ms au 1er clic)
   const renderSkeleton = () => {
@@ -740,7 +762,7 @@ export function renderHtaTransformerPopupDOM(container, { lat, lng, props, cache
   };
 
   const renderFullAudit = (analysis) => {
-    const audit = computeFinalHtaBtAudit(analysis);
+    const audit = computeFinalHtaBtAudit(analysis, distanceToProject);
 
     const t = analysis.telemetry;
     const htaLineBadge = t.hasHtaSouterraine
@@ -820,6 +842,20 @@ export function renderHtaTransformerPopupDOM(container, { lat, lng, props, cache
             <div style="font-size: 9.5px; color: #94a3b8; margin-top: 2px;">
               ${audit.costDetailLabel}
             </div>
+
+            ${
+              audit.isDistanceOver30m
+                ? `<div style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 5px 8px; border-radius: 6px; font-size: 10.5px; font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 5px;">
+                    <span>⚠️</span>
+                    <span>Attention : Distance au poste &gt; 30m (limite BT conseillée — mesurée : ${audit.distanceToProject} m)</span>
+                  </div>`
+                : audit.distanceToProject !== null
+                ? `<div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 5px;">
+                    <span>✅</span>
+                    <span>Distance mesurée au poste : ${audit.distanceToProject} m (≤ 30 m max conforme BT)</span>
+                  </div>`
+                : ''
+            }
           </div>
         </div>
       </div>
