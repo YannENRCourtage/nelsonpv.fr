@@ -129,10 +129,26 @@ export default function BessLenderModelSection({
   // Mise à jour d'un champ modifiable (cellules bleues)
   const updateInput = (field, value) => {
     const num = parseFloat(value);
-    setInputs(prev => ({
-      ...prev,
-      [field]: isNaN(num) ? value : num
-    }));
+    const parsedVal = isNaN(num) ? value : num;
+    const aliasMap = {
+      capex: 'capexTotal',
+      capexTotal: 'capex',
+      rev1: 'revenuAn1',
+      revenuAn1: 'rev1',
+      opex1: 'opexAn1',
+      opexAn1: 'opex1',
+      ass1: 'assuranceAn1',
+      assuranceAn1: 'ass1',
+      loyer1: 'loyerAn1',
+      loyerAn1: 'loyer1'
+    };
+    setInputs(prev => {
+      const next = { ...prev, [field]: parsedVal };
+      if (aliasMap[field]) {
+        next[aliasMap[field]] = parsedVal;
+      }
+      return next;
+    });
   };
 
   // Réinitialiser les paramètres au preset sélectionné
@@ -635,7 +651,7 @@ export default function BessLenderModelSection({
                   <input
                     type="number"
                     step="1000"
-                    value={inputs.capex}
+                    value={inputs.capex ?? inputs.capexTotal ?? ''}
                     onChange={e => updateInput('capex', e.target.value)}
                     className="w-full mt-0.5 px-2 py-1 text-xs font-bold bg-blue-50/70 border border-blue-300 rounded text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -645,7 +661,7 @@ export default function BessLenderModelSection({
                   <input
                     type="number"
                     step="500"
-                    value={inputs.rev1}
+                    value={inputs.rev1 ?? inputs.revenuAn1 ?? ''}
                     onChange={e => updateInput('rev1', e.target.value)}
                     className="w-full mt-0.5 px-2 py-1 text-xs font-bold bg-blue-50/70 border border-blue-300 rounded text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -655,7 +671,7 @@ export default function BessLenderModelSection({
                   <input
                     type="number"
                     step="100"
-                    value={inputs.opex1}
+                    value={inputs.opex1 ?? inputs.opexAn1 ?? ''}
                     onChange={e => updateInput('opex1', e.target.value)}
                     className="w-full mt-0.5 px-2 py-1 text-xs font-bold bg-blue-50/70 border border-blue-300 rounded text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -665,7 +681,7 @@ export default function BessLenderModelSection({
                   <input
                     type="number"
                     step="10"
-                    value={inputs.ass1}
+                    value={inputs.ass1 ?? inputs.assuranceAn1 ?? ''}
                     onChange={e => updateInput('ass1', e.target.value)}
                     className="w-full mt-0.5 px-2 py-1 text-xs font-bold bg-blue-50/70 border border-blue-300 rounded text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -675,7 +691,7 @@ export default function BessLenderModelSection({
                   <input
                     type="number"
                     step="50"
-                    value={inputs.loyer1}
+                    value={inputs.loyer1 ?? inputs.loyerAn1 ?? ''}
                     onChange={e => updateInput('loyer1', e.target.value)}
                     className="w-full mt-0.5 px-2 py-1 text-xs font-bold bg-blue-50/70 border border-blue-300 rounded text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />

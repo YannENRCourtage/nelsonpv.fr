@@ -22,51 +22,135 @@ export const DEBT_AMORTIZATION_PROFILE = [
 export const BESS_PRESETS = {
   '0.125': {
     id: '0.125',
+    palierKey: '0.125',
     label: '0,125 MW / 0,25 MWh (125 kW - 1 armoire)',
+    powerMw: 0.125,
+    capacityMwh: 0.25,
     powerKw: 125,
     energyKwh: 250,
     nbArmoires: 1,
     capexTotal: 86320,
-    revenuAn1: 33976.29,
+    capex: 86320,
+    revenuAn1: 33976,
+    rev1: 33976,
     opexAn1: 5050,
-    assuranceAn1: 375.25,
-    loyerAn1: 750
+    opex1: 5050,
+    assuranceAn1: 375,
+    ass1: 375,
+    loyerAn1: 750,
+    loyer1: 750,
+    debtSharePct: 70,
+    nominalRatePct: 4.1,
+    insuranceRatePct: 0.2,
+    rateAllIn: 0.043,
+    revenueDegradationPct: 10.6,
+    aggregatorFeePct: 15.0,
+    opexInflationPct: 1.5,
+    discountRatePct: 7.0,
+    taxReducedThreshold: 42500,
+    taxReducedRatePct: 15.0,
+    taxNormalRatePct: 25.0,
+    loanYears: 10,
+    lifeYears: 12
   },
   '0.25': {
     id: '0.25',
+    palierKey: '0.25',
     label: '0,25 MW / 0,50 MWh (250 kW - 2 armoires)',
+    powerMw: 0.25,
+    capacityMwh: 0.50,
     powerKw: 250,
     energyKwh: 500,
     nbArmoires: 2,
     capexTotal: 162000,
+    capex: 162000,
     revenuAn1: 70784,
+    rev1: 70784,
     opexAn1: 10100,
-    assuranceAn1: 750.5,
-    loyerAn1: 1500
+    opex1: 10100,
+    assuranceAn1: 751,
+    ass1: 751,
+    loyerAn1: 1500,
+    loyer1: 1500,
+    debtSharePct: 70,
+    nominalRatePct: 4.1,
+    insuranceRatePct: 0.2,
+    rateAllIn: 0.043,
+    revenueDegradationPct: 10.6,
+    aggregatorFeePct: 15.0,
+    opexInflationPct: 1.5,
+    discountRatePct: 7.0,
+    taxReducedThreshold: 42500,
+    taxReducedRatePct: 15.0,
+    taxNormalRatePct: 25.0,
+    loanYears: 10,
+    lifeYears: 12
   },
   '0.50': {
     id: '0.50',
+    palierKey: '0.50',
     label: '0,50 MW / 1,00 MWh (500 kW - 4 armoires)',
+    powerMw: 0.50,
+    capacityMwh: 1.00,
     powerKw: 500,
     energyKwh: 1000,
     nbArmoires: 4,
     capexTotal: 324000,
+    capex: 324000,
     revenuAn1: 141568,
+    rev1: 141568,
     opexAn1: 20200,
+    opex1: 20200,
     assuranceAn1: 1501,
-    loyerAn1: 3000
+    ass1: 1501,
+    loyerAn1: 3000,
+    loyer1: 3000,
+    debtSharePct: 70,
+    nominalRatePct: 4.1,
+    insuranceRatePct: 0.2,
+    rateAllIn: 0.043,
+    revenueDegradationPct: 10.6,
+    aggregatorFeePct: 15.0,
+    opexInflationPct: 1.5,
+    discountRatePct: 7.0,
+    taxReducedThreshold: 42500,
+    taxReducedRatePct: 15.0,
+    taxNormalRatePct: 25.0,
+    loanYears: 10,
+    lifeYears: 12
   },
   '1.0': {
     id: '1.0',
+    palierKey: '1.0',
     label: '1,00 MW / 2,00 MWh (1 000 kW - 8 armoires)',
+    powerMw: 1.00,
+    capacityMwh: 2.00,
     powerKw: 1000,
     energyKwh: 2000,
     nbArmoires: 8,
     capexTotal: 680000,
+    capex: 680000,
     revenuAn1: 315000,
+    rev1: 315000,
     opexAn1: 40400,
+    opex1: 40400,
     assuranceAn1: 3002,
-    loyerAn1: 6000
+    ass1: 3002,
+    loyerAn1: 6000,
+    loyer1: 6000,
+    debtSharePct: 70,
+    nominalRatePct: 4.1,
+    insuranceRatePct: 0.2,
+    rateAllIn: 0.043,
+    revenueDegradationPct: 10.6,
+    aggregatorFeePct: 15.0,
+    opexInflationPct: 1.5,
+    discountRatePct: 7.0,
+    taxReducedThreshold: 42500,
+    taxReducedRatePct: 15.0,
+    taxNormalRatePct: 25.0,
+    loanYears: 10,
+    lifeYears: 12
   }
 };
 
@@ -143,36 +227,56 @@ export function calculateDiscountedPayback(initialInvestment, cashFlows, discoun
  */
 export function computeBessLenderModel(rawParams = {}) {
   // Sélection ou fallback sur preset
-  const selectedPalier = rawParams.palierKey || '0.25';
+  const selectedPalier = rawParams.palierKey || rawParams.id || '0.25';
   const defaultPreset = BESS_PRESETS[selectedPalier] || BESS_PRESETS['0.25'];
 
-  const capexTotal = Number(rawParams.capexTotal ?? defaultPreset.capexTotal);
-  const revenuAn1 = Number(rawParams.revenuAn1 ?? defaultPreset.revenuAn1);
-  const opexAn1 = Number(rawParams.opexAn1 ?? defaultPreset.opexAn1);
-  const assuranceAn1 = Number(rawParams.assuranceAn1 ?? defaultPreset.assuranceAn1);
-  const loyerAn1 = Number(rawParams.loyerAn1 ?? defaultPreset.loyerAn1);
+  const capexTotal = Number(rawParams.capexTotal ?? rawParams.capex ?? defaultPreset.capexTotal);
+  const revenuAn1 = Number(rawParams.revenuAn1 ?? rawParams.rev1 ?? defaultPreset.revenuAn1);
+  const opexAn1 = Number(rawParams.opexAn1 ?? rawParams.opex1 ?? defaultPreset.opexAn1);
+  const assuranceAn1 = Number(rawParams.assuranceAn1 ?? rawParams.ass1 ?? defaultPreset.assuranceAn1);
+  const loyerAn1 = Number(rawParams.loyerAn1 ?? rawParams.loyer1 ?? defaultPreset.loyerAn1);
 
   // Hypothèses financières
-  const horizonYears = Number(rawParams.horizonYears ?? 12);
-  const loanDurationYears = Number(rawParams.loanDurationYears ?? 10);
-  const debtShare = Number(rawParams.debtShare ?? 0.70); // 70 %
+  const horizonYears = Number(rawParams.horizonYears ?? rawParams.lifeYears ?? 12);
+  const loanDurationYears = Number(rawParams.loanDurationYears ?? rawParams.loanYears ?? 10);
+  const debtShare = Number(
+    rawParams.debtShare ?? (rawParams.debtSharePct !== undefined ? Number(rawParams.debtSharePct) / 100 : 0.70)
+  ); // 70 %
   const equityShare = 1 - debtShare; // 30 %
-  const nominalRate = Number(rawParams.nominalRate ?? 0.041); // 4.1 %
-  const insuranceRate = Number(rawParams.insuranceRate ?? 0.002); // 0.2 %
+  const nominalRate = Number(
+    rawParams.nominalRate ?? (rawParams.nominalRatePct !== undefined ? Number(rawParams.nominalRatePct) / 100 : 0.041)
+  ); // 4.1 %
+  const insuranceRate = Number(
+    rawParams.insuranceRate ?? (rawParams.insuranceRatePct !== undefined ? Number(rawParams.insuranceRatePct) / 100 : 0.002)
+  ); // 0.2 %
   const allInDebtRate = nominalRate + insuranceRate; // 4.3 %
-  const discountRate = Number(rawParams.discountRate ?? 0.07); // 7.0 %
+  const discountRate = Number(
+    rawParams.discountRate ?? (rawParams.discountRatePct !== undefined ? Number(rawParams.discountRatePct) / 100 : 0.07)
+  ); // 7.0 %
 
   // Dynamique d'exploitation
-  const decoteAnnuelleRevenus = Number(rawParams.decoteAnnuelleRevenus ?? 0.106); // 10.6 %/an
-  const fraisAgregateurRate = Number(rawParams.fraisAgregateurRate ?? 0.15); // 15.0 % des revenus
-  const opexGrowthRate = Number(rawParams.opexGrowthRate ?? 0.015); // 1.5 %/an
-  const assuranceGrowthRate = Number(rawParams.assuranceGrowthRate ?? 0.015); // 1.5 %/an
-  const loyerGrowthRate = Number(rawParams.loyerGrowthRate ?? 0.015); // 1.5 %/an
+  const decoteAnnuelleRevenus = Number(
+    rawParams.decoteAnnuelleRevenus ??
+      (rawParams.revenueDegradationPct !== undefined ? Number(rawParams.revenueDegradationPct) / 100 : 0.106)
+  ); // 10.6 %/an
+  const fraisAgregateurRate = Number(
+    rawParams.fraisAgregateurRate ??
+      (rawParams.aggregatorFeePct !== undefined ? Number(rawParams.aggregatorFeePct) / 100 : 0.15)
+  ); // 15.0 % des revenus
+  const sharedInflationRate =
+    rawParams.opexInflationPct !== undefined ? Number(rawParams.opexInflationPct) / 100 : 0.015;
+  const opexGrowthRate = Number(rawParams.opexGrowthRate ?? sharedInflationRate); // 1.5 %/an
+  const assuranceGrowthRate = Number(rawParams.assuranceGrowthRate ?? sharedInflationRate); // 1.5 %/an
+  const loyerGrowthRate = Number(rawParams.loyerGrowthRate ?? sharedInflationRate); // 1.5 %/an
 
   // Fiscalité
-  const isSeuilReduit = Number(rawParams.isSeuilReduit ?? 42500);
-  const isTauxReduit = Number(rawParams.isTauxReduit ?? 0.15);
-  const isTauxNormal = Number(rawParams.isTauxNormal ?? 0.25);
+  const isSeuilReduit = Number(rawParams.isSeuilReduit ?? rawParams.taxReducedThreshold ?? 42500);
+  const isTauxReduit = Number(
+    rawParams.isTauxReduit ?? (rawParams.taxReducedRatePct !== undefined ? Number(rawParams.taxReducedRatePct) / 100 : 0.15)
+  );
+  const isTauxNormal = Number(
+    rawParams.isTauxNormal ?? (rawParams.taxNormalRatePct !== undefined ? Number(rawParams.taxNormalRatePct) / 100 : 0.25)
+  );
 
   const detteInitiale = capexTotal * debtShare;
   const fondsPropresInitiaux = capexTotal * equityShare;
@@ -415,29 +519,35 @@ export function computeBessLenderModel(rawParams = {}) {
  * Moteur d'analyse de sensibilité & stress-tests bancaires
  * Calcule dynamiquement les 8 scénarios de stress et les marges de rupture
  */
-export function computeBessStressTests(baseParams = {}) {
-  const baseSim = computeBessLenderModel(baseParams);
+export function computeBessStressTests(arg1 = {}, arg2 = null) {
+  // Supporte computeBessStressTests(baseParams) et computeBessStressTests(model, inputs)
+  const rawBaseParams = arg2 ? arg2 : (arg1?.params ? arg1.params : arg1);
+  const baseSim = arg1?.params && arg1?.rows ? arg1 : computeBessLenderModel(rawBaseParams);
+  const normalizedBase = { ...rawBaseParams, ...baseSim.params };
 
   const scenarioDefs = [
     { id: 'base', name: '1. Cas de base', overrides: {} },
-    { id: 'rev_minus_10', name: '2. Revenus -10%', overrides: { revenuAn1: baseSim.params.revenuAn1 * 0.90 } },
-    { id: 'rev_minus_20', name: '3. Revenus -20%', overrides: { revenuAn1: baseSim.params.revenuAn1 * 0.80 } },
-    { id: 'opex_plus_15', name: '4. OPEX +15%', overrides: { opexAn1: baseSim.params.opexAn1 * 1.15 } },
-    { id: 'agregateur_20', name: '5. Frais agrégateur 20%', overrides: { fraisAgregateurRate: 0.20 } },
-    { id: 'loyer_plus_50', name: '6. Loyer foncier +50%', overrides: { loyerAn1: baseSim.params.loyerAn1 * 1.50 } },
-    { id: 'decote_13_6', name: '7. Décote accélérée (+3 pts/an)', overrides: { decoteAnnuelleRevenus: baseSim.params.decoteAnnuelleRevenus + 0.03 } },
-    { id: 'stress_combine', name: '8. Stress combiné (Rev -15%, OPEX +10%)', overrides: { revenuAn1: baseSim.params.revenuAn1 * 0.85, opexAn1: baseSim.params.opexAn1 * 1.10 } }
+    { id: 'rev_minus_10', name: '2. Revenus -10%', overrides: { revenuAn1: baseSim.params.revenuAn1 * 0.90, rev1: baseSim.params.revenuAn1 * 0.90 } },
+    { id: 'rev_minus_20', name: '3. Revenus -20%', overrides: { revenuAn1: baseSim.params.revenuAn1 * 0.80, rev1: baseSim.params.revenuAn1 * 0.80 } },
+    { id: 'opex_plus_15', name: '4. OPEX +15%', overrides: { opexAn1: baseSim.params.opexAn1 * 1.15, opex1: baseSim.params.opexAn1 * 1.15 } },
+    { id: 'agregateur_20', name: '5. Frais agrégateur 20%', overrides: { fraisAgregateurRate: 0.20, aggregatorFeePct: 20 } },
+    { id: 'loyer_plus_50', name: '6. Loyer foncier +50%', overrides: { loyerAn1: baseSim.params.loyerAn1 * 1.50, loyer1: baseSim.params.loyerAn1 * 1.50 } },
+    { id: 'decote_13_6', name: '7. Décote accélérée (+3 pts/an)', overrides: { decoteAnnuelleRevenus: baseSim.params.decoteAnnuelleRevenus + 0.03, revenueDegradationPct: (baseSim.params.decoteAnnuelleRevenus + 0.03) * 100 } },
+    { id: 'stress_combine', name: '8. Stress combiné (Rev -15%, OPEX +10%)', overrides: { revenuAn1: baseSim.params.revenuAn1 * 0.85, rev1: baseSim.params.revenuAn1 * 0.85, opexAn1: baseSim.params.opexAn1 * 1.10, opex1: baseSim.params.opexAn1 * 1.10 } }
   ];
 
   const scenarios = scenarioDefs.map(sc => {
-    const sim = computeBessLenderModel({ ...baseParams, ...sc.overrides });
+    const sim = computeBessLenderModel({ ...normalizedBase, ...sc.overrides });
     return {
       id: sc.id,
       name: sc.name,
       dscrMin: sim.kpis.dscrMin,
       dscrMoyen: sim.kpis.dscrMoyen,
+      dscrAvg: sim.kpis.dscrMoyen,
       vanProjet: sim.kpis.vanProjet,
+      projectNpv: sim.kpis.vanProjet,
       resultatNetCumule: sim.kpis.resultatNetCumule,
+      cumulNetIncome: sim.kpis.resultatNetCumule,
       isAcceptable: sim.kpis.dscrMin >= 1.10
     };
   });
@@ -449,7 +559,7 @@ export function computeBessStressTests(baseParams = {}) {
     for (let i = 0; i < 40; i++) {
       const mid = (lo + hi) / 2;
       const testRev = baseSim.params.revenuAn1 * (1 - mid);
-      const testSim = computeBessLenderModel({ ...baseParams, revenuAn1: testRev });
+      const testSim = computeBessLenderModel({ ...normalizedBase, revenuAn1: testRev, rev1: testRev });
       if (testSim.kpis.dscrMin > targetDscr) {
         lo = mid;
       } else {
@@ -470,12 +580,12 @@ export function computeBessStressTests(baseParams = {}) {
     scenarios,
     baisseToleree110,
     baisseToleree100,
-    anneesDscrGte120: `${nbAnneesDscr120}/${baseSim.params.loanDurationYears}`,
+    anneesDscrGte120: nbAnneesDscr120,
     rupture: {
       baisseToleree110,
       baisseToleree100,
       dscrMinAn1: baseSim.rows[0]?.dscr || baseSim.kpis.dscrMin,
-      anneesDscrSuperieur120: `${nbAnneesDscr120}/${baseSim.params.loanDurationYears}`,
+      anneesDscrSuperieur120: nbAnneesDscr120,
       nbAnneesDscr120,
       totalAnneesPret: baseSim.params.loanDurationYears
     }
