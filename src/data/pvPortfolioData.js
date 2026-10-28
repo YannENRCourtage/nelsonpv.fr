@@ -168,7 +168,7 @@ export const PV_PORTFOLIO_SITES = [
     kwc: 1006.0,
     productible: 1148.17,
     surface: 5030,
-    rent: 2250,
+    rent: 0,
     lat: 45.328888,
     lng: 0.651040,
     substation: {
@@ -656,12 +656,12 @@ export function computePvFinancials(site, options = {}) {
     caAnnuel = Math.round(kwc * productible * tarifS21);
   }
 
-  // OPEX annuels : STRICTEMENT AUCUN LOYER FONCIER PAR DÉFAUT (loyer = 0 €)
+  // OPEX annuels : STRICTEMENT AUCUN LOYER POUR LES PROJETS PV (loyer = 0 €)
   const maintenance = site.maintenanceAn1 !== undefined ? Number(site.maintenanceAn1) : Math.round(kwc * 7.5);
   const assurance = site.assuranceAn1 !== undefined ? Number(site.assuranceAn1) : Math.round(kwc * 3.5);
   const taxesLocales = site.taxesLocalesAn1 !== undefined ? Number(site.taxesLocalesAn1) : 0;
-  const loyer = (site.rent !== undefined && site.rent !== null) ? Number(site.rent) : 0; // 0 € par défaut
-  const opexAnnuel = site.opexAnnuel ? Number(site.opexAnnuel) : (maintenance + assurance + taxesLocales + loyer);
+  const loyer = 0; // Aucun loyer pour les projets PV
+  const opexAnnuel = site.opexAnnuel ? Number(site.opexAnnuel) : (maintenance + assurance + taxesLocales);
   const ebitdaAn1 = site.ebitdaAn1 ? Number(site.ebitdaAn1) : (caAnnuel - opexAnnuel);
 
   // Dette senior (90% emprunt, 10% apport)
@@ -687,9 +687,9 @@ export function computePvFinancials(site, options = {}) {
     const maintY = Math.round(maintenance * idxOpex);
     const assurY = Math.round(assurance * idxOpex);
     const taxesY = Math.round(taxesLocales * idxOpex);
-    const loyerY = Math.round(loyer * idxOpex);
-    const mraY = y === 11 ? Math.round(coutCentrale * 0.1) : 0;
-    const opexY = maintY + assurY + taxesY + loyerY + mraY;
+    const loyerY = 0;
+    const mraY = 0;
+    const opexY = maintY + assurY + taxesY;
 
     const ebitdaY = caY - opexY;
     const servDetteY = y <= debtDuration ? annuiteDette : 0;
@@ -962,7 +962,7 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
       // Identification des dossiers certifiés (fiche projet / CRM Pro)
       const pFullText = normalize(`${p.name || ''} ${p.client || ''} ${p.client_name || ''} ${p.firstName || ''} ${p.city || ''} ${p.commune || ''} ${p.address || ''} ${p.zip || ''} ${p.postcode || ''}`);
       const isLatournerie = pFullText.includes('latournerie');
-      const pLoyer = isLatournerie ? 2250 : 0;
+      const pLoyer = 0; // Aucun loyer pour les projets PV
 
       // Puissances certifiées dans la fiche du projet (CRM Pro)
       let verifiedKwc = 0;
@@ -1146,6 +1146,11 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         ? projectName
         : `${displayPortLabel} - ${projectName}`;
 
+      const rawSurf = parseFloat(p.surface || mock?.surface) || 0;
+      const coherentSurface = (rawSurf >= pKwc * 3.5 && rawSurf <= pKwc * 6.5)
+        ? Math.round(rawSurf)
+        : Math.round(pKwc * 4.65);
+
       const siteObj = {
         id: siteId,
         name: siteFullName,
@@ -1158,8 +1163,8 @@ export function getPvPortfolioSites(projects = [], portfolioName = 'HELIOS', cur
         spv: p.spv || mock?.spv || `${displayPortLabel} SPV 1`,
         kwc: pKwc,
         productible: pProd,
-        surface: p.surface || mock?.surface || Math.round(pKwc * 5),
-        rent: pLoyer, // 2 250 €/an pour LATOURNERIE location toiture, 0 € pour les autres projets
+        surface: coherentSurface,
+        rent: 0, // Aucun loyer pour les projets PV
         coutCentrale: pCentrale,
         coutCharpente: pCharpente,
         raccordement: pRaccordement,

@@ -202,10 +202,10 @@ export default function PvProjectSingleSheet({ site, siteIndex, totalSites = 20,
             <div className="flex justify-between text-slate-600"><span>Maintenance & monitoring :</span><span className="font-bold text-slate-900">{fmtEur(maintenanceAn1)}</span></div>
             <div className="flex justify-between text-slate-600"><span>Assurance RC & exploitation :</span><span className="font-bold text-slate-900">{fmtEur(assuranceAn1)}</span></div>
             <div className="flex justify-between text-slate-600"><span>Location compteur & taxes :</span><span className="font-bold text-slate-900">{fmtEur(taxesLocalesAn1)}</span></div>
-            <div className="flex justify-between text-slate-600"><span>Loyer foncier / toiture :</span><span className="font-bold text-emerald-700">{fmtEur(loyerAn1)}</span></div>
+            <div className="flex justify-between text-slate-600"><span>Marge EBITDA An 1 :</span><span className="font-bold text-emerald-700">{caAn1 > 0 ? `${((ebitdaAn1 / caAn1) * 100).toFixed(1)}%` : '88.5%'}</span></div>
             <div className="pt-0.5 border-t border-slate-100 flex justify-between text-slate-500 text-[8.5px]">
-              <span>Provision onduleurs (An 11) :</span>
-              <span className="font-bold text-slate-700">{fmtEur(coutCentrale * 0.1)}</span>
+              <span>Contrat O&M intégral :</span>
+              <span className="font-bold text-slate-700">Inclus (20 ans)</span>
             </div>
           </div>
 
@@ -256,8 +256,6 @@ export default function PvProjectSingleSheet({ site, siteIndex, totalSites = 20,
               <DataRow label="Maintenance & Monitoring Centrale" propName="maint" isCurrency indent />
               <DataRow label="Assurance RC & Dommages aux Biens" propName="assur" isCurrency indent />
               <DataRow label="Location Compteur & Taxes Locales" propName="taxes" isCurrency indent />
-              <DataRow label="Loyer Foncier / Bâtiment" propName="loyer" isCurrency indent />
-              <DataRow label="Provision Onduleurs (MRA Année 11)" propName="mra" isCurrency indent />
               <DataRow label="TOTAL CHARGES D'EXPLOITATION (OPEX)" propName="opex" isCurrency bold className="bg-slate-50 text-slate-800 font-bold" />
 
               {/* SECTION 3 : SOLDES FINANCIERS & DETTE */}

@@ -45,12 +45,10 @@ export function generatePvPortfolioExcelData(sites = PV_PORTFOLIO_SITES, options
     'Zone CRE 2025-227': fin.zoneCre,
     'CAPEX Total (€)': Math.round(fin.capexTotal),
     'CA Annuel 1 (€)': Math.round(fin.caAnnuel),
+    'OPEX An 1 (€)': Math.round(fin.opexAnnuel),
     'EBITDA An 1 (€)': Math.round(fin.ebitdaAn1),
     'TRI Projet (%)': Number(fin.triProjet.toFixed(2)),
-    'Payback (ans)': Number(fin.payback.toFixed(1)),
-    'Loyer / Soulte (€/an)': String(siteRaw.name || siteRaw.siteName || siteRaw.client || '').toLowerCase().includes('latournerie')
-      ? 2250
-      : ((siteRaw.rent !== undefined && siteRaw.rent !== null) ? Number(siteRaw.rent) : 0)
+    'Payback (ans)': Number(fin.payback.toFixed(1))
   }));
 
   // Chronique financière consolidée (Feuille 2 - 20 ans)

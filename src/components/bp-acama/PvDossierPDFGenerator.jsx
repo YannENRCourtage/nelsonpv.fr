@@ -268,8 +268,8 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
         const assur = Math.round(opexAn1 * 0.25 * idxOpex);
         const taxes = Math.round(opexAn1 * 0.10 * idxOpex);
         const loyer = 0; // AUCUN LOYER FONCIER
-        const mra = i === 10 ? Math.round(capex * 0.05) : 0;
-        const opex = maint + assur + taxes + loyer + mra;
+        const mra = 0;
+        const opex = maint + assur + taxes;
         const ebitda = ca - opex;
         const servDette = annuite;
         const interest = Math.round(detteDebut * rateDec);
@@ -342,8 +342,8 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
       const assur = Math.round(opexAn1 * 0.25 * idxOpex);
       const taxes = Math.round(opexAn1 * 0.10 * idxOpex);
       const loyer = 0; // AUCUN LOYER FONCIER
-      const mra = i === 10 ? Math.round(capex * 0.05) : 0;
-      const opex = maint + assur + taxes + loyer + mra;
+      const mra = 0;
+      const opex = maint + assur + taxes;
       const ebitda = ca - opex;
       const servDette = annuite;
       const interest = Math.round(detteDebut * rateDec);
@@ -1182,8 +1182,6 @@ export default function PvDossierPDFGenerator({ open, onClose, portfolioData, pr
                       <DataRowP2 label="Maintenance & Monitoring Technique" propName="maint" isCurrency indent />
                       <DataRowP2 label="Assurance RC & Dommages aux Biens" propName="assur" isCurrency indent />
                       <DataRowP2 label="Location Compteurs & Taxes Locales" propName="taxes" isCurrency indent />
-                      <DataRowP2 label="Loyers Fonciers / Bâtiments" propName="loyer" isCurrency indent />
-                      <DataRowP2 label="Provision Remplacement Onduleurs (An 11)" propName="mra" isCurrency indent />
                       <DataRowP2 label="TOTAL CHARGES D'EXPLOITATION (OPEX)" propName="opex" isCurrency bold className="bg-slate-50 text-slate-800 font-bold" />
 
                       {/* SECTION 3 : SOLDES FINANCIERS & DETTE */}

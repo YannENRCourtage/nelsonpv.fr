@@ -85,22 +85,44 @@ export default function PvPortfolioLenderModal({
   const [activeTab, setActiveTab] = useState('all');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  // Totaux agrégés du portefeuille PV
+  // Totaux agrégés du portefeuille PV (avec calcul direct depuis sites si consolidatedTotals partiel)
   const nbSites = Math.max(1, Number(sites?.length || consolidatedTotals?.totalSites || 1));
-  const rawPowerMw = Number(consolidatedTotals?.totalPowerMw);
+  const sitesPowerMw = sites?.length > 0
+    ? sites.reduce((sum, s) => sum + (Number(s.kwc || s.powerKwc) || 0), 0) / 1000
+    : 0;
+  const rawPowerMw = Number(consolidatedTotals?.totalPowerMw) || sitesPowerMw;
   const totalPowerMw = (Number.isFinite(rawPowerMw) && rawPowerMw > 0 ? rawPowerMw : 2.5).toFixed(2);
-  const totalProdMwh = Math.round(Number(consolidatedTotals?.totalProdMwh) || (Number(totalPowerMw) * 1150));
-  const totalCapex = Number(consolidatedTotals?.totalCapex) || (Number(totalPowerMw) * 1000 * 950);
-  const totalCaAn1 = Number(consolidatedTotals?.totalCaAn1) || (totalProdMwh * 135);
-  const totalOpexAn1 = Number(consolidatedTotals?.totalOpexAn1) || (Number(totalPowerMw) * 1000 * 18);
-  const totalLoyersAn1 = Number(consolidatedTotals?.totalLoyersAn1) || (nbSites * 2000);
 
-  // Modèle financier prêteur senior PV sur 20 ans
+  const sitesProdMwh = sites?.length > 0
+    ? sites.reduce((sum, s) => sum + (Number(s.prodMwh) || ((Number(s.kwc || s.powerKwc) || 0) * (Number(s.productible) || 1150) / 1000)), 0)
+    : 0;
+  const totalProdMwh = Math.round(Number(consolidatedTotals?.totalProdMwh) || sitesProdMwh || (Number(totalPowerMw) * 1150));
+
+  const sitesCapex = sites?.length > 0
+    ? sites.reduce((sum, s) => sum + (Number(s.capexTotal) || 0), 0)
+    : 0;
+  const totalCapex = Number(consolidatedTotals?.totalCapex) || sitesCapex || (Number(totalPowerMw) * 1000 * 590);
+
+  const sitesCaAn1 = sites?.length > 0
+    ? sites.reduce((sum, s) => sum + (Number(s.caAnnuel) || 0), 0)
+    : 0;
+  const totalCaAn1 = Number(consolidatedTotals?.totalCaAn1) || sitesCaAn1 || (totalProdMwh * 78);
+
+  const sitesOpexAn1 = sites?.length > 0
+    ? sites.reduce((sum, s) => sum + (Number(s.opexAnnuel) || ((Number(s.kwc || s.powerKwc) || 0) * 11)), 0)
+    : 0;
+  const totalOpexAn1 = Number(consolidatedTotals?.totalOpexAn1) || sitesOpexAn1 || (Number(totalPowerMw) * 1000 * 11);
+  const totalSurfaceM2 = sites?.length > 0
+    ? sites.reduce((sum, s) => sum + (Number(s.surface) || Math.round((Number(s.kwc || s.powerKwc) || 250) * 4.65)), 0)
+    : Math.round(Number(totalPowerMw) * 1000 * 4.65);
+  const avgProductible = Math.round(totalProdMwh / Math.max(0.01, Number(totalPowerMw)));
+
+  // Modèle financier prêteur senior PV sur 20 ans (aucun loyer toiture pour les projets PV)
   const pvModel = useMemo(() => {
     try {
       const horizon = 20;
       const loanYears = Math.min(20, Number(debtDuration) || 20);
-      const rateDecimal = (debtRate || 4.20) / 100;
+      const rateDecimal = (debtRate || 4.00) / 100;
       const debtShare = 0.85; // 85% de dette senior pour le PV
       const equityShare = 0.15;
       const seniorDebt = totalCapex * debtShare;
@@ -116,11 +138,13 @@ export default function PvPortfolioLenderModal({
 
       for (let t = 1; t <= horizon; t++) {
         const chr = consolidatedChronique?.[t - 1];
-        // Dégradation PV -0.5% / an
-        const prodY = totalProdMwh * Math.pow(1 - 0.005, t - 1);
-        const caY = chr?.ca || (totalCaAn1 * Math.pow(1 - 0.005, t - 1));
-        // Inflation charges +1.5% / an (totalOpexAn1 inclut déjà les loyers dans PvPortfolioView)
-        const opexY = chr?.opex || (totalOpexAn1 * Math.pow(1 + 0.015, t - 1));
+        // Dégradation PV -0.45% / an & indexation tarif S21 +0.6% / an
+        const prodY = totalProdMwh * Math.pow(1 - 0.0045, t - 1);
+        const defaultCaY = Math.round(totalCaAn1 * Math.pow(1 - 0.0045, t - 1) * Math.pow(1 + 0.006, t - 1));
+        const caY = (chr?.ca && chr.ca > 0) ? chr.ca : defaultCaY;
+        // Inflation charges OPEX +2.0% / an (lissée, sans pic ponctuel ni loyer toiture)
+        const defaultOpexY = Math.round(totalOpexAn1 * Math.pow(1 + 0.02, t - 1));
+        const opexY = (chr?.opex && chr.opex > 0 && chr.opex <= totalOpexAn1 * 1.75) ? chr.opex : defaultOpexY;
         const ebitdaY = caY - opexY;
 
         const debtStart = capitalRestant;
@@ -187,6 +211,8 @@ export default function PvPortfolioLenderModal({
 
       const dscrRows = rows.filter(r => r.dscr !== null);
       const dscrMin = dscrRows.length > 0 ? Math.min(...dscrRows.map(r => r.dscr)) : 1.30;
+      const dscrMinRow = dscrRows.find(r => r.dscr === dscrMin);
+      const dscrMinYear = dscrMinRow ? dscrMinRow.year : 1;
       const dscrAvg = dscrRows.length > 0 ? dscrRows.reduce((s, r) => s + r.dscr, 0) / dscrRows.length : 1.45;
 
       // Ratios d'actualisation WACC 6%
@@ -211,6 +237,7 @@ export default function PvPortfolioLenderModal({
         rows,
         cumul,
         dscrMin,
+        dscrMinYear,
         dscrAvg,
         llcr,
         plcr,
@@ -218,7 +245,7 @@ export default function PvPortfolioLenderModal({
         equityNpv,
         projectIrr,
         equityIrr,
-        payback: payback || 7.5
+        payback: payback || 7.2
       };
     } catch (e) {
       console.error('[PvPortfolioLenderModal] Erreur pvModel:', e);
@@ -229,6 +256,7 @@ export default function PvPortfolioLenderModal({
         rows: [],
         cumul: { ca: 0, opex: 0, ebitda: 0, debtService: 0, netIncome: 0, cfads: 0, prodMwh: 0 },
         dscrMin: 1.30,
+        dscrMinYear: 1,
         dscrAvg: 1.45,
         llcr: 1.40,
         plcr: 1.65,
@@ -236,10 +264,10 @@ export default function PvPortfolioLenderModal({
         equityNpv: 0,
         projectIrr: 8.0,
         equityIrr: 12.0,
-        payback: 7.5
+        payback: 7.2
       };
     }
-  }, [totalCapex, totalCaAn1, totalOpexAn1, totalLoyersAn1, totalProdMwh, debtDuration, debtRate]);
+  }, [totalCapex, totalCaAn1, totalOpexAn1, totalProdMwh, debtDuration, debtRate, consolidatedChronique]);
 
   // 8 Scénarios de Stress-Tests PV
   const scenarios = useMemo(() => {
@@ -247,23 +275,29 @@ export default function PvPortfolioLenderModal({
       const base = pvModel;
       const runSim = (caFactor, opexFactor, rateDeltaBps) => {
         const loanYears = Math.min(20, Number(debtDuration) || 20);
-        const rDec = ((debtRate || 4.20) + rateDeltaBps / 100) / 100;
+        const rDec = ((debtRate || 4.00) + rateDeltaBps / 100) / 100;
         const sDebt = totalCapex * 0.85;
         const ann = Math.abs(calculatePmt(rDec, loanYears, sDebt));
+        let capRestant = sDebt;
         let minDscr = 99;
         let sumDscr = 0;
         let netCumul = 0;
 
-        for (let t = 1; t <= loanYears; t++) {
-          const ca = totalCaAn1 * caFactor * Math.pow(1 - 0.005, t - 1);
-          const op = totalOpexAn1 * opexFactor * Math.pow(1 + 0.015, t - 1);
+        for (let t = 1; t <= 20; t++) {
+          const ca = totalCaAn1 * caFactor * Math.pow(1 - 0.0045, t - 1) * Math.pow(1 + 0.006, t - 1);
+          const op = totalOpexAn1 * opexFactor * Math.pow(1 + 0.02, t - 1);
           const eb = ca - op;
-          const ebt = eb - (totalCapex / 20) - (sDebt * (1 - (t - 1) / loanYears) * rDec);
+          const intY = t <= loanYears ? capRestant * rDec : 0;
+          const princY = t <= loanYears ? Math.max(0, ann - intY) : 0;
+          capRestant = Math.max(0, capRestant - princY);
+          const ebt = eb - (totalCapex / 20) - intY;
           const baseIs = Math.max(0, ebt);
           const isTax = baseIs <= 42500 ? baseIs * 0.15 : (42500 * 0.15 + (baseIs - 42500) * 0.25);
-          const dscr = ann > 0 ? (eb / ann) : 1.30;
-          if (dscr < minDscr) minDscr = dscr;
-          sumDscr += dscr;
+          if (t <= loanYears) {
+            const dscr = ann > 0 ? (eb / ann) : 1.30;
+            if (dscr < minDscr) minDscr = dscr;
+            sumDscr += dscr;
+          }
           netCumul += (ebt - isTax);
         }
         return {
@@ -294,7 +328,7 @@ export default function PvPortfolioLenderModal({
       console.error('[PvPortfolioLenderModal] Erreur scenarios:', e);
       return [];
     }
-  }, [pvModel, totalCapex, totalCaAn1, totalOpexAn1, totalLoyersAn1, debtDuration, debtRate]);
+  }, [pvModel, totalCapex, totalCaAn1, totalOpexAn1, debtDuration, debtRate]);
 
   // Points de rupture
   const rupture = useMemo(() => {
@@ -550,7 +584,7 @@ export default function PvPortfolioLenderModal({
                     <div className="mt-2.5 pt-2 border-t border-slate-200 text-[10.5px] text-slate-500 flex justify-between">
                       <span>Marge EBITDA An 1 :</span>
                       <span className="font-bold text-slate-800">
-                        {fmtPct(totalCaAn1 > 0 ? ((totalCaAn1 - totalOpexAn1 - totalLoyersAn1) / totalCaAn1) * 100 : 75, 1)}
+                        {fmtPct(totalCaAn1 > 0 ? ((totalCaAn1 - totalOpexAn1) / totalCaAn1) * 100 : 88.5, 1)}
                       </span>
                     </div>
                   </div>
@@ -576,7 +610,7 @@ export default function PvPortfolioLenderModal({
                           <span className="font-bold text-slate-900">{fmt(pvModel.dscrAvg, 2)}x</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">LLCR (@4,2%) :</span>
+                          <span className="text-slate-500">LLCR (@{fmtPct(debtRate || 4.00, 1)}) :</span>
                           <span className="font-bold text-indigo-900">{fmt(pvModel.llcr, 2)}x</span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -635,7 +669,7 @@ export default function PvPortfolioLenderModal({
                       2. Hypothèses du Modèle Financier Photovoltaïque Consolidé
                     </h3>
                     <span className="text-[11px] text-slate-500">
-                      (Dégradation panneaux 0.5%/an • Inflation 1.5% • Amortissement linéaire 20 ans • Fiscalité LF 2024)
+                      (Dégradation panneaux 0,45%/an • Indexation S21 +0,6%/an • Inflation OPEX 2,0% • Amortissement linéaire 20 ans • Fiscalité LF 2024)
                     </span>
                   </div>
                 </div>
@@ -648,7 +682,7 @@ export default function PvPortfolioLenderModal({
                     <div className="flex justify-between"><span>Durée étude :</span><b>20 ans</b></div>
                     <div className="flex justify-between"><span>Durée prêt senior :</span><b>{debtDuration || 20} ans</b></div>
                     <div className="flex justify-between"><span>Quotité dette :</span><b>85 %</b></div>
-                    <div className="flex justify-between"><span>Taux all-in :</span><b className="text-amber-900">{fmtPct(debtRate || 4.20, 2)}</b></div>
+                    <div className="flex justify-between"><span>Taux all-in :</span><b className="text-amber-900">{fmtPct(debtRate || 4.00, 2)}</b></div>
                   </div>
 
                   <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1">
@@ -656,9 +690,9 @@ export default function PvPortfolioLenderModal({
                       Technique & Productible
                     </div>
                     <div className="flex justify-between"><span>Puissance cumulée :</span><b>{totalPowerMw} MWc</b></div>
-                    <div className="flex justify-between"><span>Productible moyen :</span><b>1 150 kWh/kWc/an</b></div>
-                    <div className="flex justify-between"><span>Dégradation panneaux :</span><b>0.5 %/an</b></div>
-                    <div className="flex justify-between"><span>Tarif moyen EDF OA :</span><b>~135 €/MWh</b></div>
+                    <div className="flex justify-between"><span>Productible moyen :</span><b>{avgProductible.toLocaleString('fr-FR')} kWh/kWc/an</b></div>
+                    <div className="flex justify-between"><span>Dégradation panneaux :</span><b>0,45 %/an</b></div>
+                    <div className="flex justify-between"><span>Tarif EDF OA (S21) :</span><b>0,082 €/kWh (≤ 1 100h)</b></div>
                   </div>
 
                   <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1">
@@ -666,9 +700,9 @@ export default function PvPortfolioLenderModal({
                       Fiscalité LF 2024
                     </div>
                     <div className="flex justify-between"><span>Seuil PME réduit :</span><b>42 500 € / SPV</b></div>
-                    <div className="flex justify-between"><span>Taux réduit IS :</span><b>15.0 %</b></div>
-                    <div className="flex justify-between"><span>Taux normal IS :</span><b>25.0 %</b></div>
-                    <div className="text-[9.5px] text-slate-400 mt-0.5">Amortissement linéaire des toitures & PV</div>
+                    <div className="flex justify-between"><span>Taux réduit IS :</span><b>15,0 %</b></div>
+                    <div className="flex justify-between"><span>Taux normal IS :</span><b>25,0 %</b></div>
+                    <div className="text-[9.5px] text-slate-400 mt-0.5">Amortissement linéaire des centrales sur 20 ans</div>
                   </div>
 
                   <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1">
@@ -677,8 +711,8 @@ export default function PvPortfolioLenderModal({
                     </div>
                     <div className="flex justify-between"><span>CAPEX Total :</span><b>{fmtEur(totalCapex)}</b></div>
                     <div className="flex justify-between"><span>CA Total An 1 :</span><b>{fmtEur(totalCaAn1)}</b></div>
-                    <div className="flex justify-between"><span>OPEX Maintenance :</span><b>{fmtEur(totalOpexAn1)}</b></div>
-                    <div className="flex justify-between"><span>Loyers / Soultes :</span><b className="text-amber-800">{fmtEur(totalLoyersAn1)}</b></div>
+                    <div className="flex justify-between"><span>OPEX Exploitation :</span><b>{fmtEur(totalOpexAn1)}</b></div>
+                    <div className="flex justify-between"><span>EBITDA Consolidé An 1 :</span><b className="text-emerald-700">{fmtEur(totalCaAn1 - totalOpexAn1)}</b></div>
                   </div>
                 </div>
               </div>
@@ -776,7 +810,7 @@ export default function PvPortfolioLenderModal({
                       <div className="text-base font-black text-slate-900 mt-1">
                         {fmt(pvModel.dscrMin, 2)}x
                       </div>
-                      <div className="text-[9px] text-slate-400 mt-0.5">Atteint en Année 1</div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">Atteint en Année {pvModel.dscrMinYear || 20}</div>
                     </div>
 
                     <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs">
@@ -821,7 +855,7 @@ export default function PvPortfolioLenderModal({
                   </p>
                 </div>
                 <span className="text-xs font-bold text-slate-500">
-                  Dette Senior {fmtEur(pvModel.seniorDebt)} (@{fmtPct(debtRate || 4.20, 2)})
+                  Dette Senior {fmtEur(pvModel.seniorDebt)} (@{fmtPct(debtRate || 4.00, 2)})
                 </span>
               </div>
 
@@ -849,7 +883,7 @@ export default function PvPortfolioLenderModal({
                       <td className="p-1 font-black bg-amber-50/50">{Math.round(pvModel.cumul.ca).toLocaleString('fr-FR')}</td>
                     </tr>
                     <tr className="hover:bg-slate-50 text-slate-600">
-                      <td className="p-1 text-left">OPEX Maintenance, Assurance & Loyer toitures</td>
+                      <td className="p-1 text-left">OPEX Maintenance & Assurance (Exploitation)</td>
                       {pvModel.rows.map(y => <td key={y.year} className="p-1 text-red-700">-{Math.round(y.opex).toLocaleString('fr-FR')}</td>)}
                       <td className="p-1 font-bold bg-amber-50/50 text-red-800">-{Math.round(pvModel.cumul.opex).toLocaleString('fr-FR')}</td>
                     </tr>
@@ -959,12 +993,12 @@ export default function PvPortfolioLenderModal({
                     Répertoire Consolidé des {sites.length} Centrales PV du Portefeuille {portfolioName}
                   </h3>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Surfaces toitures, puissance crête, productible annuel, valorisation CAPEX et baux notariés 20-30 ans.
+                    Surfaces toitures, puissance crête, productible annuel, valorisation CAPEX et rentabilité par centrale (sans loyer toiture).
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200 text-xs font-black">
-                    Baux Notariés 20 Ans
+                    Exploitation 20 Ans (Sans Loyer)
                   </span>
                   <span className="px-2.5 py-1 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-black">
                     Tarif EDF OA Sécurisé
@@ -984,38 +1018,49 @@ export default function PvPortfolioLenderModal({
                       <th className="py-2 px-2 w-28 text-center">Puissance Crête</th>
                       <th className="py-2 px-2 w-28 text-center">Productible</th>
                       <th className="py-2 px-2 w-24 text-right">CAPEX Total</th>
-                      <th className="py-2 px-2 w-24 text-right">Loyer Toiture</th>
                       <th className="py-2 px-2 w-24 text-right">CA An 1</th>
+                      <th className="py-2 px-2 w-24 text-right">OPEX An 1</th>
                       <th className="py-2 px-2 w-24 text-right">EBITDA An 1</th>
                       <th className="py-2 px-2 w-20 text-center">Payback</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    {sites.map((s, idx) => (
-                      <tr key={s.id || idx} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-1 px-2 text-center font-bold text-slate-400">{idx + 1}</td>
-                        <td className="py-1 px-2">
-                          <span className="font-extrabold text-slate-900 block leading-tight">{s.name}</span>
-                          <span className="text-[9.5px] text-slate-400">{s.client || s.client_name}</span>
-                        </td>
-                        <td className="py-1 px-2">
-                          <span className="font-semibold text-slate-800 block leading-tight">{s.city}</span>
-                          <span className="text-[9.5px] text-slate-400">{s.cp || s.postcode}</span>
-                        </td>
-                        <td className="py-1 px-2 text-center text-slate-600 font-medium">{s.surface ? `${s.surface} m²` : '—'}</td>
-                        <td className="py-1 px-2 text-center font-bold text-amber-900">
-                          <span className="px-1 py-0.5 rounded bg-amber-50 text-amber-800">{s.kwc || s.powerKwc || 100} kWc</span>
-                        </td>
-                        <td className="py-1 px-2 text-center font-semibold text-slate-700">
-                          {Math.round(s.prodMwh || ((s.kwc || 100) * 1.15))} MWh/an
-                        </td>
-                        <td className="py-1 px-2 text-right font-bold text-slate-900">{fmtEur(s.capexTotal || (s.kwc || 100) * 950)}</td>
-                        <td className="py-1 px-2 text-right font-medium text-amber-700">{fmtEur(s.rent || 2000)}/an</td>
-                        <td className="py-1 px-2 text-right font-semibold text-slate-800">{fmtEur(s.caAnnuel || (s.prodMwh || (s.kwc || 100) * 1.15) * 135)}</td>
-                        <td className="py-1 px-2 text-right font-black text-emerald-700">{fmtEur(s.ebitda || s.ebitdaAn1 || (s.caAnnuel || 13500) * 0.75)}</td>
-                        <td className="py-1 px-2 text-center font-bold text-slate-700">{s.payback || '7.5 ans'}</td>
-                      </tr>
-                    ))}
+                    {sites.map((s, idx) => {
+                      const sKwc = Number(s.kwc || s.powerKwc || 250);
+                      const sProd = Math.round(Number(s.prodMwh) || (sKwc * 1.15));
+                      const sCapex = Number(s.capexTotal) || Math.round(sKwc * 590);
+                      const sCa = Number(s.caAnnuel) || Math.round(sProd * 78);
+                      const sOpex = Number(s.opexAnnuel) || Math.round(sKwc * 11);
+                      const sEbitda = Number(s.ebitda || s.ebitdaAn1) || (sCa - sOpex);
+                      const sPayback = Number(s.payback) || (sEbitda > 0 ? sCapex / sEbitda : 7.2);
+                      const sSurface = Number(s.surface) || Math.round(sKwc * 4.65);
+
+                      return (
+                        <tr key={s.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-1 px-2 text-center font-bold text-slate-400">{idx + 1}</td>
+                          <td className="py-1 px-2">
+                            <span className="font-extrabold text-slate-900 block leading-tight">{s.name}</span>
+                            <span className="text-[9.5px] text-slate-400">{s.client || s.client_name}</span>
+                          </td>
+                          <td className="py-1 px-2">
+                            <span className="font-semibold text-slate-800 block leading-tight">{s.city}</span>
+                            <span className="text-[9.5px] text-slate-400">{s.cp || s.postcode}</span>
+                          </td>
+                          <td className="py-1 px-2 text-center text-slate-600 font-medium">{sSurface.toLocaleString('fr-FR')} m²</td>
+                          <td className="py-1 px-2 text-center font-bold text-amber-900">
+                            <span className="px-1 py-0.5 rounded bg-amber-50 text-amber-800">{sKwc} kWc</span>
+                          </td>
+                          <td className="py-1 px-2 text-center font-semibold text-slate-700">
+                            {sProd.toLocaleString('fr-FR')} MWh/an
+                          </td>
+                          <td className="py-1 px-2 text-right font-bold text-slate-900">{fmtEur(sCapex)}</td>
+                          <td className="py-1 px-2 text-right font-semibold text-slate-800">{fmtEur(sCa)}</td>
+                          <td className="py-1 px-2 text-right font-medium text-rose-700">{fmtEur(sOpex)}</td>
+                          <td className="py-1 px-2 text-right font-black text-emerald-700">{fmtEur(sEbitda)}</td>
+                          <td className="py-1 px-2 text-center font-bold text-slate-700">{fmt(sPayback, 1)} ans</td>
+                        </tr>
+                      );
+                    })}
 
                     {/* TOTAL CONSOLIDÉ DU PORTEFEUILLE PV */}
                     <tr className="bg-gradient-to-r from-amber-700 via-orange-800 to-amber-900 text-white font-black text-[11px]">
@@ -1024,7 +1069,7 @@ export default function PvPortfolioLenderModal({
                         Total Consolidé<br />({sites.length} Centrales)
                       </td>
                       <td className="py-2 px-2 text-amber-200">Portefeuille {portfolioName}</td>
-                      <td className="py-2 px-2 text-center text-amber-200 font-mono">—</td>
+                      <td className="py-2 px-2 text-center text-amber-100 font-bold">{totalSurfaceM2.toLocaleString('fr-FR')} m²</td>
                       <td className="py-2 px-2 text-center text-yellow-300 font-black">
                         {totalPowerMw} MWc
                       </td>
@@ -1034,14 +1079,14 @@ export default function PvPortfolioLenderModal({
                       <td className="py-2 px-2 text-right text-white font-black">
                         {fmtEur(totalCapex)}
                       </td>
-                      <td className="py-2 px-2 text-right text-yellow-300 font-black">
-                        {fmtEur(totalLoyersAn1)}/an
-                      </td>
                       <td className="py-2 px-2 text-right text-white font-black">
                         {fmtEur(totalCaAn1)}
                       </td>
+                      <td className="py-2 px-2 text-right text-amber-200 font-bold">
+                        {fmtEur(totalOpexAn1)}
+                      </td>
                       <td className="py-2 px-2 text-right text-emerald-300 font-black text-xs">
-                        {fmtEur(Number(consolidatedTotals?.totalEbitdaAn1) || (totalCaAn1 - totalOpexAn1))}
+                        {fmtEur(totalCaAn1 - totalOpexAn1)}
                       </td>
                       <td className="py-2 px-2 text-center text-yellow-300 font-black">
                         {fmt(pvModel.payback, 1)} ans

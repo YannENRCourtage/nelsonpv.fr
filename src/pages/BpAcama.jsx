@@ -3475,7 +3475,7 @@ function TabBpProjets({
       consolidatedTotals={pvPortfolioExportData?.consolidatedTotals || { totalSites: pvHeliosSites.length, totalPowerMw: Number(pvHeliosPowerMw || 0) }}
       consolidatedChronique={pvPortfolioExportData?.consolidatedChronique || []}
       debtDuration={pvPortfolioExportData?.debtDuration ?? 20}
-      debtRate={pvPortfolioExportData?.debtRate ?? 4.20}
+      debtRate={pvPortfolioExportData?.debtRate ?? 4.00}
     />
   )}
 
