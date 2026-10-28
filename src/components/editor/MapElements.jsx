@@ -37,6 +37,7 @@ import { urbanismeService } from "@/services/UrbanismeService";
 import { isochroneService } from "@/services/IsochroneService";
 import { Zap, Sun, Users, Building as BuildingIcon } from 'lucide-react';
 import { squarePolygon } from '@/utils/squarePolygon';
+import { renderHtaTransformerPopupDOM } from '@/utils/htaTransformerAnalyzer.js';
 
 // --- Clé API IGN ---
 // 👇 COPIEZ VOTRE CLÉ API GÉOSERVICES IGN CI-DESSOUS 👇
@@ -716,9 +717,15 @@ function CapareseauLayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
-function PostesHTALayerManager({ layersRef, activeLayers }) {
+function PostesHTALayerManager({ layersRef, activeLayers, project, features, targetPos }) {
   const map = useMap();
   const active = activeLayers?.has('enedisPostes');
+  const contextRef = useRef({ project, features, targetPos });
+
+  useEffect(() => {
+    contextRef.current = { project, features, targetPos };
+  }, [project, features, targetPos]);
+
   const layerGroupRef = useRef(L.markerClusterGroup({
     chunkedLoading: true,
     maxClusterRadius: 60,
@@ -770,21 +777,45 @@ function PostesHTALayerManager({ layersRef, activeLayers }) {
           return L.marker(latlng, {
             icon: L.divIcon({
               className: 'hta-poste-icon',
-              html: '<div style="background-color: red; width: 12px; height: 12px; border: 1.5px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
-              iconSize: [12, 12],
-              iconAnchor: [6, 6]
+              html: '<div title="Analyser ce Poste HTA/BT (Éligibilité BESS 250 kW)" style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: #ffffff; width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #ffffff; box-shadow: 0 1px 5px rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; cursor: pointer;">⚡</div>',
+              iconSize: [18, 18],
+              iconAnchor: [9, 9]
             })
           });
         },
         onEachFeature: (feature, layer) => {
-          const props = feature.properties;
-          let popupContent = '<div style="font-family: sans-serif; min-width: 200px;">';
-          popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>`;
-          if (props.nom_poste) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Nom:</strong> ${props.nom_poste}</p>`;
-          if (props.type_poste) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Type:</strong> ${props.type_poste}</p>`;
-          if (props.code_commune) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Code Commune:</strong> ${props.code_commune}</p>`;
-          popupContent += '</div>';
-          layer.bindPopup(popupContent, { maxWidth: 320 });
+          const props = feature.properties || {};
+          const coords = layer.getLatLng();
+          const popupContainer = L.DomUtil.create('div', 'hta-bess-analyzer-popup-root');
+          L.DomEvent.disableClickPropagation(popupContainer);
+          L.DomEvent.disableScrollPropagation(popupContainer);
+
+          layer.bindPopup(popupContainer, {
+            maxWidth: 390,
+            minWidth: 365,
+            className: 'hta-bess-audit-popup'
+          });
+
+          layer.on('popupopen', () => {
+            const cachedNetworkLayers = {
+              htaAerien: layersRef.current?._cachedHtaData?.htaAerien || [],
+              htaSouterrain: layersRef.current?._cachedHtaData?.htaSouterrain || [],
+              btAerien: layersRef.current?._cachedBtData?.btAerien || [],
+              btSouterrain: layersRef.current?._cachedBtData?.btSouterrain || []
+            };
+            renderHtaTransformerPopupDOM(popupContainer, {
+              lat: coords.lat,
+              lng: coords.lng,
+              props,
+              getContext: () => ({
+                features: contextRef.current.features,
+                targetPos: contextRef.current.targetPos,
+                project: contextRef.current.project,
+                mapCenter: map.getCenter()
+              }),
+              cachedNetworkLayers
+            });
+          });
         }
       }).addTo(layerGroupRef.current);
     } catch (err) { console.error("Error fetching Postes HTA data", err); }
@@ -1520,6 +1551,12 @@ function BTLayerManager({ layersRef, activeLayers }) {
 
     try {
       const rawResults = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
+      if (layersRef.current) {
+        layersRef.current._cachedBtData = {
+          btAerien: rawResults[0]?.results || [],
+          btSouterrain: rawResults[1]?.results || []
+        };
+      }
       layerGroupRef.current.clearLayers();
 
       rawResults.forEach((data, index) => {
@@ -1823,6 +1860,12 @@ function HTALayerManager({ layersRef, activeLayers }) {
 
     try {
       const rawResults = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
+      if (layersRef.current) {
+        layersRef.current._cachedHtaData = {
+          htaAerien: rawResults[0]?.results || [],
+          htaSouterrain: rawResults[1]?.results || []
+        };
+      }
       layerGroupRef.current.clearLayers();
 
       rawResults.forEach((data, index) => {
@@ -6960,7 +7003,7 @@ export default function MapElements({
           <LignesHTBLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <HTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <BTLayerManager layersRef={layersRef} activeLayers={activeLayers} />
-          <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} project={project} features={features} targetPos={targetPos} />
           <PostesSourcesRTELayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <InstallationsProdLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <S3REnRLayerManager layersRef={layersRef} activeLayers={activeLayers} />
