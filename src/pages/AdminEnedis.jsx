@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, X, Send, User, Link2, Check, ShieldCheck } from 'lucide-react';
+import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, X, Send, User, Link2, Check, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import enedisService from '@/services/enedis';
 import ConsumptionChart from '@/components/enedis/ConsumptionChart';
 import EnedisPrintLayout from '@/components/enedis/EnedisPrintLayout';
 import MandatSignatureModal from '@/components/enedis/MandatSignatureModal';
+import SafraBessProposalModule from '@/components/enedis/SafraBessProposalModule';
 
 export default function AdminEnedis() {
   const [prm, setPrm] = useState('');
@@ -20,6 +21,32 @@ export default function AdminEnedis() {
   const [activeTab, setActiveTab] = useState('interrogation');
   const [jsonOpen, setJsonOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  // Calculs de synthèse de consommation pour l'étude BESS SAFRA
+  const { totalKwh, avgDaily, peakKw } = React.useMemo(() => {
+    if (!data) return { totalKwh: 211781, avgDaily: 578.6, peakKw: 90.0 };
+    const parseIntervals = (apiResult) => {
+      if (!apiResult || apiResult.error) return [];
+      return (apiResult?.meter_reading?.interval_reading || [])
+        .map(r => ({ date: r.date || '', value: parseFloat(r.value || 0) }))
+        .filter(r => r.date && !isNaN(r.value));
+    };
+
+    const dailyReadings = parseIntervals(data?.daily);
+    const tot = dailyReadings.reduce((s, r) => s + r.value, 0) / 1000;
+    const avg = dailyReadings.length > 0 ? tot / dailyReadings.length : 0;
+
+    const maxReadings = parseIntervals(data?.maxPower);
+    const loadReadings = parseIntervals(data?.loadCurve);
+    const peakSource = maxReadings.length > 0 ? maxReadings : loadReadings;
+    const pk = peakSource.reduce((mx, r) => Math.max(mx, r.value / 1000), 0);
+
+    return {
+      totalKwh: tot > 0 ? Math.round(tot) : 211781,
+      avgDaily: avg > 0 ? Number(avg.toFixed(1)) : 578.6,
+      peakKw: pk > 0 ? Number(pk.toFixed(2)) : 90.0
+    };
+  }, [data]);
+
 
   // État de l'environnement API (production vs sandbox)
   const [env, setEnv] = useState('production');
@@ -309,6 +336,20 @@ export default function AdminEnedis() {
                 <CheckCircle2 size={18} />
                 PRM ACTIF : {prm}
               </div>
+            )}
+            
+            {data && (
+              <Button
+                variant="outline"
+                className="rounded-2xl h-12 px-5 border-orange-200 bg-orange-50 text-orange-700 shadow-sm hover:bg-orange-100 font-bold"
+                onClick={() => {
+                  const el = document.getElementById('safra-proposal-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                <Sparkles size={18} className="mr-2 text-orange-500" />
+                Simulation SAFRA
+              </Button>
             )}
             {data && (
               <Button
@@ -633,9 +674,24 @@ export default function AdminEnedis() {
                       )}
                     </div>
 
+                    
                     <div className="flex-1 bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden transition-all hover:shadow-blue-100/50">
                       <ConsumptionChart data={data} loading={loading} />
                     </div>
+
+                    {/* PROPOSITION DE STOCKAGE INTELLIGENT SAFRA & SIMULATION DE RENTABILITÉ */}
+                    <div id="safra-proposal-section">
+                      <SafraBessProposalModule
+                        prm={prm}
+                        titulaire={ownerName}
+                        adresse={ownerAddress}
+                        consoAnnuelleKwh={totalKwh}
+                        consoJourMoyKwh={avgDaily}
+                        peakKw={peakKw}
+                        toast={toast}
+                      />
+                    </div>
+
 
                     {/* JSON Panel — collapsible */}
                     <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-950">
