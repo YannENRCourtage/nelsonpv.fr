@@ -23,6 +23,7 @@ export function computeSafraSimulation({
   quantity = 1,
   customPriceHt = null,
   customInstallHt = null,
+  pricingMode = 'TURNKEY', // 'TURNKEY' (Clé en main posé) | 'HARDWARE_ONLY' (Matériel seul)
   includeGridConnection = false,
   forcedGridConnection = false,
   customDistanceMeters = 25,
@@ -175,7 +176,7 @@ export function computeSafraSimulation({
   }
   const hardwareCapex = modelPriceHt * qte;
   const baseInstallCapex = modelInstallHt * qte;
-  const installCapex = Math.round(baseInstallCapex * (1 - installDiscount));
+  const installCapex = pricingMode === 'HARDWARE_ONLY' ? 0 : Math.round(baseInstallCapex * (1 - installDiscount));
   const connectionCapex = includeGridConnection ? gridFeasibility.connectionCostHt : 0;
   const totalCapexHt = hardwareCapex + installCapex + connectionCapex;
 
@@ -270,6 +271,7 @@ export function computeSafraSimulation({
   return {
     model,
     quantity: qte,
+    pricingMode,
     totalCapacityKwh,
     totalPowerKw,
     hardwareCapex,

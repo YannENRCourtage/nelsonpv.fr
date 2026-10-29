@@ -18,7 +18,10 @@ import {
   HelpCircle,
   RotateCw,
   Building,
-  Check
+  Check,
+  X,
+  RefreshCw,
+  Lock
 } from 'lucide-react';
 import {
   AreaChart,
@@ -54,21 +57,45 @@ export default function SafraBessProposalModule({
     return recommendSafraModel(consoJourMoyKwh, peakKw);
   }, [consoJourMoyKwh, peakKw]);
 
-  // État local de la configuration SAFRA
+  // État local de la configuration
   const [selectedModelId, setSelectedModelId] = useState(autoRecommendation.primaryModel.id);
   const [quantity, setQuantity] = useState(autoRecommendation.quantity);
   const [includeGridConnection, setIncludeGridConnection] = useState(false);
   const [forcedGridConnection, setForcedGridConnection] = useState(false);
   const [customDistanceMeters, setCustomDistanceMeters] = useState(25);
 
-  // Prix personnalisés par modèle pour ajuster les tarifs distributeurs
-  const [customPrices, setCustomPrices] = useState({});
+  // Switch mode d'investissement : 'TURNKEY' (Clé en main posé par défaut) | 'HARDWARE_ONLY' (Matériel seul)
+  const [pricingMode, setPricingMode] = useState('TURNKEY');
+
+  // Remise partenaire distributeur globale (par défaut -10%)
+  const [globalDiscountPercent, setGlobalDiscountPercent] = useState(10);
+
+  // Prix personnalisés par modèle avec migration et purge automatique des anciennes versions obsolètes
+  const [customPrices, setCustomPrices] = useState(() => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('nelson_safra_prices');
+        const saved = localStorage.getItem('nelson_safra_prices_v2');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Sécurité anti-obsolescence : si d'anciens prix erronés (ex 3490€ ou 11900€) sont détectés, on purge le cache
+          if (parsed?.UNIV5100W?.price === 3490 || parsed?.ST15K?.price === 11900) {
+            localStorage.removeItem('nelson_safra_prices_v2');
+            return {};
+          }
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return {};
+  });
+
   const [isEditingPrices, setIsEditingPrices] = useState(false);
 
   // Filtre d'onglet de catalogue
   const [catalogFilter, setCatalogFilter] = useState('ALL'); // 'ALL' | 'LV' | 'HV' | 'CI' | 'CONTAINER'
 
-  // Modèle SAFRA actif
+  // Modèle actif
   const currentModel = useMemo(() => {
     return SAFRA_CATALOG.find(m => m.id === selectedModelId) || autoRecommendation.primaryModel;
   }, [selectedModelId, autoRecommendation.primaryModel]);
@@ -77,10 +104,11 @@ export default function SafraBessProposalModule({
   const simResult = useMemo(() => {
     const customPrice = customPrices[currentModel.id]?.price !== undefined
       ? customPrices[currentModel.id].price
-      : currentModel.defaultPriceHt;
-    const customInstall = customPrices[currentModel.id]?.install !== undefined
-      ? customPrices[currentModel.id].install
-      : currentModel.defaultInstallHt;
+      : (currentModel.sellingHardwarePriceHT || currentModel.defaultPriceHt);
+    const customTurnkey = customPrices[currentModel.id]?.turnkey !== undefined
+      ? customPrices[currentModel.id].turnkey
+      : (currentModel.turnkeyInstalledPriceHT || (currentModel.defaultPriceHt + currentModel.defaultInstallHt));
+    const customInstall = Math.max(0, customTurnkey - customPrice);
 
     return computeSafraSimulation({
       consoAnnuelleKwh,
@@ -90,6 +118,7 @@ export default function SafraBessProposalModule({
       quantity,
       customPriceHt: customPrice,
       customInstallHt: customInstall,
+      pricingMode,
       includeGridConnection,
       forcedGridConnection,
       customDistanceMeters,
@@ -102,6 +131,7 @@ export default function SafraBessProposalModule({
     currentModel,
     quantity,
     customPrices,
+    pricingMode,
     includeGridConnection,
     forcedGridConnection,
     customDistanceMeters,
@@ -123,14 +153,14 @@ export default function SafraBessProposalModule({
         peakKw
       });
       toast({
-        title: "✅ Proposition SAFRA générée",
+        title: "✅ Proposition commerciale générée",
         description: `Le dossier commercial en PDF a été téléchargé avec succès.`
       });
     } catch (err) {
       console.error(err);
       toast({
         title: "Erreur PDF",
-        description: "Impossible de générer le rapport PDF SAFRA.",
+        description: "Impossible de générer le rapport PDF.",
         variant: "destructive"
       });
     } finally {
@@ -139,13 +169,36 @@ export default function SafraBessProposalModule({
   };
 
   const handlePriceChange = (modelId, field, value) => {
-    setCustomPrices(prev => ({
-      ...prev,
-      [modelId]: {
-        ...prev[modelId],
-        [field]: parseFloat(value) || 0
+    setCustomPrices(prev => {
+      const next = {
+        ...prev,
+        [modelId]: {
+          ...prev[modelId],
+          [field]: parseFloat(value) || 0
+        }
+      };
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('nelson_safra_prices_v2', JSON.stringify(next));
+        }
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const resetPricesToRecommended = () => {
+    setCustomPrices({});
+    setGlobalDiscountPercent(10);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('nelson_safra_prices_v2');
+        localStorage.removeItem('nelson_safra_prices');
       }
-    }));
+    } catch (e) {}
+    toast({
+      title: "Tarifs réinitialisés",
+      description: "La grille tarifaire officielle distributeur SAFRA (-10%) a été restaurée."
+    });
   };
 
   const filteredCatalog = useMemo(() => {
@@ -183,23 +236,15 @@ export default function SafraBessProposalModule({
         </button>
       </div>
 
-      {/* ─── BANDEAU RECOMMANDATION AUTOMATIQUE ─── */}
+      {/* ─── BANDEAU RECOMMANDATION AUTOMATIQUE (VISUEL RETIRÉ) ─── */}
       <div className="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/80 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative z-10">
-        <div className="lg:col-span-3 flex flex-col items-center justify-center p-4 bg-slate-900/80 rounded-2xl border border-slate-700/60 relative">
-          <img
-            src={currentModel.imageUrl}
-            alt={currentModel.name}
-            className="h-36 object-contain my-2 filter drop-shadow-[0_10px_15px_rgba(0,0,0,0.5)]"
-          />
-          <span className="text-xs text-slate-400 font-mono">Ref: {currentModel.reference}</span>
-        </div>
-
-        <div className="lg:col-span-6 space-y-3">
+        <div className="lg:col-span-8 space-y-3">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-orange-400 uppercase tracking-widest flex items-center gap-1">
               <CheckCircle2 size={14} />
               Recommandation automatique selon consommation
             </span>
+            <span className="text-xs font-mono text-slate-400">Ref: {currentModel.reference}</span>
           </div>
 
           <h3 className="text-xl md:text-2xl font-black text-white">
@@ -227,7 +272,7 @@ export default function SafraBessProposalModule({
         </div>
 
         {/* Stepper de quantité & Jauge d'autonomie */}
-        <div className="lg:col-span-3 flex flex-col justify-between h-full space-y-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-700/50">
+        <div className="lg:col-span-4 flex flex-col justify-between h-full space-y-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-700/50">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
               Nombre d'unités (Armoires / Packs)
@@ -472,16 +517,48 @@ export default function SafraBessProposalModule({
         </div>
 
         {/* KPI 3 : Investissement Total HT */}
-        <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
-            <span>Investissement Total HT</span>
-            <Building size={16} className="text-orange-400" />
-          </div>
-          <div className="text-3xl font-black text-white">
-            {simResult.totalCapexHt.toLocaleString('fr-FR')} <span className="text-sm font-bold text-slate-400">€ HT</span>
+        <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
+              <span>Investissement Total HT</span>
+              <Building size={16} className="text-orange-400" />
+            </div>
+
+            {/* Switch mode d'investissement */}
+            <div className="inline-flex p-0.5 rounded-xl bg-slate-900 border border-slate-700/80 text-[10px] font-black mb-2">
+              <button
+                type="button"
+                onClick={() => setPricingMode('TURNKEY')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  pricingMode === 'TURNKEY'
+                    ? 'bg-blue-600 text-white shadow-sm font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Clé en main posé
+              </button>
+              <button
+                type="button"
+                onClick={() => setPricingMode('HARDWARE_ONLY')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  pricingMode === 'HARDWARE_ONLY'
+                    ? 'bg-blue-600 text-white shadow-sm font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Matériel seul
+              </button>
+            </div>
+
+            <div className="text-3xl font-black text-white">
+              {simResult.totalCapexHt.toLocaleString('fr-FR')} <span className="text-sm font-bold text-slate-400">€ HT</span>
+            </div>
           </div>
           <p className="text-[11px] text-slate-400">
-            Batterie : {simResult.hardwareCapex.toLocaleString('fr-FR')} € + Pose : {simResult.installCapex.toLocaleString('fr-FR')} € {includeGridConnection ? `+ Racc : ${simResult.connectionCapex.toLocaleString('fr-FR')} €` : ''}
+            {pricingMode === 'TURNKEY'
+              ? `Batterie : ${simResult.hardwareCapex.toLocaleString('fr-FR')} € + Pose : ${simResult.installCapex.toLocaleString('fr-FR')} € ${includeGridConnection ? `+ Racc : ${simResult.connectionCapex.toLocaleString('fr-FR')} €` : ''}`
+              : `Fourniture matériel seul : ${simResult.hardwareCapex.toLocaleString('fr-FR')} € (hors pose) ${includeGridConnection ? `+ Racc : ${simResult.connectionCapex.toLocaleString('fr-FR')} €` : ''}`
+            }
           </p>
         </div>
 
@@ -626,11 +703,11 @@ export default function SafraBessProposalModule({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsEditingPrices(o => !o)}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-2 transition-colors"
+              onClick={() => setIsEditingPrices(true)}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-2 transition-colors shadow-sm"
             >
-              <Sliders size={14} />
-              {isEditingPrices ? 'Masquer tarifs distributeurs' : 'Ajuster tarifs distributeurs'}
+              <Sliders size={14} className="text-orange-400" />
+              Ajuster tarifs distributeurs
             </button>
           </div>
         </div>
@@ -659,11 +736,16 @@ export default function SafraBessProposalModule({
         </div>
 
         {/* Grille des modèles SAFRA */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
           {filteredCatalog.map(item => {
             const isSelected = item.id === currentModel.id;
-            const currentItemPrice = customPrices[item.id]?.price !== undefined ? customPrices[item.id].price : item.defaultPriceHt;
-            const currentItemInstall = customPrices[item.id]?.install !== undefined ? customPrices[item.id].install : item.defaultInstallHt;
+            const currentItemPrice = customPrices[item.id]?.price !== undefined
+              ? customPrices[item.id].price
+              : (item.sellingHardwarePriceHT || item.defaultPriceHt);
+            const currentItemTurnkey = customPrices[item.id]?.turnkey !== undefined
+              ? customPrices[item.id].turnkey
+              : (item.turnkeyInstalledPriceHT || (item.defaultPriceHt + item.defaultInstallHt));
+            const prixKwh = Math.round(currentItemPrice / item.capacityKwh);
 
             return (
               <div
@@ -708,43 +790,31 @@ export default function SafraBessProposalModule({
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-400">Tarif matériel :</span>
-                    <strong className="text-white font-black">{currentItemPrice.toLocaleString('fr-FR')} € HT</strong>
-                  </div>
-
-                  {isEditingPrices && (
-                    <div className="pt-2 space-y-1.5" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-400 w-16">Prix mat. :</span>
-                        <input
-                          type="number"
-                          value={currentItemPrice}
-                          onChange={e => handlePriceChange(item.id, 'price', e.target.value)}
-                          className="flex-1 px-2 py-1 bg-slate-950 border border-slate-700 rounded text-xs font-bold text-white text-right outline-none focus:border-blue-500"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-400 w-16">Pose HT :</span>
-                        <input
-                          type="number"
-                          value={currentItemInstall}
-                          onChange={e => handlePriceChange(item.id, 'install', e.target.value)}
-                          className="flex-1 px-2 py-1 bg-slate-950 border border-slate-700 rounded text-xs font-bold text-white text-right outline-none focus:border-blue-500"
-                        />
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-baseline text-xs">
+                      <span className="text-slate-400 font-medium">Tarif matériel :</span>
+                      <div className="text-right">
+                        <strong className="text-white font-black text-sm">{currentItemPrice.toLocaleString('fr-FR')} € HT</strong>
+                        <span className="text-[10px] text-slate-400 block font-medium">
+                          ({prixKwh.toLocaleString('fr-FR')} €/kWh)
+                        </span>
                       </div>
                     </div>
-                  )}
+                    <div className="flex justify-between items-center text-[11px] pt-1 border-t border-slate-800/60">
+                      <span className="text-slate-500 font-medium">Clé en main posé :</span>
+                      <strong className="text-emerald-400/90 font-bold">{currentItemTurnkey.toLocaleString('fr-FR')} € HT</strong>
+                    </div>
+                  </div>
 
                   <button
                     type="button"
-                    className={`w-full py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                    className={`w-full py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
                       isSelected
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        ? 'bg-blue-600 text-white shadow-blue-600/30 ring-2 ring-blue-400/20'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
                     }`}
                   >
-                    {isSelected ? 'Sélectionné' : 'Sélectionner ce modèle'}
+                    {isSelected ? 'Modèle sélectionné' : 'Sélectionner ce modèle'}
                   </button>
                 </div>
               </div>
@@ -752,6 +822,192 @@ export default function SafraBessProposalModule({
           })}
         </div>
       </div>
+
+      {/* ─── MODAL : AJUSTER TARIFS DISTRIBUTEURS & MARGES ─── */}
+      {isEditingPrices && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-800 flex items-start justify-between gap-4 bg-slate-950/60">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Sliders size={20} className="text-orange-400" />
+                  <h3 className="text-lg sm:text-xl font-black text-white">
+                    Grille Tarifaire Distributeur SAFRA New Energy & Marges Commerciales
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Ajustez la remise partenaire distributeur SAFRA (-10% par défaut), les tarifs de vente matériel HT et les tarifs clés en main posés HT.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsEditingPrices(false)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors shrink-0"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Confidentiality Warning & Controls */}
+            <div className="p-4 sm:p-5 bg-slate-900/90 border-b border-slate-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+              {/* Confidentiality Banner */}
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-950/40 border border-amber-600/40 text-amber-200 text-xs">
+                <Lock size={15} className="text-amber-400 shrink-0" />
+                <span className="font-semibold">
+                  Strictement confidentiel interne ENR Courtage — Le prix d'achat net et la marge brute ne figurent jamais sur le devis ou PDF client.
+                </span>
+              </div>
+
+              {/* Global Controls */}
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-700 text-xs">
+                  <span className="text-slate-400 font-medium">Remise SAFRA globale :</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    step="0.5"
+                    value={globalDiscountPercent}
+                    onChange={e => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setGlobalDiscountPercent(val);
+                    }}
+                    className="w-16 px-2 py-0.5 bg-slate-800 border border-slate-600 rounded text-xs font-bold text-emerald-400 text-right outline-none focus:border-blue-500"
+                  />
+                  <span className="text-slate-400 font-bold">%</span>
+                </div>
+
+                <button
+                  onClick={resetPricesToRecommended}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition-colors"
+                >
+                  <RefreshCw size={14} />
+                  Réinitialiser tarifs
+                </button>
+              </div>
+            </div>
+
+            {/* Table Container */}
+            <div className="flex-1 overflow-auto p-4 sm:p-6 custom-scrollbar">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-950/70">
+                      <th className="py-3 px-3 rounded-l-xl">Modèle / Gamme</th>
+                      <th className="py-3 px-3 text-center">Specs</th>
+                      <th className="py-3 px-3 text-right">Prix Base SAFRA HT</th>
+                      <th className="py-3 px-3 text-right">Remise (%)</th>
+                      <th className="py-3 px-3 text-right">Achat Net ENRC HT</th>
+                      <th className="py-3 px-3 text-right">Prix Vente Matériel HT</th>
+                      <th className="py-3 px-3 text-center">Marge Brute Matériel</th>
+                      <th className="py-3 px-3 text-right rounded-r-xl">Clé en Main Posé HT</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {SAFRA_CATALOG.map(item => {
+                      const basePrice = customPrices[item.id]?.basePrice !== undefined
+                        ? customPrices[item.id].basePrice
+                        : (item.distributorBasePriceHT || item.defaultPriceHt);
+                      const itemDiscount = customPrices[item.id]?.discount !== undefined
+                        ? customPrices[item.id].discount
+                        : globalDiscountPercent;
+                      const netBuyPrice = Math.round(basePrice * (1 - itemDiscount / 100));
+                      const sellingPrice = customPrices[item.id]?.price !== undefined
+                        ? customPrices[item.id].price
+                        : (item.sellingHardwarePriceHT || item.defaultPriceHt);
+                      const margin = sellingPrice - netBuyPrice;
+                      const marginPercent = sellingPrice > 0 ? Math.round((margin / sellingPrice) * 100) : 0;
+                      const turnkeyPrice = customPrices[item.id]?.turnkey !== undefined
+                        ? customPrices[item.id].turnkey
+                        : (item.turnkeyInstalledPriceHT || (item.defaultPriceHt + item.defaultInstallHt));
+
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-3">
+                            <div className="font-sans font-black text-white">{item.reference}</div>
+                            <div className="font-sans text-[11px] text-slate-400">{item.name}</div>
+                            <span className="font-sans inline-block text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-orange-400 font-bold mt-0.5">
+                              {item.familyLabel}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center font-sans">
+                            <div className="text-white font-bold">{item.capacityKwh} kWh</div>
+                            <div className="text-emerald-400 text-[11px] font-semibold">{item.powerKw} kW</div>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <input
+                              type="number"
+                              value={basePrice}
+                              onChange={e => handlePriceChange(item.id, 'basePrice', e.target.value)}
+                              className="w-24 px-2 py-1 bg-slate-950 border border-slate-700 rounded text-xs font-bold text-white text-right outline-none focus:border-blue-500"
+                            />
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.5"
+                                value={itemDiscount}
+                                onChange={e => handlePriceChange(item.id, 'discount', e.target.value)}
+                                className="w-16 px-1.5 py-1 bg-slate-950 border border-slate-700 rounded text-xs font-bold text-emerald-400 text-right outline-none focus:border-blue-500"
+                              />
+                              <span className="text-slate-400 text-xs">%</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <span className="font-bold text-slate-300">
+                              {netBuyPrice.toLocaleString('fr-FR')} €
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <input
+                              type="number"
+                              value={sellingPrice}
+                              onChange={e => handlePriceChange(item.id, 'price', e.target.value)}
+                              className="w-24 px-2 py-1 bg-slate-950 border border-blue-500/50 rounded text-xs font-black text-blue-300 text-right outline-none focus:border-blue-400"
+                            />
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <div className={`font-bold ${margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {margin >= 0 ? `+${margin.toLocaleString('fr-FR')} €` : `${margin.toLocaleString('fr-FR')} €`}
+                            </div>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${
+                              marginPercent >= 20 ? 'bg-emerald-950/60 text-emerald-300' : 'bg-amber-950/60 text-amber-300'
+                            }`}>
+                              {marginPercent} %
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <input
+                              type="number"
+                              value={turnkeyPrice}
+                              onChange={e => handlePriceChange(item.id, 'turnkey', e.target.value)}
+                              className="w-24 px-2 py-1 bg-slate-950 border border-emerald-500/50 rounded text-xs font-black text-emerald-300 text-right outline-none focus:border-emerald-400"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
+              <span className="text-xs text-slate-400">
+                Les modifications sont sauvegardées automatiquement dans votre espace de travail.
+              </span>
+              <button
+                onClick={() => setIsEditingPrices(false)}
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-lg shadow-blue-600/30 transition-colors"
+              >
+                Fermer et Appliquer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

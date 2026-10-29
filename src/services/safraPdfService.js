@@ -280,6 +280,188 @@ function drawCashFlowChartPdf(doc, x, y, w, h, data = [], paybackYears = 8.5, sa
   }
 }
 
+/**
+ * Rendu vectoriel du chronogramme prévisionnel de déploiement
+ * Adaptatif selon le mode raccordé (5-6 mois) ou non raccordé (6-8 semaines).
+ * Sans coût, sans intervenants, sans géomètre/notaire, promesse de bail remplacée par validation devis.
+ */
+function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
+  // Cadre extérieur
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(x, y, w, h, 2, 2, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(x, y, w, h, 2, 2, 'D');
+
+  // En-tête
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+  doc.text('CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT', x + 4, y + 4.8);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.8);
+  doc.setTextColor(100, 116, 139);
+  const subtitle = includeGridConnection
+    ? 'Planning d\'anticipation avec instruction Enedis en temps masqué · Délai global : ~5 à 6 mois'
+    : 'Planning de déploiement derrière le compteur (aucun délai Enedis) · Délai global : ~6 à 8 semaines';
+  doc.text(subtitle, x + 4, y + 8.5);
+
+  // Badge Délai total
+  const badgeColor = includeGridConnection ? [37, 99, 235] : [22, 101, 52];
+  const badgeBg = includeGridConnection ? [239, 246, 255] : [240, 253, 244];
+  const badgeBorder = includeGridConnection ? [191, 219, 254] : [187, 247, 208];
+
+  doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
+  doc.roundedRect(x + w - 46, y + 2.2, 42, 6.2, 1.5, 1.5, 'F');
+  doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2]);
+  doc.roundedRect(x + w - 46, y + 2.2, 42, 6.2, 1.5, 1.5, 'D');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6);
+  doc.setTextColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+  doc.text(includeGridConnection ? 'Délai total : ~5 à 6 mois' : 'Délai total : ~6 à 8 semaines', x + w - 25, y + 6.4, { align: 'center' });
+
+  // Colonnes
+  const colNameW = 76;
+  const colStartX = x + colNameW;
+  const totalColsW = w - colNameW - 4;
+  const numCols = includeGridConnection ? 6 : 4;
+  const colW = totalColsW / numCols;
+
+  // Bandeau en-tête des colonnes
+  const tableHeaderY = y + 10.5;
+  doc.setFillColor(241, 245, 249);
+  doc.rect(x + 2, tableHeaderY, w - 4, 4.2, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(5.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Étape / Jalon opérationnel', x + 4, tableHeaderY + 3);
+
+  const colLabels = includeGridConnection
+    ? ['Mois 1', 'Mois 2', 'Mois 3', 'Mois 4', 'Mois 5', 'Mois 6']
+    : ['Sem. 1-2 (M1)', 'Sem. 3-4 (M1)', 'Sem. 5-6 (M2)', 'Sem. 7-8 (M2)'];
+
+  colLabels.forEach((lbl, cIdx) => {
+    const cx = colStartX + cIdx * colW;
+    doc.text(lbl, cx + colW / 2, tableHeaderY + 3, { align: 'center' });
+  });
+
+  // Définition des jalons opérationnels
+  const steps = includeGridConnection
+    ? [
+        {
+          name: '1. Validation devis & Dépôt dossier Enedis (PTF / CRAE)',
+          startFrac: 0,
+          endFrac: 1 / 6,
+          label: 'M1',
+          color: [37, 99, 235]
+        },
+        {
+          name: '2. Instruction Enedis & Proposition Technique (PTF)',
+          startFrac: 0.10,
+          endFrac: 0.50,
+          label: 'M1 à M3 (Instruction)',
+          color: [245, 158, 11]
+        },
+        {
+          name: '3. Commande & Approvisionnement batterie (temps masqué)',
+          startFrac: 0.33,
+          endFrac: 0.67,
+          label: 'M2 à M4 (Fabrication)',
+          color: [16, 185, 129]
+        },
+        {
+          name: '4. Génie civil (Dalle), pose BESS & Raccordement Enedis',
+          startFrac: 0.67,
+          endFrac: 0.83,
+          label: 'M4 à M5',
+          color: [139, 92, 246]
+        },
+        {
+          name: '5. Attestation Consuel & Mise en service réseau Enedis',
+          startFrac: 0.83,
+          endFrac: 1.0,
+          label: 'M5 à M6',
+          color: [6, 182, 212]
+        }
+      ]
+    : [
+        {
+          name: '1. Validation devis & Lancement de commande',
+          startFrac: 0,
+          endFrac: 0.25,
+          label: 'Sem. 1-2',
+          color: [37, 99, 235]
+        },
+        {
+          name: '2. Approvisionnement & Livraison de la batterie BESS',
+          startFrac: 0.20,
+          endFrac: 0.65,
+          label: 'Sem. 2 à 5',
+          color: [16, 185, 129]
+        },
+        {
+          name: '3. Génie civil (Dalle béton) & Fixation de l\'armoire',
+          startFrac: 0.55,
+          endFrac: 0.82,
+          label: 'Sem. 5-7',
+          color: [245, 158, 11]
+        },
+        {
+          name: '4. Raccordement TGBT intérieur & Intégration EMS',
+          startFrac: 0.70,
+          endFrac: 0.95,
+          label: 'Sem. 6-8',
+          color: [139, 92, 246]
+        },
+        {
+          name: '5. Essais de fonctionnement & Mise en service site',
+          startFrac: 0.88,
+          endFrac: 1.0,
+          label: 'Sem. 8',
+          color: [6, 182, 212]
+        }
+      ];
+
+  // Tracé des lignes et barres de planning
+  const rowsStartY = tableHeaderY + 4.2;
+  const rowHeight = 4.8;
+
+  steps.forEach((step, sIdx) => {
+    const ry = rowsStartY + sIdx * rowHeight;
+
+    // Ligne séparatrice
+    doc.setDrawColor(241, 245, 249);
+    doc.line(x + 2, ry + rowHeight, x + w - 2, ry + rowHeight);
+
+    // Lignes verticales de colonnes en fond
+    for (let c = 0; c <= numCols; c++) {
+      const vx = colStartX + c * colW;
+      doc.setDrawColor(241, 245, 249);
+      doc.line(vx, ry, vx, ry + rowHeight);
+    }
+
+    // Nom de l'étape
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.8);
+    doc.setTextColor(30, 41, 59);
+    doc.text(step.name, x + 4, ry + 3.2);
+
+    // Barre colorée
+    const barX = colStartX + step.startFrac * totalColsW + 0.5;
+    const barWidth = Math.max(8, (step.endFrac - step.startFrac) * totalColsW - 1);
+
+    doc.setFillColor(step.color[0], step.color[1], step.color[2]);
+    doc.roundedRect(barX, ry + 1, barWidth, 2.7, 0.8, 0.8, 'F');
+
+    // Label sur la barre
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(4.8);
+    doc.setTextColor(255, 255, 255);
+    doc.text(step.label, barX + barWidth / 2, ry + 2.8, { align: 'center' });
+  });
+}
+
 export function generateSafraProposalPdf({
   simResult,
   prm = '',
@@ -299,6 +481,7 @@ export function generateSafraProposalPdf({
   const {
     model,
     quantity,
+    pricingMode = 'TURNKEY',
     totalCapacityKwh,
     totalPowerKw,
     hardwareCapex,
@@ -542,7 +725,7 @@ export function generateSafraProposalPdf({
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
-  doc.text(`Matériel + Pose ${includeGridConnection ? '+ Raccordement' : ''}`, 109, kpiY + 18);
+  doc.text(pricingMode === 'HARDWARE_ONLY' ? `Fourniture seul ${includeGridConnection ? '+ Raccordement' : ''}` : `Clé en main posé ${includeGridConnection ? '+ Raccordement' : ''}`, 109, kpiY + 18);
 
   // KPI 4 : Temps de retour
   doc.setFillColor(255, 247, 237);
@@ -612,39 +795,45 @@ export function generateSafraProposalPdf({
   });
 
   // ── CADRE 4 : STATUT DU RACCORDEMENT RÉSEAU ENEDIS ──
-  const netY = doc.lastAutoTable.finalY + 6;
+  const netY = doc.lastAutoTable.finalY + 4;
+  const netH = 26;
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, netY, 182, 32, 2, 2, 'F');
+  doc.roundedRect(14, netY, 182, netH, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(14, netY, 182, 32, 2, 2, 'D');
+  doc.roundedRect(14, netY, 182, netH, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(15, 23, 42);
-  doc.text('STATUT DU RACCORDEMENT RÉSEAU ENEDIS', 18, netY + 6);
+  doc.text('STATUT DU RACCORDEMENT RÉSEAU ENEDIS', 18, netY + 5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setTextColor(71, 85, 105);
 
   if (!includeGridConnection) {
-    doc.text('• Mode sélectionné : DERRIÈRE LE COMPTEUR (SANS RACCORDEMENT RÉSEAU SUPPLÉMENTAIRE).', 18, netY + 12);
-    doc.text('• Coût de raccordement réseau Enedis = 0 € HT. Aucun délai administratif de raccordement.', 18, netY + 17);
-    doc.text('• L\'énergie stockée est intégralement valorisée sur le site en autoconsommation et effacement de pointe.', 18, netY + 22);
-    doc.text('• Optionnel : Un raccordement réseau ultérieur peut être activé pour valoriser l\'injection sur les marchés.', 18, netY + 27);
+    doc.text('• Mode sélectionné : DERRIÈRE LE COMPTEUR (SANS RACCORDEMENT RÉSEAU SUPPLÉMENTAIRE).', 18, netY + 10);
+    doc.text('• Coût de raccordement réseau Enedis = 0 € HT. Aucun délai administratif de raccordement.', 18, netY + 14.5);
+    doc.text('• L\'énergie stockée est intégralement valorisée sur le site en autoconsommation et effacement de pointe.', 18, netY + 19);
+    doc.text('• Optionnel : Un raccordement réseau ultérieur peut être activé pour valoriser l\'injection sur les marchés.', 18, netY + 23.5);
   } else {
     // Sanitize any characters outside standard Latin/ASCII to avoid altering Helvetica font in jsPDF
     const domainLabel = gridFeasibility.voltageDomain === 'BT_C4' ? 'Basse Tension BT C4 <= 250 kW' : 'Haute Tension HTA 20 kV > 250 kW';
     const cleanBadgeText = (gridFeasibility.badge || '').replace(/[^\w\s\dÀ-ÿ,.:;()/'"+=-]/g, '').trim();
-    doc.text(`• Mode sélectionné : AVEC RACCORDEMENT RÉSEAU (${domainLabel}).`, 18, netY + 12);
-    doc.text(`• Statut technique : ${cleanBadgeText} · Budget raccordement estimé : ${formatNum(connectionCapex)} € HT.`, 18, netY + 17);
-    doc.text(`• Revenus de marché prévisionnels (FCR, Réserve rapide, Capacité RTE) : +${formatNum(gridAnnualRevenues)} € HT / an.`, 18, netY + 22);
+    doc.text(`• Mode sélectionné : AVEC RACCORDEMENT RÉSEAU (${domainLabel}).`, 18, netY + 10);
+    doc.text(`• Statut technique : ${cleanBadgeText} · Budget raccordement estimé : ${formatNum(connectionCapex)} € HT.`, 18, netY + 14.5);
+    doc.text(`• Revenus de marché prévisionnels (FCR, Réserve rapide, Capacité RTE) : +${formatNum(gridAnnualRevenues)} € HT / an.`, 18, netY + 19);
     const alertMsg = (gridFeasibility.warningMessage || gridFeasibility.errorMessage || '').replace(/[^\w\s\dÀ-ÿ,.:;()/'"+=-]/g, '').trim();
     if (alertMsg) {
       doc.setTextColor(220, 38, 38);
-      doc.text(alertMsg, 18, netY + 27, { maxWidth: 174 });
+      doc.text(alertMsg, 18, netY + 23.5, { maxWidth: 174 });
     }
   }
+
+  // ── CADRE 5 : CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT ──
+  const chronoY = netY + netH + 4;
+  const chronoH = 41;
+  drawChronogrammePdf(doc, 14, chronoY, 182, chronoH, includeGridConnection);
 
   // Pied de page Page 1
   doc.setFont('helvetica', 'normal');
@@ -822,7 +1011,7 @@ export function generateSafraProposalPdf({
   doc.setFont('helvetica', 'normal');
   doc.text(`• Pose, ingénierie & EMS :`, c2X + 3, detailY + 31);
   doc.setFont('helvetica', 'bold');
-  doc.text(`${formatNum(installCapex)} € HT`, c2X + 3, detailY + 35);
+  doc.text(pricingMode === 'HARDWARE_ONLY' ? '0 € HT (Fourniture pure)' : `${formatNum(installCapex)} € HT`, c2X + 3, detailY + 35);
 
   doc.setFont('helvetica', 'normal');
   doc.text(`• Raccordement réseau Enedis :`, c2X + 3, detailY + 41);
