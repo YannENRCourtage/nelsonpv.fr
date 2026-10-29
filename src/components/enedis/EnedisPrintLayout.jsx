@@ -109,10 +109,27 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
     || consent?.clientName
     || 'Client';
 
-  const adresse = ownerAddress
+  // Séparation du titulaire sur 2 lignes (Raison sociale / Représentant)
+  let titulaireLine1 = titulaire;
+  let titulaireLine2 = '';
+  if (titulaire.includes('(') && titulaire.includes(')')) {
+    const match = titulaire.match(/^(.*?)\s*\((.*?)\)$/);
+    if (match) {
+      titulaireLine1 = match[1].trim();
+      titulaireLine2 = match[2].trim();
+    }
+  } else if (titulaire.toLowerCase().includes('latournerie')) {
+    titulaireLine1 = 'EARL DES TERRES VIEILLES';
+    titulaireLine2 = 'LATOURNERIE Franck';
+  }
+
+  const rawAdresse = ownerAddress
     || data?.mandate?.adresse
     || consent?.adresse
     || '';
+
+  // Remplacement de VALEUIL par BRANTOME EN PERIGORD
+  const adresse = rawAdresse.replace(/VALEUIL/gi, 'BRANTOME EN PERIGORD');
 
   const consentDate = consent?.updatedAt || data?.mandate?.signedAt
     ? new Date(consent?.updatedAt || data?.mandate?.signedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -246,8 +263,13 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                     {prm}
                   </div>
                   <div style={{ fontSize: '9.5pt', fontWeight: 800, color: '#1e293b', marginTop: '1px' }}>
-                    {titulaire}
+                    {titulaireLine1}
                   </div>
+                  {titulaireLine2 && (
+                    <div style={{ fontSize: '8.5pt', fontWeight: 700, color: '#475569' }}>
+                      {titulaireLine2}
+                    </div>
+                  )}
                   {adresse ? (
                     <div style={{ fontSize: '8pt', color: '#475569', maxWidth: '125mm', lineHeight: 1.3 }}>
                       {adresse}
@@ -263,7 +285,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '7.5pt', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Produit par</div>
                 <div style={{ fontSize: '15pt', fontWeight: 900, color: '#2563eb', letterSpacing: '0.5px', lineHeight: 1.1 }}>NELSON</div>
-                <div style={{ fontSize: '8pt', fontWeight: 600, color: '#64748b' }}>ENR Courtage Énergie</div>
+                <div style={{ fontSize: '8pt', fontWeight: 600, color: '#64748b' }}>ENR Courtage</div>
               </div>
             </div>
           </div>
@@ -542,13 +564,13 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                     Rapport de Consommation — Profils de Charge et Puissance
                   </div>
                   <div style={{ fontSize: '7.5pt', color: '#64748b' }}>
-                    PRM : <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>{prm}</span> · Titulaire : <span style={{ fontWeight: 700, color: '#1e293b' }}>{titulaire}</span>
+                    PRM : <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>{prm}</span> · Titulaire : <span style={{ fontWeight: 700, color: '#1e293b' }}>{titulaireLine1}{titulaireLine2 ? ` (${titulaireLine2})` : ''}</span>
                   </div>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '14pt', fontWeight: 900, color: '#2563eb', letterSpacing: '0.5px', lineHeight: 1.1 }}>NELSON</div>
-                <div style={{ fontSize: '7.5pt', fontWeight: 600, color: '#64748b' }}>ENR Courtage Énergie</div>
+                <div style={{ fontSize: '7.5pt', fontWeight: 600, color: '#64748b' }}>ENR Courtage</div>
               </div>
             </div>
           </div>

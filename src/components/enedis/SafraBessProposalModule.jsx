@@ -166,7 +166,7 @@ export default function SafraBessProposalModule({
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center gap-1.5">
               <Sparkles size={13} />
-              Partenaire SAFRA New Energy
+              Stockage Intelligent BESS
             </span>
             <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
               Stockage BESS & Autonomie
@@ -366,6 +366,85 @@ export default function SafraBessProposalModule({
                 )}
               </div>
             )}
+            {/* Détail Revenus, CAPEX et OPEX pour installation raccordée au réseau */}
+            <div className="mt-4 pt-4 border-t border-slate-700/60 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              {/* Colonne 1 : Revenus Réseau */}
+              <div className="bg-slate-900/80 rounded-2xl p-3.5 border border-emerald-500/30 space-y-2">
+                <div className="font-bold text-emerald-400 flex items-center justify-between">
+                  <span>1. Revenus de marché</span>
+                  <span className="font-black text-sm">+{simResult.gridAnnualRevenues.toLocaleString('fr-FR')} €/an</span>
+                </div>
+                <div className="space-y-1 text-slate-300 text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Réserve FCR / aFRR :</span>
+                    <strong className="text-white">+{(simResult.totalPowerKw * 45).toLocaleString('fr-FR')} €/an</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Capacité RTE :</span>
+                    <strong className="text-white">+{(simResult.totalPowerKw * 20).toLocaleString('fr-FR')} €/an</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Arbitrage Spot :</span>
+                    <strong className="text-white">+{(simResult.totalPowerKw * 15).toLocaleString('fr-FR')} €/an</strong>
+                  </div>
+                  <div className="pt-1 text-[10px] text-slate-400 border-t border-slate-800">
+                    Net commission agrégateur (15% déduits)
+                  </div>
+                </div>
+              </div>
+
+              {/* Colonne 2 : CAPEX */}
+              <div className="bg-slate-900/80 rounded-2xl p-3.5 border border-blue-500/30 space-y-2">
+                <div className="font-bold text-blue-400 flex items-center justify-between">
+                  <span>2. Investissement CAPEX</span>
+                  <span className="font-black text-sm">{simResult.totalCapexHt.toLocaleString('fr-FR')} € HT</span>
+                </div>
+                <div className="space-y-1 text-slate-300 text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Matériel BESS :</span>
+                    <strong className="text-white">{simResult.hardwareCapex.toLocaleString('fr-FR')} €</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Pose & Ingénierie :</span>
+                    <strong className="text-white">{simResult.installCapex.toLocaleString('fr-FR')} €</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Raccordement Enedis :</span>
+                    <strong className="text-orange-400">{simResult.connectionCapex.toLocaleString('fr-FR')} €</strong>
+                  </div>
+                  <div className="pt-1 text-[10px] text-slate-400 border-t border-slate-800">
+                    {simResult.gridFeasibility.voltageDomain === 'BT_C4'
+                      ? 'BT C4 (Comptage + AGCP + Liaison)'
+                      : 'HTA 20 kV (Quote-part S3REnR + Cellule)'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Colonne 3 : OPEX */}
+              <div className="bg-slate-900/80 rounded-2xl p-3.5 border border-amber-500/30 space-y-2">
+                <div className="font-bold text-amber-400 flex items-center justify-between">
+                  <span>3. Charges annuelles OPEX</span>
+                  <span className="font-black text-sm">-{Math.round(simResult.hardwareCapex * 0.012).toLocaleString('fr-FR')} €/an</span>
+                </div>
+                <div className="space-y-1 text-slate-300 text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Maintenance préventive :</span>
+                    <strong className="text-white">-{Math.round(simResult.hardwareCapex * 0.012).toLocaleString('fr-FR')} €/an</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Supervision EMS :</span>
+                    <strong className="text-white">Inclus contrat</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Indexation inflation :</span>
+                    <strong className="text-white">+2.0 % / an</strong>
+                  </div>
+                  <div className="pt-1 text-[10px] text-slate-400 border-t border-slate-800">
+                    Garantie constructeur & télémétrie continue
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -426,7 +505,7 @@ export default function SafraBessProposalModule({
             {simResult.safePayback} <span className="text-sm font-bold text-white">ans</span>
           </div>
           <p className="text-[11px] text-slate-400">
-            Gain net cumulé à 12 ans : <strong className="text-emerald-400 font-bold">+{simResult.netGain12YearsHt.toLocaleString('fr-FR')} € HT</strong> (TRI : {simResult.safeIrr}%)
+            Gain net cumulé à 12 ans : <strong className="text-emerald-400 font-bold">{simResult.netGain12YearsHt >= 0 ? `+${simResult.netGain12YearsHt.toLocaleString('fr-FR')}` : `-${Math.abs(simResult.netGain12YearsHt).toLocaleString('fr-FR')}`} € HT</strong> (TRI : {simResult.safeIrr}%)
           </p>
         </div>
       </div>

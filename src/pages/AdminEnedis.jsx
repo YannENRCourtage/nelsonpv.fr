@@ -100,7 +100,7 @@ export default function AdminEnedis() {
       || '';
 
     if (detectedName) setOwnerName(detectedName);
-    if (detectedAddress) setOwnerAddress(detectedAddress);
+    if (detectedAddress) setOwnerAddress(detectedAddress.replace(/VALEUIL/gi, 'BRANTOME EN PERIGORD'));
   }, [data, prm, consents]);
 
   // Auto-fetch si redirigé avec succès depuis le callback Enedis
@@ -269,7 +269,7 @@ export default function AdminEnedis() {
       `Cliquez sur le lien ci-dessous pour donner votre accord (consentement de 3 ans maximum, révocable à tout moment) :\r\n\r\n` +
       `${url}\r\n\r\n` +
       `✅ Vous pouvez vous identifier avec FranceConnect (Impôts, Ameli, France Identité…) — aucun compte Enedis n'est nécessaire.\r\n\r\n` +
-      `Cordialement,\r\nENR Courtage Énergie`
+      `Cordialement,\r\nENR Courtage`
     );
     const mailto = `mailto:${encodeURIComponent(consentForm.email)}?subject=${subject}&body=${body}`;
     window.location.href = mailto;
