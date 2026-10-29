@@ -292,23 +292,23 @@ function drawCashFlowChartPdf(doc, x, y, w, h, data = [], paybackYears = 8.5, sa
 function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
   // Cadre extérieur
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(x, y, w, h, 2.5, 2.5, 'F');
+  doc.roundedRect(x, y, w, h, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(x, y, w, h, 2.5, 2.5, 'D');
+  doc.roundedRect(x, y, w, h, 2, 2, 'D');
 
   // En-tête
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.2);
+  doc.setFontSize(7.8);
   doc.setTextColor(15, 23, 42);
-  doc.text('CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT', x + 5, y + 5.5);
+  doc.text('CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT', x + 4, y + 4.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(5.8);
   doc.setTextColor(100, 116, 139);
   const subtitle = includeGridConnection
     ? 'Planning d\'anticipation avec instruction Enedis en temps masqué · Délai global : ~5 à 6 mois'
     : 'Planning de déploiement derrière le compteur (aucun délai Enedis) · Délai global : ~6 à 8 semaines';
-  doc.text(subtitle, x + 5, y + 9.8);
+  doc.text(subtitle, x + 4, y + 8.2);
 
   // Badge Délai total
   const badgeColor = includeGridConnection ? [37, 99, 235] : [22, 101, 52];
@@ -316,30 +316,30 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
   const badgeBorder = includeGridConnection ? [191, 219, 254] : [187, 247, 208];
 
   doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
-  doc.roundedRect(x + w - 48, y + 3, 44, 7, 1.5, 1.5, 'F');
+  doc.roundedRect(x + w - 46, y + 2.2, 42, 6.2, 1.5, 1.5, 'F');
   doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2]);
-  doc.roundedRect(x + w - 48, y + 3, 44, 7, 1.5, 1.5, 'D');
+  doc.roundedRect(x + w - 46, y + 2.2, 42, 6.2, 1.5, 1.5, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(6);
   doc.setTextColor(badgeColor[0], badgeColor[1], badgeColor[2]);
-  doc.text(includeGridConnection ? 'Délai total : ~5 à 6 mois' : 'Délai total : ~6 à 8 semaines', x + w - 26, y + 7.6, { align: 'center' });
+  doc.text(includeGridConnection ? 'Délai total : ~5 à 6 mois' : 'Délai total : ~6 à 8 semaines', x + w - 25, y + 6.4, { align: 'center' });
 
   // Colonnes
   const colNameW = 76;
   const colStartX = x + colNameW;
-  const totalColsW = w - colNameW - 5;
+  const totalColsW = w - colNameW - 4;
   const numCols = includeGridConnection ? 6 : 4;
   const colW = totalColsW / numCols;
 
   // Bandeau en-tête des colonnes
-  const tableHeaderY = y + 12.5;
+  const tableHeaderY = y + 10.2;
   doc.setFillColor(241, 245, 249);
-  doc.rect(x + 2, tableHeaderY, w - 4, 4.8, 'F');
+  doc.rect(x + 2, tableHeaderY, w - 4, 4.0, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6);
+  doc.setFontSize(5.5);
   doc.setTextColor(71, 85, 105);
-  doc.text('Étape / Jalon opérationnel', x + 5, tableHeaderY + 3.4);
+  doc.text('Étape / Jalon opérationnel', x + 4, tableHeaderY + 2.8);
 
   const colLabels = includeGridConnection
     ? ['Mois 1', 'Mois 2', 'Mois 3', 'Mois 4', 'Mois 5', 'Mois 6']
@@ -347,7 +347,7 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
 
   colLabels.forEach((lbl, cIdx) => {
     const cx = colStartX + cIdx * colW;
-    doc.text(lbl, cx + colW / 2, tableHeaderY + 3.4, { align: 'center' });
+    doc.text(lbl, cx + colW / 2, tableHeaderY + 2.8, { align: 'center' });
   });
 
   // Définition des jalons opérationnels
@@ -427,9 +427,9 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
         }
       ];
 
-  // Tracé des lignes et barres de planning avec hauteur généreuse
-  const rowsStartY = tableHeaderY + 4.8;
-  const rowHeight = Math.max(7.5, (h - 22) / steps.length);
+  // Tracé des lignes et barres de planning compact
+  const rowsStartY = tableHeaderY + 4.0;
+  const rowHeight = Math.max(4.6, (h - 16) / steps.length);
 
   steps.forEach((step, sIdx) => {
     const ry = rowsStartY + sIdx * rowHeight;
@@ -447,23 +447,23 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
 
     // Nom de l'étape
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.2);
+    doc.setFontSize(5.8);
     doc.setTextColor(30, 41, 59);
-    doc.text(step.name, x + 5, ry + rowHeight / 2 + 1.2);
+    doc.text(step.name, x + 4, ry + rowHeight / 2 + 1);
 
     // Barre colorée
     const barX = colStartX + step.startFrac * totalColsW + 0.5;
     const barWidth = Math.max(8, (step.endFrac - step.startFrac) * totalColsW - 1);
-    const barHeight = Math.min(4.8, rowHeight - 2.5);
+    const barHeight = Math.min(3.2, rowHeight - 1.4);
 
     doc.setFillColor(step.color[0], step.color[1], step.color[2]);
-    doc.roundedRect(barX, ry + (rowHeight - barHeight) / 2, barWidth, barHeight, 1, 1, 'F');
+    doc.roundedRect(barX, ry + (rowHeight - barHeight) / 2, barWidth, barHeight, 0.8, 0.8, 'F');
 
     // Label sur la barre
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.2);
+    doc.setFontSize(4.8);
     doc.setTextColor(255, 255, 255);
-    doc.text(step.label, barX + barWidth / 2, ry + rowHeight / 2 + 1, { align: 'center' });
+    doc.text(step.label, barX + barWidth / 2, ry + rowHeight / 2 + 0.9, { align: 'center' });
   });
 }
 
@@ -877,11 +877,11 @@ export function generateSafraProposalPdf({
   }
 
   // ── CADRE 5 : DÉTAIL DU MODÈLE ÉCONOMIQUE (REVENUS, CAPEX & OPEX) ──
-  // Remonté sur la Page 1 après le raccordement et hauteur fortement augmentée pour remplir la page
+  // Hauteur calibrée (86 mm) pour rester parfaitement au-dessus de la pagination sur la Page 1
   const detailY = netY + netH + 3;
-  const cardH = 114;
+  const cardH = 86;
   const colW = 57;
-  const subCardH = cardH - 10; // 104mm
+  const subCardH = cardH - 10; // 76mm
 
   // Calcul des détails financiers
   const fcrRevenuesYear = Math.round(totalPowerKw * 45);
@@ -907,10 +907,10 @@ export function generateSafraProposalPdf({
       ? 'DÉTAIL DU MODÈLE ÉCONOMIQUE RÉSEAU : REVENUS, CAPEX & OPEX'
       : 'DÉTAIL DU MODÈLE ÉCONOMIQUE DERRIÈRE LE COMPTEUR : REVENUS, CAPEX & OPEX',
     18,
-    detailY + 5.5
+    detailY + 5.2
   );
 
-  // ── COLONNE 1 : DÉTAIL DES REVENUS / ÉCONOMIES (HAUTEUR AUGMENTÉE) ──
+  // ── COLONNE 1 : DÉTAIL DES REVENUS / ÉCONOMIES ──
   const c1X = 17.5;
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(c1X, detailY + 7.5, colW - 1, subCardH, 2, 2, 'F');
@@ -919,91 +919,89 @@ export function generateSafraProposalPdf({
 
   // En-tête bandeau colonne 1
   doc.setFillColor(240, 253, 244);
-  doc.roundedRect(c1X + 1.5, detailY + 9, colW - 4, 7.5, 1.5, 1.5, 'F');
+  doc.roundedRect(c1X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'F');
   doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(c1X + 1.5, detailY + 9, colW - 4, 7.5, 1.5, 1.5, 'D');
+  doc.roundedRect(c1X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.2);
+  doc.setFontSize(6.8);
   doc.setTextColor(22, 101, 52);
   doc.text(
     includeGridConnection ? '1. REVENUS RÉSEAU ANNUELS' : '1. ÉCONOMIES FACTURE',
     c1X + 4,
-    detailY + 14
+    detailY + 13.2
   );
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.6);
+  doc.setFontSize(6.2);
   doc.setTextColor(51, 65, 85);
 
   if (includeGridConnection) {
-    doc.text('• Réserve rapide FCR/aFRR :', c1X + 3.5, detailY + 22);
+    doc.text('• Réserve rapide FCR/aFRR :', c1X + 3.5, detailY + 19);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(22, 101, 52);
-    doc.text(`+${formatNum(fcrRevenuesYear)} € HT/an`, c1X + 3.5, detailY + 27);
+    doc.text(`+${formatNum(fcrRevenuesYear)} € HT/an`, c1X + 3.5, detailY + 23);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('• Garantie Capacité RTE :', c1X + 3.5, detailY + 34);
+    doc.text('• Garantie Capacité RTE :', c1X + 3.5, detailY + 29);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(22, 101, 52);
-    doc.text(`+${formatNum(capacityRevenuesYear)} € HT/an`, c1X + 3.5, detailY + 39);
+    doc.text(`+${formatNum(capacityRevenuesYear)} € HT/an`, c1X + 3.5, detailY + 33);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('• Arbitrage marché Spot :', c1X + 3.5, detailY + 46);
+    doc.text('• Arbitrage marché Spot :', c1X + 3.5, detailY + 39);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(22, 101, 52);
-    doc.text(`+${formatNum(spotArbitrageYear)} € HT/an`, c1X + 3.5, detailY + 51);
+    doc.text(`+${formatNum(spotArbitrageYear)} € HT/an`, c1X + 3.5, detailY + 43);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text('• Valorisation nette agrégateur', c1X + 3.5, detailY + 58);
-    doc.text('(commission 15% déjà déduite).', c1X + 3.5, detailY + 62.5);
-    doc.text('• Injection bi-directionnelle HTA.', c1X + 3.5, detailY + 67);
+    doc.text('• Net agrégateur (commission 15% déduite).', c1X + 3.5, detailY + 49.5);
+    doc.text('• Injection bi-directionnelle HTA.', c1X + 3.5, detailY + 53.5);
   } else {
-    doc.text('• Écrêtage pointes TURPE :', c1X + 3.5, detailY + 22);
+    doc.text('• Écrêtage pointes TURPE :', c1X + 3.5, detailY + 19);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(22, 101, 52);
-    doc.text(`+${formatNum(peakShavingSavingsYear)} € HT/an`, c1X + 3.5, detailY + 27);
+    doc.text(`+${formatNum(peakShavingSavingsYear)} € HT/an`, c1X + 3.5, detailY + 23);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('• Arbitrage Heures Pleines/Creuses :', c1X + 3.5, detailY + 34);
+    doc.text('• Arbitrage Heures Pleines/Creuses :', c1X + 3.5, detailY + 29);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(22, 101, 52);
-    doc.text(`+${formatNum(arbitrageSavingsYear)} € HT/an`, c1X + 3.5, detailY + 39);
+    doc.text(`+${formatNum(arbitrageSavingsYear)} € HT/an`, c1X + 3.5, detailY + 33);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('• Taux d\'autonomie atteint :', c1X + 3.5, detailY + 46);
+    doc.text('• Taux d\'autonomie atteint :', c1X + 3.5, detailY + 39);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(22, 101, 52);
-    doc.text(`${totalAutonomyPercent} % (gain net +${totalAutonomyPercent - baseAutonomyPercent}%)`, c1X + 3.5, detailY + 51);
+    doc.text(`${totalAutonomyPercent} % (gain net +${totalAutonomyPercent - baseAutonomyPercent}%)`, c1X + 3.5, detailY + 43);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text('• Réduction dépendance réseau &', c1X + 3.5, detailY + 58);
-    doc.text('sécurisation tarifaire active.', c1X + 3.5, detailY + 62.5);
-    doc.text('• Valorisation 100% sur le site.', c1X + 3.5, detailY + 67);
+    doc.text('• Réduction dépendance & sécurisation.', c1X + 3.5, detailY + 49.5);
+    doc.text('• Valorisation 100% sur le site.', c1X + 3.5, detailY + 53.5);
   }
 
   // Cartouche total bas colonne 1
-  const totY1 = detailY + subCardH - 12;
+  const totY1 = detailY + subCardH - 10;
   doc.setFillColor(240, 253, 244);
-  doc.roundedRect(c1X + 2, totY1, colW - 5, 9.5, 1.5, 1.5, 'F');
+  doc.roundedRect(c1X + 2, totY1, colW - 5, 8, 1.2, 1.2, 'F');
   doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(c1X + 2, totY1, colW - 5, 9.5, 1.5, 1.5, 'D');
+  doc.roundedRect(c1X + 2, totY1, colW - 5, 8, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setTextColor(22, 101, 52);
   doc.text(
     includeGridConnection ? `Total : +${formatNum(gridAnnualRevenues)} € HT/an` : `Total : +${formatNum(annualBillSavings)} € HT/an`,
     c1X + colW / 2 - 1,
-    totY1 + 6.2,
+    totY1 + 5.3,
     { align: 'center' }
   );
 
-  // ── COLONNE 2 : DÉTAIL DU CAPEX (HAUTEUR AUGMENTÉE) ──
+  // ── COLONNE 2 : DÉTAIL DU CAPEX ──
   const c2X = c1X + colW + 1.5;
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(c2X, detailY + 7.5, colW - 1, subCardH, 2, 2, 'F');
@@ -1012,71 +1010,68 @@ export function generateSafraProposalPdf({
 
   // En-tête bandeau colonne 2
   doc.setFillColor(239, 246, 255);
-  doc.roundedRect(c2X + 1.5, detailY + 9, colW - 4, 7.5, 1.5, 1.5, 'F');
+  doc.roundedRect(c2X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'F');
   doc.setDrawColor(191, 219, 254);
-  doc.roundedRect(c2X + 1.5, detailY + 9, colW - 4, 7.5, 1.5, 1.5, 'D');
+  doc.roundedRect(c2X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.2);
+  doc.setFontSize(6.8);
   doc.setTextColor(30, 64, 175);
-  doc.text('2. INVESTISSEMENT (CAPEX)', c2X + 4, detailY + 14);
+  doc.text('2. INVESTISSEMENT (CAPEX)', c2X + 4, detailY + 13.2);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.6);
+  doc.setFontSize(6.2);
   doc.setTextColor(51, 65, 85);
 
-  doc.text('• Matériel de stockage BESS :', c2X + 3.5, detailY + 22);
+  doc.text('• Matériel de stockage BESS :', c2X + 3.5, detailY + 19);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 64, 175);
-  doc.text(`${formatNum(hardwareCapex)} € HT`, c2X + 3.5, detailY + 27);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  doc.text('• Pose, ingénierie & EMS :', c2X + 3.5, detailY + 34);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 64, 175);
-  doc.text(pricingMode === 'HARDWARE_ONLY' ? '0 € HT (Fourniture pure)' : `${formatNum(installCapex)} € HT`, c2X + 3.5, detailY + 39);
+  doc.text(`${formatNum(hardwareCapex)} € HT`, c2X + 3.5, detailY + 23);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  doc.text('• Raccordement réseau Enedis :', c2X + 3.5, detailY + 46);
+  doc.text('• Pose, ingénierie & EMS :', c2X + 3.5, detailY + 29);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 64, 175);
+  doc.text(pricingMode === 'HARDWARE_ONLY' ? '0 € HT (Fourniture pure)' : `${formatNum(installCapex)} € HT`, c2X + 3.5, detailY + 33);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  doc.text('• Raccordement réseau Enedis :', c2X + 3.5, detailY + 39);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 64, 175);
   doc.text(
     includeGridConnection ? `${formatNum(connectionCapex)} € HT` : '0 € HT (Derrière compteur)',
     c2X + 3.5,
-    detailY + 51
+    detailY + 43
   );
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
   if (includeGridConnection) {
     if (gridFeasibility.voltageDomain === 'BT_C4') {
-      doc.text('• Liaison BT C4 direct Enedis,', c2X + 3.5, detailY + 58);
-      doc.text('exonéré de quote-part S3REnR.', c2X + 3.5, detailY + 62.5);
-      doc.text('• Coffret AGCP & armoire comptage.', c2X + 3.5, detailY + 67);
+      doc.text('• Liaison BT C4 direct Enedis.', c2X + 3.5, detailY + 49.5);
+      doc.text('• Exonéré de quote-part S3REnR.', c2X + 3.5, detailY + 53.5);
     } else {
-      doc.text(`• Quote-part S3REnR ${formatNum(gridFeasibility.quotePartS3renrCost)} €`, c2X + 3.5, detailY + 58);
-      doc.text('+ Cellule Enedis & Livraison HTA.', c2X + 3.5, detailY + 62.5);
-      doc.text('• Poste de livraison 20 kV.', c2X + 3.5, detailY + 67);
+      doc.text(`• Quote-part S3REnR ${formatNum(gridFeasibility.quotePartS3renrCost)} €`, c2X + 3.5, detailY + 49.5);
+      doc.text('+ Cellule Enedis & Livraison HTA.', c2X + 3.5, detailY + 53.5);
     }
   } else {
-    doc.text('• Raccordement TGBT client direct.', c2X + 3.5, detailY + 58);
-    doc.text('• Aucun frais Enedis ni guichet.', c2X + 3.5, detailY + 62.5);
-    doc.text('• Validation Consuel simplifiée.', c2X + 3.5, detailY + 67);
+    doc.text('• Raccordement TGBT client direct.', c2X + 3.5, detailY + 49.5);
+    doc.text('• Aucun frais Enedis ni guichet.', c2X + 3.5, detailY + 53.5);
   }
 
   // Cartouche total bas colonne 2
-  const totY2 = detailY + subCardH - 12;
+  const totY2 = detailY + subCardH - 10;
   doc.setFillColor(239, 246, 255);
-  doc.roundedRect(c2X + 2, totY2, colW - 5, 9.5, 1.5, 1.5, 'F');
+  doc.roundedRect(c2X + 2, totY2, colW - 5, 8, 1.2, 1.2, 'F');
   doc.setDrawColor(191, 219, 254);
-  doc.roundedRect(c2X + 2, totY2, colW - 5, 9.5, 1.5, 1.5, 'D');
+  doc.roundedRect(c2X + 2, totY2, colW - 5, 8, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setTextColor(30, 64, 175);
-  doc.text(`Total : ${formatNum(totalCapexHt)} € HT`, c2X + colW / 2 - 1, totY2 + 6.2, { align: 'center' });
+  doc.text(`Total : ${formatNum(totalCapexHt)} € HT`, c2X + colW / 2 - 1, totY2 + 5.3, { align: 'center' });
 
-  // ── COLONNE 3 : DÉTAIL DES OPEX (HAUTEUR AUGMENTÉE) ──
+  // ── COLONNE 3 : DÉTAIL DES OPEX ──
   const c3X = c2X + colW + 1.5;
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(c3X, detailY + 7.5, colW - 1, subCardH, 2, 2, 'F');
@@ -1085,103 +1080,102 @@ export function generateSafraProposalPdf({
 
   // En-tête bandeau colonne 3
   doc.setFillColor(255, 247, 237);
-  doc.roundedRect(c3X + 1.5, detailY + 9, colW - 4, 7.5, 1.5, 1.5, 'F');
+  doc.roundedRect(c3X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'F');
   doc.setDrawColor(254, 215, 170);
-  doc.roundedRect(c3X + 1.5, detailY + 9, colW - 4, 7.5, 1.5, 1.5, 'D');
+  doc.roundedRect(c3X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.2);
+  doc.setFontSize(6.8);
   doc.setTextColor(154, 52, 18);
-  doc.text('3. CHARGES ANNUELLES (OPEX)', c3X + 4, detailY + 14);
+  doc.text('3. CHARGES ANNUELLES (OPEX)', c3X + 4, detailY + 13.2);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.6);
+  doc.setFontSize(6.2);
   doc.setTextColor(51, 65, 85);
 
-  doc.text('• Maintenance préventive BESS :', c3X + 3.5, detailY + 22);
+  doc.text('• Maintenance préventive BESS :', c3X + 3.5, detailY + 19);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(154, 52, 18);
-  doc.text(`${formatNum(annualOpexMaintenance)} € HT/an`, c3X + 3.5, detailY + 27);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  doc.text('• Supervision EMS & Télémétrie :', c3X + 3.5, detailY + 34);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(154, 52, 18);
-  doc.text(`${formatNum(annualOpexSupervision)} € HT/an`, c3X + 3.5, detailY + 39);
+  doc.text(`${formatNum(annualOpexMaintenance)} € HT/an`, c3X + 3.5, detailY + 23);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  doc.text('• Assurance exploitation :', c3X + 3.5, detailY + 46);
+  doc.text('• Supervision EMS & Télémétrie :', c3X + 3.5, detailY + 29);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(154, 52, 18);
-  doc.text(`${formatNum(annualOpexAssurance)} € HT/an`, c3X + 3.5, detailY + 51);
+  doc.text(`${formatNum(annualOpexSupervision)} € HT/an`, c3X + 3.5, detailY + 33);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  doc.text('• Assurance exploitation :', c3X + 3.5, detailY + 39);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(154, 52, 18);
+  doc.text(`${formatNum(annualOpexAssurance)} € HT/an`, c3X + 3.5, detailY + 43);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
-  doc.text('• Indexation énergie : +5.0 %/an.', c3X + 3.5, detailY + 58);
-  doc.text('• Dégradation batterie : 1.0 %/an.', c3X + 3.5, detailY + 62.5);
-  doc.text('• Garantie constructeur intégrée.', c3X + 3.5, detailY + 67);
+  doc.text('• Indexation énergie : +5.0 %/an.', c3X + 3.5, detailY + 49.5);
+  doc.text('• Dégradation batterie : 1.0 %/an.', c3X + 3.5, detailY + 53.5);
 
   // Cartouche total bas colonne 3
-  const totY3 = detailY + subCardH - 12;
+  const totY3 = detailY + subCardH - 10;
   doc.setFillColor(255, 247, 237);
-  doc.roundedRect(c3X + 2, totY3, colW - 5, 9.5, 1.5, 1.5, 'F');
+  doc.roundedRect(c3X + 2, totY3, colW - 5, 8, 1.2, 1.2, 'F');
   doc.setDrawColor(254, 215, 170);
-  doc.roundedRect(c3X + 2, totY3, colW - 5, 9.5, 1.5, 1.5, 'D');
+  doc.roundedRect(c3X + 2, totY3, colW - 5, 8, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setTextColor(154, 52, 18);
-  doc.text(`Total : -${formatNum(totalAnnualOpex)} € HT/an`, c3X + colW / 2 - 1, totY3 + 6.2, { align: 'center' });
+  doc.text(`Total : -${formatNum(totalAnnualOpex)} € HT/an`, c3X + colW / 2 - 1, totY3 + 5.3, { align: 'center' });
 
-  // Pied de page Page 1 (uniquement numéro de page)
+  // Pied de page Page 1 (au-dessus duquel le cadre 5 est maintenant positionné en toute sécurité)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
   doc.text('Page 1 / 2', 196, 287, { align: 'right' });
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PAGE 2 : BUSINESS PLAN SUR 20 ANS, GRAPHIQUES SUPERPOSÉS & CHRONOGRAMME EN BAS
+  // PAGE 2 : BUSINESS PLAN SUR 20 ANS, GRAPHIQUES SUPERPOSÉS, TABLEAU AGRANDI & CHRONOGRAMME COMPACT
   // ═══════════════════════════════════════════════════════════════════════════
   doc.addPage();
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12.5);
+  doc.setFontSize(12);
   doc.setTextColor(15, 23, 42);
   doc.text('PLAN FINANCIER & SIMULATION ÉNERGÉTIQUE SUR 20 ANS', 14, 11);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.8);
   doc.setTextColor(100, 116, 139);
-  doc.text('Dégradation batterie 1.0 %/an · Inflation énergie 5.0 %/an · Dégressivité des coûts de pose appliquée', 14, 15.5);
+  doc.text('Dégradation batterie 1.0 %/an · Inflation énergie 5.0 %/an · Dégressivité des coûts de pose appliquée', 14, 15);
 
-  // ── LES 2 GRAPHIQUES L'UN EN DESSOUS DE L'AUTRE (PLEINE LARGEUR 182MM) ──
+  // ── LES 2 GRAPHIQUES SUPERPOSÉS PLEINE LARGEUR (HAUTEUR OPTIMISÉE À 39MM) ──
   // Graphique 1 : Courbe de charge 24h journalière type
-  drawDailyProfileChartPdf(doc, 14, 18, 182, 45, dailyProfileChartData, peakKw, newPeakKw);
+  drawDailyProfileChartPdf(doc, 14, 17, 182, 39, dailyProfileChartData, peakKw, newPeakKw);
 
   // Graphique 2 : Projection de trésorerie cumulée sur 20 ans
-  drawCashFlowChartPdf(doc, 14, 65, 182, 45, cumulativeCashFlowChartData, safePayback, safeIrr, includeGridConnection);
+  drawCashFlowChartPdf(doc, 14, 58, 182, 39, cumulativeCashFlowChartData, safePayback, safeIrr, includeGridConnection);
 
   // ── SYNTHÈSE DES GAINS CUMULÉS SUR 20 ANS ──
-  const synthY = 112;
-  const synthH = 17;
+  const synthY = 99;
+  const synthH = 16;
   doc.setFillColor(240, 253, 244);
   doc.roundedRect(14, synthY, 182, synthH, 2, 2, 'F');
   doc.setDrawColor(187, 247, 208);
   doc.roundedRect(14, synthY, 182, synthH, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(7.8);
   doc.setTextColor(22, 101, 52);
-  doc.text('BILAN RENTABILITÉ GLOBALE À 20 ANS', 18, synthY + 4.8);
+  doc.text('BILAN RENTABILITÉ GLOBALE À 20 ANS', 18, synthY + 4.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.2);
+  doc.setFontSize(7.0);
   doc.setTextColor(15, 23, 42);
-  doc.text(`• Investissement initial Total (CAPEX) : ${formatNum(totalCapexHt)} € HT (dégressivité de pose incluse)`, 18, synthY + 8.8);
-  doc.text(`• Temps de retour sur investissement : ${safePayback} ans (TRI Projet : ${safeIrr} %)`, 18, synthY + 12.4);
-  doc.text(`• Gain net de trésorerie cumulé à 20 ans après amortissement total : ${formatSignedNum(netGain20YearsHt ?? netGain15YearsHt, 0, ' € HT')}`, 18, synthY + 15.8);
+  doc.text(`• Investissement initial Total (CAPEX) : ${formatNum(totalCapexHt)} € HT (dégressivité de pose incluse)`, 18, synthY + 8.2);
+  doc.text(`• Temps de retour sur investissement : ${safePayback} ans (TRI Projet : ${safeIrr} %)`, 18, synthY + 11.6);
+  doc.text(`• Gain net de trésorerie cumulé à 20 ans après amortissement total : ${formatSignedNum(netGain20YearsHt ?? netGain15YearsHt, 0, ' € HT')}`, 18, synthY + 14.8);
 
-  // ── TABLEAU DE CASH-FLOW SUR 20 ANS ──
+  // ── TABLEAU DE CASH-FLOW SUR 20 ANS (DONNÉES AGRANDIES & TRÈS LISIBLES) ──
   const tableData = [];
   tableData.push([
     'Année 0',
@@ -1216,7 +1210,7 @@ export function generateSafraProposalPdf({
     ]);
   }
 
-  const tableStartY = synthY + synthH + 2.5;
+  const tableStartY = synthY + synthH + 2.5; // 117.5
   autoTable(doc, {
     startY: tableStartY,
     margin: { left: 14, right: 14 },
@@ -1226,21 +1220,30 @@ export function generateSafraProposalPdf({
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 6.2
+      fontSize: 7.2,
+      cellPadding: 1.2
     },
     styles: {
       font: 'helvetica',
-      fontSize: 5.3,
-      cellPadding: 0.72,
+      fontSize: 6.6,
+      cellPadding: 1.1,
       textColor: [30, 41, 59]
+    },
+    columnStyles: {
+      0: { fontStyle: 'bold', halign: 'left' },
+      1: { halign: 'right' },
+      2: { halign: 'right' },
+      3: { halign: 'right' },
+      4: { fontStyle: 'bold', halign: 'right' },
+      5: { fontStyle: 'bold', halign: 'right' }
     },
     head: [['Période', 'Économies Facture', 'Revenus Réseau', 'Maintenance OPEX', 'Cash-Flow Net/an', 'Trésorerie Cumulée']],
     body: tableData
   });
 
-  // ── CADRE CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT TOUT EN BAS DE LA 2ÈME PAGE ──
+  // ── CADRE CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT (HAUTEUR RÉDUITE À 42MM EN BAS DE PAGE) ──
   const chronoY = doc.lastAutoTable.finalY + 2.5;
-  const chronoH = Math.min(78, 283 - chronoY);
+  const chronoH = 42;
   drawChronogrammePdf(doc, 14, chronoY, 182, chronoH, includeGridConnection);
 
   // Pied de page Page 2
