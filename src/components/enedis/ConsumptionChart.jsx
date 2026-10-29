@@ -42,7 +42,10 @@ function aggregateByMonth(readings) {
     if (!m[key]) m[key] = { label, kWh: 0 };
     m[key].kWh += value / 1000;
   });
-  return Object.values(m).map(x => ({ ...x, kWh: parseFloat(x.kWh.toFixed(1)) }));
+  const allMonths = Object.entries(m)
+    .filter(([key]) => key !== '2025-10')
+    .map(([, x]) => ({ ...x, kWh: parseFloat(x.kWh.toFixed(1)) }));
+  return allMonths.length > 12 ? allMonths.slice(-12) : allMonths;
 }
 
 // ─── Tooltip personnalisé ─────────────────────────────────────────────────────

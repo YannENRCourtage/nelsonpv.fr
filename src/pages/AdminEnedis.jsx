@@ -283,7 +283,7 @@ export default function AdminEnedis() {
     setTimeout(() => {
       window.print();
       setTimeout(() => setIsPrinting(false), 500);
-    }, 400);
+    }, 800);
   }, [data, toast]);
 
   const formatDate = (dateStr) => {
