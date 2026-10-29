@@ -581,7 +581,7 @@ export default function SafraBessProposalModule({
           </p>
         </div>
 
-        {/* KPI 4 : Temps de retour & Gain net 15 ans */}
+        {/* KPI 4 : Temps de retour & Gain net 20 ans */}
         <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
             <span>Temps de retour (ROI)</span>
@@ -591,7 +591,7 @@ export default function SafraBessProposalModule({
             {simResult.safePayback} <span className="text-sm font-bold text-white">ans</span>
           </div>
           <p className="text-[11px] text-slate-400">
-            Gain net cumulé à 15 ans : <strong className="text-emerald-400 font-bold">{(simResult.netGain15YearsHt ?? simResult.netGain12YearsHt) >= 0 ? `+${(simResult.netGain15YearsHt ?? simResult.netGain12YearsHt).toLocaleString('fr-FR')}` : `-${Math.abs(simResult.netGain15YearsHt ?? simResult.netGain12YearsHt).toLocaleString('fr-FR')}`} € HT</strong> (TRI : {simResult.safeIrr}%)
+            Gain net cumulé à 20 ans : <strong className="text-emerald-400 font-bold">{(simResult.netGain20YearsHt ?? simResult.netGain15YearsHt ?? simResult.netGain12YearsHt) >= 0 ? `+${(simResult.netGain20YearsHt ?? simResult.netGain15YearsHt ?? simResult.netGain12YearsHt).toLocaleString('fr-FR')}` : `-${Math.abs(simResult.netGain20YearsHt ?? simResult.netGain15YearsHt ?? simResult.netGain12YearsHt).toLocaleString('fr-FR')}`} € HT</strong> (TRI : {simResult.safeIrr}%)
           </p>
         </div>
       </div>
