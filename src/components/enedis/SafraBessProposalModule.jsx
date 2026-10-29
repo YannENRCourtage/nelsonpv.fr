@@ -268,6 +268,13 @@ export default function SafraBessProposalModule({
               <span className="text-slate-400">Technologie : </span>
               <strong className="text-amber-400 font-bold">{currentModel.coolingType}</strong>
             </div>
+            <div className="bg-slate-900/90 px-3.5 py-1.5 rounded-xl border border-emerald-500/30 text-xs">
+              <span className="text-slate-400">Autonomie : </span>
+              <span className="text-slate-300 font-bold">{simResult.baseAutonomyPercent}%</span>
+              <span className="text-slate-500 mx-1">➔</span>
+              <strong className="text-emerald-400 font-black">{simResult.totalAutonomyPercent}%</strong>
+              <span className="text-emerald-400/80 font-bold ml-1">(+{simResult.totalAutonomyPercent - simResult.baseAutonomyPercent}%)</span>
+            </div>
           </div>
         </div>
 
@@ -294,20 +301,32 @@ export default function SafraBessProposalModule({
             </div>
           </div>
 
-          <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1">
+          <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-medium">Autonomie énergétique :</span>
-              <span className="text-emerald-400 font-black text-sm">{simResult.totalAutonomyPercent} %</span>
+              <span className="text-slate-400 font-medium">Autonomie atteinte :</span>
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-slate-400 font-medium">Avant : <strong className="text-white font-bold">{simResult.baseAutonomyPercent}%</strong></span>
+                <span className="text-slate-500">➔</span>
+                <span className="text-emerald-400 font-black text-sm">Après : {simResult.totalAutonomyPercent}%</span>
+              </div>
             </div>
-            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden flex">
               <div
-                className="bg-gradient-to-r from-emerald-500 to-green-400 h-full rounded-full transition-all duration-500"
-                style={{ width: `${simResult.totalAutonomyPercent}%` }}
+                className="bg-slate-600 h-full"
+                style={{ width: `${simResult.baseAutonomyPercent}%` }}
+                title={`Autonomie initiale : ${simResult.baseAutonomyPercent}%`}
+              />
+              <div
+                className="bg-gradient-to-r from-emerald-500 to-green-400 h-full transition-all duration-500"
+                style={{ width: `${simResult.totalAutonomyPercent - simResult.baseAutonomyPercent}%` }}
+                title={`Gain apporté par batterie : +${simResult.totalAutonomyPercent - simResult.baseAutonomyPercent}%`}
               />
             </div>
-            <span className="text-[10px] text-slate-400 block pt-0.5">
-              Avant : {simResult.baseAutonomyPercent}% ➔ Gain net : +{simResult.totalAutonomyPercent - simResult.baseAutonomyPercent}%
-            </span>
+            <div className="flex justify-between items-center text-[10px] text-slate-400 pt-0.5">
+              <span>Avant : <strong className="text-slate-300 font-bold">{simResult.baseAutonomyPercent}%</strong></span>
+              <span className="text-emerald-400 font-bold">Gain net : +{simResult.totalAutonomyPercent - simResult.baseAutonomyPercent}%</span>
+              <span>Après : <strong className="text-emerald-400 font-bold">{simResult.totalAutonomyPercent}%</strong></span>
+            </div>
           </div>
         </div>
       </div>
@@ -562,7 +581,7 @@ export default function SafraBessProposalModule({
           </p>
         </div>
 
-        {/* KPI 4 : Temps de retour & Gain net 12 ans */}
+        {/* KPI 4 : Temps de retour & Gain net 15 ans */}
         <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg">
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
             <span>Temps de retour (ROI)</span>
@@ -572,7 +591,7 @@ export default function SafraBessProposalModule({
             {simResult.safePayback} <span className="text-sm font-bold text-white">ans</span>
           </div>
           <p className="text-[11px] text-slate-400">
-            Gain net cumulé à 12 ans : <strong className="text-emerald-400 font-bold">{simResult.netGain12YearsHt >= 0 ? `+${simResult.netGain12YearsHt.toLocaleString('fr-FR')}` : `-${Math.abs(simResult.netGain12YearsHt).toLocaleString('fr-FR')}`} € HT</strong> (TRI : {simResult.safeIrr}%)
+            Gain net cumulé à 15 ans : <strong className="text-emerald-400 font-bold">{(simResult.netGain15YearsHt ?? simResult.netGain12YearsHt) >= 0 ? `+${(simResult.netGain15YearsHt ?? simResult.netGain12YearsHt).toLocaleString('fr-FR')}` : `-${Math.abs(simResult.netGain15YearsHt ?? simResult.netGain12YearsHt).toLocaleString('fr-FR')}`} € HT</strong> (TRI : {simResult.safeIrr}%)
           </p>
         </div>
       </div>
@@ -586,7 +605,7 @@ export default function SafraBessProposalModule({
             <div>
               <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
                 <Zap size={16} className="text-yellow-400" />
-                Courbe de charge journalière type — Avant vs Après batterie
+                Courbe de charge journalière type
               </h4>
               <p className="text-xs text-slate-400">
                 Écrêtage de la pointe de {peakKw.toFixed(0)} kW vers {simResult.newPeakKw} kW et recharge en Heures Creuses
@@ -602,7 +621,7 @@ export default function SafraBessProposalModule({
             </div>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={simResult.dailyProfileChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                 <defs>
@@ -634,13 +653,13 @@ export default function SafraBessProposalModule({
           </div>
         </div>
 
-        {/* GRAPHIQUE 2 : TRÉSORERIE CUMULÉE SUR 12 ANS */}
+        {/* GRAPHIQUE 2 : TRÉSORERIE CUMULÉE SUR 15 ANS */}
         <div className="bg-slate-800/70 rounded-3xl p-5 border border-slate-700/70 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
                 <TrendingUp size={16} className="text-blue-400" />
-                Projection de Trésorerie Cumulée & Amortissement (12 ans)
+                Projection de Trésorerie Cumulée & Amortissement
               </h4>
               <p className="text-xs text-slate-400">
                 Seuil de rentabilité (0 €) atteint en {simResult.safePayback} ans
@@ -658,7 +677,7 @@ export default function SafraBessProposalModule({
             </div>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={simResult.cumulativeCashFlowChartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
@@ -676,7 +695,7 @@ export default function SafraBessProposalModule({
                   ]}
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '10px', fontSize: '11px' }}
                 />
-                <ReferenceLine y={0} stroke="#ef4444" strokeWidth={1.5} label={{ value: 'Seuil 0 € (Break-Even)', position: 'insideBottomLeft', fill: '#ef4444', fontSize: 10 }} />
+                <ReferenceLine y={0} stroke="#ef4444" strokeWidth={1.5} label={{ value: 'Seuil 0 € (Seuil de rentabilité)', position: 'insideBottomLeft', fill: '#ef4444', fontSize: 10 }} />
                 <Line type="monotone" dataKey="autonomieSeule" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} name="autonomieSeule" />
                 {includeGridConnection && (
                   <Line type="monotone" dataKey="avecRaccordement" stroke="#10b981" strokeWidth={3} dot={{ r: 3 }} name="avecRaccordement" />

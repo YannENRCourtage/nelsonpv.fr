@@ -186,7 +186,7 @@ export function computeSafraSimulation({
   // EBITDA annuel initial (Gain net d'exploitation année 1)
   const annualEbitdaHt = (annualBillSavings + gridAnnualRevenues) - annualOpexHt;
 
-  // Série de cash-flow sur 12 ans
+  // Série de cash-flow sur 15 ans
   // Paramètres validés par l'utilisateur :
   // - Dégradation batterie : 1.0% par an (au lieu de 2.0%)
   // - Inflation de l'énergie (hausse valeur économies HP/HC & pointe) : 5.0% par an
@@ -195,7 +195,7 @@ export function computeSafraSimulation({
   const cumulativeCashFlow = [-totalCapexHt];
   let runningCumul = -totalCapexHt;
 
-  for (let year = 1; year <= 12; year++) {
+  for (let year = 1; year <= 15; year++) {
     const degradationFactor = Math.pow(1 - 0.01, year - 1); // 1.0% dégradation batterie / an
     const energyInflationFactor = Math.pow(1 + 0.05, year - 1); // 5.0% inflation énergie / an
     const opexInflationFactor = Math.pow(1 + 0.02, year - 1); // 2.0% inflation OPEX / an
@@ -212,7 +212,7 @@ export function computeSafraSimulation({
     cumulativeCashFlow.push(runningCumul);
   }
 
-  // TRI (Taux de Rentabilité Interne) sur 12 ans
+  // TRI (Taux de Rentabilité Interne) sur 15 ans
   const irrPercent = calculateIrr(cashFlowSeries, 0.08);
   const safeIrr = isNaN(irrPercent) || irrPercent <= 0 ? 0 : Math.round(irrPercent * 10) / 10;
 
@@ -220,8 +220,9 @@ export function computeSafraSimulation({
   const paybackYears = calculateProjectPayback(totalCapexHt, cashFlowSeries.slice(1));
   const safePayback = (paybackYears > 0 && paybackYears < 20) ? Math.round(paybackYears * 10) / 10 : (totalCapexHt / Math.max(1, annualEbitdaHt)).toFixed(1);
 
-  // Gain net cumulé sur 12 ans (Total cash encaissé - CAPEX initial)
-  const netGain12YearsHt = cumulativeCashFlow[12];
+  // Gain net cumulé sur 15 ans (Total cash encaissé - CAPEX initial)
+  const netGain15YearsHt = cumulativeCashFlow[15];
+  const netGain12YearsHt = cumulativeCashFlow[15];
 
   // ─── 5. GÉNÉRATION DES DONNÉES DU GRAPHIQUE 1 : COURBE JOURNALIÈRE 24H AVANT / APRÈS ───
   const dailyProfileChartData = generateDailyProfileComparison({
@@ -232,12 +233,12 @@ export function computeSafraSimulation({
     peakShavedKw
   });
 
-  // ─── 6. GÉNÉRATION DES DONNÉES DU GRAPHIQUE 2 : TRÉSORERIE CUMULÉE SUR 12 ANS ───
+  // ─── 6. GÉNÉRATION DES DONNÉES DU GRAPHIQUE 2 : TRÉSORERIE CUMULÉE SUR 15 ANS ───
   const cumulativeCashFlowChartData = [];
   let cumulWithoutGrid = - (hardwareCapex + installCapex);
   let cumulWithGrid = - totalCapexHt;
 
-  for (let y = 0; y <= 12; y++) {
+  for (let y = 0; y <= 15; y++) {
     if (y === 0) {
       cumulativeCashFlowChartData.push({
         yearLabel: 'An 0',
@@ -292,6 +293,7 @@ export function computeSafraSimulation({
     annualEbitdaHt,
     safePayback: Number(safePayback),
     safeIrr,
+    netGain15YearsHt,
     netGain12YearsHt,
     dailyProfileChartData,
     cumulativeCashFlowChartData
