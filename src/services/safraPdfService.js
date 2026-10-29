@@ -502,7 +502,8 @@ export function generateSafraProposalPdf({
     safePayback,
     safeIrr,
     netGain12YearsHt,
-    cumulativeCashFlowChartData
+    cumulativeCashFlowChartData,
+    dailyProfileChartData
   } = simResult;
 
   const dateStr = today || new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -526,9 +527,11 @@ export function generateSafraProposalPdf({
   const cleanAddress = (adresse || 'Lieu-dit Terres Vieilles, 24310 BRANTOME EN PERIGORD')
     .replace(/VALEUIL/gi, 'BRANTOME EN PERIGORD');
 
-  // Nom nettoyé du modèle (sans mention de marque tierce non souhaitée)
-  const cleanModelName = (model?.name || 'Armoire ESS 261 AC (Liquid Cooling)')
+  // Nom nettoyé du modèle (sans mention de marque tierce non souhaitée ni Liquid Cooling)
+  const cleanModelName = (model?.name || 'Armoire ESS 261 AC')
     .replace(/SAFRA\s*/gi, '')
+    .replace(/\s*\(Liquid Cooling\)/gi, '')
+    .replace(/\s*Liquid Cooling/gi, '')
     .trim();
 
   // ═══════════════════════════════════════════════════════════════════════════

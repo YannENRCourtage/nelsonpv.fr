@@ -153,7 +153,7 @@ export default function SafraBessProposalModule({
         peakKw
       });
       toast({
-        title: "✅ Proposition commerciale générée",
+        title: "Proposition commerciale générée",
         description: `Le dossier commercial en PDF a été téléchargé avec succès.`
       });
     } catch (err) {
@@ -197,7 +197,7 @@ export default function SafraBessProposalModule({
     } catch (e) {}
     toast({
       title: "Tarifs réinitialisés",
-      description: "La grille tarifaire officielle distributeur SAFRA (-10%) a été restaurée."
+      description: "La grille tarifaire officielle distributeur (-10%) a été restaurée."
     });
   };
 
@@ -221,7 +221,7 @@ export default function SafraBessProposalModule({
           </h2>
           <p className="text-sm text-slate-400 max-w-3xl">
             Étude de dimensionnement optimisée pour le profil de consommation du PRM{' '}
-            <strong className="text-white font-mono">{prm}</strong> ({Math.round(consoAnnuelleKwh).toLocaleString('fr-FR')} kWh/an, pointe {peakKw.toFixed(1)} kW).
+            <strong className="text-white font-mono">{prm}</strong>.
           </p>
         </div>
 
@@ -688,13 +688,13 @@ export default function SafraBessProposalModule({
 
       </div>
 
-      {/* ─── CATALOGUE DÉTAILLÉ SAFRA & SÉLECTION LIBRE ─── */}
+      {/* ─── CATALOGUE DÉTAILLÉ DE STOCKAGE & SÉLECTION LIBRE ─── */}
       <div className="bg-slate-800/50 rounded-3xl p-6 border border-slate-800 space-y-5 relative z-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h4 className="text-lg font-black text-white flex items-center gap-2">
               <Layers size={18} className="text-orange-400" />
-              Catalogue Intégral SAFRA Storage (Gammes UNIV LV / HV, C&I & Conteneurs)
+              Catalogue Intégral Stockage BESS (Gammes UNIV LV / HV, C&I & Conteneurs)
             </h4>
             <p className="text-xs text-slate-400">
               Cliquez sur un modèle pour tester une autre configuration ou ajuster les prix catalogue distributeurs.
@@ -718,7 +718,7 @@ export default function SafraBessProposalModule({
             { id: 'ALL', label: 'Toutes les gammes' },
             { id: 'LV', label: 'Basse Tension (UNIV LV)' },
             { id: 'HV', label: 'Haute Tension (UNIV HV)' },
-            { id: 'CI', label: 'Industrielle C&I (Liquid Cooling)' },
+            { id: 'CI', label: 'Industrielle & Tertiaire C&I' },
             { id: 'CONTAINER', label: 'Conteneurs Forte Capacité' },
           ].map(f => (
             <button
@@ -833,11 +833,11 @@ export default function SafraBessProposalModule({
                 <div className="flex items-center gap-2 mb-1">
                   <Sliders size={20} className="text-orange-400" />
                   <h3 className="text-lg sm:text-xl font-black text-white">
-                    Grille Tarifaire Distributeur SAFRA New Energy & Marges Commerciales
+                    Grille Tarifaire Distributeur & Marges Commerciales
                   </h3>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Ajustez la remise partenaire distributeur SAFRA (-10% par défaut), les tarifs de vente matériel HT et les tarifs clés en main posés HT.
+                  Ajustez la remise partenaire distributeur (-10% par défaut), les tarifs de vente matériel HT et les tarifs clés en main posés HT.
                 </p>
               </div>
               <button
@@ -861,7 +861,7 @@ export default function SafraBessProposalModule({
               {/* Global Controls */}
               <div className="flex flex-wrap items-center gap-3 shrink-0">
                 <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-700 text-xs">
-                  <span className="text-slate-400 font-medium">Remise SAFRA globale :</span>
+                  <span className="text-slate-400 font-medium">Remise distributeur globale :</span>
                   <input
                     type="number"
                     min="0"
@@ -882,7 +882,7 @@ export default function SafraBessProposalModule({
                   className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition-colors"
                 >
                   <RefreshCw size={14} />
-                  Réinitialiser tarifs
+                  Réinitialiser tarifs distributeurs
                 </button>
               </div>
             </div>
@@ -895,7 +895,7 @@ export default function SafraBessProposalModule({
                     <tr className="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-950/70">
                       <th className="py-3 px-3 rounded-l-xl">Modèle / Gamme</th>
                       <th className="py-3 px-3 text-center">Specs</th>
-                      <th className="py-3 px-3 text-right">Prix Base SAFRA HT</th>
+                      <th className="py-3 px-3 text-right">Prix Base Distributeur HT</th>
                       <th className="py-3 px-3 text-right">Remise (%)</th>
                       <th className="py-3 px-3 text-right">Achat Net ENRC HT</th>
                       <th className="py-3 px-3 text-right">Prix Vente Matériel HT</th>

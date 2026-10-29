@@ -348,7 +348,7 @@ export default function AdminEnedis() {
                 }}
               >
                 <Sparkles size={18} className="mr-2 text-orange-500" />
-                Simulation SAFRA
+                Simulation Stockage
               </Button>
             )}
             {data && (
