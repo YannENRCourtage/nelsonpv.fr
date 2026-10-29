@@ -164,28 +164,46 @@ export function computeSafraSimulation({
   }
 
   // ─── 4. BILAN FINANCIER GLOBAL, CAPEX ET CASH-FLOW SUR 12 ANS ───
+  // Application de la dégressivité des coûts de pose :
+  // - 10% si 2 batteries
+  // - 15% si 4 batteries (ou >= 3)
+  let installDiscount = 0;
+  if (qte === 2) {
+    installDiscount = 0.10;
+  } else if (qte >= 3) {
+    installDiscount = 0.15;
+  }
   const hardwareCapex = modelPriceHt * qte;
-  const installCapex = modelInstallHt * qte;
+  const baseInstallCapex = modelInstallHt * qte;
+  const installCapex = Math.round(baseInstallCapex * (1 - installDiscount));
   const connectionCapex = includeGridConnection ? gridFeasibility.connectionCostHt : 0;
   const totalCapexHt = hardwareCapex + installCapex + connectionCapex;
 
   // OPEX annuel de maintenance / garantie (1.2% du hardware)
   const annualOpexHt = Math.round(hardwareCapex * 0.012);
 
-  // EBITDA annuel (Gain net d'exploitation)
+  // EBITDA annuel initial (Gain net d'exploitation année 1)
   const annualEbitdaHt = (annualBillSavings + gridAnnualRevenues) - annualOpexHt;
 
   // Série de cash-flow sur 12 ans
+  // Paramètres validés par l'utilisateur :
+  // - Dégradation batterie : 1.0% par an (au lieu de 2.0%)
+  // - Inflation de l'énergie (hausse valeur économies HP/HC & pointe) : 5.0% par an
+  // - Inflation OPEX de maintenance : 2.0% par an
   const cashFlowSeries = [-totalCapexHt];
   const cumulativeCashFlow = [-totalCapexHt];
   let runningCumul = -totalCapexHt;
 
-  // Dégradation de performance de la batterie : 2% par an
   for (let year = 1; year <= 12; year++) {
-    const degradationFactor = Math.pow(1 - 0.02, year - 1);
-    const yearBillSavings = annualBillSavings * degradationFactor;
-    const yearGridRevenues = gridAnnualRevenues * degradationFactor;
-    const yearOpex = annualOpexHt * Math.pow(1 + 0.02, year - 1); // Inflation OPEX 2%
+    const degradationFactor = Math.pow(1 - 0.01, year - 1); // 1.0% dégradation batterie / an
+    const energyInflationFactor = Math.pow(1 + 0.05, year - 1); // 5.0% inflation énergie / an
+    const opexInflationFactor = Math.pow(1 + 0.02, year - 1); // 2.0% inflation OPEX / an
+
+    // Les économies sur facture bénéficient de l'inflation de l'énergie compensée par la dégradation
+    const yearBillSavings = annualBillSavings * degradationFactor * energyInflationFactor;
+    // Les revenus réseau s'évaluent avec dégradation et indexation modérée
+    const yearGridRevenues = gridAnnualRevenues * degradationFactor * Math.pow(1 + 0.02, year - 1);
+    const yearOpex = annualOpexHt * opexInflationFactor;
 
     const netYearCash = Math.round(yearBillSavings + yearGridRevenues - yearOpex);
     cashFlowSeries.push(netYearCash);
@@ -194,7 +212,7 @@ export function computeSafraSimulation({
   }
 
   // TRI (Taux de Rentabilité Interne) sur 12 ans
-  const irrPercent = calculateIrr(cashFlowSeries, 0.10);
+  const irrPercent = calculateIrr(cashFlowSeries, 0.08);
   const safeIrr = isNaN(irrPercent) || irrPercent <= 0 ? 0 : Math.round(irrPercent * 10) / 10;
 
   // Temps de retour sur investissement (Payback en années à 1 décimale)
@@ -228,10 +246,13 @@ export function computeSafraSimulation({
         breakEvenZero: 0
       });
     } else {
-      const deg = Math.pow(1 - 0.02, y - 1);
-      const billSav = annualBillSavings * deg;
-      const opex = annualOpexHt * Math.pow(1 + 0.02, y - 1);
-      const gridRev = gridAnnualRevenues * deg;
+      const degradationFactor = Math.pow(1 - 0.01, y - 1);
+      const energyInflationFactor = Math.pow(1 + 0.05, y - 1);
+      const opexInflationFactor = Math.pow(1 + 0.02, y - 1);
+
+      const billSav = annualBillSavings * degradationFactor * energyInflationFactor;
+      const opex = annualOpexHt * opexInflationFactor;
+      const gridRev = gridAnnualRevenues * degradationFactor * Math.pow(1 + 0.02, y - 1);
 
       cumulWithoutGrid += Math.round(billSav - opex);
       cumulWithGrid += Math.round(billSav + gridRev - opex);

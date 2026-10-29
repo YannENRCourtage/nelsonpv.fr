@@ -160,20 +160,11 @@ export default function SafraBessProposalModule({
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* ─── EN-TÊTE DU MODULE SAFRA ─── */}
+      {/* ─── EN-TÊTE DU MODULE ─── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-6 relative z-10">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center gap-1.5">
-              <Sparkles size={13} />
-              Stockage Intelligent BESS
-            </span>
-            <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
-              Stockage BESS & Autonomie
-            </span>
-          </div>
           <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-            PROPOSITION DE STOCKAGE INTELLIGENT SAFRA
+            PROPOSITION DE STOCKAGE INTELLIGENT
           </h2>
           <p className="text-sm text-slate-400 max-w-3xl">
             Étude de dimensionnement optimisée pour le profil de consommation du PRM{' '}
@@ -188,16 +179,13 @@ export default function SafraBessProposalModule({
           className="self-start lg:self-center px-5 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-black text-sm shadow-lg shadow-orange-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2.5 shrink-0"
         >
           <FileDown size={18} />
-          {isExportingPdf ? 'Génération du PDF...' : 'Exporter la Proposition SAFRA (PDF)'}
+          {isExportingPdf ? 'Génération du PDF...' : 'Exporter la Proposition (PDF)'}
         </button>
       </div>
 
-      {/* ─── BANDEAU RECOMMANDATION AUTOMATIQUE SAFRA ─── */}
+      {/* ─── BANDEAU RECOMMANDATION AUTOMATIQUE ─── */}
       <div className="bg-slate-800/80 backdrop-blur-md rounded-3xl p-6 border border-slate-700/80 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative z-10">
         <div className="lg:col-span-3 flex flex-col items-center justify-center p-4 bg-slate-900/80 rounded-2xl border border-slate-700/60 relative">
-          <div className="absolute top-3 left-3 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase">
-            {currentModel.badge}
-          </div>
           <img
             src={currentModel.imageUrl}
             alt={currentModel.name}
@@ -296,9 +284,11 @@ export default function SafraBessProposalModule({
             <div>
               <span className="text-base font-black text-white flex items-center gap-2">
                 Raccorder la batterie au réseau Enedis (Injection réseau & Valorisation Services Système / Capacité / Arbitrage)
-                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                  Option active
-                </span>
+                {includeGridConnection && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    Option active
+                  </span>
+                )}
               </span>
               <p className="text-xs text-slate-400 mt-0.5">
                 {includeGridConnection
@@ -461,7 +451,7 @@ export default function SafraBessProposalModule({
             {simResult.annualBillSavings.toLocaleString('fr-FR')} <span className="text-sm font-bold text-white">€ HT/an</span>
           </div>
           <p className="text-[11px] text-slate-400">
-            Peak Shaving TURPE : <strong>{simResult.peakShavingSavingsYear.toLocaleString('fr-FR')} €</strong> + Arbitrage HP/HC : <strong>{simResult.arbitrageSavingsYear.toLocaleString('fr-FR')} €</strong>
+            Écrêtage des pointes TURPE : <strong>{simResult.peakShavingSavingsYear.toLocaleString('fr-FR')} €</strong> + Arbitrage HP/HC : <strong>{simResult.arbitrageSavingsYear.toLocaleString('fr-FR')} €</strong>
           </p>
         </div>
 
@@ -519,7 +509,7 @@ export default function SafraBessProposalModule({
             <div>
               <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
                 <Zap size={16} className="text-yellow-400" />
-                Courbe de charge journalière type — Avant vs Après SAFRA
+                Courbe de charge journalière type — Avant vs Après batterie
               </h4>
               <p className="text-xs text-slate-400">
                 Écrêtage de la pointe de {peakKw.toFixed(0)} kW vers {simResult.newPeakKw} kW et recharge en Heures Creuses
@@ -530,7 +520,7 @@ export default function SafraBessProposalModule({
                 <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block" /> Sans batterie
               </span>
               <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Avec SAFRA
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Avec batterie
               </span>
             </div>
           </div>
@@ -550,7 +540,7 @@ export default function SafraBessProposalModule({
                 <Tooltip
                   formatter={(val, name) => [
                     `${val} kW`,
-                    name === 'consoAvant' ? 'Soutirage d\'origine' : 'Soutirage après batterie SAFRA'
+                    name === 'consoAvant' ? 'Soutirage d\'origine' : 'Soutirage avec batterie'
                   ]}
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '10px', fontSize: '11px' }}
                 />
