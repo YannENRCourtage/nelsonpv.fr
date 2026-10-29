@@ -877,11 +877,11 @@ export function generateSafraProposalPdf({
   }
 
   // ── CADRE 5 : DÉTAIL DU MODÈLE ÉCONOMIQUE (REVENUS, CAPEX & OPEX) ──
-  // Hauteur calibrée (86 mm) pour rester parfaitement au-dessus de la pagination sur la Page 1
-  const detailY = netY + netH + 3;
-  const cardH = 86;
+  // Hauteur légèrement réduite (72 mm) pour rester confortablement au-dessus de la pagination sur la Page 1
+  const detailY = netY + netH + 2.5;
+  const cardH = 72;
   const colW = 57;
-  const subCardH = cardH - 10; // 76mm
+  const subCardH = cardH - 9; // 63mm
 
   // Calcul des détails financiers
   const fcrRevenuesYear = Math.round(totalPowerKw * 45);
@@ -900,232 +900,232 @@ export function generateSafraProposalPdf({
   doc.roundedRect(14, detailY, 182, cardH, 2.5, 2.5, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.2);
+  doc.setFontSize(7.8);
   doc.setTextColor(15, 23, 42);
   doc.text(
     includeGridConnection
       ? 'DÉTAIL DU MODÈLE ÉCONOMIQUE RÉSEAU : REVENUS, CAPEX & OPEX'
       : 'DÉTAIL DU MODÈLE ÉCONOMIQUE DERRIÈRE LE COMPTEUR : REVENUS, CAPEX & OPEX',
     18,
-    detailY + 5.2
+    detailY + 4.8
   );
 
   // ── COLONNE 1 : DÉTAIL DES REVENUS / ÉCONOMIES ──
   const c1X = 17.5;
   doc.setFillColor(255, 255, 255);
-  doc.roundedRect(c1X, detailY + 7.5, colW - 1, subCardH, 2, 2, 'F');
+  doc.roundedRect(c1X, detailY + 6.8, colW - 1, subCardH, 2, 2, 'F');
   doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(c1X, detailY + 7.5, colW - 1, subCardH, 2, 2, 'D');
+  doc.roundedRect(c1X, detailY + 6.8, colW - 1, subCardH, 2, 2, 'D');
 
   // En-tête bandeau colonne 1
   doc.setFillColor(240, 253, 244);
-  doc.roundedRect(c1X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'F');
+  doc.roundedRect(c1X + 1.5, detailY + 8.0, colW - 4, 5.8, 1.2, 1.2, 'F');
   doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(c1X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'D');
+  doc.roundedRect(c1X + 1.5, detailY + 8.0, colW - 4, 5.8, 1.2, 1.2, 'D');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(22, 101, 52);
+  doc.text(
+    includeGridConnection ? '1. REVENUS RÉSEAU ANNUELS' : '1. ÉCONOMIES FACTURE',
+    c1X + 3.5,
+    detailY + 12.0
+  );
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.8);
+  doc.setTextColor(51, 65, 85);
+
+  if (includeGridConnection) {
+    doc.text('• Réserve rapide FCR/aFRR :', c1X + 3.5, detailY + 17.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 101, 52);
+    doc.text(`+${formatNum(fcrRevenuesYear)} € HT/an`, c1X + 3.5, detailY + 21.2);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('• Garantie Capacité RTE :', c1X + 3.5, detailY + 26.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 101, 52);
+    doc.text(`+${formatNum(capacityRevenuesYear)} € HT/an`, c1X + 3.5, detailY + 30.2);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('• Arbitrage marché Spot :', c1X + 3.5, detailY + 35.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 101, 52);
+    doc.text(`+${formatNum(spotArbitrageYear)} € HT/an`, c1X + 3.5, detailY + 39.2);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('• Net agrégateur (comm. 15% déduite).', c1X + 3.5, detailY + 45.0);
+    doc.text('• Injection bi-directionnelle HTA.', c1X + 3.5, detailY + 48.8);
+  } else {
+    doc.text('• Écrêtage pointes TURPE :', c1X + 3.5, detailY + 17.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 101, 52);
+    doc.text(`+${formatNum(peakShavingSavingsYear)} € HT/an`, c1X + 3.5, detailY + 21.2);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('• Arbitrage Heures Pleines/Creuses :', c1X + 3.5, detailY + 26.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 101, 52);
+    doc.text(`+${formatNum(arbitrageSavingsYear)} € HT/an`, c1X + 3.5, detailY + 30.2);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('• Taux d\'autonomie atteint :', c1X + 3.5, detailY + 35.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 101, 52);
+    doc.text(`${totalAutonomyPercent} % (gain net +${totalAutonomyPercent - baseAutonomyPercent}%)`, c1X + 3.5, detailY + 39.2);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('• Réduction dépendance & sécurisation.', c1X + 3.5, detailY + 45.0);
+    doc.text('• Valorisation 100% sur le site.', c1X + 3.5, detailY + 48.8);
+  }
+
+  // Cartouche total bas colonne 1
+  const totY1 = detailY + subCardH - 8.8;
+  doc.setFillColor(240, 253, 244);
+  doc.roundedRect(c1X + 2, totY1, colW - 5, 7.2, 1.2, 1.2, 'F');
+  doc.setDrawColor(187, 247, 208);
+  doc.roundedRect(c1X + 2, totY1, colW - 5, 7.2, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.8);
   doc.setTextColor(22, 101, 52);
   doc.text(
-    includeGridConnection ? '1. REVENUS RÉSEAU ANNUELS' : '1. ÉCONOMIES FACTURE',
-    c1X + 4,
-    detailY + 13.2
-  );
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
-  doc.setTextColor(51, 65, 85);
-
-  if (includeGridConnection) {
-    doc.text('• Réserve rapide FCR/aFRR :', c1X + 3.5, detailY + 19);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(22, 101, 52);
-    doc.text(`+${formatNum(fcrRevenuesYear)} € HT/an`, c1X + 3.5, detailY + 23);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('• Garantie Capacité RTE :', c1X + 3.5, detailY + 29);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(22, 101, 52);
-    doc.text(`+${formatNum(capacityRevenuesYear)} € HT/an`, c1X + 3.5, detailY + 33);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('• Arbitrage marché Spot :', c1X + 3.5, detailY + 39);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(22, 101, 52);
-    doc.text(`+${formatNum(spotArbitrageYear)} € HT/an`, c1X + 3.5, detailY + 43);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text('• Net agrégateur (commission 15% déduite).', c1X + 3.5, detailY + 49.5);
-    doc.text('• Injection bi-directionnelle HTA.', c1X + 3.5, detailY + 53.5);
-  } else {
-    doc.text('• Écrêtage pointes TURPE :', c1X + 3.5, detailY + 19);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(22, 101, 52);
-    doc.text(`+${formatNum(peakShavingSavingsYear)} € HT/an`, c1X + 3.5, detailY + 23);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('• Arbitrage Heures Pleines/Creuses :', c1X + 3.5, detailY + 29);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(22, 101, 52);
-    doc.text(`+${formatNum(arbitrageSavingsYear)} € HT/an`, c1X + 3.5, detailY + 33);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('• Taux d\'autonomie atteint :', c1X + 3.5, detailY + 39);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(22, 101, 52);
-    doc.text(`${totalAutonomyPercent} % (gain net +${totalAutonomyPercent - baseAutonomyPercent}%)`, c1X + 3.5, detailY + 43);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text('• Réduction dépendance & sécurisation.', c1X + 3.5, detailY + 49.5);
-    doc.text('• Valorisation 100% sur le site.', c1X + 3.5, detailY + 53.5);
-  }
-
-  // Cartouche total bas colonne 1
-  const totY1 = detailY + subCardH - 10;
-  doc.setFillColor(240, 253, 244);
-  doc.roundedRect(c1X + 2, totY1, colW - 5, 8, 1.2, 1.2, 'F');
-  doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(c1X + 2, totY1, colW - 5, 8, 1.2, 1.2, 'D');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.2);
-  doc.setTextColor(22, 101, 52);
-  doc.text(
     includeGridConnection ? `Total : +${formatNum(gridAnnualRevenues)} € HT/an` : `Total : +${formatNum(annualBillSavings)} € HT/an`,
     c1X + colW / 2 - 1,
-    totY1 + 5.3,
+    totY1 + 4.8,
     { align: 'center' }
   );
 
   // ── COLONNE 2 : DÉTAIL DU CAPEX ──
   const c2X = c1X + colW + 1.5;
   doc.setFillColor(255, 255, 255);
-  doc.roundedRect(c2X, detailY + 7.5, colW - 1, subCardH, 2, 2, 'F');
+  doc.roundedRect(c2X, detailY + 6.8, colW - 1, subCardH, 2, 2, 'F');
   doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(c2X, detailY + 7.5, colW - 1, subCardH, 2, 2, 'D');
+  doc.roundedRect(c2X, detailY + 6.8, colW - 1, subCardH, 2, 2, 'D');
 
   // En-tête bandeau colonne 2
   doc.setFillColor(239, 246, 255);
-  doc.roundedRect(c2X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'F');
+  doc.roundedRect(c2X + 1.5, detailY + 8.0, colW - 4, 5.8, 1.2, 1.2, 'F');
   doc.setDrawColor(191, 219, 254);
-  doc.roundedRect(c2X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'D');
+  doc.roundedRect(c2X + 1.5, detailY + 8.0, colW - 4, 5.8, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(6.5);
   doc.setTextColor(30, 64, 175);
-  doc.text('2. INVESTISSEMENT (CAPEX)', c2X + 4, detailY + 13.2);
+  doc.text('2. INVESTISSEMENT (CAPEX)', c2X + 3.5, detailY + 12.0);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(5.8);
   doc.setTextColor(51, 65, 85);
 
-  doc.text('• Matériel de stockage BESS :', c2X + 3.5, detailY + 19);
+  doc.text('• Matériel de stockage BESS :', c2X + 3.5, detailY + 17.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 64, 175);
-  doc.text(`${formatNum(hardwareCapex)} € HT`, c2X + 3.5, detailY + 23);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  doc.text('• Pose, ingénierie & EMS :', c2X + 3.5, detailY + 29);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 64, 175);
-  doc.text(pricingMode === 'HARDWARE_ONLY' ? '0 € HT (Fourniture pure)' : `${formatNum(installCapex)} € HT`, c2X + 3.5, detailY + 33);
+  doc.text(`${formatNum(hardwareCapex)} € HT`, c2X + 3.5, detailY + 21.2);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  doc.text('• Raccordement réseau Enedis :', c2X + 3.5, detailY + 39);
+  doc.text('• Pose, ingénierie & EMS :', c2X + 3.5, detailY + 26.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 64, 175);
+  doc.text(pricingMode === 'HARDWARE_ONLY' ? '0 € HT (Fourniture pure)' : `${formatNum(installCapex)} € HT`, c2X + 3.5, detailY + 30.2);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  doc.text('• Raccordement réseau Enedis :', c2X + 3.5, detailY + 35.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 64, 175);
   doc.text(
     includeGridConnection ? `${formatNum(connectionCapex)} € HT` : '0 € HT (Derrière compteur)',
     c2X + 3.5,
-    detailY + 43
+    detailY + 39.2
   );
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
   if (includeGridConnection) {
     if (gridFeasibility.voltageDomain === 'BT_C4') {
-      doc.text('• Liaison BT C4 direct Enedis.', c2X + 3.5, detailY + 49.5);
-      doc.text('• Exonéré de quote-part S3REnR.', c2X + 3.5, detailY + 53.5);
+      doc.text('• Liaison BT C4 direct Enedis.', c2X + 3.5, detailY + 45.0);
+      doc.text('• Exonéré de quote-part S3REnR.', c2X + 3.5, detailY + 48.8);
     } else {
-      doc.text(`• Quote-part S3REnR ${formatNum(gridFeasibility.quotePartS3renrCost)} €`, c2X + 3.5, detailY + 49.5);
-      doc.text('+ Cellule Enedis & Livraison HTA.', c2X + 3.5, detailY + 53.5);
+      doc.text(`• Quote-part S3REnR ${formatNum(gridFeasibility.quotePartS3renrCost)} €`, c2X + 3.5, detailY + 45.0);
+      doc.text('+ Cellule Enedis & Livraison HTA.', c2X + 3.5, detailY + 48.8);
     }
   } else {
-    doc.text('• Raccordement TGBT client direct.', c2X + 3.5, detailY + 49.5);
-    doc.text('• Aucun frais Enedis ni guichet.', c2X + 3.5, detailY + 53.5);
+    doc.text('• Raccordement TGBT client direct.', c2X + 3.5, detailY + 45.0);
+    doc.text('• Aucun frais Enedis ni guichet.', c2X + 3.5, detailY + 48.8);
   }
 
   // Cartouche total bas colonne 2
-  const totY2 = detailY + subCardH - 10;
+  const totY2 = detailY + subCardH - 8.8;
   doc.setFillColor(239, 246, 255);
-  doc.roundedRect(c2X + 2, totY2, colW - 5, 8, 1.2, 1.2, 'F');
+  doc.roundedRect(c2X + 2, totY2, colW - 5, 7.2, 1.2, 1.2, 'F');
   doc.setDrawColor(191, 219, 254);
-  doc.roundedRect(c2X + 2, totY2, colW - 5, 8, 1.2, 1.2, 'D');
+  doc.roundedRect(c2X + 2, totY2, colW - 5, 7.2, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.2);
+  doc.setFontSize(6.8);
   doc.setTextColor(30, 64, 175);
-  doc.text(`Total : ${formatNum(totalCapexHt)} € HT`, c2X + colW / 2 - 1, totY2 + 5.3, { align: 'center' });
+  doc.text(`Total : ${formatNum(totalCapexHt)} € HT`, c2X + colW / 2 - 1, totY2 + 4.8, { align: 'center' });
 
   // ── COLONNE 3 : DÉTAIL DES OPEX ──
   const c3X = c2X + colW + 1.5;
   doc.setFillColor(255, 255, 255);
-  doc.roundedRect(c3X, detailY + 7.5, colW - 1, subCardH, 2, 2, 'F');
+  doc.roundedRect(c3X, detailY + 6.8, colW - 1, subCardH, 2, 2, 'F');
   doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(c3X, detailY + 7.5, colW - 1, subCardH, 2, 2, 'D');
+  doc.roundedRect(c3X, detailY + 6.8, colW - 1, subCardH, 2, 2, 'D');
 
   // En-tête bandeau colonne 3
   doc.setFillColor(255, 247, 237);
-  doc.roundedRect(c3X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'F');
+  doc.roundedRect(c3X + 1.5, detailY + 8.0, colW - 4, 5.8, 1.2, 1.2, 'F');
   doc.setDrawColor(254, 215, 170);
-  doc.roundedRect(c3X + 1.5, detailY + 8.8, colW - 4, 6.5, 1.2, 1.2, 'D');
+  doc.roundedRect(c3X + 1.5, detailY + 8.0, colW - 4, 5.8, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(6.5);
   doc.setTextColor(154, 52, 18);
-  doc.text('3. CHARGES ANNUELLES (OPEX)', c3X + 4, detailY + 13.2);
+  doc.text('3. CHARGES ANNUELLES (OPEX)', c3X + 3.5, detailY + 12.0);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(5.8);
   doc.setTextColor(51, 65, 85);
 
-  doc.text('• Maintenance préventive BESS :', c3X + 3.5, detailY + 19);
+  doc.text('• Maintenance préventive BESS :', c3X + 3.5, detailY + 17.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(154, 52, 18);
-  doc.text(`${formatNum(annualOpexMaintenance)} € HT/an`, c3X + 3.5, detailY + 23);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  doc.text('• Supervision EMS & Télémétrie :', c3X + 3.5, detailY + 29);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(154, 52, 18);
-  doc.text(`${formatNum(annualOpexSupervision)} € HT/an`, c3X + 3.5, detailY + 33);
+  doc.text(`${formatNum(annualOpexMaintenance)} € HT/an`, c3X + 3.5, detailY + 21.2);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  doc.text('• Assurance exploitation :', c3X + 3.5, detailY + 39);
+  doc.text('• Supervision EMS & Télémétrie :', c3X + 3.5, detailY + 26.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(154, 52, 18);
-  doc.text(`${formatNum(annualOpexAssurance)} € HT/an`, c3X + 3.5, detailY + 43);
+  doc.text(`${formatNum(annualOpexSupervision)} € HT/an`, c3X + 3.5, detailY + 30.2);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  doc.text('• Assurance exploitation :', c3X + 3.5, detailY + 35.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(154, 52, 18);
+  doc.text(`${formatNum(annualOpexAssurance)} € HT/an`, c3X + 3.5, detailY + 39.2);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
-  doc.text('• Indexation énergie : +5.0 %/an.', c3X + 3.5, detailY + 49.5);
-  doc.text('• Dégradation batterie : 1.0 %/an.', c3X + 3.5, detailY + 53.5);
+  doc.text('• Indexation énergie : +5.0 %/an.', c3X + 3.5, detailY + 45.0);
+  doc.text('• Dégradation batterie : 1.0 %/an.', c3X + 3.5, detailY + 48.8);
 
   // Cartouche total bas colonne 3
-  const totY3 = detailY + subCardH - 10;
+  const totY3 = detailY + subCardH - 8.8;
   doc.setFillColor(255, 247, 237);
-  doc.roundedRect(c3X + 2, totY3, colW - 5, 8, 1.2, 1.2, 'F');
+  doc.roundedRect(c3X + 2, totY3, colW - 5, 7.2, 1.2, 1.2, 'F');
   doc.setDrawColor(254, 215, 170);
-  doc.roundedRect(c3X + 2, totY3, colW - 5, 8, 1.2, 1.2, 'D');
+  doc.roundedRect(c3X + 2, totY3, colW - 5, 7.2, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.2);
+  doc.setFontSize(6.8);
   doc.setTextColor(154, 52, 18);
-  doc.text(`Total : -${formatNum(totalAnnualOpex)} € HT/an`, c3X + colW / 2 - 1, totY3 + 5.3, { align: 'center' });
+  doc.text(`Total : -${formatNum(totalAnnualOpex)} € HT/an`, c3X + colW / 2 - 1, totY3 + 4.8, { align: 'center' });
 
   // Pied de page Page 1 (au-dessus duquel le cadre 5 est maintenant positionné en toute sécurité)
   doc.setFont('helvetica', 'normal');

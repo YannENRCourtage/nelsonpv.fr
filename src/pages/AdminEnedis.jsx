@@ -564,14 +564,36 @@ export default function AdminEnedis() {
               {/* Colonne droite (9/12) — flex pour aligner JSON avec Détails techniques */}
               <div className="lg:col-span-9 flex flex-col gap-4">
                 {!data ? (
-                  <div className="h-full min-h-[600px] border-4 border-dashed border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-muted-foreground p-12 text-center bg-white shadow-inner transition-all">
-                    <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center mb-8 border border-slate-100 shadow-sm animate-bounce duration-[3000ms]">
-                      <LayoutDashboard size={56} className="text-slate-200" />
+                  <div className="flex flex-col gap-6">
+                    <div className="border border-slate-200 bg-white rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 text-left">
+                        <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0 border border-blue-100">
+                          <LayoutDashboard size={24} />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-bold text-slate-900">Module de Stockage Intelligent BESS</h4>
+                          <p className="text-xs text-slate-500">
+                            Simulez une proposition de stockage immédiatement ci-dessous (sur profil type de référence ou après interrogation d'un PDL à gauche).
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold px-3.5 py-1.5 bg-blue-50 text-blue-700 rounded-full shrink-0 border border-blue-200">
+                        Mode simulation autonome
+                      </span>
                     </div>
-                    <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Prêt à visualiser</h3>
-                    <p className="max-w-md text-lg text-slate-500 leading-relaxed">
-                      Utilisez le panneau de gauche pour interroger un point de livraison. Les graphiques de consommation et de puissance s'afficheront ici.
-                    </p>
+
+                    {/* PROPOSITION DE STOCKAGE INTELLIGENT & SIMULATION DE RENTABILITÉ (VISIBLE MÊME HORS CHARGEMENT DE PDL) */}
+                    <div id="safra-proposal-section">
+                      <SafraBessProposalModule
+                        prm={prm || '50009371514981'}
+                        titulaire={ownerName || 'Client Professionnel (Simulation)'}
+                        adresse={ownerAddress || 'LIEU DIT TERRES VIEILLES, 24310 BRANTOME EN PERIGORD'}
+                        consoAnnuelleKwh={totalKwh || 211781}
+                        consoJourMoyKwh={avgDaily || 578.6}
+                        peakKw={peakKw || 90.0}
+                        toast={toast}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="flex-1 animate-in fade-in slide-in-from-right-8 duration-700 flex flex-col gap-4">

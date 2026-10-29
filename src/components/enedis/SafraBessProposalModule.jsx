@@ -52,10 +52,18 @@ export default function SafraBessProposalModule({
   peakKw = 90.0,
   toast = () => {}
 }) {
+  // Valeurs sécurisées par défaut pour fonctionner en mode autonome (même sans charger de PDL)
+  const safeConsoAnnuelle = Number(consoAnnuelleKwh) > 0 ? Number(consoAnnuelleKwh) : 211781;
+  const safeConsoJour = Number(consoJourMoyKwh) > 0 ? Number(consoJourMoyKwh) : 578.6;
+  const safePeakKw = Number(peakKw) > 0 ? Number(peakKw) : 90.0;
+  const safePrm = prm || 'Simulation libre (hors PDL)';
+  const safeTitulaire = titulaire || 'Client Professionnel (Simulation)';
+  const safeAdresse = adresse || 'LIEU DIT TERRES VIEILLES, 24310 BRANTOME EN PERIGORD';
+
   // Recommandation initiale automatique
   const autoRecommendation = useMemo(() => {
-    return recommendSafraModel(consoJourMoyKwh, peakKw);
-  }, [consoJourMoyKwh, peakKw]);
+    return recommendSafraModel(safeConsoJour, safePeakKw);
+  }, [safeConsoJour, safePeakKw]);
 
   // État local de la configuration
   const [selectedModelId, setSelectedModelId] = useState(autoRecommendation.primaryModel.id);
@@ -111,9 +119,9 @@ export default function SafraBessProposalModule({
     const customInstall = Math.max(0, customTurnkey - customPrice);
 
     return computeSafraSimulation({
-      consoAnnuelleKwh,
-      consoJourMoyKwh,
-      peakKw,
+      consoAnnuelleKwh: safeConsoAnnuelle,
+      consoJourMoyKwh: safeConsoJour,
+      peakKw: safePeakKw,
       selectedModel: currentModel,
       quantity,
       customPriceHt: customPrice,
@@ -122,12 +130,12 @@ export default function SafraBessProposalModule({
       includeGridConnection,
       forcedGridConnection,
       customDistanceMeters,
-      prmAddress: adresse
+      prmAddress: safeAdresse
     });
   }, [
-    consoAnnuelleKwh,
-    consoJourMoyKwh,
-    peakKw,
+    safeConsoAnnuelle,
+    safeConsoJour,
+    safePeakKw,
     currentModel,
     quantity,
     customPrices,
@@ -135,7 +143,7 @@ export default function SafraBessProposalModule({
     includeGridConnection,
     forcedGridConnection,
     customDistanceMeters,
-    adresse
+    safeAdresse
   ]);
 
   // Export PDF
@@ -145,12 +153,12 @@ export default function SafraBessProposalModule({
       setIsExportingPdf(true);
       generateSafraProposalPdf({
         simResult,
-        prm,
-        titulaire,
-        adresse,
-        consoAnnuelleKwh,
-        consoJourMoyKwh,
-        peakKw
+        prm: safePrm,
+        titulaire: safeTitulaire,
+        adresse: safeAdresse,
+        consoAnnuelleKwh: safeConsoAnnuelle,
+        consoJourMoyKwh: safeConsoJour,
+        peakKw: safePeakKw
       });
       toast({
         title: "Proposition commerciale générée",
@@ -220,8 +228,7 @@ export default function SafraBessProposalModule({
             PROPOSITION DE STOCKAGE INTELLIGENT
           </h2>
           <p className="text-sm text-slate-400 max-w-3xl">
-            Étude de dimensionnement optimisée pour le profil de consommation du PRM{' '}
-            <strong className="text-white font-mono">{prm}</strong>.
+            Étude de dimensionnement optimisée pour le profil de consommation {prm ? <>du PRM <strong className="text-white font-mono">{prm}</strong></> : <>de référence (simulateur autonome)</>}.
           </p>
         </div>
 
