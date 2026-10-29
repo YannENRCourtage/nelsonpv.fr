@@ -694,9 +694,10 @@ export function generateSafraProposalPdf({
   doc.text('LFP (Lithium-Fer-Phosphate)', b4X + 3, bY + 8.2);
   doc.text('à refroidissement liquide.', b4X + 3, bY + 11.5);
 
-  // ── 5 CARTES KPI FINANCIÈRES (AVEC TRI PROJET SORTI DANS UN CADRE DÉDIÉ) ──
+  // ── 6 CARTES KPI FINANCIÈRES (AVEC TRI PROJET ET GAIN CUMULÉ 20 ANS DÉDIÉS) ──
   const kpiY = c2Y + c2H + 3.5; // 97
-  const kpiW = 34.4;
+  const kpiW = 28.5;
+  const kpiGap = 2.2;
   const kpiH = 20;
 
   // KPI 1 : Économies Facture
@@ -705,17 +706,17 @@ export function generateSafraProposalPdf({
   doc.setDrawColor(187, 247, 208);
   doc.roundedRect(14, kpiY, kpiW, kpiH, 2, 2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.2);
+  doc.setFontSize(5.3);
   doc.setTextColor(22, 101, 52);
-  doc.text('ÉCONOMIES FACTURE', 16.5, kpiY + 4.8);
-  doc.setFontSize(9.5);
-  doc.text(`${formatNum(annualBillSavings)} €/an`, 16.5, kpiY + 11);
-  doc.setFontSize(5.5);
+  doc.text('ÉCONOMIES FACTURE', 16, kpiY + 4.8);
+  doc.setFontSize(8.2);
+  doc.text(`${formatNum(annualBillSavings)} €/an`, 16, kpiY + 11);
+  doc.setFontSize(5.2);
   doc.setFont('helvetica', 'normal');
-  doc.text('HP/HC + Écrêtage', 16.5, kpiY + 16);
+  doc.text('HP/HC + Écrêtage', 16, kpiY + 16);
 
   // KPI 2 : Revenus Réseau
-  const kpi2X = 14 + kpiW + 2.5; // 50.9
+  const kpi2X = 14 + kpiW + kpiGap; // 44.7
   if (includeGridConnection) {
     doc.setFillColor(239, 246, 255);
     doc.roundedRect(kpi2X, kpiY, kpiW, kpiH, 2, 2, 'F');
@@ -730,63 +731,82 @@ export function generateSafraProposalPdf({
     doc.setTextColor(100, 116, 139);
   }
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.2);
-  doc.text('REVENUS RÉSEAU', kpi2X + 2.5, kpiY + 4.8);
-  doc.setFontSize(9.5);
-  doc.text(includeGridConnection ? `${formatNum(gridAnnualRevenues)} €/an` : '0 € HT/an', kpi2X + 2.5, kpiY + 11);
-  doc.setFontSize(5.5);
+  doc.setFontSize(5.3);
+  doc.text('REVENUS RÉSEAU', kpi2X + 2, kpiY + 4.8);
+  doc.setFontSize(8.2);
+  doc.text(includeGridConnection ? `${formatNum(gridAnnualRevenues)} €/an` : '0 € HT/an', kpi2X + 2, kpiY + 11);
+  doc.setFontSize(5.2);
   doc.setFont('helvetica', 'normal');
-  doc.text(includeGridConnection ? 'Services Système' : 'Autonomie seule', kpi2X + 2.5, kpiY + 16);
+  doc.text(includeGridConnection ? 'Services Système' : 'Autonomie seule', kpi2X + 2, kpiY + 16);
 
   // KPI 3 : Investissement Total (CAPEX)
-  const kpi3X = kpi2X + kpiW + 2.5; // 87.8
+  const kpi3X = kpi2X + kpiW + kpiGap; // 75.4
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(kpi3X, kpiY, kpiW, kpiH, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
   doc.roundedRect(kpi3X, kpiY, kpiW, kpiH, 2, 2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.2);
+  doc.setFontSize(5.0);
   doc.setTextColor(71, 85, 105);
-  doc.text('INVESTISSEMENT TOTAL', kpi3X + 2.5, kpiY + 4.8);
-  doc.setFontSize(9.5);
+  doc.text('INVESTISSEMENT TOTAL', kpi3X + 2, kpiY + 4.8);
+  doc.setFontSize(8.0);
   doc.setTextColor(15, 23, 42);
-  doc.text(`${formatNum(totalCapexHt)} € HT`, kpi3X + 2.5, kpiY + 11);
-  doc.setFontSize(5.5);
+  doc.text(`${formatNum(totalCapexHt)} € HT`, kpi3X + 2, kpiY + 11);
+  doc.setFontSize(5.2);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
-  doc.text(pricingMode === 'HARDWARE_ONLY' ? 'Matériel seul' : 'Clé en main posé', kpi3X + 2.5, kpiY + 16);
+  doc.text(pricingMode === 'HARDWARE_ONLY' ? 'Matériel seul' : 'Clé en main posé', kpi3X + 2, kpiY + 16);
 
   // KPI 4 : Temps de retour
-  const kpi4X = kpi3X + kpiW + 2.5; // 124.7
+  const kpi4X = kpi3X + kpiW + kpiGap; // 106.1
   doc.setFillColor(255, 247, 237);
   doc.roundedRect(kpi4X, kpiY, kpiW, kpiH, 2, 2, 'F');
   doc.setDrawColor(254, 215, 170);
   doc.roundedRect(kpi4X, kpiY, kpiW, kpiH, 2, 2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.2);
+  doc.setFontSize(5.3);
   doc.setTextColor(154, 52, 18);
-  doc.text('TEMPS DE RETOUR', kpi4X + 2.5, kpiY + 4.8);
-  doc.setFontSize(9.5);
-  doc.text(`${safePayback} ans`, kpi4X + 2.5, kpiY + 11);
-  doc.setFontSize(5.5);
+  doc.text('TEMPS DE RETOUR', kpi4X + 2, kpiY + 4.8);
+  doc.setFontSize(8.2);
+  doc.text(`${safePayback} ans`, kpi4X + 2, kpiY + 11);
+  doc.setFontSize(5.2);
   doc.setFont('helvetica', 'normal');
-  doc.text('Amortissement brut', kpi4X + 2.5, kpiY + 16);
+  doc.text('Amortissement brut', kpi4X + 2, kpiY + 16);
 
   // KPI 5 : TRI Projet (Cadre dédié avec couleur distincte violet)
-  const kpi5X = kpi4X + kpiW + 2.5; // 161.6
+  const kpi5X = kpi4X + kpiW + kpiGap; // 136.8
   doc.setFillColor(245, 243, 255); // Fond violet très clair
   doc.roundedRect(kpi5X, kpiY, kpiW, kpiH, 2, 2, 'F');
   doc.setDrawColor(221, 214, 254);
   doc.roundedRect(kpi5X, kpiY, kpiW, kpiH, 2, 2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.2);
+  doc.setFontSize(5.3);
   doc.setTextColor(109, 40, 217); // Texte violet soutenu
-  doc.text('TRI PROJET', kpi5X + 2.5, kpiY + 4.8);
-  doc.setFontSize(9.5);
-  doc.text(`${safeIrr} %`, kpi5X + 2.5, kpiY + 11);
-  doc.setFontSize(5.5);
+  doc.text('TRI PROJET', kpi5X + 2, kpiY + 4.8);
+  doc.setFontSize(8.2);
+  doc.text(`${safeIrr} %`, kpi5X + 2, kpiY + 11);
+  doc.setFontSize(5.2);
   doc.setFont('helvetica', 'normal');
-  doc.text('Rentabilité brute', kpi5X + 2.5, kpiY + 16);
+  doc.text('Rentabilité brute', kpi5X + 2, kpiY + 16);
+
+  // KPI 6 : Gain cumulé à 20 ans (Cadre dédié avec couleur distincte cyan/émeraude)
+  const kpi6X = kpi5X + kpiW + kpiGap; // 167.5 (largeur 28.5mm, s'aligne à 196mm)
+  const gain20Val = netGain20YearsHt ?? netGain15YearsHt ?? netGain12YearsHt ?? 0;
+  doc.setFillColor(240, 253, 250); // Fond teal/cyan très clair
+  doc.roundedRect(kpi6X, kpiY, kpiW, kpiH, 2, 2, 'F');
+  doc.setDrawColor(153, 246, 228);
+  doc.roundedRect(kpi6X, kpiY, kpiW, kpiH, 2, 2, 'D');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(5.0);
+  doc.setTextColor(13, 148, 136); // Teal 600
+  doc.text('GAIN CUMULÉ 20 ANS', kpi6X + 2, kpiY + 4.8);
+  doc.setFontSize(7.8);
+  doc.setTextColor(15, 118, 110); // Teal 700
+  doc.text(formatSignedNum(gain20Val, 0, ' € HT'), kpi6X + 2, kpiY + 11);
+  doc.setFontSize(5.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text('Trésorerie nette', kpi6X + 2, kpiY + 16);
 
   // ── CADRE 3 : DÉCOMPOSITION TECHNIQUE DES GAINS SUR FACTURE ──
   const table1TitleY = kpiY + kpiH + 4.5; // 121.5

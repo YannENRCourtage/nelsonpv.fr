@@ -21,7 +21,8 @@ import {
   Check,
   X,
   RefreshCw,
-  Lock
+  Lock,
+  Coins
 } from 'lucide-react';
 import {
   AreaChart,
@@ -510,35 +511,37 @@ export default function SafraBessProposalModule({
         )}
       </div>
 
-      {/* ─── LES 4 CARTES KPI FINANCIÈRES ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
+      {/* ─── LES 6 CARTES KPI FINANCIÈRES ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 relative z-10">
         {/* KPI 1 : Économies facture / an */}
-        <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
-            <span>Économies sur facture / an</span>
-            <TrendingUp size={16} className="text-emerald-400" />
-          </div>
-          <div className="text-3xl font-black text-emerald-400">
-            {simResult.annualBillSavings.toLocaleString('fr-FR')} <span className="text-sm font-bold text-white">€ HT/an</span>
+        <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
+              <span>Économies facture</span>
+              <TrendingUp size={16} className="text-emerald-400" />
+            </div>
+            <div className="text-2xl font-black text-emerald-400">
+              {simResult.annualBillSavings.toLocaleString('fr-FR')} <span className="text-xs font-bold text-white">€ HT/an</span>
+            </div>
           </div>
           <p className="text-[11px] text-slate-400">
-            Écrêtage des pointes TURPE : <strong>{simResult.peakShavingSavingsYear.toLocaleString('fr-FR')} €</strong> + Arbitrage HP/HC : <strong>{simResult.arbitrageSavingsYear.toLocaleString('fr-FR')} €</strong>
+            HP/HC + Écrêtage
           </p>
         </div>
 
         {/* KPI 2 : Revenus réseau supplémentaires / an */}
-        <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
-            <span>Revenus réseau / an</span>
-            <Activity size={16} className={includeGridConnection ? 'text-blue-400' : 'text-slate-500'} />
-          </div>
-          <div className={`text-3xl font-black ${includeGridConnection ? 'text-blue-400' : 'text-slate-500'}`}>
-            {includeGridConnection ? `${simResult.gridAnnualRevenues.toLocaleString('fr-FR')} €` : '0 €'} <span className="text-sm font-bold text-slate-400">HT/an</span>
+        <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
+              <span>Revenus réseau</span>
+              <Activity size={16} className={includeGridConnection ? 'text-blue-400' : 'text-slate-500'} />
+            </div>
+            <div className={`text-2xl font-black ${includeGridConnection ? 'text-blue-400' : 'text-slate-500'}`}>
+              {includeGridConnection ? `${simResult.gridAnnualRevenues.toLocaleString('fr-FR')} €` : '0 €'} <span className="text-xs font-bold text-slate-400">HT/an</span>
+            </div>
           </div>
           <p className="text-[11px] text-slate-400">
-            {includeGridConnection
-              ? `Services système FCR, Capacité RTE & Arbitrage spot (net agrégateur)`
-              : `Désactivé (Mode autonomie seule sans injection)`}
+            {includeGridConnection ? 'Services Système' : 'Autonomie seule'}
           </p>
         </div>
 
@@ -546,7 +549,7 @@ export default function SafraBessProposalModule({
         <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-              <span>Investissement Total HT</span>
+              <span>Investissement Total</span>
               <Building size={16} className="text-orange-400" />
             </div>
 
@@ -555,50 +558,83 @@ export default function SafraBessProposalModule({
               <button
                 type="button"
                 onClick={() => setPricingMode('TURNKEY')}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
+                className={`px-2 py-0.5 rounded-lg transition-all ${
                   pricingMode === 'TURNKEY'
                     ? 'bg-blue-600 text-white shadow-sm font-black'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Clé en main posé
+                Clé en main
               </button>
               <button
                 type="button"
                 onClick={() => setPricingMode('HARDWARE_ONLY')}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
+                className={`px-2 py-0.5 rounded-lg transition-all ${
                   pricingMode === 'HARDWARE_ONLY'
                     ? 'bg-blue-600 text-white shadow-sm font-black'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Matériel seul
+                Matériel
               </button>
             </div>
 
-            <div className="text-3xl font-black text-white">
-              {simResult.totalCapexHt.toLocaleString('fr-FR')} <span className="text-sm font-bold text-slate-400">€ HT</span>
+            <div className="text-2xl font-black text-white">
+              {simResult.totalCapexHt.toLocaleString('fr-FR')} <span className="text-xs font-bold text-slate-400">€ HT</span>
             </div>
           </div>
           <p className="text-[11px] text-slate-400">
-            {pricingMode === 'TURNKEY'
-              ? `Batterie : ${simResult.hardwareCapex.toLocaleString('fr-FR')} € + Pose : ${simResult.installCapex.toLocaleString('fr-FR')} € ${includeGridConnection ? `+ Racc : ${simResult.connectionCapex.toLocaleString('fr-FR')} €` : ''}`
-              : `Fourniture matériel seul : ${simResult.hardwareCapex.toLocaleString('fr-FR')} € (hors pose) ${includeGridConnection ? `+ Racc : ${simResult.connectionCapex.toLocaleString('fr-FR')} €` : ''}`
-            }
+            {pricingMode === 'HARDWARE_ONLY' ? 'Matériel seul' : 'Clé en main posé'}
           </p>
         </div>
 
-        {/* KPI 4 : Temps de retour & Gain net 20 ans */}
-        <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
-            <span>Temps de retour (ROI)</span>
-            <ShieldCheck size={16} className="text-amber-400" />
-          </div>
-          <div className="text-3xl font-black text-amber-400">
-            {simResult.safePayback} <span className="text-sm font-bold text-white">ans</span>
+        {/* KPI 4 : Temps de retour */}
+        <div className="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-5 space-y-2 shadow-lg flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
+              <span>Temps de retour</span>
+              <ShieldCheck size={16} className="text-amber-400" />
+            </div>
+            <div className="text-2xl font-black text-amber-400">
+              {simResult.safePayback} <span className="text-sm font-bold text-white">ans</span>
+            </div>
           </div>
           <p className="text-[11px] text-slate-400">
-            Gain net cumulé à 20 ans : <strong className="text-emerald-400 font-bold">{(simResult.netGain20YearsHt ?? simResult.netGain15YearsHt ?? simResult.netGain12YearsHt) >= 0 ? `+${(simResult.netGain20YearsHt ?? simResult.netGain15YearsHt ?? simResult.netGain12YearsHt).toLocaleString('fr-FR')}` : `-${Math.abs(simResult.netGain20YearsHt ?? simResult.netGain15YearsHt ?? simResult.netGain12YearsHt).toLocaleString('fr-FR')}`} € HT</strong> (TRI : {simResult.safeIrr}%)
+            Amortissement brut
+          </p>
+        </div>
+
+        {/* KPI 5 : TRI Projet */}
+        <div className="bg-slate-800/80 border border-purple-500/30 rounded-3xl p-5 space-y-2 shadow-lg flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-purple-300 text-xs font-bold uppercase tracking-wider mb-1">
+              <span>TRI Projet</span>
+              <TrendingUp size={16} className="text-purple-400" />
+            </div>
+            <div className="text-2xl font-black text-purple-400">
+              {simResult.safeIrr} <span className="text-sm font-bold text-white">%</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Rentabilité brute
+          </p>
+        </div>
+
+        {/* KPI 6 : Gain cumulé à 20 ans */}
+        <div className="bg-slate-800/80 border border-teal-500/30 rounded-3xl p-5 space-y-2 shadow-lg flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-teal-300 text-xs font-bold uppercase tracking-wider mb-1">
+              <span>Gain cumulé 20 ans</span>
+              <Coins size={16} className="text-teal-400" />
+            </div>
+            <div className="text-2xl font-black text-teal-300">
+              {(simResult.netGain20YearsHt ?? simResult.netGain15YearsHt ?? simResult.netGain12YearsHt) >= 0
+                ? `+${(simResult.netGain20YearsHt ?? simResult.netGain15YearsHt ?? simResult.netGain12YearsHt).toLocaleString('fr-FR')}`
+                : `-${Math.abs(simResult.netGain20YearsHt ?? simResult.netGain15YearsHt ?? simResult.netGain12YearsHt).toLocaleString('fr-FR')}`} <span className="text-xs font-bold text-slate-400">€ HT</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Trésorerie nette
           </p>
         </div>
       </div>
