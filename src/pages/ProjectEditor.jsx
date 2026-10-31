@@ -579,7 +579,11 @@ export default function ProjectEditor() {
       const next = [...captures];
       next[slotIndex] = dataUrl;
       setCaptures(next);
-      updateProject({ captures: next });
+      const captureLayers = { ...(project?.captureLayers || {}) };
+      if (activeLayers && activeLayers.size > 0) {
+        captureLayers[slotIndex] = Array.from(activeLayers);
+      }
+      updateProject({ captures: next, captureLayers });
       toast({ title: "Capture réussie !", description: `La vue a été enregistrée dans l'emplacement ${slotIndex + 1}.` });
 
     } catch (err) {
@@ -635,7 +639,11 @@ export default function ProjectEditor() {
       const next = [...captures];
       next[slotIndex] = dataUrl;
       setCaptures(next);
-      updateProject({ captures: next });
+      const captureLayers = { ...(project?.captureLayers || {}) };
+      if (activeLayers && activeLayers.size > 0) {
+        captureLayers[slotIndex] = Array.from(activeLayers);
+      }
+      updateProject({ captures: next, captureLayers });
       toast({ title: "Capture réussie !", description: `La vue a été enregistrée dans l'emplacement ${slotIndex + 1}.` });
     } catch (error) {
       console.error('Capture error:', error);
@@ -650,12 +658,14 @@ export default function ProjectEditor() {
     setCaptures(next);
     const captureTypes = { ...(project?.captureTypes || {}) };
     delete captureTypes[index];
-    updateProject({ captures: next, captureTypes });
+    const captureLayers = { ...(project?.captureLayers || {}) };
+    delete captureLayers[index];
+    updateProject({ captures: next, captureTypes, captureLayers });
   };
 
   useEffect(() => {
     const handleCaptureDone = (e) => {
-      const { slotIndex, dataUrl, type, tab } = e.detail || {};
+      const { slotIndex, dataUrl, type, tab, layers } = e.detail || {};
       const next = [...captures];
       next[slotIndex] = dataUrl;
       setCaptures(next);
@@ -665,12 +675,15 @@ export default function ProjectEditor() {
       } else {
         delete captureTypes[slotIndex];
       }
-      updateProject({ captures: next, captureTypes });
+      const captureLayers = { ...(project?.captureLayers || {}) };
+      const currentLayers = (layers && layers.length > 0) ? layers : (activeLayers && activeLayers.size > 0 ? Array.from(activeLayers) : []);
+      captureLayers[slotIndex] = currentLayers;
+      updateProject({ captures: next, captureTypes, captureLayers });
       toast({ title: "Capture réussie !", description: `La vue a été enregistrée dans l'emplacement ${slotIndex + 1}.` });
     };
     window.addEventListener("map:capture-done", handleCaptureDone);
     return () => window.removeEventListener("map:capture-done", handleCaptureDone);
-  }, [captures, project?.captureTypes, updateProject]);
+  }, [captures, project?.captureTypes, project?.captureLayers, activeLayers, updateProject]);
 
   const handleAddressFound = (location) => {
     const { label, lat, lng, feature, properties } = location;

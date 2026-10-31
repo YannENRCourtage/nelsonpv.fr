@@ -27,7 +27,7 @@ export default function ProjectMap({ onGpsUpdate }) {
   // Écoute l'événement de retour de MapElements
   useEffect(() => {
     const handleCaptureDone = (e) => {
-        const { slotIndex, dataUrl, type, tab } = e.detail || {};
+        const { slotIndex, dataUrl, type, tab, layers } = e.detail || {};
         const next = [...captures];
         next[slotIndex] = dataUrl;
         // Met à jour l'objet projet principal
@@ -38,7 +38,9 @@ export default function ProjectMap({ onGpsUpdate }) {
           } else {
             delete captureTypes[slotIndex];
           }
-          return { ...prev, captures: next, captureTypes };
+          const captureLayers = { ...(prev?.captureLayers || {}) };
+          if (layers && layers.length > 0) { captureLayers[slotIndex] = layers; }
+          return { ...prev, captures: next, captureTypes, captureLayers };
         });
     };
     

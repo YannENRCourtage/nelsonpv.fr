@@ -107,6 +107,71 @@ function isHtaMapImage(img) {
   }
 }
 
+const formatActiveLayers = (rawLayers) => {
+  const LAYER_LABELS = {
+    cadastre: 'Cadastre DGFiP',
+    ownersMoral: 'Propriétaires parcelles',
+    filiationParcelle: 'Filiation parcelle',
+    zoneInondable: 'Zone Inondable (PPRI)',
+    zonesHumides: 'Zones Humides',
+    argilesRGA: 'Argiles (RGA)',
+    sitesPollues: 'Sites Pollués',
+    courbesNiveau: 'Courbes de niveau IGN',
+    batiments: 'Bâtiments BD Topo',
+    rpg: 'Parcelles agricoles (RPG)',
+    hydro: 'Hydrographie',
+    routes: 'Réseau routier',
+    voiesFerrees: 'Voies ferrées',
+    communes: 'Limites communales',
+    'ZNIEFF 1': 'ZNIEFF 1',
+    'ZNIEFF 2': 'ZNIEFF 2',
+    'Natura 2000 Oiseaux': 'Natura 2000 Oiseaux',
+    'Natura 2000 Habitat': 'Natura 2000 Habitat',
+    dgac: 'Servitude DGAC',
+    lignesHTB: 'Lignes HTB RTE',
+    enedisHTA: 'Réseau HTA Enedis (20 kV)',
+    enedisLigneBT: 'Lignes BT Enedis',
+    enedisPostes: 'Postes HTA/BT Enedis',
+    gaz: 'Réseau Gaz',
+    abf: 'Périmètre ABF',
+    sdis: 'Points d’eau SDIS',
+    feuxForetOLD: 'Feux de forêt (OLD)',
+    lidarMNH: 'LiDAR HD Hauteur',
+    cartofriches: 'Cartofriches',
+    parkingSup500: 'Parkings >500m²',
+    cadastreSolaire: 'Cadastre solaire',
+    zaer: 'ZAER',
+    loiLittoral: 'Loi littoral',
+    banPlus: 'Base Adresses Nationale',
+    postesSourcesRTE: 'Postes Sources RTE',
+    installationsProd: 'Installations Prod. EnR',
+    s3renr: 'Capacités S3REnR',
+    consoElecCommune: 'Conso. électrique commune',
+    dpe: 'DPE des bâtiments',
+    distanceReglRoutes: 'Recul réglementaire routes',
+    plu: 'Zonage PLU (GPU)',
+    ortho: 'Photographie aérienne (Orthophoto IGN)',
+    satellite: 'Photographie aérienne (Orthophoto IGN)'
+  };
+
+  const list = [];
+  list.push('Photographie aérienne (Orthophoto IGN)');
+
+  if (Array.isArray(rawLayers) && rawLayers.length > 0) {
+    rawLayers.forEach(l => {
+      const clean = LAYER_LABELS[l] || l;
+      if (clean && !list.includes(clean)) {
+        list.push(clean);
+      }
+    });
+  } else {
+    list.push('Cadastre DGFiP');
+    list.push('Réseau HTA Enedis (20 kV)');
+  }
+
+  return list.join(', ');
+};
+
 export const generatePdfForProject = async (projectData) => {
   if (!projectData) {
     toast({ title: "Erreur", description: "Aucune donnée de projet fournie." });
@@ -326,23 +391,37 @@ export const generatePdfForProject = async (projectData) => {
             if (substationsImgData) {
               doc.addImage(substationsImgData, 'PNG', substationsX, substationsY, substationsPdfWidth, substationsPdfHeight);
             }
-          } else {
+                    } else {
             // Pour les autres pages de capture (carte satellite standard) :
-            // Comportement standard inchangé avec la légende des symboles
+            // Comportement standard avec légende des symboles et calques actifs sous la carte en italique
             const capturePdfWidth = doc.internal.pageSize.getWidth() - 30;
-            const maxH = doc.internal.pageSize.getHeight() - 25 - (legendPdfHeight || 0);
+            const maxH = doc.internal.pageSize.getHeight() - 31 - (legendPdfHeight || 0);
 
             const ratio = Math.min(capturePdfWidth / imgPropsCap.width, maxH / imgPropsCap.height);
             const finalW = imgPropsCap.width * ratio;
             const finalH = imgPropsCap.height * ratio;
 
             const x = (doc.internal.pageSize.getWidth() - finalW) / 2;
-            const y = 15;
+            const y = 14;
 
             doc.addImage(result, 'PNG', x, y, finalW, finalH);
 
+            // Calques actifs immédiatement en bas de la carte en italique (non affichés sur la page HTA)
+            const rawLayers = projectData.captureLayers?.[slotIndex] ||
+              (projectData.activeLayers ? (Array.isArray(projectData.activeLayers) ? projectData.activeLayers : Array.from(projectData.activeLayers)) : null);
+            
+            const activeLayersText = formatActiveLayers(rawLayers);
+            const textY = y + finalH + 3.8;
+
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(7.5);
+            doc.setTextColor(100, 116, 139);
+            doc.text(`Calques actifs : ${activeLayersText}`, doc.internal.pageSize.getWidth() / 2, textY, { align: 'center' });
+            doc.setFont('helvetica', 'normal');
+
             if (legendImgData) {
-              doc.addImage(legendImgData, 'PNG', legendX, legendY, legendPdfWidth, legendPdfHeight);
+              const adjustedLegendY = Math.max(textY + 2.5, legendY);
+              doc.addImage(legendImgData, 'PNG', legendX, adjustedLegendY, legendPdfWidth, legendPdfHeight);
             }
           }
         } catch (e) {

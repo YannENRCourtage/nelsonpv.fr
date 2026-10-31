@@ -15,7 +15,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot.js';
-import { BATITECH_MODELS, getRegionForDepartment } from '@/data/sechoirBatitechModels.js';
+import { BATITECH_MODELS, getRegionForDepartment, DRYING_MATERIALS, DRYING_YIELDS, getDryingCapacity } from '@/data/sechoirBatitechModels.js';
 import { BATITECH_3D_IMAGES } from '@/data/batitechImagesBase64.js';
 import { ENR_COURTAGE_LOGO_BASE64 } from '@/assets/logoBase64.js';
 import useSechoirStore from '@/stores/useSechoirStore.js';
@@ -519,6 +519,97 @@ export async function generateSechoirPDF({
   const totalGainsConsolide = (r.deltaEBE || 0) + (withBattery ? bAnnualGains : 0);
   const roiConsolide = totalGainsConsolide > 0 ? (totalCapexConsolide / totalGainsConsolide).toFixed(1) : baseRoi;
 
+  // ─── RÉSOLTION DES 5 BESOINS EN SÉCHAGE (MATIÈRES & VALORISATION) ───
+  const allDryingMaterials = (materials && materials.length > 0)
+    ? materials
+    : (sechoirState.materials && sechoirState.materials.length > 0
+        ? sechoirState.materials
+        : DRYING_MATERIALS);
+
+  const canonicalIds = ['fourrage_vrac', 'bottes_carrees', 'cereales_ble', 'cereales_mais', 'plaquettes_bois'];
+  const fiveNeeds = canonicalIds.map(id => {
+    const fromList = allDryingMaterials.find(m => m.id === id);
+    const defaultRef = DRYING_MATERIALS.find(m => m.id === id) || {};
+    const yieldVal = Number(fromList?.yieldPerHa || defaultRef?.yieldPerHa || DRYING_YIELDS[id] || 6.0);
+    const pvVal = Number(fromList?.plusValueQualite ?? defaultRef?.defaultPlusValueQualite ?? 0);
+    const eeVal = Number(fromList?.economieEnergie ?? defaultRef?.defaultEconomieEnergie ?? 0);
+    const vol = Number(fromList?.volume ?? 0);
+    const isEnabled = Boolean(fromList?.enabled && vol > 0);
+    const cap = getDryingCapacity(resolvedModelId, id, departement) || BATITECH_MODELS[resolvedModelId]?.capacitesMax?.[id] || defaultRef?.defaultVolume || 100;
+    const surfVal = vol > 0 ? (Math.round((vol / yieldVal) * 10) / 10) : 0;
+    const gainTot = vol * (pvVal + eeVal);
+
+    return {
+      id,
+      label: fromList?.label || defaultRef.label || id,
+      shortLabel: fromList?.shortLabel || defaultRef.shortLabel || id,
+      icon: fromList?.icon || defaultRef.icon || '🌿',
+      unit: fromList?.unit || defaultRef.unit || 't MS/an',
+      volume: vol,
+      surface: surfVal,
+      yieldVal,
+      pvVal,
+      eeVal,
+      gainTot,
+      cap,
+      enabled: isEnabled
+    };
+  });
+
+  const renderedMaterialsCards = fiveNeeds.map(m => {
+    if (m.enabled && m.volume > 0) {
+      return `
+        <div style="background: #ffffff; border: 1.5px solid #10b981; border-radius: 8px; padding: 4px 6px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 1px 3px rgba(16, 185, 129, 0.12);">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1px;">
+              <span style="font-size: 7.8pt; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${m.label}">
+                ${m.icon} ${m.shortLabel}
+              </span>
+              <span style="background: #dcfce7; color: #166534; font-size: 6.2pt; font-weight: 800; padding: 0.5px 3px; border-radius: 3px;">RETENU</span>
+            </div>
+            <div style="font-size: 9.5pt; font-weight: 900; color: #0f172a; margin: 1px 0;">
+              ${m.volume} <span style="font-size: 6.8pt; font-weight: normal; color: #64748b;">t MS/an</span>
+            </div>
+            <div style="font-size: 7pt; color: #334155; line-height: 1.2;">
+              <div>Surface : <strong style="color: #047857;">${m.surface} Ha</strong> (${m.yieldVal} t/ha)</div>
+              <div>Barème : <strong>${m.pvVal} €</strong> qual. + <strong>${m.eeVal} €</strong> én.</div>
+              <div style="color: #64748b; font-size: 6.5pt;">Capacité modèle : ${m.cap} t/an</div>
+            </div>
+          </div>
+          <div style="margin-top: 2px; padding-top: 2px; border-top: 1px dashed #cbd5e1; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 6.5pt; color: #64748b; text-transform: uppercase; font-weight: 700;">Gain annuel</span>
+            <span style="font-size: 8.8pt; font-weight: 900; color: #16a34a;">+${fmt(m.gainTot)} €/an</span>
+          </div>
+        </div>
+      `;
+    }
+    return `
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 4px 6px; display: flex; flex-direction: column; justify-content: space-between; opacity: 0.72;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1px;">
+            <span style="font-size: 7.8pt; font-weight: 700; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${m.label}">
+              ${m.icon} ${m.shortLabel}
+            </span>
+            <span style="background: #f1f5f9; color: #64748b; font-size: 6.2pt; font-weight: 700; padding: 0.5px 3px; border-radius: 3px;">0 t</span>
+          </div>
+          <div style="font-size: 8.8pt; font-weight: 700; color: #94a3b8; margin: 1px 0;">
+            Non retenu
+          </div>
+          <div style="font-size: 7pt; color: #94a3b8; line-height: 1.2;">
+            <div>Surface : 0 Ha</div>
+            <div>Barème réf. : ${m.pvVal + m.eeVal} €/t</div>
+            <div style="font-size: 6.5pt;">Capacité modèle : ${m.cap} t/an</div>
+          </div>
+        </div>
+        <div style="margin-top: 2px; padding-top: 2px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 6.5pt; color: #94a3b8; text-transform: uppercase;">Gain</span>
+          <span style="font-size: 7.8pt; font-weight: 700; color: #94a3b8;">0 €/an</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+
   const puissanceKwc = r.puissancePV || modelObj.puissanceKwc || modelObj.puissanceCogenAir || (
     modelId === 'BT-3.1.15' ? 30.15 : modelId === 'BT-6.2.15' ? 63.30 : 93.80
   );
@@ -740,7 +831,7 @@ export async function generateSechoirPDF({
         ` : ''}
 
         <!-- 2 GRANDS BLOCS CENTRAUX PLEINE LARGEUR (STYLE RÉSULTATS) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: 122mm; box-sizing: border-box;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; box-sizing: border-box;">
           
           <!-- COLONNE GAUCHE : INVESTISSEMENT INITIAL & FLUX DE TRÉSORERIE ANNUELS -->
           <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -855,6 +946,28 @@ export async function generateSechoirPDF({
             </div>
           </div>
 
+        </div>
+
+        <!-- 3. DONNÉES & HYPOTHÈSES DES 5 BESOINS EN SÉCHAGE (VALORISATION MATIÈRE) -->
+        <div style="border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc; padding: 5px 10px; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 4px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 9.2pt; font-weight: 800; color: #0D3660; text-transform: uppercase;">
+                🌾 3. Données &amp; Dimensionnement des 5 Besoins en Séchage (Valorisation Matière)
+              </span>
+              <span style="font-size: 7.5pt; color: #64748b; font-weight: 600;">
+                (Gains qualité + Économies d'énergie thermique &bull; Sous technologie Cogen'Air®)
+              </span>
+            </div>
+            <div style="background: #dcfce7; border: 1px solid #bbf7d0; color: #166534; font-size: 8.2pt; font-weight: 900; padding: 1.5px 7px; border-radius: 4px;">
+              Total Valorisation Matière : +${fmt(r.produits?.deltaProduits)} €/an
+            </div>
+          </div>
+
+          <!-- 5 COLONNES ALIGNÉES -->
+          <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;">
+            ${renderedMaterialsCards}
+          </div>
         </div>
 
         ${renderLandscapeFooter({ pageNum: currentPageNum++, totalPages, dateStr })}

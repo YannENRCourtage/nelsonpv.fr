@@ -5829,7 +5829,13 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
         // L'événement de retour est "map:capture-done"
         const dataUrl = canvas.toDataURL('image/png');
-        window.dispatchEvent(new CustomEvent("map:capture-done", { detail: { slotIndex, dataUrl } }));
+        window.dispatchEvent(new CustomEvent("map:capture-done", { 
+          detail: { 
+            slotIndex, 
+            dataUrl, 
+            layers: Array.from(activeLayers || []) 
+          } 
+        }));
       }
     };
     const goToProjectAddress = () => {
