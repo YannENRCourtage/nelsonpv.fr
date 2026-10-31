@@ -322,7 +322,7 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6);
   doc.setTextColor(badgeColor[0], badgeColor[1], badgeColor[2]);
-  doc.text(includeGridConnection ? 'Délai total : ~5 à 6 mois (Urbanisme + Enedis)' : 'Délai total : ~8 à 10 semaines (Urbanisme inclus)', x + w - 35, y + 6.4, { align: 'center' });
+  doc.text(includeGridConnection ? 'Délai total : ~5 à 6 mois' : 'Délai total : ~8 à 10 semaines', x + w - 35, y + 6.4, { align: 'center' });
 
   // Colonnes
   const colNameW = 76;
@@ -358,7 +358,7 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
     ? [
         { name: '1. Validation devis & Dépôt dossier Enedis (PTF / CRAE)', startFrac: 0, endFrac: 1 / 6, label: 'M1', color: [37, 99, 235] },
         { name: '2. Demande d\'autorisation d\'urbanisme (Déclaration Préalable)', startFrac: 0.05, endFrac: 0.30, label: '4 à 6 sem.', color: [99, 102, 241] },
-        { name: '3. Approvisionnement batterie BESS (temps masqué)', startFrac: 0.25, endFrac: 0.62, label: 'M2 à M4 (Fabrication)', color: [16, 185, 129] },
+        { name: '3. Approvisionnement batterie BESS', startFrac: 0.35, endFrac: 0.65, label: 'M3 à M4 (Fabrication)', color: [16, 185, 129] },
         { name: '4. Instruction Enedis & Génie civil (Dalle béton)', startFrac: 0.10, endFrac: 0.75, label: 'Instruction Enedis M1 à M5', color: [245, 158, 11] },
         { name: '5. Pose BESS & Raccordement Enedis + EMS', startFrac: 0.70, endFrac: 0.88, label: 'M5', color: [147, 51, 234] },
         { name: '6. Essais, Consuel & Mise en service réseau', startFrac: 0.86, endFrac: 1.0, label: 'M6', color: [22, 163, 74] }
@@ -366,7 +366,7 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
     : [
         { name: '1. Validation devis & Lancement de commande', ...wk(1, 2), label: 'Sem. 1–2', color: [37, 99, 235] },
         { name: '2. Demande d\'autorisation d\'urbanisme (Déclaration Préalable)', ...wk(2, 7), label: '4 à 6 sem. (Sem. 2–7)', color: [99, 102, 241] },
-        { name: '3. Approvisionnement & Livraison de la batterie BESS', ...wk(3, 8), label: 'Sem. 3–8 (temps masqué)', color: [16, 185, 129] },
+        { name: '3. Approvisionnement & Livraison de la batterie BESS', ...wk(5, 9), label: 'Sem. 5–9', color: [16, 185, 129] },
         { name: '4. Génie civil (Dalle béton) & Fixation de l\'armoire', ...wk(7, 9), label: 'Sem. 7–9', color: [245, 158, 11] },
         { name: '5. Raccordement TGBT intérieur & Intégration EMS', ...wk(8, 10), label: 'Sem. 8–10', color: [147, 51, 234] },
         { name: '6. Essais, Consuel & Mise en service site', ...wk(10, 10), label: 'Sem. 10', color: [22, 163, 74] }

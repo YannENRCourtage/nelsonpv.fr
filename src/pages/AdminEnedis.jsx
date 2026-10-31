@@ -25,28 +25,6 @@ export default function AdminEnedis() {
   const [isPrinting, setIsPrinting] = useState(false);
   const navigate = useNavigate();
 
-  const handleOpenInSimulator = useCallback(() => {
-    const ownerName = data?.identity?.customer?.customer_person?.identity || 
-      (data?.identity?.customer?.customer_company ? data?.identity?.customer?.customer_company?.corporate_name : null) ||
-      'Client ENEDIS';
-    const ownerAddress = data?.contact?.address ? 
-      `${data.contact.address.street || ''} ${data.contact.address.postal_code || ''} ${data.contact.address.city || ''}`.trim() : '';
-
-    const prmHandoff = {
-      prm: prm || '30002220753998',
-      titulaire: ownerName,
-      adresse: ownerAddress,
-      annualKwh: totalKwh || 211781,
-      avgDailyKwh: avgDaily || 578.6,
-      peakKw: peakKw || 90.0,
-      hasIntervalData: true,
-    };
-    savePrmToCache(prmHandoff);
-    try {
-      localStorage.setItem(PRM_HANDOFF_KEY, JSON.stringify(prmHandoff));
-    } catch (e) {}
-    navigate('/simulateur?solution=stockage');
-  }, [data, prm, totalKwh, avgDaily, peakKw, navigate]);
   // Calculs de synthèse de consommation pour l'étude BESS SAFRA
   const { totalKwh, avgDaily, peakKw } = React.useMemo(() => {
     if (!data) return { totalKwh: 211781, avgDaily: 578.6, peakKw: 90.0 };
@@ -72,6 +50,29 @@ export default function AdminEnedis() {
       peakKw: pk > 0 ? Number(pk.toFixed(2)) : 90.0
     };
   }, [data]);
+
+  const handleOpenInSimulator = useCallback(() => {
+    const ownerName = data?.identity?.customer?.customer_person?.identity || 
+      (data?.identity?.customer?.customer_company ? data?.identity?.customer?.customer_company?.corporate_name : null) ||
+      'Client ENEDIS';
+    const ownerAddress = data?.contact?.address ? 
+      `${data.contact.address.street || ''} ${data.contact.address.postal_code || ''} ${data.contact.address.city || ''}`.trim() : '';
+
+    const prmHandoff = {
+      prm: prm || '30002220753998',
+      titulaire: ownerName,
+      adresse: ownerAddress,
+      annualKwh: totalKwh || 211781,
+      avgDailyKwh: avgDaily || 578.6,
+      peakKw: peakKw || 90.0,
+      hasIntervalData: true,
+    };
+    savePrmToCache(prmHandoff);
+    try {
+      localStorage.setItem(PRM_HANDOFF_KEY, JSON.stringify(prmHandoff));
+    } catch (e) {}
+    navigate('/simulateur?solution=stockage');
+  }, [data, prm, totalKwh, avgDaily, peakKw, navigate]);
 
 
   // État de l'environnement API (production vs sandbox)
