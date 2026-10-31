@@ -1,8 +1,34 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Search, Loader2, MapPinned, X, Building2, CheckCircle2 } from 'lucide-react';
+import { MapPin, Search, Loader2, MapPinned, X, Building2, CheckCircle2, Clock } from 'lucide-react';
 import useSechoirStore from '@/stores/useSechoirStore.js';
 import { BATITECH_MODELS, ZONES_CLIMATIQUES, ZONES_SECHAGE, getRegionForDepartment } from '@/data/sechoirBatitechModels.js';
+
+const STORAGE_KEY_RECENT_ADDRESSES = 'nelson_sechoir_recent_addresses';
+
+const getStoredRecentAddresses = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_RECENT_ADDRESSES);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveRecentAddress = (feature) => {
+  try {
+    const list = getStoredRecentAddresses();
+    const label = feature?.properties?.label || feature?.properties?.name;
+    if (!label) return;
+    const filtered = list.filter(item => (item?.properties?.label || item?.properties?.name) !== label);
+    const updated = [feature, ...filtered].slice(0, 15);
+    localStorage.setItem(STORAGE_KEY_RECENT_ADDRESSES, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Erreur sauvegarde historique adresses:', e);
+  }
+};
 
 export default function Step1Location() {
   // Store — Localisation
@@ -19,11 +45,41 @@ export default function Step1Location() {
 
   const [query, setQuery] = useState(addressLabel || address || '');
   const [results, setResults] = useState([]);
+  const [recentAddresses, setRecentAddresses] = useState(getStoredRecentAddresses);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
   const isUserTypingRef = useRef(false);
   const dropdownRef = useRef(null);
+
+  // Normalisation pour recherche tolérante (sans accents et minuscules)
+  const normalizeText = (str) =>
+    (str || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
+  // 1. Filtrer en priorité les adresses déjà saisies qui ressemblent à ce qui est tapé
+  const matchingRecents = useMemo(() => {
+    if (!query || query.trim().length < 2) return [];
+    const qNorm = normalizeText(query);
+    return recentAddresses
+      .filter((item) => {
+        const lbl = normalizeText(item.properties?.label || item.properties?.name || '');
+        const city = normalizeText(item.properties?.city || '');
+        const pc = normalizeText(item.properties?.postcode || '');
+        return lbl.includes(qNorm) || city.includes(qNorm) || pc.includes(qNorm);
+      })
+      .map((item) => ({ ...item, isRecent: true }));
+  }, [recentAddresses, query]);
+
+  // 2. Combiner : adresses récentes pertinentes en priorité, puis propositions BAN de l'API
+  const combinedProposals = useMemo(() => {
+    const recentLabels = new Set(matchingRecents.map((r) => r.properties?.label || r.properties?.name));
+    const nonDuplicateBan = results.filter((f) => !recentLabels.has(f.properties?.label || f.properties?.name));
+    return [...matchingRecents, ...nonDuplicateBan];
+  }, [matchingRecents, results]);
 
   useEffect(() => {
     if (!useSechoirStore.getState().selectedModelId) {
@@ -88,20 +144,24 @@ export default function Step1Location() {
     isUserTypingRef.current = true;
     const val = e.target.value;
     setQuery(val);
-    if (!val) {
+    if (!val || val.trim().length < 2) {
       setResults([]);
       setShowDropdown(false);
-      setAddress({
-        address: '',
-        label: '',
-        latitude: null,
-        longitude: null,
-        departement: '',
-        commune: '',
-        codePostal: '',
-        zoneClimatique: '',
-        zoneSechage: '',
-      });
+      if (!val) {
+        setAddress({
+          address: '',
+          label: '',
+          latitude: null,
+          longitude: null,
+          departement: '',
+          commune: '',
+          codePostal: '',
+          zoneClimatique: '',
+          zoneSechage: '',
+        });
+      }
+    } else {
+      setShowDropdown(true);
     }
   };
 
@@ -124,12 +184,13 @@ export default function Step1Location() {
   };
 
   const handleSelectAddress = (feature) => {
+    if (!feature) return;
     isUserTypingRef.current = false;
-    const props = feature.properties;
-    const coords = feature.geometry.coordinates; // [lng, lat]
+    const props = feature.properties || {};
+    const coords = feature.geometry?.coordinates || [0, 0]; // [lng, lat]
     const postcode = props.postcode || '';
     const city = props.city || '';
-    const label = props.label || props.name;
+    const label = props.label || props.name || '';
 
     let dept = '';
     if (postcode.startsWith('20')) {
@@ -157,16 +218,11 @@ export default function Step1Location() {
     setQuery(label);
     setResults([]);
     setShowDropdown(false);
-  };
 
-  // Si l'utilisateur change d'étape ou valide avec Enter alors qu'un résultat BAN est disponible
-  useEffect(() => {
-    return () => {
-      if (isUserTypingRef.current && results.length > 0) {
-        handleSelectAddress(results[0]);
-      }
-    };
-  }, [results]);
+    // Mémoriser cette adresse dans l'historique récent (localStorage)
+    saveRecentAddress(feature);
+    setRecentAddresses(getStoredRecentAddresses());
+  };
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -210,12 +266,16 @@ export default function Step1Location() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      if (results.length > 0) {
-                        handleSelectAddress(results[0]);
+                      if (combinedProposals.length > 0) {
+                        handleSelectAddress(combinedProposals[0]);
                       }
                     }
                   }}
-                  onFocus={() => { if (isUserTypingRef.current && results.length > 0) setShowDropdown(true); }}
+                  onFocus={() => {
+                    if (combinedProposals.length > 0) {
+                      setShowDropdown(true);
+                    }
+                  }}
                   placeholder="Saisissez une adresse ou commune..."
                   className="w-full bg-slate-900/90 border border-slate-700 rounded-2xl py-3.5 pl-12 pr-11 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 text-base font-medium shadow-inner"
                 />
@@ -235,30 +295,47 @@ export default function Step1Location() {
                 )}
               </div>
 
-              {/* Dropdown BAN en surimposition */}
+              {/* Dropdown : adresses récentes correspondantes en priorité puis résultats BAN */}
               <AnimatePresence>
-                {showDropdown && results.length > 0 && (
+                {showDropdown && combinedProposals.length > 0 && (
                   <motion.ul
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -5 }}
-                    className="absolute z-[9999] left-0 right-0 top-full mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto divide-y divide-slate-800"
+                    className="absolute z-[9999] left-0 right-0 top-full mt-2 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden max-h-72 overflow-y-auto divide-y divide-slate-800"
                   >
-                    {results.map((feature) => (
-                      <li
-                        key={feature.properties.id || feature.properties.label}
-                        onClick={() => handleSelectAddress(feature)}
-                        className="px-4 py-3 hover:bg-slate-800/90 cursor-pointer flex items-start gap-3 transition-colors text-left"
-                      >
-                        <MapPinned className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-slate-100 font-bold text-base truncate">{feature.properties.name || feature.properties.label}</div>
-                          <div className="text-sm text-slate-300">
-                            {feature.properties.postcode} {feature.properties.city}
+                    {combinedProposals.map((feature, idx) => {
+                      const isRecent = feature.isRecent;
+                      const key = feature.properties?.id || feature.properties?.label || `prop-${idx}`;
+                      return (
+                        <li
+                          key={key}
+                          onClick={() => handleSelectAddress(feature)}
+                          className="px-4 py-3 hover:bg-slate-800/90 cursor-pointer flex items-start gap-3 transition-colors text-left group"
+                        >
+                          {isRecent ? (
+                            <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                          ) : (
+                            <MapPinned className="w-5 h-5 text-slate-400 group-hover:text-amber-400 shrink-0 mt-0.5" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-100 font-bold text-base truncate">
+                                {feature.properties?.name || feature.properties?.label}
+                              </span>
+                              {isRecent && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                                  Récemment saisi
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm text-slate-300">
+                              {feature.properties?.postcode} {feature.properties?.city}
+                            </div>
                           </div>
-                        </div>
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </motion.ul>
                 )}
               </AnimatePresence>

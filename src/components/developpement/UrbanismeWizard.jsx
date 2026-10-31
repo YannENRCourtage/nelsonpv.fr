@@ -2874,6 +2874,20 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     }
   }, [step, editedProject, project]);
 
+  // Nettoyage robuste des doublons accidentels dans la notice (ex: .62 m).62 m).62 m))
+  const cleanRepeatedNoticeGarbage = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    let cleaned = text;
+    // Supprimer les répétitions multiples d'altitude ou suffixe de cotes (ex: 160.62 m).62 m).62 m))
+    cleaned = cleaned.replace(/(altitude\s*:\s*[\d\s,]+(?:\.\d+)?\s*m\))(?:\s*\)?\s*\.?\d*\s*m\))+/gi, '$1');
+    cleaned = cleaned.replace(/(m\))(?:\s*\.?\d+\s*m\))+/gi, '$1');
+    cleaned = cleaned.replace(/(\.62\s*m\)\.?){2,}/gi, '.62 m)');
+    cleaned = cleaned.replace(/(\.62\s*m\))+/gi, '.62 m)');
+    cleaned = cleaned.replace(/(altitude\s*:[^\)\n]*\))(?:\s*[\.\d]+\s*m\))+/gi, '$1');
+    cleaned = cleaned.replace(/\.{2,}/g, '.');
+    return cleaned;
+  };
+
   // Helper pour générer automatiquement la notice structurée en 5 points
   const buildAutoNoticeText = useCallback(() => {
     const projectCity = editedProject?.city || editedProject?.cadastre_commune || editedProject?.commune || editedProject?.ville || project?.city || project?.cadastre_commune || project?.commune || project?.ville || 'SAINT AVIT SAINT NAZAIRE';
@@ -4068,7 +4082,7 @@ En cas de besoin pour la défense extérieure contre l'incendie, un canal est si
 
     const sanitizeNotice = (t) => {
       if (!t) return t;
-      return t
+      return cleanRepeatedNoticeGarbage(t)
         .replace(/permettant d'abriter les véhicules tout en produisant de l'électricité solaire/g, "permettant d'abriter l'activité de l'exploitant tout en produisant de l'électricité solaire")
         .replace(/\s*\(Cf\s+(?:DP|PC)\s*0?2\s*-\s*Plan\s+de\s+masse\)\.?/gi, '.');
     };
@@ -4463,12 +4477,16 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       const auto = buildAutoNoticeText();
       setNoticeText(auto);
       setEditedProject(prev => ({ ...prev, noticeText: auto }));
-    } else if (noticeText && (/permettant d'abriter les véhicules/i.test(noticeText) || /\(Cf\s+(?:DP|PC)\s*0?2\s*-\s*Plan\s+de\s+masse\)/i.test(noticeText))) {
-      const cleaned = noticeText
-        .replace(/permettant d'abriter les véhicules tout en produisant de l'électricité solaire/g, "permettant d'abriter l'activité de l'exploitant tout en produisant de l'électricité solaire")
-        .replace(/\s*\(Cf\s+(?:DP|PC)\s*0?2\s*-\s*Plan\s+de\s+masse\)\.?/gi, '.');
-      setNoticeText(cleaned);
-      setEditedProject(prev => ({ ...prev, noticeText: cleaned }));
+    } else if (noticeText) {
+      const cleaned = cleanRepeatedNoticeGarbage(
+        noticeText
+          .replace(/permettant d'abriter les véhicules tout en produisant de l'électricité solaire/g, "permettant d'abriter l'activité de l'exploitant tout en produisant de l'électricité solaire")
+          .replace(/\s*\(Cf\s+(?:DP|PC)\s*0?2\s*-\s*Plan\s+de\s+masse\)\.?/gi, '.')
+      );
+      if (cleaned !== noticeText) {
+        setNoticeText(cleaned);
+        setEditedProject(prev => ({ ...prev, noticeText: cleaned }));
+      }
     }
   }, [step, solutionType, selectedStructureIds, allConfiguredStructures, additionalRoof, batteryStorage, buildAutoNoticeText, isNoticeUserModified]);
 
@@ -5230,7 +5248,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     
     // Objet synthétique pour Page 1
     const defaultObjet = isBattery
-      ? getBessCadre41Text(safeProject || project)
+      ? getBessCadre41Text(editedProject || project)
       : (isDP
         ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
         : (isPC
@@ -5293,16 +5311,17 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
     if (effectiveNotice) {
       if (isBattery) {
-        if (/Références cadastrales\s*:[^\n\.]*(\([^\)]*\))?/i.test(effectiveNotice)) {
-          effectiveNotice = effectiveNotice.replace(/Références cadastrales\s*:[^\n\.]*(\([^\)]*\))?/i, updatedCadastreSentence);
+        if (/Références cadastrales\s*:[^\n]*(?=\n|$)/i.test(effectiveNotice)) {
+          effectiveNotice = effectiveNotice.replace(/Références cadastrales\s*:[^\n]*(?=\n|$)/i, `${updatedCadastreSentence}.`);
         }
       } else {
-        if (/Le terrain concerné par le projet (?:est cadastré sous le numéro|concerne les parcelles cadastrées)[^\.]*\./i.test(effectiveNotice)) {
-          effectiveNotice = effectiveNotice.replace(/Le terrain concerné par le projet (?:est cadastré sous le numéro|concerne les parcelles cadastrées)[^\.]*\./i, `${updatedCadastreSentence}.`);
-        } else if (/Références cadastrales\s*:[^\n\.]*(\([^\)]*\))?/i.test(effectiveNotice)) {
-          effectiveNotice = effectiveNotice.replace(/Références cadastrales\s*:[^\n\.]*(\([^\)]*\))?/i, `${updatedCadastreSentence}.`);
+        if (/Le terrain concerné par le projet (?:est cadastré sous le numéro|concerne les parcelles cadastrées)[^\n]*(?=\n|$)/i.test(effectiveNotice)) {
+          effectiveNotice = effectiveNotice.replace(/Le terrain concerné par le projet (?:est cadastré sous le numéro|concerne les parcelles cadastrées)[^\n]*(?=\n|$)/i, `${updatedCadastreSentence}.`);
+        } else if (/Références cadastrales\s*:[^\n]*(?=\n|$)/i.test(effectiveNotice)) {
+          effectiveNotice = effectiveNotice.replace(/Références cadastrales\s*:[^\n]*(?=\n|$)/i, `${updatedCadastreSentence}.`);
         }
       }
+      effectiveNotice = cleanRepeatedNoticeGarbage(effectiveNotice);
       setNoticeText(effectiveNotice);
       setEditedProject(prev => ({ ...prev, noticeText: effectiveNotice }));
     }
@@ -8106,7 +8125,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         type="button"
                         onClick={() => {
                           setIsNoticeUserModified(false);
-                          const auto = buildAutoNoticeText();
+                          const auto = cleanRepeatedNoticeGarbage(buildAutoNoticeText());
                           setNoticeText(auto);
                           setEditedProject(prev => ({ ...prev, noticeText: auto }));
                         }}
