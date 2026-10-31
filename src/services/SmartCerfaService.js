@@ -125,9 +125,23 @@ const CERFA_16702_03_ALL_BORDEREAU = [
   'P1FP1', 'P4HG1', 'P4EG1', 'P8EA1', 'P9ZA1'
 ];
 
-export const DEFAULT_BESS_CADRE_4_1 = `Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.   
-Le projet comprend 4 armoires de batteries de technologie lithium-ion (plus précisément phosphate de fer lithié - LFP). Chaque unité (modèle Mercury 261 kWh) dispose d'une puissance nominale de 125 kW (137,5 kVA) et d'une capacité de 261 kWh.   
-Niveau sonore : Le niveau de bruit émis par chaque équipement en fonctionnement est inférieur ou égal à 72 dB.   Sécurité et ventilation : Les armoires intègrent un système de gestion thermique par refroidissement liquide, une ventilation anti-déflagrante, des détecteurs de gaz H2 ainsi qu'un système d'extinction automatique d'incendie par aérosol par compartiment.`;
+export function getBessCadre41Text(project = {}) {
+  const powerKw = project?.puissanceKw || project?.bess_puissance || project?.puissance || project?.kwc || 500;
+  const is250 = Number(powerKw) === 250 || project?.bess_armoires === 2 || project?.bess_model === '2x_261';
+
+  const armoiresCount = is250 ? 2 : (project?.bess_armoires || 4);
+  const nominalPower = is250 ? '250 kW' : '500 kW';
+  const nominalCapacite = is250 ? '522 kWh' : '1 044 kWh';
+
+  return `Installation d'une station autonome de stockage d'énergie par batteries (BESS Stand-Alone) sur dalle béton (emprise au sol < 20 m², soit 19,84 m²) ceinturée d'une clôture rigide H 2,00 m.
+1. QUALIFICATION : Équipement d'intérêt collectif et services publics (sous-destination : locaux techniques et industriels des administrations publiques et assimilés, art. R.151-27 et R.151-28 du Code de l'urbanisme / L.352-1 du Code de l'énergie). L'installation est indépendante des bâtiments existants (aucun lien fonctionnel ni accessoire avec une installation photovoltaïque).
+2. FONCTIONNEMENT & SOUTIRAGE/INJECTION : Composée de ${armoiresCount} armoires LFP (Phosphate de Fer Lithié - Mercury 261 kWh, refroidissement liquide, extinction automatique NFPA 855, niveau sonore <= 72 dB), la station assure la régulation de fréquence (50 Hz), l'équilibrage et la sécurisation du réseau public d'électricité (Enedis/RTE) en soutirant l'énergie excédentaire sur le réseau public pour la réinjecter lors des pointes de consommation.
+3. PUISSANCES & RACCORDEMENT : Puissance électrique nominale de ${nominalPower} en soutirage et ${nominalPower} en injection (capacité ${nominalCapacite}), raccordée en souterrain au réseau public d'électricité Enedis (HTA 20 kV / Poste de transformation) situé en bordure immédiate de l'unité foncière.
+4. JUSTIFICATION DE L'EMPLACEMENT : Implantation techniquement impérative à cet endroit précis en raison de la proximité immédiate des ouvrages du réseau public Enedis (< 30 m), permettant un raccordement souterrain direct sans extension lourde du réseau ni perte en ligne.
+5. STATIONNEMENT & SURFACE DE PLANCHER : Installation 100 % automatisée et télésurveillée sans personnel sur site (0 place de stationnement créée, accès maintenance ponctuel via l'accès existant). Armoires techniques extérieures non accessibles à l'homme (non closes et couvertes au sens de l'art. R.111-22) : Surface de plancher créée = 0 m² (Emprise au sol créée = 19,84 m²).`;
+}
+
+export const DEFAULT_BESS_CADRE_4_1 = getBessCadre41Text();
 
 export function resolveDemandeurNames(project) {
   if (!project) return { lastName: '', firstName: '' };
@@ -272,24 +286,28 @@ export function getMissingFields(project, type = 'dp') {
 export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationType = 'batiment_solaire', plateIds = []) {
   try {
     let cerfaBuffer = null;
-    const urlsToTry = [
-      pdfUrl,
-      pdfUrl.startsWith('/templates/') ? pdfUrl.replace('/templates/', '/') : `/templates${pdfUrl}`,
-      pdfUrl.startsWith('/') ? pdfUrl.substring(1) : `/${pdfUrl}`
-    ];
-    for (const u of urlsToTry) {
-      try {
-        const res = await fetch(u);
-        if (res.ok) {
-          const buf = await res.arrayBuffer();
-          const header = new Uint8Array(buf.slice(0, 5));
-          const headerStr = String.fromCharCode(...header);
-          if (headerStr.startsWith('%PDF')) {
-            cerfaBuffer = buf;
-            break;
+    if (pdfUrl instanceof ArrayBuffer || pdfUrl instanceof Uint8Array || (typeof Buffer !== 'undefined' && Buffer.isBuffer(pdfUrl))) {
+      cerfaBuffer = pdfUrl;
+    } else if (typeof pdfUrl === 'string') {
+      const urlsToTry = [
+        pdfUrl,
+        pdfUrl.startsWith('/templates/') ? pdfUrl.replace('/templates/', '/') : `/templates${pdfUrl}`,
+        pdfUrl.startsWith('/') ? pdfUrl.substring(1) : `/${pdfUrl}`
+      ];
+      for (const u of urlsToTry) {
+        try {
+          const res = await fetch(u);
+          if (res.ok) {
+            const buf = await res.arrayBuffer();
+            const header = new Uint8Array(buf.slice(0, 5));
+            const headerStr = String.fromCharCode(...header);
+            if (headerStr.startsWith('%PDF')) {
+              cerfaBuffer = buf;
+              break;
+            }
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
+      }
     }
 
     if (!cerfaBuffer) {
@@ -401,8 +419,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     ) && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
     let objet = project?.objet_travaux || project?.objetTravaux;
     if (isBat) {
-      if (!objet || objet.length < 150 || /ombrière|bâtiment/i.test(objet) || objet === "Installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.") {
-        objet = DEFAULT_BESS_CADRE_4_1;
+      if (!objet || objet.length < 250 || /ombrière|bâtiment/i.test(objet) || !objet.includes('QUALIFICATION') || objet.includes("d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.")) {
+        objet = getBessCadre41Text(project);
       }
     } else if (!objet || /batterie|bess|stockage d'énergie/i.test(objet)) {
       const solType = project?.solutionType || (isDP ? 'ombriere' : 'batiment_solaire');
@@ -434,6 +452,12 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
           try {
             const f = form.getTextField(name);
             if (f) {
+              if (name.includes('description') || name.includes('C2ZD1') || name.includes('Z1D_description')) {
+                try {
+                  f.acroField.dict.delete(PDFName.of('MaxLen'));
+                  f.enableMultiline();
+                } catch (_) {}
+              }
               let strVal = String(value).trim();
               const max = f.getMaxLength();
               if (max && strVal.length > max) {
@@ -547,6 +571,11 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       setField(fieldMap.parcelle,       parcelle, 9.5);
       setField(fieldMap.surface,        surface, 9.5);
 
+      // Si multi-parcelles : cocher la case P1FP1 du bordereau
+      if (parcellesList.length > 1) {
+        setCheck(['P1FP1', 'topmostSubform[0].Page15[0].P1FP1[0]', 'topmostSubform[0].Page13[0].P1FP1[0]'], true);
+      }
+
       // Ligne 2 (si 2ème parcelle présente)
       if (parcellesList.length > 1 && parcellesList[1]) {
         const p1 = parcellesList[1];
@@ -606,7 +635,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         setCheck(['C2ZC3_cloture', 'topmostSubform[0].Page4[0].C2ZC3_cloture[0]'], true);
         setField(['C2ZA7_autres'], 'Station technique de stockage batteries', 9);
       }
-      setField(fieldMap.description,    objet, isBat ? 7.5 : 9.5);
+      setField(fieldMap.description,    objet, isBat ? 7.0 : 9.5);
 
       // 5. Puissance crête (ex: 499 kW), Destination, Matériaux, Fondations, Emprise au sol
       const kwcValue = cleanKwcVal || (isBat ? '500' : '499');
@@ -635,13 +664,42 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       }
       setField(['W3ES2_creee', 'S1I_emprise', 'topmostSubform[0].Page7[0].W3ES2_creee[0]'], String(empriseCreee), 9.5);
 
-      // Tableau 4.4 : Destination, sous-destination des constructions et tableau des surfaces
-      // Pour les batteries : 4m² dans la colonne B de "Locaux techniques et industriels des administrations publiques et assimilés"
+      // Emprise au sol créée (Section 4.3)
       if (isBat) {
-        setField(['W2TB1', 'topmostSubform[0].Page6[0].W2TB1[0]'], '4', 9.5);
-        setField(['W2TF1', 'topmostSubform[0].Page6[0].W2TF1[0]'], '4', 9.5);
-        setField(['W2SB1', 'topmostSubform[0].Page6[0].W2SB1[0]'], '4', 9.5);
-        setField(['W2SF1', 'topmostSubform[0].Page6[0].W2SF1[0]'], '4', 9.5);
+        setField(['W3ES1_avanttravaux', 'topmostSubform[0].Page7[0].W3ES1_avanttravaux[0]'], '0', 9.5);
+        setField(['W3ES2_creee', 'S1I_emprise', 'topmostSubform[0].Page7[0].W3ES2_creee[0]', 'topmostSubform[0].Page8[0].W3ES2_creee[0]'], '19.84', 9.5);
+        setField(['W3ES3_supprimee', 'topmostSubform[0].Page7[0].W3ES3_supprimee[0]'], '0', 9.5);
+      }
+
+      // Tableau 4.4 : Destination, sous-destination des constructions et tableau des surfaces
+      // Pour les batteries BESS : inscription explicite de "0" m² partout (armoires techniques non closes et non couvertes)
+      if (isBat) {
+        setField(['W2TA1', 'topmostSubform[0].Page6[0].W2TA1[0]', 'topmostSubform[0].Page8[0].W2TA1[0]'], '0', 9.5); // Surface existante
+        setField(['W2TB1', 'topmostSubform[0].Page6[0].W2TB1[0]', 'topmostSubform[0].Page8[0].W2TB1[0]'], '0', 9.5); // Surface créée
+        setField(['W2TF1', 'topmostSubform[0].Page6[0].W2TF1[0]', 'topmostSubform[0].Page8[0].W2TF1[0]'], '0', 9.5); // Surface totale
+        setField(['W2SA1', 'topmostSubform[0].Page6[0].W2SA1[0]', 'topmostSubform[0].Page8[0].W2SA1[0]'], '0', 9.5); // Total existant
+        setField(['W2SB1', 'topmostSubform[0].Page6[0].W2SB1[0]', 'topmostSubform[0].Page8[0].W2SB1[0]'], '0', 9.5); // Total créé
+        setField(['W2SF1', 'topmostSubform[0].Page6[0].W2SF1[0]', 'topmostSubform[0].Page8[0].W2SF1[0]'], '0', 9.5); // Total final
+
+        // Mention explicite sous le tableau des surfaces
+        try {
+          const pages = pdfDoc.getPages();
+          const pSurf = pages[7] || pages[6];
+          if (pSurf) {
+            const helvB = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+            pSurf.drawText('0 m2 (Armoires techniques non closes/couvertes - Emprise au sol : 19,84 m2)', {
+              x: 180,
+              y: 110,
+              size: 6.8,
+              font: helvB,
+              color: rgb(0.1, 0.2, 0.45),
+            });
+          }
+        } catch (_) {}
+
+        // Rubrique Stationnement : explicitement 0 avant et 0 après
+        setField(['S1A_stationnementavant', 'topmostSubform[0].Page7[0].S1A_stationnementavant[0]', 'topmostSubform[0].Page9[0].S1A_stationnementavant[0]'], '0', 9.5);
+        setField(['S1M_stationnementapres', 'topmostSubform[0].Page7[0].S1M_stationnementapres[0]', 'topmostSubform[0].Page9[0].S1M_stationnementapres[0]'], '0', 9.5);
       }
 
       // Cadre 5 : Informations pour l'application d'une législation connexe — toujours cocher les cases "Non"
@@ -731,6 +789,9 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         if (plateList.some(id => id.includes('notice') || id.includes('dp11') || id.includes('pc11')) || plateList.length === 0) {
           setCheck('P4CD1', true);
         }
+        if (parcellesList && parcellesList.length > 1) {
+          setCheck('P1FP1', true);
+        }
       } else if (isCerfa13703) {
         ['P5PA1', 'P5PB1', 'P4GE1', 'P4GF1', 'P5PC1', 'P4EG1', 'P4HG1', 'P4MA1', 'P8EA1', 'P4CD1'].forEach(name => setCheck(name, false));
 
@@ -798,6 +859,14 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True);
       }
     } catch (_) {}
+
+    if (parcellesList && parcellesList.length > 1) {
+      try {
+        await appendCadastreAnnexPage(pdfDoc, parcellesList, totalSurfaceVal);
+      } catch (annexErr) {
+        console.warn('[SmartCerfa] Erreur appendCadastreAnnexPage:', annexErr);
+      }
+    }
 
     return await pdfDoc.save();
   } catch (err) {
@@ -873,4 +942,126 @@ export function buildCerfaDataSummary(project, installationType) {
     siret: project?.siret || '—',
     date: new Date().toLocaleDateString('fr-FR'),
   };
+}
+
+
+export async function appendCadastreAnnexPage(pdfDoc, parcellesList = [], totalSurface = 0) {
+  if (!parcellesList || parcellesList.length <= 1) return;
+  const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const helvBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const cleanWinAnsi = (str) => String(str || '')
+    .replace(/\u202f/g, ' ')
+    .replace(/\u00a0/g, ' ')
+    .replace(/[^\x00-\xFF]/g, '');
+
+  const formatM2 = (num) => String(Math.round(num || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' m2';
+
+  const page = pdfDoc.addPage([595.28, 841.89]); // A4
+  const { width, height } = page.getSize();
+
+  // En-tête
+  page.drawRectangle({
+    x: 40,
+    y: height - 85,
+    width: width - 80,
+    height: 50,
+    color: rgb(0.96, 0.98, 1.0),
+    borderColor: rgb(0.15, 0.35, 0.75),
+    borderWidth: 1.5,
+  });
+
+  page.drawText(cleanWinAnsi("ANNEXE AU FORMULAIRE CERFA : REFERENCES CADASTRALES COMPLEMENTAIRES"), {
+    x: 55,
+    y: height - 58,
+    size: 11,
+    font: helvBold,
+    color: rgb(0.08, 0.18, 0.42),
+  });
+
+  page.drawText(cleanWinAnsi("Unite fonciere d'un seul tenant constituant le terrain d'assiette du projet (Art. R. 431-36 b)"), {
+    x: 55,
+    y: height - 74,
+    size: 8.5,
+    font: helv,
+    color: rgb(0.3, 0.4, 0.55),
+  });
+
+  // Tableau
+  const startY = height - 120;
+  const colX = [40, 85, 150, 230, 360];
+  const headers = ['N°', 'Prefixe', 'Section', 'Numero de parcelle', 'Superficie (m2)'];
+
+  page.drawRectangle({
+    x: 40,
+    y: startY - 20,
+    width: width - 80,
+    height: 22,
+    color: rgb(0.12, 0.25, 0.55),
+  });
+
+  headers.forEach((h, i) => {
+    page.drawText(cleanWinAnsi(h), {
+      x: colX[i] + 8,
+      y: startY - 14,
+      size: 8.5,
+      font: helvBold,
+      color: rgb(1, 1, 1),
+    });
+  });
+
+  let curY = startY - 20;
+  let totalCalculated = 0;
+
+  parcellesList.forEach((p, idx) => {
+    const surf = Number(String(p.surface || '').replace(/\D/g, '')) || 0;
+    totalCalculated += surf;
+    const rowH = 20;
+    curY -= rowH;
+
+    page.drawRectangle({
+      x: 40,
+      y: curY,
+      width: width - 80,
+      height: rowH,
+      color: idx % 2 === 0 ? rgb(1, 1, 1) : rgb(0.97, 0.98, 0.99),
+      borderColor: rgb(0.85, 0.88, 0.92),
+      borderWidth: 0.8,
+    });
+
+    page.drawText(String(idx + 1), { x: colX[0] + 12, y: curY + 6, size: 8, font: helv });
+    page.drawText(p.prefixe || '-', { x: colX[1] + 10, y: curY + 6, size: 8, font: helv });
+    page.drawText(cleanWinAnsi(p.section || '-'), { x: colX[2] + 10, y: curY + 6, size: 8.5, font: helvBold, color: rgb(0.1, 0.2, 0.4) });
+    page.drawText(cleanWinAnsi(p.numero || '-'), { x: colX[3] + 10, y: curY + 6, size: 8.5, font: helvBold, color: rgb(0.1, 0.2, 0.4) });
+    page.drawText(formatM2(surf), { x: colX[4] + 10, y: curY + 6, size: 8.5, font: helvBold, color: rgb(0.05, 0.5, 0.3) });
+  });
+
+  // Total row
+  curY -= 24;
+  page.drawRectangle({
+    x: 40,
+    y: curY,
+    width: width - 80,
+    height: 24,
+    color: rgb(0.92, 0.96, 1.0),
+    borderColor: rgb(0.15, 0.35, 0.75),
+    borderWidth: 1.2,
+  });
+
+  page.drawText(cleanWinAnsi("SUPERFICIE TOTALE DE L'UNITE FONCIERE :"), {
+    x: colX[0] + 15,
+    y: curY + 7.5,
+    size: 9.5,
+    font: helvBold,
+    color: rgb(0.08, 0.18, 0.42),
+  });
+
+  const displayTotal = totalCalculated || totalSurface || 0;
+  page.drawText(formatM2(displayTotal), {
+    x: colX[4] + 10,
+    y: curY + 7.5,
+    size: 10,
+    font: helvBold,
+    color: rgb(0.05, 0.45, 0.25),
+  });
 }

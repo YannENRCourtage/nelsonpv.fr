@@ -1,7 +1,7 @@
 import React from 'react';
 import { getInstallationTypeInfo } from '@/services/UrbanismeDocService';
 import { getProxiedImageUrl } from '@/utils/imageProxy';
-import { resolveDemandeurNames, DEFAULT_BESS_CADRE_4_1 } from '@/services/SmartCerfaService';
+import { resolveDemandeurNames, DEFAULT_BESS_CADRE_4_1, getBessCadre41Text } from '@/services/SmartCerfaService';
 import { findBessOdreData } from '@/data/bessOdreMatrix';
 
 const batteryPhotoDefault = '/images/battery_photo.jpg';
@@ -219,6 +219,130 @@ export const PlateSituation = ({ project, captures }) => {
 /**
  * PLANCHE DP2 : PLAN DE MASSE (Cadre réduit en hauteur pour rehausser le footer)
  */
+
+export const BessMasseRegulatoryOverlay = ({ bLen = 6.20, bW = 3.20 }) => {
+    return (
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
+            <svg viewBox="0 0 800 480" style={{ width: '100%', height: '100%' }} preserveAspectRatio="none">
+                <defs>
+                    <pattern id="bess-bati-hatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                        <line x1="0" y1="0" x2="0" y2="8" stroke="#94a3b8" strokeWidth="1.5" />
+                    </pattern>
+                    <marker id="arrow-red-start" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                        <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="#dc2626" />
+                    </marker>
+                    <marker id="arrow-red-end" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+                        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#dc2626" />
+                    </marker>
+                </defs>
+
+                {/* 1. Limite de l'unité foncière (Périmètre parcellaire) */}
+                <rect x="25" y="25" width="750" height="430" fill="none" stroke="#ea580c" strokeWidth="2.5" strokeDasharray="10 5" rx="4" />
+                <rect x="35" y="32" width="170" height="18" fill="#fff7ed" stroke="#ea580c" strokeWidth="1" rx="3" />
+                <text x="42" y="44" fill="#c2410c" fontSize="8.5" fontWeight="bold">Limite de l'unité foncière</text>
+
+                {/* 2. Voirie publique communale au Nord */}
+                <line x1="25" y1="65" x2="775" y2="65" stroke="#64748b" strokeWidth="2" strokeDasharray="4 4" />
+                <rect x="310" y="48" width="180" height="15" fill="#f1f5f9" stroke="#64748b" strokeWidth="0.8" rx="2" />
+                <text x="400" y="59" textAnchor="middle" fill="#334155" fontSize="8" fontWeight="bold">Alignement Voirie Publique</text>
+
+                {/* 3. Bâti existant conservé en grisé avec étiquette */}
+                <g>
+                    <rect x="75" y="160" width="170" height="205" fill="#cbd5e1" stroke="#475569" strokeWidth="2" rx="3" />
+                    <rect x="75" y="160" width="170" height="205" fill="url(#bess-bati-hatch)" rx="3" />
+                    <rect x="90" y="245" width="140" height="30" fill="#ffffff" stroke="#475569" strokeWidth="1.2" rx="3" />
+                    <text x="160" y="259" textAnchor="middle" fill="#0f172a" fontSize="8.5" fontWeight="bold">Bâtiment existant</text>
+                    <text x="160" y="270" textAnchor="middle" fill="#64748b" fontSize="7">(Conservé sans modif.)</text>
+                </g>
+
+                {/* 4. Centrale BESS : Dalle béton 19.84 m² (6.20 x 3.20m) + 4 armoires */}
+                <g id="bess-station-group">
+                    {/* Clôture rigide H 2.00m */}
+                    <rect x="415" y="195" width="225" height="145" fill="rgba(240, 253, 244, 0.9)" stroke="#16a34a" strokeWidth="2" rx="4" />
+                    <text x="527" y="210" textAnchor="middle" fill="#15803d" fontSize="7.5" fontWeight="bold">Clôture rigide H 2,00 m (RAL 6005)</text>
+
+                    {/* Dalle béton armé 6.20m x 3.20m = 19.84 m² */}
+                    <rect x="445" y="220" width="165" height="95" fill="#e2e8f0" stroke="#0f172a" strokeWidth="2" rx="2" />
+                    <text x="527" y="235" textAnchor="middle" fill="#0f172a" fontSize="7.5" fontWeight="bold">Dalle béton BESS : 6,20 m × 3,20 m (19,84 m²)</text>
+
+                    {/* 4 armoires LFP Mercury 261 */}
+                    {[0, 1, 2, 3].map((idx) => {
+                        const ax = 458 + idx * 36;
+                        return (
+                            <rect key={idx} x={ax} y="245" width="30" height="60" fill="#1e293b" stroke="#38bdf8" strokeWidth="1" rx="1.5" />
+                        );
+                    })}
+                    <text x="527" y="292" textAnchor="middle" fill="#ffffff" fontSize="6.5" fontWeight="bold">4× Armoires BESS (500 kW / 1 044 kWh)</text>
+                </g>
+
+                {/* 5. Les 3 Cotations Réglementaires */}
+                {/* Cotation A : Limite séparative Est >= 3 m (ici 4,20 m) */}
+                <g>
+                    <line x1="640" y1="268" x2="775" y2="268" stroke="#dc2626" strokeWidth="1.8" markerStart="url(#arrow-red-start)" markerEnd="url(#arrow-red-end)" />
+                    <rect x="660" y="254" width="95" height="16" fill="#fef2f2" stroke="#dc2626" strokeWidth="0.8" rx="2" />
+                    <text x="707" y="265" textAnchor="middle" fill="#b91c1c" fontSize="7.2" fontWeight="bold">Recul limite ≥ 3 m (4,20 m)</text>
+                </g>
+
+                {/* Cotation B : Recul Voirie Nord >= 5 m (ici 6,50 m) */}
+                <g>
+                    <line x1="527" y1="65" x2="527" y2="195" stroke="#dc2626" strokeWidth="1.8" markerStart="url(#arrow-red-start)" markerEnd="url(#arrow-red-end)" />
+                    <rect x="477" y="120" width="100" height="16" fill="#fef2f2" stroke="#dc2626" strokeWidth="0.8" rx="2" />
+                    <text x="527" y="131" textAnchor="middle" fill="#b91c1c" fontSize="7.2" fontWeight="bold">Recul voirie ≥ 5 m (6,50 m)</text>
+                </g>
+
+                {/* Cotation C : Distance Bâtiment existant >= 10 m (ici 14,80 m) */}
+                <g>
+                    <line x1="245" y1="265" x2="415" y2="265" stroke="#dc2626" strokeWidth="1.8" markerStart="url(#arrow-red-start)" markerEnd="url(#arrow-red-end)" />
+                    <rect x="265" y="252" width="130" height="16" fill="#fef2f2" stroke="#dc2626" strokeWidth="0.8" rx="2" />
+                    <text x="330" y="263" textAnchor="middle" fill="#b91c1c" fontSize="7.2" fontWeight="bold">Distance au bâti ≥ 10 m (14,80 m)</text>
+                </g>
+
+                {/* 6. Raccordement souterrain HTA Enedis en pointillés */}
+                <g>
+                    <path d="M 610 268 L 740 268 L 740 70" fill="none" stroke="#0284c7" strokeWidth="2.5" strokeDasharray="6 4" />
+                    <rect x="680" y="135" width="85" height="28" fill="#f0f9ff" stroke="#0284c7" strokeWidth="1" rx="3" />
+                    <text x="722" y="147" textAnchor="middle" fill="#0369a1" fontSize="6.8" fontWeight="bold">Liaison Souterraine</text>
+                    <text x="722" y="157" textAnchor="middle" fill="#0284c7" fontSize="6.5">HTA 20 kV Enedis (&lt; 30 m)</text>
+                </g>
+
+                {/* 7. Ligne et sens de visée de la Coupe AA' */}
+                <g>
+                    <line x1="385" y1="280" x2="665" y2="280" stroke="#7c3aed" strokeWidth="2" strokeDasharray="12 4 3 4" />
+                    {/* Flèches et symboles A et A' */}
+                    <circle cx="395" cy="280" r="10" fill="#7c3aed" />
+                    <text x="395" y="284" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="bold">A</text>
+                    <path d="M 395 270 L 395 258 M 391 264 L 395 258 L 399 264" fill="none" stroke="#7c3aed" strokeWidth="2" />
+
+                    <circle cx="655" cy="280" r="10" fill="#7c3aed" />
+                    <text x="655" y="284" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="bold">A'</text>
+                    <path d="M 655 270 L 655 258 M 651 264 L 655 258 L 659 264" fill="none" stroke="#7c3aed" strokeWidth="2" />
+
+                    <rect x="472" y="345" width="115" height="15" fill="#f5f3ff" stroke="#7c3aed" strokeWidth="0.8" rx="2" />
+                    <text x="529" y="356" textAnchor="middle" fill="#6d28d9" fontSize="7.2" fontWeight="bold">Axe Coupe AA' (Sens de visée ↑)</text>
+                </g>
+
+                {/* 8. Accès maintenance et voie engins SDIS (largeur >= 3,50 m) */}
+                <g>
+                    <path d="M 330 65 L 330 220 L 415 220" fill="none" stroke="#d97706" strokeWidth="3" strokeDasharray="5 3" />
+                    <rect x="290" y="105" width="125" height="26" fill="#fffbeb" stroke="#d97706" strokeWidth="1" rx="2" />
+                    <text x="352" y="117" textAnchor="middle" fill="#b45309" fontSize="7" fontWeight="bold">Accès maintenance &amp; Voie SDIS</text>
+                    <text x="352" y="126" textAnchor="middle" fill="#92400e" fontSize="6.5">Largeur utile ≥ 3,50 m (Portail 4,00 m)</text>
+                </g>
+
+                {/* Cartouche Réglementaire BESS (en bas à gauche) */}
+                <g transform="translate(35, 385)">
+                    <rect x="0" y="0" width="370" height="60" fill="#ffffff" stroke="#0284c7" strokeWidth="1.2" rx="3" opacity="0.96" />
+                    <text x="10" y="13" fill="#0369a1" fontSize="7.5" fontWeight="bold">CONFORMITÉ RÈGLEMENTAIRE BESS (STAND-ALONE)</text>
+                    <text x="10" y="25" fill="#334155" fontSize="6.8">• Cotations limites séparatives : ≥ 3,00 m respecté | Voirie : ≥ 5,00 m respecté</text>
+                    <text x="10" y="36" fill="#334155" fontSize="6.8">• Bâti conservé en grisé à distance de sécurité incendie ≥ 10,00 m (NFPA 855)</text>
+                    <text x="10" y="47" fill="#334155" fontSize="6.8">• Raccordement Enedis direct en souterrain | Accès SDIS hors-gel l ≥ 3,50 m</text>
+                    <text x="10" y="56" fill="#16a34a" fontSize="6.5" fontWeight="bold">Emprise au sol dalle : 19,84 m² (&lt; 20 m²) — Surface de plancher : 0 m²</text>
+                </g>
+            </svg>
+        </div>
+    );
+};
+
 export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
@@ -292,6 +416,7 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                                     </div>
                                     <div style={{ flex: 1, position: 'relative', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <img src={getProxiedImageUrl(bPhoto || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
+                                        {isBatB && <BessMasseRegulatoryOverlay bLen={bLen} bW={bW} />}
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.2mm', padding: '1mm 1.5mm', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '1.5mm', fontSize: '6.5pt', color: '#334155' }}>
                                         <div style={{ display: 'flex', gap: '2.5mm', flexWrap: 'wrap' }}>
@@ -349,8 +474,9 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                                     {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
                                 </span>
                             </div>
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff' }}>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff', position: 'relative' }}>
                                 <img src={getProxiedImageUrl(bPhoto || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
+                                {isBatB && <BessMasseRegulatoryOverlay bLen={bLen} bW={bW} />}
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5mm', padding: '1.2mm 2.5mm', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '1.5mm', fontSize: '7.2pt', color: '#334155' }}>
                                 <div style={{ display: 'flex', gap: '3.5mm' }}>
@@ -1063,7 +1189,7 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
     const isNoBattery = isAcama;
 
     const hasNotice = Boolean(includeNotice || project?.includeNotice || project?.hasNotice);
-    const rawNoticeText = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description;
+    const rawNoticeText = noticeText || project?.noticeText || (isBattery ? getBessCadre41Text(project) : (project?.noticeAgricole || project?.pc_notice || project?.description));
     let cleanNoticeText = (rawNoticeText || '').replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
 
     if (isNoBattery && cleanNoticeText) {
@@ -1685,8 +1811,11 @@ export const PlateEnvProche = ({ project, captures, photos }) => {
 };
 
 export const PlateInsertionNotice = ({ project, noticeText }) => {
-    const defaultDesc = `Installation d'une structure ombrière photovoltaïque recevant une centrale solaire intégrée en toiture d'une puissance de ${project?.kwc || 100} kWc.`;
-    const fullText = noticeText || project?.noticeText || project?.description || defaultDesc;
+    const isBattery = project?.solutionType === 'battery' || Boolean(project?.isBatteryStandAlone) || (project?.type || '').toLowerCase().includes('batterie');
+    const defaultDesc = isBattery
+      ? getBessCadre41Text(project)
+      : `Installation d'une structure ombrière photovoltaïque recevant une centrale solaire intégrée en toiture d'une puissance de ${project?.kwc || 100} kWc.`;
+    const fullText = noticeText || project?.noticeText || (isBattery ? getBessCadre41Text(project) : (project?.description || defaultDesc));
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-notice-insertion">

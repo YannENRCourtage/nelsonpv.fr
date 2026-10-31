@@ -12,7 +12,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { fetchUrbanismeMairiePortal } from '@/services/urbanismeRoutingService';
 import { exportDossierDepotZip } from '@/services/DPGeneratorService';
-import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames, parseFrenchAddress, DEFAULT_BESS_CADRE_4_1 } from '@/services/SmartCerfaService';
+import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames, parseFrenchAddress, DEFAULT_BESS_CADRE_4_1, getBessCadre41Text } from '@/services/SmartCerfaService';
 import { downloadPieceDwg } from '@/services/DwgExportService';
 import { cadastreService } from '@/services/CadastreService';
 import { getOrGenerateProjectMaps, generateStaticMapImage } from '@/services/AutoMapService';
@@ -3087,7 +3087,7 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
   // Générateur dynamique du texte détaillé pour "Objet des travaux" (Page de garde)
   const defaultObjetTravauxText = useMemo(() => {
     if (isBatActive) {
-      return DEFAULT_BESS_CADRE_4_1;
+      return getBessCadre41Text(editedProject || project);
     }
 
     const retainedStructures = allConfiguredStructures.filter(s => selectedStructureIds.includes(s.id));
@@ -4094,7 +4094,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
 
     const defaultObjetBySol = isBatterySolution
-      ? DEFAULT_BESS_CADRE_4_1
+      ? getBessCadre41Text(project)
       : (isRodierGarons
           ? image4ObjetTravaux
           : (isOmbriereSolution || isDP
@@ -5230,7 +5230,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     
     // Objet synthétique pour Page 1
     const defaultObjet = isBattery
-      ? DEFAULT_BESS_CADRE_4_1
+      ? getBessCadre41Text(safeProject || project)
       : (isDP
         ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
         : (isPC
