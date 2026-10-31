@@ -302,7 +302,11 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   doc.text(`• Écrêtage pointes TURPE : +${formatNum(sim.gains.peakShavingValue)} €/an`, 18, ecoY + 16);
   doc.text(`• Arbitrage HP/HC & Décharge : +${formatNum(sim.gains.batterySavings - sim.gains.peakShavingValue)} €/an`, 18, ecoY + 20);
   if (solar.enabled) {
-    doc.text(`• Économies solaire PV : +${formatNum(sim.gains.solarSavings)} €/an`, 18, ecoY + 24);
+    if (sim.gains.solarSavings > 0) {
+      doc.text(`• Économies solaire PV : +${formatNum(sim.gains.solarSavings)} €/an`, 18, ecoY + 24);
+    } else {
+      doc.text(`• PV existant (${solar.kwc} kWc) sur site`, 18, ecoY + 24);
+    }
   }
   doc.setFont('helvetica', 'bold');
   doc.text(`Total Économies : +${formatNum(sim.gains.batterySavings + sim.gains.solarSavings)} € HT/an`, 18, ecoY + 31);
@@ -324,7 +328,11 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   } else {
     doc.text(`• Mode : Derrière le compteur (0 € réseau)`, 18 + colW3 + 4, ecoY + 16);
     doc.text(`• Aucune formalité Enedis requise`, 18 + colW3 + 4, ecoY + 20);
-    doc.text(`• 100% valorisé en autoconsommation`, 18 + colW3 + 4, ecoY + 24);
+    if (sim.gains.solarSurplusRevenue > 0) {
+      doc.text(`• Vente surplus solaire : +${formatNum(sim.gains.solarSurplusRevenue)} €/an`, 18 + colW3 + 4, ecoY + 24);
+    } else {
+      doc.text(`• 100% valorisé en autoconsommation`, 18 + colW3 + 4, ecoY + 24);
+    }
     doc.setFont('helvetica', 'bold');
     doc.text(`Total Réseau : 0 € (Autonomie seule)`, 18 + colW3 + 4, ecoY + 31);
   }

@@ -247,16 +247,30 @@ export function simulateEnergy({
     autoconsoPvBat: selfPvBat
   };
 
-  const chart = (typicalDay || []).map((x, h) => ({
-    hour: `${String(h).padStart(2, '0')}h`,
-    conso: +(x?.load || 0).toFixed(2),
-    solaire: +(x?.pv || 0).toFixed(2),
-    reseauAvant: +Math.max(0, (x?.load || 0) - Math.min(x?.load || 0, x?.pv || 0)).toFixed(2),
-    reseauApres: +(x?.grid || 0).toFixed(2),
-    stockage: +(x?.charge || 0).toFixed(2),
-    restitution: +(x?.discharge || 0).toFixed(2),
-    soc: +(x?.soc || 0).toFixed(2)
-  }));
+  const chart = (typicalDay || []).map((x, h) => {
+    const socVal = x?.soc || 0;
+    const socPct = usable > 0 ? Math.min(100, Math.max(0, Math.round((socVal / usable) * 100))) : 0;
+    const chg = +(x?.charge || 0);
+    const dis = +(x?.discharge || 0);
+    let activity = 'veille';
+    if (chg > 0.05) activity = 'charge';
+    else if (dis > 0.05) activity = 'decharge';
+
+    return {
+      hour: `${String(h).padStart(2, '0')}h`,
+      hourNum: h,
+      conso: +(x?.load || 0).toFixed(2),
+      solaire: +(x?.pv || 0).toFixed(2),
+      reseauAvant: +Math.max(0, (x?.load || 0) - Math.min(x?.load || 0, x?.pv || 0)).toFixed(2),
+      reseauApres: +(x?.grid || 0).toFixed(2),
+      stockage: +chg.toFixed(2),
+      restitution: +dis.toFixed(2),
+      soc: +socVal.toFixed(2),
+      socKwh: +socVal.toFixed(2),
+      socPct,
+      activity
+    };
+  });
 
   return { totals: tot, rates, peakKw: pk, newPeakKw, shaveKw, pvAnnual, chart, usable };
 }
@@ -306,6 +320,7 @@ export function computeStorageProject(input) {
   });
   const t = energy.totals;
   const sellPrice = Number(solar?.sellPrice ?? 0.04);
+  const solarSurplusRevenue = solar?.enabled ? Math.round(t.exportBat * sellPrice) : 0;
 
   // Coûts annuels d'électricité (année 1)
   const costSite = t.importHpBase * hpPrice + t.importHcBase * hcPrice;
@@ -373,7 +388,7 @@ export function computeStorageProject(input) {
     cfEquity.push(cfAfterDebt);
     years.push({
       year: y,
-      batterySavings: Math.round(batSav), solarSavings: Math.round(pvSav), gridRevenue: Math.round(gridRev),
+      batterySavings: Math.round(batSav), solarSavings: Math.round(pvSav), solarSurplusRevenue: Math.round(solarSurplusRevenue * pvDeg * Math.pow(1.02, y - 1)), gridRevenue: Math.round(gridRev),
       opex: Math.round(op), ebitda: Math.round(ebitda), interest: Math.round(interest), principal: Math.round(principal),
       debtService: Math.round(debtService), cfAfterDebt: Math.round(cfAfterDebt),
       cumProject: Math.round(cum), cumEquity: Math.round(cumEq), dscr: dscr !== null ? +dscr.toFixed(2) : null
@@ -394,7 +409,7 @@ export function computeStorageProject(input) {
     energy,
     costs: { costSite: Math.round(costSite), costPv: Math.round(costPv), costPvBat: Math.round(costPvBat) },
     gains: {
-      batterySavings, solarSavings, solarExistingSavings, peakShavingValue, gridRevenue,
+      batterySavings, solarSavings, solarExistingSavings, solarSurplusRevenue, peakShavingValue, gridRevenue,
       totalYear1: batterySavings + solarSavings + gridRevenue
     },
     grid,

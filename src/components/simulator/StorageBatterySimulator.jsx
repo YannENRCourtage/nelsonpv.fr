@@ -21,7 +21,10 @@ import {
   Euro,
   Flame,
   Percent,
-  Check
+  Check,
+  Play,
+  Pause,
+  Activity
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -85,6 +88,29 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
   const [discountPct, setDiscountPct] = useState(0);
   const [customOpex, setCustomOpex] = useState(null);
   const [indexationPct, setIndexationPct] = useState(4);
+  const [customBatteryPrices, setCustomBatteryPrices] = useState({});
+
+  // ── Animation & Heure active pour la journée type 24h ──
+  const [timelineHour, setTimelineHour] = useState(12);
+  const [isPlayingTimeline, setIsPlayingTimeline] = useState(false);
+
+  // Timer de lecture automatique 24h
+  useEffect(() => {
+    if (!isPlayingTimeline) return;
+    const interval = setInterval(() => {
+      setTimelineHour(prev => (prev + 1) % 24);
+    }, 1200);
+    return () => clearInterval(interval);
+  }, [isPlayingTimeline]);
+
+  // Modification du prix matériel unitaire par modèle
+  const handleUpdateModelPrice = useCallback((modelId, newPrice) => {
+    const p = Math.max(0, Number(newPrice) || 0);
+    setCustomBatteryPrices(prev => ({ ...prev, [modelId]: p }));
+    if (modelId === selectedModelId) {
+      setCustomHwPrice(p);
+    }
+  }, [selectedModelId]);
 
   // ── 4. Mode de Raccordement Réseau Enedis ──
   const [gridConnection, setGridConnection] = useState(false);
@@ -244,7 +270,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
       },
       model: currentModel,
       quantity,
-      hardwarePriceHt: customHwPrice !== null ? customHwPrice : undefined,
+      hardwarePriceHt: customHwPrice !== null ? customHwPrice : (customBatteryPrices[selectedModelId] !== undefined ? customBatteryPrices[selectedModelId] : undefined),
       installPriceHt: customInstallPrice !== null ? customInstallPrice : undefined,
       discountPct,
       opexAnnualHt: customOpex !== null ? customOpex : undefined,
@@ -275,8 +301,10 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     solarCapexHt,
     solarSellPrice,
     currentModel,
+    selectedModelId,
     quantity,
     customHwPrice,
+    customBatteryPrices,
     customInstallPrice,
     discountPct,
     customOpex,
@@ -379,7 +407,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
   }, [catalogFilter]);
 
   return (
-    <div className="flex flex-col gap-5 w-full max-w-7xl mx-auto pb-12">
+    <div className="flex flex-col gap-5 w-full min-w-0 max-w-full pb-12">
       {/* ── BANDEAU TITRE & BOUTONS D'EXPORT PDF MAJEURS ── */}
       <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
@@ -644,31 +672,38 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
 
             <div>
               <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                {solarIsNew ? 'Coût d’investissement PV (CAPEX HT)' : 'Valorisation surplus injecté'}
+                Tarif vente surplus injecté
               </label>
-              {solarIsNew ? (
-                <div className="relative">
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={solarSellPrice}
+                  onChange={e => setSolarSellPrice(Number(e.target.value) || 0.04)}
+                  className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 pr-12 focus:outline-none focus:border-amber-500"
+                />
+                <span className="absolute right-2.5 top-1.5 text-[10px] text-slate-400 font-bold">€/kWh</span>
+              </div>
+              <span className="text-[9px] text-slate-400 block mt-0.5">Surplus valorisé avec ou sans raccordement réseau</span>
+            </div>
+
+            {solarIsNew && (
+              <div className="sm:col-span-2 lg:col-span-4 p-3 rounded-xl bg-amber-100/70 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-xs font-black text-amber-950 block">Coût d’investissement Solaire (CAPEX PV)</span>
+                  <span className="text-[10px] text-amber-800">Inclus dans le plan de financement global &amp; amorti sur le projet</span>
+                </div>
+                <div className="relative w-44">
                   <input
                     type="number"
                     value={solarCapexHt}
                     onChange={e => setSolarCapexHt(Number(e.target.value) || 0)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 pr-8 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-white border border-amber-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 pr-9 focus:outline-none focus:border-amber-600"
                   />
                   <span className="absolute right-2.5 top-1.5 text-[10px] text-slate-400 font-bold">€ HT</span>
                 </div>
-              ) : (
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={solarSellPrice}
-                    onChange={e => setSolarSellPrice(Number(e.target.value) || 0.04)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 pr-12 focus:outline-none focus:border-amber-500"
-                  />
-                  <span className="absolute right-2.5 top-1.5 text-[10px] text-slate-400 font-bold">€/kWh</span>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -720,15 +755,20 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
         </div>
 
         {/* Cartes du catalogue */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 max-h-80 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 max-h-96 overflow-y-auto pr-1">
           {filteredModels.map(m => {
             const isSelected = m.id === selectedModelId;
+            const currentUnitHwPrice = customBatteryPrices[m.id] !== undefined
+              ? customBatteryPrices[m.id]
+              : (m.sellingHardwarePriceHT || m.defaultPriceHt || 0);
+            const installCost = Math.max(0, (m.turnkeyInstalledPriceHT || 0) - (m.sellingHardwarePriceHT || 0));
+
             return (
               <div
                 key={m.id}
                 onClick={() => {
                   setSelectedModelId(m.id);
-                  setCustomHwPrice(null);
+                  setCustomHwPrice(currentUnitHwPrice);
                   setCustomInstallPrice(null);
                 }}
                 className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
@@ -757,16 +797,34 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                   <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{m.description}</p>
                 </div>
 
-                <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block leading-tight">Clé en main posé</span>
-                    <span className="text-xs font-black text-slate-900">
-                      {fmtEur(m.turnkeyInstalledPriceHT)} HT
+                <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-col gap-1.5">
+                  <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 mb-0.5">
+                      <span>Prix unitaire HT :</span>
+                      <span className="text-[9px] text-blue-600 font-semibold">Modifiable</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={currentUnitHwPrice}
+                        onChange={e => handleUpdateModelPrice(m.id, Number(e.target.value) || 0)}
+                        className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-black text-slate-900 pr-9 focus:outline-none focus:border-blue-500"
+                      />
+                      <span className="absolute right-2 top-1 text-[10px] text-slate-400 font-bold">€ HT</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[9px] text-slate-400 block leading-tight">Clé en main posé</span>
+                      <span className="text-xs font-black text-slate-900">
+                        {fmtEur(currentUnitHwPrice + installCost)} HT
+                      </span>
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      {isSelected ? 'Sélectionné' : 'Choisir'}
                     </span>
                   </div>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                    {isSelected ? 'Sélectionné' : 'Choisir'}
-                  </span>
                 </div>
               </div>
             );
@@ -800,8 +858,12 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
             <div className="relative">
               <input
                 type="number"
-                value={customHwPrice !== null ? customHwPrice : currentModel.sellingHardwarePriceHT}
-                onChange={e => setCustomHwPrice(Number(e.target.value) || 0)}
+                value={customHwPrice !== null ? customHwPrice : (customBatteryPrices[selectedModelId] ?? currentModel.sellingHardwarePriceHT)}
+                onChange={e => {
+                  const p = Number(e.target.value) || 0;
+                  setCustomHwPrice(p);
+                  handleUpdateModelPrice(selectedModelId, p);
+                }}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 pr-8 focus:outline-none focus:border-blue-500"
               />
               <span className="absolute right-2 top-1.5 text-[10px] text-slate-400 font-bold">€ HT</span>
@@ -956,27 +1018,264 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
         {/* Graphique Recharts */}
         <div className="h-64 sm:h-72 w-full mt-2">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={sim.energy.chart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <ComposedChart data={sim.energy.chart} margin={{ top: 10, right: 25, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#64748b' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#64748b' }} unit=" kW" />
+              <YAxis yAxisId="left" tick={{ fontSize: 10, fill: '#64748b' }} unit=" kW" />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 100]} unit="%" tick={{ fontSize: 10, fill: '#0891b2' }} />
               <Tooltip
                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                formatter={(value, name) => [
+                  name && name.includes('(%)') ? `${value} %` : `${value} kW`,
+                  name
+                ]}
               />
               <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
               {/* Solaire */}
               {solarEnabled && (
-                <Area type="monotone" dataKey="solaire" name="Production Solaire (kW)" fill="#fef3c7" stroke="#f59e0b" strokeWidth={2} />
+                <Area yAxisId="left" type="monotone" dataKey="solaire" name="Production Solaire (kW)" fill="#fef3c7" stroke="#f59e0b" strokeWidth={2} />
               )}
               {/* Charge batterie */}
-              <Area type="monotone" dataKey="stockage" name="Recharge Batterie (kW)" fill="#d1fae5" stroke="#10b981" strokeWidth={1.5} />
+              <Area yAxisId="left" type="monotone" dataKey="stockage" name="Recharge Batterie (kW)" fill="#d1fae5" stroke="#10b981" strokeWidth={1.5} />
               {/* Consommation site */}
-              <Line type="monotone" dataKey="conso" name="Consommation Site (kW)" stroke="#64748b" strokeWidth={2} dot={false} strokeDasharray="4 4" />
+              <Line yAxisId="left" type="monotone" dataKey="conso" name="Consommation Site (kW)" stroke="#64748b" strokeWidth={2} dot={false} strokeDasharray="4 4" />
               {/* Soutirage réseau après batterie */}
-              <Line type="monotone" dataKey="reseauApres" name="Soutirage Réseau après BESS (kW)" stroke="#0284c7" strokeWidth={2.5} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="reseauApres" name="Soutirage Réseau après BESS (kW)" stroke="#0284c7" strokeWidth={2.5} dot={false} />
+              {/* Niveau de charge BESS SOC % */}
+              <Line yAxisId="right" type="monotone" dataKey="socPct" name="Niveau de Charge BESS (%)" stroke="#0891b2" strokeWidth={2.5} dot={false} strokeDasharray="3 3" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
+
+        {/* ── MODULE INTERACTIF : 24 HEURES DANS LA VIE DE LA BATTERIE (Style Solaime) ── */}
+        {(() => {
+          const currentHourData = sim.energy.chart[timelineHour] || sim.energy.chart[0] || {};
+          const socPct = currentHourData.socPct ?? 0;
+          const socKwh = currentHourData.socKwh ?? 0;
+          const isCharging = (currentHourData.stockage || 0) > 0.05;
+          const isDischarging = (currentHourData.restitution || 0) > 0.05;
+          const statusLabel = isCharging
+            ? 'EN RECHARGE'
+            : isDischarging
+            ? 'EN DÉCHARGE (EFFACEMENT)'
+            : 'VEILLE ACTIVE (50 Hz)';
+
+          // Texte explicatif dynamique selon l'activité horaire réelle
+          let narrativeText = '';
+          if (isCharging) {
+            if (currentHourData.solaire > currentHourData.conso) {
+              narrativeText = `Production photovoltaïque abondante (${currentHourData.solaire} kW) supérieure à la consommation du site (${currentHourData.conso} kW). La batterie absorbe et stocke gratuitement le surplus (${currentHourData.stockage} kW), évitant son injection à bas prix. Réserve BESS portée à ${socPct}%.`;
+            } else {
+              narrativeText = `Recharge de la batterie (${currentHourData.stockage} kW) programmée en Heures Creuses ou sur surplus solaire pour préparer l'écrêtage de la prochaine pointe de consommation. Niveau de charge : ${socPct}%.`;
+            }
+          } else if (isDischarging) {
+            narrativeText = `Période de forte consommation sur le site (${currentHourData.conso} kW) en Heures Pleines Enedis. La batterie se décharge activement (${currentHourData.restitution} kW) pour effacer la pointe de puissance et éviter tout dépassement de puissance TURPE.`;
+          } else if (timelineHour >= 22 || timelineHour <= 5) {
+            narrativeText = `La nuit est calme. Le site fonctionne sur son talon de charge (${currentHourData.conso} kW). La batterie veille sur le réseau : elle stabilise en continu la fréquence à 50 Hz, prête pour la pointe matinale. Réserve : ${socPct}%.`;
+          } else {
+            narrativeText = `Période intermédiaire d'équilibre. La batterie maintient sa charge (${socPct}%, soit ${socKwh} kWh disponibles) et reste disponible en réserve instantanée pour absorber tout appel de puissance.`;
+          }
+
+          return (
+            <div className="mt-6 bg-slate-950 text-white rounded-2xl p-4 sm:p-5 border border-slate-800 shadow-xl">
+              {/* En-tête avec titre et slider interactif */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                    <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-400">
+                      24 Heures dans la vie d'une batterie
+                    </h4>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Une journée type expliquée simplement : niveau de charge (SOC %), flux d'énergie et missions
+                  </p>
+                </div>
+
+                {/* Contrôles Play/Pause et Slider */}
+                <div className="flex items-center gap-3 bg-slate-900/90 p-2 rounded-xl border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsPlayingTimeline(!isPlayingTimeline)}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                  >
+                    {isPlayingTimeline ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    {isPlayingTimeline ? 'Pause' : 'Suivre la journée'}
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="range"
+                      min="0"
+                      max="23"
+                      value={timelineHour}
+                      onChange={e => setTimelineHour(Number(e.target.value))}
+                      className="w-28 sm:w-36 accent-amber-500 cursor-pointer"
+                    />
+                    <span className="font-mono text-sm font-black text-amber-400 w-10 text-right">
+                      {String(timelineHour).padStart(2, '0')} h
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scène visuelle centrale Réseau <-> BESS & Jauge de batterie */}
+              <div className="my-5 p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 flex flex-col md:flex-row items-center justify-between gap-4">
+                {/* Réseau électrique / Centrale solaire */}
+                <div className="flex items-center gap-3 text-center sm:text-left">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-400/30 flex items-center justify-center shrink-0">
+                    <Zap className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Réseau &amp; Site</span>
+                    <span className="text-sm font-black text-white">
+                      {currentHourData.reseauApres} kW soutiré
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Conso site : {currentHourData.conso} kW {solarEnabled && `· Solaire : ${currentHourData.solaire} kW`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Flux au milieu avec animation */}
+                <div className="flex flex-col items-center gap-1 text-center">
+                  <div className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                    isCharging
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      : isDischarging
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                      : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                  }`}>
+                    <Activity className="w-3.5 h-3.5" />
+                    {statusLabel}
+                  </div>
+                  <div className="text-[10px] font-mono text-slate-400">
+                    {isCharging && `+${currentHourData.stockage} kW vers la batterie`}
+                    {isDischarging && `-${currentHourData.restitution} kW vers le site`}
+                    {!isCharging && !isDischarging && 'Fréquence 50 Hz stabilisée'}
+                  </div>
+                </div>
+
+                {/* Batterie BESS avec jauge graphique et % de charge */}
+                <div className="flex items-center gap-4">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block text-right">Batterie BESS</span>
+                    <span className="text-base font-black text-emerald-400 block text-right">
+                      {socPct} % de charge
+                    </span>
+                    <span className="text-[10px] text-slate-400 block text-right">
+                      {socKwh} / {sim.capacityKwh} kWh
+                    </span>
+                  </div>
+
+                  {/* Symbole visuel de batterie avec remplissage dynamique */}
+                  <div className="relative w-12 h-20 rounded-xl border-2 border-slate-600 bg-slate-950 p-1 flex flex-col justify-end overflow-hidden">
+                    {/* Borne supérieure */}
+                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-1.5 bg-slate-500 rounded-t" />
+                    {/* Niveau liquide dynamique */}
+                    <div
+                      className={`w-full rounded-lg transition-all duration-500 ${
+                        socPct > 60
+                          ? 'bg-gradient-to-t from-emerald-600 to-emerald-400'
+                          : socPct > 25
+                          ? 'bg-gradient-to-t from-cyan-600 to-cyan-400'
+                          : 'bg-gradient-to-t from-amber-600 to-amber-400'
+                      }`}
+                      style={{ height: `${Math.max(8, socPct)}%` }}
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow">
+                      {socPct}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cadre explicatif dynamique jaune/ambre (comme image 5) */}
+              <div className="p-3.5 rounded-xl border-2 border-amber-500/70 bg-amber-950/20 flex flex-col sm:flex-row sm:items-center gap-3">
+                <span className="font-mono text-xl sm:text-2xl font-black text-amber-400 shrink-0">
+                  {String(timelineHour).padStart(2, '0')}:00
+                </span>
+                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+                  {narrativeText}
+                </p>
+              </div>
+
+              {/* 4 piliers de mission */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mt-4">
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <span className="text-[10px] font-black uppercase text-cyan-400 block">Régulation Fréquence</span>
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">Stabilisation continue du réseau 50 Hz seconde par seconde.</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <span className="text-[10px] font-black uppercase text-amber-400 block">Écrêtage de Pointe</span>
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">Efface les pics de consommation du site pour réduire le TURPE.</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <span className="text-[10px] font-black uppercase text-emerald-400 block">Recharge Optimale</span>
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">Absorbe le surplus solaire gratuit ou recharge en Heures Creuses.</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <span className="text-[10px] font-black uppercase text-indigo-400 block">Arbitrage &amp; Secours</span>
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">Restitution en Heures Pleines et résilience énergétique du site.</p>
+                </div>
+              </div>
+
+              {/* Frise chronologique 24h avec 24 blocs colorés cliquables (comme image 5) */}
+              <div className="mt-4 pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+                  <span className="font-bold text-slate-300">Activité de la batterie heure par heure — cliquez sur une heure :</span>
+                  <span className="font-mono text-amber-400 font-bold">{timelineHour}h00</span>
+                </div>
+
+                <div className="grid grid-cols-12 sm:grid-cols-24 gap-1">
+                  {sim.energy.chart.map((hData, h) => {
+                    const isSelectedHour = h === timelineHour;
+                    const chg = (hData.stockage || 0) > 0.05;
+                    const dis = (hData.restitution || 0) > 0.05;
+                    const bgClass = chg
+                      ? 'bg-emerald-500 hover:bg-emerald-400'
+                      : dis
+                      ? 'bg-amber-500 hover:bg-amber-400'
+                      : 'bg-cyan-600 hover:bg-cyan-500';
+
+                    return (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => {
+                          setTimelineHour(h);
+                          setIsPlayingTimeline(false);
+                        }}
+                        title={`${hData.hour}: SOC ${hData.socPct}% · Conso ${hData.conso}kW ${chg ? `· Charge ${hData.stockage}kW` : ''} ${dis ? `· Décharge ${hData.restitution}kW` : ''}`}
+                        className={`h-8 rounded flex flex-col items-center justify-center text-[9px] font-bold transition-all cursor-pointer ${bgClass} text-slate-950 ${
+                          isSelectedHour ? 'ring-2 ring-white scale-110 shadow-lg z-10 font-black' : 'opacity-85 hover:opacity-100'
+                        }`}
+                      >
+                        <span>{String(h).padStart(2, '0')}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Légende de la frise */}
+                <div className="flex items-center gap-4 flex-wrap mt-2.5 text-[10px] text-slate-400">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded bg-emerald-500" />
+                    <span>Recharge (surplus solaire gratuit / Heures Creuses)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded bg-amber-500" />
+                    <span>Décharge (effacement des pointes TURPE / Heures Pleines)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded bg-cyan-600" />
+                    <span>Veille active &amp; stabilisation fréquence 50 Hz</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── SECTION 5 : BUSINESS PLAN SUR 20 ANS & PARAMÈTRES BANCAIRES ── */}

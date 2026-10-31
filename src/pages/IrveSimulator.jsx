@@ -747,7 +747,7 @@ export default function IrveSimulator() {
                 >
                   <div className="flex items-center gap-1.5 min-w-max pr-3 lg:pr-0">
                     {[
-                      { id: 'bess', label: 'BESS', icon: BatteryCharging, color: 'text-emerald-500' },
+                      { id: 'bess', label: 'BESS Stand-Alone', icon: BatteryCharging, color: 'text-emerald-500' },
                       { id: 'stockage', label: '🔋 Stockage Batterie', icon: BatteryCharging, color: 'text-amber-500' },
                       { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
                       { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
@@ -831,7 +831,11 @@ export default function IrveSimulator() {
         </div>
 
         {/* CONTENU PRINCIPAL */}
-        <div className={`flex-1 w-full min-w-0 max-w-full ${activeSolution === 'bess' ? 'p-2 sm:p-2.5 flex flex-col min-h-0 overflow-hidden' : 'p-3 sm:p-5 overflow-x-hidden'}`}>
+        <div className={`flex-1 w-full min-w-0 max-w-full ${
+          activeSolution === 'bess' ? 'p-2 sm:p-2.5 flex flex-col min-h-0 overflow-hidden' :
+          activeSolution === 'stockage' ? 'p-2 sm:p-3 overflow-y-auto' :
+          'p-3 sm:p-5 overflow-x-hidden'
+        }`}>
           
           {/* ═══ ONGLET 1 : SIMULATEURS (FRONT-OFFICE) ═══════════════════════ */}
           {activeMainTab === 'simulateurs' && (
