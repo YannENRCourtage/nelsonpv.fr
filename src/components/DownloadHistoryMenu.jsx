@@ -169,33 +169,11 @@ export default function DownloadHistoryMenu() {
     }
   };
 
-  // Ouvrir l'explorateur Windows ("Enregistrer sous..." dans le dossier de téléchargement)
-  const handleSaveToFolder = async (item) => {
+  // Téléchargement direct dans le dossier Téléchargements en local
+  const handleSaveToFolder = (item) => {
     const url = getValidUrl(item);
     if (!url) return;
 
-    if (typeof window.showSaveFilePicker === 'function' && item.blob instanceof Blob) {
-      try {
-        const ext = item.fileName?.includes('.') ? `.${item.fileName.split('.').pop()}` : '.pdf';
-        const handle = await window.showSaveFilePicker({
-          suggestedName: item.fileName || 'Document_NELSON.pdf',
-          types: [
-            {
-              description: 'Document NELSON',
-              accept: { [item.mimeType || 'application/pdf']: [ext] },
-            },
-          ],
-        });
-        const writable = await handle.createWritable();
-        await writable.write(item.blob);
-        await writable.close();
-        return;
-      } catch (err) {
-        if (err?.name === 'AbortError') return;
-      }
-    }
-
-    // Fallback téléchargement direct vers le dossier Téléchargements
     const a = document.createElement('a');
     a.dataset.nelsonIgnoreIntercept = 'true';
     a.href = url;

@@ -547,8 +547,15 @@ Nombre d'exemplaires papier requis :
     const dateStr = new Date().toISOString().slice(0, 10);
     const zipFileName = `Dossier_Depot_${cleanProjectName}_${dateStr}.zip`;
 
-    notify('Téléchargement du dossier ZIP...');
-    saveAs(zipBlob, zipFileName);
+    notify('Téléchargement direct du dossier ZIP dans vos Téléchargements...');
+    const zipUrl = URL.createObjectURL(zipBlob);
+    const link = document.createElement('a');
+    link.href = zipUrl;
+    link.download = zipFileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(zipUrl), 4000);
 
     return { success: true, fileName: zipFileName };
   } catch (error) {
@@ -667,7 +674,10 @@ export async function generateDPDossier(project, plates) {
     const link = document.createElement('a');
     link.href = url;
     link.download = `DP_${project.name || 'Projet'}.pdf`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
 
     return true;
   } catch (error) {

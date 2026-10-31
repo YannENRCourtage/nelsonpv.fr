@@ -607,7 +607,10 @@ export async function generateFullUrbanismePDF({ type, project, installationType
     const link = document.createElement('a');
     link.href = url;
     link.download = customFileName || `${typeUpper}_${clientName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
 
     // Removed secondary window.open to prevent duplicate files
 

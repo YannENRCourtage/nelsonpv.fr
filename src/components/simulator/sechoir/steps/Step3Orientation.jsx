@@ -8,12 +8,18 @@ import { BATITECH_MODELS, ORIENTATION_COEFFICIENTS } from '@/data/sechoirBatitec
 // ─── RECENTRAGE AUTOMATIQUE DE LA CARTE ─────────────────────────────────────────
 function MapRecenter({ center }) {
   const map = useMap();
+  const prevCenterPropRef = useRef(center);
+
   useEffect(() => {
     if (center && Array.isArray(center) && center.length === 2 && !isNaN(Number(center[0])) && !isNaN(Number(center[1]))) {
       const current = map.getCenter();
       const dist = Math.abs(current.lat - center[0]) + Math.abs(current.lng - center[1]);
-      if (dist > 0.0001) {
-        map.setView(center, map.getZoom() || 19, { animate: false });
+      const prev = prevCenterPropRef.current;
+      const propDist = prev ? (Math.abs(prev[0] - center[0]) + Math.abs(prev[1] - center[1])) : 1;
+      // Ne recentrer que si l'adresse a radicalement changé (ex: > 500m depuis l'étape 1) sans forcer le zoom à 19
+      if (dist > 0.005 && propDist > 0.005) {
+        prevCenterPropRef.current = center;
+        map.setView(center, map.getZoom(), { animate: false });
       }
     }
   }, [center?.[0], center?.[1], map]);
@@ -46,7 +52,7 @@ function ScaledBuildingMapOverlay({ length = 18, width = 20, rotation = 0, model
   };
 
   useMapEvents({
-    zoomend: () => updateScale(true),
+    zoomend: () => updateScale(false),
     moveend: () => updateScale(true),
     zoom: () => updateScale(false),
   });
@@ -209,18 +215,18 @@ export default function Step3Orientation() {
     ? [Number(latitude), Number(longitude)]
     : [43.6047, 1.4442];
 
-  // Synchronisation automatique de la carte avec l'adresse courante
+  const prevCoordsRef = useRef({ lat: latitude, lng: longitude });
+
+  // Synchronisation automatique de la carte avec l'adresse courante (uniquement si changement de coordonnées à l'étape 1)
   useEffect(() => {
     if (latitude && longitude && !isNaN(Number(latitude)) && !isNaN(Number(longitude))) {
       const targetCoords = [Number(latitude), Number(longitude)];
-      if (!storeMapCenter) {
+      const coordsChanged =
+        prevCoordsRef.current.lat !== latitude ||
+        prevCoordsRef.current.lng !== longitude;
+      if (coordsChanged || !storeMapCenter) {
+        prevCoordsRef.current = { lat: latitude, lng: longitude };
         setMapCenterInStore(targetCoords);
-      } else {
-        // Si l'écart est supérieur à ~500 mètres, l'adresse a été changée à l'étape 1
-        const dist = Math.abs(storeMapCenter[0] - targetCoords[0]) + Math.abs(storeMapCenter[1] - targetCoords[1]);
-        if (dist > 0.005) {
-          setMapCenterInStore(targetCoords);
-        }
       }
     }
   }, [latitude, longitude, storeMapCenter, setMapCenterInStore]);
@@ -377,9 +383,10 @@ export default function Step3Orientation() {
             </div>
 
             <MapContainer
-              key={`sechoir_map_${Math.round(mapCenter[0] * 500)}_${Math.round(mapCenter[1] * 500)}`}
+              key="sechoir_map_orientation_container"
               center={mapCenter}
               zoom={19}
+              minZoom={10}
               maxZoom={23}
               scrollWheelZoom={true}
               doubleClickZoom={true}
