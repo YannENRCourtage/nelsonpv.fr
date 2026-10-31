@@ -277,6 +277,29 @@ export default function AdminEnedis() {
     toast({ title: "Client mail ouvert ✓", description: `L'email est pré-rempli pour ${consentForm.email}` });
   };
 
+  const handleSavePrmMetadata = async () => {
+    setIsEditingOwner(false);
+    try {
+      const res = await fetch('/api/enedis/fetch?action=update_prm_metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prm,
+          ownerName,
+          ownerAddress,
+          annualConsumption: customKwh ? Number(customKwh) : undefined
+        })
+      });
+      if (res.ok) {
+        toast({ title: 'Données enregistrées ✓', description: 'Adresse, titulaire et consommation de la facture mis à jour.' });
+        loadConsents();
+        handleFetch(prm);
+      }
+    } catch (e) {
+      console.warn('Error updating metadata:', e.message);
+    }
+  };
+
   const handlePdf = useCallback(() => {
     if (!data) { toast({ title: 'Aucune donnée', description: `Récupérez d'abord les données.`, variant: 'destructive' }); return; }
     setIsPrinting(true);
@@ -641,44 +664,63 @@ export default function AdminEnedis() {
                         </div>
                         <div className="space-y-0.5">
                           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            Titulaire du PRM & Adresse postale (Export PDF)
+                            Adresse du PRM, Titulaire &amp; Facture annuelle
                           </div>
                           {isEditingOwner ? (
-                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <div className="flex flex-wrap items-center gap-2 pt-1.5">
+                              <input
+                                type="text"
+                                value={ownerAddress}
+                                onChange={e => setOwnerAddress(e.target.value)}
+                                placeholder="Adresse postale du PRM (lieu de consommation)"
+                                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg font-medium focus:ring-1 focus:ring-blue-500 outline-none w-72"
+                              />
                               <input
                                 type="text"
                                 value={ownerName}
                                 onChange={e => setOwnerName(e.target.value)}
                                 placeholder="Nom du titulaire"
-                                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg font-medium focus:ring-1 focus:ring-blue-500 outline-none w-48"
+                                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg font-medium focus:ring-1 focus:ring-blue-500 outline-none w-44"
                               />
                               <input
-                                type="text"
-                                value={ownerAddress}
-                                onChange={e => setOwnerAddress(e.target.value)}
-                                placeholder="Adresse postale complète"
-                                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg font-medium focus:ring-1 focus:ring-blue-500 outline-none w-64"
+                                type="number"
+                                value={customKwh}
+                                onChange={e => setCustomKwh(e.target.value)}
+                                placeholder="Facture annuelle (kWh)"
+                                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg font-mono focus:ring-1 focus:ring-blue-500 outline-none w-36"
                               />
                               <button
                                 type="button"
-                                onClick={() => setIsEditingOwner(false)}
-                                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                                onClick={handleSavePrmMetadata}
+                                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm"
                               >
-                                Valider
+                                Enregistrer &amp; Actualiser
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingOwner(false)}
+                                className="text-xs px-2 py-1.5 text-slate-500 hover:text-slate-700"
+                              >
+                                Annuler
                               </button>
                             </div>
                           ) : (
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                              <span className="font-bold text-slate-800">
-                                {ownerName || 'Nom non spécifié'}
-                              </span>
                               {ownerAddress ? (
-                                <span className="text-slate-500">
-                                  • {ownerAddress}
+                                <span className="font-bold text-slate-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60">
+                                  📍 {ownerAddress}
                                 </span>
                               ) : (
                                 <span className="text-slate-400 italic">
-                                  • Aucune adresse renseignée
+                                  📍 Aucune adresse renseignée
+                                </span>
+                              )}
+                              <span className="text-slate-600">
+                                Titulaire : <strong className="text-slate-800">{ownerName || 'Non spécifié'}</strong>
+                              </span>
+                              {customKwh && (
+                                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-mono font-bold">
+                                  Facture : {Number(customKwh).toLocaleString('fr-FR')} kWh/an
                                 </span>
                               )}
                             </div>
@@ -1017,6 +1059,8 @@ export default function AdminEnedis() {
         isOpen={signatureModalOpen}
         onClose={() => setSignatureModalOpen(false)}
         initialPrm={prm}
+        initialClientName={ownerName}
+        initialAddress={ownerAddress}
         onSignatureSuccess={(res) => {
           loadConsents();
           if (res?.prm) handleFetch(res.prm);

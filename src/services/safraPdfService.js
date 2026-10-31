@@ -588,27 +588,22 @@ export function generateSafraProposalPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
-  doc.text('TITULAIRE DU COMPTEUR', 18, c1Y + 4.8);
+  doc.text('ADRESSE DU PRM (LIEU DE CONSOMMATION)', 18, c1Y + 4.8);
   doc.text('POINT DE MESURE (PRM)', 95, c1Y + 4.8);
   doc.text('DONNÉES ENEDIS DATA CONNECT', 145, c1Y + 4.8);
 
-  // Colonne 1 : Titulaire sur 2 lignes (Société puis Contact) + Adresse sur 1 seule ligne
+  // Colonne 1 : Adresse sur 1 à 2 lignes en titre principal + Titulaire discret
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(companyName, 18, c1Y + 9.5, { maxWidth: 74 });
+  doc.text(cleanAddress, 18, c1Y + 9.5, { maxWidth: 74 });
 
-  if (contactName) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(51, 65, 85);
-    doc.text(contactName, 18, c1Y + 14, { maxWidth: 74 });
+  if (companyName && companyName !== 'Client Professionnel') {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Titulaire : ${companyName}${contactName ? ' (' + contactName + ')' : ''}`, 18, c1Y + 18, { maxWidth: 74 });
   }
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
-  doc.setTextColor(100, 116, 139);
-  doc.text(cleanAddress, 18, contactName ? c1Y + 18.5 : c1Y + 15, { maxWidth: 74 });
 
   // Colonne 2 : PRM
   doc.setFont('helvetica', 'bold');

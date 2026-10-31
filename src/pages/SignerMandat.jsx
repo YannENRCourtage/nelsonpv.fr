@@ -241,6 +241,15 @@ export default function SignerMandat() {
                   </span>
                 </div>
 
+                {session?.clientAddress && (
+                  <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-2">
+                    <span className="text-slate-400">Adresse du PRM :</span>
+                    <span className="font-bold text-amber-300 text-right max-w-[280px]">
+                      {session.clientAddress}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-2">
                   <span className="text-slate-400">Numéro PRM (14 chiffres) :</span>
                   <span className="font-mono font-black text-amber-400 tracking-wider text-sm">

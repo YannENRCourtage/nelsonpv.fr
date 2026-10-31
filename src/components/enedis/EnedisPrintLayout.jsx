@@ -270,17 +270,25 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                 <div style={{ fontSize: '14pt', fontWeight: 900, color: '#0f172a', letterSpacing: '1px', fontFamily: 'monospace', lineHeight: 1.2 }}>
                   {prm}
                 </div>
-                <div style={{ fontSize: '10pt', fontWeight: 800, color: '#1e293b', marginTop: '1px' }}>
-                  {titulaireLine1}
-                </div>
-                {titulaireLine2 && (
-                  <div style={{ fontSize: '9pt', fontWeight: 700, color: '#475569' }}>
-                    {titulaireLine2}
-                  </div>
-                )}
                 {adresse ? (
-                  <div style={{ fontSize: '8.5pt', color: '#475569', maxWidth: '130mm', lineHeight: 1.3 }}>
+                  <div style={{ fontSize: '10pt', fontWeight: 800, color: '#1e293b', marginTop: '1px', maxWidth: '135mm', lineHeight: 1.3 }}>
                     {adresse}
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '10pt', fontWeight: 800, color: '#1e293b', marginTop: '1px' }}>
+                      {titulaireLine1}
+                    </div>
+                    {titulaireLine2 && (
+                      <div style={{ fontSize: '9pt', fontWeight: 700, color: '#475569' }}>
+                        {titulaireLine2}
+                      </div>
+                    )}
+                  </>
+                )}
+                {adresse && (titulaireLine1 && titulaireLine1 !== 'Client') ? (
+                  <div style={{ fontSize: '8.5pt', color: '#64748b', marginTop: '1px' }}>
+                    Titulaire : {titulaireLine1}{titulaireLine2 ? ` (${titulaireLine2})` : ''}
                   </div>
                 ) : null}
                 <div style={{ fontSize: '7.5pt', color: '#64748b', marginTop: '1px' }}>
@@ -582,7 +590,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                   Rapport de Consommation — Profils de Charge et Puissance
                 </div>
                 <div style={{ fontSize: '8pt', color: '#64748b' }}>
-                  PRM : <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>{prm}</span> · Titulaire : <span style={{ fontWeight: 700, color: '#1e293b' }}>{titulaireLine1}{titulaireLine2 ? ` (${titulaireLine2})` : ''}</span>
+                  PRM : <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>{prm}</span> · {adresse ? <span>Adresse : <span style={{ fontWeight: 700, color: '#1e293b' }}>{adresse}</span></span> : <span>Titulaire : <span style={{ fontWeight: 700, color: '#1e293b' }}>{titulaireLine1}{titulaireLine2 ? ` (${titulaireLine2})` : ''}</span></span>}
                 </div>
               </div>
             </div>

@@ -496,22 +496,24 @@ function generateMandateLinkyData(prmVal, targetKwh = 5850, clientName = 'Client
         baseProfileW = 72000 - 42000 * p;
       }
     } else {
-      baseProfileW = 380;
+      const kwhScale = (targetKwh && targetKwh > 0 ? targetKwh : 5850) / 5850;
+      let rawW = 380;
       if (hour >= 6.5 && hour < 9) {
         const p = (hour - 6.5) / 2.5;
-        baseProfileW = 1200 + 2400 * Math.sin(p * Math.PI);
+        rawW = 1200 + 2400 * Math.sin(p * Math.PI);
       } else if (hour >= 9 && hour < 12) {
-        baseProfileW = 850;
+        rawW = 850;
       } else if (hour >= 12 && hour < 14) {
-        baseProfileW = 1650;
+        rawW = 1650;
       } else if (hour >= 14 && hour < 18) {
-        baseProfileW = 750;
+        rawW = 750;
       } else if (hour >= 18 && hour < 22) {
         const p = (hour - 18) / 4;
-        baseProfileW = 1900 + 2900 * Math.sin(p * Math.PI);
+        rawW = 1900 + 2900 * Math.sin(p * Math.PI);
       } else if (hour >= 22) {
-        baseProfileW = 550;
+        rawW = 550;
       }
+      baseProfileW = Math.round(rawW * kwhScale);
     }
 
     const intervalSeed = Math.sin((i * 37.123 + prmNumSeed) * 43758.5453);
@@ -539,7 +541,8 @@ function generateMandateLinkyData(prmVal, targetKwh = 5850, clientName = 'Client
       // Puissance souscrite de 90 kW : pointes quotidiennes atteignant 86 à 90 kW (90 000 VA)
       pmaxVa = Math.min(90000, Math.round(86000 * seasonal * noise));
     } else {
-      pmaxVa = Math.round(5200 * seasonal * noise);
+      const kwhScale = (targetKwh && targetKwh > 0 ? targetKwh : 5850) / 5850;
+      pmaxVa = Math.min(250000, Math.round(5200 * Math.max(1, Math.sqrt(kwhScale)) * seasonal * noise));
     }
 
     return {
@@ -603,6 +606,39 @@ function generateMandateLinkyData(prmVal, targetKwh = 5850, clientName = 'Client
 // ─── Handler : /api/enedis/fetch ─────────────────────────────────────────────
 async function handleFetch(req, res) {
   const { projectId, prm, forceRefresh = false, action, env = 'production' } = req.query;
+
+  // 0. Mise à jour manuelle des métadonnées PRM (Adresse, Titulaire, Facture kWh)
+  if (action === 'update_prm_metadata') {
+    try {
+      const db = getAdminDb();
+      const targetPrm = (prm || req.body?.prm || '').toString().trim();
+      const newName = (req.body?.ownerName || req.query?.ownerName || '').trim();
+      const newAddr = (req.body?.ownerAddress || req.query?.ownerAddress || '').trim();
+      const newKwh = Number(req.body?.annualConsumption || req.query?.annualConsumption);
+
+      if (!targetPrm) return res.status(400).json({ error: 'PRM requis' });
+
+      const updates = {
+        updatedAt: new Date().toISOString()
+      };
+      if (newName) {
+        updates.titulaire = newName;
+        updates.clientName = newName;
+      }
+      if (newAddr) {
+        updates.adresse = newAddr;
+      }
+      if (newKwh && newKwh > 0) {
+        updates.annualConsumption = newKwh;
+      }
+
+      await db.collection('enedis_consents').doc(targetPrm).set(updates, { merge: true });
+      return res.status(200).json({ success: true, message: 'Métadonnées PRM mises à jour', updates });
+    } catch (err) {
+      console.error('[update_prm_metadata] Error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
 
   // 1. Lister les consentements et mandats
   if (action === 'list_consents') {
@@ -809,8 +845,72 @@ async function handleFetch(req, res) {
       }).then(r => r.data);
     };
 
-    const callIdentity = () => {
+    // Récupération de la courbe de charge fine avec fallback automatique sur clc (v5 officielle)
+    const callLoadCurve = async (s, e) => {
       if (!token) return Promise.reject(new Error('Pas de jeton Enedis'));
+      try {
+        const r = await axios.get(`${baseUrl}/metering_data_clc/v5/consumption_load_curve`, {
+          params: { usage_point_id: prmVal, start: s, end: e },
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+          timeout: 12000
+        });
+        if (r.data?.meter_reading?.interval_reading?.length > 0) return r.data;
+      } catch (err) {
+        // repli ci-dessous
+      }
+      return callApi('metering_data_dc/v5/load_curve', s, e);
+    };
+
+    const callIdentity = async () => {
+      if (!token) return Promise.reject(new Error('Pas de jeton Enedis'));
+      try {
+        const [idRes, addrRes] = await Promise.allSettled([
+          axios.get(`${baseUrl}/customers_i/v5/identity`, {
+            params: { usage_point_id: prmVal },
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+            timeout: 6000
+          }),
+          axios.get(`${baseUrl}/customers_upa/v5/usage_points/addresses`, {
+            params: { usage_point_id: prmVal },
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+            timeout: 6000
+          })
+        ]);
+
+        if (idRes.status === 'fulfilled' || addrRes.status === 'fulfilled') {
+          const person = idRes.status === 'fulfilled' ? (idRes.value.data?.identity?.natural_person || idRes.value.data?.identity?.legal_entity) : null;
+          const addrObj = addrRes.status === 'fulfilled' ? addrRes.value.data?.customer?.usage_points?.[0]?.usage_point?.usage_point_addresses : null;
+          const fullAddr = addrObj ? [addrObj.street, addrObj.postal_code, addrObj.city].filter(Boolean).join(', ') : '';
+
+          return {
+            customer: [
+              {
+                first_name: person?.firstname || '',
+                last_name: person?.lastname || person?.legal_name || ''
+              }
+            ],
+            customers: [
+              {
+                customer: {
+                  person: {
+                    firstname: person?.firstname || '',
+                    lastname: person?.lastname || person?.legal_name || ''
+                  }
+                },
+                usage_point: {
+                  usage_point_id: prmVal,
+                  usage_point_addresses: {
+                    usage_point_address: fullAddr
+                  }
+                }
+              }
+            ]
+          };
+        }
+      } catch (e) {
+        // Fallback endpoint historique
+      }
+
       return axios.get(`${baseUrl}/customers_dc/v5/usage_points/identities`, {
         params: { usage_point_id: prmVal },
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
@@ -826,7 +926,7 @@ async function handleFetch(req, res) {
     if (token) {
       [dailyRes, loadRes, maxRes, identityRes] = await Promise.allSettled([
         callApi('metering_data_dc/v5/daily_consumption',          start, end),
-        callApi('metering_data_dc/v5/load_curve',                 loadCurveStart, end),
+        callLoadCurve(loadCurveStart, end),
         callApi('metering_data_dcmp/v5/daily_consumption_max_power', start, end),
         callIdentity()
       ]);
@@ -1110,6 +1210,7 @@ async function handleSignatureInitiate(req, res) {
     clientAddress = '',
     clientEmail = '',
     clientPhone = '',
+    annualConsumption = null,
     channel = 'link', // 'link' | 'tablet'
     projectId = 'admin_test'
   } = req.body || {};
@@ -1132,6 +1233,7 @@ async function handleSignatureInitiate(req, res) {
     clientAddress: clientAddress.trim(),
     clientEmail: clientEmail.trim(),
     clientPhone: clientPhone.trim(),
+    annualConsumption: annualConsumption ? Number(annualConsumption) : null,
     channel,
     projectId,
     status: 'PENDING_SIGNATURE',
@@ -1433,7 +1535,7 @@ async function handleSignatureVerifyAndSign(req, res) {
       mandateRef: sessionId,
       signedAt: nowIso,
       auditTrail: eidasAuditTrail,
-      annualConsumption: 5850,
+      annualConsumption: Number(session.annualConsumption) || 5850,
       expiresAt: new Date(Date.now() + 3 * 365 * 86400000).toISOString(),
       updatedAt: nowIso
     };

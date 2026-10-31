@@ -35,6 +35,7 @@ export default function MandatSignatureModal({
   initialAddress = '',
   initialZip = '',
   initialCity = '',
+  initialAnnualConsumption = '',
   projectId = 'admin_test',
   onSignatureSuccess = null
 }) {
@@ -48,6 +49,7 @@ export default function MandatSignatureModal({
   const [clientAddress, setClientAddress] = useState(initialAddress || '');
   const [clientZip, setClientZip] = useState(initialZip || '');
   const [clientCity, setClientCity] = useState(initialCity || '');
+  const [annualConsumption, setAnnualConsumption] = useState(initialAnnualConsumption || '');
   const [subscribedPower, setSubscribedPower] = useState(null);
 
   const [searchingPrm, setSearchingPrm] = useState(false);
@@ -74,6 +76,7 @@ export default function MandatSignatureModal({
       setClientAddress(initialAddress || '');
       setClientZip(initialZip || '');
       setClientCity(initialCity || '');
+      setAnnualConsumption(initialAnnualConsumption || '');
       setResult(null);
       setCopied(false);
       setSearchFeedback(null);
@@ -180,6 +183,7 @@ export default function MandatSignatureModal({
           clientAddress: (clientAddress || '').trim(),
           clientZip: (clientZip || '').trim(),
           clientCity: (clientCity || '').trim(),
+          annualConsumption: annualConsumption ? Number(annualConsumption) : undefined,
           channel: isDirectTablet ? 'tablet' : 'link',
           projectId
         })
@@ -357,6 +361,39 @@ export default function MandatSignatureModal({
                 onChange={(e) => setClientEmail(e.target.value)}
                 placeholder="client@domaine.fr"
                 className="bg-slate-950 border-slate-700 text-white text-xs h-9"
+              />
+            </div>
+
+            {/* Adresse du PRM / Site */}
+            <div className="sm:col-span-2">
+              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5 mb-1">
+                <Building2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>Adresse du PRM (lieu de consommation)</span>
+              </label>
+              <Input
+                type="text"
+                value={clientAddress}
+                onChange={(e) => setClientAddress(e.target.value)}
+                placeholder="Ex: 12 Rue de l'Énergie, 33000 Bordeaux"
+                className="bg-slate-950 border-slate-700 text-white text-xs h-9"
+              />
+            </div>
+
+            {/* Consommation Annuelle Facture (Optionnelle / Calage Immédiat) */}
+            <div className="sm:col-span-2">
+              <label className="text-xs font-bold text-slate-300 flex items-center justify-between mb-1">
+                <span className="flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Consommation annuelle de la facture (kWh)</span>
+                </span>
+                <span className="text-[10px] text-slate-400 italic">Optionnel · Calage direct BESS</span>
+              </label>
+              <Input
+                type="number"
+                value={annualConsumption}
+                onChange={(e) => setAnnualConsumption(e.target.value)}
+                placeholder="Ex: 24500 (ou laisser vide pour profil auto)"
+                className="bg-slate-950 border-slate-700 text-white text-xs h-9 font-mono"
               />
             </div>
           </div>
