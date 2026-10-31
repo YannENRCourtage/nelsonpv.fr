@@ -10,6 +10,8 @@ import ConsumptionChart from '@/components/enedis/ConsumptionChart';
 import EnedisPrintLayout from '@/components/enedis/EnedisPrintLayout';
 import MandatSignatureModal from '@/components/enedis/MandatSignatureModal';
 import SafraBessProposalModule from '@/components/enedis/SafraBessProposalModule';
+import { useNavigate } from 'react-router-dom';
+import { savePrmToCache, PRM_HANDOFF_KEY } from '@/services/storageBatteryEngine';
 
 export default function AdminEnedis() {
   const [prm, setPrm] = useState('');
@@ -21,6 +23,30 @@ export default function AdminEnedis() {
   const [activeTab, setActiveTab] = useState('interrogation');
   const [jsonOpen, setJsonOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const navigate = useNavigate();
+
+  const handleOpenInSimulator = useCallback(() => {
+    const ownerName = data?.identity?.customer?.customer_person?.identity || 
+      (data?.identity?.customer?.customer_company ? data?.identity?.customer?.customer_company?.corporate_name : null) ||
+      'Client ENEDIS';
+    const ownerAddress = data?.contact?.address ? 
+      `${data.contact.address.street || ''} ${data.contact.address.postal_code || ''} ${data.contact.address.city || ''}`.trim() : '';
+
+    const prmHandoff = {
+      prm: prm || '30002220753998',
+      titulaire: ownerName,
+      adresse: ownerAddress,
+      annualKwh: totalKwh || 211781,
+      avgDailyKwh: avgDaily || 578.6,
+      peakKw: peakKw || 90.0,
+      hasIntervalData: true,
+    };
+    savePrmToCache(prmHandoff);
+    try {
+      localStorage.setItem(PRM_HANDOFF_KEY, JSON.stringify(prmHandoff));
+    } catch (e) {}
+    navigate('/simulateur?solution=stockage');
+  }, [data, prm, totalKwh, avgDaily, peakKw, navigate]);
   // Calculs de synthèse de consommation pour l'étude BESS SAFRA
   const { totalKwh, avgDaily, peakKw } = React.useMemo(() => {
     if (!data) return { totalKwh: 211781, avgDaily: 578.6, peakKw: 90.0 };
@@ -376,6 +402,16 @@ export default function AdminEnedis() {
               >
                 <Sparkles size={18} className="mr-2 text-orange-500" />
                 Simulation Stockage
+              </Button>
+            )}
+            {data && (
+              <Button
+                className="rounded-2xl h-12 px-5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md font-bold"
+                onClick={handleOpenInSimulator}
+                title="Ouvrir cette simulation dans l'onglet Stockage Batterie du Simulateur"
+              >
+                <Sparkles size={18} className="mr-2" />
+                Ouvrir dans Simulateur
               </Button>
             )}
             {data && (

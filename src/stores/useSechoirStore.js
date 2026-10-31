@@ -112,8 +112,13 @@ const useSechoirStore = create(
 
       // ═══ STOCKAGE BATTERIE BESS ════════════════════════════════════════════
       hasBattery: false,
+      batteryModelId: null, // Si null, déduit du selectedModelId (BT 3.1.15 -> ST31K, BT 6.2.15 -> ST62K, BT 8.3.15 -> UNIV_ESS_261_AC)
+      batteryUnits: 1,
+      batteryGridMode: 'derriere_compteur', // 'derriere_compteur' (0 € raccordement) | 'raccorde_reseau' (BT C4 8 500 € - 9 500 €)
+      batteryCapexOverride: null, // Override éventuel du coût total HT
       setHasBattery: (hasBattery) => set({ hasBattery }),
       toggleBattery: () => set((state) => ({ hasBattery: !state.hasBattery })),
+      setBatteryConfig: (config) => set((state) => ({ ...state, ...config })),
 
       // ═══ ÉTAPE 3 — ORIENTATION & IMPLANTATION ═════════════════════════════
       orientation: 'sud',
@@ -215,6 +220,10 @@ const useSechoirStore = create(
         zoneSechage: '',
         selectedModelId: 'BT-3.1.15',
         hasBattery: false,
+        batteryModelId: null,
+        batteryUnits: 1,
+        batteryGridMode: 'derriere_compteur',
+        batteryCapexOverride: null,
         orientation: 'sud',
         rotation: 0,
         mapCenter: null,
@@ -246,6 +255,10 @@ const useSechoirStore = create(
         zoneSechage: '',
         selectedModelId: 'BT-3.1.15',
         hasBattery: false,
+        batteryModelId: null,
+        batteryUnits: 1,
+        batteryGridMode: 'derriere_compteur',
+        batteryCapexOverride: null,
         orientation: 'sud',
         rotation: 0,
         mapCenter: null,

@@ -41,6 +41,8 @@ import {
 import { SAFRA_CATALOG, recommendSafraModel } from '@/data/safraCatalog';
 import { computeSafraSimulation } from '@/services/safraBessService';
 import { generateSafraProposalPdf } from '@/services/safraPdfService';
+import { useNavigate } from 'react-router-dom';
+import { savePrmToCache, PRM_HANDOFF_KEY } from '@/services/storageBatteryEngine';
 
 const TS = { borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 600 };
 
@@ -53,6 +55,7 @@ export default function SafraBessProposalModule({
   peakKw = 90.0,
   toast = () => {}
 }) {
+  const navigate = useNavigate();
   // Valeurs sécurisées par défaut pour fonctionner en mode autonome (même sans charger de PDL)
   const safeConsoAnnuelle = Number(consoAnnuelleKwh) > 0 ? Number(consoAnnuelleKwh) : 211781;
   const safeConsoJour = Number(consoJourMoyKwh) > 0 ? Number(consoJourMoyKwh) : 578.6;
@@ -177,6 +180,25 @@ export default function SafraBessProposalModule({
     }
   };
 
+  const handleOpenInSimulator = () => {
+    const prmHandoff = {
+      prm: safePrm,
+      titulaire: safeTitulaire,
+      adresse: safeAdresse,
+      annualKwh: safeConsoAnnuelle,
+      avgDailyKwh: safeConsoJour,
+      peakKw: safePeakKw,
+      hasIntervalData: Boolean(prm),
+      selectedModelId: currentModel?.id || 'UNIV_ESS_261_AC',
+      units: quantity || 1,
+    };
+    savePrmToCache(prmHandoff);
+    try {
+      localStorage.setItem(PRM_HANDOFF_KEY, JSON.stringify(prmHandoff));
+    } catch (e) {}
+    navigate('/simulateur?solution=stockage');
+  };
+
   const handlePriceChange = (modelId, field, value) => {
     setCustomPrices(prev => {
       const next = {
@@ -233,15 +255,26 @@ export default function SafraBessProposalModule({
           </p>
         </div>
 
-        {/* Bouton d'export PDF */}
-        <button
-          onClick={handleExportPdf}
-          disabled={isExportingPdf}
-          className="self-start lg:self-center px-5 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-black text-sm shadow-lg shadow-orange-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2.5 shrink-0"
-        >
-          <FileDown size={18} />
-          {isExportingPdf ? 'Génération du PDF...' : 'Exporter la Proposition (PDF)'}
-        </button>
+        {/* Actions : Passerelle Simulateur & Export PDF */}
+        <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-center">
+          <button
+            type="button"
+            onClick={handleOpenInSimulator}
+            className="px-4 py-3 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-amber-300 font-bold text-sm border border-amber-500/30 transition-all flex items-center gap-2 shadow-sm"
+            title="Ouvrir cette étude détaillée dans le Simulateur Stockage Batterie"
+          >
+            <Sparkles size={16} className="text-amber-400" />
+            <span>Ouvrir dans Simulateur</span>
+          </button>
+          <button
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
+            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-black text-sm shadow-lg shadow-orange-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2.5 shrink-0"
+          >
+            <FileDown size={18} />
+            {isExportingPdf ? 'Génération du PDF...' : 'Exporter la Proposition (PDF)'}
+          </button>
+        </div>
       </div>
 
       {/* ─── BANDEAU RECOMMANDATION AUTOMATIQUE (VISUEL RETIRÉ) ─── */}

@@ -12,6 +12,7 @@ import { toast } from '@/components/ui/use-toast.js';
 
 // Sous-composants
 import BessSimulator from '@/components/simulator/bess/BessSimulator';
+import StorageBatterySimulator from '@/components/simulator/StorageBatterySimulator';
 import IrveFrontSimulator from '@/components/simulator/IrveFrontSimulator';
 import SolarAutoconsoSimulator from '@/components/simulator/SolarAutoconsoSimulator';
 import SolarRoofSimulator from '@/components/simulator/SolarRoofSimulator';
@@ -137,10 +138,30 @@ export default function IrveSimulator() {
     return false;
   });
 
-  // ─── Sous-solution active : 'bess' | 'autoconso' | 'toiture' | 'structure' | 'irve' | 'sechoir' ──
-  const [activeSolution, setActiveSolution] = useState('bess');
+  // ─── Sous-solution active : 'bess' | 'stockage' | 'autoconso' | 'toiture' | 'structure' | 'irve' | 'sechoir' ──
+  const [activeSolution, setActiveSolution] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const sol = params.get('solution') || params.get('tab');
+      if (sol && ['bess', 'stockage', 'autoconso', 'toiture', 'structure', 'irve', 'sechoir'].includes(sol)) {
+        return sol;
+      }
+    }
+    return 'bess';
+  });
   const tabsContainerRef = useRef(null);
   const tabRefs = useRef({});
+
+  // Écouter les changements de paramètres d'URL (ex: passerelle depuis Enedis)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const sol = params.get('solution') || params.get('tab');
+      if (sol && ['bess', 'stockage', 'autoconso', 'toiture', 'structure', 'irve', 'sechoir'].includes(sol)) {
+        setActiveSolution(sol);
+      }
+    }
+  }, []);
 
   // Sur ACAMA, interdire la solution séchoir et basculer sur structure métallique
   useEffect(() => {
@@ -472,7 +493,19 @@ export default function IrveSimulator() {
       return;
     }
 
-    // Solutions non solaires directes (séchoirs, ombrières de structure, IRVE, BESS)
+    // Solutions non solaires directes (séchoirs, ombrières de structure, IRVE, BESS, Stockage Batterie)
+    if (activeSolution === 'stockage' || targetSim?.type === 'stockage_batterie') {
+      const { generateClientCommercialPdf } = await import('@/services/storageProposalPdfService.js');
+      if (activeSimulationState?.sim) {
+        await generateClientCommercialPdf({
+          sim: activeSimulationState.sim,
+          clientName: activeSimulationState.clientName || selectedProject?.name || 'Client',
+          prmInfo: activeSimulationState.prmInfo || { prm: '30002220753998', titulaire: selectedProject?.name || 'Client' }
+        });
+        return;
+      }
+    }
+
     if (activeSolution === 'bess' || targetSim?.type === 'bess') {
       const { generateBessProspectingPdfBlob } = await import('@/components/simulator/bess/BessPDFGenerator.jsx');
       const { blob, filename } = await generateBessProspectingPdfBlob({
@@ -715,12 +748,13 @@ export default function IrveSimulator() {
                   <div className="flex items-center gap-1.5 min-w-max pr-3 lg:pr-0">
                     {[
                       { id: 'bess', label: 'BESS', icon: BatteryCharging, color: 'text-emerald-500' },
+                      { id: 'stockage', label: '🔋 Stockage Batterie', icon: BatteryCharging, color: 'text-amber-500' },
                       { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
                       { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
                       { id: 'structure', label: 'Structure Métallique', icon: Sliders, color: 'text-indigo-500' },
                       { id: 'irve', label: 'Borne IRVE', icon: Zap, color: 'text-emerald-500' },
                       { id: 'sechoir', label: 'Séchoir BatiTech®', icon: Wheat, color: 'text-orange-500' },
-                    ].filter(sol => isAcama ? (sol.id !== 'sechoir' && sol.id !== 'bess') : true).map(sol => {
+                    ].filter(sol => isAcama ? (sol.id !== 'sechoir' && sol.id !== 'bess' && sol.id !== 'stockage') : true).map(sol => {
                       const Icon = sol.icon;
                       const isSelected = activeSolution === sol.id;
                       return (
@@ -804,6 +838,15 @@ export default function IrveSimulator() {
             <div className={activeSolution === 'bess' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : ''}>
               {activeSolution === 'bess' && (
                 <BessSimulator
+                  selectedProject={selectedProject}
+                  onSaveSimulation={handleSaveCurrentSimulation}
+                  onExportPDF={() => handleExportPDF()}
+                  onStateUpdate={setActiveSimulationState}
+                />
+              )}
+
+              {activeSolution === 'stockage' && (
+                <StorageBatterySimulator
                   selectedProject={selectedProject}
                   onSaveSimulation={handleSaveCurrentSimulation}
                   onExportPDF={() => handleExportPDF()}

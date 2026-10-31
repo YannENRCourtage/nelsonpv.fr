@@ -306,8 +306,8 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
   doc.setFontSize(5.8);
   doc.setTextColor(100, 116, 139);
   const subtitle = includeGridConnection
-    ? 'Planning d\'anticipation avec instruction Enedis en temps masqué · Délai global : ~5 à 6 mois'
-    : 'Planning de déploiement derrière le compteur (aucun délai Enedis) · Délai global : ~6 à 8 semaines';
+    ? 'Planning avec urbanisme et instruction Enedis en temps masqué · Délai global : ~5 à 6 mois (Urbanisme inclus)'
+    : 'Planning derrière le compteur (aucun délai Enedis) · Approvisionnement en temps masqué pendant l\'instruction d\'urbanisme';
   doc.text(subtitle, x + 4, y + 8.2);
 
   // Badge Délai total
@@ -316,19 +316,19 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
   const badgeBorder = includeGridConnection ? [191, 219, 254] : [187, 247, 208];
 
   doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
-  doc.roundedRect(x + w - 46, y + 2.2, 42, 6.2, 1.5, 1.5, 'F');
+  doc.roundedRect(x + w - 66, y + 2.2, 62, 6.2, 1.5, 1.5, 'F');
   doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2]);
-  doc.roundedRect(x + w - 46, y + 2.2, 42, 6.2, 1.5, 1.5, 'D');
+  doc.roundedRect(x + w - 66, y + 2.2, 62, 6.2, 1.5, 1.5, 'D');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6);
   doc.setTextColor(badgeColor[0], badgeColor[1], badgeColor[2]);
-  doc.text(includeGridConnection ? 'Délai total : ~5 à 6 mois' : 'Délai total : ~6 à 8 semaines', x + w - 25, y + 6.4, { align: 'center' });
+  doc.text(includeGridConnection ? 'Délai total : ~5 à 6 mois (Urbanisme + Enedis)' : 'Délai total : ~8 à 10 semaines (Urbanisme inclus)', x + w - 35, y + 6.4, { align: 'center' });
 
   // Colonnes
   const colNameW = 76;
   const colStartX = x + colNameW;
   const totalColsW = w - colNameW - 4;
-  const numCols = includeGridConnection ? 6 : 4;
+  const numCols = includeGridConnection ? 6 : 5;
   const colW = totalColsW / numCols;
 
   // Bandeau en-tête des colonnes
@@ -343,7 +343,7 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
 
   const colLabels = includeGridConnection
     ? ['Mois 1', 'Mois 2', 'Mois 3', 'Mois 4', 'Mois 5', 'Mois 6']
-    : ['Sem. 1-2 (M1)', 'Sem. 3-4 (M1)', 'Sem. 5-6 (M2)', 'Sem. 7-8 (M2)'];
+    : ['Sem. 1-2 (M1)', 'Sem. 3-4 (M1)', 'Sem. 5-6 (M2)', 'Sem. 7-8 (M2)', 'Sem. 9-10 (M3)'];
 
   colLabels.forEach((lbl, cIdx) => {
     const cx = colStartX + cIdx * colW;
@@ -351,85 +351,30 @@ function drawChronogrammePdf(doc, x, y, w, h, includeGridConnection = false) {
   });
 
   // Définition des jalons opérationnels
+  // Jalons opérationnels (6 étapes, urbanisme obligatoire en position n°2)
+  // Mode derrière le compteur : échelle de 10 semaines → frac = (semaineDébut - 1) / 10 ; fin = semaineFin / 10
+  const wk = (s, e) => ({ startFrac: (s - 1) / 10, endFrac: e / 10 });
   const steps = includeGridConnection
     ? [
-        {
-          name: '1. Validation devis & Dépôt dossier Enedis (PTF / CRAE)',
-          startFrac: 0,
-          endFrac: 1 / 6,
-          label: 'M1',
-          color: [37, 99, 235]
-        },
-        {
-          name: '2. Instruction Enedis & Proposition Technique (PTF)',
-          startFrac: 0.10,
-          endFrac: 0.50,
-          label: 'M1 à M3 (Instruction)',
-          color: [245, 158, 11]
-        },
-        {
-          name: '3. Commande & Approvisionnement batterie (temps masqué)',
-          startFrac: 0.33,
-          endFrac: 0.67,
-          label: 'M2 à M4 (Fabrication)',
-          color: [16, 185, 129]
-        },
-        {
-          name: '4. Génie civil (Dalle), pose BESS & Raccordement Enedis',
-          startFrac: 0.67,
-          endFrac: 0.83,
-          label: 'M4 à M5',
-          color: [139, 92, 246]
-        },
-        {
-          name: '5. Attestation Consuel & Mise en service réseau Enedis',
-          startFrac: 0.83,
-          endFrac: 1.0,
-          label: 'M5 à M6',
-          color: [6, 182, 212]
-        }
+        { name: '1. Validation devis & Dépôt dossier Enedis (PTF / CRAE)', startFrac: 0, endFrac: 1 / 6, label: 'M1', color: [37, 99, 235] },
+        { name: '2. Demande d\'autorisation d\'urbanisme (Déclaration Préalable)', startFrac: 0.05, endFrac: 0.30, label: '4 à 6 sem.', color: [99, 102, 241] },
+        { name: '3. Approvisionnement batterie BESS (temps masqué)', startFrac: 0.25, endFrac: 0.62, label: 'M2 à M4 (Fabrication)', color: [16, 185, 129] },
+        { name: '4. Instruction Enedis & Génie civil (Dalle béton)', startFrac: 0.10, endFrac: 0.75, label: 'Instruction Enedis M1 à M5', color: [245, 158, 11] },
+        { name: '5. Pose BESS & Raccordement Enedis + EMS', startFrac: 0.70, endFrac: 0.88, label: 'M5', color: [147, 51, 234] },
+        { name: '6. Essais, Consuel & Mise en service réseau', startFrac: 0.86, endFrac: 1.0, label: 'M6', color: [22, 163, 74] }
       ]
     : [
-        {
-          name: '1. Validation devis & Lancement de commande',
-          startFrac: 0,
-          endFrac: 0.25,
-          label: 'Sem. 1-2',
-          color: [37, 99, 235]
-        },
-        {
-          name: '2. Approvisionnement & Livraison de la batterie BESS',
-          startFrac: 0.20,
-          endFrac: 0.65,
-          label: 'Sem. 2 à 5',
-          color: [16, 185, 129]
-        },
-        {
-          name: '3. Génie civil (Dalle béton) & Fixation de l\'armoire',
-          startFrac: 0.55,
-          endFrac: 0.82,
-          label: 'Sem. 5-7',
-          color: [245, 158, 11]
-        },
-        {
-          name: '4. Raccordement TGBT intérieur & Intégration EMS',
-          startFrac: 0.70,
-          endFrac: 0.95,
-          label: 'Sem. 6-8',
-          color: [139, 92, 246]
-        },
-        {
-          name: '5. Essais de fonctionnement & Mise en service site',
-          startFrac: 0.88,
-          endFrac: 1.0,
-          label: 'Sem. 8',
-          color: [6, 182, 212]
-        }
+        { name: '1. Validation devis & Lancement de commande', ...wk(1, 2), label: 'Sem. 1–2', color: [37, 99, 235] },
+        { name: '2. Demande d\'autorisation d\'urbanisme (Déclaration Préalable)', ...wk(2, 7), label: '4 à 6 sem. (Sem. 2–7)', color: [99, 102, 241] },
+        { name: '3. Approvisionnement & Livraison de la batterie BESS', ...wk(3, 8), label: 'Sem. 3–8 (temps masqué)', color: [16, 185, 129] },
+        { name: '4. Génie civil (Dalle béton) & Fixation de l\'armoire', ...wk(7, 9), label: 'Sem. 7–9', color: [245, 158, 11] },
+        { name: '5. Raccordement TGBT intérieur & Intégration EMS', ...wk(8, 10), label: 'Sem. 8–10', color: [147, 51, 234] },
+        { name: '6. Essais, Consuel & Mise en service site', ...wk(10, 10), label: 'Sem. 10', color: [22, 163, 74] }
       ];
 
   // Tracé des lignes et barres de planning compact
   const rowsStartY = tableHeaderY + 4.0;
-  const rowHeight = Math.max(4.6, (h - 16) / steps.length);
+  const rowHeight = Math.max(4.2, (h - 16) / steps.length);
 
   steps.forEach((step, sIdx) => {
     const ry = rowsStartY + sIdx * rowHeight;

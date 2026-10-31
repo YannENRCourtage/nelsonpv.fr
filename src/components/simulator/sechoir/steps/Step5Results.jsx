@@ -2,11 +2,14 @@ import React, { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, TrendingUp, Zap, Clock, ShieldCheck, 
-  Landmark, Info, Sparkles, Wind, Coins, CheckCircle2, AlertCircle, FileDown, CheckSquare, Square, Loader2
+  Landmark, Info, Sparkles, Wind, Coins, CheckCircle2, AlertCircle, FileDown, CheckSquare, Square, Loader2,
+  BatteryCharging, Layers, Settings2, ArrowRight
 } from 'lucide-react';
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -14,10 +17,62 @@ import {
   ResponsiveContainer,
   ReferenceLine,
   Cell,
+  Legend,
 } from 'recharts';
 import useSechoirStore from '@/stores/useSechoirStore.js';
 import { BATITECH_MODELS, getRegionForDepartment } from '@/data/sechoirBatitechModels.js';
 import { calculateFullSimulation } from '@/components/simulator/sechoir/sechoirCalculations.js';
+
+const BATTERY_CATALOG_SECHOIR = [
+  {
+    id: 'ST31K',
+    name: 'Système UNIV ST31K',
+    capacityKwh: 31,
+    powerKw: 15,
+    hardwarePrice: 17500,
+    installPrice: 3500,
+    description: 'Armoire compacte C&I LiFePO4 haute tension (31 kWh / 15 kW)',
+    savingsDerriereCompteur: 3400,
+    gridRevenueKwYear: 80, // 80 €/kW/an = 1 200 €/an
+    savingsWithGrid: 2100,
+  },
+  {
+    id: 'ST46K',
+    name: 'Système UNIV ST46K',
+    capacityKwh: 46,
+    powerKw: 20,
+    hardwarePrice: 24000,
+    installPrice: 4500,
+    description: 'Armoire C&I LiFePO4 haute tension (46 kWh / 20 kW)',
+    savingsDerriereCompteur: 4800,
+    gridRevenueKwYear: 80, // 1 600 €/an
+    savingsWithGrid: 3000,
+  },
+  {
+    id: 'ST62K',
+    name: 'Système UNIV ST62K',
+    capacityKwh: 62,
+    powerKw: 30,
+    hardwarePrice: 31500,
+    installPrice: 5500,
+    description: 'Armoire C&I LiFePO4 haute tension (62 kWh / 30 kW)',
+    savingsDerriereCompteur: 6200,
+    gridRevenueKwYear: 80, // 2 400 €/an
+    savingsWithGrid: 4000,
+  },
+  {
+    id: 'UNIV_ESS_261_AC',
+    name: 'Armoire Industrielle UNIV ESS 261 AC',
+    capacityKwh: 261,
+    powerKw: 125,
+    hardwarePrice: 64900,
+    installPrice: 13600,
+    description: 'Armoire extérieure étanche IP55 (261 kWh / 125 kW) refroidissement liquide',
+    savingsDerriereCompteur: 16500,
+    gridRevenueKwYear: 80, // 10 000 €/an
+    savingsWithGrid: 10500,
+  },
+];
 
 export default function Step5Results({ onExportPDF }) {
   const selectedModelId = useSechoirStore((state) => state.selectedModelId) || 'BT-3.1.15';
@@ -28,8 +83,15 @@ export default function Step5Results({ onExportPDF }) {
   const setLastResults = useSechoirStore((state) => state.setLastResults);
   const storeClientName = useSechoirStore((state) => state.clientName);
   const setClientNameInStore = useSechoirStore((state) => state.setClientName);
+
+  // Stockage Batterie BESS dans le Store
   const hasBattery = useSechoirStore((state) => state.hasBattery) || false;
   const setHasBattery = useSechoirStore((state) => state.setHasBattery);
+  const batteryModelIdFromStore = useSechoirStore((state) => state.batteryModelId);
+  const batteryUnitsFromStore = useSechoirStore((state) => state.batteryUnits);
+  const batteryGridModeFromStore = useSechoirStore((state) => state.batteryGridMode);
+  const batteryCapexOverride = useSechoirStore((state) => state.batteryCapexOverride);
+  const setBatteryConfig = useSechoirStore((state) => state.setBatteryConfig);
 
   const [clientName, setClientName] = useState(storeClientName || '');
   const [includeCashFlowPage, setIncludeCashFlowPage] = useState(true);
@@ -37,7 +99,23 @@ export default function Step5Results({ onExportPDF }) {
   const [includeBenefitsPage, setIncludeBenefitsPage] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Recalculer les résultats complets
+  // Déduction automatique du modèle de batterie selon le modèle Séchoir
+  const defaultBatteryModelId = useMemo(() => {
+    const m = String(selectedModelId).toLowerCase();
+    if (m.includes('8.3') || m.includes('8_3') || m.includes('8-3')) {
+      return 'UNIV_ESS_261_AC';
+    } else if (m.includes('6.2') || m.includes('6_2') || m.includes('6-2')) {
+      return 'ST62K';
+    } else {
+      return 'ST31K';
+    }
+  }, [selectedModelId]);
+
+  const batteryModelId = batteryModelIdFromStore || defaultBatteryModelId;
+  const batteryUnits = batteryUnitsFromStore || 1;
+  const batteryGridMode = batteryGridModeFromStore || 'derriere_compteur';
+
+  // Recalculer les résultats complets du séchoir
   const results = useMemo(() => {
     return calculateFullSimulation({
       model: selectedModelId,
@@ -77,6 +155,106 @@ export default function Step5Results({ onExportPDF }) {
   const activeModel = model || BATITECH_MODELS[selectedModelId] || BATITECH_MODELS['BT-3.1.15'];
   const puissanceKwcVal = activeModel?.puissanceKwc ? Number(activeModel.puissanceKwc) : 30.15;
   const regionName = getRegionForDepartment(departement);
+
+  // Batterie active et calculs de rentabilité consolidés
+  const activeBattery = useMemo(() => {
+    return BATTERY_CATALOG_SECHOIR.find(b => b.id === batteryModelId) || BATTERY_CATALOG_SECHOIR[0];
+  }, [batteryModelId]);
+
+  const batteryCapex = useMemo(() => {
+    if (batteryCapexOverride !== null && Number(batteryCapexOverride) > 0) {
+      return Number(batteryCapexOverride);
+    }
+    const base = (activeBattery.hardwarePrice + activeBattery.installPrice) * batteryUnits;
+    const raccordement = batteryGridMode === 'raccorde_reseau' ? 8500 : 0;
+    return base + raccordement;
+  }, [activeBattery, batteryUnits, batteryGridMode, batteryCapexOverride]);
+
+  const batteryAnnualGains = useMemo(() => {
+    if (batteryGridMode === 'raccorde_reseau') {
+      const gridRevenues = activeBattery.powerKw * batteryUnits * activeBattery.gridRevenueKwYear;
+      const energySavings = activeBattery.savingsWithGrid * batteryUnits;
+      return {
+        gridRevenues,
+        energySavings,
+        totalGains: gridRevenues + energySavings,
+      };
+    } else {
+      return {
+        gridRevenues: 0,
+        energySavings: activeBattery.savingsDerriereCompteur * batteryUnits,
+        totalGains: activeBattery.savingsDerriereCompteur * batteryUnits,
+      };
+    }
+  }, [activeBattery, batteryUnits, batteryGridMode]);
+
+  // Données consolidées Séchoir + BESS
+  const consolidated = useMemo(() => {
+    const baseNetInvest = financing.investissementNet || 0;
+    const baseDeltaEBE = deltaEBE || 0;
+    const baseAnnuite = annuite || 0;
+    const baseGainNet = gainNetAnnuel || 0;
+
+    if (!hasBattery) {
+      return {
+        totalCapex: baseNetInvest,
+        annualGains: baseDeltaEBE,
+        annuite: baseAnnuite,
+        gainNetAnnuel: baseGainNet,
+        roi: roi || 10.0,
+      };
+    }
+
+    const totalCapex = baseNetInvest + batteryCapex;
+    const totalGains = baseDeltaEBE + batteryAnnualGains.totalGains;
+    const t = (financialParams?.tauxEmprunt || 0.034);
+    const n = Math.min(financialParams?.dureeEmprunt || 20, 15);
+    const batteryAnnuite = t > 0 ? (batteryCapex * t) / (1 - Math.pow(1 + t, -n)) : batteryCapex / n;
+    const totalAnnuite = baseAnnuite + batteryAnnuite;
+    const gainNetAnnuelConsolide = totalGains - totalAnnuite;
+    const roiConsolide = totalGains > 0 ? totalCapex / totalGains : 12;
+
+    return {
+      totalCapex,
+      totalGains,
+      batteryCapex,
+      batteryAnnuite,
+      totalAnnuite,
+      gainNetAnnuel: gainNetAnnuelConsolide,
+      roi: Number(roiConsolide.toFixed(1)),
+    };
+  }, [hasBattery, financing.investissementNet, deltaEBE, annuite, gainNetAnnuel, roi, batteryCapex, batteryAnnualGains, financialParams]);
+
+  // Données de courbe 24h : Séchoir Seul vs Séchoir + Stockage BESS
+  const sechoir24hData = useMemo(() => {
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    const basePwr = puissanceKwcVal * 0.45;
+    const battPwr = (activeBattery?.powerKw || 15) * batteryUnits;
+
+    return hours.map(h => {
+      let solaire = 0;
+      if (h >= 7 && h <= 19) {
+        solaire = Math.round(puissanceKwcVal * 0.85 * Math.sin(((h - 7) / 12) * Math.PI) * 10) / 10;
+      }
+      const consoSechoir = Math.round((basePwr * (0.8 + 0.4 * Math.sin(((h - 8) / 16) * Math.PI))) * 10) / 10;
+      const surplus = Math.max(0, solaire - consoSechoir);
+      const chargeBatt = Math.min(surplus, battPwr);
+      const deficit = Math.max(0, consoSechoir - solaire);
+      const dechargeBatt = (h < 7 || h > 19) ? Math.min(deficit, battPwr * 0.7) : 0;
+      const reseauSansBatt = Math.max(0, consoSechoir - solaire);
+      const reseauAvecBatt = Math.max(0, reseauSansBatt - dechargeBatt);
+
+      return {
+        heure: `${String(h).padStart(2, '0')}h`,
+        consoSechoir,
+        solaire,
+        reseauSansBatt,
+        reseauAvecBatt,
+        chargeBatt,
+        dechargeBatt,
+      };
+    });
+  }, [puissanceKwcVal, activeBattery, batteryUnits]);
 
   const chartData = useMemo(() => {
     return (treasury.cashFlows || []).map((cf) => ({
@@ -149,6 +327,286 @@ export default function Step5Results({ onExportPDF }) {
         </div>
       </div>
 
+      {/* ═══════════════════════════════════════════════════════════════════════
+          SECTION INTERACTIVE : COUPLAGE STOCKAGE BATTERIE BESS (VOLET 2)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 rounded-3xl border-2 border-indigo-500/40 p-6 shadow-xl relative overflow-hidden">
+        
+        {/* En-tête avec Switch activation */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-indigo-900/60">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
+              <BatteryCharging className="w-6 h-6 text-indigo-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-black text-white">
+                  Couplage Stockage Batterie BESS
+                </h3>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  Autonomie Séchage &amp; Flexibilité
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
+                Alimentation de la ventilation nocturne/nuageuse par surplus solaire diurne &amp; valorisation réseau Enedis.
+              </p>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-3 cursor-pointer self-start md:self-center bg-slate-800/80 px-4 py-2.5 rounded-2xl border border-slate-700 hover:border-indigo-500 transition-all">
+            <input
+              type="checkbox"
+              checked={hasBattery}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setHasBattery(checked);
+                setBatteryConfig({ hasBattery: checked });
+              }}
+              className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+            />
+            <span className="text-sm font-black text-white">
+              {hasBattery ? 'Batterie Activée' : 'Activer le Couplage Batterie'}
+            </span>
+          </label>
+        </div>
+
+        {hasBattery && (
+          <div className="mt-5 space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
+            
+            {/* Grille de Paramétrage BESS : Modèle, Quantité & Mode d'Exploitation */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              
+              {/* Choix du modèle BESS */}
+              <div className="lg:col-span-5 bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                    <Layers className="w-4 h-4" />
+                    Modèle de Batterie BESS
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    Auto-adapté à {activeModel?.name}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {BATTERY_CATALOG_SECHOIR.map((batt) => {
+                    const isSelected = batt.id === batteryModelId;
+                    const isRecommended = batt.id === defaultBatteryModelId;
+                    return (
+                      <button
+                        key={batt.id}
+                        type="button"
+                        onClick={() => {
+                          setBatteryConfig({ batteryModelId: batt.id });
+                        }}
+                        className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-indigo-950/80 border-indigo-400 text-white shadow-md'
+                            : 'bg-slate-800/40 border-slate-700/70 text-slate-300 hover:border-slate-600'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-white">{batt.name}</span>
+                            {isRecommended && (
+                              <span className="text-[10px] font-black bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full">
+                                Recommandé
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-slate-400 block mt-0.5">
+                            {batt.capacityKwh} kWh &bull; {batt.powerKw} kW &bull; {fmt(batt.hardwarePrice + batt.installPrice)} € HT clé en main
+                          </span>
+                        </div>
+                        {isSelected && <CheckCircle2 className="w-5 h-5 text-indigo-400 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Sélecteur de quantité */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                  <span className="text-xs text-slate-300 font-bold">Nombre d'unités :</span>
+                  <div className="flex items-center gap-2">
+                    {[1, 2].map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => setBatteryConfig({ batteryUnits: u })}
+                        className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
+                          batteryUnits === u
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {u}× ({activeBattery.capacityKwh * u} kWh)
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Mode d'exploitation : Derrière compteur vs Réseau Enedis */}
+              <div className="lg:col-span-7 bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                  <Settings2 className="w-4 h-4" />
+                  Mode d'Exploitation du Stockage BESS
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Mode 1 : Derrière Compteur */}
+                  <button
+                    type="button"
+                    onClick={() => setBatteryConfig({ batteryGridMode: 'derriere_compteur' })}
+                    className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                      batteryGridMode === 'derriere_compteur'
+                        ? 'bg-emerald-950/60 border-emerald-400 text-white shadow-md'
+                        : 'bg-slate-800/40 border-slate-700/70 text-slate-400 hover:border-slate-600'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <strong className="text-sm font-black text-white">Mode 1 — Derrière le Compteur</strong>
+                        <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                          0 € raccordement
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                        Stockage du surplus solaire de jour pour alimenter la ventilation &amp; le séchage la nuit. Effacement des pointes de puissance du séchoir.
+                      </p>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-slate-800/80 text-xs text-emerald-400 font-bold">
+                      Économie estimée : +{fmt(batteryAnnualGains.energySavings)} €/an
+                    </div>
+                  </button>
+
+                  {/* Mode 2 : Raccordé Réseau Enedis */}
+                  <button
+                    type="button"
+                    onClick={() => setBatteryConfig({ batteryGridMode: 'raccorde_reseau' })}
+                    className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                      batteryGridMode === 'raccorde_reseau'
+                        ? 'bg-amber-950/60 border-amber-400 text-white shadow-md'
+                        : 'bg-slate-800/40 border-slate-700/70 text-slate-400 hover:border-slate-600'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <strong className="text-sm font-black text-white">Mode 2 — Raccordé Réseau Enedis</strong>
+                        <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+                          BT C4 (+8 500 €)
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                        Valorisation flexibilité &amp; réserve rapide (FCR / capacité) en dehors de la saison de séchage (80 €/kW/an sur puissance disponible).
+                      </p>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-slate-800/80 text-xs text-amber-400 font-bold">
+                      Revenus Enedis ({fmt(batteryAnnualGains.gridRevenues)} €) + Éco ({fmt(batteryAnnualGains.energySavings)} €) : +{fmt(batteryAnnualGains.totalGains)} €/an
+                    </div>
+                  </button>
+                </div>
+
+                {/* Synthèse Investissement BESS */}
+                <div className="bg-slate-950/80 p-3 rounded-xl border border-indigo-900/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="text-slate-300">
+                    <span className="font-bold text-white">{activeBattery.name}</span> ({activeBattery.capacityKwh * batteryUnits} kWh / {activeBattery.powerKw * batteryUnits} kW) &bull; CAPEX BESS : <strong className="text-amber-400">{fmt(batteryCapex)} € HT</strong> (matériel + pose{batteryGridMode === 'raccorde_reseau' ? ' + raccordement Enedis' : ''})
+                  </div>
+                  <div className="text-emerald-400 font-black text-sm">
+                    Gains annuels BESS : +{fmt(batteryAnnualGains.totalGains)} €/an
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Comparatif Visuel & Consolidé (Séchoir Seul vs Séchoir + BESS) */}
+            <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  Bilan Consolidé : Séchoir BatiTech® + Stockage BESS
+                </span>
+                <span className="text-xs text-emerald-400 font-bold">
+                  Autonomie électrique du séchage portée à ~75-85%
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 uppercase block font-semibold">CAPEX Consolidé</span>
+                  <span className="text-lg font-black text-white">{fmt(consolidated.totalCapex)} € HT</span>
+                  <span className="text-[10px] text-slate-500 block">dont {fmt(batteryCapex)} € BESS</span>
+                </div>
+                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 uppercase block font-semibold">Gains Annuels Globaux</span>
+                  <span className="text-lg font-black text-emerald-400">+{fmt(consolidated.totalGains)} €/an</span>
+                  <span className="text-[10px] text-slate-500 block">Séchage + Élec + Enedis</span>
+                </div>
+                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 uppercase block font-semibold">Gain Net Annuel</span>
+                  <span className="text-lg font-black text-amber-400">+{fmt(consolidated.gainNetAnnuel)} €/an</span>
+                  <span className="text-[10px] text-slate-500 block">Après annuités d'emprunt</span>
+                </div>
+                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 uppercase block font-semibold">Nouveau Temps Retour</span>
+                  <span className="text-lg font-black text-blue-400">~{consolidated.roi} ans</span>
+                  <span className="text-[10px] text-slate-500 block">Projet combiné optimisé</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Graphique 24h du lissage de charge du séchoir par la batterie */}
+            <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-amber-400" />
+                    Profil de Charge Journalier Type : Séchoir + Stockage BESS (24 heures)
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    La batterie absorbe le surplus solaire en journée (cloche jaune) pour alimenter la ventilation la nuit (courbe verte abaissée).
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 font-medium">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Solaire Cogen'Air
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block"></span> Séchoir seul
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> Réseau avec Batterie
+                  </span>
+                </div>
+              </div>
+
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={sechoir24hData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="heure" stroke="#64748b" tick={{ fontSize: 11 }} />
+                    <YAxis stroke="#64748b" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} kW`} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '0.5rem', fontSize: '12px' }}
+                      formatter={(v, name) => {
+                        const label = name === 'solaire' ? 'Production Solaire' : name === 'consoSechoir' ? 'Conso Séchoir seul' : 'Soutirage Réseau (BESS)';
+                        return [`${v} kW`, label];
+                      }}
+                    />
+                    <Line type="monotone" dataKey="solaire" stroke="#f59e0b" strokeWidth={2.5} dot={false} name="solaire" />
+                    <Line type="monotone" dataKey="consoSechoir" stroke="#f43f5e" strokeWidth={2} strokeDasharray="4 4" dot={false} name="consoSechoir" />
+                    <Line type="monotone" dataKey="reseauAvecBatt" stroke="#10b981" strokeWidth={2.5} dot={false} name="reseauAvecBatt" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+      </div>
+
       {/* Bloc Central : 2 Colonnes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
@@ -178,17 +636,34 @@ export default function Step5Results({ onExportPDF }) {
               </div>
               
               <div className="pt-2 border-t border-slate-700 flex justify-between font-bold text-lg">
-                <span className="text-white">Investissement Net à Financer :</span>
+                <span className="text-white">Investissement Net Séchoir :</span>
                 <span className="text-amber-400 font-black">{fmt(financing?.investissementNet)} € HT</span>
               </div>
+
+              {hasBattery && (
+                <div className="p-2.5 bg-indigo-950/60 rounded-xl border border-indigo-800/80 flex justify-between items-center text-sm">
+                  <span className="text-indigo-200 font-bold flex items-center gap-1.5">
+                    <BatteryCharging className="w-4 h-4 text-indigo-400" />
+                    Pack Stockage BESS ({activeBattery.name} &bull; {activeBattery.capacityKwh * batteryUnits} kWh) :
+                  </span>
+                  <span className="font-black text-indigo-300">+{fmt(batteryCapex)} € HT</span>
+                </div>
+              )}
+
+              {hasBattery && (
+                <div className="pt-2 border-t border-indigo-700/60 flex justify-between font-bold text-lg text-emerald-400">
+                  <span>Total Investissement Consolidé :</span>
+                  <span className="font-black">{fmt(consolidated.totalCapex)} € HT</span>
+                </div>
+              )}
               
               <div className="pt-2 border-t border-slate-700 flex justify-between text-slate-300 text-sm">
                 <span>Montant financé par Emprunt :</span>
-                <span className="font-bold text-white">{fmt(financing?.emprunt)} €</span>
+                <span className="font-bold text-white">{fmt(hasBattery ? consolidated.totalCapex : financing?.emprunt)} €</span>
               </div>
               <div className="flex justify-between text-red-400 text-sm">
                 <span>Annuité constante ({financialParams?.dureeEmprunt || 25} ans @ {((financialParams?.tauxEmprunt || 0.034) * 100).toFixed(2)}%) :</span>
-                <span className="font-bold">-{fmt(annuite)} €/an</span>
+                <span className="font-bold">-{fmt(hasBattery ? consolidated.totalAnnuite : annuite)} €/an</span>
               </div>
             </div>
           </div>
@@ -209,17 +684,29 @@ export default function Step5Results({ onExportPDF }) {
                 <span>Charges d'exploitation &amp; ventilation :</span>
                 <span className="font-bold text-rose-400">-{fmt(charges?.deltaCharges)} €/an</span>
               </div>
+
+              {hasBattery && (
+                <div className="flex justify-between text-indigo-300 text-sm bg-indigo-950/40 p-2 rounded-xl border border-indigo-900/50">
+                  <span>Économies &amp; Gains Réseau BESS :</span>
+                  <span className="font-bold text-indigo-300">+{fmt(batteryAnnualGains.totalGains)} €/an</span>
+                </div>
+              )}
+
               <div className="flex justify-between text-slate-300">
                 <span>Annuité d'emprunt :</span>
-                <span className="font-bold text-red-400">-{fmt(annuite)} €/an</span>
+                <span className="font-bold text-red-400">-{fmt(hasBattery ? consolidated.totalAnnuite : annuite)} €/an</span>
               </div>
 
               <div className="pt-3 mt-1 border-t border-slate-700 flex justify-between items-center bg-slate-950/80 p-4 rounded-2xl border border-amber-500/30 shadow-inner">
                 <div>
-                  <span className="font-bold text-white text-sm uppercase block">Gain Net Annuel d'Exploitation</span>
+                  <span className="font-bold text-white text-sm uppercase block">
+                    {hasBattery ? 'Gain Net Annuel Consolidé' : "Gain Net Annuel d'Exploitation"}
+                  </span>
                   <span className="text-xs text-slate-400 font-medium">Après remboursement intégral de l'annuité</span>
                 </div>
-                <span className="text-3xl font-black text-amber-400">+{fmt(gainNetAnnuel)} €/an</span>
+                <span className="text-3xl font-black text-amber-400">
+                  +{fmt(hasBattery ? consolidated.gainNetAnnuel : gainNetAnnuel)} €/an
+                </span>
               </div>
             </div>
           </div>
@@ -227,7 +714,7 @@ export default function Step5Results({ onExportPDF }) {
         </div>
 
         {/* Colonne Droite : Subventions Régionales & ADEME (Affichage Informatif) */}
-        <div className="bg-gradient-to-br from-slate-800/95 via-slate-850 to-slate-900 rounded-3xl border-2 border-amber-500/40 p-6 shadow-xl flex flex-col justify-between relative overflow-hidden">
+        <div className="bg-gradient-to-br from-slate-800/95 via-slate-855 to-slate-900 rounded-3xl border-2 border-amber-500/40 p-6 shadow-xl flex flex-col justify-between relative overflow-hidden">
           
           {/* Badge Informatif en haut */}
           <div className="absolute top-0 right-0 bg-amber-500 text-slate-950 font-black text-[11px] px-3.5 py-1 rounded-bl-2xl uppercase tracking-wider shadow-md">
@@ -334,7 +821,9 @@ export default function Step5Results({ onExportPDF }) {
               <BarChart3 className="w-6 h-6 text-amber-400" />
               Évolution de la Trésorerie Cumulée (25 ans)
             </h3>
-            <p className="text-sm text-slate-400">Basé sur le plan contractuel (Investissement Net = Brut - Prime CEE)</p>
+            <p className="text-sm text-slate-400">
+              {hasBattery ? 'Plan consolidé Séchoir BatiTech® + Stockage BESS' : 'Basé sur le plan contractuel (Investissement Net = Brut - Prime CEE)'}
+            </p>
           </div>
           <span className="text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-700">
             Inflation produits calculée à 2%/an
@@ -359,87 +848,78 @@ export default function Step5Results({ onExportPDF }) {
                 labelFormatter={(label) => `Année ${label}`}
               />
               <ReferenceLine y={0} stroke="#64748b" strokeWidth={1.5} />
-              {roi && Number(roi) > 0 && Number(roi) <= 25 && (
-                <ReferenceLine 
-                  x={Math.round(Number(roi))} 
-                  stroke="#06b6d4" 
-                  strokeWidth={2} 
-                  strokeDasharray="4 4" 
-                  label={{ 
-                    value: `ROI : ${Number(roi).toFixed(1)} ans`, 
-                    fill: '#22d3ee', 
-                    position: 'insideTop', 
-                    fontSize: 13, 
-                    fontWeight: 'bold',
-                    dy: 10,
-                  }} 
-                />
-              )}
-              <Bar dataKey="cumul" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="cumul" radius={[6, 6, 0, 0]}>
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.cumul >= 0 ? '#10b981' : '#ef4444'} />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.cumul >= 0 ? '#10b981' : '#f43f5e'} 
+                  />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* 3 Indicateurs Financiers Avancés */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-slate-700 text-center">
-          <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/60">
-            <p className="text-sm text-slate-400 uppercase font-semibold">Valeur Actuelle Nette (VAN)</p>
-            <p className="text-2xl font-black text-emerald-400 mt-1">+{fmt(van)} €</p>
-            <p className="text-xs text-slate-400 mt-0.5">Sur 20 ans @ 3.40%</p>
+        {/* 3 Cartes Indicateurs Clés */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-700">
+          <div className="bg-slate-900/60 p-3.5 rounded-2xl border border-slate-700/60 flex items-center justify-between">
+            <span className="text-xs text-slate-300 font-semibold uppercase tracking-wide">Temps de Retour</span>
+            <span className="text-lg font-black text-amber-400">
+              ~{hasBattery ? consolidated.roi : Number(roi).toFixed(1)} ans
+            </span>
           </div>
-          <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/60">
-            <p className="text-sm text-slate-400 uppercase font-semibold">Taux de Rendement Interne (TRI)</p>
-            <p className="text-2xl font-black text-amber-400 mt-1">{triPercent} %</p>
-            <p className="text-xs text-slate-400 mt-0.5">Rentabilité brute du projet</p>
+
+          <div className="bg-slate-900/60 p-3.5 rounded-2xl border border-slate-700/60 flex items-center justify-between">
+            <span className="text-xs text-slate-300 font-semibold uppercase tracking-wide">VAN à 25 ans</span>
+            <span className="text-lg font-black text-emerald-400">+{fmt(van)} €</span>
           </div>
-          <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/60">
-            <p className="text-sm text-slate-400 uppercase font-semibold">Temps de Retour sur Investissement</p>
-            <p className="text-2xl font-black text-cyan-400 mt-1">{roi !== null && roi !== undefined ? Number(roi).toFixed(1) : '—'} ans</p>
-            <p className="text-xs text-slate-400 mt-0.5">Amortissement sur flux d'EBE</p>
+
+          <div className="bg-slate-900/60 p-3.5 rounded-2xl border border-slate-700/60 flex items-center justify-between">
+            <span className="text-xs text-slate-300 font-semibold uppercase tracking-wide">TRI Projet</span>
+            <span className="text-lg font-black text-blue-400">{triPercent}%</span>
           </div>
         </div>
       </div>
 
-      {/* ═══ SECTION EXPORT PDF AVEC OPTIONS ════════════════════════════════ */}
-      <div className="bg-gradient-to-r from-slate-900/90 via-slate-800/80 to-slate-900/90 border border-amber-500/30 rounded-3xl p-6 shadow-xl backdrop-blur-sm">
-        
-        {/* Saisie Nom du Client / Exploitation */}
-        <div className="mb-5 bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner">
-          <div className="flex items-center gap-2.5 text-white font-bold text-sm sm:text-base shrink-0">
-            <Landmark className="w-5 h-5 text-amber-400" />
-            <span>Nom du Client / Exploitation :</span>
-          </div>
-          <input
-            type="text"
-            value={clientName}
-            onChange={(e) => {
-              setClientName(e.target.value);
-              setClientNameInStore(e.target.value);
-            }}
-            placeholder="ex: EARL des Terres Noires, M. Jean Dupont..."
-            className="w-full sm:w-80 bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2 text-white font-semibold text-sm focus:outline-none placeholder:text-slate-500 shadow-sm"
-          />
-        </div>
-
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+      {/* ═══════════════════════════════════════════════════════════════════════
+          EXPORT PDF COMMERCIAL PROFESSIONNEL (DOSSIER CLIENT & BANCAIRE)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 rounded-3xl border-2 border-amber-500/50 p-6 shadow-2xl">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           
-          {/* Options de pages */}
-          <div className="space-y-3 flex-1">
-            <div className="flex items-center gap-2.5">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-              <h3 className="text-lg font-bold text-white">
-                Export du Dossier d'Étude PDF (Format Paysage)
-              </h3>
+          {/* Informations Client & Options PDF */}
+          <div className="space-y-4 flex-1">
+            <div>
+              <div className="flex items-center gap-2">
+                <FileDown className="w-6 h-6 text-amber-400" />
+                <h3 className="text-xl font-black text-white">
+                  Dossier Commercial &amp; d'Ingénierie Séchoir BatiTech®
+                </h3>
+              </div>
+              <p className="text-sm text-slate-300 mt-1">
+                Génération haute définition du dossier PDF (A4 Paysage) intégrant le modèle de rentabilité, l'étude thermovoltaïque et le couplage BESS.
+              </p>
             </div>
-            <p className="text-sm text-slate-300">
-              Personnalisez les pages incluses dans votre dossier d'étude multi-pages :
-            </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            {/* Champ Nom du Client / Exploitation */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider shrink-0">
+                Nom du Client / Exploitation :
+              </label>
+              <input
+                type="text"
+                value={clientName}
+                onChange={(e) => {
+                  setClientName(e.target.value);
+                  setClientNameInStore(e.target.value);
+                }}
+                placeholder="ex: EARL DES TERRES VIEILLES / M. LATOURNERIE Franck"
+                className="flex-1 bg-slate-950/80 border border-slate-700 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 font-medium"
+              />
+            </div>
+
+            {/* Sélecteur des Pages Incluses dans le PDF */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
               {/* Option Page 2 : Tableau d'Amortissement */}
               <button
                 type="button"
@@ -525,7 +1005,12 @@ export default function Step5Results({ onExportPDF }) {
                       includeCashFlowPage,
                       includeAutoconsoPage,
                       includeBenefitsPage,
-                      customClientName: clientName
+                      customClientName: clientName,
+                      hasBattery,
+                      batteryModelId,
+                      batteryUnits,
+                      batteryGridMode,
+                      batteryCapex,
                     });
                   } finally {
                     setIsExporting(false);
@@ -548,7 +1033,7 @@ export default function Step5Results({ onExportPDF }) {
               )}
             </button>
             <span className="text-[11px] text-slate-400 mt-2 font-medium">
-              Dossier A4 Paysage complet &bull; multi-pages
+              Dossier A4 Paysage complet &bull; multi-pages {hasBattery ? '(Pack BESS Inclus)' : ''}
             </span>
           </div>
 

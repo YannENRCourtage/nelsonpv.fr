@@ -436,6 +436,10 @@ export async function generateSechoirPDF({
   latitude = null,
   longitude = null,
   hasBattery = null,
+  batteryModelId = null,
+  batteryUnits = 1,
+  batteryGridMode = 'derriere_compteur',
+  batteryCapex = null,
   includeBenefitsPage = true,
   includeCashFlowPage = true,
   includeAutoconsumptionPage = true,
@@ -487,6 +491,33 @@ export async function generateSechoirPDF({
   const subAssiette = sub.assietteEligible || r.financing?.investissementNet || (modelObj.investissementBrut - (r.cee?.primeTotal || 0));
   const roiBonifie = r.roiBonifie !== undefined && r.roiBonifie !== null ? r.roiBonifie : null;
   const baseRoi = r.roi || 8.12;
+
+  // Calculs BESS Couplé (VOLET 2)
+  const battModelKey = batteryModelId || sechoirState.batteryModelId || (
+    resolvedModelId === 'BT-8.3.15' ? 'UNIV_ESS_261_AC' :
+    resolvedModelId === 'BT-6.2.15' ? 'ST62K' : 'ST31K'
+  );
+  const battUnitsVal = batteryUnits || sechoirState.batteryUnits || 1;
+  const battGridModeVal = batteryGridMode || sechoirState.batteryGridMode || 'derriere_compteur';
+
+  const BATT_MAP = {
+    ST31K: { name: 'Système UNIV ST31K', kwh: 31, kw: 15, capex: 21000, savings: 3400, gridRev: 1200 },
+    ST46K: { name: 'Système UNIV ST46K', kwh: 46, kw: 20, capex: 28500, savings: 4800, gridRev: 1600 },
+    ST62K: { name: 'Système UNIV ST62K', kwh: 62, kw: 30, capex: 37000, savings: 6200, gridRev: 2400 },
+    UNIV_ESS_261_AC: { name: 'Armoire UNIV ESS 261 AC', kwh: 261, kw: 125, capex: 78500, savings: 16500, gridRev: 10000 },
+  };
+
+  const bSpec = BATT_MAP[battModelKey] || BATT_MAP['ST31K'];
+  const bCapexVal = (batteryCapex !== null && Number(batteryCapex) > 0)
+    ? Number(batteryCapex)
+    : (bSpec.capex * battUnitsVal + (battGridModeVal === 'raccorde_reseau' ? 8500 : 0));
+  const bAnnualGains = battGridModeVal === 'raccorde_reseau'
+    ? (bSpec.gridRev * battUnitsVal + bSpec.savings * 0.6 * battUnitsVal)
+    : (bSpec.savings * battUnitsVal);
+
+  const totalCapexConsolide = (r.financing?.investissementNet || (modelObj.investissementBrut - (r.cee?.primeTotal || 0))) + (withBattery ? bCapexVal : 0);
+  const totalGainsConsolide = (r.deltaEBE || 0) + (withBattery ? bAnnualGains : 0);
+  const roiConsolide = totalGainsConsolide > 0 ? (totalCapexConsolide / totalGainsConsolide).toFixed(1) : baseRoi;
 
   const puissanceKwc = r.puissancePV || modelObj.puissanceKwc || modelObj.puissanceCogenAir || (
     modelId === 'BT-3.1.15' ? 30.15 : modelId === 'BT-6.2.15' ? 63.30 : 93.80
@@ -701,6 +732,13 @@ export async function generateSechoirPDF({
           </div>
         </div>
 
+        ${withBattery ? `
+          <div style="background: linear-gradient(90deg, #eef2ff 0%, #f0fdf4 100%); border: 1.5px solid #818cf8; border-radius: 8px; padding: 4px 10px; margin-bottom: 7px; display: flex; justify-content: space-between; align-items: center; font-size: 8pt;">
+            <span style="font-weight: 800; color: #312e81;">🔋 PACK STOCKAGE BESS COUPLÉ : <strong>${bSpec.name} (${bSpec.kwh * battUnitsVal} kWh / ${bSpec.kw * battUnitsVal} kW)</strong> &bull; Mode : ${battGridModeVal === 'raccorde_reseau' ? 'Raccordé Réseau Enedis BT C4' : 'Derrière le Compteur (0 € raccordement)'}</span>
+            <span style="font-weight: 800; color: #166534;">Gains BESS : +${fmt(bAnnualGains)} €/an &bull; CAPEX BESS : +${fmt(bCapexVal)} € HT &bull; ROI combiné : ~${roiConsolide} ans</span>
+          </div>
+        ` : ''}
+
         <!-- 2 GRANDS BLOCS CENTRAUX PLEINE LARGEUR (STYLE RÉSULTATS) -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: 122mm; box-sizing: border-box;">
           
@@ -716,8 +754,12 @@ export async function generateSechoirPDF({
               <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt;">
                 <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #475569;">Investissement Brut Séchoir :</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${fmt(modelObj.investissementBrut)} € HT</td></tr>
                 <tr style="border-bottom: 1px solid #f1f5f9; color: #16a34a;"><td style="padding: 2.5px 0; font-weight: bold;">Prime CEE Cogen'Air® (Fiche AGRI-EQ-110) :</td><td style="text-align: right; font-weight: 900;">-${fmt(r.cee?.primeTotal)} €</td></tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #fffbeb;"><td style="padding: 3px 4px; font-weight: 900; color: #b45309;">Investissement Net à Financer :</td><td style="padding: 3px 4px; text-align: right; font-weight: 900; color: #b45309; font-size: 11pt;">${fmt(r.financing?.investissementNet)} € HT</td></tr>
-                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #64748b;">Montant financé par Emprunt :</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${fmt(r.financing?.investissementNet)} €</td></tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #fffbeb;"><td style="padding: 3px 4px; font-weight: 900; color: #b45309;">Investissement Net Séchoir :</td><td style="padding: 3px 4px; text-align: right; font-weight: 900; color: #b45309; font-size: 11pt;">${fmt(r.financing?.investissementNet)} € HT</td></tr>
+                ${withBattery ? `
+                  <tr style="border-bottom: 1px solid #e2e8f0; background: #eef2ff;"><td style="padding: 2.5px 4px; font-weight: bold; color: #3730a3;">Pack BESS (${bSpec.name} - ${bSpec.kwh * battUnitsVal} kWh) :</td><td style="padding: 2.5px 4px; text-align: right; font-weight: 900; color: #3730a3;">+${fmt(bCapexVal)} € HT</td></tr>
+                  <tr style="border-bottom: 1px solid #cbd5e1; background: #f0fdf4;"><td style="padding: 3px 4px; font-weight: 900; color: #166534;">Total Investissement Consolidé :</td><td style="padding: 3px 4px; text-align: right; font-weight: 900; color: #166534; font-size: 10.5pt;">${fmt(totalCapexConsolide)} € HT</td></tr>
+                ` : ''}
+                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #64748b;">Montant financé par Emprunt :</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${fmt(withBattery ? totalCapexConsolide : r.financing?.investissementNet)} €</td></tr>
                 <tr><td style="padding: 2.5px 0; color: #dc2626;">Annuité constante (25 ans @ 3.40%) :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.annuite)} €/an</td></tr>
               </table>
             </div>
@@ -730,15 +772,18 @@ export async function generateSechoirPDF({
               <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt;">
                 <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #475569;">Valorisation Matière (Delta Produits) :</td><td style="text-align: right; font-weight: bold; color: #16a34a;">+${fmt(r.produits?.deltaProduits)} €/an</td></tr>
                 <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 2.5px 0; color: #475569;">Charges d'exploitation &amp; ventilation :</td><td style="text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.charges?.deltaCharges)} €/an</td></tr>
+                ${withBattery ? `
+                  <tr style="border-bottom: 1px solid #f1f5f9; color: #4338ca;"><td style="padding: 2.5px 0; font-weight: bold;">Gains &amp; Économies BESS (${battGridModeVal === 'raccorde_reseau' ? 'Réseau Enedis + Élec' : 'Autonomie Séchage'}) :</td><td style="text-align: right; font-weight: 900;">+${fmt(bAnnualGains)} €/an</td></tr>
+                ` : ''}
                 <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 2.5px 0 6px 0; color: #475569;">Annuité d'emprunt :</td><td style="padding: 2.5px 0 6px 0; text-align: right; font-weight: bold; color: #dc2626;">-${fmt(r.annuite)} €/an</td></tr>
                 <tr style="height: 6px;"><td colspan="2" style="padding: 0; border: none;"></td></tr>
                 <tr style="background: ${(r.gainNetAnnuel || 0) >= 0 ? '#f0fdf4' : '#fef2f2'}; border-top: 1.5px solid ${(r.gainNetAnnuel || 0) >= 0 ? '#bbf7d0' : '#fecaca'};">
                   <td style="padding: 4px 6px;">
-                    <div style="font-weight: 900; color: ${(r.gainNetAnnuel || 0) >= 0 ? '#166534' : '#991b1b'}; font-size: 10.5pt;">GAIN NET ANNUEL D'EXPLOITATION</div>
-                    <div style="font-size: 8.5pt; color: ${(r.gainNetAnnuel || 0) >= 0 ? '#15803d' : '#b91c1c'};">Après remboursement intégral de l'annuité</div>
+                    <div style="font-weight: 900; color: ${(r.gainNetAnnuel || 0) >= 0 ? '#166534' : '#991b1b'}; font-size: 10.5pt;">${withBattery ? 'GAIN NET ANNUEL CONSOLIDÉ' : "GAIN NET ANNUEL D'EXPLOITATION"}</div>
+                    <div style="font-size: 8.5pt; color: ${(r.gainNetAnnuel || 0) >= 0 ? '#15803d' : '#b91c1c'};">${withBattery ? `ROI Combiné Projet ~${roiConsolide} ans` : "Après remboursement intégral de l'annuité"}</div>
                   </td>
                   <td style="padding: 4px 6px; text-align: right; font-weight: 900; color: ${(r.gainNetAnnuel || 0) >= 0 ? '#166534' : '#dc2626'}; font-size: 15pt;">
-                    ${(r.gainNetAnnuel || 0) >= 0 ? '+' : ''}${fmt(r.gainNetAnnuel)} €/an
+                    ${((r.gainNetAnnuel || 0) + (withBattery ? bAnnualGains : 0)) >= 0 ? '+' : ''}${fmt((r.gainNetAnnuel || 0) + (withBattery ? bAnnualGains : 0))} €/an
                   </td>
                 </tr>
               </table>
