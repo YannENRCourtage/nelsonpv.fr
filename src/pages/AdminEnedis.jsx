@@ -62,6 +62,7 @@ export default function AdminEnedis() {
   // Coordonnées du titulaire du PRM pour l'export PDF et affichage
   const [ownerName, setOwnerName] = useState('');
   const [ownerAddress, setOwnerAddress] = useState('');
+  const [customKwh, setCustomKwh] = useState('');
   const [isEditingOwner, setIsEditingOwner] = useState(false);
 
   const { toast } = useToast();
@@ -99,8 +100,11 @@ export default function AdminEnedis() {
       || currentConsent?.adresse
       || '';
 
+    const detectedKwh = currentConsent?.annualConsumption || data?.mandate?.annualConsumption || data?.annual_consumption || '';
+
     if (detectedName) setOwnerName(detectedName);
     if (detectedAddress) setOwnerAddress(detectedAddress.replace(/VALEUIL/gi, 'BRANTOME EN PERIGORD'));
+    if (detectedKwh) setCustomKwh(String(detectedKwh));
   }, [data, prm, consents]);
 
   // Auto-fetch si redirigé avec succès depuis le callback Enedis
