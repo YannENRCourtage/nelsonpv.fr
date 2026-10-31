@@ -262,7 +262,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                 </div>
               </div>
 
-              {/* PRM, Titulaire & Adresse */}
+              {/* PRM, Adresse & Consentement (Pas de nom de titulaire / Yann Barberis) */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2.5mm' }}>
                 <div style={{ fontSize: '7.5pt', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Point de mesure (PRM)
@@ -270,25 +270,9 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                 <div style={{ fontSize: '14pt', fontWeight: 900, color: '#0f172a', letterSpacing: '1px', fontFamily: 'monospace', lineHeight: 1.2 }}>
                   {prm}
                 </div>
-                {adresse ? (
+                {adresse && !/yann\s*barberis/i.test(adresse) ? (
                   <div style={{ fontSize: '10pt', fontWeight: 800, color: '#1e293b', marginTop: '1px', maxWidth: '135mm', lineHeight: 1.3 }}>
                     {adresse}
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ fontSize: '10pt', fontWeight: 800, color: '#1e293b', marginTop: '1px' }}>
-                      {titulaireLine1}
-                    </div>
-                    {titulaireLine2 && (
-                      <div style={{ fontSize: '9pt', fontWeight: 700, color: '#475569' }}>
-                        {titulaireLine2}
-                      </div>
-                    )}
-                  </>
-                )}
-                {adresse && (titulaireLine1 && titulaireLine1 !== 'Client') ? (
-                  <div style={{ fontSize: '8.5pt', color: '#64748b', marginTop: '1px' }}>
-                    Titulaire : {titulaireLine1}{titulaireLine2 ? ` (${titulaireLine2})` : ''}
                   </div>
                 ) : null}
                 <div style={{ fontSize: '7.5pt', color: '#64748b', marginTop: '1px' }}>
@@ -590,7 +574,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                   Rapport de Consommation — Profils de Charge et Puissance
                 </div>
                 <div style={{ fontSize: '8pt', color: '#64748b' }}>
-                  PRM : <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>{prm}</span> · {adresse ? <span>Adresse : <span style={{ fontWeight: 700, color: '#1e293b' }}>{adresse}</span></span> : <span>Titulaire : <span style={{ fontWeight: 700, color: '#1e293b' }}>{titulaireLine1}{titulaireLine2 ? ` (${titulaireLine2})` : ''}</span></span>}
+                  PRM : <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>{prm}</span>{adresse && !/yann\s*barberis/i.test(adresse) ? <span> · Adresse : <span style={{ fontWeight: 700, color: '#1e293b' }}>{adresse}</span></span> : null}
                 </div>
               </div>
             </div>
@@ -688,15 +672,21 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                     width={54}
                     tickLine={false}
                     axisLine={{ stroke: '#cbd5e1' }}
-                    ticks={[0, 25, 50, 75, 100]}
-                    domain={[0, 100]}
+                    domain={[0, (dataMax) => (dataMax > 0 ? (dataMax <= 10 ? Math.ceil(dataMax * 1.25) : Math.ceil(dataMax * 1.15)) : 10)]}
                   />
                   {maxLoadPoint && (
                     <ReferenceLine
                       y={maxLoadPoint.kW}
                       stroke="#ef4444"
                       strokeDasharray="4 4"
-                      strokeWidth={1}
+                      strokeWidth={1.5}
+                      label={{
+                        value: `Point le plus haut : ${maxLoadPoint.kW.toFixed(2)} kW (${maxLoadPoint.time || ''})`,
+                        position: 'top',
+                        fill: '#dc2626',
+                        fontSize: 8,
+                        fontWeight: 800
+                      }}
                     />
                   )}
                   <Area
@@ -795,15 +785,21 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                     width={54}
                     tickLine={false}
                     axisLine={{ stroke: '#cbd5e1' }}
-                    ticks={[0, 25, 50, 75, 100]}
-                    domain={[0, 100]}
+                    domain={[0, (dataMax) => (dataMax > 0 ? (dataMax <= 10 ? Math.ceil(dataMax * 1.25) : Math.ceil(dataMax * 1.15)) : 10)]}
                   />
                   {maxPwrPoint && (
                     <ReferenceLine
                       y={maxPwrPoint.kW}
                       stroke="#ef4444"
                       strokeDasharray="4 4"
-                      strokeWidth={1}
+                      strokeWidth={1.5}
+                      label={{
+                        value: `Point le plus haut : ${maxPwrPoint.kW.toFixed(2)} kW (${maxPwrPoint.date || ''})`,
+                        position: 'top',
+                        fill: '#dc2626',
+                        fontSize: 8,
+                        fontWeight: 800
+                      }}
                     />
                   )}
                   <Line

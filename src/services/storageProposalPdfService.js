@@ -10,6 +10,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ENR_COURTAGE_LOGO_BASE64 } from '@/assets/logoBase64.js';
+import { annuity } from '@/services/storageBatteryEngine.js';
 
 export function formatNum(val, decimals = 0) {
   if (val === null || val === undefined || isNaN(val)) return '0';
