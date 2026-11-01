@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { apiService } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Folder, FileText, Users, ChevronLeft, ChevronRight, Loader2,
-  Briefcase, Sparkles, Building, Sun, Zap
+  Briefcase, Sparkles, Building, Sun, Zap, Clock, ShieldAlert, CheckCircle2
 } from 'lucide-react';
 
 import html2canvas from 'html2canvas';
@@ -14,6 +15,8 @@ import html2canvas from 'html2canvas';
 import DossiersListView from '@/components/developpement/DossiersListView';
 import EtudeDossierView from '@/components/developpement/EtudeDossierView';
 import ProfessionnelsView from '@/components/developpement/ProfessionnelsView';
+import DpInstructionDashboardBanner from '@/components/developpement/DpInstructionDashboardBanner';
+import DemandeCertificatTaciteModal from '@/components/developpement/DemandeCertificatTaciteModal';
 
 // Modals
 import UrbanismeWizard from '@/components/developpement/UrbanismeWizard';
@@ -66,15 +69,36 @@ import {
 const SIDEBAR_SECTIONS = [
   { id: 'dossiers', label: 'Dossiers', icon: Folder },
   { id: 'etude', label: 'Étude dossier', icon: FileText },
+  { id: 'dp_tracking', label: 'Suivi Délais DP', icon: Clock },
   { id: 'professionnels', label: 'Professionnels', icon: Users },
 ];
 
 export default function Developpement() {
   const { user, activeTenantId } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAcama = activeTenantId === 'acama';
   const isGreenInvest = activeTenantId === 'green-invest' || activeTenantId === 'greeninvest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
   const isNoBattery = isAcama;
-  const [activeSection, setActiveSection] = useState('dossiers');
+  const [activeSection, setActiveSection] = useState(() => {
+    return searchParams.get('section') || 'dossiers';
+  });
+
+  useEffect(() => {
+    const s = searchParams.get('section');
+    if (s && ['dossiers', 'etude', 'dp_tracking', 'professionnels'].includes(s)) {
+      setActiveSection(s);
+    }
+  }, [searchParams]);
+
+  const handleSelectSection = (sectionId) => {
+    setActiveSection(sectionId);
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev);
+      p.set('section', sectionId);
+      return p;
+    }, { replace: true });
+  };
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth < 1024;
@@ -107,6 +131,12 @@ export default function Developpement() {
   // ── Modals State ────────────────────────────────────────────────
   const [urbanismeModal, setUrbanismeModal] = useState({ open: false, type: 'dp' });
   const [dpWizardModal, setDpWizardModal] = useState(false);
+  const [dpCertificatModal, setDpCertificatModal] = useState({
+    isOpen: false,
+    project: null,
+    timeline: null,
+    mairieInfo: null,
+  });
   const [emailMandatementModal, setEmailMandatementModal] = useState({ open: false, type: 'geometre' });
   const [raccordementModal, setRaccordementModal] = useState(false);
   const [aosModal, setAosModal] = useState(false);
@@ -613,7 +643,7 @@ export default function Developpement() {
               return (
                 <button
                   key={section.id}
-                  onClick={() => setActiveSection(section.id)}
+                  onClick={() => handleSelectSection(section.id)}
                   className={`flex items-center gap-3 px-3.5 py-3 rounded-xl font-extrabold text-sm transition-all w-full text-left ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
@@ -716,7 +746,8 @@ export default function Developpement() {
                 <EtudeDossierView
                   project={selectedProject}
                   allProjects={projects}
-                  onBackToDossiers={() => setActiveSection('dossiers')}
+                  onSelectProject={handleSelectProjectFromList}
+                  onBackToDossiers={() => handleSelectSection('dossiers')}
                   onOpenUrbanismeWizard={(type) => setUrbanismeModal({ open: true, type })}
                   onOpenEmailMandatement={(type) => setEmailMandatementModal({ open: true, type })}
                   onOpenRaccordementModal={() => setRaccordementModal(true)}
@@ -749,7 +780,70 @@ export default function Developpement() {
             </motion.div>
           )}
 
-          {/* ONGLET 3 : PROFESSIONNELS */}
+          {/* ONGLET 3 : SUIVI DÉLAIS DP (MOTEUR JURIDIQUE & ACCORD TACITE) */}
+          {activeSection === 'dp_tracking' && (
+            <motion.div
+              key="dp_tracking"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+              className="space-y-6"
+            >
+              {/* En-tête de la page Suivi Délais DP */}
+              <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 rounded-2xl p-6 text-white border border-blue-900/40 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-md text-xs font-black bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                      Art. R.423-23, L.424-2 &amp; R.424-13 C.Urb.
+                    </span>
+                    <span className="px-2.5 py-1 rounded-md text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Droit Français de l'Urbanisme
+                    </span>
+                  </div>
+                  <h2 className="text-xl md:text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
+                    <Clock className="w-6 h-6 text-blue-400" />
+                    Suivi des Délais d'Instruction des Déclarations Préalables (DP)
+                  </h2>
+                  <p className="text-xs md:text-sm text-slate-300 font-medium">
+                    Surveillance jour par jour de nos dépôts DP, identification automatique des mairies, alerte d'accord tacite et génération en 1 clic de la demande officielle de certificat.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (selectedProject) {
+                        handleSelectSection('etude');
+                      } else if (projects.length > 0) {
+                        handleSelectProjectFromList(projects[0]);
+                      }
+                    }}
+                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Ouvrir l'étude du dossier actif
+                  </button>
+                </div>
+              </div>
+
+              {/* Module complet de Suivi Délais DP */}
+              <DpInstructionDashboardBanner
+                projects={projects}
+                activeProjectId={selectedProject?.id}
+                onSelectProject={handleSelectProjectFromList}
+                onRequestCertificate={(p, timeline) => {
+                  setDpCertificatModal({
+                    isOpen: true,
+                    project: p || selectedProject,
+                    timeline: timeline,
+                    mairieInfo: p?.dp_mairie_info || null,
+                  });
+                }}
+              />
+            </motion.div>
+          )}
+
+          {/* ONGLET 4 : PROFESSIONNELS */}
           {activeSection === 'professionnels' && (
             <motion.div
               key="professionnels"
@@ -845,6 +939,20 @@ export default function Developpement() {
               dpc6: dataUrl
             }
           });
+        }}
+      />
+
+      {/* 7. Modal Officielle de Demande de Certificat de Non-Opposition Tacite (Art. R.424-13) */}
+      <DemandeCertificatTaciteModal
+        isOpen={dpCertificatModal.isOpen}
+        onClose={() => setDpCertificatModal(prev => ({ ...prev, isOpen: false }))}
+        project={dpCertificatModal.project || selectedProject}
+        timeline={dpCertificatModal.timeline}
+        mairieInfo={dpCertificatModal.mairieInfo}
+        onUpdateProject={(updates) => {
+          if (dpCertificatModal.project?.id) {
+            handleUpdateProjectData(dpCertificatModal.project.id, updates);
+          }
         }}
       />
 

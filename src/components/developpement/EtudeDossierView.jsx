@@ -13,6 +13,9 @@ import { formatGps } from '@/utils/formatGps.js';
 import { findBessOdreData } from '@/data/bessOdreMatrix.js';
 import { cadastreService } from '@/services/CadastreService.js';
 import { useAuth } from '@/contexts/AuthContext';
+import DpInstructionCard from './DpInstructionCard';
+import DpInstructionDashboardBanner from './DpInstructionDashboardBanner';
+import DemandeCertificatTaciteModal from './DemandeCertificatTaciteModal';
 
 /**
  * EtudeDossierView — Vue détaillée du workflow de développement d'un projet solaire
@@ -22,6 +25,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function EtudeDossierView({
   project,
   allProjects = [],
+  onSelectProject,
   onBackToDossiers,
   onOpenUrbanismeWizard,
   onGenerateExpressDp,
@@ -155,6 +159,14 @@ export default function EtudeDossierView({
   const [projectComments, setProjectComments] = useState('');
   const [isCommentSaved, setIsCommentSaved] = useState(false);
 
+  // État de la modale de demande de certificat tacite
+  const [certificatModalData, setCertificatModalData] = useState({
+    isOpen: false,
+    project: null,
+    timeline: null,
+    mairieInfo: null,
+  });
+
   // Charger les données sauvegardées pour ce projet (Firestore en priorité)
   useEffect(() => {
     if (!project?.id) return;
@@ -243,6 +255,15 @@ export default function EtudeDossierView({
         project[`${stepId}_registration_number`] = updates.registrationNumber;
         project[`numero_${stepId}`] = updates.registrationNumber;
       }
+      if (stepId === 'dp') {
+        if (updates.depositDate !== undefined) project.dp_deposit_date = updates.depositDate;
+        if (updates.regime !== undefined) project.dp_regime = updates.regime;
+        if (updates.hasComplement !== undefined) project.dp_has_complement = updates.hasComplement;
+        if (updates.complementDate !== undefined) project.dp_complement_date = updates.complementDate;
+        if (updates.dp_mairie_info !== undefined) project.dp_mairie_info = updates.dp_mairie_info;
+        if (updates.certificateObtained !== undefined) project.dp_certificate_obtained = updates.certificateObtained;
+        if (updates.displayDate !== undefined) project.dp_display_date = updates.displayDate;
+      }
 
       if (stepSaveTimeoutRef.current) {
         clearTimeout(stepSaveTimeoutRef.current);
@@ -258,6 +279,15 @@ export default function EtudeDossierView({
           if (newStepsState[stepId]?.registrationNumber !== undefined) {
             payload[`${stepId}_registration_number`] = newStepsState[stepId].registrationNumber;
             payload[`numero_${stepId}`] = newStepsState[stepId].registrationNumber;
+          }
+          if (stepId === 'dp') {
+            if (updates.depositDate !== undefined) payload.dp_deposit_date = updates.depositDate;
+            if (updates.regime !== undefined) payload.dp_regime = updates.regime;
+            if (updates.hasComplement !== undefined) payload.dp_has_complement = updates.hasComplement;
+            if (updates.complementDate !== undefined) payload.dp_complement_date = updates.complementDate;
+            if (updates.dp_mairie_info !== undefined) payload.dp_mairie_info = updates.dp_mairie_info;
+            if (updates.certificateObtained !== undefined) payload.dp_certificate_obtained = updates.certificateObtained;
+            if (updates.displayDate !== undefined) payload.dp_display_date = updates.displayDate;
           }
           await apiService.updateProject(project.id, payload);
         } catch (err) {
@@ -526,6 +556,27 @@ export default function EtudeDossierView({
   }, [project, allProjects]);
 
   const renderStepCard = (step) => {
+    // Si étape Déclaration Préalable (DP), affichage du module complet de suivi d'instruction
+    if (step.id === 'dp') {
+      return (
+        <DpInstructionCard
+          key={step.id}
+          project={project}
+          stepState={stepsState.dp || {}}
+          onUpdateStep={(updates) => updateStep('dp', updates)}
+          onOpenUrbanismeWizard={() => handleStepAction(step)}
+          onRequestCertificate={(data) => {
+            setCertificatModalData({
+              isOpen: true,
+              project: data?.project || project,
+              timeline: data?.timeline,
+              mairieInfo: data?.mairieInfo,
+            });
+          }}
+        />
+      );
+    }
+
     const s = stepsState[step.id] || { status: 'pending', lastIntervention: '14/08/2026', deadline: '' };
     const isOverdue = checkIsOverdue(step);
     const currentStatusOpt = STATUS_OPTIONS.find(opt => opt.id === s.status) || STATUS_OPTIONS[0];
@@ -915,6 +966,23 @@ export default function EtudeDossierView({
         </div>
       </div>
 
+      {/* ── BANDEAU SYNTHÉTIQUE DU SUIVI DES DP (LÉGAL & ACCORD TACITE) ── */}
+      <DpInstructionDashboardBanner
+        projects={allProjects && allProjects.length > 0 ? allProjects : (project ? [project] : [])}
+        activeProjectId={project?.id}
+        onSelectProject={(p) => {
+          if (onSelectProject) onSelectProject(p);
+        }}
+        onRequestCertificate={(p, timeline) => {
+          setCertificatModalData({
+            isOpen: true,
+            project: p || project,
+            timeline: timeline,
+            mairieInfo: p?.dp_mairie_info || null,
+          });
+        }}
+      />
+
       {/* ── LES 3 ZONES DE WORKFLOW EN 3 COLONNES (SANS SCROLL VERTICAL) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         {/* COLONNE 1 : URBANISME (CUo, DP, PC) */}
@@ -962,6 +1030,18 @@ export default function EtudeDossierView({
           </div>
         </div>
       </div>
+
+      {/* ── MODALE OFFICIELLE DE DEMANDE DE CERTIFICAT DE NON-OPPOSITION TACITE (ART. R.424-13) ── */}
+      <DemandeCertificatTaciteModal
+        isOpen={certificatModalData.isOpen}
+        onClose={() => setCertificatModalData(prev => ({ ...prev, isOpen: false }))}
+        project={certificatModalData.project || project}
+        timeline={certificatModalData.timeline}
+        mairieInfo={certificatModalData.mairieInfo}
+        onUpdateProject={(updates) => {
+          updateStep('dp', updates);
+        }}
+      />
     </div>
   );
 }

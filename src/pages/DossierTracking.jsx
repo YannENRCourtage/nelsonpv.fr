@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
     Plus, Trash2, Search, Download, Save, Grid, 
     ArrowUpDown, Filter, MoreHorizontal, ChevronLeft,
     TrendingUp, FileText, Calendar, Euro, MapPin, Mail, Phone,
     Upload, Copy, CheckSquare, Square, X, GripVertical,
     ArrowUp, ArrowDown, Loader2, CheckCircle2, XCircle, FilterX, Settings2,
-    SlidersHorizontal, Check
+    SlidersHorizontal, Check, Clock
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '@/services/api';
@@ -363,6 +364,7 @@ const COLUMNS = [
 
 export default function DossierTracking() {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -855,7 +857,20 @@ export default function DossierTracking() {
                     )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                    <Button 
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate('/developpement?section=dp_tracking')}
+                        className="h-8 px-3 text-xs gap-1.5 font-bold border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 shadow-2xs transition-all cursor-pointer"
+                        title="Accéder au Suivi des Délais d'Instruction des Déclarations Préalables (DP)"
+                    >
+                        <Clock className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Suivi Délais DP</span>
+                        <span className="text-[10px] bg-blue-600 text-white rounded-full px-1.5 py-0.5 font-black">
+                            Urbanisme
+                        </span>
+                    </Button>
                     <div className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
                         {rows.length} Dossiers
                     </div>
