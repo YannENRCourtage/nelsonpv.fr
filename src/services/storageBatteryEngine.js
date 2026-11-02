@@ -319,8 +319,16 @@ export function computeStorageProject(input) {
     hcPrice
   });
   const t = energy.totals;
-  const sellPrice = Number(solar?.sellPrice ?? 0.04);
-  const solarSurplusRevenue = solar?.enabled ? Math.round(t.exportBat * sellPrice) : 0;
+  // Calcul du tarif moyen de consommation du PRM
+  const totalImportBase = (t.importHpBase || 0) + (t.importHcBase || 0);
+  const avgConsoTariff = totalImportBase > 0
+    ? Math.round(((t.importHpBase * hpPrice + t.importHcBase * hcPrice) / totalImportBase) * 1000) / 1000
+    : Math.round(((2 * hpPrice + hcPrice) / 3) * 1000) / 1000;
+
+  // Si la revente du surplus est supprimée (batterie non raccordée), prix de vente = 0
+  const isSurplusResaleSuppressed = solar?.allowSurplusResale === false;
+  const sellPrice = isSurplusResaleSuppressed ? 0 : Number(solar?.sellPrice ?? avgConsoTariff);
+  const solarSurplusRevenue = (solar?.enabled && !isSurplusResaleSuppressed) ? Math.round(t.exportBat * sellPrice) : 0;
 
   // Coûts annuels d'électricité (année 1)
   const costSite = t.importHpBase * hpPrice + t.importHcBase * hcPrice;
@@ -410,7 +418,9 @@ export function computeStorageProject(input) {
     costs: { costSite: Math.round(costSite), costPv: Math.round(costPv), costPvBat: Math.round(costPvBat) },
     gains: {
       batterySavings, solarSavings, solarExistingSavings, solarSurplusRevenue, peakShavingValue, gridRevenue,
-      totalYear1: batterySavings + solarSavings + gridRevenue
+      totalYear1: batterySavings + solarSavings + gridRevenue,
+      avgConsoTariff,
+      isSurplusResaleSuppressed
     },
     grid,
     capex: { hardwareCapex, installCapex, installDegressivity, discountAmount, batteryCapex, pvCapex, connectionCost, totalCapex },

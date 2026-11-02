@@ -360,6 +360,10 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   const netY1 = sim.gains.totalYear1 - sim.opex;
   doc.text(`Gain Net Année 1 : ${formatSignedNum(netY1, 0, ' € HT')}`, 18 + colW3 * 2 + 8, ecoY + 31);
 
+  // Chronogramme prévisionnel de déploiement (placé en Page 1 sous la synthèse économique)
+  const chronoY = ecoY + 36 + 3.5;
+  drawChronogrammeGantt(doc, 14, chronoY, 182, 35, Boolean(sim.grid));
+
   drawFooter(doc, 1, totalPages, false);
 
   // ── PAGE 2 : PROFIL JOURNALIER DE CHARGE 24H & JOURNÉE TYPE BESS ──
@@ -422,11 +426,11 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
     doc.text(r.sub, rx + 2.5, 48.8);
   });
 
-  // Graphique 24h vectoriel de charge & écrêtage
-  drawDaily24hChartPdf(doc, 14, 53, 182, 57, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
+  // Graphique 24h vectoriel de charge & écrêtage (Hauteur augmentée à 75 mm)
+  drawDaily24hChartPdf(doc, 14, 53, 182, 75, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
 
   // Tableau synthétique de la Journée type heure par heure avec Niveau de Charge (SOC %)
-  drawHourlyJourneyTablePdf(doc, 14, 113, 182, 57, sim.energy.chart, sim.capacityKwh);
+  drawHourlyJourneyTablePdf(doc, 14, 131, 182, 57, sim.energy.chart, sim.capacityKwh);
 
   // 4 Piliers Opérationnels & Explication de la journée type
   const pillarW = (182 - 3 * 2.5) / 4;
@@ -440,40 +444,40 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   pillars.forEach((p, pIdx) => {
     const px = 14 + pIdx * (pillarW + 2.5);
     doc.setFillColor(p.bg[0], p.bg[1], p.bg[2]);
-    doc.roundedRect(px, 172.5, pillarW, 16, 1.6, 1.6, 'F');
+    doc.roundedRect(px, 191, pillarW, 16, 1.6, 1.6, 'F');
     doc.setDrawColor(p.border[0], p.border[1], p.border[2]);
-    doc.roundedRect(px, 172.5, pillarW, 16, 1.6, 1.6, 'D');
+    doc.roundedRect(px, 191, pillarW, 16, 1.6, 1.6, 'D');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(5.2);
     doc.setTextColor(p.txt[0], p.txt[1], p.txt[2]);
-    doc.text(p.title, px + 2.5, 176.5);
+    doc.text(p.title, px + 2.5, 195);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(4.8);
     doc.setTextColor(71, 85, 105);
     const splitDesc = doc.splitTextToSize(p.desc, pillarW - 5);
-    doc.text(splitDesc, px + 2.5, 180.5);
+    doc.text(splitDesc, px + 2.5, 199);
   });
 
   // Note explicative
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, 191, 182, 11, 1.5, 1.5, 'F');
+  doc.roundedRect(14, 210, 182, 11, 1.5, 1.5, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(14, 191, 182, 11, 1.5, 1.5, 'D');
+  doc.roundedRect(14, 210, 182, 11, 1.5, 1.5, 'D');
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(5);
   doc.setTextColor(100, 116, 139);
-  doc.text('Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour', 18, 194.5);
-  doc.text('en chargeant prioritairement sur le surplus solaire (ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 198.5);
+  doc.text('Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour', 18, 213.5);
+  doc.text('en chargeant prioritairement sur le surplus solaire (ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 217.5);
 
   drawFooter(doc, 2, totalPages, false);
 
-  // ── PAGE 3 : MODÉLISATION FINANCIÈRE SUR 20 ANS, BANCABILITÉ & CHRONOGRAMME ──
+  // ── PAGE 3 : MODÉLISATION FINANCIÈRE SUR 20 ANS & BANCABILITÉ ──
   doc.addPage();
   drawHeader(
     doc,
-    'MODÉLISATION FINANCIÈRE SUR 20 ANS, BANCABILITÉ & CHRONOGRAMME',
+    'MODÉLISATION FINANCIÈRE SUR 20 ANS & BANCABILITÉ',
     `Hypothèses : Inflation énergie ${sim.input.indexationPct || 4} %/an · Dégradation batterie 1 %/an · OPEX indexé 2 %/an`,
     3,
     totalPages
@@ -541,10 +545,10 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
     doc.text(k.sub, kx + 2, 49.5);
   });
 
-  // Graphique de Trésorerie Cumulée & Seuil de rentabilité
-  drawCashFlowChartPdf(doc, 14, 54.5, 182, 36, sim.years, sim.kpis.payback, sim.kpis.triProject, Boolean(sim.grid), sim.capex.totalCapex);
+  // Graphique de Trésorerie Cumulée & Seuil de rentabilité (Hauteur augmentée à 58 mm)
+  drawCashFlowChartPdf(doc, 14, 54.5, 182, 58, sim.years, sim.kpis.payback, sim.kpis.triProject, Boolean(sim.grid), sim.capex.totalCapex);
 
-  // Tableau de Cash-flow sur 20 ans
+  // Tableau de Cash-flow sur 20 ans (placé sous le graphique agrandi)
   const cfRows = [
     ['Année 0', `-${formatNum(sim.capex.totalCapex)} €`, '0 €', '0 €', `-${formatNum(sim.capex.totalCapex)} €`, `-${formatNum(sim.capex.totalCapex)} €`]
   ];
@@ -561,7 +565,7 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   });
 
   autoTable(doc, {
-    startY: 93,
+    startY: 116.5,
     margin: { left: 14, right: 14 },
     theme: 'striped',
     headStyles: {
@@ -589,10 +593,6 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
     head: [['Période', 'Économies Facture', 'Revenus Réseau', 'OPEX Maintenance', 'Cash-Flow Net/an', 'Trésorerie Cumulée']],
     body: cfRows
   });
-
-  // Chronogramme 6 étapes en bas de la page 3
-  const chronoY = Math.max(167, (doc.lastAutoTable?.finalY || 164) + 3);
-  drawChronogrammeGantt(doc, 14, chronoY, 182, 36, Boolean(sim.grid));
 
   drawFooter(doc, 3, totalPages, false);
 

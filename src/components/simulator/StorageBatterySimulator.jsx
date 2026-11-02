@@ -78,7 +78,31 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
   const [solarKwc, setSolarKwc] = useState(100);
   const [solarSpecificYield, setSolarSpecificYield] = useState(1180);
   const [solarCapexHt, setSolarCapexHt] = useState(95000);
-  const [solarSellPrice, setSolarSellPrice] = useState(0.04);
+  const [allowSurplusResale, setAllowSurplusResale] = useState(false); // Par défaut supprimée car batteries non raccordées
+  const [solarSellPrice, setSolarSellPrice] = useState(0.18); // Tarif d'injection pris au tarif moyen du PRM
+
+  // ── Synchronisation automatique avec selectedProject (si actif) ──
+  useEffect(() => {
+    if (selectedProject) {
+      if (selectedProject.name || selectedProject.clientName) {
+        setClientName(selectedProject.name || selectedProject.clientName);
+      }
+      if (selectedProject.address) {
+        setSiteAddress(selectedProject.address + (selectedProject.zip ? `, ${selectedProject.zip}` : '') + (selectedProject.city ? ` ${selectedProject.city}` : ''));
+      }
+      if (selectedProject.prm) {
+        setSelectedPrm(selectedProject.prm);
+      }
+      const kwh = Number(selectedProject.annualConsumption || selectedProject.consoAnnuelle || selectedProject.annualKwh);
+      if (kwh && kwh !== 5850) {
+        setAnnualKwh(kwh);
+      }
+      const pkw = Number(selectedProject.peakKw || selectedProject.puissanceSouscrite || selectedProject.powerKw);
+      if (pkw) {
+        setPeakKw(pkw);
+      }
+    }
+  }, [selectedProject]);
 
   // ── 3. Configuration de la Batterie BESS ──
   const [selectedModelId, setSelectedModelId] = useState('UNIV_ESS_261_AC');
@@ -254,6 +278,11 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     }
   };
 
+  // Tarif moyen de consommation du PRM pondéré
+  const avgPrmConsoTariff = useMemo(() => {
+    return Math.round(((2 * hpPrice + hcPrice) / 3) * 1000) / 1000;
+  }, [hpPrice, hcPrice]);
+
   // Moteur de calcul complet
   const sim = useMemo(() => {
     return computeStorageProject({
@@ -270,7 +299,9 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
         kwc: Number(solarKwc) || 0,
         specificYield: Number(solarSpecificYield) || 1180,
         capexHt: Number(solarCapexHt) || 0,
-        sellPrice: Number(solarSellPrice) || 0.04
+        allowSurplusResale,
+        sellPrice: allowSurplusResale ? (Number(solarSellPrice) || avgPrmConsoTariff) : 0,
+        avgConsoTariff: avgPrmConsoTariff
       },
       model: currentModel,
       quantity,
@@ -303,7 +334,9 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     solarKwc,
     solarSpecificYield,
     solarCapexHt,
+    allowSurplusResale,
     solarSellPrice,
+    avgPrmConsoTariff,
     currentModel,
     selectedModelId,
     quantity,
@@ -514,6 +547,10 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                 <div className="text-xs font-semibold text-blue-800">
                   Moyenne {fmtNum(annualKwh / 365, 1)} kWh/j · Pointe max {peakKw.toFixed(1)} kW
                 </div>
+                <div className="text-[11px] font-bold text-blue-900 mt-1 flex items-center gap-1.5">
+                  <Zap className="w-3 h-3 text-amber-500" />
+                  Tarif moyen PRM : {(avgPrmConsoTariff * 100).toFixed(2)} c€/kWh ({avgPrmConsoTariff.toFixed(3)} €)
+                </div>
               </div>
               <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 mt-1">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Courbe horaire active
@@ -601,6 +638,14 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                 <span className="absolute right-2 top-1.5 text-[10px] text-slate-400 font-bold">€/kW/an</span>
               </div>
             </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-blue-900 block mb-1">Tarif moyen PRM</label>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-blue-900 flex items-center justify-between">
+                <span>{(avgPrmConsoTariff * 100).toFixed(2)} c€</span>
+                <span className="text-[10px] text-blue-600 font-semibold">{avgPrmConsoTariff.toFixed(3)} €/kWh</span>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -674,21 +719,72 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
               </div>
             </div>
 
-            <div>
-              <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                Tarif vente surplus injecté
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={solarSellPrice}
-                  onChange={e => setSolarSellPrice(Number(e.target.value) || 0.04)}
-                  className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 pr-12 focus:outline-none focus:border-amber-500"
-                />
-                <span className="absolute right-2.5 top-1.5 text-[10px] text-slate-400 font-bold">€/kWh</span>
+            <div className="sm:col-span-2 lg:col-span-4 p-3 rounded-xl bg-white border border-amber-200 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-amber-100">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-slate-900">Revente du surplus au réseau (Injection)</span>
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${allowSurplusResale ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                      {allowSurplusResale ? '✅ Revente active' : '❌ Revente supprimée (Non raccordé)'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    {allowSurplusResale 
+                      ? 'Surplus injecté valorisé au tarif conventionné ou au tarif moyen du PRM.'
+                      : 'La plupart des batteries ne sont pas raccordées au réseau Enedis pour la revente : injection surplus = 0 €. L\'ensemble de la centrale est valorisée au tarif moyen de consommation du PRM.'}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !allowSurplusResale;
+                    setAllowSurplusResale(next);
+                    if (next && (!solarSellPrice || solarSellPrice <= 0)) {
+                      setSolarSellPrice(avgPrmConsoTariff);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 ${
+                    allowSurplusResale
+                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300'
+                      : 'bg-amber-500 hover:bg-amber-600 text-white'
+                  }`}
+                >
+                  {allowSurplusResale ? 'Supprimer la revente du surplus' : 'Activer la revente du surplus'}
+                </button>
               </div>
-              <span className="text-[9px] text-slate-400 block mt-0.5">Surplus valorisé avec ou sans raccordement réseau</span>
+
+              {allowSurplusResale ? (
+                <div className="mt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Tarif d'injection de la centrale (€/kWh)
+                    </label>
+                    <div className="relative w-44">
+                      <input
+                        type="number"
+                        step="0.001"
+                        value={solarSellPrice}
+                        onChange={e => setSolarSellPrice(Number(e.target.value) || 0)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 pr-12 focus:outline-none focus:border-amber-500"
+                      />
+                      <span className="absolute right-2.5 top-1.5 text-[10px] text-slate-400 font-bold">€/kWh</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSolarSellPrice(avgPrmConsoTariff)}
+                    className="self-end px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all"
+                  >
+                    🎯 Aligner sur le tarif moyen du PRM ({(avgPrmConsoTariff * 100).toFixed(2)} c€/kWh)
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-slate-600 bg-slate-50 rounded-lg px-2.5 py-1.5">
+                  <span>⚡ <strong>Tarif moyen de référence du PRM :</strong> {fmtNum(avgPrmConsoTariff * 100, 2)} c€/kWh ({avgPrmConsoTariff.toFixed(3)} €/kWh)</span>
+                  <span className="text-[10px] text-slate-500 italic">Revente réseau : 0 €/an</span>
+                </div>
+              )}
             </div>
 
             {solarIsNew && (

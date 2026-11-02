@@ -5500,7 +5500,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
 }
 
 
-function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, features, setFeatures, setIsAzimuthDefaulted, isRotatingRef, lastSyncedAzimuthRef, setTargetPos, setShowInfoPanel, activeTab, onSelectOwners }) {
+function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, features, setFeatures, setIsAzimuthDefaulted, isRotatingRef, lastSyncedAzimuthRef, setTargetPos, setShowInfoPanel, activeTab, onSelectOwners, activeLayers }) {
   const map = useMap();
   // lastSyncedAzimuthRef is now passed as prop
 
@@ -5923,7 +5923,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       window.removeEventListener("map:zoom-in", handleZoomIn);
       window.removeEventListener("map:zoom-out", handleZoomOut);
     };
-  }, [map, project, onAddressFound, setTargetPos, setShowInfoPanel]);
+  }, [map, project, onAddressFound, setTargetPos, setShowInfoPanel, activeLayers]);
 
   useEffect(() => {
     const handleSearchResult = (e) => { onAddressSearched(e.location); };
@@ -7129,6 +7129,7 @@ export default function MapElements({
           <MapEvents
             project={project}
             features={features}
+            activeLayers={activeLayers}
             setProject={setProject}
             setIsAzimuthDefaulted={setIsAzimuthDefaulted}
             onAddressFound={onAddressFound}
