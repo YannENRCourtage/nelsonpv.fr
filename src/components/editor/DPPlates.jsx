@@ -220,7 +220,8 @@ export const PlateSituation = ({ project, captures }) => {
  * PLANCHE DP2 : PLAN DE MASSE (Cadre réduit en hauteur pour rehausser le footer)
  */
 
-export const BessMasseRegulatoryOverlay = ({ bLen = 6.20, bW = 3.20 }) => {
+export const BessMasseRegulatoryOverlay = () => null;
+const _DisabledBessOverlay = ({ bLen = 6.20, bW = 3.20 }) => {
     return (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
             <svg viewBox="0 0 800 480" style={{ width: '100%', height: '100%' }} preserveAspectRatio="none">
@@ -416,7 +417,7 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                                     </div>
                                     <div style={{ flex: 1, position: 'relative', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <img src={getProxiedImageUrl(bPhoto || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
-                                        {isBatB && <BessMasseRegulatoryOverlay bLen={bLen} bW={bW} />}
+
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.2mm', padding: '1mm 1.5mm', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '1.5mm', fontSize: '6.5pt', color: '#334155' }}>
                                         <div style={{ display: 'flex', gap: '2.5mm', flexWrap: 'wrap' }}>
@@ -476,7 +477,7 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                             </div>
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff', position: 'relative' }}>
                                 <img src={getProxiedImageUrl(bPhoto || '')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
-                                {isBatB && <BessMasseRegulatoryOverlay bLen={bLen} bW={bW} />}
+
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5mm', padding: '1.2mm 2.5mm', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '1.5mm', fontSize: '7.2pt', color: '#334155' }}>
                                 <div style={{ display: 'flex', gap: '3.5mm' }}>

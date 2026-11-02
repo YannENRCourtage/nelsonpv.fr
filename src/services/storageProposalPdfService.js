@@ -38,27 +38,27 @@ function drawHeader(doc, title, subtitle, pageNum, totalPages) {
     } catch (_) {}
   }
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setTextColor(30, 41, 59);
   doc.text('NELSON · INGÉNIERIE ÉNERGÉTIQUE & STOCKAGE', 196, 12, { align: 'right' });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Document confidentiel · Édité le ${new Date().toLocaleDateString('fr-FR')}`, 196, 16, { align: 'right' });
+  doc.text(`Document confidentiel · Édité le ${new Date().toLocaleDateString('fr-FR')}`, 196, 16.5, { align: 'right' });
 
   doc.setDrawColor(226, 232, 240);
   doc.line(14, 22, 196, 22);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
+  doc.setFontSize(14);
   doc.setTextColor(15, 23, 42);
   doc.text(title, 14, 29);
 
   if (subtitle) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(71, 85, 105);
-    doc.text(subtitle, 14, 33.5);
+    doc.text(subtitle, 14, 34);
   }
 }
 
@@ -66,13 +66,13 @@ function drawFooter(doc, pageNum, totalPages, isBank = false) {
   doc.setDrawColor(226, 232, 240);
   doc.line(14, 285, 196, 285);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(148, 163, 184);
   const label = isBank
     ? 'Dossier de Financement Bancaire · Modélisation DSCR / TRI · Nelson / ENR Courtage SAS'
     : 'Proposition Commerciale Stockage Batterie & Solaire · Nelson / ENR Courtage · www.nelsonpv.fr';
-  doc.text(label, 14, 289);
-  doc.text(`Page ${pageNum} / ${totalPages}`, 196, 289, { align: 'right' });
+  doc.text(label, 14, 289.5);
+  doc.text(`Page ${pageNum} / ${totalPages}`, 196, 289.5, { align: 'right' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -98,36 +98,36 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
 
   // Cartouche Client & PRM
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, 37, 182, 17, 2, 2, 'F');
+  doc.roundedRect(14, 37, 182, 19.5, 2, 2, 'F');
   doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(14, 37, 182, 17, 2, 2, 'D');
+  doc.roundedRect(14, 37, 182, 19.5, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(8.5);
   doc.setTextColor(30, 41, 59);
-  doc.text('DONNÉES ÉNERGÉTIQUES DE RÉFÉRENCE', 18, 42);
+  doc.text('DONNÉES ÉNERGÉTIQUES DE RÉFÉRENCE', 18, 42.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(71, 85, 105);
-  doc.text(`• Titulaire : ${clientName}`, 18, 46.5);
-  doc.text(`• Point de Référence et Mesure (PRM) : ${prm}`, 18, 50.5);
+  doc.text(`• Titulaire : ${clientName}`, 18, 47.5);
+  doc.text(`• Point de Référence et Mesure (PRM) : ${prm}`, 18, 52.5);
 
   const consoAnnuelle = Math.round((sim.input.annualKwh || 0));
   const dailyMoy = Math.round(consoAnnuelle / 365);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(71, 85, 105);
-  doc.text(`• Consommation annuelle : ${formatNum(consoAnnuelle)} kWh/an (${dailyMoy} kWh/j)`, 105, 46.5);
+  doc.text(`• Consommation annuelle : ${formatNum(consoAnnuelle)} kWh/an (${dailyMoy} kWh/j)`, 105, 47.5);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(71, 85, 105);
-  doc.text(`• Puissance de pointe mesurée : ${sim.energy.peakKw.toFixed(1)} kW - Écrêtée à ${sim.energy.newPeakKw.toFixed(1)} kW (-${sim.energy.shaveKw.toFixed(1)} kW)`, 105, 50.5);
+  doc.text(`• Puissance de pointe mesurée : ${sim.energy.peakKw.toFixed(1)} kW - Écrêtée à ${sim.energy.newPeakKw.toFixed(1)} kW (-${sim.energy.shaveKw.toFixed(1)} kW)`, 105, 52.5);
 
   // 4 Cartouches KPI Clés
-  const kpiY = 57;
+  const kpiY = 59.5;
   const kpiW = 43;
-  const kpiH = 18;
+  const kpiH = 20.5;
   const kpiData = [
     {
       title: 'BATTERIE RECOMMANDÉE',
@@ -163,50 +163,50 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
     doc.roundedRect(kx, kpiY, kpiW, kpiH, 2, 2, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.5);
+    doc.setFontSize(6.5);
     doc.setTextColor(kpi.txt[0], kpi.txt[1], kpi.txt[2]);
-    doc.text(kpi.title, kx + 3, kpiY + 4.5);
+    doc.text(kpi.title, kx + 3, kpiY + 5.0);
 
-    doc.setFontSize(9.5);
-    doc.text(kpi.val, kx + 3, kpiY + 11);
+    doc.setFontSize(10.5);
+    doc.text(kpi.val, kx + 3, kpiY + 12.2);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.5);
+    doc.setFontSize(6.5);
     doc.setTextColor(71, 85, 105);
-    doc.text(kpi.sub, kx + 3, kpiY + 15.5);
+    doc.text(kpi.sub, kx + 3, kpiY + 17.5);
   });
 
   // Volet Solaire Photovoltaïque si présent
-  let curY = 78;
+  let curY = 83;
   if (solar.enabled) {
     doc.setFillColor(255, 251, 235);
-    doc.roundedRect(14, curY, 182, 16, 2, 2, 'F');
+    doc.roundedRect(14, curY, 182, 19.5, 2, 2, 'F');
     doc.setDrawColor(253, 230, 138);
-    doc.roundedRect(14, curY, 182, 16, 2, 2, 'D');
+    doc.roundedRect(14, curY, 182, 19.5, 2, 2, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
-    doc.text(`CENTRALE SOLAIRE PHOTOVOLTAÏQUE ASSOCIÉE (${solar.kwc} kWC)`, 18, curY + 5);
+    doc.text(`CENTRALE SOLAIRE PHOTOVOLTAÏQUE ASSOCIÉE (${solar.kwc} kWC)`, 18, curY + 5.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.8);
+    doc.setFontSize(7.8);
     doc.setTextColor(71, 85, 105);
     const solStat = solar.isNew
       ? `Nouvelle installation (CAPEX inclus : ${formatNum(solar.capexHt || 0)} € HT)`
       : 'Centrale solaire existante conservée (CAPEX = 0 €)';
-    doc.text(`• Statut : ${solStat}`, 18, curY + 9.5);
-    doc.text(`• Production annuelle : ${formatNum(sim.energy.pvAnnual)} kWh/an (${solar.specificYield} kWh/kWc/an)`, 18, curY + 13.5);
-    doc.text(`• Taux d'autoconsommation solaire : ${Math.round(sim.energy.rates.autoconsoPvBat * 100)} % (vs ${Math.round(sim.energy.rates.autoconsoPv * 100)} % sans batterie)`, 110, curY + 9.5);
-    doc.text(`• Recharge gratuite de la batterie par le surplus solaire : ${formatNum(sim.energy.totals.batFromPv)} kWh/an`, 110, curY + 13.5);
-    curY += 19;
+    doc.text(`• Statut : ${solStat}`, 18, curY + 10.5);
+    doc.text(`• Production annuelle : ${formatNum(sim.energy.pvAnnual)} kWh/an (${solar.specificYield} kWh/kWc/an)`, 18, curY + 15.5);
+    doc.text(`• Taux d'autoconsommation solaire : ${Math.round(sim.energy.rates.autoconsoPvBat * 100)} % (vs ${Math.round(sim.energy.rates.autoconsoPv * 100)} % sans batterie)`, 105, curY + 10.5);
+    doc.text(`• Recharge gratuite de la batterie par le surplus solaire : ${formatNum(sim.energy.totals.batFromPv)} kWh/an`, 105, curY + 15.5);
+    curY += 22.5;
   }
 
   // Devis d'investissement détaillé (Tableau)
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(9.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('DÉTAIL DE L\'INVESTISSEMENT CLÉ EN MAIN (CAPEX HT)', 14, curY + 4);
+  doc.text('DÉTAIL DE L\'INVESTISSEMENT CLÉ EN MAIN (CAPEX HT)', 14, curY + 4.5);
 
   const quoteRows = [
     [
@@ -258,7 +258,7 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   ]);
 
   autoTable(doc, {
-    startY: curY + 6,
+    startY: curY + 6.5,
     margin: { left: 14, right: 14 },
     theme: 'plain',
     headStyles: {
@@ -266,13 +266,13 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 6.8,
-      cellPadding: 1.5
+      fontSize: 7.8,
+      cellPadding: 1.8
     },
     styles: {
       font: 'helvetica',
-      fontSize: 6.5,
-      cellPadding: 1.3,
+      fontSize: 7.5,
+      cellPadding: 1.6,
       textColor: [30, 41, 59]
     },
     columnStyles: {
@@ -288,81 +288,81 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   // Bloc Modèle Économique / Revenus
   const ecoY = doc.lastAutoTable.finalY + 4;
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, ecoY, 182, 36, 2, 2, 'F');
+  doc.roundedRect(14, ecoY, 182, 42, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(14, ecoY, 182, 36, 2, 2, 'D');
+  doc.roundedRect(14, ecoY, 182, 42, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('SYNTHÈSE DU MODÈLE ÉCONOMIQUE ANNUEL (ANNÉE 1)', 18, ecoY + 5);
+  doc.text('SYNTHÈSE DU MODÈLE ÉCONOMIQUE ANNUEL (ANNÉE 1)', 18, ecoY + 5.5);
 
   const colW3 = 56;
   // Col 1 : Économies Facture
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(22, 101, 52);
-  doc.text('1. ÉCONOMIES FACTURE', 18, ecoY + 11);
+  doc.text('1. ÉCONOMIES FACTURE', 18, ecoY + 12);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(7.2);
   doc.setTextColor(71, 85, 105);
-  doc.text(`• Écrêtage pointes TURPE : +${formatNum(sim.gains.peakShavingValue)} €/an`, 18, ecoY + 16);
-  doc.text(`• Arbitrage HP/HC & Décharge : +${formatNum(sim.gains.batterySavings - sim.gains.peakShavingValue)} €/an`, 18, ecoY + 20);
+  doc.text(`• Écrêtage pointes TURPE : +${formatNum(sim.gains.peakShavingValue)} €/an`, 18, ecoY + 17.5);
+  doc.text(`• Arbitrage HP/HC & Décharge : +${formatNum(sim.gains.batterySavings - sim.gains.peakShavingValue)} €/an`, 18, ecoY + 22.2);
   if (solar.enabled) {
     if (sim.gains.solarSavings > 0) {
-      doc.text(`• Économies solaire PV : +${formatNum(sim.gains.solarSavings)} €/an`, 18, ecoY + 24);
+      doc.text(`• Économies solaire PV : +${formatNum(sim.gains.solarSavings)} €/an`, 18, ecoY + 26.8);
     } else {
-      doc.text(`• PV existant (${solar.kwc} kWc) sur site`, 18, ecoY + 24);
+      doc.text(`• PV existant (${solar.kwc} kWc) sur site`, 18, ecoY + 26.8);
     }
   }
   doc.setFont('helvetica', 'bold');
-  doc.text(`Total Économies : +${formatNum(sim.gains.batterySavings + sim.gains.solarSavings)} € HT/an`, 18, ecoY + 31);
+  doc.text(`Total Économies : +${formatNum(sim.gains.batterySavings + sim.gains.solarSavings)} € HT/an`, 18, ecoY + 36.5);
 
   // Col 2 : Raccordement & Revenus Réseau
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(30, 64, 175);
-  doc.text('2. REVENUS RÉSEAU / MARCHÉ', 18 + colW3 + 4, ecoY + 11);
+  doc.text('2. REVENUS RÉSEAU / MARCHÉ', 18 + colW3 + 4, ecoY + 12);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(7.2);
   doc.setTextColor(71, 85, 105);
   if (sim.grid) {
-    doc.text(`• Statut : Raccordé Réseau Enedis`, 18 + colW3 + 4, ecoY + 16);
-    doc.text(`• Services Réserve FCR & Capacité`, 18 + colW3 + 4, ecoY + 20);
-    doc.text(`• Revenus nets agrégateur (80 €/kW) :`, 18 + colW3 + 4, ecoY + 24);
+    doc.text(`• Statut : Raccordé Réseau Enedis`, 18 + colW3 + 4, ecoY + 17.5);
+    doc.text(`• Services Réserve FCR & Capacité`, 18 + colW3 + 4, ecoY + 22.2);
+    doc.text(`• Revenus nets agrégateur (80 €/kW) :`, 18 + colW3 + 4, ecoY + 26.8);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total Réseau : +${formatNum(sim.gains.gridRevenue)} € HT/an`, 18 + colW3 + 4, ecoY + 31);
+    doc.text(`Total Réseau : +${formatNum(sim.gains.gridRevenue)} € HT/an`, 18 + colW3 + 4, ecoY + 36.5);
   } else {
-    doc.text(`• Mode : Derrière le compteur (0 € réseau)`, 18 + colW3 + 4, ecoY + 16);
-    doc.text(`• Aucune formalité Enedis requise`, 18 + colW3 + 4, ecoY + 20);
+    doc.text(`• Mode : Derrière le compteur (0 € réseau)`, 18 + colW3 + 4, ecoY + 17.5);
+    doc.text(`• Aucune formalité Enedis requise`, 18 + colW3 + 4, ecoY + 22.2);
     if (sim.gains.solarSurplusRevenue > 0) {
-      doc.text(`• Vente surplus solaire : +${formatNum(sim.gains.solarSurplusRevenue)} €/an`, 18 + colW3 + 4, ecoY + 24);
+      doc.text(`• Vente surplus solaire : +${formatNum(sim.gains.solarSurplusRevenue)} €/an`, 18 + colW3 + 4, ecoY + 26.8);
     } else {
-      doc.text(`• 100% valorisé en autoconsommation`, 18 + colW3 + 4, ecoY + 24);
+      doc.text(`• 100% valorisé en autoconsommation`, 18 + colW3 + 4, ecoY + 26.8);
     }
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total Réseau : 0 € (Autonomie seule)`, 18 + colW3 + 4, ecoY + 31);
+    doc.text(`Total Réseau : 0 € (Autonomie seule)`, 18 + colW3 + 4, ecoY + 36.5);
   }
 
   // Col 3 : OPEX & Net Annuel
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.8);
   doc.setTextColor(180, 83, 9);
-  doc.text('3. CHARGES & FLUX NET', 18 + colW3 * 2 + 8, ecoY + 11);
+  doc.text('3. CHARGES & FLUX NET', 18 + colW3 * 2 + 8, ecoY + 12);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(7.2);
   doc.setTextColor(71, 85, 105);
-  doc.text(`• Maintenance préventive BESS : ${formatNum(Math.round(sim.opex * 0.7))} €/an`, 18 + colW3 * 2 + 8, ecoY + 16);
-  doc.text(`• Supervision EMS & Télémétrie : ${formatNum(Math.round(sim.opex * 0.3))} €/an`, 18 + colW3 * 2 + 8, ecoY + 20);
-  doc.text(`• Total OPEX : -${formatNum(sim.opex)} € HT/an`, 18 + colW3 * 2 + 8, ecoY + 24);
+  doc.text(`• Maintenance préventive BESS : ${formatNum(Math.round(sim.opex * 0.7))} €/an`, 18 + colW3 * 2 + 8, ecoY + 17.5);
+  doc.text(`• Supervision EMS & Télémétrie : ${formatNum(Math.round(sim.opex * 0.3))} €/an`, 18 + colW3 * 2 + 8, ecoY + 22.2);
+  doc.text(`• Total OPEX : -${formatNum(sim.opex)} € HT/an`, 18 + colW3 * 2 + 8, ecoY + 26.8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(22, 101, 52);
   const netY1 = sim.gains.totalYear1 - sim.opex;
-  doc.text(`Gain Net Année 1 : ${formatSignedNum(netY1, 0, ' € HT')}`, 18 + colW3 * 2 + 8, ecoY + 31);
+  doc.text(`Gain Net Année 1 : ${formatSignedNum(netY1, 0, ' € HT')}`, 18 + colW3 * 2 + 8, ecoY + 36.5);
 
   // Chronogramme prévisionnel de déploiement (placé en Page 1 sous la synthèse économique, remplit le bas de page)
-  const chronoY = ecoY + 36 + 3.5;
-  const chronoH = Math.min(64, Math.max(54, 278 - chronoY));
+  const chronoY = ecoY + 42 + 3.5;
+  const chronoH = Math.min(75, Math.max(54, 280 - chronoY));
   drawChronogrammeGantt(doc, 14, chronoY, 182, chronoH, Boolean(sim.grid));
 
   drawFooter(doc, 1, totalPages, false);
@@ -409,29 +409,29 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   ratesData.forEach((r, idx) => {
     const rx = 14 + idx * (rateW + 3);
     doc.setFillColor(r.bg[0], r.bg[1], r.bg[2]);
-    doc.roundedRect(rx, 37, rateW, 13.5, 1.8, 1.8, 'F');
+    doc.roundedRect(rx, 37, rateW, 16, 2, 2, 'F');
     doc.setDrawColor(r.border[0], r.border[1], r.border[2]);
-    doc.roundedRect(rx, 37, rateW, 13.5, 1.8, 1.8, 'D');
+    doc.roundedRect(rx, 37, rateW, 16, 2, 2, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5);
+    doc.setFontSize(6.0);
     doc.setTextColor(r.titleColor[0], r.titleColor[1], r.titleColor[2]);
-    doc.text(r.title, rx + 2.5, 40.5);
+    doc.text(r.title, rx + 2.5, 41.5);
 
-    doc.setFontSize(9.5);
+    doc.setFontSize(10.5);
     doc.setTextColor(r.txt[0], r.txt[1], r.txt[2]);
-    doc.text(r.val, rx + 2.5, 45.8);
+    doc.text(r.val, rx + 2.5, 47.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5);
-    doc.text(r.sub, rx + 2.5, 48.8);
+    doc.setFontSize(6.0);
+    doc.text(r.sub, rx + 2.5, 51.0);
   });
 
   // Graphique 24h vectoriel de charge & écrêtage
-  drawDaily24hChartPdf(doc, 14, 53, 182, 70, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
+  drawDaily24hChartPdf(doc, 14, 56, 182, 68, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
 
   // Tableau synthétique de la Journée type heure par heure avec Niveau de Charge (SOC %)
-  drawHourlyJourneyTablePdf(doc, 14, 126, 182, 64, sim.energy.chart, sim.capacityKwh);
+  drawHourlyJourneyTablePdf(doc, 14, 127, 182, 65, sim.energy.chart, sim.capacityKwh);
 
   // 4 Piliers Opérationnels & Explication de la journée type
   const pillarW = (182 - 3 * 2.5) / 4;
@@ -445,32 +445,32 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   pillars.forEach((p, pIdx) => {
     const px = 14 + pIdx * (pillarW + 2.5);
     doc.setFillColor(p.bg[0], p.bg[1], p.bg[2]);
-    doc.roundedRect(px, 193, pillarW, 20, 1.8, 1.8, 'F');
+    doc.roundedRect(px, 195, pillarW, 23, 2, 2, 'F');
     doc.setDrawColor(p.border[0], p.border[1], p.border[2]);
-    doc.roundedRect(px, 193, pillarW, 20, 1.8, 1.8, 'D');
+    doc.roundedRect(px, 195, pillarW, 23, 2, 2, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.8);
+    doc.setFontSize(7.8);
     doc.setTextColor(p.txt[0], p.txt[1], p.txt[2]);
-    doc.text(p.title, px + 2.5, 198);
+    doc.text(p.title, px + 2.5, 200.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.8);
+    doc.setFontSize(6.8);
     doc.setTextColor(71, 85, 105);
     const splitDesc = doc.splitTextToSize(p.desc, pillarW - 5);
-    doc.text(splitDesc, px + 2.5, 202.5);
+    doc.text(splitDesc, px + 2.5, 205.5);
   });
 
   // Note explicative
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, 216, 182, 13, 1.5, 1.5, 'F');
+  doc.roundedRect(14, 221, 182, 16, 1.8, 1.8, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(14, 216, 182, 13, 1.5, 1.5, 'D');
+  doc.roundedRect(14, 221, 182, 16, 1.8, 1.8, 'D');
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.8);
+  doc.setFontSize(6.8);
   doc.setTextColor(100, 116, 139);
-  doc.text('Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour', 18, 221);
-  doc.text('en chargeant prioritairement sur le surplus solaire (ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 225.5);
+  doc.text('Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour', 18, 226.5);
+  doc.text('en chargeant prioritairement sur le surplus solaire (ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 232);
 
   drawFooter(doc, 2, totalPages, false);
 
@@ -528,26 +528,26 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   kpisFinData.forEach((k, kIdx) => {
     const kx = 14 + kIdx * (kpiFinW + 2.5);
     doc.setFillColor(k.bg[0], k.bg[1], k.bg[2]);
-    doc.roundedRect(kx, 37, kpiFinW, 15, 1.8, 1.8, 'F');
+    doc.roundedRect(kx, 37, kpiFinW, 17.5, 2, 2, 'F');
     doc.setDrawColor(k.border[0], k.border[1], k.border[2]);
-    doc.roundedRect(kx, 37, kpiFinW, 15, 1.8, 1.8, 'D');
+    doc.roundedRect(kx, 37, kpiFinW, 17.5, 2, 2, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(4.8);
+    doc.setFontSize(5.8);
     doc.setTextColor(k.titleColor[0], k.titleColor[1], k.titleColor[2]);
-    doc.text(k.title, kx + 2, 40.5);
+    doc.text(k.title, kx + 2, 41.5);
 
-    doc.setFontSize(8.5);
+    doc.setFontSize(9.5);
     doc.setTextColor(k.txt[0], k.txt[1], k.txt[2]);
-    doc.text(k.val, kx + 2, 45.8);
+    doc.text(k.val, kx + 2, 47.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(4.6);
-    doc.text(k.sub, kx + 2, 49.5);
+    doc.setFontSize(5.6);
+    doc.text(k.sub, kx + 2, 52.0);
   });
 
   // Graphique de Trésorerie Cumulée & Seuil de rentabilité (Hauteur augmentée à 58 mm)
-  drawCashFlowChartPdf(doc, 14, 54.5, 182, 58, sim.years, sim.kpis.payback, sim.kpis.triProject, Boolean(sim.grid), sim.capex.totalCapex);
+  drawCashFlowChartPdf(doc, 14, 57.5, 182, 58, sim.years, sim.kpis.payback, sim.kpis.triProject, Boolean(sim.grid), sim.capex.totalCapex);
 
   // Tableau de Cash-flow sur 20 ans (placé sous le graphique agrandi)
   const cfRows = [
@@ -566,7 +566,7 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   });
 
   autoTable(doc, {
-    startY: 116.5,
+    startY: 119,
     margin: { left: 14, right: 14 },
     theme: 'striped',
     headStyles: {
@@ -574,13 +574,13 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 5.6,
-      cellPadding: 0.8
+      fontSize: 6.6,
+      cellPadding: 1.0
     },
     styles: {
       font: 'helvetica',
-      fontSize: 5,
-      cellPadding: 0.6,
+      fontSize: 6.0,
+      cellPadding: 0.8,
       textColor: [30, 41, 59]
     },
     columnStyles: {
@@ -1080,14 +1080,14 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
   doc.roundedRect(x, y, w, h, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('Courbe Journalière de Charge 24h & Écrêtage de Pointe BESS', x + 4, y + 4.5);
+  doc.text('Courbe Journalière de Charge 24h & Écrêtage de Pointe BESS', x + 4, y + 4.8);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.8);
+  doc.setFontSize(6.8);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Pointe avant : ${peakKw.toFixed(1)} kW  -  Pointe après BESS : ${newPeakKw.toFixed(1)} kW (-${(peakKw - newPeakKw).toFixed(1)} kW écrêtés)`, x + 4, y + 8.2);
+  doc.text(`Pointe avant : ${peakKw.toFixed(1)} kW  -  Pointe après BESS : ${newPeakKw.toFixed(1)} kW (-${(peakKw - newPeakKw).toFixed(1)} kW écrêtés)`, x + 4, y + 8.8);
 
   const legItems = [
     { label: 'Conso Site (kW)', color: [100, 116, 139], type: 'line' },
@@ -1098,31 +1098,31 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
   ];
 
   let legX = x + 4;
-  const legY = y + 12;
+  const legY = y + 13.0;
   legItems.forEach(item => {
     doc.setFillColor(item.color[0], item.color[1], item.color[2]);
     doc.setDrawColor(item.color[0], item.color[1], item.color[2]);
     if (item.type === 'area') {
-      doc.rect(legX, legY - 2, 3, 2.5, 'F');
+      doc.rect(legX, legY - 2.2, 3.2, 2.6, 'F');
     } else if (item.type === 'dash') {
-      doc.setLineWidth(0.4);
+      doc.setLineWidth(0.45);
       doc.line(legX, legY - 0.7, legX + 1.2, legY - 0.7);
-      doc.line(legX + 1.8, legY - 0.7, legX + 3, legY - 0.7);
+      doc.line(legX + 1.8, legY - 0.7, legX + 3.2, legY - 0.7);
     } else {
-      doc.setLineWidth(0.5);
-      doc.line(legX, legY - 0.7, legX + 3, legY - 0.7);
+      doc.setLineWidth(0.55);
+      doc.line(legX, legY - 0.7, legX + 3.2, legY - 0.7);
     }
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.2);
+    doc.setFontSize(6.2);
     doc.setTextColor(item.color[0], item.color[1], item.color[2]);
-    doc.text(item.label, legX + 4.2, legY);
-    legX += doc.getTextWidth(item.label) + 6.5;
+    doc.text(item.label, legX + 4.4, legY);
+    legX += doc.getTextWidth(item.label) + 7.0;
   });
 
-  const plotX = x + 12;
-  const plotY = y + 15;
-  const plotW = w - 24;
-  const plotH = h - 21;
+  const plotX = x + 13;
+  const plotY = y + 16;
+  const plotW = w - 26;
+  const plotH = h - 23;
 
   let maxKw = Math.max(10, peakKw * 1.1);
   chartData.forEach(d => {
@@ -1135,28 +1135,28 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
   doc.setDrawColor(241, 245, 249);
   doc.setLineWidth(0.2);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.2);
+  doc.setFontSize(6.2);
   doc.setTextColor(148, 163, 184);
 
   for (let s = 0; s <= steps; s++) {
     const val = Math.round((maxKw / steps) * s);
     const gy = plotY + plotH - (s / steps) * plotH;
     doc.line(plotX, gy, plotX + plotW, gy);
-    doc.text(`${val} kW`, plotX - 1.2, gy + 1, { align: 'right' });
+    doc.text(`${val} kW`, plotX - 1.5, gy + 1, { align: 'right' });
 
     const pctVal = Math.round((100 / steps) * s);
     doc.setTextColor(8, 145, 178);
-    doc.text(`${pctVal} %`, plotX + plotW + 1.2, gy + 1, { align: 'left' });
+    doc.text(`${pctVal} %`, plotX + plotW + 1.5, gy + 1, { align: 'left' });
     doc.setTextColor(148, 163, 184);
   }
 
   const tickHours = [0, 3, 6, 9, 12, 15, 18, 21, 23];
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.2);
+  doc.setFontSize(6.2);
   doc.setTextColor(100, 116, 139);
   tickHours.forEach(th => {
     const gx = plotX + (th / 23) * plotW;
-    doc.text(`${String(th).padStart(2, '0')}h`, gx, plotY + plotH + 3.5, { align: 'center' });
+    doc.text(`${String(th).padStart(2, '0')}h`, gx, plotY + plotH + 3.8, { align: 'center' });
   });
 
   const n = chartData.length;
@@ -1253,7 +1253,7 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
     doc.setLineWidth(0.3);
     doc.line(plotX, capY, plotX + plotW, capY);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5);
+    doc.setFontSize(6.0);
     doc.setTextColor(16, 185, 129);
     doc.text(`Plafond écrêté : ${newPeakKw.toFixed(1)} kW`, plotX + plotW - 1, capY - 1, { align: 'right' });
   }
@@ -1267,33 +1267,33 @@ function drawHourlyJourneyTablePdf(doc, x, y, w, h, chartData = [], capacityKwh 
   doc.roundedRect(x, y, w, h, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('FONCTIONNEMENT DÉTAILLÉ SUR UNE JOURNÉE TYPE & NIVEAU DE CHARGE HORAIRE (SOC %)', x + 3.5, y + 4.5);
+  doc.text('FONCTIONNEMENT DÉTAILLÉ SUR UNE JOURNÉE TYPE & NIVEAU DE CHARGE HORAIRE (SOC %)', x + 3.5, y + 4.8);
 
   const halfW = (w - 7) / 2;
   const leftX = x + 2.5;
   const rightX = x + 4.5 + halfW;
-  const headY = y + 6.2;
-  const headH = 4.0;
+  const headY = y + 6.8;
+  const headH = 4.4;
 
   [leftX, rightX].forEach((hx) => {
     doc.setFillColor(241, 245, 249);
     doc.rect(hx, headY, halfW, headH, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.6);
+    doc.setFontSize(6.6);
     doc.setTextColor(71, 85, 105);
-    doc.text('Heure', hx + 1.5, headY + 2.8);
-    doc.text('Conso', hx + 10.5, headY + 2.8);
-    doc.text('Solaire', hx + 21, headY + 2.8);
-    doc.text('Activité BESS', hx + 32, headY + 2.8);
-    doc.text('Niveau Charge SOC (%)', hx + 56, headY + 2.8);
-    doc.text('Réseau', hx + halfW - 1.5, headY + 2.8, { align: 'right' });
+    doc.text('Heure', hx + 1.5, headY + 3.1);
+    doc.text('Conso', hx + 11.0, headY + 3.1);
+    doc.text('Solaire', hx + 22.0, headY + 3.1);
+    doc.text('Activité BESS', hx + 33.0, headY + 3.1);
+    doc.text('Niveau Charge SOC (%)', hx + 57.5, headY + 3.1);
+    doc.text('Réseau', hx + halfW - 1.5, headY + 3.1, { align: 'right' });
   });
 
   const rowStartY = headY + headH;
   const availableRowsH = (y + h - 1.5) - rowStartY;
-  const rowH = Math.max(3.8, availableRowsH / 12);
+  const rowH = Math.max(4.0, availableRowsH / 12);
 
   chartData.slice(0, 24).forEach((hData, i) => {
     const isRight = i >= 12;
@@ -1306,40 +1306,40 @@ function drawHourlyJourneyTablePdf(doc, x, y, w, h, chartData = [], capacityKwh 
       doc.rect(rx, ry, halfW, rowH, 'F');
     }
 
-    const textY = ry + rowH / 2 + 1.0;
+    const textY = ry + rowH / 2 + 1.2;
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.6);
+    doc.setFontSize(6.6);
     doc.setTextColor(15, 23, 42);
     doc.text(`${String(i).padStart(2, '0')}h`, rx + 1.5, textY);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.6);
+    doc.setFontSize(6.6);
     doc.setTextColor(71, 85, 105);
-    doc.text(`${(hData.conso || 0).toFixed(1)} kW`, rx + 10.5, textY);
-    doc.text(`${(hData.solaire || 0).toFixed(1)} kW`, rx + 21, textY);
+    doc.text(`${(hData.conso || 0).toFixed(1)} kW`, rx + 11.0, textY);
+    doc.text(`${(hData.solaire || 0).toFixed(1)} kW`, rx + 22.0, textY);
 
     const chg = (hData.stockage || 0) > 0.05;
     const dis = (hData.restitution || 0) > 0.05;
     if (chg) {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(16, 185, 129);
-      doc.text(`Recharge (+${(hData.stockage).toFixed(1)} kW)`, rx + 32, textY);
+      doc.text(`Recharge (+${(hData.stockage).toFixed(1)} kW)`, rx + 33.0, textY);
     } else if (dis) {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(217, 119, 6);
-      doc.text(`Effacement (-${(hData.restitution).toFixed(1)} kW)`, rx + 32, textY);
+      doc.text(`Effacement (-${(hData.restitution).toFixed(1)} kW)`, rx + 33.0, textY);
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(8, 145, 178);
-      doc.text(`Veille active (50 Hz)`, rx + 32, textY);
+      doc.text(`Veille active (50 Hz)`, rx + 33.0, textY);
     }
 
     const socPct = hData.socPct ?? 0;
     const socKwh = hData.socKwh ?? 0;
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(socPct > 50 ? 16 : 8, socPct > 50 ? 185 : 145, socPct > 50 ? 129 : 178);
-    doc.text(`${socPct} % (${socKwh.toFixed(0)} kWh)`, rx + 56, textY);
+    doc.text(`${socPct} % (${socKwh.toFixed(0)} kWh)`, rx + 57.5, textY);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(30, 41, 59);
@@ -1355,26 +1355,26 @@ function drawCashFlowChartPdf(doc, x, y, w, h, years = [], payback = 7.8, triPro
   doc.roundedRect(x, y, w, h, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('Projection de Trésorerie Cumulée & Seuil de Rentabilité (20 Ans)', x + 4, y + 4.5);
+  doc.text('Projection de Trésorerie Cumulée & Seuil de Rentabilité (20 Ans)', x + 4, y + 4.8);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.8);
+  doc.setFontSize(6.8);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Temps de retour sur investissement : ~${payback ? payback : '7.8'} ans · TRI Projet : ${triProject ? triProject : '10.8'} %`, x + 4, y + 8.2);
+  doc.text(`Temps de retour sur investissement : ~${payback ? payback : '7.8'} ans · TRI Projet : ${triProject ? triProject : '10.8'} %`, x + 4, y + 8.8);
 
   doc.setFillColor(37, 99, 235);
-  doc.circle(x + w - 38, y + 4.5, 1.2, 'F');
+  doc.circle(x + w - 42, y + 4.5, 1.3, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(5.8);
+  doc.setFontSize(6.8);
   doc.setTextColor(37, 99, 235);
-  doc.text('Trésorerie cumulée', x + w - 35, y + 5.5);
+  doc.text('Trésorerie cumulée', x + w - 39, y + 5.5);
 
-  const plotX = x + 16;
-  const plotY = y + 10.5;
-  const plotW = w - 22;
-  const plotH = h - 15.5;
+  const plotX = x + 18;
+  const plotY = y + 11.5;
+  const plotW = w - 24;
+  const plotH = h - 17.5;
 
   let minVal = -totalCapex;
   let maxVal = 0;
@@ -1393,7 +1393,7 @@ function drawCashFlowChartPdf(doc, x, y, w, h, years = [], payback = 7.8, triPro
   doc.setDrawColor(241, 245, 249);
   doc.setLineWidth(0.2);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.2);
+  doc.setFontSize(6.2);
   doc.setTextColor(148, 163, 184);
 
   doc.line(plotX, plotY + plotH, plotX + plotW, plotY + plotH);
@@ -1406,16 +1406,16 @@ function drawCashFlowChartPdf(doc, x, y, w, h, years = [], payback = 7.8, triPro
   doc.setLineWidth(0.3);
   doc.line(plotX, zeroY, plotX + plotW, zeroY);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(5);
+  doc.setFontSize(6.0);
   doc.setTextColor(239, 68, 68);
   doc.text('0 € (Seuil de rentabilité)', plotX + 1, zeroY - 1);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.2);
+  doc.setFontSize(6.2);
   doc.setTextColor(148, 163, 184);
   for (let yr = 0; yr <= 20; yr += 2) {
     const gx = plotX + (yr / 20) * plotW;
-    doc.text(`An ${yr}`, gx, plotY + plotH + 3.5, { align: 'center' });
+    doc.text(`An ${yr}`, gx, plotY + plotH + 4.0, { align: 'center' });
   }
 
   const points = [{ yr: 0, val: -totalCapex }, ...years.map(y => ({ yr: y.year, val: y.cumProject }))];
@@ -1449,9 +1449,9 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
   doc.roundedRect(x, y, w, h, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.0);
+  doc.setFontSize(9.0);
   doc.setTextColor(15, 23, 42);
-  doc.text('CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT', x + 4, y + 4.8);
+  doc.text('CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT', x + 4, y + 5.0);
 
   const badgeBg = includeGrid ? [239, 246, 255] : [240, 253, 244];
   const badgeBorder = includeGrid ? [191, 219, 254] : [187, 247, 208];
@@ -1459,13 +1459,13 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
   const badgeLabel = includeGrid ? 'Délai total : ~5 à 6 mois (Raccordement Enedis)' : 'Délai total : ~8 à 10 semaines';
 
   doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
-  doc.roundedRect(x + w - 74, y + 1.8, 70, 5.8, 1.2, 1.2, 'F');
+  doc.roundedRect(x + w - 78, y + 1.8, 74, 6.2, 1.2, 1.2, 'F');
   doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2]);
-  doc.roundedRect(x + w - 74, y + 1.8, 70, 5.8, 1.2, 1.2, 'D');
+  doc.roundedRect(x + w - 78, y + 1.8, 74, 6.2, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.2);
+  doc.setFontSize(7.2);
   doc.setTextColor(badgeTxt[0], badgeTxt[1], badgeTxt[2]);
-  doc.text(badgeLabel, x + w - 39, y + 5.7, { align: 'center' });
+  doc.text(badgeLabel, x + w - 41, y + 6.0, { align: 'center' });
 
   const colNameW = 76;
   const colStartX = x + colNameW;
@@ -1473,15 +1473,15 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
   const numCols = includeGrid ? 6 : 5;
   const colW = totalColsW / numCols;
 
-  const tableHeaderY = y + 8.8;
-  const tableHeaderH = 4.4;
+  const tableHeaderY = y + 9.5;
+  const tableHeaderH = 4.8;
   doc.setFillColor(241, 245, 249);
   doc.rect(x + 2, tableHeaderY, w - 4, tableHeaderH, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.0);
+  doc.setFontSize(7.0);
   doc.setTextColor(71, 85, 105);
-  doc.text('Étape / Jalon opérationnel', x + 4, tableHeaderY + 3.0);
+  doc.text('Étape / Jalon opérationnel', x + 4, tableHeaderY + 3.3);
 
   const colLabels = includeGrid
     ? ['Mois 1', 'Mois 2', 'Mois 3', 'Mois 4', 'Mois 5', 'Mois 6']
@@ -1489,7 +1489,7 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
 
   colLabels.forEach((lbl, cIdx) => {
     const cx = colStartX + cIdx * colW;
-    doc.text(lbl, cx + colW / 2, tableHeaderY + 3.0, { align: 'center' });
+    doc.text(lbl, cx + colW / 2, tableHeaderY + 3.3, { align: 'center' });
   });
 
   const wk = (s, e) => ({ startFrac: (s - 1) / 10, endFrac: e / 10 });
@@ -1513,8 +1513,8 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
 
   const rowsStartY = tableHeaderY + tableHeaderH;
   const availableRowsH = (y + h - 1.5) - rowsStartY;
-  const rowH = Math.max(4.5, availableRowsH / steps.length);
-  const barH = Math.min(5.2, rowH * 0.65);
+  const rowH = Math.max(4.8, availableRowsH / steps.length);
+  const barH = Math.min(5.6, rowH * 0.65);
 
   steps.forEach((step, sIdx) => {
     const ry = rowsStartY + sIdx * rowH;
@@ -1528,9 +1528,9 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
     }
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.4);
+    doc.setFontSize(7.4);
     doc.setTextColor(30, 41, 59);
-    doc.text(step.name, x + 4, ry + rowH / 2 + 1.2);
+    doc.text(step.name, x + 4, ry + rowH / 2 + 1.4);
 
     const barX = colStartX + step.startFrac * totalColsW + 0.5;
     const barWidth = Math.max(7, (step.endFrac - step.startFrac) * totalColsW - 1);
@@ -1539,8 +1539,8 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
     doc.roundedRect(barX, ry + (rowH - barH) / 2, barWidth, barH, 0.8, 0.8, 'F');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.5);
+    doc.setFontSize(6.5);
     doc.setTextColor(255, 255, 255);
-    doc.text(step.label, barX + barWidth / 2, ry + rowH / 2 + 1.0, { align: 'center' });
+    doc.text(step.label, barX + barWidth / 2, ry + rowH / 2 + 1.2, { align: 'center' });
   });
 }
