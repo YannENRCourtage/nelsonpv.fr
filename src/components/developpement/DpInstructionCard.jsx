@@ -201,10 +201,10 @@ export default function DpInstructionCard({
     if (!file) return;
     setIsReadingReceipt(true);
     try {
-      const data = await extractDataFromReceiptFile(file);
-      let newDp = dpNumber;
-      let newDate = depositDate;
-      let newRegime = regime;
+      const data = await extractDataFromReceiptFile(file, project, stepState);
+      let newDp = data?.dpNumber || dpNumber;
+      let newDate = data?.depositDateIso || depositDate;
+      let newRegime = data?.regime || regime;
 
       if (data?.dpNumber) {
         newDp = data.dpNumber;
@@ -242,18 +242,19 @@ export default function DpInstructionCard({
           } : {}),
           regime: newRegime,
           ...(tl?.legalDueDateIso ? { deadline: tl.legalDueDateIso, dp_deadline: tl.legalDueDateIso } : {}),
-          ...(data?.depositDateFormatted ? { lastIntervention: data.depositDateFormatted } : {}),
-          status: tl?.isOverdue ? 'in_progress' : (stepState?.status || 'pending'),
+          lastIntervention: data?.depositDateFormatted || (newDate ? formatToFrenchDate(newDate) : ''),
+          status: tl?.isOverdue ? 'in_progress' : (stepState?.status || 'in_progress'),
         });
       }
 
-      if (data?.dpNumber) {
-        detectAndFetchMairie(data.dpNumber, true);
+      if (newDp) {
+        detectAndFetchMairie(newDp, true);
       }
 
+      const finalDisplayDate = data?.depositDateFormatted || (newDate ? formatToFrenchDate(newDate) : '—');
       toast({
         title: "📄 Récépissé analysé avec succès !",
-        description: `${newDp ? `DP : ${newDp} • ` : ''}${newDate ? `Dépôt : ${data?.depositDateFormatted || formatToFrenchDate(newDate)} • ` : ''}Délai : ${newRegime === '2_mois' ? '2 mois' : '1 mois'} (${tl.isOverdue ? 'Accord tacite acquis' : 'En cours'})`,
+        description: `${newDp ? `DP : ${newDp} • ` : ''}Dépôt : ${finalDisplayDate} • Délai : ${newRegime === '2_mois' ? '2 mois' : '1 mois'} (${tl.isOverdue ? 'Accord tacite acquis' : 'En cours d\'instruction'})`,
       });
     } catch (err) {
       console.error('Erreur lecture récépissé:', err);
