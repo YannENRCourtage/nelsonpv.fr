@@ -175,7 +175,9 @@ const ConsumptionChart = ({ data, loading }) => {
     </div>
   );
 
-  if (!data || daily.length === 0) return (
+  const isPending = Boolean(data?.isPendingSync) && daily.length === 0;
+
+  if (!data || (daily.length === 0 && !isPending)) return (
     <div className="text-slate-400 p-8 text-center">Aucune donnée disponible.</div>
   );
 
@@ -227,9 +229,27 @@ const ConsumptionChart = ({ data, loading }) => {
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Conso annuelle', val: Math.round(totalKwh).toLocaleString('fr-FR'), unit: 'kWh / an', bg: 'from-blue-500 to-blue-700', shadow: 'shadow-blue-200' },
-          { label: 'Moy. journalière', val: avgDaily.toFixed(1), unit: 'kWh / jour', bg: 'from-emerald-400 to-green-600', shadow: 'shadow-green-200' },
-          { label: 'Puissance max', val: peakKw.toFixed(2), unit: 'kW (pointe)', bg: 'from-orange-400 to-amber-600', shadow: 'shadow-orange-200' },
+          {
+            label: 'Conso annuelle',
+            val: isPending ? 'En attente' : Math.round(totalKwh).toLocaleString('fr-FR'),
+            unit: isPending ? 'de lecture Enedis' : 'kWh / an',
+            bg: 'from-blue-500 to-blue-700',
+            shadow: 'shadow-blue-200'
+          },
+          {
+            label: 'Moy. journalière',
+            val: isPending ? '—' : avgDaily.toFixed(1),
+            unit: isPending ? 'en attente de flux' : 'kWh / jour',
+            bg: 'from-emerald-400 to-green-600',
+            shadow: 'shadow-green-200'
+          },
+          {
+            label: 'Puissance max',
+            val: isPending ? '—' : peakKw.toFixed(2),
+            unit: isPending ? 'en attente de flux' : 'kW (pointe)',
+            bg: 'from-orange-400 to-amber-600',
+            shadow: 'shadow-orange-200'
+          },
         ].map(k => (
           <div key={k.label} className={`bg-gradient-to-br ${k.bg} rounded-2xl p-4 text-white shadow-lg ${k.shadow}`}>
             <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">{k.label}</p>
@@ -238,6 +258,16 @@ const ConsumptionChart = ({ data, loading }) => {
           </div>
         ))}
       </div>
+
+      {isPending && (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center space-y-2">
+          <p className="text-sm font-bold text-slate-700">Flux Enedis SGE en attente de synchronisation</p>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Les mesures réelles du compteur Linky n'ont pas encore été transmises par Enedis pour ce PRM.
+            Vous pouvez importer la facture d'électricité PDF du client ou saisir ses données réelles ci-dessus.
+          </p>
+        </div>
+      )}
 
 
       {/* ── Filtre date range ── */}

@@ -276,11 +276,12 @@ export default function DpInstructionCard({
       regime,
       hasComplement,
       complementDate: complementDate || null,
-      hasRefusal: stepState?.status === 'refused' || project?.dp_refusal,
+      hasRefusal: stepState?.status === 'refused' || stepState?.status === 'recours_refus' || project?.dp_refusal,
+      hasRecours: stepState?.status === 'recours_refus' || project?.dp_recours,
       certificateObtained: stepState?.status === 'validated' || project?.dp_certificate_obtained,
       displayDate: displayDate || null,
     });
-  }, [depositDate, regime, hasComplement, complementDate, displayDate, stepState?.status, project?.dp_certificate_obtained, project?.dp_refusal]);
+  }, [depositDate, regime, hasComplement, complementDate, displayDate, stepState?.status, project?.dp_certificate_obtained, project?.dp_refusal, project?.dp_recours]);
 
   // Sauvegarde des champs
   const handleDpNumberChange = (val) => {
@@ -433,16 +434,22 @@ export default function DpInstructionCard({
               className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer appearance-none border-none outline-none shadow-2xs transition-all ${
                 stepState?.status === 'validated'
                   ? 'bg-emerald-600 text-white'
-                  : isTacitAcquired
-                    ? 'bg-emerald-500 text-white'
-                    : stepState?.status === 'in_progress'
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-slate-400 text-white'
+                  : stepState?.status === 'refused'
+                    ? 'bg-rose-600 text-white'
+                    : stepState?.status === 'recours_refus'
+                      ? 'bg-purple-600 text-white'
+                      : isTacitAcquired
+                        ? 'bg-emerald-500 text-white'
+                        : stepState?.status === 'in_progress'
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-slate-400 text-white'
               }`}
             >
               <option value="pending" className="bg-slate-700 text-white font-bold">En attente</option>
               <option value="in_progress" className="bg-amber-600 text-white font-bold">En cours</option>
               <option value="validated" className="bg-emerald-600 text-white font-bold">Validée / Accord obtenu ✓</option>
+              <option value="refused" className="bg-rose-600 text-white font-bold">Refus DP</option>
+              <option value="recours_refus" className="bg-purple-600 text-white font-bold">Recours refus DP</option>
               <option value="ns" className="bg-slate-500 text-white font-bold">NS</option>
             </select>
           </div>

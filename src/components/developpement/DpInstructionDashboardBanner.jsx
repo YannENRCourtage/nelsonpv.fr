@@ -55,7 +55,8 @@ export default function DpInstructionDashboardBanner({
         p.devWorkflow?.dp?.status === 'validated' || 
         p.dp_status === 'validated'
       );
-      const hasRefusal = Boolean(p.dp_refusal || p.devWorkflow?.dp?.status === 'refused');
+      const hasRefusal = Boolean(p.dp_refusal || p.devWorkflow?.dp?.status === 'refused' || p.devWorkflow?.dp?.status === 'recours_refus');
+      const hasRecours = Boolean(p.dp_recours || p.devWorkflow?.dp?.status === 'recours_refus');
       const displayDate = p.dp_display_date || p.date_constat_huissier || p.devWorkflow?.huissier?.lastIntervention;
 
       const timeline = calculateDpTimeline({
@@ -64,6 +65,7 @@ export default function DpInstructionDashboardBanner({
         hasComplement,
         complementDate,
         hasRefusal,
+        hasRecours,
         certificateObtained,
         displayDate,
       });

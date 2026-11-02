@@ -71,11 +71,20 @@ export async function declareAndFetchEnedis({
   ]);
 
   let annualKwh = null;
+  let avgDailyKwh = null;
   if (dailyRes.status === 'fulfilled') {
     const intervals = dailyRes.value.data?.meter_reading?.interval_reading || [];
     const totalWh = intervals.reduce((s, r) => s + (parseInt(r.value) || 0), 0);
     annualKwh = Math.round(totalWh / 1000);
-    console.log(`[Enedis Automation] ✅ Consommation annuelle calculée : ${annualKwh.toLocaleString('fr-FR')} kWh`);
+    avgDailyKwh = intervals.length > 0 ? Number((annualKwh / intervals.length).toFixed(1)) : null;
+    console.log(`[Enedis Automation] ✅ Consommation annuelle réelle : ${annualKwh.toLocaleString('fr-FR')} kWh (${avgDailyKwh} kWh/j)`);
+  }
+
+  let peakKw = null;
+  if (maxRes.status === 'fulfilled') {
+    const maxReadings = maxRes.value.data?.meter_reading?.interval_reading || [];
+    const maxVa = maxReadings.reduce((m, r) => Math.max(m, parseFloat(r.value || 0)), 0);
+    peakKw = maxVa > 0 ? Number((maxVa / 1000).toFixed(2)) : null;
   }
 
   let loadCurvePoints = [];
@@ -83,7 +92,7 @@ export async function declareAndFetchEnedis({
     loadCurvePoints = loadRes.value.data?.meter_reading?.interval_reading || [];
     console.log(`[Enedis Automation] ✅ Courbe de charge récupérée : ${loadCurvePoints.length} points`);
   } else {
-    console.log(`[Enedis Automation] ℹ️ Courbe de charge non disponible (status ${loadRes.reason?.response?.status}) - Fallback activé.`);
+    console.log(`[Enedis Automation] ℹ️ Courbe de charge non disponible (status ${loadRes.reason?.response?.status}) - Attente synchronisation.`);
   }
 
   return {
@@ -91,6 +100,8 @@ export async function declareAndFetchEnedis({
     clientName,
     mandateRef,
     annualKwh,
+    avgDailyKwh,
+    peakKw,
     loadCurvePointsCount: loadCurvePoints.length,
     dailyReadings: dailyRes.status === 'fulfilled' ? dailyRes.value.data?.meter_reading?.interval_reading || [] : [],
     maxPowerReadings: maxRes.status === 'fulfilled' ? maxRes.value.data?.meter_reading?.interval_reading || [] : []

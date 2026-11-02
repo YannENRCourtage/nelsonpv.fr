@@ -142,10 +142,10 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
       },
       {
         prm: '30002220753998',
-        name: 'YANN BARBERIS',
-        address: '12 Avenue de l’Énergie, 33127 Saint-Jean-d’Illac',
-        annualKwh: 6017,
-        peakKw: 6.16,
+        name: 'JEAN DUPONT',
+        address: '23 avenue de la Pointe Ringale, 91250 Saint-Germain-lès-Corbeil',
+        annualKwh: 0,
+        peakKw: 6.0,
         profile: 'residentiel'
       },
       {
@@ -174,11 +174,12 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
         const merged = [...fallbackList];
         apiConsents.forEach(c => {
           if (!merged.some(m => m.prm === c.prm)) {
+            const cleanKwh = Number(c.annualConsumption && c.annualConsumption !== 5850 ? c.annualConsumption : 0);
             merged.push({
               prm: c.prm,
               name: c.titulaire || c.clientName || 'Client Enedis',
               address: c.adresse || 'France',
-              annualKwh: Number(c.annualConsumption) || 5850,
+              annualKwh: cleanKwh,
               peakKw: Number(c.peakKw) || 9.0,
               profile: 'agricole'
             });
@@ -191,15 +192,18 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
 
     // En cas d'échec API, lire le cache local
     const localCache = readPrmCache();
-    const localEntries = Object.values(localCache).map(c => ({
-      prm: c.prm,
-      name: c.titulaire || c.name || 'Client PRM',
-      address: c.adresse || c.address || 'France',
-      annualKwh: Number(c.annualConsumption || c.annualKwh) || 5850,
-      peakKw: Number(c.peakKw) || 9.0,
-      profile: 'agricole',
-      hourlyProfile: c.hourlyProfile || null
-    }));
+    const localEntries = Object.values(localCache).map(c => {
+      const cleanKwh = Number(c.annualConsumption && c.annualConsumption !== 5850 ? c.annualConsumption : (c.annualKwh && c.annualKwh !== 5850 ? c.annualKwh : 0));
+      return {
+        prm: c.prm,
+        name: c.titulaire || c.name || 'Client PRM',
+        address: c.adresse || c.address || 'France',
+        annualKwh: cleanKwh,
+        peakKw: Number(c.peakKw) || 9.0,
+        profile: 'agricole',
+        hourlyProfile: c.hourlyProfile || null
+      };
+    });
     const combined = [...fallbackList];
     localEntries.forEach(e => {
       if (!combined.some(c => c.prm === e.prm)) combined.push(e);

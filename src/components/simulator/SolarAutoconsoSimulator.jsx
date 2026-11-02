@@ -130,7 +130,7 @@ export default function SolarAutoconsoSimulator({
       }
 
       if (!exactKwh || exactKwh <= 0) {
-        exactKwh = 5850;
+        exactKwh = Number(data.mandate?.annualConsumption) || Number(data.annual_consumption) || 0;
       }
 
       // 2. Détermination du tarif fournisseur

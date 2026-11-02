@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, X, Send, User, Link2, Check, ShieldCheck, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, X, Send, User, Link2, Check, ShieldCheck, Sparkles, UploadCloud, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import MandatSignatureModal from '@/components/enedis/MandatSignatureModal';
 import SafraBessProposalModule from '@/components/enedis/SafraBessProposalModule';
 import { useNavigate } from 'react-router-dom';
 import { savePrmToCache, PRM_HANDOFF_KEY } from '@/services/storageBatteryEngine';
+import { extractClientBillData } from '@/services/clientBillExtractor';
 
 export default function AdminEnedis() {
   const [prm, setPrm] = useState('');
@@ -25,9 +26,33 @@ export default function AdminEnedis() {
   const [isPrinting, setIsPrinting] = useState(false);
   const navigate = useNavigate();
 
+  // Coordonnées du titulaire du PRM pour l'export PDF et affichage
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerAddress, setOwnerAddress] = useState('');
+  const [customKwh, setCustomKwh] = useState('');
+  const [customPeakKw, setCustomPeakKw] = useState('');
+  const [isEditingOwner, setIsEditingOwner] = useState(false);
+  const [isExtractingBill, setIsExtractingBill] = useState(false);
+  const billFileInputRef = useRef(null);
+
   // Calculs de synthèse de consommation pour l'étude BESS SAFRA
   const { totalKwh, avgDaily, peakKw } = React.useMemo(() => {
     if (!data) return { totalKwh: 211781, avgDaily: 578.6, peakKw: 90.0 };
+
+    // Si flux en attente de synchronisation et sans données mesurées
+    if (data.isPendingSync && (!data.daily?.meter_reading?.interval_reading || data.daily.meter_reading.interval_reading.length === 0)) {
+      if (customKwh && Number(customKwh) > 0 && Number(customKwh) !== 5850) {
+        const k = Number(customKwh);
+        const pk = customPeakKw ? Number(customPeakKw) : 6.00;
+        return {
+          totalKwh: k,
+          avgDaily: Number((k / 365).toFixed(1)),
+          peakKw: pk
+        };
+      }
+      return { totalKwh: null, avgDaily: null, peakKw: null };
+    }
+
     const parseIntervals = (apiResult) => {
       if (!apiResult || apiResult.error) return [];
       return (apiResult?.meter_reading?.interval_reading || [])
@@ -44,12 +69,24 @@ export default function AdminEnedis() {
     const peakSource = maxReadings.length > 0 ? maxReadings : loadReadings;
     const pk = peakSource.reduce((mx, r) => Math.max(mx, r.value / 1000), 0);
 
+    const effectiveKwh = (customKwh && Number(customKwh) > 0 && Number(customKwh) !== 5850)
+      ? Number(customKwh)
+      : (tot > 0 ? Math.round(tot) : null);
+
+    const effectiveAvg = effectiveKwh
+      ? (avg > 0 ? Number(avg.toFixed(1)) : Number((effectiveKwh / 365).toFixed(1)))
+      : null;
+
+    const effectivePeak = (customPeakKw && Number(customPeakKw) > 0)
+      ? Number(customPeakKw)
+      : (pk > 0 ? Number(pk.toFixed(2)) : null);
+
     return {
-      totalKwh: tot > 0 ? Math.round(tot) : 211781,
-      avgDaily: avg > 0 ? Number(avg.toFixed(1)) : 578.6,
-      peakKw: pk > 0 ? Number(pk.toFixed(2)) : 90.0
+      totalKwh: effectiveKwh,
+      avgDaily: effectiveAvg,
+      peakKw: effectivePeak
     };
-  }, [data]);
+  }, [data, customKwh, customPeakKw]);
 
   const handleOpenInSimulator = useCallback(() => {
     const ownerName = data?.identity?.customer?.customer_person?.identity || 
@@ -86,12 +123,6 @@ export default function AdminEnedis() {
   const [consentForm, setConsentForm] = useState({ name: '', email: '' });
   const [consentSent, setConsentSent] = useState(false);
 
-  // Coordonnées du titulaire du PRM pour l'export PDF et affichage
-  const [ownerName, setOwnerName] = useState('');
-  const [ownerAddress, setOwnerAddress] = useState('');
-  const [customKwh, setCustomKwh] = useState('');
-  const [isEditingOwner, setIsEditingOwner] = useState(false);
-
   const { toast } = useToast();
 
   // Charger les consentements via API Admin (contourne les règles Firestore)
@@ -127,11 +158,16 @@ export default function AdminEnedis() {
       || currentConsent?.adresse
       || '';
 
-    const detectedKwh = currentConsent?.annualConsumption || data?.mandate?.annualConsumption || data?.annual_consumption || '';
+    const rawDetectedKwh = currentConsent?.annualConsumption || data?.mandate?.annualConsumption || data?.annual_consumption || '';
+    const detectedKwh = (rawDetectedKwh && Number(rawDetectedKwh) !== 5850) ? rawDetectedKwh : '';
+
+    const rawDetectedPeak = currentConsent?.peakKw || data?.mandate?.peakKw || data?.peakKw || '';
+    const detectedPeak = (rawDetectedPeak && Number(rawDetectedPeak) > 0) ? String(rawDetectedPeak) : '';
 
     if (detectedName) setOwnerName(detectedName);
     if (detectedAddress) setOwnerAddress(detectedAddress.replace(/VALEUIL/gi, 'BRANTOME EN PERIGORD'));
     if (detectedKwh) setCustomKwh(String(detectedKwh));
+    if (detectedPeak) setCustomPeakKw(String(detectedPeak));
   }, [data, prm, consents]);
 
   // Auto-fetch si redirigé avec succès depuis le callback Enedis
@@ -157,7 +193,7 @@ export default function AdminEnedis() {
     }
   }, []);
 
-  const handleFetch = async (prmToFetch, projectIdToFetch) => {
+  const handleFetch = async (prmToFetch, projectIdToFetch, overrideKwh, overridePeak) => {
     // Si prmToFetch n'est pas fourni (clic depuis l'onglet Interrogation), on utilise l'état 'prm'
     const targetPrm = (prmToFetch && typeof prmToFetch === 'string' ? prmToFetch : prm).trim();
     const targetProjectId = projectIdToFetch || 'admin_test';
@@ -177,20 +213,31 @@ export default function AdminEnedis() {
       const existingConsent = consents.find(c => c.prm === targetPrm);
       const isKnownConsent = Boolean(existingConsent) || targetPrm === '50009371514981';
 
+      const annualConsoParam = overrideKwh !== undefined 
+        ? (Number(overrideKwh) && Number(overrideKwh) !== 5850 ? Number(overrideKwh) : undefined)
+        : (customKwh && Number(customKwh) !== 5850 ? Number(customKwh) : (existingConsent?.annualConsumption && existingConsent.annualConsumption !== 5850 ? existingConsent.annualConsumption : undefined));
+
+      const peakKwParam = overridePeak !== undefined
+        ? (Number(overridePeak) && Number(overridePeak) > 0 ? Number(overridePeak) : undefined)
+        : (customPeakKw && Number(customPeakKw) > 0 ? Number(customPeakKw) : (existingConsent?.peakKw || undefined));
+
       const result = await enedisService.fetchData({ 
         prm: targetPrm, 
         projectId: targetProjectId,
         env,
-        forceMandate: isKnownConsent
+        forceMandate: isKnownConsent,
+        annualConsumption: annualConsoParam,
+        peakKw: peakKwParam
       });
       
-      // On vérifie que les données récupérées ne sont pas toutes en erreur ou proviennent d'un mandat actif
+      // On vérifie que les données récupérées ne sont pas toutes en erreur ou proviennent d'un mandat actif ou en attente
       const hasValidData = result?.data && (
         (!result.data.daily?.error && result.data.daily?.meter_reading?.interval_reading?.length > 0) ||
         (!result.data.loadCurve?.error && result.data.loadCurve?.meter_reading?.interval_reading?.length > 0) ||
         (!result.data.maxPower?.error && result.data.maxPower?.meter_reading?.interval_reading?.length > 0) ||
         Boolean(result.data.isMandateActive) ||
-        Boolean(result.data.mandate?.isMandateActive)
+        Boolean(result.data.mandate?.isMandateActive) ||
+        Boolean(result.data.isPendingSync)
       );
       
       if (hasValidData) {
@@ -318,16 +365,89 @@ export default function AdminEnedis() {
           prm,
           ownerName,
           ownerAddress,
-          annualConsumption: customKwh ? Number(customKwh) : undefined
+          annualConsumption: (customKwh && Number(customKwh) !== 5850) ? Number(customKwh) : undefined,
+          peakKw: (customPeakKw && Number(customPeakKw) > 0) ? Number(customPeakKw) : undefined
         })
       });
       if (res.ok) {
-        toast({ title: 'Données enregistrées ✓', description: 'Adresse, titulaire et consommation de la facture mis à jour.' });
-        loadConsents();
-        handleFetch(prm);
+        toast({ title: 'Données enregistrées ✓', description: 'Adresse, titulaire et consommation réelle mis à jour.' });
+        await loadConsents();
+        handleFetch(prm, undefined, customKwh, customPeakKw);
       }
     } catch (e) {
       console.warn('Error updating metadata:', e.message);
+    }
+  };
+
+  // Import et auto-extraction d'une facture / relevé PDF client
+  const handleUploadBillPdf = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsExtractingBill(true);
+    toast({
+      title: "Analyse du PDF en cours...",
+      description: "Extraction automatique de la consommation, de la puissance et du titulaire."
+    });
+
+    try {
+      const billData = await extractClientBillData(file);
+      if (!billData) {
+        toast({ title: "Document non reconnu", description: "Impossible d'extraire les données du fichier.", variant: "destructive" });
+        return;
+      }
+
+      let newName = ownerName;
+      let newAddr = ownerAddress;
+      let newKwh = customKwh;
+      let newPeak = customPeakKw;
+
+      if (billData.clientName) {
+        newName = billData.clientName;
+        setOwnerName(newName);
+      }
+      if (billData.clientAddress) {
+        newAddr = billData.clientAddress;
+        setOwnerAddress(newAddr);
+      }
+      if (billData.annualConsumption && billData.annualConsumption !== 5850) {
+        newKwh = String(billData.annualConsumption);
+        setCustomKwh(newKwh);
+      }
+      if (billData.peakKw) {
+        newPeak = String(billData.peakKw);
+        setCustomPeakKw(newPeak);
+      }
+
+      const targetPrm = billData.prm || prm;
+      if (billData.prm && billData.prm !== prm) {
+        setPrm(billData.prm);
+      }
+
+      await fetch('/api/enedis/fetch?action=update_prm_metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prm: targetPrm,
+          ownerName: newName,
+          ownerAddress: newAddr,
+          annualConsumption: (newKwh && Number(newKwh) !== 5850) ? Number(newKwh) : undefined,
+          peakKw: (newPeak && Number(newPeak) > 0) ? Number(newPeak) : undefined
+        })
+      });
+
+      await loadConsents();
+      await handleFetch(targetPrm, undefined, newKwh, newPeak);
+
+      toast({
+        title: "Facture analysée avec succès !",
+        description: `Consommation : ${newKwh ? Number(newKwh).toLocaleString('fr-FR') + ' kWh/an' : 'Non détectée'}${newPeak ? ' • Pointe : ' + newPeak + ' kW' : ''}`
+      });
+    } catch (err) {
+      console.error('[UploadBill] Error:', err);
+      toast({ title: "Erreur lors de l'analyse", description: err.message, variant: "destructive" });
+    } finally {
+      setIsExtractingBill(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -350,8 +470,9 @@ export default function AdminEnedis() {
   };
 
   const formatConso = (conso) => {
-    if (conso === undefined || conso === null) return 'N/A';
-    return new Intl.NumberFormat('fr-FR').format(conso) + ' kWh';
+    const n = Number(conso);
+    if (!n || n <= 0 || n === 5850) return 'En attente de lecture';
+    return new Intl.NumberFormat('fr-FR').format(n) + ' kWh';
   };
 
   // Fermer le modal
@@ -531,6 +652,30 @@ export default function AdminEnedis() {
                         </div>
                       </button>
 
+                      {/* Prévention de conflit de session OAuth & Bouton Copier le lien */}
+                      <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3.5 space-y-2 text-left">
+                        <div className="flex items-center gap-1.5 text-amber-900 font-extrabold text-[11px]">
+                          <AlertTriangle size={14} className="text-amber-600 shrink-0" />
+                          <span>Attention au compte connecté sur votre poste</span>
+                        </div>
+                        <p className="text-[10.5px] text-amber-900 leading-relaxed">
+                          Ce bouton ouvre Enedis sur <strong>votre</strong> navigateur actuel. Si votre compte personnel y est déjà connecté, vous autoriserez votre session au lieu de celle du client.
+                        </p>
+                        <p className="text-[10px] text-amber-800 font-semibold">
+                          👉 Transmettez le lien direct à ouvrir sur l'appareil du client ou en navigation privée :
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleCopyLink}
+                          disabled={prm.length !== 14}
+                          className="w-full h-8 text-[11px] bg-white border-amber-300 text-amber-950 hover:bg-amber-100 font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                          <Copy size={12} />
+                          Copier le lien de consentement pour le client
+                        </Button>
+                      </div>
+
                       {/* ===== NOUVEAU BOUTON OMNICANAL : Faire Signer le Mandat Enedis ===== */}
                       <button
                         type="button"
@@ -697,6 +842,15 @@ export default function AdminEnedis() {
                       </div>
                     )}
 
+                    {/* Input caché pour import facture PDF */}
+                    <input
+                      type="file"
+                      ref={billFileInputRef}
+                      onChange={handleUploadBillPdf}
+                      accept=".pdf"
+                      className="hidden"
+                    />
+
                     {/* Coordonnées Titulaire & Adresse pour le Rapport / Export PDF */}
                     <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -730,17 +884,25 @@ export default function AdminEnedis() {
                                 placeholder="Facture annuelle (kWh)"
                                 className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg font-mono focus:ring-1 focus:ring-blue-500 outline-none w-36"
                               />
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={customPeakKw}
+                                onChange={e => setCustomPeakKw(e.target.value)}
+                                placeholder="Pointe max (kW)"
+                                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg font-mono focus:ring-1 focus:ring-blue-500 outline-none w-28"
+                              />
                               <button
                                 type="button"
                                 onClick={handleSavePrmMetadata}
-                                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm"
+                                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
                               >
                                 Enregistrer &amp; Actualiser
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setIsEditingOwner(false)}
-                                className="text-xs px-2 py-1.5 text-slate-500 hover:text-slate-700"
+                                className="text-xs px-2 py-1.5 text-slate-500 hover:text-slate-700 cursor-pointer"
                               >
                                 Annuler
                               </button>
@@ -759,9 +921,14 @@ export default function AdminEnedis() {
                               <span className="text-slate-600">
                                 Titulaire : <strong className="text-slate-800">{ownerName || 'Non spécifié'}</strong>
                               </span>
-                              {customKwh && (
+                              {customKwh && Number(customKwh) !== 5850 && (
                                 <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-mono font-bold">
                                   Facture : {Number(customKwh).toLocaleString('fr-FR')} kWh/an
+                                </span>
+                              )}
+                              {customPeakKw && Number(customPeakKw) > 0 && (
+                                <span className="text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200/60 font-mono font-bold">
+                                  Pointe : {customPeakKw} kW
                                 </span>
                               )}
                             </div>
@@ -769,15 +936,68 @@ export default function AdminEnedis() {
                         </div>
                       </div>
                       {!isEditingOwner && (
-                        <button
-                          type="button"
-                          onClick={() => setIsEditingOwner(true)}
-                          className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline shrink-0 self-start md:self-center"
-                        >
-                          Modifier
-                        </button>
+                        <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => billFileInputRef.current?.click()}
+                            disabled={isExtractingBill}
+                            className="text-xs h-8 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 font-bold rounded-lg flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            title="Analyser automatiquement une facture EDF ou relevé Enedis"
+                          >
+                            {isExtractingBill ? (
+                              <RotateCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                            ) : (
+                              <FileText className="w-3.5 h-3.5 text-blue-600" />
+                            )}
+                            <span>{isExtractingBill ? 'Analyse...' : '📄 Importer facture PDF'}</span>
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingOwner(true)}
+                            className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer"
+                          >
+                            Modifier
+                          </button>
+                        </div>
                       )}
                     </div>
+
+                    {/* Bandeau d'état : Flux Enedis SGE en attente de synchronisation */}
+                    {(data.isPendingSync || (!totalKwh && (data.isMandateActive || data.mandate))) && (
+                      <div className="bg-amber-50 border-2 border-amber-300 text-amber-950 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3 animate-in fade-in zoom-in duration-300">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl mt-0.5">⚠️</span>
+                          <div>
+                            <p className="font-extrabold text-sm text-amber-950">
+                              Flux Enedis SGE en attente de synchronisation pour le PRM {prm}
+                            </p>
+                            <p className="text-xs text-amber-800 mt-0.5">
+                              Le mandat eIDAS est bien scellé. Vous pouvez importer la facture/relevé PDF du client ou saisir ses données réelles ci-dessus.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            type="button"
+                            onClick={() => billFileInputRef.current?.click()}
+                            disabled={isExtractingBill}
+                            className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold h-9 px-3.5 shadow-sm cursor-pointer"
+                          >
+                            <FileText size={14} className="mr-1.5" />
+                            {isExtractingBill ? 'Analyse...' : 'Importer Facture PDF'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsEditingOwner(true)}
+                            className="bg-white border-amber-300 text-amber-950 hover:bg-amber-100 rounded-xl text-xs font-bold h-9 px-3.5 cursor-pointer"
+                          >
+                            Saisir manuellement
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
                     
                     <div className="flex-1 bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden transition-all hover:shadow-blue-100/50">
@@ -952,7 +1172,21 @@ export default function AdminEnedis() {
                                   Renvoyer
                                 </Button>
                                 <Button 
-                                  onClick={() => handleFetch(item.prm, item.projectId)}
+                                  onClick={() => {
+                                    setData(null);
+                                    setPrm(item.prm);
+                                    setOwnerName(item.titulaire || item.clientName || '');
+                                    setOwnerAddress(item.adresse || '');
+                                    setCustomKwh((item.annualConsumption && item.annualConsumption !== 5850) ? String(item.annualConsumption) : '');
+                                    setCustomPeakKw(item.peakKw ? String(item.peakKw) : '');
+                                    setActiveTab('interrogation');
+                                    handleFetch(
+                                      item.prm,
+                                      item.projectId,
+                                      (item.annualConsumption && item.annualConsumption !== 5850) ? item.annualConsumption : undefined,
+                                      item.peakKw || undefined
+                                    );
+                                  }}
                                   disabled={loading}
                                   className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-100 transition-all hover:scale-105 active:scale-95 min-w-[100px]"
                                 >
@@ -979,6 +1213,8 @@ export default function AdminEnedis() {
         consent={consents.find(c => c.prm === prm) || {}}
         ownerName={ownerName}
         ownerAddress={ownerAddress}
+        customKwh={customKwh && Number(customKwh) !== 5850 ? Number(customKwh) : totalKwh}
+        customPeakKw={customPeakKw ? Number(customPeakKw) : peakKw}
       />
 
       {/* ===== MODAL DE CONSENTEMENT PAR EMAIL ===== */}

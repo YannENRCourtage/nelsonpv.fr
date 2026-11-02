@@ -69,18 +69,22 @@ function parseMaxPower(maxResult, loadResult) {
 }
 
 // ─── Composant Print 2 Pages A4 ──────────────────────────────────────────────
-const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddress }) => {
+const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddress, customKwh, customPeakKw }) => {
   const dailyReadings = useMemo(() => parseIntervals(data?.daily), [data]);
   const monthly = useMemo(() => parseAndAggregateMonthly(data?.daily), [data]);
   const loadData = useMemo(() => parseLoadCurve(data?.loadCurve, data?.maxPower), [data]);
   const maxPwrChart = useMemo(() => parseMaxPower(data?.maxPower, data?.loadCurve), [data]);
 
-  const totalKwh = useMemo(() => dailyReadings.reduce((s, r) => s + r.value, 0) / 1000, [dailyReadings]);
-  const avgDaily = useMemo(() => dailyReadings.length > 0 ? totalKwh / dailyReadings.length : 0, [dailyReadings, totalKwh]);
+  const rawTotalKwh = useMemo(() => dailyReadings.reduce((s, r) => s + r.value, 0) / 1000, [dailyReadings]);
+  const totalKwh = (customKwh && Number(customKwh) > 0 && Number(customKwh) !== 5850)
+    ? Number(customKwh)
+    : rawTotalKwh;
+  const avgDaily = dailyReadings.length > 0 ? totalKwh / dailyReadings.length : (totalKwh > 0 ? totalKwh / 365 : 0);
   const peakKw = useMemo(() => {
+    if (customPeakKw && Number(customPeakKw) > 0) return Number(customPeakKw);
     const src = parseIntervals(data?.maxPower).length > 0 ? parseIntervals(data?.maxPower) : parseIntervals(data?.loadCurve);
     return src.reduce((mx, r) => Math.max(mx, r.value / 1000), 0);
-  }, [data]);
+  }, [data, customPeakKw]);
 
   // Point le plus haut et le plus bas pour la Courbe de charge
   const maxLoadPoint = useMemo(() => {

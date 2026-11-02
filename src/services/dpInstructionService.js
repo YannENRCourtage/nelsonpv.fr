@@ -1106,6 +1106,7 @@ export function calculateDpTimeline({
   hasComplement = false,
   complementDate = null,
   hasRefusal = false,
+  hasRecours = false,
   refusalDate = null,
   certificateObtained = false,
   certificateDate = null,
@@ -1200,9 +1201,14 @@ export function calculateDpTimeline({
     statusLabel = 'Certificat officiel obtenu ✓';
     counterBadge = 'Certifié';
     badgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
+  } else if (hasRecours) {
+    status = 'recours_refus';
+    statusLabel = 'Recours refus DP en cours';
+    counterBadge = 'Recours';
+    badgeClass = 'bg-purple-100 text-purple-800 border-purple-300';
   } else if (hasRefusal) {
     status = 'refus';
-    statusLabel = 'Opposition notifiée par la Mairie';
+    statusLabel = 'Refus DP notifié par la Mairie';
     counterBadge = 'Refusé';
     badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
   } else if (isOverdue) {

@@ -569,11 +569,13 @@ export default function EtudeDossierView({
     }
   };
 
-  // Statuts Monday.com (avec statut NS "Non significatif")
+  // Statuts Monday.com (avec statuts Urbanisme / DP enrichis)
   const STATUS_OPTIONS = [
     { id: 'pending', label: 'En attente', bg: 'bg-[#c4c4c4]', text: 'text-white' },
     { id: 'in_progress', label: 'En cours', bg: 'bg-[#fdab3d]', text: 'text-white' },
     { id: 'validated', label: 'Validée ✓', bg: 'bg-[#00c875]', text: 'text-white' },
+    { id: 'refused', label: 'Refus DP', bg: 'bg-rose-600', text: 'text-white' },
+    { id: 'recours_refus', label: 'Recours refus DP', bg: 'bg-purple-600', text: 'text-white' },
     { id: 'ns', label: 'NS', bg: 'bg-slate-400', text: 'text-white', description: 'Non significatif' },
   ];
 
@@ -689,6 +691,8 @@ export default function EtudeDossierView({
                 <option value="pending" className="bg-slate-700 text-white font-bold">En attente</option>
                 <option value="in_progress" className="bg-amber-600 text-white font-bold">En cours</option>
                 <option value="validated" className="bg-emerald-600 text-white font-bold">Validée ✓</option>
+                <option value="refused" className="bg-rose-600 text-white font-bold">Refus DP</option>
+                <option value="recours_refus" className="bg-purple-600 text-white font-bold">Recours refus DP</option>
                 <option value="ns" className="bg-slate-500 text-white font-bold">NS</option>
               </select>
             </div>
