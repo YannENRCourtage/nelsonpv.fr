@@ -231,22 +231,22 @@ const ConsumptionChart = ({ data, loading }) => {
         {[
           {
             label: 'Conso annuelle',
-            val: isPending ? 'En attente' : Math.round(totalKwh).toLocaleString('fr-FR'),
-            unit: isPending ? 'de lecture Enedis' : 'kWh / an',
+            val: isPending || totalKwh == null ? 'En attente' : Math.round(totalKwh).toLocaleString('fr-FR'),
+            unit: isPending || totalKwh == null ? 'de lecture Enedis' : 'kWh / an',
             bg: 'from-blue-500 to-blue-700',
             shadow: 'shadow-blue-200'
           },
           {
             label: 'Moy. journalière',
-            val: isPending ? '—' : avgDaily.toFixed(1),
-            unit: isPending ? 'en attente de flux' : 'kWh / jour',
+            val: isPending || avgDaily == null ? '—' : Number(avgDaily).toFixed(1),
+            unit: isPending || avgDaily == null ? 'en attente de flux' : 'kWh / jour',
             bg: 'from-emerald-400 to-green-600',
             shadow: 'shadow-green-200'
           },
           {
             label: 'Puissance max',
-            val: isPending ? '—' : peakKw.toFixed(2),
-            unit: isPending ? 'en attente de flux' : 'kW (pointe)',
+            val: isPending || peakKw == null ? '—' : Number(peakKw).toFixed(2),
+            unit: isPending || peakKw == null ? 'en attente de flux' : 'kW (pointe)',
             bg: 'from-orange-400 to-amber-600',
             shadow: 'shadow-orange-200'
           },
@@ -391,7 +391,7 @@ const ConsumptionChart = ({ data, loading }) => {
         <div>
           <div className="flex items-center justify-between mb-4">
             <p className="text-xs text-slate-400 font-medium">
-              Puissance maximale journalière · {maxPwrChart.length} jours · Max : {peakKw.toFixed(2)} kW
+              Puissance maximale journalière · {maxPwrChart.length} jours · Max : {peakKw != null ? Number(peakKw).toFixed(2) : '—'} kW
             </p>
             <ChartToggle />
           </div>

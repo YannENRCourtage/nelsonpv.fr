@@ -272,9 +272,22 @@ export default function AdminEnedis() {
     } catch (err) {
       console.error(err);
       setStatus('disconnected');
-      const msg = typeof err?.message === 'string'
-        ? err.message
-        : (typeof err === 'string' ? err : (err?.error || err?.statusText || "Erreur lors de la récupération"));
+      let msg = "Erreur lors de la récupération";
+      if (typeof err?.message === 'string') {
+        msg = err.message;
+      } else if (typeof err?.error === 'string') {
+        msg = err.error;
+      } else if (typeof err?.error?.message === 'string') {
+        msg = err.error.message;
+      } else if (typeof err === 'string') {
+        msg = err;
+      } else if (typeof err?.statusText === 'string') {
+        msg = err.statusText;
+      } else if (err && typeof err === 'object') {
+        try {
+          msg = JSON.stringify(err);
+        } catch (_) {}
+      }
       toast({ 
         title: "Erreur", 
         description: msg, 
@@ -1013,9 +1026,9 @@ export default function AdminEnedis() {
                         prm={prm}
                         titulaire={ownerName}
                         adresse={ownerAddress}
-                        consoAnnuelleKwh={totalKwh}
+                        consoAnnuelleKwh={totalKwh || (data?.annualConsumption ? Number(data.annualConsumption) : null)}
                         consoJourMoyKwh={avgDaily}
-                        peakKw={peakKw}
+                        peakKw={peakKw || (data?.peakKw ? Number(data.peakKw) : null)}
                         toast={toast}
                       />
                     </div>

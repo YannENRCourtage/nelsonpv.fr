@@ -684,7 +684,7 @@ export default function SafraBessProposalModule({
                 Courbe de charge journalière type
               </h4>
               <p className="text-xs text-slate-400">
-                Écrêtage de la pointe de {peakKw.toFixed(0)} kW vers {simResult.newPeakKw} kW et recharge en Heures Creuses
+                Écrêtage de la pointe de {safePeakKw.toFixed(0)} kW vers {simResult.newPeakKw} kW et recharge en Heures Creuses
               </p>
             </div>
             <div className="flex items-center gap-3 text-[11px]">

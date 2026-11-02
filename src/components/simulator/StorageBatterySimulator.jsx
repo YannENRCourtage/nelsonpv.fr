@@ -1122,7 +1122,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#64748b' }} />
               <YAxis yAxisId="left" tick={{ fontSize: 10, fill: '#64748b' }} unit=" kW" />
-              <YAxis yAxisId="right" orientation="right" domain={[0, 100]} unit="%" tick={{ fontSize: 10, fill: '#0891b2' }} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 100]} unit="%" tick={{ fontSize: 10, fill: '#9333ea' }} />
               <Tooltip
                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
                 formatter={(value, name) => [
@@ -1140,9 +1140,9 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
               {/* Consommation site */}
               <Line yAxisId="left" type="monotone" dataKey="conso" name="Consommation Site (kW)" stroke="#64748b" strokeWidth={2} dot={false} strokeDasharray="4 4" />
               {/* Soutirage réseau après batterie */}
-              <Line yAxisId="left" type="monotone" dataKey="reseauApres" name="Soutirage Réseau après BESS (kW)" stroke="#0284c7" strokeWidth={2.5} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="reseauApres" name="Soutirage Réseau après BESS (kW)" stroke="#2563eb" strokeWidth={2.5} dot={false} />
               {/* Niveau de charge BESS SOC % */}
-              <Line yAxisId="right" type="monotone" dataKey="socPct" name="Niveau de Charge BESS (%)" stroke="#0891b2" strokeWidth={2.5} dot={false} strokeDasharray="3 3" />
+              <Line yAxisId="right" type="monotone" dataKey="socPct" name="Niveau de Charge BESS (%)" stroke="#9333ea" strokeWidth={2.5} dot={false} strokeDasharray="4 4" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

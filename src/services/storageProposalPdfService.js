@@ -186,8 +186,8 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.setTextColor(180, 83, 9);
-    doc.text(`☀️ CENTRALE SOLAIRE PHOTOVOLTAÏQUE ASSOCIÉE (${solar.kwc} kWC)`, 18, curY + 5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`CENTRALE SOLAIRE PHOTOVOLTAÏQUE ASSOCIÉE (${solar.kwc} kWC)`, 18, curY + 5);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
@@ -360,9 +360,10 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   const netY1 = sim.gains.totalYear1 - sim.opex;
   doc.text(`Gain Net Année 1 : ${formatSignedNum(netY1, 0, ' € HT')}`, 18 + colW3 * 2 + 8, ecoY + 31);
 
-  // Chronogramme prévisionnel de déploiement (placé en Page 1 sous la synthèse économique)
+  // Chronogramme prévisionnel de déploiement (placé en Page 1 sous la synthèse économique, remplit le bas de page)
   const chronoY = ecoY + 36 + 3.5;
-  drawChronogrammeGantt(doc, 14, chronoY, 182, 35, Boolean(sim.grid));
+  const chronoH = Math.min(64, Math.max(54, 278 - chronoY));
+  drawChronogrammeGantt(doc, 14, chronoY, 182, chronoH, Boolean(sim.grid));
 
   drawFooter(doc, 1, totalPages, false);
 
@@ -426,11 +427,11 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
     doc.text(r.sub, rx + 2.5, 48.8);
   });
 
-  // Graphique 24h vectoriel de charge & écrêtage (Hauteur augmentée à 75 mm)
-  drawDaily24hChartPdf(doc, 14, 53, 182, 75, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
+  // Graphique 24h vectoriel de charge & écrêtage
+  drawDaily24hChartPdf(doc, 14, 53, 182, 70, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
 
   // Tableau synthétique de la Journée type heure par heure avec Niveau de Charge (SOC %)
-  drawHourlyJourneyTablePdf(doc, 14, 131, 182, 57, sim.energy.chart, sim.capacityKwh);
+  drawHourlyJourneyTablePdf(doc, 14, 126, 182, 64, sim.energy.chart, sim.capacityKwh);
 
   // 4 Piliers Opérationnels & Explication de la journée type
   const pillarW = (182 - 3 * 2.5) / 4;
@@ -444,32 +445,32 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
   pillars.forEach((p, pIdx) => {
     const px = 14 + pIdx * (pillarW + 2.5);
     doc.setFillColor(p.bg[0], p.bg[1], p.bg[2]);
-    doc.roundedRect(px, 191, pillarW, 16, 1.6, 1.6, 'F');
+    doc.roundedRect(px, 193, pillarW, 20, 1.8, 1.8, 'F');
     doc.setDrawColor(p.border[0], p.border[1], p.border[2]);
-    doc.roundedRect(px, 191, pillarW, 16, 1.6, 1.6, 'D');
+    doc.roundedRect(px, 193, pillarW, 20, 1.8, 1.8, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.2);
+    doc.setFontSize(6.8);
     doc.setTextColor(p.txt[0], p.txt[1], p.txt[2]);
-    doc.text(p.title, px + 2.5, 195);
+    doc.text(p.title, px + 2.5, 198);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(4.8);
+    doc.setFontSize(5.8);
     doc.setTextColor(71, 85, 105);
     const splitDesc = doc.splitTextToSize(p.desc, pillarW - 5);
-    doc.text(splitDesc, px + 2.5, 199);
+    doc.text(splitDesc, px + 2.5, 202.5);
   });
 
   // Note explicative
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, 210, 182, 11, 1.5, 1.5, 'F');
+  doc.roundedRect(14, 216, 182, 13, 1.5, 1.5, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(14, 210, 182, 11, 1.5, 1.5, 'D');
+  doc.roundedRect(14, 216, 182, 13, 1.5, 1.5, 'D');
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5);
+  doc.setFontSize(5.8);
   doc.setTextColor(100, 116, 139);
-  doc.text('Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour', 18, 213.5);
-  doc.text('en chargeant prioritairement sur le surplus solaire (ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 217.5);
+  doc.text('Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour', 18, 221);
+  doc.text('en chargeant prioritairement sur le surplus solaire (ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 225.5);
 
   drawFooter(doc, 2, totalPages, false);
 
@@ -1092,8 +1093,8 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
     { label: 'Conso Site (kW)', color: [100, 116, 139], type: 'line' },
     ...(solarEnabled ? [{ label: 'Solaire (kW)', color: [245, 158, 11], type: 'area' }] : []),
     { label: 'Recharge BESS (kW)', color: [16, 185, 129], type: 'area' },
-    { label: 'Soutirage après BESS (kW)', color: [2, 132, 199], type: 'line' },
-    { label: 'Niveau Charge BESS (%)', color: [8, 145, 178], type: 'dash' }
+    { label: 'Soutirage après BESS (kW)', color: [37, 99, 235], type: 'line' },
+    { label: 'Niveau Charge BESS (%)', color: [147, 51, 234], type: 'dash' }
   ];
 
   let legX = x + 4;
@@ -1220,7 +1221,7 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
       doc.line(x1, y1, x2, y2);
     }
 
-    doc.setDrawColor(2, 132, 199);
+    doc.setDrawColor(37, 99, 235);
     doc.setLineWidth(0.55);
     for (let i = 0; i < n - 1; i++) {
       const x1 = plotX + (i / (n - 1)) * plotW;
@@ -1230,7 +1231,7 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
       doc.line(x1, y1, x2, y2);
     }
 
-    doc.setDrawColor(8, 145, 178);
+    doc.setDrawColor(147, 51, 234);
     doc.setLineWidth(0.45);
     for (let i = 0; i < n - 1; i++) {
       const soc1 = Math.min(100, Math.max(0, chartData[i].socPct || 0));
@@ -1266,32 +1267,33 @@ function drawHourlyJourneyTablePdf(doc, x, y, w, h, chartData = [], capacityKwh 
   doc.roundedRect(x, y, w, h, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('FONCTIONNEMENT DÉTAILLÉ SUR UNE JOURNÉE TYPE & NIVEAU DE CHARGE HORAIRE (SOC %)', x + 3.5, y + 4.2);
+  doc.text('FONCTIONNEMENT DÉTAILLÉ SUR UNE JOURNÉE TYPE & NIVEAU DE CHARGE HORAIRE (SOC %)', x + 3.5, y + 4.5);
 
   const halfW = (w - 7) / 2;
   const leftX = x + 2.5;
   const rightX = x + 4.5 + halfW;
   const headY = y + 6.2;
-  const headH = 3.6;
+  const headH = 4.0;
 
   [leftX, rightX].forEach((hx) => {
     doc.setFillColor(241, 245, 249);
     doc.rect(hx, headY, halfW, headH, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(4.8);
+    doc.setFontSize(5.6);
     doc.setTextColor(71, 85, 105);
-    doc.text('Heure', hx + 1.5, headY + 2.5);
-    doc.text('Conso', hx + 11, headY + 2.5);
-    doc.text('Solaire', hx + 22, headY + 2.5);
-    doc.text('Activité BESS', hx + 35, headY + 2.5);
-    doc.text('Niveau Charge SOC (%)', hx + 58, headY + 2.5);
-    doc.text('Réseau', hx + halfW - 1.5, headY + 2.5, { align: 'right' });
+    doc.text('Heure', hx + 1.5, headY + 2.8);
+    doc.text('Conso', hx + 10.5, headY + 2.8);
+    doc.text('Solaire', hx + 21, headY + 2.8);
+    doc.text('Activité BESS', hx + 32, headY + 2.8);
+    doc.text('Niveau Charge SOC (%)', hx + 56, headY + 2.8);
+    doc.text('Réseau', hx + halfW - 1.5, headY + 2.8, { align: 'right' });
   });
 
   const rowStartY = headY + headH;
-  const rowH = 3.4;
+  const availableRowsH = (y + h - 1.5) - rowStartY;
+  const rowH = Math.max(3.8, availableRowsH / 12);
 
   chartData.slice(0, 24).forEach((hData, i) => {
     const isRight = i >= 12;
@@ -1304,41 +1306,44 @@ function drawHourlyJourneyTablePdf(doc, x, y, w, h, chartData = [], capacityKwh 
       doc.rect(rx, ry, halfW, rowH, 'F');
     }
 
+    const textY = ry + rowH / 2 + 1.0;
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(4.8);
+    doc.setFontSize(5.6);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${String(i).padStart(2, '0')}h`, rx + 1.5, ry + 2.4);
+    doc.text(`${String(i).padStart(2, '0')}h`, rx + 1.5, textY);
 
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.6);
     doc.setTextColor(71, 85, 105);
-    doc.text(`${(hData.conso || 0).toFixed(1)} kW`, rx + 11, ry + 2.4);
-    doc.text(`${(hData.solaire || 0).toFixed(1)} kW`, rx + 22, ry + 2.4);
+    doc.text(`${(hData.conso || 0).toFixed(1)} kW`, rx + 10.5, textY);
+    doc.text(`${(hData.solaire || 0).toFixed(1)} kW`, rx + 21, textY);
 
     const chg = (hData.stockage || 0) > 0.05;
     const dis = (hData.restitution || 0) > 0.05;
     if (chg) {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(16, 185, 129);
-      doc.text(`Recharge (+${(hData.stockage).toFixed(1)} kW)`, rx + 35, ry + 2.4);
+      doc.text(`Recharge (+${(hData.stockage).toFixed(1)} kW)`, rx + 32, textY);
     } else if (dis) {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(217, 119, 6);
-      doc.text(`Effacement (-${(hData.restitution).toFixed(1)} kW)`, rx + 35, ry + 2.4);
+      doc.text(`Effacement (-${(hData.restitution).toFixed(1)} kW)`, rx + 32, textY);
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(8, 145, 178);
-      doc.text(`Veille active (50 Hz)`, rx + 35, ry + 2.4);
+      doc.text(`Veille active (50 Hz)`, rx + 32, textY);
     }
 
     const socPct = hData.socPct ?? 0;
     const socKwh = hData.socKwh ?? 0;
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(socPct > 50 ? 16 : 8, socPct > 50 ? 185 : 145, socPct > 50 ? 129 : 178);
-    doc.text(`${socPct} % (${socKwh.toFixed(0)} kWh)`, rx + 58, ry + 2.4);
+    doc.text(`${socPct} % (${socKwh.toFixed(0)} kWh)`, rx + 56, textY);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(30, 41, 59);
-    doc.text(`${(hData.reseauApres || 0).toFixed(1)} kW`, rx + halfW - 1.5, ry + 2.4, { align: 'right' });
+    doc.text(`${(hData.reseauApres || 0).toFixed(1)} kW`, rx + halfW - 1.5, textY, { align: 'right' });
   });
 }
 
@@ -1444,9 +1449,9 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
   doc.roundedRect(x, y, w, h, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.2);
+  doc.setFontSize(8.0);
   doc.setTextColor(15, 23, 42);
-  doc.text('CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT', x + 4, y + 4.2);
+  doc.text('CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT', x + 4, y + 4.8);
 
   const badgeBg = includeGrid ? [239, 246, 255] : [240, 253, 244];
   const badgeBorder = includeGrid ? [191, 219, 254] : [187, 247, 208];
@@ -1454,13 +1459,13 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
   const badgeLabel = includeGrid ? 'Délai total : ~5 à 6 mois (Raccordement Enedis)' : 'Délai total : ~8 à 10 semaines';
 
   doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
-  doc.roundedRect(x + w - 68, y + 1.8, 64, 5.5, 1.2, 1.2, 'F');
+  doc.roundedRect(x + w - 74, y + 1.8, 70, 5.8, 1.2, 1.2, 'F');
   doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2]);
-  doc.roundedRect(x + w - 68, y + 1.8, 64, 5.5, 1.2, 1.2, 'D');
+  doc.roundedRect(x + w - 74, y + 1.8, 70, 5.8, 1.2, 1.2, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(5.5);
+  doc.setFontSize(6.2);
   doc.setTextColor(badgeTxt[0], badgeTxt[1], badgeTxt[2]);
-  doc.text(badgeLabel, x + w - 36, y + 5.5, { align: 'center' });
+  doc.text(badgeLabel, x + w - 39, y + 5.7, { align: 'center' });
 
   const colNameW = 76;
   const colStartX = x + colNameW;
@@ -1468,14 +1473,15 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
   const numCols = includeGrid ? 6 : 5;
   const colW = totalColsW / numCols;
 
-  const tableHeaderY = y + 8.5;
+  const tableHeaderY = y + 8.8;
+  const tableHeaderH = 4.4;
   doc.setFillColor(241, 245, 249);
-  doc.rect(x + 2, tableHeaderY, w - 4, 3.8, 'F');
+  doc.rect(x + 2, tableHeaderY, w - 4, tableHeaderH, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(5.2);
+  doc.setFontSize(6.0);
   doc.setTextColor(71, 85, 105);
-  doc.text('Étape / Jalon opérationnel', x + 4, tableHeaderY + 2.6);
+  doc.text('Étape / Jalon opérationnel', x + 4, tableHeaderY + 3.0);
 
   const colLabels = includeGrid
     ? ['Mois 1', 'Mois 2', 'Mois 3', 'Mois 4', 'Mois 5', 'Mois 6']
@@ -1483,7 +1489,7 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
 
   colLabels.forEach((lbl, cIdx) => {
     const cx = colStartX + cIdx * colW;
-    doc.text(lbl, cx + colW / 2, tableHeaderY + 2.6, { align: 'center' });
+    doc.text(lbl, cx + colW / 2, tableHeaderY + 3.0, { align: 'center' });
   });
 
   const wk = (s, e) => ({ startFrac: (s - 1) / 10, endFrac: e / 10 });
@@ -1505,8 +1511,10 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
         { name: '6. Essais, Consuel & Mise en service site', ...wk(10, 10), label: 'Sem. 10', color: [22, 163, 74] }
       ];
 
-  const rowsStartY = tableHeaderY + 3.8;
-  const rowH = 4.2;
+  const rowsStartY = tableHeaderY + tableHeaderH;
+  const availableRowsH = (y + h - 1.5) - rowsStartY;
+  const rowH = Math.max(4.5, availableRowsH / steps.length);
+  const barH = Math.min(5.2, rowH * 0.65);
 
   steps.forEach((step, sIdx) => {
     const ry = rowsStartY + sIdx * rowH;
@@ -1520,20 +1528,19 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
     }
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.3);
+    doc.setFontSize(6.4);
     doc.setTextColor(30, 41, 59);
-    doc.text(step.name, x + 4, ry + rowH / 2 + 1);
+    doc.text(step.name, x + 4, ry + rowH / 2 + 1.2);
 
     const barX = colStartX + step.startFrac * totalColsW + 0.5;
     const barWidth = Math.max(7, (step.endFrac - step.startFrac) * totalColsW - 1);
-    const barH = 2.8;
 
     doc.setFillColor(step.color[0], step.color[1], step.color[2]);
-    doc.roundedRect(barX, ry + (rowH - barH) / 2, barWidth, barH, 0.6, 0.6, 'F');
+    doc.roundedRect(barX, ry + (rowH - barH) / 2, barWidth, barH, 0.8, 0.8, 'F');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(4.4);
+    doc.setFontSize(5.5);
     doc.setTextColor(255, 255, 255);
-    doc.text(step.label, barX + barWidth / 2, ry + rowH / 2 + 0.8, { align: 'center' });
+    doc.text(step.label, barX + barWidth / 2, ry + rowH / 2 + 1.0, { align: 'center' });
   });
 }

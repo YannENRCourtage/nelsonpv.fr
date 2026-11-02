@@ -315,7 +315,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
               Conso annuelle
             </div>
             <div style={{ fontSize: '18pt', fontWeight: 900, color: '#ffffff', marginTop: '1.5mm', lineHeight: 1.1 }}>
-              {Math.round(totalKwh).toLocaleString('fr-FR')} <span style={{ fontSize: '9.5pt', fontWeight: 700, opacity: 0.9 }}>kWh</span>
+              {totalKwh != null ? Math.round(totalKwh).toLocaleString('fr-FR') : '—'} <span style={{ fontSize: '9.5pt', fontWeight: 700, opacity: 0.9 }}>kWh</span>
             </div>
             <div style={{ fontSize: '7.2pt', color: 'rgba(255,255,255,0.8)', marginTop: '1mm', fontWeight: 600 }}>
               kWh / an
@@ -337,7 +337,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
               Moy. journalière
             </div>
             <div style={{ fontSize: '18pt', fontWeight: 900, color: '#ffffff', marginTop: '1.5mm', lineHeight: 1.1 }}>
-              {avgDaily.toFixed(1)} <span style={{ fontSize: '9.5pt', fontWeight: 700, opacity: 0.9 }}>kWh/j</span>
+              {avgDaily != null ? Number(avgDaily).toFixed(1) : '—'} <span style={{ fontSize: '9.5pt', fontWeight: 700, opacity: 0.9 }}>kWh/j</span>
             </div>
             <div style={{ fontSize: '7.2pt', color: 'rgba(255,255,255,0.8)', marginTop: '1mm', fontWeight: 600 }}>
               kWh / jour
@@ -359,7 +359,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
               Puissance max
             </div>
             <div style={{ fontSize: '18pt', fontWeight: 900, color: '#ffffff', marginTop: '1.5mm', lineHeight: 1.1 }}>
-              {peakKw.toFixed(2)} <span style={{ fontSize: '9.5pt', fontWeight: 700, opacity: 0.9 }}>kW</span>
+              {peakKw != null ? Number(peakKw).toFixed(2) : '—'} <span style={{ fontSize: '9.5pt', fontWeight: 700, opacity: 0.9 }}>kW</span>
             </div>
             <div style={{ fontSize: '7.2pt', color: 'rgba(255,255,255,0.8)', marginTop: '1mm', fontWeight: 600 }}>
               kW (pointe)
@@ -727,7 +727,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                 Puissance maximale journalière (kW)
               </div>
               <div style={{ fontSize: '7.5pt', color: '#64748b', marginTop: '0.5mm' }}>
-                {maxPwrChart.length > 0 ? `Historique journalier · ${maxPwrChart.length} jours · Max : ${peakKw.toFixed(2)} kW` : 'Non disponible'}
+                {maxPwrChart.length > 0 ? `Historique journalier · ${maxPwrChart.length} jours · Max : ${peakKw != null ? Number(peakKw).toFixed(2) : '—'} kW` : 'Non disponible'}
               </div>
             </div>
 
