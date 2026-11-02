@@ -775,6 +775,7 @@ export default function Developpement() {
                     setDpWizardModal(true);
                   }}
                   professionals={professionals}
+                  onUpdateProject={handleUpdateProjectData}
                 />
               )}
             </motion.div>

@@ -81,7 +81,11 @@ export default function DpInstructionCard({
     // Résolution robuste de la date de dépôt pour ne jamais afficher "Invalid Date"
     const resolved = resolveProjectDepositDate(project, stepState);
     const isoDate = resolved ? formatToIsoDate(resolved) : '';
-    setDepositDate(isoDate);
+    if (isoDate) {
+      setDepositDate(isoDate);
+    } else if (stepState?.depositDate) {
+      setDepositDate(stepState.depositDate);
+    }
 
     setRegime(stepState?.regime || project?.dp_regime || '1_mois');
     setHasComplement(Boolean(stepState?.hasComplement || project?.dp_has_complement || stepState?.regime === 'pieces_complementaires'));
@@ -159,8 +163,16 @@ export default function DpInstructionCard({
           dp_registration_number: res.normalizedDp || dpNumber,
           numero_dp: res.normalizedDp || dpNumber,
           ...(res.mairieInfo ? { dp_mairie_info: res.mairieInfo, mairie_email: res.mairieInfo.email } : {}),
-          ...(finalDepositDate ? { depositDate: finalDepositDate, dp_deposit_date: finalDepositDate, date_depot_dp: finalDepositDate } : {}),
-          ...(tl?.legalDueDateIso ? { deadline: tl.legalDueDateIso } : {}),
+          ...(finalDepositDate ? {
+            depositDate: finalDepositDate,
+            dp_deposit_date: finalDepositDate,
+            date_depot_dp: finalDepositDate,
+            dpDepositDate: finalDepositDate,
+            dateDepotDP: finalDepositDate,
+            depositDateFormatted: res.depositDateFormatted || formatToFrenchDate(finalDepositDate),
+            lastIntervention: res.depositDateFormatted || formatToFrenchDate(finalDepositDate),
+          } : {}),
+          ...(tl?.legalDueDateIso ? { deadline: tl.legalDueDateIso, dp_deadline: tl.legalDueDateIso } : {}),
         });
       }
 
@@ -197,7 +209,6 @@ export default function DpInstructionCard({
       if (data?.dpNumber) {
         newDp = data.dpNumber;
         setDpNumber(data.dpNumber);
-        detectAndFetchMairie(data.dpNumber, true);
       }
       if (data?.depositDateIso) {
         newDate = data.depositDateIso;
@@ -221,15 +232,28 @@ export default function DpInstructionCard({
           registrationNumber: newDp,
           dp_registration_number: newDp,
           numero_dp: newDp,
-          ...(newDate ? { depositDate: newDate, dp_deposit_date: newDate, date_depot_dp: newDate } : {}),
+          ...(newDate ? {
+            depositDate: newDate,
+            dp_deposit_date: newDate,
+            date_depot_dp: newDate,
+            dpDepositDate: newDate,
+            dateDepotDP: newDate,
+            depositDateFormatted: data?.depositDateFormatted || formatToFrenchDate(newDate),
+          } : {}),
           regime: newRegime,
-          ...(tl?.legalDueDateIso ? { deadline: tl.legalDueDateIso } : {}),
+          ...(tl?.legalDueDateIso ? { deadline: tl.legalDueDateIso, dp_deadline: tl.legalDueDateIso } : {}),
+          ...(data?.depositDateFormatted ? { lastIntervention: data.depositDateFormatted } : {}),
+          status: tl?.isOverdue ? 'in_progress' : (stepState?.status || 'pending'),
         });
+      }
+
+      if (data?.dpNumber) {
+        detectAndFetchMairie(data.dpNumber, true);
       }
 
       toast({
         title: "📄 Récépissé analysé avec succès !",
-        description: `${newDp ? `DP : ${newDp} • ` : ''}${newDate ? `Dépôt : ${data.depositDateFormatted} • ` : ''}Délai : ${newRegime === '2_mois' ? '2 mois' : '1 mois'} (${tl.isOverdue ? 'Accord tacite acquis' : 'En cours'})`,
+        description: `${newDp ? `DP : ${newDp} • ` : ''}${newDate ? `Dépôt : ${data?.depositDateFormatted || formatToFrenchDate(newDate)} • ` : ''}Délai : ${newRegime === '2_mois' ? '2 mois' : '1 mois'} (${tl.isOverdue ? 'Accord tacite acquis' : 'En cours'})`,
       });
     } catch (err) {
       console.error('Erreur lecture récépissé:', err);
@@ -285,7 +309,12 @@ export default function DpInstructionCard({
         depositDate: val,
         dp_deposit_date: val,
         date_depot_dp: val,
+        dpDepositDate: val,
+        dateDepotDP: val,
+        depositDateFormatted: val ? formatToFrenchDate(val) : '',
         deadline: tl?.legalDueDateIso || '',
+        dp_deadline: tl?.legalDueDateIso || '',
+        lastIntervention: val ? formatToFrenchDate(val) : '',
       });
     }
   };

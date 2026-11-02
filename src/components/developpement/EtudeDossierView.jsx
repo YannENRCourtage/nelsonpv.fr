@@ -35,6 +35,7 @@ export default function EtudeDossierView({
   onOpenAosModal,
   onOpenConsuelModal,
   professionals = [],
+  onUpdateProject,
 }) {
   // Définition des 9 étapes réparties dans les 3 zones
   const INITIAL_STEPS_CONFIG = [
@@ -208,7 +209,13 @@ export default function EtudeDossierView({
         }
         if (key === 'dp') {
           const resolvedDate = resolveProjectDepositDate(project, initialized.dp);
-          initialized.dp.depositDate = resolvedDate ? formatToIsoDate(resolvedDate) : '';
+          if (resolvedDate) {
+            initialized.dp.depositDate = formatToIsoDate(resolvedDate);
+          } else if (initialized.dp.depositDate) {
+            // Conserver la date déjà renseignée dans le workflow
+          } else {
+            initialized.dp.depositDate = '';
+          }
         }
       });
       setStepsState(initialized);
@@ -232,13 +239,13 @@ export default function EtudeDossierView({
 
   // Sauvegarde d'une étape avec synchronisation mutuelle DP / PC et mise à jour Firestore temps réel
   const updateStep = (stepId, updates) => {
-    const todayStr = new Date().toLocaleDateString('fr-FR');
+    const todayStr = updates.lastIntervention || new Date().toLocaleDateString('fr-FR');
     let newStepsState = {
       ...stepsState,
       [stepId]: {
         ...(stepsState[stepId] || {}),
         ...updates,
-        lastIntervention: todayStr,
+        lastIntervention: updates.lastIntervention || stepsState[stepId]?.lastIntervention || todayStr,
       }
     };
 
@@ -257,25 +264,82 @@ export default function EtudeDossierView({
     if (project?.id) {
       localStorage.setItem(`nelson_workflow_${project.id}`, JSON.stringify(newStepsState));
 
+      // Préparation de l'objet de mise à jour complet pour synchroniser Developpement.jsx et Firestore
+      const projectUpdates = {
+        devWorkflow: newStepsState,
+      };
+
       if (updates.registrationNumber !== undefined) {
+        projectUpdates[`${stepId}_registration_number`] = updates.registrationNumber;
+        projectUpdates[`numero_${stepId}`] = updates.registrationNumber;
+        projectUpdates[`num_${stepId}`] = updates.registrationNumber;
+
         project[`${stepId}_registration_number`] = updates.registrationNumber;
         project[`numero_${stepId}`] = updates.registrationNumber;
+        project[`num_${stepId}`] = updates.registrationNumber;
       }
+
       if (stepId === 'dp') {
         if (updates.depositDate !== undefined) {
+          projectUpdates.dp_deposit_date = updates.depositDate;
+          projectUpdates.date_depot_dp = updates.depositDate;
+          projectUpdates.dpDepositDate = updates.depositDate;
+          projectUpdates.dateDepotDP = updates.depositDate;
+          projectUpdates.depositDate = updates.depositDate;
+          projectUpdates.deposit_date = updates.depositDate;
+
           project.dp_deposit_date = updates.depositDate;
           project.date_depot_dp = updates.depositDate;
           project.dpDepositDate = updates.depositDate;
+          project.dateDepotDP = updates.depositDate;
           project.depositDate = updates.depositDate;
+          project.deposit_date = updates.depositDate;
         }
-        if (updates.deadline !== undefined) project.dp_deadline = updates.deadline;
-        if (updates.regime !== undefined) project.dp_regime = updates.regime;
-        if (updates.hasComplement !== undefined) project.dp_has_complement = updates.hasComplement;
-        if (updates.complementDate !== undefined) project.dp_complement_date = updates.complementDate;
-        if (updates.dp_mairie_info !== undefined) project.dp_mairie_info = updates.dp_mairie_info;
-        if (updates.mairie_email !== undefined) project.mairie_email = updates.mairie_email;
-        if (updates.certificateObtained !== undefined) project.dp_certificate_obtained = updates.certificateObtained;
-        if (updates.displayDate !== undefined) project.dp_display_date = updates.displayDate;
+        if (updates.deadline !== undefined) {
+          projectUpdates.dp_deadline = updates.deadline;
+          projectUpdates.deadline = updates.deadline;
+          project.dp_deadline = updates.deadline;
+          project.deadline = updates.deadline;
+        }
+        if (updates.regime !== undefined) {
+          projectUpdates.dp_regime = updates.regime;
+          project.dp_regime = updates.regime;
+        }
+        if (updates.hasComplement !== undefined) {
+          projectUpdates.dp_has_complement = updates.hasComplement;
+          project.dp_has_complement = updates.hasComplement;
+        }
+        if (updates.complementDate !== undefined) {
+          projectUpdates.dp_complement_date = updates.complementDate;
+          project.dp_complement_date = updates.complementDate;
+        }
+        if (updates.dp_mairie_info !== undefined) {
+          projectUpdates.dp_mairie_info = updates.dp_mairie_info;
+          project.dp_mairie_info = updates.dp_mairie_info;
+        }
+        if (updates.mairie_email !== undefined) {
+          projectUpdates.mairie_email = updates.mairie_email;
+          project.mairie_email = updates.mairie_email;
+        }
+        if (updates.certificateObtained !== undefined) {
+          projectUpdates.dp_certificate_obtained = updates.certificateObtained;
+          project.dp_certificate_obtained = updates.certificateObtained;
+        }
+        if (updates.displayDate !== undefined) {
+          projectUpdates.dp_display_date = updates.displayDate;
+          project.dp_display_date = updates.displayDate;
+        }
+        if (updates.lastIntervention !== undefined) {
+          projectUpdates.lastIntervention = updates.lastIntervention;
+          projectUpdates.derniereIntervention = updates.lastIntervention;
+          project.lastIntervention = updates.lastIntervention;
+          project.derniereIntervention = updates.lastIntervention;
+        }
+      }
+
+      // Notification immédiate du composant parent (mise à jour selectedProject et projects en temps réel)
+      if (onUpdateProject) {
+        onUpdateProject(project.id, projectUpdates);
       }
 
       if (stepSaveTimeoutRef.current) {
@@ -285,24 +349,10 @@ export default function EtudeDossierView({
       const delay = updates.registrationNumber !== undefined ? 500 : 0;
       stepSaveTimeoutRef.current = setTimeout(async () => {
         try {
-          const payload = {
-            devWorkflow: newStepsState,
+          await apiService.updateProject(project.id, {
+            ...projectUpdates,
             updatedAt: new Date().toISOString(),
-          };
-          if (newStepsState[stepId]?.registrationNumber !== undefined) {
-            payload[`${stepId}_registration_number`] = newStepsState[stepId].registrationNumber;
-            payload[`numero_${stepId}`] = newStepsState[stepId].registrationNumber;
-          }
-          if (stepId === 'dp') {
-            if (updates.depositDate !== undefined) payload.dp_deposit_date = updates.depositDate;
-            if (updates.regime !== undefined) payload.dp_regime = updates.regime;
-            if (updates.hasComplement !== undefined) payload.dp_has_complement = updates.hasComplement;
-            if (updates.complementDate !== undefined) payload.dp_complement_date = updates.complementDate;
-            if (updates.dp_mairie_info !== undefined) payload.dp_mairie_info = updates.dp_mairie_info;
-            if (updates.certificateObtained !== undefined) payload.dp_certificate_obtained = updates.certificateObtained;
-            if (updates.displayDate !== undefined) payload.dp_display_date = updates.displayDate;
-          }
-          await apiService.updateProject(project.id, payload);
+          });
         } catch (err) {
           console.error('Erreur mise à jour devWorkflow Firestore:', err);
         }

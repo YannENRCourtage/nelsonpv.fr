@@ -210,12 +210,34 @@ export default function DpInstructionDashboardBanner({
           onUpdateProject(projectToUse.id, {
             dp_registration_number: res.normalizedDp,
             numero_dp: res.normalizedDp,
+            num_dp: res.normalizedDp,
             dp_deposit_date: res.depositDateIso,
             date_depot_dp: res.depositDateIso,
+            dpDepositDate: res.depositDateIso,
+            dateDepotDP: res.depositDateIso,
             depositDate: res.depositDateIso,
+            deposit_date: res.depositDateIso,
             deadline: res.legalDueDateIso,
+            dp_deadline: res.legalDueDateIso,
             dp_mairie_info: res.mairieInfo,
             ...(res.mairieInfo?.email ? { mairie_email: res.mairieInfo.email } : {}),
+            ...(res.depositDateFormatted ? {
+              lastIntervention: res.depositDateFormatted,
+              derniereIntervention: res.depositDateFormatted,
+            } : {}),
+            devWorkflow: {
+              ...(projectToUse.devWorkflow || {}),
+              dp: {
+                ...(projectToUse.devWorkflow?.dp || {}),
+                registrationNumber: res.normalizedDp,
+                depositDate: res.depositDateIso,
+                dp_deposit_date: res.depositDateIso,
+                dateDepotDP: res.depositDateIso,
+                deadline: res.legalDueDateIso,
+                ...(res.mairieInfo ? { dp_mairie_info: res.mairieInfo, mairie_email: res.mairieInfo.email } : {}),
+                ...(res.depositDateFormatted ? { lastIntervention: res.depositDateFormatted } : {}),
+              }
+            }
           });
         }
       }
@@ -250,11 +272,33 @@ export default function DpInstructionDashboardBanner({
             onUpdateProject(p.id, {
               dp_registration_number: res.normalizedDp || targetDp,
               numero_dp: res.normalizedDp || targetDp,
+              num_dp: res.normalizedDp || targetDp,
               dp_deposit_date: res.depositDateIso,
               date_depot_dp: res.depositDateIso,
+              dpDepositDate: res.depositDateIso,
+              dateDepotDP: res.depositDateIso,
               depositDate: res.depositDateIso,
+              deposit_date: res.depositDateIso,
               deadline: res.legalDueDateIso,
+              dp_deadline: res.legalDueDateIso,
               ...(res.mairieInfo ? { dp_mairie_info: res.mairieInfo, mairie_email: res.mairieInfo.email } : {}),
+              ...(res.depositDateFormatted ? {
+                lastIntervention: res.depositDateFormatted,
+                derniereIntervention: res.depositDateFormatted,
+              } : {}),
+              devWorkflow: {
+                ...(p.devWorkflow || {}),
+                dp: {
+                  ...(p.devWorkflow?.dp || {}),
+                  registrationNumber: res.normalizedDp || targetDp,
+                  depositDate: res.depositDateIso,
+                  dp_deposit_date: res.depositDateIso,
+                  dateDepotDP: res.depositDateIso,
+                  deadline: res.legalDueDateIso,
+                  ...(res.mairieInfo ? { dp_mairie_info: res.mairieInfo, mairie_email: res.mairieInfo.email } : {}),
+                  ...(res.depositDateFormatted ? { lastIntervention: res.depositDateFormatted } : {}),
+                }
+              }
             });
             count++;
           }
