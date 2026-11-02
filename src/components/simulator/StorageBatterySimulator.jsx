@@ -249,8 +249,8 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
           setSelectedPrm(h.prm);
           if (h.titulaire || h.clientName) setClientName(h.titulaire || h.clientName);
           if (h.adresse) setSiteAddress(h.adresse);
-          if (h.annualKwh) setAnnualKwh(Number(h.annualKwh));
-          if (h.peakKw) setPeakKw(Number(h.peakKw));
+          if (h.annualKwh && Number(h.annualKwh) !== 5850) setAnnualKwh(Number(h.annualKwh));
+          if (h.peakKw && Number(h.peakKw) > 0) setPeakKw(Number(h.peakKw));
           if (h.hourlyProfile) setHourlyProfile(h.hourlyProfile);
           setSourceMode('prm');
           localStorage.removeItem(PRM_HANDOFF_KEY);

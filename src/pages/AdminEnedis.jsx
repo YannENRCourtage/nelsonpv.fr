@@ -10,6 +10,7 @@ import ConsumptionChart from '@/components/enedis/ConsumptionChart';
 import EnedisPrintLayout from '@/components/enedis/EnedisPrintLayout';
 import MandatSignatureModal from '@/components/enedis/MandatSignatureModal';
 import SafraBessProposalModule from '@/components/enedis/SafraBessProposalModule';
+import ManualDataModal from '@/components/enedis/ManualDataModal';
 import { useNavigate } from 'react-router-dom';
 import { savePrmToCache, PRM_HANDOFF_KEY } from '@/services/storageBatteryEngine';
 import { extractClientBillData } from '@/services/clientBillExtractor';
@@ -62,7 +63,9 @@ export default function AdminEnedis() {
   const [ownerAddress, setOwnerAddress] = useState('');
   const [customKwh, setCustomKwh] = useState('');
   const [customPeakKw, setCustomPeakKw] = useState('');
+  const [customProfileKey, setCustomProfileKey] = useState('agricole');
   const [isEditingOwner, setIsEditingOwner] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isExtractingBill, setIsExtractingBill] = useState(false);
   const billFileInputRef = useRef(null);
 
@@ -120,19 +123,23 @@ export default function AdminEnedis() {
   }, [data, customKwh, customPeakKw]);
 
   const handleOpenInSimulator = useCallback(() => {
-    const ownerName = data?.identity?.customer?.customer_person?.identity || 
+    const resolvedName = ownerName || data?.mandate?.titulaire || data?.identity?.customer?.customer_person?.identity || 
       (data?.identity?.customer?.customer_company ? data?.identity?.customer?.customer_company?.corporate_name : null) ||
       'Client ENEDIS';
-    const ownerAddress = data?.contact?.address ? 
-      `${data.contact.address.street || ''} ${data.contact.address.postal_code || ''} ${data.contact.address.city || ''}`.trim() : '';
+    const resolvedAddress = ownerAddress || data?.mandate?.adresse || (data?.contact?.address ? 
+      `${data.contact.address.street || ''} ${data.contact.address.postal_code || ''} ${data.contact.address.city || ''}`.trim() : '');
+
+    const effectiveKwh = totalKwh || (customKwh && Number(customKwh) !== 5850 ? Number(customKwh) : (data?.annualConsumption ? Number(data.annualConsumption) : null)) || 211781;
+    const effectiveAvg = avgDaily || (effectiveKwh ? Number((effectiveKwh / 365).toFixed(1)) : 578.6);
+    const effectivePeak = peakKw || (customPeakKw && Number(customPeakKw) > 0 ? Number(customPeakKw) : (data?.peakKw ? Number(data.peakKw) : 90.0));
 
     const prmHandoff = {
       prm: prm || '30002220753998',
-      titulaire: ownerName,
-      adresse: ownerAddress,
-      annualKwh: totalKwh || 211781,
-      avgDailyKwh: avgDaily || 578.6,
-      peakKw: peakKw || 90.0,
+      titulaire: resolvedName,
+      adresse: resolvedAddress,
+      annualKwh: effectiveKwh,
+      avgDailyKwh: effectiveAvg,
+      peakKw: effectivePeak,
       hasIntervalData: true,
     };
     savePrmToCache(prmHandoff);
@@ -140,7 +147,7 @@ export default function AdminEnedis() {
       localStorage.setItem(PRM_HANDOFF_KEY, JSON.stringify(prmHandoff));
     } catch (e) {}
     navigate('/simulateur?solution=stockage');
-  }, [data, prm, totalKwh, avgDaily, peakKw, navigate]);
+  }, [data, prm, totalKwh, avgDaily, peakKw, ownerName, ownerAddress, customKwh, customPeakKw, navigate]);
 
 
   // État de l'environnement API (production vs sandbox)
@@ -224,7 +231,7 @@ export default function AdminEnedis() {
     }
   }, []);
 
-  const handleFetch = async (prmToFetch, projectIdToFetch, overrideKwh, overridePeak) => {
+  const handleFetch = async (prmToFetch, projectIdToFetch, overrideKwh, overridePeak, overrideProfileKey) => {
     // Si prmToFetch n'est pas fourni (clic depuis l'onglet Interrogation), on utilise l'état 'prm'
     const targetPrm = (prmToFetch && typeof prmToFetch === 'string' ? prmToFetch : prm).trim();
     const targetProjectId = projectIdToFetch || 'admin_test';
@@ -252,48 +259,59 @@ export default function AdminEnedis() {
         ? (Number(overridePeak) && Number(overridePeak) > 0 ? Number(overridePeak) : undefined)
         : (customPeakKw && Number(customPeakKw) > 0 ? Number(customPeakKw) : (existingConsent?.peakKw || undefined));
 
+      const profileParam = overrideProfileKey || customProfileKey || existingConsent?.profileKey || 'agricole';
+
       const result = await enedisService.fetchData({ 
         prm: targetPrm, 
         projectId: targetProjectId,
         env,
         forceMandate: isKnownConsent,
         annualConsumption: annualConsoParam,
-        peakKw: peakKwParam
+        peakKw: peakKwParam,
+        profileKey: profileParam
       });
       
-      // On vérifie que les données récupérées ne sont pas toutes en erreur ou proviennent d'un mandat actif ou en attente
-      const hasValidData = result?.data && (
-        (!result.data.daily?.error && result.data.daily?.meter_reading?.interval_reading?.length > 0) ||
-        (!result.data.loadCurve?.error && result.data.loadCurve?.meter_reading?.interval_reading?.length > 0) ||
-        (!result.data.maxPower?.error && result.data.maxPower?.meter_reading?.interval_reading?.length > 0) ||
-        Boolean(result.data.isMandateActive) ||
-        Boolean(result.data.mandate?.isMandateActive) ||
-        Boolean(result.data.isPendingSync)
-      );
-      
-      if (hasValidData) {
-        setData(result.data);
+      const dailyCount = result?.data?.daily?.meter_reading?.interval_reading?.length || 0;
+      const annualKwhVal = Number(result?.data?.annualConsumption);
+      const hasRealKwh = (dailyCount > 0 && !result?.data?.daily?.error) || 
+                         (annualKwhVal > 0 && annualKwhVal !== 5850) || 
+                         Boolean(result?.hasRealData);
+      const isPending = Boolean(result?.isPendingSync || result?.data?.isPendingSync);
+
+      setData(result.data);
+      setPrm(targetPrm);
+      setActiveTab('interrogation');
+      loadConsents(); // Rafraîchir l'historique après récupération
+
+      if (hasRealKwh) {
         setStatus('connected');
-        setPrm(targetPrm);
-        setActiveTab('interrogation');
-        loadConsents(); // Rafraîchir l'historique après récupération
+        const kwhLabel = annualKwhVal > 0 ? `${annualKwhVal.toLocaleString('fr-FR')} kWh/an` : `${dailyCount} jours de mesure`;
         toast({ 
-          title: "Succès", 
-          description: "Données récupérées pour le PRM " + targetPrm 
+          title: "Succès : Données synchronisées ✓", 
+          description: `Données de consommation récupérées pour le PRM ${targetPrm} (${kwhLabel})` 
         });
+      } else if (isPending) {
+        setStatus('disconnected');
+        const descMsg = result?.enedisError?.description || result?.message || "Le mandat eIDAS est bien scellé. En attente de propagation Enedis SGE (délai 24h ouvrées). Saisissez les données ou importez une facture pour continuer l'étude.";
+        toast({ 
+          title: "En attente de propagation Enedis SGE", 
+          description: descMsg, 
+          variant: "warning" 
+        });
+        if (!annualConsoParam) {
+          setIsManualModalOpen(true);
+        }
       } else {
         setStatus('disconnected');
-        
-        let errorMsg = "Aucun consentement trouvé ou données non disponibles pour ce PRM.";
+        let errorMsg = result?.enedisError?.description || result?.message || "Aucun consentement trouvé ou données non disponibles pour ce PRM.";
         if (result?.data?.daily?.error) {
           const status = result.data.daily.status;
           if (status === 500) {
-            errorMsg = "Erreur 500 côté Enedis : Ce compteur est probablement inactif, ou ses données de consommation ne sont pas encore accessibles.";
+            errorMsg = "Erreur 500 côté Enedis : Compteur inactif ou mesures inaccessibles.";
           } else if (status === 403 || status === 404) {
-            errorMsg = "Erreur 403/404 côté Enedis : Période non disponible ou consentement invalide.";
+            errorMsg = "Erreur 403/404 côté Enedis : Période non disponible ou consentement en cours de traitement.";
           }
         }
-        
         toast({ 
           title: "Données indisponibles", 
           description: errorMsg, 
@@ -304,23 +322,19 @@ export default function AdminEnedis() {
       console.error(err);
       setStatus('disconnected');
       let msg = "Erreur lors de la récupération";
-      if (typeof err?.message === 'string') {
+      if (err?.response?.data?.details) {
+        msg = typeof err.response.data.details === 'string' ? err.response.data.details : JSON.stringify(err.response.data.details);
+      } else if (err?.response?.data?.error) {
+        msg = typeof err.response.data.error === 'string' ? err.response.data.error : JSON.stringify(err.response.data.error);
+      } else if (err?.response?.data?.message) {
+        msg = typeof err.response.data.message === 'string' ? err.response.data.message : JSON.stringify(err.response.data.message);
+      } else if (typeof err?.message === 'string') {
         msg = err.message;
-      } else if (typeof err?.error === 'string') {
-        msg = err.error;
-      } else if (typeof err?.error?.message === 'string') {
-        msg = err.error.message;
       } else if (typeof err === 'string') {
         msg = err;
-      } else if (typeof err?.statusText === 'string') {
-        msg = err.statusText;
-      } else if (err && typeof err === 'object') {
-        try {
-          msg = JSON.stringify(err);
-        } catch (_) {}
       }
       toast({ 
-        title: "Erreur", 
+        title: "Erreur technique Enedis", 
         description: msg, 
         variant: "destructive" 
       });
@@ -413,26 +427,62 @@ export default function AdminEnedis() {
           ownerName,
           ownerAddress,
           annualConsumption: (customKwh && Number(customKwh) !== 5850) ? Number(customKwh) : undefined,
-          peakKw: (customPeakKw && Number(customPeakKw) > 0) ? Number(customPeakKw) : undefined
+          peakKw: (customPeakKw && Number(customPeakKw) > 0) ? Number(customPeakKw) : undefined,
+          profileKey: customProfileKey || 'agricole'
         })
       });
       if (res.ok) {
         toast({ title: 'Données enregistrées ✓', description: 'Adresse, titulaire et consommation réelle mis à jour.' });
         await loadConsents();
-        handleFetch(prm, undefined, customKwh, customPeakKw);
+        handleFetch(prm, undefined, customKwh, customPeakKw, customProfileKey);
       }
     } catch (e) {
       console.warn('Error updating metadata:', e.message);
     }
   };
 
-  // Import et auto-extraction d'une facture / relevé PDF client
+  const handleSaveManualData = async (formData) => {
+    try {
+      const targetPrm = formData.prm || prm;
+      setOwnerName(formData.ownerName);
+      setOwnerAddress(formData.ownerAddress);
+      setCustomKwh(String(formData.annualConsumption));
+      setCustomPeakKw(String(formData.peakKw));
+      setCustomProfileKey(formData.profileKey || 'agricole');
+
+      await fetch('/api/enedis/fetch?action=update_prm_metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prm: targetPrm,
+          ownerName: formData.ownerName,
+          ownerAddress: formData.ownerAddress,
+          annualConsumption: formData.annualConsumption,
+          peakKw: formData.peakKw,
+          profileKey: formData.profileKey || 'agricole'
+        })
+      });
+
+      toast({
+        title: "Données calibrées avec succès !",
+        description: `${Number(formData.annualConsumption).toLocaleString('fr-FR')} kWh/an • Profil ${formData.profileKey}`
+      });
+
+      await loadConsents();
+      await handleFetch(targetPrm, undefined, formData.annualConsumption, formData.peakKw, formData.profileKey);
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Erreur d'enregistrement", description: err.message, variant: "destructive" });
+    }
+  };
+
+  // Import et auto-extraction d'une facture / relevé client (.pdf, .png, .jpg, .csv, .json)
   const handleUploadBillPdf = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsExtractingBill(true);
     toast({
-      title: "Analyse du PDF en cours...",
+      title: "Analyse du document en cours...",
       description: "Extraction automatique de la consommation, de la puissance et du titulaire."
     });
 
@@ -447,6 +497,7 @@ export default function AdminEnedis() {
       let newAddr = ownerAddress;
       let newKwh = customKwh;
       let newPeak = customPeakKw;
+      let newProfile = customProfileKey;
 
       if (billData.clientName) {
         newName = billData.clientName;
@@ -464,6 +515,10 @@ export default function AdminEnedis() {
         newPeak = String(billData.peakKw);
         setCustomPeakKw(newPeak);
       }
+      if (billData.profileKey) {
+        newProfile = billData.profileKey;
+        setCustomProfileKey(newProfile);
+      }
 
       const targetPrm = billData.prm || prm;
       if (billData.prm && billData.prm !== prm) {
@@ -478,15 +533,16 @@ export default function AdminEnedis() {
           ownerName: newName,
           ownerAddress: newAddr,
           annualConsumption: (newKwh && Number(newKwh) !== 5850) ? Number(newKwh) : undefined,
-          peakKw: (newPeak && Number(newPeak) > 0) ? Number(newPeak) : undefined
+          peakKw: (newPeak && Number(newPeak) > 0) ? Number(newPeak) : undefined,
+          profileKey: newProfile
         })
       });
 
       await loadConsents();
-      await handleFetch(targetPrm, undefined, newKwh, newPeak);
+      await handleFetch(targetPrm, undefined, newKwh, newPeak, newProfile);
 
       toast({
-        title: "Facture analysée avec succès !",
+        title: "Document analysé avec succès !",
         description: `Consommation : ${newKwh ? Number(newKwh).toLocaleString('fr-FR') + ' kWh/an' : 'Non détectée'}${newPeak ? ' • Pointe : ' + newPeak + ' kW' : ''}`
       });
     } catch (err) {
@@ -891,12 +947,12 @@ export default function AdminEnedis() {
                       </div>
                     )}
 
-                    {/* Input caché pour import facture PDF */}
+                    {/* Input caché pour import facture PDF / image / csv */}
                     <input
                       type="file"
                       ref={billFileInputRef}
                       onChange={handleUploadBillPdf}
-                      accept=".pdf"
+                      accept=".pdf,.png,.jpg,.jpeg,.csv,.json,.txt"
                       className="hidden"
                     />
 
@@ -992,25 +1048,52 @@ export default function AdminEnedis() {
                             onClick={() => billFileInputRef.current?.click()}
                             disabled={isExtractingBill}
                             className="text-xs h-8 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 font-bold rounded-lg flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                            title="Analyser automatiquement une facture EDF ou relevé Enedis"
+                            title="Analyser automatiquement une facture EDF, PDF, image ou relevé"
                           >
                             {isExtractingBill ? (
                               <RotateCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
                             ) : (
                               <FileText className="w-3.5 h-3.5 text-blue-600" />
                             )}
-                            <span>{isExtractingBill ? 'Analyse...' : '📄 Importer facture PDF'}</span>
+                            <span>{isExtractingBill ? 'Analyse...' : '📄 Importer facture'}</span>
                           </Button>
-                          <button
+                          <Button
                             type="button"
-                            onClick={() => setIsEditingOwner(true)}
-                            className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer"
+                            variant="outline"
+                            onClick={() => setIsManualModalOpen(true)}
+                            className="text-xs h-8 px-3 border-slate-200 text-slate-700 hover:bg-slate-50 font-bold rounded-lg flex items-center gap-1 cursor-pointer"
+                            title="Saisir ou modifier manuellement la consommation"
                           >
-                            Modifier
-                          </button>
+                            Modifier / Calibrer
+                          </Button>
                         </div>
                       )}
                     </div>
+
+                    {/* Notification de calibrage si les données ont été injectées */}
+                    {data.isCalibrated && totalKwh && (
+                      <div className="bg-emerald-50 border border-emerald-300 text-emerald-950 rounded-2xl p-3.5 shadow-sm flex items-center justify-between gap-3 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2.5">
+                          <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                          <div>
+                            <p className="font-extrabold text-xs text-emerald-950">
+                              Données calibrées selon facture / profil client ({Number(totalKwh).toLocaleString('fr-FR')} kWh/an)
+                            </p>
+                            <p className="text-[11px] text-emerald-800">
+                              Courbes de charge, pointes max et KPIs synchronisés avec le simulateur et l'export PDF.
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsManualModalOpen(true)}
+                          className="bg-white border-emerald-300 text-emerald-900 hover:bg-emerald-100 rounded-xl text-xs font-bold h-8 px-3 cursor-pointer shrink-0"
+                        >
+                          Modifier
+                        </Button>
+                      </div>
+                    )}
 
                     {/* Bandeau d'état : Flux Enedis SGE en attente de synchronisation */}
                     {(data.isPendingSync || (!totalKwh && (data.isMandateActive || data.mandate))) && (
@@ -1022,7 +1105,7 @@ export default function AdminEnedis() {
                               Flux Enedis SGE en attente de synchronisation pour le PRM {prm}
                             </p>
                             <p className="text-xs text-amber-800 mt-0.5">
-                              Le mandat eIDAS est bien scellé. Vous pouvez importer la facture/relevé PDF du client ou saisir ses données réelles ci-dessus.
+                              Le mandat eIDAS est bien scellé. Vous pouvez importer la facture/relevé du client ou saisir ses données réelles pour débloquer l'étude.
                             </p>
                           </div>
                         </div>
@@ -1034,12 +1117,12 @@ export default function AdminEnedis() {
                             className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold h-9 px-3.5 shadow-sm cursor-pointer"
                           >
                             <FileText size={14} className="mr-1.5" />
-                            {isExtractingBill ? 'Analyse...' : 'Importer Facture PDF'}
+                            {isExtractingBill ? 'Analyse...' : 'Importer Facture'}
                           </Button>
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={() => setIsEditingOwner(true)}
+                            onClick={() => setIsManualModalOpen(true)}
                             className="bg-white border-amber-300 text-amber-950 hover:bg-amber-100 rounded-xl text-xs font-bold h-9 px-3.5 cursor-pointer"
                           >
                             Saisir manuellement
@@ -1399,6 +1482,19 @@ export default function AdminEnedis() {
           loadConsents();
           if (res?.prm) handleFetch(res.prm);
         }}
+      />
+
+      {/* Modal de Saisie Manuelle et Calibrage du Profil PRM */}
+      <ManualDataModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+        prm={prm}
+        initialOwner={ownerName}
+        initialAddress={ownerAddress}
+        initialKwh={customKwh}
+        initialPeak={customPeakKw}
+        initialProfile={customProfileKey || 'agricole'}
+        onSave={handleSaveManualData}
       />
 
       <style>{`

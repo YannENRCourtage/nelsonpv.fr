@@ -12,10 +12,97 @@
 export async function extractClientBillData(file) {
   if (!file) return null;
 
-  let fullText = '';
+  const fileName = (file.name || '').toLowerCase();
+  const fileType = (file.type || '').toLowerCase();
 
+  // 1. Cas Fichier JSON direct (export Enedis ou CRM)
+  if (fileName.endsWith('.json') || fileType.includes('json')) {
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const parsedKwh = Number(json.annualConsumption || json.consoAnnuelle || json.conso_annuelle || json.annualKwh || json.conso || json.kwh || json.totalKwh);
+      const parsedPeak = Number(json.peakKw || json.puissanceMax || json.puissance_max || json.pmax || json.peak_kw || json.puissanceSouscrite);
+      const parsedPrm = String(json.prm || json.usage_point_id || json.pdl || '').trim();
+      const parsedName = String(json.clientName || json.titulaire || json.ownerName || json.nom || '').trim();
+      const parsedAddress = String(json.clientAddress || json.address || json.adresse || json.siteAddress || '').trim();
+
+      const result = {
+        rawText: text,
+        prm: parsedPrm && parsedPrm.length === 14 ? parsedPrm : null,
+        annualConsumption: parsedKwh && parsedKwh > 0 && parsedKwh !== 5850 ? Math.round(parsedKwh) : null,
+        peakKw: parsedPeak && parsedPeak > 0 ? Number(parsedPeak.toFixed(2)) : null,
+        clientName: parsedName || null,
+        clientAddress: parsedAddress || null,
+        tariffOption: json.tariffOption || null
+      };
+
+      if (result.annualConsumption || result.prm) {
+        return result;
+      }
+    } catch (jsonErr) {
+      console.warn('[BillExtractor] JSON parse failed, fallback to text analysis:', jsonErr.message);
+    }
+  }
+
+  // 2. Cas Fichier CSV / TXT (relevé de points ou export Enedis)
+  if (fileName.endsWith('.csv') || fileName.endsWith('.txt') || fileType.includes('csv') || fileType.includes('text/plain')) {
+    try {
+      const text = await file.text();
+      const parsed = parseExtractedBillText(text);
+
+      // Si pas de total annuel trouvé par regex, sommer les lignes numériques de consommation
+      if (!parsed.annualConsumption) {
+        const lines = text.split('\n');
+        let sumWh = 0;
+        let sumKwh = 0;
+        let pmax = 0;
+
+        lines.forEach(l => {
+          const parts = l.split(/[,;\t]/).map(p => p.trim().replace(/"/g, ''));
+          for (const part of parts) {
+            const num = parseFloat(part.replace(/\s/g, '').replace(',', '.'));
+            if (!isNaN(num) && num > 0) {
+              if (num > 500 && num < 1000000) sumWh += num;
+              else if (num > 0.05 && num <= 500) sumKwh += num;
+              if (num > 3 && num < 500 && num > pmax) pmax = num;
+            }
+          }
+        });
+
+        const computed = sumWh > 0 ? Math.round(sumWh / 1000) : Math.round(sumKwh);
+        if (computed > 100 && computed !== 5850) {
+          parsed.annualConsumption = computed;
+        }
+        if (pmax > 3 && !parsed.peakKw) {
+          parsed.peakKw = Math.min(250, Number(pmax.toFixed(2)));
+        }
+      }
+
+      return parsed;
+    } catch (csvErr) {
+      console.warn('[BillExtractor] CSV read failed:', csvErr.message);
+    }
+  }
+
+  // 3. Cas Images directes (.png, .jpg, .jpeg) -> OCR immédiat sans passer par pdfjs
+  if (fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileType.startsWith('image/')) {
+    try {
+      console.log('[BillExtractor] Image détectée — Lancement OCR Tesseract...');
+      const Tesseract = await import('tesseract.js');
+      const worker = await Tesseract.createWorker('fra');
+      const ret = await worker.recognize(file);
+      const text = ret?.data?.text || '';
+      await worker.terminate();
+      return parseExtractedBillText(text);
+    } catch (ocrErr) {
+      console.warn('[BillExtractor] Image OCR failed:', ocrErr.message);
+      return null;
+    }
+  }
+
+  // 4. Cas PDF : Extraction directe texte natif avec pdfjs-dist
+  let fullText = '';
   try {
-    // 1. Essai d'extraction directe avec pdfjs-dist
     const pdfjs = await import('pdfjs-dist');
     if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
       pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version || '5.4.530'}/build/pdf.worker.min.mjs`;
@@ -25,7 +112,7 @@ export async function extractClientBillData(file) {
     const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
     const pdf = await loadingTask.promise;
 
-    const maxPages = Math.min(pdf.numPages, 6);
+    const maxPages = Math.min(pdf.numPages, 8);
     for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
@@ -36,7 +123,7 @@ export async function extractClientBillData(file) {
     console.warn('[BillExtractor] PDF text extraction failed or encrypted:', pdfErr.message);
   }
 
-  // 2. Si le texte extrait est trop court (ex: facture scannée en image), tentative OCR
+  // Si le texte extrait du PDF est trop court (facture scannée en image dans le PDF), fallback OCR
   if (fullText.trim().length < 40) {
     try {
       console.log('[BillExtractor] Document scanné détecté — Fallback OCR Tesseract...');
@@ -73,8 +160,9 @@ export function parseExtractedBillText(text) {
 
   // 1. Numéro PRM / Point de Livraison (14 chiffres)
   const prmRegexes = [
-    /(?:PRM|PDL|Point\s+(?:de\s+)?(?:Livraison|Rfrence\s+Mesure))[\s:.\-_#Nn]*(\d{14})\b/i,
-    /\b(16\d{12}|30\d{12}|50\d{12})\b/
+    /(?:PRM|PDL|Point\s+(?:de\s+)?(?:Livraison|R[ée]f[ée]rence(?:\s+et)?\s+Mesure))[\s:.\-_#Nn]*(\d{14})\b/i,
+    /\b(16\d{12}|30\d{12}|50\d{12})\b/,
+    /\b(\d{14})\b/
   ];
   for (const reg of prmRegexes) {
     const match = cleanText.match(reg);
@@ -86,9 +174,10 @@ export function parseExtractedBillText(text) {
 
   // 2. Consommation Annuelle / Facturée (kWh)
   const kwhRegexes = [
-    /(?:consommation\s+annuelle(?:\s+de\s+rfrence)?|total\s+annuel|consommation\s+(?:totale|facture|estime)|votre\s+consommation(?:\s+annuelle)?|total\s+(?:consommations?|nergie))\s*[:=]?\s*([\d\s.,]{3,12})\s*kWh/i,
+    /(?:consommation\s+annuelle(?:\s+de\s+r[ée]f[ée]rence)?|total\s+annuel|consommation\s+(?:totale|factur[ée]e?|estim[ée]e?)|votre\s+consommation(?:\s+annuelle)?|total\s+(?:consommations?|[ée]nergie))\s*[:=]?\s*([\d\s.,]{3,12})\s*kWh/i,
     /([\d\s.,]{3,12})\s*kWh(?:\s*\/|\s*par)?\s*an\b/i,
-    /Total\s+(?:en\s+)?kWh\s*[:=]?\s*([\d\s.,]{3,10})/i
+    /Total\s+(?:en\s+)?kWh\s*[:=]?\s*([\d\s.,]{3,10})/i,
+    /([\d\s.,]{3,12})\s*kWh\b/i
   ];
 
   for (const reg of kwhRegexes) {
