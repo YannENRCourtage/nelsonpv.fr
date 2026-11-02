@@ -614,7 +614,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
 
             {/* Indicateurs Point le plus haut & Point le plus bas */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-              {maxLoadPoint && (
+              {maxLoadPoint && maxLoadPoint.kW != null && (
                 <span style={{
                   fontSize: '7.2pt',
                   fontWeight: 800,
@@ -626,10 +626,10 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                   WebkitPrintColorAdjust: 'exact',
                   printColorAdjust: 'exact'
                 }}>
-                  ▲ Point le plus haut : {maxLoadPoint.kW.toFixed(2)} kW ({maxLoadPoint.time})
+                  ▲ Point le plus haut : {Number(maxLoadPoint.kW).toFixed(2)} kW ({maxLoadPoint.time})
                 </span>
               )}
-              {minLoadPoint && (
+              {minLoadPoint && minLoadPoint.kW != null && (
                 <span style={{
                   fontSize: '7.2pt',
                   fontWeight: 800,
@@ -641,7 +641,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                   WebkitPrintColorAdjust: 'exact',
                   printColorAdjust: 'exact'
                 }}>
-                  ▼ Point le plus bas : {minLoadPoint.kW.toFixed(2)} kW ({minLoadPoint.time})
+                  ▼ Point le plus bas : {Number(minLoadPoint.kW).toFixed(2)} kW ({minLoadPoint.time})
                 </span>
               )}
             </div>
@@ -678,14 +678,14 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                     axisLine={{ stroke: '#cbd5e1' }}
                     domain={[0, (dataMax) => (dataMax > 0 ? (dataMax <= 10 ? Math.ceil(dataMax * 1.25) : Math.ceil(dataMax * 1.15)) : 10)]}
                   />
-                  {maxLoadPoint && (
+                  {maxLoadPoint && maxLoadPoint.kW != null && (
                     <ReferenceLine
                       y={maxLoadPoint.kW}
                       stroke="#ef4444"
                       strokeDasharray="4 4"
                       strokeWidth={1.5}
                       label={{
-                        value: `Point le plus haut : ${maxLoadPoint.kW.toFixed(2)} kW (${maxLoadPoint.time || ''})`,
+                        value: `Point le plus haut : ${Number(maxLoadPoint.kW).toFixed(2)} kW (${maxLoadPoint.time || ''})`,
                         position: 'top',
                         fill: '#dc2626',
                         fontSize: 8,
@@ -733,7 +733,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
 
             {/* Indicateurs Point le plus haut & Point le plus bas */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-              {maxPwrPoint && (
+              {maxPwrPoint && maxPwrPoint.kW != null && (
                 <span style={{
                   fontSize: '7.2pt',
                   fontWeight: 800,
@@ -745,10 +745,10 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                   WebkitPrintColorAdjust: 'exact',
                   printColorAdjust: 'exact'
                 }}>
-                  ▲ Point le plus haut : {maxPwrPoint.kW.toFixed(2)} kW ({maxPwrPoint.date})
+                  ▲ Point le plus haut : {Number(maxPwrPoint.kW).toFixed(2)} kW ({maxPwrPoint.date})
                 </span>
               )}
-              {minPwrPoint && (
+              {minPwrPoint && minPwrPoint.kW != null && (
                 <span style={{
                   fontSize: '7.2pt',
                   fontWeight: 800,
@@ -760,7 +760,7 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                   WebkitPrintColorAdjust: 'exact',
                   printColorAdjust: 'exact'
                 }}>
-                  ▼ Point le plus bas : {minPwrPoint.kW.toFixed(2)} kW ({minPwrPoint.date})
+                  ▼ Point le plus bas : {Number(minPwrPoint.kW).toFixed(2)} kW ({minPwrPoint.date})
                 </span>
               )}
             </div>
@@ -791,14 +791,14 @@ const EnedisPrintLayout = ({ visible, prm, data, consent, ownerName, ownerAddres
                     axisLine={{ stroke: '#cbd5e1' }}
                     domain={[0, (dataMax) => (dataMax > 0 ? (dataMax <= 10 ? Math.ceil(dataMax * 1.25) : Math.ceil(dataMax * 1.15)) : 10)]}
                   />
-                  {maxPwrPoint && (
+                  {maxPwrPoint && maxPwrPoint.kW != null && (
                     <ReferenceLine
                       y={maxPwrPoint.kW}
                       stroke="#ef4444"
                       strokeDasharray="4 4"
                       strokeWidth={1.5}
                       label={{
-                        value: `Point le plus haut : ${maxPwrPoint.kW.toFixed(2)} kW (${maxPwrPoint.date || ''})`,
+                        value: `Point le plus haut : ${Number(maxPwrPoint.kW).toFixed(2)} kW (${maxPwrPoint.date || ''})`,
                         position: 'top',
                         fill: '#dc2626',
                         fontSize: 8,

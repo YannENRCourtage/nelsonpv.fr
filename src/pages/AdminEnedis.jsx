@@ -14,6 +14,37 @@ import { useNavigate } from 'react-router-dom';
 import { savePrmToCache, PRM_HANDOFF_KEY } from '@/services/storageBatteryEngine';
 import { extractClientBillData } from '@/services/clientBillExtractor';
 
+class EnedisErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.warn('[EnedisErrorBoundary] Error caught:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 text-center space-y-3 my-4">
+          <p className="font-bold text-amber-900">Module temporairement indisponible pour ce PRM</p>
+          <p className="text-xs text-amber-700">Les données de mesure sont en cours d'initialisation. Cliquez sur Réessayer ou actualisez la page.</p>
+          <button 
+            type="button"
+            className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 cursor-pointer transition-colors"
+            onClick={() => this.setState({ hasError: false, error: null })}
+          >
+            Réessayer
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function AdminEnedis() {
   const [prm, setPrm] = useState('');
   const [data, setData] = useState(null);
@@ -808,17 +839,19 @@ export default function AdminEnedis() {
                     </div>
 
                     {/* PROPOSITION DE STOCKAGE INTELLIGENT & SIMULATION DE RENTABILITÉ (VISIBLE MÊME HORS CHARGEMENT DE PDL) */}
-                    <div id="safra-proposal-section">
-                      <SafraBessProposalModule
-                        prm={prm || '50009371514981'}
-                        titulaire={ownerName || 'Client Professionnel (Simulation)'}
-                        adresse={ownerAddress || 'LIEU DIT TERRES VIEILLES, 24310 BRANTOME EN PERIGORD'}
-                        consoAnnuelleKwh={totalKwh || 211781}
-                        consoJourMoyKwh={avgDaily || 578.6}
-                        peakKw={peakKw || 90.0}
-                        toast={toast}
-                      />
-                    </div>
+                    <EnedisErrorBoundary>
+                      <div id="safra-proposal-section">
+                        <SafraBessProposalModule
+                          prm={prm || '50009371514981'}
+                          titulaire={ownerName || 'Client Professionnel (Simulation)'}
+                          adresse={ownerAddress || 'LIEU DIT TERRES VIEILLES, 24310 BRANTOME EN PERIGORD'}
+                          consoAnnuelleKwh={totalKwh || 211781}
+                          consoJourMoyKwh={avgDaily || 578.6}
+                          peakKw={peakKw || 90.0}
+                          toast={toast}
+                        />
+                      </div>
+                    </EnedisErrorBoundary>
                   </div>
                 ) : (
                   <div className="flex-1 animate-in fade-in slide-in-from-right-8 duration-700 flex flex-col gap-4">
@@ -1016,22 +1049,26 @@ export default function AdminEnedis() {
                     )}
 
                     
-                    <div className="flex-1 bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden transition-all hover:shadow-blue-100/50">
-                      <ConsumptionChart data={data} loading={loading} />
-                    </div>
+                    <EnedisErrorBoundary>
+                      <div className="flex-1 bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden transition-all hover:shadow-blue-100/50">
+                        <ConsumptionChart data={data} loading={loading} />
+                      </div>
+                    </EnedisErrorBoundary>
 
                     {/* PROPOSITION DE STOCKAGE INTELLIGENT SAFRA & SIMULATION DE RENTABILITÉ */}
-                    <div id="safra-proposal-section">
-                      <SafraBessProposalModule
-                        prm={prm}
-                        titulaire={ownerName}
-                        adresse={ownerAddress}
-                        consoAnnuelleKwh={totalKwh || (data?.annualConsumption ? Number(data.annualConsumption) : null)}
-                        consoJourMoyKwh={avgDaily}
-                        peakKw={peakKw || (data?.peakKw ? Number(data.peakKw) : null)}
-                        toast={toast}
-                      />
-                    </div>
+                    <EnedisErrorBoundary>
+                      <div id="safra-proposal-section">
+                        <SafraBessProposalModule
+                          prm={prm}
+                          titulaire={ownerName}
+                          adresse={ownerAddress}
+                          consoAnnuelleKwh={totalKwh || (data?.annualConsumption ? Number(data.annualConsumption) : null)}
+                          consoJourMoyKwh={avgDaily}
+                          peakKw={peakKw || (data?.peakKw ? Number(data.peakKw) : null)}
+                          toast={toast}
+                        />
+                      </div>
+                    </EnedisErrorBoundary>
 
 
                     {/* JSON Panel — collapsible */}
@@ -1222,16 +1259,20 @@ export default function AdminEnedis() {
         </Tabs>
       </div>
 
-      <EnedisPrintLayout
-        visible={isPrinting}
-        prm={prm}
-        data={data}
-        consent={consents.find(c => c.prm === prm) || {}}
-        ownerName={ownerName}
-        ownerAddress={ownerAddress}
-        customKwh={customKwh && Number(customKwh) !== 5850 ? Number(customKwh) : totalKwh}
-        customPeakKw={customPeakKw ? Number(customPeakKw) : peakKw}
-      />
+      {isPrinting && (
+        <EnedisErrorBoundary>
+          <EnedisPrintLayout
+            visible={isPrinting}
+            prm={prm}
+            data={data}
+            consent={consents.find(c => c.prm === prm) || {}}
+            ownerName={ownerName}
+            ownerAddress={ownerAddress}
+            customKwh={customKwh && Number(customKwh) !== 5850 ? Number(customKwh) : totalKwh}
+            customPeakKw={customPeakKw ? Number(customPeakKw) : peakKw}
+          />
+        </EnedisErrorBoundary>
+      )}
 
       {/* ===== MODAL DE CONSENTEMENT PAR EMAIL ===== */}
       {consentModal && (

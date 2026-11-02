@@ -57,9 +57,9 @@ export default function SafraBessProposalModule({
 }) {
   const navigate = useNavigate();
   // Valeurs sécurisées par défaut pour fonctionner en mode autonome (même sans charger de PDL)
-  const safeConsoAnnuelle = Number(consoAnnuelleKwh) > 0 ? Number(consoAnnuelleKwh) : 211781;
-  const safeConsoJour = Number(consoJourMoyKwh) > 0 ? Number(consoJourMoyKwh) : 578.6;
-  const safePeakKw = Number(peakKw) > 0 ? Number(peakKw) : 90.0;
+  const safeConsoAnnuelle = (consoAnnuelleKwh != null && Number(consoAnnuelleKwh) > 0) ? Number(consoAnnuelleKwh) : 211781;
+  const safeConsoJour = (consoJourMoyKwh != null && Number(consoJourMoyKwh) > 0) ? Number(consoJourMoyKwh) : 578.6;
+  const safePeakKw = (peakKw != null && Number(peakKw) > 0) ? Number(peakKw) : 90.0;
   const safePrm = prm || 'Simulation libre (hors PDL)';
   const safeTitulaire = titulaire || 'Client Professionnel (Simulation)';
   const safeAdresse = adresse || 'LIEU DIT TERRES VIEILLES, 24310 BRANTOME EN PERIGORD';
