@@ -14,7 +14,6 @@ import { findBessOdreData } from '@/data/bessOdreMatrix.js';
 import { cadastreService } from '@/services/CadastreService.js';
 import { useAuth } from '@/contexts/AuthContext';
 import DpInstructionCard from './DpInstructionCard';
-import DpInstructionDashboardBanner from './DpInstructionDashboardBanner';
 import DemandeCertificatTaciteModal from './DemandeCertificatTaciteModal';
 import { resolveProjectDepositDate, formatToIsoDate } from '@/services/dpInstructionService';
 
@@ -984,31 +983,6 @@ export default function EtudeDossierView({
           />
         </div>
       </div>
-
-      {/* ── BANDEAU SYNTHÉTIQUE DU SUIVI DES DP (LÉGAL & ACCORD TACITE) ── */}
-      <DpInstructionDashboardBanner
-        projects={allProjects && allProjects.length > 0 ? allProjects : (project ? [project] : [])}
-        activeProjectId={project?.id}
-        onSelectProject={(p) => {
-          if (onSelectProject) onSelectProject(p);
-        }}
-        onRequestCertificate={(arg1, arg2, arg3) => {
-          let p = arg1;
-          let tl = arg2;
-          let m = arg3;
-          if (arg1 && typeof arg1 === 'object' && ('project' in arg1 || 'timeline' in arg1)) {
-            p = arg1.project;
-            tl = arg1.timeline;
-            m = arg1.mairieInfo;
-          }
-          setCertificatModalData({
-            isOpen: true,
-            project: p || project,
-            timeline: tl,
-            mairieInfo: m || p?.dp_mairie_info || null,
-          });
-        }}
-      />
 
       {/* ── LES 3 ZONES DE WORKFLOW EN 3 COLONNES (SANS SCROLL VERTICAL) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
