@@ -617,40 +617,7 @@ function generateMandateLinkyData(prmVal, targetKwh = null, clientName = 'Client
         last_name: lastname,
         identity: clientName || 'Client',
         address: clientAddress
-      }]
-    }
-  };
-}
-      meter_reading: {
-        usage_point_id: prmVal,
-        start: startDate,
-        end: endDate,
-        quality: "BRUT",
-        reading_type: { unit: "Wh", measurement_kind: "energy" },
-        interval_reading: dailyReadings
-      }
-    },
-    loadCurve: {
-      meter_reading: {
-        usage_point_id: prmVal,
-        start: loadStartDate,
-        end: endDate,
-        quality: "BRUT",
-        reading_type: { unit: "W", measurement_kind: "power" },
-        interval_reading: loadReadings
-      }
-    },
-    maxPower: {
-      meter_reading: {
-        usage_point_id: prmVal,
-        start: startDate,
-        end: endDate,
-        quality: "BRUT",
-        reading_type: { unit: "VA", measurement_kind: "power" },
-        interval_reading: maxPowerReadings
-      }
-    },
-    identity: {
+      }],
       customers: [{
         customer: {
           person: { firstname, lastname }

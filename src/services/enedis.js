@@ -46,7 +46,11 @@ const enedisService = {
       } else if (error.response?.status === 403) {
         throw new Error('Accès refusé ou scope insuffisant. Renouvelez le consentement ou le mandat.');
       } else {
-        throw new Error(error.response?.data?.error || error.message || 'Erreur lors de la récupération des données.');
+        const rawErr = error.response?.data?.error;
+        const msg = typeof rawErr === 'string' 
+          ? rawErr 
+          : (rawErr?.message || rawErr?.description || error.message || 'Erreur lors de la récupération des données.');
+        throw new Error(msg);
       }
     }
   },

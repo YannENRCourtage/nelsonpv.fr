@@ -272,9 +272,12 @@ export default function AdminEnedis() {
     } catch (err) {
       console.error(err);
       setStatus('disconnected');
+      const msg = typeof err?.message === 'string'
+        ? err.message
+        : (typeof err === 'string' ? err : (err?.error || err?.statusText || "Erreur lors de la récupération"));
       toast({ 
         title: "Erreur", 
-        description: err.message || "Erreur lors de la récupération", 
+        description: msg, 
         variant: "destructive" 
       });
     } finally {

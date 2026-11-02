@@ -189,8 +189,14 @@ export default function MandatSignatureModal({
         })
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur lors de la génération du lien de signature');
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (_) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Erreur serveur HTTP ${res.status}`);
+      }
+      if (!res.ok) throw new Error(data.error || `Erreur lors de la génération du lien (${res.status})`);
 
       setResult(data);
 
