@@ -31,7 +31,7 @@ export function formatSignedNum(val, decimals = 0, suffix = ' €') {
 }
 
 // ─── En-tête officiel ENR Courtage / Nelson ───
-function drawHeader(doc, title, subtitle, pageNum, totalPages) {
+function drawHeader(doc, title, subtitle, pageNum, totalPages, subtitleLine2 = null) {
   if (ENR_COURTAGE_LOGO_BASE64) {
     try {
       doc.addImage(ENR_COURTAGE_LOGO_BASE64, 'PNG', 14, 8, 38, 12);
@@ -47,18 +47,25 @@ function drawHeader(doc, title, subtitle, pageNum, totalPages) {
   doc.text(`Document confidentiel · Édité le ${new Date().toLocaleDateString('fr-FR')}`, 196, 16.5, { align: 'right' });
 
   doc.setDrawColor(226, 232, 240);
-  doc.line(14, 22, 196, 22);
+  doc.line(14, 20.5, 196, 20.5);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(13.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(title, 14, 29);
+  doc.text(title, 14, 26.5);
 
   if (subtitle) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8.2);
     doc.setTextColor(71, 85, 105);
-    doc.text(subtitle, 14, 34);
+    doc.text(subtitle, 14, subtitleLine2 ? 30.8 : 32.5);
+  }
+
+  if (subtitleLine2) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(subtitleLine2, 14, 34.8);
   }
 }
 
@@ -78,22 +85,24 @@ function drawFooter(doc, pageNum, totalPages, isBank = false) {
 // ═══════════════════════════════════════════════════════════════════════════
 // 1. PDF ÉTUDE COMMERCIALE CLIENT (2 PAGES SYNTHÉTIQUES & DÉTAILLÉES)
 // ═══════════════════════════════════════════════════════════════════════════
-export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
+export function generateClientCommercialPdf(params = {}) {
+  const { sim, projectInfo = {} } = params;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const totalPages = 3;
 
-  const clientName = projectInfo.clientName || 'Client Professionnel';
-  const prm = projectInfo.prm || 'PRM Non spécifié';
-  const address = projectInfo.address || 'France';
+  const clientName = projectInfo.clientName || params.clientName || params.prmInfo?.titulaire || 'Client Professionnel';
+  const prm = projectInfo.prm || params.prm || params.prmInfo?.prm || 'PRM Non spécifié';
+  const address = projectInfo.address || params.address || projectInfo.siteAddress || params.siteAddress || '';
   const solar = sim.input.solar || {};
 
   // ── PAGE 1 : PROPOSITION COMMERCIALE & SYNTHÈSE TECHNIQUE ──
   drawHeader(
     doc,
     'PROPOSITION COMMERCIALE : STOCKAGE INTELLIGENT BESS',
-    `Étude de rentabilité pour ${clientName} · ${prm} · ${address}`,
+    `Étude de rentabilité pour ${clientName} · ${prm}`,
     1,
-    totalPages
+    totalPages,
+    address && address !== 'France' ? address : null
   );
 
   // Cartouche Client & PRM
@@ -463,14 +472,15 @@ export function generateClientCommercialPdf({ sim, projectInfo = {} }) {
 
   // Note explicative
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, 221, 182, 16, 1.8, 1.8, 'F');
+  doc.roundedRect(14, 221, 182, 19, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(14, 221, 182, 16, 1.8, 1.8, 'D');
+  doc.roundedRect(14, 221, 182, 19, 2, 2, 'D');
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
+  doc.setFontSize(7.0);
   doc.setTextColor(100, 116, 139);
-  doc.text('Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour', 18, 226.5);
-  doc.text('en chargeant prioritairement sur le surplus solaire (ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 232);
+  doc.text('Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation', 18, 226.5);
+  doc.text('et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour en chargeant prioritairement sur le surplus solaire', 18, 231.5);
+  doc.text('(ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 236.5);
 
   drawFooter(doc, 2, totalPages, false);
 
@@ -1072,6 +1082,50 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
   return filename;
 }
 
+// ─── Lissage Spline Monotone (Fritsch-Carlson / Steffen C1 sans dépassement) ───
+function getMonotoneSplinePoints(pts, steps = 4) {
+  const n = pts.length;
+  if (n < 2) return pts;
+  const dx = [], dy = [], S = [];
+  for (let i = 0; i < n - 1; i++) {
+    const dxi = pts[i + 1].x - pts[i].x;
+    const dyi = pts[i + 1].y - pts[i].y;
+    dx.push(dxi);
+    dy.push(dyi);
+    S.push(dxi === 0 ? 0 : dyi / dxi);
+  }
+  const m = new Array(n);
+  m[0] = S[0];
+  m[n - 1] = S[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    if (S[i - 1] * S[i] <= 0) {
+      m[i] = 0;
+    } else {
+      const p = (S[i - 1] * dx[i] + S[i] * dx[i - 1]) / (dx[i - 1] + dx[i]);
+      m[i] = Math.sign(S[i - 1]) * Math.min(Math.abs(S[i - 1]), Math.abs(S[i]), 0.5 * Math.abs(p));
+    }
+  }
+  const result = [];
+  for (let i = 0; i < n - 1; i++) {
+    const x0 = pts[i].x, y0 = pts[i].y;
+    const x1 = pts[i + 1].x, y1 = pts[i + 1].y;
+    const dxi = dx[i], m0 = m[i], m1 = m[i + 1];
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps;
+      const t2 = t * t, t3 = t2 * t;
+      const h00 = 2 * t3 - 3 * t2 + 1;
+      const h10 = t3 - 2 * t2 + t;
+      const h01 = -2 * t3 + 3 * t2;
+      const h11 = t3 - t2;
+      const x = x0 + t * dxi;
+      const y = h00 * y0 + h10 * dxi * m0 + h01 * y1 + h11 * dxi * m1;
+      result.push({ x, y });
+    }
+  }
+  result.push(pts[n - 1]);
+  return result;
+}
+
 // ─── Graphique Vectoriel Journalier 24h & Écrêtage BESS (réutilisable) ───
 function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newPeakKw = 49.5, solarEnabled = false) {
   doc.setFillColor(248, 250, 252);
@@ -1090,7 +1144,7 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
   doc.text(`Pointe avant : ${peakKw.toFixed(1)} kW  -  Pointe après BESS : ${newPeakKw.toFixed(1)} kW (-${(peakKw - newPeakKw).toFixed(1)} kW écrêtés)`, x + 4, y + 8.8);
 
   const legItems = [
-    { label: 'Conso Site (kW)', color: [100, 116, 139], type: 'line' },
+    { label: 'Conso Site (kW)', color: [100, 116, 139], type: 'dash' },
     ...(solarEnabled ? [{ label: 'Solaire (kW)', color: [245, 158, 11], type: 'area' }] : []),
     { label: 'Recharge BESS (kW)', color: [16, 185, 129], type: 'area' },
     { label: 'Soutirage après BESS (kW)', color: [37, 99, 235], type: 'line' },
@@ -1145,7 +1199,7 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
     doc.text(`${val} kW`, plotX - 1.5, gy + 1, { align: 'right' });
 
     const pctVal = Math.round((100 / steps) * s);
-    doc.setTextColor(8, 145, 178);
+    doc.setTextColor(147, 51, 234);
     doc.text(`${pctVal} %`, plotX + plotW + 1.5, gy + 1, { align: 'left' });
     doc.setTextColor(148, 163, 184);
   }
@@ -1163,99 +1217,98 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
   if (n > 1) {
     const baseGroundY = plotY + plotH;
 
+    // 1. Production Solaire (Area + Stroke)
     if (solarEnabled) {
+      const rawSolar = chartData.map((d, i) => ({
+        x: plotX + (i / (n - 1)) * plotW,
+        y: Math.min(baseGroundY, Math.max(plotY, plotY + plotH - (Math.min(maxKw, Math.max(0, d.solaire || 0)) / maxKw) * plotH))
+      }));
+      const smoothSolar = getMonotoneSplinePoints(rawSolar, 4);
+
       doc.setFillColor(254, 243, 199);
-      for (let i = 0; i < n - 1; i++) {
-        const x1 = plotX + (i / (n - 1)) * plotW;
-        const y1 = plotY + plotH - (Math.min(maxKw, chartData[i].solaire || 0) / maxKw) * plotH;
-        const x2 = plotX + ((i + 1) / (n - 1)) * plotW;
-        const y2 = plotY + plotH - (Math.min(maxKw, chartData[i + 1].solaire || 0) / maxKw) * plotH;
-        doc.triangle(x1, y1, x2, y2, x1, baseGroundY, 'F');
-        doc.triangle(x2, y2, x2, baseGroundY, x1, baseGroundY, 'F');
+      for (let i = 0; i < smoothSolar.length - 1; i++) {
+        const p1 = smoothSolar[i];
+        const p2 = smoothSolar[i + 1];
+        if (p1.y < baseGroundY || p2.y < baseGroundY) {
+          doc.triangle(p1.x, p1.y, p2.x, p2.y, p1.x, baseGroundY, 'F');
+          doc.triangle(p2.x, p2.y, p2.x, baseGroundY, p1.x, baseGroundY, 'F');
+        }
       }
       doc.setDrawColor(245, 158, 11);
-      doc.setLineWidth(0.4);
-      for (let i = 0; i < n - 1; i++) {
-        const x1 = plotX + (i / (n - 1)) * plotW;
-        const y1 = plotY + plotH - (Math.min(maxKw, chartData[i].solaire || 0) / maxKw) * plotH;
-        const x2 = plotX + ((i + 1) / (n - 1)) * plotW;
-        const y2 = plotY + plotH - (Math.min(maxKw, chartData[i + 1].solaire || 0) / maxKw) * plotH;
-        doc.line(x1, y1, x2, y2);
+      doc.setLineWidth(0.45);
+      doc.setLineDashPattern([], 0);
+      for (let i = 0; i < smoothSolar.length - 1; i++) {
+        doc.line(smoothSolar[i].x, smoothSolar[i].y, smoothSolar[i + 1].x, smoothSolar[i + 1].y);
       }
     }
+
+    // 2. Recharge Batterie (Area + Stroke)
+    const rawStockage = chartData.map((d, i) => ({
+      x: plotX + (i / (n - 1)) * plotW,
+      y: Math.min(baseGroundY, Math.max(plotY, plotY + plotH - (Math.min(maxKw, Math.max(0, d.stockage || 0)) / maxKw) * plotH))
+    }));
+    const smoothStockage = getMonotoneSplinePoints(rawStockage, 4);
 
     doc.setFillColor(209, 250, 229);
-    for (let i = 0; i < n - 1; i++) {
-      const ch1 = Math.min(maxKw, chartData[i].stockage || 0);
-      const ch2 = Math.min(maxKw, chartData[i + 1].stockage || 0);
-      if (ch1 > 0 || ch2 > 0) {
-        const x1 = plotX + (i / (n - 1)) * plotW;
-        const y1 = plotY + plotH - (ch1 / maxKw) * plotH;
-        const x2 = plotX + ((i + 1) / (n - 1)) * plotW;
-        const y2 = plotY + plotH - (ch2 / maxKw) * plotH;
-        doc.triangle(x1, y1, x2, y2, x1, baseGroundY, 'F');
-        doc.triangle(x2, y2, x2, baseGroundY, x1, baseGroundY, 'F');
+    for (let i = 0; i < smoothStockage.length - 1; i++) {
+      const p1 = smoothStockage[i];
+      const p2 = smoothStockage[i + 1];
+      if (p1.y < baseGroundY || p2.y < baseGroundY) {
+        doc.triangle(p1.x, p1.y, p2.x, p2.y, p1.x, baseGroundY, 'F');
+        doc.triangle(p2.x, p2.y, p2.x, baseGroundY, p1.x, baseGroundY, 'F');
       }
     }
     doc.setDrawColor(16, 185, 129);
-    doc.setLineWidth(0.35);
-    for (let i = 0; i < n - 1; i++) {
-      const ch1 = Math.min(maxKw, chartData[i].stockage || 0);
-      const ch2 = Math.min(maxKw, chartData[i + 1].stockage || 0);
-      if (ch1 > 0 || ch2 > 0) {
-        const x1 = plotX + (i / (n - 1)) * plotW;
-        const y1 = plotY + plotH - (ch1 / maxKw) * plotH;
-        const x2 = plotX + ((i + 1) / (n - 1)) * plotW;
-        const y2 = plotY + plotH - (ch2 / maxKw) * plotH;
-        doc.line(x1, y1, x2, y2);
+    doc.setLineWidth(0.45);
+    doc.setLineDashPattern([], 0);
+    for (let i = 0; i < smoothStockage.length - 1; i++) {
+      if (smoothStockage[i].y < baseGroundY - 0.05 || smoothStockage[i + 1].y < baseGroundY - 0.05) {
+        doc.line(smoothStockage[i].x, smoothStockage[i].y, smoothStockage[i + 1].x, smoothStockage[i + 1].y);
       }
     }
 
-    doc.setDrawColor(148, 163, 184);
-    doc.setLineWidth(0.35);
-    for (let i = 0; i < n - 1; i++) {
-      const x1 = plotX + (i / (n - 1)) * plotW;
-      const y1 = plotY + plotH - (Math.min(maxKw, chartData[i].conso || 0) / maxKw) * plotH;
-      const x2 = plotX + ((i + 1) / (n - 1)) * plotW;
-      const y2 = plotY + plotH - (Math.min(maxKw, chartData[i + 1].conso || 0) / maxKw) * plotH;
-      doc.line(x1, y1, x2, y2);
+    // 3. Consommation Site (dashed line #64748b)
+    const rawConso = chartData.map((d, i) => ({
+      x: plotX + (i / (n - 1)) * plotW,
+      y: Math.min(baseGroundY, Math.max(plotY, plotY + plotH - (Math.min(maxKw, Math.max(0, d.conso || 0)) / maxKw) * plotH))
+    }));
+    const smoothConso = getMonotoneSplinePoints(rawConso, 4);
+
+    doc.setDrawColor(100, 116, 139);
+    doc.setLineWidth(0.45);
+    doc.setLineDashPattern([1.5, 1.2], 0);
+    for (let i = 0; i < smoothConso.length - 1; i++) {
+      doc.line(smoothConso[i].x, smoothConso[i].y, smoothConso[i + 1].x, smoothConso[i + 1].y);
     }
+
+    // 4. Soutirage Réseau après BESS (solid blue line #2563eb)
+    const rawReseau = chartData.map((d, i) => ({
+      x: plotX + (i / (n - 1)) * plotW,
+      y: Math.min(baseGroundY, Math.max(plotY, plotY + plotH - (Math.min(maxKw, Math.max(0, d.reseauApres || 0)) / maxKw) * plotH))
+    }));
+    const smoothReseau = getMonotoneSplinePoints(rawReseau, 4);
 
     doc.setDrawColor(37, 99, 235);
-    doc.setLineWidth(0.55);
-    for (let i = 0; i < n - 1; i++) {
-      const x1 = plotX + (i / (n - 1)) * plotW;
-      const y1 = plotY + plotH - (Math.min(maxKw, chartData[i].reseauApres || 0) / maxKw) * plotH;
-      const x2 = plotX + ((i + 1) / (n - 1)) * plotW;
-      const y2 = plotY + plotH - (Math.min(maxKw, chartData[i + 1].reseauApres || 0) / maxKw) * plotH;
-      doc.line(x1, y1, x2, y2);
+    doc.setLineWidth(0.65);
+    doc.setLineDashPattern([], 0);
+    for (let i = 0; i < smoothReseau.length - 1; i++) {
+      doc.line(smoothReseau[i].x, smoothReseau[i].y, smoothReseau[i + 1].x, smoothReseau[i + 1].y);
     }
+
+    // 5. Niveau de Charge BESS (%) (dashed purple line #9333ea)
+    const rawSoc = chartData.map((d, i) => ({
+      x: plotX + (i / (n - 1)) * plotW,
+      y: Math.min(baseGroundY, Math.max(plotY, plotY + plotH - (Math.min(100, Math.max(0, d.socPct || 0)) / 100) * plotH))
+    }));
+    const smoothSoc = getMonotoneSplinePoints(rawSoc, 4);
 
     doc.setDrawColor(147, 51, 234);
-    doc.setLineWidth(0.45);
-    for (let i = 0; i < n - 1; i++) {
-      const soc1 = Math.min(100, Math.max(0, chartData[i].socPct || 0));
-      const soc2 = Math.min(100, Math.max(0, chartData[i + 1].socPct || 0));
-      const x1 = plotX + (i / (n - 1)) * plotW;
-      const y1 = plotY + plotH - (soc1 / 100) * plotH;
-      const x2 = plotX + ((i + 1) / (n - 1)) * plotW;
-      const y2 = plotY + plotH - (soc2 / 100) * plotH;
-      const mx = (x1 + x2) / 2;
-      const my = (y1 + y2) / 2;
-      doc.line(x1, y1, mx - 0.2, my);
-      doc.line(mx + 0.2, my, x2, y2);
+    doc.setLineWidth(0.55);
+    doc.setLineDashPattern([1.8, 1.2], 0);
+    for (let i = 0; i < smoothSoc.length - 1; i++) {
+      doc.line(smoothSoc[i].x, smoothSoc[i].y, smoothSoc[i + 1].x, smoothSoc[i + 1].y);
     }
-  }
-
-  if (newPeakKw && newPeakKw < peakKw) {
-    const capY = plotY + plotH - (Math.min(maxKw, newPeakKw) / maxKw) * plotH;
-    doc.setDrawColor(16, 185, 129);
-    doc.setLineWidth(0.3);
-    doc.line(plotX, capY, plotX + plotW, capY);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.0);
-    doc.setTextColor(16, 185, 129);
-    doc.text(`Plafond écrêté : ${newPeakKw.toFixed(1)} kW`, plotX + plotW - 1, capY - 1, { align: 'right' });
+    doc.setLineDashPattern([], 0);
   }
 }
 
