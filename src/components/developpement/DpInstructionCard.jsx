@@ -36,7 +36,7 @@ export default function DpInstructionCard({
   // Date de dépôt initial résolue intelligemment
   const [depositDate, setDepositDate] = useState(() => {
     const resolved = resolveProjectDepositDate(project, stepState);
-    return formatToIsoDate(resolved);
+    return resolved ? formatToIsoDate(resolved) : '';
   });
 
   // Régime
@@ -79,7 +79,7 @@ export default function DpInstructionCard({
     
     // Résolution robuste de la date de dépôt pour ne jamais afficher "Invalid Date"
     const resolved = resolveProjectDepositDate(project, stepState);
-    const isoDate = formatToIsoDate(resolved);
+    const isoDate = resolved ? formatToIsoDate(resolved) : '';
     setDepositDate(isoDate);
 
     setRegime(stepState?.regime || project?.dp_regime || '1_mois');

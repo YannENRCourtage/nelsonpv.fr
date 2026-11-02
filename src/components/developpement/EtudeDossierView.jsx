@@ -195,7 +195,7 @@ export default function EtudeDossierView({
         if (!initialized[key]) {
           initialized[key] = {
             status: 'pending',
-            lastIntervention: new Date().toLocaleDateString('fr-FR'),
+            lastIntervention: '',
             deadline: '',
             notes: '',
             registrationNumber: existingNum,
@@ -208,9 +208,7 @@ export default function EtudeDossierView({
         }
         if (key === 'dp') {
           const resolvedDate = resolveProjectDepositDate(project, initialized.dp);
-          if (resolvedDate && !initialized.dp.depositDate) {
-            initialized.dp.depositDate = formatToIsoDate(resolvedDate);
-          }
+          initialized.dp.depositDate = resolvedDate ? formatToIsoDate(resolvedDate) : '';
         }
       });
       setStepsState(initialized);
@@ -220,16 +218,14 @@ export default function EtudeDossierView({
       INITIAL_STEPS_CONFIG.forEach(s => {
         defaultState[s.id] = {
           status: 'pending',
-          lastIntervention: new Date().toLocaleDateString('fr-FR'),
+          lastIntervention: '',
           deadline: '',
           notes: '',
           registrationNumber: project?.[`${s.id}_registration_number`] || project?.[`numero_${s.id}`] || project?.[`num_${s.id}`] || '',
         };
       });
       const resolvedDate = resolveProjectDepositDate(project, defaultState.dp);
-      if (resolvedDate) {
-        defaultState.dp.depositDate = formatToIsoDate(resolvedDate);
-      }
+      defaultState.dp.depositDate = resolvedDate ? formatToIsoDate(resolvedDate) : '';
       setStepsState(defaultState);
     }
   }, [project?.id, project?.devWorkflow, project?.devComments]);

@@ -22,13 +22,13 @@ export default function DpInstructionDashboardBanner({
   onRequestCertificate,
   onUpdateProject,
 }) {
-  const [filter, setFilter] = useState('all'); // 'all' | 'en_cours' | 'accord_tacite' | 'certificat_obtenu'
+  const [filter, setFilter] = useState('all'); // 'all' | 'en_cours' | 'accord_tacite' | 'accord_obtenu'
   const [isExpanded, setIsExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState(null);
 
-  // Analyse et calcul de la chronologie de tous les projets ayant une DP
+  // Analyse et calcul de la chronologie de tous les projets ayant fait l'objet d'un vrai dépôt de DP
   const analyzedProjects = useMemo(() => {
     if (!projects || projects.length === 0) return [];
 
@@ -43,7 +43,7 @@ export default function DpInstructionDashboardBanner({
       const norm = normalizeDpNumber(rawDp);
       const displayDp = norm?.normalized || rawDp;
 
-      // Détection date de dépôt DP par ordre de priorité strict (FIN DU "Invalid Date")
+      // Détection date de dépôt DP par ordre de priorité strict (vrais dépôts uniquement)
       const resolvedDate = resolveProjectDepositDate(p);
 
       // Régime
@@ -71,12 +71,34 @@ export default function DpInstructionDashboardBanner({
       // Mairie info existante
       const mairie = p.dp_mairie_info || p.devWorkflow?.dp?.dp_mairie_info || null;
 
+      // Statut de l'étape DP dans le workflow
+      const dpStep = p.devWorkflow?.dp || {};
+      const dpStatus = p.dp_status || dpStep.status || 'pending';
+      const isStepPending = dpStatus === 'pending';
+
+      // Un dossier ne doit apparaître dans le suivi des délais DP QUE s'il a fait l'objet d'un dépôt réel :
+      // 1. Soit il a un vrai numéro de DP officiel (ex: DP 087 126 26 00074) et non pas un placeholder
+      // 2. Soit son certificat ou accord est déjà obtenu / validé
+      // 3. Soit il a une date de dépôt explicite ET son étape DP n'est PAS en attente / pending
+      const hasRealDpNumber = Boolean(
+        rawDp && 
+        rawDp.length >= 7 && 
+        !rawDp.toLowerCase().includes('attente') &&
+        !rawDp.toLowerCase().includes('sans')
+      );
+      const hasRealDepositDate = Boolean(resolvedDate && timeline?.isValid);
+      const isDeposited = Boolean(
+        hasRealDpNumber || 
+        certificateObtained || 
+        (hasRealDepositDate && !isStepPending)
+      );
+
       return {
         project: p,
         dpNum: displayDp,
         rawDp,
         codeInsee: norm?.codeInsee || p.inseeCode || p.citycode || '',
-        hasDp: Boolean(rawDp || resolvedDate || p.devWorkflow?.dp?.registrationNumber),
+        isDeposited,
         depositDate: resolvedDate,
         timeline,
         mairieInfo: mairie,
@@ -84,7 +106,7 @@ export default function DpInstructionDashboardBanner({
         dpt: p.zip ? p.zip.slice(0, 2) : (norm?.dpt2 || ''),
         title: p.name || p.title || `Projet ${p.id || ''}`,
       };
-    }).filter(item => item.hasDp);
+    }).filter(item => item.isDeposited);
   }, [projects]);
 
   // Compteurs
@@ -92,16 +114,28 @@ export default function DpInstructionDashboardBanner({
     let all = analyzedProjects.length;
     let enCours = 0;
     let accordTacite = 0;
-    let certifie = 0;
+    let accordObtenu = 0;
 
     analyzedProjects.forEach(item => {
       const status = item.timeline?.status;
-      if (status === 'accord_tacite') accordTacite++;
-      else if (status === 'certificat_obtenu') certifie++;
-      else if (status === 'en_cours') enCours++;
+      const isObtained = Boolean(
+        status === 'certificat_obtenu' ||
+        item.project?.dp_certificate_obtained ||
+        item.project?.dp_status === 'validated' ||
+        item.project?.devWorkflow?.dp?.status === 'validated' ||
+        item.timeline?.certificateObtained
+      );
+
+      if (isObtained) {
+        accordObtenu++;
+      } else if (status === 'accord_tacite') {
+        accordTacite++;
+      } else if (status === 'en_cours') {
+        enCours++;
+      }
     });
 
-    return { all, enCours, accordTacite, certifie };
+    return { all, enCours, accordTacite, accordObtenu };
   }, [analyzedProjects]);
 
   // Filtrage des éléments affichés (Onglet + Recherche texte avec ou sans espace)
@@ -111,9 +145,17 @@ export default function DpInstructionDashboardBanner({
     return analyzedProjects.filter(item => {
       // Filtre statut
       const status = item.timeline?.status;
-      if (filter === 'en_cours' && status !== 'en_cours') return false;
-      if (filter === 'accord_tacite' && status !== 'accord_tacite') return false;
-      if (filter === 'certificat_obtenu' && status !== 'certificat_obtenu') return false;
+      const isObtained = Boolean(
+        status === 'certificat_obtenu' ||
+        item.project?.dp_certificate_obtained ||
+        item.project?.dp_status === 'validated' ||
+        item.project?.devWorkflow?.dp?.status === 'validated' ||
+        item.timeline?.certificateObtained
+      );
+
+      if (filter === 'en_cours' && (status !== 'en_cours' || isObtained)) return false;
+      if (filter === 'accord_tacite' && (status !== 'accord_tacite' || isObtained)) return false;
+      if (filter === 'accord_obtenu' && !isObtained) return false;
 
       // Filtre recherche textuelle
       if (qClean) {
@@ -190,7 +232,7 @@ export default function DpInstructionDashboardBanner({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden mb-5">
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden flex flex-col flex-1 min-h-[calc(100vh-230px)]">
       {/* Barre supérieure dégradée */}
       <div className="h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500" />
 
@@ -325,16 +367,16 @@ export default function DpInstructionDashboardBanner({
 
         <button
           type="button"
-          onClick={() => setFilter('certificat_obtenu')}
+          onClick={() => setFilter('accord_obtenu')}
           className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-            filter === 'certificat_obtenu'
-              ? 'bg-blue-600 text-white shadow-xs'
+            filter === 'accord_obtenu'
+              ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-400/40'
               : 'bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200/80'
           }`}
         >
-          <span>✅ Certificat obtenu / Purgé</span>
-          <span className={`px-1.5 py-0.2 rounded-md text-[10px] ${filter === 'certificat_obtenu' ? 'bg-blue-800 text-white' : 'bg-blue-200/80 text-blue-900'}`}>
-            {stats.certifie}
+          <span>✅ Accords DP déjà obtenus</span>
+          <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-black ${filter === 'accord_obtenu' ? 'bg-blue-800 text-white' : 'bg-blue-200/80 text-blue-900'}`}>
+            {stats.accordObtenu}
           </span>
         </button>
       </div>
@@ -346,9 +388,9 @@ export default function DpInstructionDashboardBanner({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
+            className="overflow-hidden flex-1 flex flex-col min-h-0"
           >
-            <div className="p-4 sm:px-6 divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
+            <div className="p-4 sm:px-6 divide-y divide-slate-100 flex-1 overflow-y-auto max-h-[calc(100vh-340px)] min-h-[500px]">
               {filteredList.length === 0 ? (
                 <div className="py-6 text-center text-xs text-slate-400 font-medium italic">
                   Aucun dossier ne correspond à votre filtre ou recherche.
@@ -357,7 +399,14 @@ export default function DpInstructionDashboardBanner({
                 filteredList.map((item) => {
                   const isSelected = activeProjectId === item.project.id;
                   const tl = item.timeline;
-                  const isTacit = tl?.status === 'accord_tacite';
+                  const isObtained = Boolean(
+                    tl?.status === 'certificat_obtenu' ||
+                    item.project?.dp_certificate_obtained ||
+                    item.project?.dp_status === 'validated' ||
+                    item.project?.devWorkflow?.dp?.status === 'validated' ||
+                    tl?.certificateObtained
+                  );
+                  const isTacit = !isObtained && tl?.status === 'accord_tacite';
 
                   return (
                     <div
@@ -419,15 +468,15 @@ export default function DpInstructionDashboardBanner({
 
                         {/* Badge de statut */}
                         <div className="shrink-0">
-                          {isTacit ? (
+                          {isObtained ? (
+                            <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                              Accord obtenu
+                            </span>
+                          ) : isTacit ? (
                             <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm animate-pulse">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               ACCORD TACITE ({tl?.counterBadge || 'J+X'})
-                            </span>
-                          ) : tl?.status === 'certificat_obtenu' ? (
-                            <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                              Certificat obtenu
                             </span>
                           ) : (
                             <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">

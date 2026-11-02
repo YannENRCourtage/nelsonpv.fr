@@ -680,7 +680,7 @@ export default function Developpement() {
       </aside>
 
       {/* ═══ MAIN VIEWPORT (Full-Width Monday.com Design) ════════════ */}
-      <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden w-full p-4 lg:p-6 space-y-6">
+      <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden w-full p-4 lg:p-6 space-y-6 flex flex-col">
         {/* Overlay de chargement génération PDF */}
         <AnimatePresence>
           {isGenerating && (
@@ -788,7 +788,7 @@ export default function Developpement() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.15 }}
-              className="space-y-6"
+              className="space-y-4 flex flex-col flex-1 min-h-[calc(100vh-140px)]"
             >
               {/* En-tête de la page Suivi Délais DP */}
               <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 rounded-2xl p-6 text-white border border-blue-900/40 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

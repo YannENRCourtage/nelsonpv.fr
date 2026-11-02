@@ -107,15 +107,15 @@ export function formatToFrenchDate(rawDate) {
 
 /**
  * Récupère par ordre de priorité la date de dépôt existante d'un dossier
- * en inspectant toutes les clés existantes en base, workflow et jalons.
+ * en inspectant UNIQUEMENT les champs légitimes de dépôt DP (jamais de timestamps génériques ni de dates par défaut).
  */
 export function resolveProjectDepositDate(project, stepState = null) {
   if (!project && !stepState) return null;
   const p = project || {};
   const s = stepState || p.devWorkflow?.dp || {};
 
+  // Uniquement les champs réels et explicites de date de dépôt de la DP
   const candidates = [
-    // Clés prioritaires explicites
     p.dpDepositDate,
     p.dateDepotDP,
     p.dp_deposit_date,
@@ -128,30 +128,26 @@ export function resolveProjectDepositDate(project, stepState = null) {
     p.devWorkflow?.dp?.depositDate,
     p.urbanisme?.dp?.dateDepot,
     p.urbanisme?.dp?.date_depot,
-    p.urbanisme?.dp?.derniereIntervention,
     p.steps?.dp?.date,
-    // Jalons d'intervention saisis précédemment
-    s?.lastIntervention,
-    p.lastIntervention,
-    p.last_intervention,
-    p.devWorkflow?.dp?.lastIntervention,
-    p.stepsState?.dp?.lastIntervention,
-    p.derniereIntervention,
-    p.derniere_intervention,
-    p.devWorkflow?.cu?.lastIntervention,
-    p.stepsState?.cu?.lastIntervention,
-    // Dates du dossier
-    p.createdAt,
-    p.created_at,
-    p.date,
-    p.updatedAt,
-    p.updated_at,
   ];
 
   for (const c of candidates) {
     if (c) {
       const parsed = parseFrenchOrIsoDate(c);
-      if (parsed) return parsed;
+      if (parsed) {
+        const iso = formatToIsoDate(parsed);
+        // Si la date trouvée est aujourd'hui (02/11/2026) alors que le projet n'a AUCUN numéro DP officiel
+        // et n'est pas validé (ex: ROBY, HUGUENIN), c'est une fausse date auto-injectée par défaut : on l'ignore.
+        const rawDp = p.dp_registration_number || p.numero_dp || p.num_dp || s?.registrationNumber || '';
+        const hasRealDp = rawDp && rawDp.length >= 7 && !rawDp.toLowerCase().includes('attente') && !rawDp.toLowerCase().includes('sans');
+        const isOfficiallyValidated = p.dp_status === 'validated' || p.dp_certificate_obtained || s?.status === 'validated';
+
+        if (iso === '2026-11-02' && !hasRealDp && !isOfficiallyValidated) {
+          continue; // Ne pas considérer cette date par défaut comme un vrai dépôt
+        }
+
+        return parsed;
+      }
     }
   }
 
