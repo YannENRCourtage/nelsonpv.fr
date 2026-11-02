@@ -15,56 +15,294 @@ import jsPDF from 'jspdf';
 import { ENR_COURTAGE_LOGO_BASE64 } from '../assets/logoBase64.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1. EXTRACTION DU CODE INSEE DEPUIS LE NUMÉRO DE DP
+// 1. EXTRACTION & NORMALISATION DU NUMÉRO DE DP
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Parse universel et robuste de n'importe quel format de date (français DD/MM/YYYY, ISO, timestamp)
+ * Ne renvoie JAMAIS "Invalid Date".
+ */
+export function parseFrenchOrIsoDate(rawDate) {
+  if (!rawDate) return null;
+  if (rawDate instanceof Date) {
+    return isNaN(rawDate.getTime()) ? null : rawDate;
+  }
+  // Support Timestamp Firestore ({ seconds, nanoseconds } ou méthode .toDate())
+  if (typeof rawDate === 'object') {
+    if (typeof rawDate.toDate === 'function') {
+      const d = rawDate.toDate();
+      return isNaN(d?.getTime()) ? null : d;
+    }
+    if (typeof rawDate.seconds === 'number') {
+      const d = new Date(rawDate.seconds * 1000);
+      return isNaN(d?.getTime()) ? null : d;
+    }
+  }
+
+  const str = String(rawDate).trim();
+  if (!str || str.toLowerCase() === 'invalid date' || str === '—' || str === '-' || str === 'jj/mm/aaaa') {
+    return null;
+  }
+
+  // 1. Format français DD/MM/YYYY ou DD-MM-YYYY (ex: "14/08/2026", "05/10/2026")
+  const frMatch = str.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4}|\d{2})/);
+  if (frMatch) {
+    const day = parseInt(frMatch[1], 10);
+    const month = parseInt(frMatch[2], 10) - 1; // 0-based
+    let year = parseInt(frMatch[3], 10);
+    if (year < 100) year += 2000;
+    const d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // 2. Format ISO YYYY-MM-DD
+  const isoMatch = str.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10);
+    const month = parseInt(isoMatch[2], 10) - 1;
+    const day = parseInt(isoMatch[3], 10);
+    const d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // 3. Timestamp numérique
+  if (/^\d+$/.test(str)) {
+    const num = parseInt(str, 10);
+    const d = new Date(num < 1e11 ? num * 1000 : num);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // 4. Date standard ISO / UTC
+  const standardDate = new Date(str);
+  if (!isNaN(standardDate.getTime())) {
+    return standardDate;
+  }
+
+  return null;
+}
+
+/**
+ * Formate une date en format ISO standard 'YYYY-MM-DD' (idéal pour <input type="date" />)
+ */
+export function formatToIsoDate(rawDate) {
+  const d = parseFrenchOrIsoDate(rawDate);
+  if (!d) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Formate une date en format français lisible 'DD/MM/YYYY'
+ */
+export function formatToFrenchDate(rawDate) {
+  const d = parseFrenchOrIsoDate(rawDate);
+  if (!d) return '—';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${day}/${m}/${y}`;
+}
+
+/**
+ * Récupère par ordre de priorité la date de dépôt existante d'un dossier
+ * en inspectant toutes les clés existantes en base, workflow et jalons.
+ */
+export function resolveProjectDepositDate(project, stepState = null) {
+  if (!project && !stepState) return null;
+  const p = project || {};
+  const s = stepState || p.devWorkflow?.dp || {};
+
+  const candidates = [
+    // Clés prioritaires explicites
+    p.dpDepositDate,
+    p.dateDepotDP,
+    p.dp_deposit_date,
+    p.date_depot_dp,
+    p.depositDate,
+    p.deposit_date,
+    s?.depositDate,
+    s?.dp_deposit_date,
+    p.stepsState?.dp?.depositDate,
+    p.devWorkflow?.dp?.depositDate,
+    p.urbanisme?.dp?.dateDepot,
+    p.urbanisme?.dp?.date_depot,
+    p.urbanisme?.dp?.derniereIntervention,
+    p.steps?.dp?.date,
+    // Jalons d'intervention saisis précédemment
+    s?.lastIntervention,
+    p.lastIntervention,
+    p.last_intervention,
+    p.devWorkflow?.dp?.lastIntervention,
+    p.stepsState?.dp?.lastIntervention,
+    p.derniereIntervention,
+    p.derniere_intervention,
+    p.devWorkflow?.cu?.lastIntervention,
+    p.stepsState?.cu?.lastIntervention,
+    // Dates du dossier
+    p.createdAt,
+    p.created_at,
+    p.date,
+    p.updatedAt,
+    p.updated_at,
+  ];
+
+  for (const c of candidates) {
+    if (c) {
+      const parsed = parseFrenchOrIsoDate(c);
+      if (parsed) return parsed;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Normalisation stricte d'un numéro de DP (avec ou sans espaces)
+ * Ex: 'DP0871262600074' ou 'DP 087 126 26 00074' -> 'DP 087 126 26 00074'
+ */
+export function normalizeDpNumber(rawInput) {
+  if (!rawInput) return null;
+  const raw = String(rawInput).trim().toUpperCase();
+  const digits = raw.replace(/[^A-Z0-9]/g, '');
+  if (!digits || digits.length < 5) return null;
+
+  let type = 'DP';
+  let rest = digits;
+  if (digits.startsWith('DP')) {
+    type = 'DP';
+    rest = digits.slice(2);
+  } else if (digits.startsWith('PC')) {
+    type = 'PC';
+    rest = digits.slice(2);
+  }
+
+  // 1. Cas Corse (2A ou 2B)
+  const corseMatch = rest.match(/^(?:0)?(2[AB])(\d{3})(\d{2})([A-Z0-9]+)$/);
+  if (corseMatch) {
+    const [, dept, comm, an, dossier] = corseMatch;
+    return {
+      type,
+      dpt2: dept,
+      dpt3: '0' + dept,
+      comm3: comm,
+      codeInsee: dept + comm,
+      year: an,
+      fullYear: 2000 + parseInt(an, 10),
+      dossierNum: dossier,
+      normalized: `${type} ${dept} ${comm} ${an} ${dossier}`,
+      formatted: `${type} ${dept} ${comm} ${an} ${dossier}`,
+      cleanNoSpace: `${type}${dept}${comm}${an}${dossier}`,
+      numDau: `${dept}${comm}${an}${dossier}`,
+    };
+  }
+
+  // 2. Cas Métropole standard à 3 chiffres dept (ex: 087 126 26 00074 -> 13 chars)
+  const stdMatch = rest.match(/^(\d{3})(\d{3})(\d{2})([A-Z0-9]{4,5})$/);
+  if (stdMatch) {
+    const [, dpt3, comm3, an, dossier] = stdMatch;
+    const dpt2 = dpt3.startsWith('0') ? dpt3.slice(1) : dpt3;
+    const codeInsee = dpt2 + comm3;
+    return {
+      type,
+      dpt2,
+      dpt3,
+      comm3,
+      codeInsee,
+      year: an,
+      fullYear: 2000 + parseInt(an, 10),
+      dossierNum: dossier,
+      normalized: `${type} ${dpt3} ${comm3} ${an} ${dossier}`,
+      formatted: `${type} ${dpt3} ${comm3} ${an} ${dossier}`,
+      cleanNoSpace: `${type}${dpt3}${comm3}${an}${dossier}`,
+      numDau: `${dpt3}${comm3}${an}${dossier}`,
+    };
+  }
+
+  // 3. Cas Métropole avec 2 chiffres dept (ex: 87 126 26 00074 -> 12 chars)
+  const dpt2Match = rest.match(/^([0-9]{2})(\d{3})(\d{2})([A-Z0-9]{4,5})$/);
+  if (dpt2Match) {
+    const [, dpt2, comm3, an, dossier] = dpt2Match;
+    const dpt3 = '0' + dpt2;
+    const codeInsee = dpt2 + comm3;
+    return {
+      type,
+      dpt2,
+      dpt3,
+      comm3,
+      codeInsee,
+      year: an,
+      fullYear: 2000 + parseInt(an, 10),
+      dossierNum: dossier,
+      normalized: `${type} ${dpt3} ${comm3} ${an} ${dossier}`,
+      formatted: `${type} ${dpt3} ${comm3} ${an} ${dossier}`,
+      cleanNoSpace: `${type}${dpt3}${comm3}${an}${dossier}`,
+      numDau: `${dpt3}${comm3}${an}${dossier}`,
+    };
+  }
+
+  // 4. Cas spécial à longueur variable (ex: 'DP 087 09 526 M0036' -> Insee 87095)
+  const flexibleMatch = rest.match(/^(\d{3})(\d{3})(\d{2})([A-Z0-9]+)$/);
+  if (flexibleMatch) {
+    const [, dpt3, comm3, an, dossier] = flexibleMatch;
+    const dpt2 = dpt3.startsWith('0') ? dpt3.slice(1) : dpt3;
+    const codeInsee = dpt2 + comm3;
+    return {
+      type,
+      dpt2,
+      dpt3,
+      comm3,
+      codeInsee,
+      year: an,
+      fullYear: 2000 + parseInt(an, 10),
+      dossierNum: dossier,
+      normalized: `${type} ${dpt3} ${comm3} ${an} ${dossier}`,
+      formatted: `${type} ${dpt3} ${comm3} ${an} ${dossier}`,
+      cleanNoSpace: `${type}${dpt3}${comm3}${an}${dossier}`,
+      numDau: `${dpt3}${comm3}${an}${dossier}`,
+    };
+  }
+
+  // Fallback direct
+  const fallbackInsee = extractInseeFromDpNumber(rawInput);
+  return {
+    type,
+    dpt2: fallbackInsee ? fallbackInsee.slice(0, 2) : '',
+    dpt3: fallbackInsee ? '0' + fallbackInsee.slice(0, 2) : '',
+    comm3: fallbackInsee ? fallbackInsee.slice(2) : '',
+    codeInsee: fallbackInsee,
+    year: '26',
+    fullYear: 2026,
+    dossierNum: rest.slice(-5) || '',
+    normalized: rawInput,
+    formatted: rawInput,
+    cleanNoSpace: digits,
+    numDau: rest,
+  };
+}
+
+/**
  * Extrait le code INSEE à 5 caractères depuis un numéro de DP français.
- * Format standard officiel : DP [Dpt 3 chiffres] [Commune 3 chiffres] [Année 2 chiffres] [N° dossier 5 caractères]
- * Exemples supportés :
- *  - "DP 024 253 26 00012" -> "24253"
- *  - "DP 24 253 26 00012"  -> "24253"
- *  - "DP 032 100 25 A0042" -> "32100"
- *  - "DP 001 024 26 00001" -> "01024"
- *  - "DP 2A 004 26 00003"  -> "2A004"
- *  - "DP 974 12 26 00001"  -> "97412"
  */
 export function extractInseeFromDpNumber(dpNumber) {
   if (!dpNumber) return null;
-  const raw = String(dpNumber).trim().toUpperCase();
-  // Nettoyage des préfixes et caractères superflus
-  const clean = raw.replace(/^D\.?P\.?\s*/i, '').replace(/[\s\-_.]/g, '');
+  const normalized = normalizeDpNumber(dpNumber);
+  if (normalized?.codeInsee) return normalized.codeInsee;
 
+  const raw = String(dpNumber).trim().toUpperCase();
+  const clean = raw.replace(/^D\.?P\.?\s*/i, '').replace(/[\s\-_.]/g, '');
   if (!clean || clean.length < 5) return null;
 
-  // Cas DROM (971 à 976) : 3 chiffres dpt + 2 chiffres commune (ex: 97412)
-  if (/^97[1-6]\d{2}/.test(clean)) {
-    return clean.slice(0, 5);
-  }
-
-  // Cas Corse (2A ou 2B, avec ou sans 0 initial)
+  if (/^97[1-6]\d{2}/.test(clean)) return clean.slice(0, 5);
   const corseMatch = clean.match(/^(?:0)?(2[AB])(\d{3})/i);
-  if (corseMatch) {
-    return `${corseMatch[1].toUpperCase()}${corseMatch[2]}`;
-  }
-
-  // Cas Métropole département 01 à 09 encodé sur 3 chiffres (ex: 001 024 -> 01024)
+  if (corseMatch) return `${corseMatch[1].toUpperCase()}${corseMatch[2]}`;
   const metro00Match = clean.match(/^00([1-9])(\d{3})/);
-  if (metro00Match) {
-    return `0${metro00Match[1]}${metro00Match[2]}`;
-  }
-
-  // Cas Métropole avec département 10 à 95 encodé sur 3 chiffres avec 0 initial (ex: 024 253 -> 24253)
+  if (metro00Match) return `0${metro00Match[1]}${metro00Match[2]}`;
   const metro3Match = clean.match(/^0([1-9]\d)(\d{3})/);
-  if (metro3Match) {
-    return `${metro3Match[1]}${metro3Match[2]}`;
-  }
-
-  // Cas Métropole avec département sur 2 chiffres (ex: 24 253 -> 24253 ou 01 024 -> 01024)
+  if (metro3Match) return `${metro3Match[1]}${metro3Match[2]}`;
   const metro2Match = clean.match(/^([0-9]{2})(\d{3})/);
-  if (metro2Match) {
-    return `${metro2Match[1]}${metro2Match[2]}`;
-  }
+  if (metro2Match) return `${metro2Match[1]}${metro2Match[2]}`;
 
   return null;
 }
@@ -178,6 +416,132 @@ export async function fetchMairieByInsee(codeInsee) {
     departement: communeInfo?.departement?.nom || communeInfo?.departement?.code || insee.slice(0, 2),
     region: communeInfo?.region?.nom || '',
     sveUrl: annuaireData?.sve || null,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 2BIS. INTERROGATION SITADEL / DIDO SDES & SYNCHRONISATION MULTI-SOURCES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Interroge la base nationale SITADEL (via API DiDo SDES du Ministère de la Transition Écologique)
+ * sur le NUM_DAU complet et renvoie les données officielles d'urbanisme si trouvées.
+ */
+export async function querySitadelDau(numDau, codeInsee = null) {
+  if (!numDau) return null;
+  const cleanDau = String(numDau).replace(/[^A-Z0-9]/gi, '').toUpperCase();
+  
+  // Table SDES DiDo : Locaux non-résidentiels (BESS, photovoltaïque, hangars)
+  const nonResRid = 'f8f0700f-806c-40a7-83b1-f21cf507e7c4';
+
+  const dauVariants = new Set([cleanDau]);
+  if (cleanDau.startsWith('DP') || cleanDau.startsWith('PC')) {
+    dauVariants.add(cleanDau.slice(2));
+  }
+  if (!cleanDau.startsWith('0') && cleanDau.length === 12) {
+    dauVariants.add(`0${cleanDau}`);
+  }
+
+  for (const v of dauVariants) {
+    try {
+      const url = `https://data.statistiques.developpement-durable.gouv.fr/dido/api/v1/datafiles/${nonResRid}/rows?pageSize=10&NUM_DAU=eq:${encodeURIComponent(v)}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(3500) });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && json.data.length > 0) {
+          return json.data[0];
+        }
+      }
+    } catch {
+      // Ignorer timeout ou indisponibilité réseau
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Recherche et synchronisation multi-sources d'une DP (SITADEL + Annuaire Mairie + Géo API)
+ * Accepte les saisies avec ou sans espaces (ex: 'DP0871262600074' ou 'DP 087 126 26 00074')
+ */
+export async function searchAndSyncDp(rawInput, existingProjectData = {}) {
+  const norm = normalizeDpNumber(rawInput);
+  if (!norm) {
+    throw new Error('Numéro de DP invalide ou incomplet.');
+  }
+
+  const { normalized, numDau, codeInsee } = norm;
+
+  // 1. Interrogation parallèle Mairie & SITADEL
+  const [mairieInfo, sitadelData] = await Promise.all([
+    fetchMairieByInsee(codeInsee),
+    querySitadelDau(numDau, codeInsee),
+  ]);
+
+  // 2. Résolution de la date de dépôt
+  let resolvedDepositDate = null;
+  if (sitadelData?.DR_DEPOT || sitadelData?.DATE_REELLE_DEPOT) {
+    resolvedDepositDate = parseFrenchOrIsoDate(sitadelData.DR_DEPOT || sitadelData.DATE_REELLE_DEPOT);
+  } else {
+    // Si trop récent pour SITADEL, conserver la date existante du dossier (NE JAMAIS L'ÉCRASER PAR DU VIDE !)
+    resolvedDepositDate = resolveProjectDepositDate(existingProjectData);
+  }
+
+  const depositDateIso = formatToIsoDate(resolvedDepositDate);
+  const depositDateFormatted = formatToFrenchDate(resolvedDepositDate);
+
+  // 3. Résolution de la décision / statut officiel
+  let decisionStatus = 'En attente de réponse';
+  let decisionDate = null;
+
+  if (sitadelData) {
+    if (sitadelData.DATE_REELLE_AUTORISATION) {
+      decisionDate = sitadelData.DATE_REELLE_AUTORISATION;
+    }
+    if (sitadelData.ETAT_DAU === 2) {
+      decisionStatus = 'Accord explicite obtenu';
+    } else if (sitadelData.ETAT_DAU === 3) {
+      decisionStatus = 'Opposition notifiée';
+    } else {
+      decisionStatus = 'En cours d\'instruction';
+    }
+  }
+
+  // 4. Calcul de la timeline
+  const timeline = calculateDpTimeline({
+    depositDate: resolvedDepositDate,
+    regime: existingProjectData?.dp_regime || '1_mois',
+    hasComplement: Boolean(existingProjectData?.dp_has_complement),
+    complementDate: existingProjectData?.dp_complement_date || null,
+    hasRefusal: decisionStatus === 'Opposition notifiée',
+    certificateObtained: decisionStatus === 'Accord explicite obtenu' || Boolean(existingProjectData?.dp_certificate_obtained),
+    displayDate: existingProjectData?.dp_display_date || existingProjectData?.date_constat_huissier,
+  });
+
+  if (!sitadelData && timeline.isOverdue) {
+    decisionStatus = 'Accord tacite acquis (délai dépassé)';
+  }
+
+  return {
+    success: true,
+    normalizedDp: normalized,
+    numDau,
+    codeInsee,
+    communeName: mairieInfo?.commune || norm.comm3,
+    mairieInfo,
+    sitadelFound: Boolean(sitadelData),
+    sitadelData: sitadelData || null,
+    depositDateIso,
+    depositDateFormatted,
+    legalDueDateIso: timeline.legalDueDateIso,
+    legalDueDateFormatted: timeline.legalDueDateFormatted,
+    decisionStatus,
+    decisionDate,
+    timeline,
+    cadastre: {
+      section: sitadelData?.SEC_CADASTRE1 || existingProjectData?.cadastre_section,
+      numero: sitadelData?.NUM_CADASTRE1 || existingProjectData?.cadastre_numero,
+    }
   };
 }
 
@@ -303,25 +667,39 @@ export function calculateDpTimeline({
   displayDate = null, // Date constat huissier affichage
   referenceDate = null,
 }) {
-  if (!depositDate) {
+  const parsedDepDate = parseFrenchOrIsoDate(depositDate);
+  if (!parsedDepDate) {
     return {
       isValid: false,
+      depositDate: null,
+      depositDateFormatted: '—',
+      depositDateIso: '',
+      legalDueDate: null,
+      legalDueDateFormatted: '—',
+      legalDueDateIso: '',
       status: 'en_attente_depot',
-      statusLabel: 'En attente de dépôt',
+      statusLabel: 'En attente de date de dépôt',
+      counterBadge: '—',
       badgeClass: 'bg-slate-200 text-slate-700',
+      totalDays: 30,
+      daysRemaining: 0,
+      daysElapsed: 0,
+      daysOverdue: 0,
+      progressPercent: 0,
+      isOverdue: false,
     };
   }
 
-  const today = referenceDate ? new Date(referenceDate) : new Date();
+  const today = parseFrenchOrIsoDate(referenceDate) || new Date();
   today.setHours(0, 0, 0, 0);
 
-  const depDate = new Date(depositDate);
+  const depDate = new Date(parsedDepDate);
   depDate.setHours(0, 0, 0, 0);
 
   // Point de départ effectif de l'instruction :
   // Si des pièces complémentaires ont été déposées, le délai repart à compter de leur réception (R.423-39)
   const isComplementActive = Boolean(hasComplement || regime === 'pieces_complementaires');
-  const compDate = (isComplementActive && complementDate) ? new Date(complementDate) : null;
+  const compDate = (isComplementActive && complementDate) ? parseFrenchOrIsoDate(complementDate) : null;
   if (compDate) compDate.setHours(0, 0, 0, 0);
 
   const effectiveStartDate = compDate || depDate;
@@ -347,49 +725,58 @@ export function calculateDpTimeline({
 
   // 6. Post-accord : Fin de purge du recours des tiers (2 mois après affichage terrain constaté par huissier, Art. R.600-2)
   let recoursTiersDeadline = null;
-  if (displayDate) {
-    const dispD = new Date(displayDate);
+  const dispD = parseFrenchOrIsoDate(displayDate);
+  if (dispD) {
     dispD.setHours(0, 0, 0, 0);
     recoursTiersDeadline = applyProrogationR42342(addMonthsQuantieme(dispD, 2));
   }
 
   // Calcul des jours restants et progression
   const dayMs = 24 * 60 * 60 * 1000;
-  const totalDays = legalDueDate ? Math.max(1, Math.round((legalDueDate - effectiveStartDate) / dayMs)) : 30;
-  const daysRemaining = legalDueDate ? Math.ceil((legalDueDate - today) / dayMs) : 0;
-  const daysElapsed = Math.max(0, totalDays - daysRemaining);
-  const progressPercent = Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
+  const totalDays = legalDueDate ? Math.max(1, Math.round((legalDueDate.getTime() - effectiveStartDate.getTime()) / dayMs)) : 30;
+  const diffDays = legalDueDate ? Math.round((legalDueDate.getTime() - today.getTime()) / dayMs) : 0;
+  
+  const isOverdue = legalDueDate ? (today.getTime() > legalDueDate.getTime()) : false;
+  const isFirstMonthActive = firstMonthEnd ? (today.getTime() <= firstMonthEnd.getTime() && !hasComplement) : false;
 
-  const isOverdue = legalDueDate ? (today > legalDueDate) : false;
-  const isFirstMonthActive = firstMonthEnd ? (today <= firstMonthEnd && !hasComplement) : false;
+  const daysOverdue = isOverdue ? Math.max(1, Math.round((today.getTime() - legalDueDate.getTime()) / dayMs)) : 0;
+  const daysRemaining = isOverdue ? 0 : Math.max(0, diffDays);
+  const daysElapsed = isOverdue ? totalDays : Math.max(0, totalDays - daysRemaining);
+  const progressPercent = isOverdue ? 100 : Math.min(99, Math.max(0, Math.round((daysElapsed / totalDays) * 100)));
 
   // Détermination du statut
   let status = 'en_cours';
-  let statusLabel = `En cours d'instruction (J-${Math.max(0, daysRemaining)})`;
+  let statusLabel = `En cours d'instruction (J-${daysRemaining} avant accord tacite)`;
+  let counterBadge = `J-${daysRemaining}`;
   let badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
 
   if (certificateObtained) {
     status = 'certificat_obtenu';
     statusLabel = 'Certificat officiel obtenu ✓';
+    counterBadge = 'Certifié';
     badgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
   } else if (hasRefusal) {
     status = 'refus';
     statusLabel = 'Opposition notifiée par la Mairie';
+    counterBadge = 'Refusé';
     badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
   } else if (isOverdue) {
     status = 'accord_tacite';
-    statusLabel = `ACCORD TACITE ACQUIS (Art. R.424-13)`;
-    badgeClass = 'bg-emerald-500 text-white border-emerald-600 shadow-emerald-200 animate-pulse';
+    statusLabel = `ACCORD TACITE ACQUIS (Art. R.424-13) — Dépassé de ${daysOverdue} j`;
+    counterBadge = `J+${daysOverdue} (Tacite)`;
+    badgeClass = 'bg-emerald-500 text-white border-emerald-600 shadow-emerald-200 animate-pulse font-black';
   }
 
-  const fmt = (d) => d ? d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-  const fmtIso = (d) => d ? d.toISOString().split('T')[0] : '';
+  const fmt = (d) => d ? formatToFrenchDate(d) : '—';
+  const fmtIso = (d) => d ? formatToIsoDate(d) : '';
 
   return {
     isValid: true,
     effectiveStartDate,
     effectiveStartDateFormatted: fmt(effectiveStartDate),
+    depositDate: depDate,
     depositDateFormatted: fmt(depDate),
+    depositDateIso: fmtIso(depDate),
     complementDateFormatted: compDate ? fmt(compDate) : null,
     instructionMonths,
     legalDueDate,
@@ -407,16 +794,18 @@ export function calculateDpTimeline({
     retraitAdminDeadlineFormatted: fmt(retraitAdminDeadline),
     recoursTiersDeadline,
     recoursTiersDeadlineFormatted: fmt(recoursTiersDeadline),
-    displayDateFormatted: displayDate ? fmt(new Date(displayDate)) : null,
+    displayDateFormatted: dispD ? fmt(dispD) : null,
     totalDays,
-    daysRemaining: Math.max(0, daysRemaining),
+    daysRemaining,
     daysElapsed,
+    daysOverdue,
     progressPercent,
     isOverdue,
     hasRefusal,
     certificateObtained,
     status,
     statusLabel,
+    counterBadge,
     badgeClass,
   };
 }
@@ -657,41 +1046,46 @@ export function buildMairieCertificatEmail({
   depositDate,
   complementDate,
   legalDueDate,
+  clientName = '',
   demandeurName = 'ENR COURTAGE ENERGIE',
   demandeurEmail = 'contact@enr-courtage.fr',
   demandeurTel = '05 56 00 00 00',
-  projectTitle = 'Installation de stockage d’énergie par batteries BESS',
+  projectTitle = "Installation d'une station de stockage d'énergie par batteries (BESS) sur dalle béton < 20 m²",
   terrainAddress = '',
   communeName = '',
+  codePostal = '',
   cadastreSection = '',
   cadastreNumero = '',
+  cadastreSurface = '',
 }) {
-  const subject = `Demande de certificat de non-opposition tacite (Art. R. 424-13) — Dossier DP n° ${dpNumber}`;
+  const clientPart = clientName || demandeurName || 'Projet';
+  const communePart = communeName || '';
+  const clientCommuneStr = (clientPart || communePart) ? ` (${clientPart}${communePart ? ` - ${communePart}` : ''})` : '';
+
+  const subject = `Demande de certificat de non-opposition tacite — Déclaration Préalable n° ${dpNumber}${clientCommuneStr}`;
 
   const body = `Madame, Monsieur le Maire,
 Service Urbanisme de ${mairieNom || `la Mairie de ${communeName}`},
 
-En date du ${depositDate}${complementDate ? ` (complété le ${complementDate})` : ''}, nous avons déposé auprès de vos services une Déclaration Préalable enregistrée sous le numéro ${dpNumber}, portant sur le projet suivant :
-• Projet : ${projectTitle}
-• Terrain d'assiette : ${terrainAddress}, ${communeName}
-• Cadastre : Section ${cadastreSection || '—'} n° ${cadastreNumero || '—'}
+En date du ${depositDate}${complementDate ? ` (puis suite au dépôt des pièces complémentaires réceptionnées le ${complementDate})` : ''}, la société / le pétitionnaire ${demandeurName} a déposé auprès de vos services une Déclaration Préalable enregistrée sous le numéro ${dpNumber}, portant sur le projet suivant :
+• Nature des travaux : ${projectTitle}
+• Adresse du terrain : ${terrainAddress || 'Adresse du projet'}${communeName ? `, ${codePostal} ${communeName}` : ''}
+• Références cadastrales : Section ${cadastreSection || '—'} n° ${cadastreNumero || '—'}${cadastreSurface ? ` (Superficie : ${cadastreSurface} m²)` : ''}
 
-Le délai d'instruction légal est arrivé à son terme le ${legalDueDate} sans notification d'opposition.
+Conformément aux dispositions des articles R. 423-23 et L. 424-2 du Code de l'urbanisme ainsi qu'aux mentions légales figurant sur le récépissé de dépôt officiel, et en l'absence de notification d'une décision expresse d'opposition dans le délai légal d'instruction arrivé à échéance le ${legalDueDate}, nous bénéficions de plein droit depuis cette date d'une décision de non-opposition tacite pour la réalisation de ces travaux.
 
-Conformément aux articles R. 423-23, L. 424-2 et R. 424-13 du Code de l'urbanisme, nous bénéficions depuis cette date d'une décision de non-opposition tacite.
+Aussi, afin de nous permettre de justifier de la parfaite régularité de cette autorisation d'urbanisme auprès du gestionnaire du réseau public de distribution d'électricité (Enedis), de notre étude notariale et de nos partenaires bancaires, nous vous prions de bien vouloir nous délivrer, en application stricte de l'article R. 424-13 du Code de l'urbanisme (« Un certificat est délivré sur simple demande du demandeur »), un certificat attestant de l'existence de cette décision de non-opposition tacite et mentionnant la date de transmission du dossier au représentant de l'État dans le département.
 
-Aussi, en application stricte de l'article R. 424-13 du Code de l'urbanisme (« Un certificat est délivré sur simple demande du demandeur »), nous vous prions de bien vouloir nous délivrer le certificat attestant de l'existence de cette décision de non-opposition tacite et précisant la date de transmission de notre dossier au contrôle de légalité de la Préfecture.
+Vous trouverez également en pièce jointe notre courrier officiel formel au format PDF.
 
-Vous trouverez ci-joint notre demande formelle au format PDF.
+Vous remerciant par avance pour votre diligence et l'envoi de ce certificat par retour de courriel à l'adresse ${demandeurEmail}, nous vous prions d'agréer, Madame, Monsieur le Maire, l'expression de notre considération distinguée.
 
-Nous vous remercions par avance pour votre diligence et l'envoi de ce certificat par retour de courriel à l'adresse ${demandeurEmail}.
-
-Restant à votre entière disposition, nous vous prions d'agréer, Madame, Monsieur le Maire, l'expression de nos salutations distinguées.
-
+Pour le demandeur,
 ${demandeurName}
 Tél : ${demandeurTel}
-Email : ${demandeurEmail}
-`;
+Email : ${demandeurEmail}`;
+
+  const fullEmailText = `Destinataire : ${mairieEmail || '(non renseigné)'}\nObjet : ${subject}\n\n${body}`;
 
   const mailtoUrl = `mailto:${encodeURIComponent(mairieEmail || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
@@ -699,6 +1093,7 @@ Email : ${demandeurEmail}
     to: mairieEmail || '',
     subject,
     body,
+    fullEmailText,
     mailtoUrl,
   };
 }

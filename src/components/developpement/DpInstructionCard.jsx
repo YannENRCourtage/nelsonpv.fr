@@ -3,13 +3,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Clock, AlertTriangle, CheckCircle2, ChevronRight, 
   Building, Mail, Phone, MapPin, Calendar, Sparkles, RefreshCw, 
-  ExternalLink, ShieldCheck, Check, Info
+  ExternalLink, ShieldCheck, Check, Info, Search
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { 
   extractInseeFromDpNumber, 
   fetchMairieByInsee, 
-  calculateDpTimeline 
+  calculateDpTimeline,
+  resolveProjectDepositDate,
+  formatToIsoDate,
+  formatToFrenchDate,
+  normalizeDpNumber,
+  searchAndSyncDp
 } from '@/services/dpInstructionService';
 
 export default function DpInstructionCard({
@@ -28,13 +33,11 @@ export default function DpInstructionCard({
     ''
   );
 
-  // Date de dépôt initial
-  const [depositDate, setDepositDate] = useState(
-    stepState?.depositDate || 
-    project?.dp_deposit_date || 
-    project?.date_depot_dp || 
-    ''
-  );
+  // Date de dépôt initial résolue intelligemment
+  const [depositDate, setDepositDate] = useState(() => {
+    const resolved = resolveProjectDepositDate(project, stepState);
+    return formatToIsoDate(resolved);
+  });
 
   // Régime
   const [regime, setRegime] = useState(
@@ -63,22 +66,32 @@ export default function DpInstructionCard({
 
   // Coordonnées de la mairie
   const [mairieInfo, setMairieInfo] = useState(
-    project?.dp_mairie_info || null
+    stepState?.dp_mairie_info || project?.dp_mairie_info || null
   );
   const [loadingMairie, setLoadingMairie] = useState(false);
   const [mairieResolvedCode, setMairieResolvedCode] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Synchronisation avec les props quand le projet change
   useEffect(() => {
     const curDp = stepState?.registrationNumber || project?.dp_registration_number || project?.numero_dp || project?.num_dp || '';
     setDpNumber(curDp);
-    setDepositDate(stepState?.depositDate || project?.dp_deposit_date || project?.date_depot_dp || '');
+    
+    // Résolution robuste de la date de dépôt pour ne jamais afficher "Invalid Date"
+    const resolved = resolveProjectDepositDate(project, stepState);
+    const isoDate = formatToIsoDate(resolved);
+    setDepositDate(isoDate);
+
     setRegime(stepState?.regime || project?.dp_regime || '1_mois');
     setHasComplement(Boolean(stepState?.hasComplement || project?.dp_has_complement || stepState?.regime === 'pieces_complementaires'));
     setComplementDate(stepState?.complementDate || project?.dp_complement_date || '');
     setDisplayDate(stepState?.displayDate || project?.dp_display_date || project?.date_constat_huissier || '');
-    if (project?.dp_mairie_info) {
-      setMairieInfo(project.dp_mairie_info);
+    
+    const curMairie = stepState?.dp_mairie_info || project?.dp_mairie_info || null;
+    if (curMairie) {
+      setMairieInfo(curMairie);
+    } else if (curDp && curDp.length >= 7) {
+      detectAndFetchMairie(curDp);
     }
   }, [project?.id, stepState]);
 
@@ -98,7 +111,7 @@ export default function DpInstructionCard({
         setMairieInfo(data);
         setMairieResolvedCode(codeInsee);
         if (onUpdateStep) {
-          onUpdateStep({ dp_mairie_info: data, dp_insee: codeInsee });
+          onUpdateStep({ dp_mairie_info: data, dp_insee: codeInsee, mairie_email: data.email || '' });
         }
       }
     } catch (err) {
@@ -115,6 +128,63 @@ export default function DpInstructionCard({
     }
   }, [dpNumber]);
 
+  // Recherche & synchronisation globale (SITADEL & Mairie)
+  const handleSearchAndSync = async () => {
+    if (!dpNumber) return;
+    setIsSearching(true);
+    try {
+      const res = await searchAndSyncDp(dpNumber, { project, stepState });
+      if (res.normalizedDp) {
+        setDpNumber(res.normalizedDp);
+      }
+      if (res.mairieInfo) {
+        setMairieInfo(res.mairieInfo);
+      }
+      let finalDepositDate = depositDate;
+      if (res.depositDateIso && (!depositDate || res.fromSitadel)) {
+        finalDepositDate = res.depositDateIso;
+        setDepositDate(res.depositDateIso);
+      }
+      const tl = calculateDpTimeline({
+        depositDate: finalDepositDate,
+        regime,
+        hasComplement,
+        complementDate,
+        displayDate,
+      });
+      if (onUpdateStep) {
+        onUpdateStep({
+          registrationNumber: res.normalizedDp || dpNumber,
+          dp_registration_number: res.normalizedDp || dpNumber,
+          numero_dp: res.normalizedDp || dpNumber,
+          ...(res.mairieInfo ? { dp_mairie_info: res.mairieInfo, mairie_email: res.mairieInfo.email } : {}),
+          ...(finalDepositDate ? { depositDate: finalDepositDate, dp_deposit_date: finalDepositDate } : {}),
+          ...(tl?.legalDueDateIso ? { deadline: tl.legalDueDateIso } : {}),
+        });
+      }
+      if (res.fromSitadel) {
+        toast({
+          title: "Dossier trouvé dans SITADEL !",
+          description: `Date de dépôt officielle : ${res.depositDateFrench || res.depositDateIso}. Mairie : ${res.mairieInfo?.nomMairie || 'Identifiée'}.`,
+        });
+      } else {
+        toast({
+          title: "Mairie identifiée & DP formatée",
+          description: `${res.mairieInfo?.nomMairie || 'Commune identifiée'}. ${res.message || ''}`,
+        });
+      }
+    } catch (err) {
+      console.error('Erreur synchronisation DP:', err);
+      toast({
+        title: "Erreur synchronisation",
+        description: err.message || "Impossible d'interroger les services publics.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   // Calcul temps réel de la chronologie
   const timeline = useMemo(() => {
     return calculateDpTimeline({
@@ -130,12 +200,14 @@ export default function DpInstructionCard({
 
   // Sauvegarde des champs
   const handleDpNumberChange = (val) => {
-    setDpNumber(val);
+    const norm = normalizeDpNumber(val);
+    const cleaned = norm.formatted || val;
+    setDpNumber(cleaned);
     if (onUpdateStep) {
       onUpdateStep({
-        registrationNumber: val,
-        dp_registration_number: val,
-        numero_dp: val,
+        registrationNumber: cleaned,
+        dp_registration_number: cleaned,
+        numero_dp: cleaned,
       });
     }
   };
@@ -152,8 +224,9 @@ export default function DpInstructionCard({
     if (onUpdateStep) {
       onUpdateStep({
         depositDate: val,
-        deadline: tl?.legalDueDateIso || '',
         dp_deposit_date: val,
+        date_depot_dp: val,
+        deadline: tl?.legalDueDateIso || '',
       });
     }
   };
@@ -203,6 +276,21 @@ export default function DpInstructionCard({
         dp_display_date: val,
         date_constat_huissier: val,
       });
+    }
+  };
+
+  const triggerRequestCertificate = () => {
+    const payload = {
+      project,
+      timeline,
+      mairieInfo: mairieInfo || project?.dp_mairie_info || null,
+    };
+    if (onRequestCertificate) {
+      if (onRequestCertificate.length > 1) {
+        onRequestCertificate(project, timeline, mairieInfo || project?.dp_mairie_info || null);
+      } else {
+        onRequestCertificate(payload);
+      }
     }
   };
 
@@ -274,7 +362,7 @@ export default function DpInstructionCard({
         {/* ═══ 1. SAISIE N° DP & RÉGIME D'INSTRUCTION ═════════════════ */}
         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
           
-          {/* Ligne 1 : Numéro officiel DP */}
+          {/* Ligne 1 : Numéro officiel DP + Recherche/Sync */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-[10.5px] font-bold text-slate-600 flex items-center gap-1">
@@ -282,18 +370,30 @@ export default function DpInstructionCard({
                 Numéro officiel DP :
               </label>
               {mairieInfo?.nomMairie && (
-                <span className="text-[9.5px] font-black text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 truncate max-w-[140px]">
+                <span className="text-[9.5px] font-black text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 truncate max-w-[150px]">
                   🏛️ {mairieInfo.nomMairie}
                 </span>
               )}
             </div>
-            <input
-              type="text"
-              value={dpNumber}
-              onChange={(e) => handleDpNumberChange(e.target.value)}
-              placeholder="ex : DP 024 253 26 00012"
-              className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-sans outline-none transition-colors"
-            />
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                value={dpNumber}
+                onChange={(e) => handleDpNumberChange(e.target.value)}
+                placeholder="ex : DP 024 253 26 00012 ou DP0871262600074"
+                className="flex-1 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-sans outline-none transition-colors"
+              />
+              <button
+                type="button"
+                onClick={handleSearchAndSync}
+                disabled={isSearching || !dpNumber}
+                title="Rechercher dans SITADEL & Mairie"
+                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1 shadow-2xs transition-all disabled:opacity-50 cursor-pointer shrink-0"
+              >
+                <Sparkles className={`w-3 h-3 ${isSearching ? 'animate-spin' : ''}`} />
+                <span>{isSearching ? '...' : 'Sync'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Ligne 2 : Date de dépôt & Régime de délai */}
@@ -497,7 +597,7 @@ export default function DpInstructionCard({
         {/* Bouton d'action principale : Réclamer certificat si accord tacite ou à tout moment */}
         <button
           type="button"
-          onClick={() => onRequestCertificate && onRequestCertificate(project, timeline, mairieInfo)}
+          onClick={triggerRequestCertificate}
           className={`w-full py-2.5 px-3 rounded-xl text-xs md:text-sm font-black flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer ${
             isTacitAcquired
               ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white ring-2 ring-emerald-400 shadow-md animate-pulse'

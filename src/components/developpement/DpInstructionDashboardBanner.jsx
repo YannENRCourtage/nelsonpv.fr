@@ -3,36 +3,48 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, ShieldAlert, CheckCircle2, AlertTriangle, FileText, 
   ChevronDown, ChevronUp, ChevronRight, Send, MapPin, Building,
-  Sparkles, Filter, ExternalLink
+  Sparkles, Filter, ExternalLink, Search, RefreshCw, Mail, Check, Copy
 } from 'lucide-react';
-import { calculateDpTimeline } from '@/services/dpInstructionService';
+import { toast } from '@/components/ui/use-toast';
+import { 
+  calculateDpTimeline, 
+  resolveProjectDepositDate, 
+  normalizeDpNumber,
+  formatToFrenchDate,
+  formatToIsoDate,
+  searchAndSyncDp
+} from '@/services/dpInstructionService';
 
 export default function DpInstructionDashboardBanner({
   projects = [],
   activeProjectId = null,
   onSelectProject,
   onRequestCertificate,
+  onUpdateProject,
 }) {
   const [filter, setFilter] = useState('all'); // 'all' | 'en_cours' | 'accord_tacite' | 'certificat_obtenu'
   const [isExpanded, setIsExpanded] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncSuccessMsg, setSyncSuccessMsg] = useState(null);
 
   // Analyse et calcul de la chronologie de tous les projets ayant une DP
   const analyzedProjects = useMemo(() => {
     if (!projects || projects.length === 0) return [];
 
     return projects.map(p => {
-      // Détection numéro DP
-      const dpNum = p.dp_registration_number || 
+      // Détection numéro DP brut et normalisation avec ou sans espaces
+      const rawDp = p.dp_registration_number || 
                     p.numero_dp || 
                     p.num_dp || 
                     p.devWorkflow?.dp?.registrationNumber || 
                     '';
 
-      // Détection date de dépôt DP
-      const depDate = p.dp_deposit_date || 
-                      p.date_depot_dp || 
-                      p.devWorkflow?.dp?.depositDate || 
-                      p.devWorkflow?.dp?.deadline ? null : null; // ne pas confondre avec deadline
+      const norm = normalizeDpNumber(rawDp);
+      const displayDp = norm?.normalized || rawDp;
+
+      // Détection date de dépôt DP par ordre de priorité strict (FIN DU "Invalid Date")
+      const resolvedDate = resolveProjectDepositDate(p);
 
       // Régime
       const regime = p.dp_regime || p.devWorkflow?.dp?.regime || '1_mois';
@@ -46,15 +58,8 @@ export default function DpInstructionDashboardBanner({
       const hasRefusal = Boolean(p.dp_refusal || p.devWorkflow?.dp?.status === 'refused');
       const displayDate = p.dp_display_date || p.date_constat_huissier || p.devWorkflow?.huissier?.lastIntervention;
 
-      // Calcul timeline si on a une date de dépôt OU un numéro de DP avec date estimée
-      let effectiveDepositDate = depDate;
-      if (!effectiveDepositDate && dpNum) {
-        // Si numéro DP présent mais pas de date explicite, fallback sur createdAt ou date du projet
-        effectiveDepositDate = p.createdAt || p.created_at || p.date || null;
-      }
-
       const timeline = calculateDpTimeline({
-        depositDate: effectiveDepositDate,
+        depositDate: resolvedDate,
         regime,
         hasComplement,
         complementDate,
@@ -63,14 +68,20 @@ export default function DpInstructionDashboardBanner({
         displayDate,
       });
 
+      // Mairie info existante
+      const mairie = p.dp_mairie_info || p.devWorkflow?.dp?.dp_mairie_info || null;
+
       return {
         project: p,
-        dpNum,
-        hasDp: Boolean(dpNum || depDate || p.devWorkflow?.dp?.registrationNumber),
-        depositDate: effectiveDepositDate,
+        dpNum: displayDp,
+        rawDp,
+        codeInsee: norm?.codeInsee || p.inseeCode || p.citycode || '',
+        hasDp: Boolean(rawDp || resolvedDate || p.devWorkflow?.dp?.registrationNumber),
+        depositDate: resolvedDate,
         timeline,
-        commune: p.city || p.commune || '',
-        dpt: p.zip ? p.zip.slice(0, 2) : '',
+        mairieInfo: mairie,
+        commune: p.city || p.commune || mairie?.commune || norm?.comm3 || '',
+        dpt: p.zip ? p.zip.slice(0, 2) : (norm?.dpt2 || ''),
         title: p.name || p.title || `Projet ${p.id || ''}`,
       };
     }).filter(item => item.hasDp);
@@ -93,17 +104,86 @@ export default function DpInstructionDashboardBanner({
     return { all, enCours, accordTacite, certifie };
   }, [analyzedProjects]);
 
-  // Filtrage des éléments affichés
+  // Filtrage des éléments affichés (Onglet + Recherche texte avec ou sans espace)
   const filteredList = useMemo(() => {
+    const qClean = searchQuery.trim().toUpperCase().replace(/[\s\-_.]/g, '');
+
     return analyzedProjects.filter(item => {
+      // Filtre statut
       const status = item.timeline?.status;
-      if (filter === 'all') return true;
-      if (filter === 'en_cours') return status === 'en_cours';
-      if (filter === 'accord_tacite') return status === 'accord_tacite';
-      if (filter === 'certificat_obtenu') return status === 'certificat_obtenu';
+      if (filter === 'en_cours' && status !== 'en_cours') return false;
+      if (filter === 'accord_tacite' && status !== 'accord_tacite') return false;
+      if (filter === 'certificat_obtenu' && status !== 'certificat_obtenu') return false;
+
+      // Filtre recherche textuelle
+      if (qClean) {
+        const itemDpClean = String(item.dpNum || '').toUpperCase().replace(/[\s\-_.]/g, '');
+        const itemTitle = String(item.title || '').toUpperCase();
+        const itemCommune = String(item.commune || '').toUpperCase();
+        const matchDp = itemDpClean.includes(qClean);
+        const matchTitle = itemTitle.includes(searchQuery.trim().toUpperCase());
+        const matchCommune = itemCommune.includes(searchQuery.trim().toUpperCase());
+        return matchDp || matchTitle || matchCommune;
+      }
+
       return true;
     });
-  }, [analyzedProjects, filter]);
+  }, [analyzedProjects, filter, searchQuery]);
+
+  // Handler de synchronisation automatique multi-sources (SITADEL & Annuaire Mairie)
+  const handleSearchAndSync = async (dpQuery = searchQuery) => {
+    const target = dpQuery.trim();
+    if (!target) {
+      toast({
+        title: "Saisie requise",
+        description: "Veuillez renseigner un numéro de DP (ex: DP0871262600074 ou DP 087 126 26 00074).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+      setSyncSuccessMsg(null);
+
+      // Trouver le projet actif ou correspondant au numéro
+      const cleanTarget = target.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const matchedItem = analyzedProjects.find(item => {
+        const itemClean = String(item.rawDp || item.dpNum || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        return itemClean === cleanTarget || itemClean.includes(cleanTarget);
+      });
+
+      const projectToUse = matchedItem?.project || (projects.length > 0 ? projects[0] : null);
+
+      const res = await searchAndSyncDp(target, projectToUse);
+      if (res && res.success) {
+        setSyncSuccessMsg(`DP ${res.normalizedDp} synchronisée ! Mairie de ${res.communeName} (${res.mairieInfo?.email || 'Email vérifié'})`);
+        toast({
+          title: "Synchronisation réussie !",
+          description: `DP ${res.normalizedDp} identifiée. Mairie : ${res.mairieInfo?.nomMairie} • Dépôt : ${res.depositDateFormatted}`,
+        });
+
+        // Mise à jour si callback fourni
+        if (onUpdateProject && projectToUse?.id) {
+          onUpdateProject(projectToUse.id, {
+            dp_registration_number: res.normalizedDp,
+            numero_dp: res.normalizedDp,
+            dp_deposit_date: res.depositDateIso,
+            dp_mairie_info: res.mairieInfo,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Erreur recherche & sync DP:', err);
+      toast({
+        title: "Recherche DP",
+        description: err.message || "Impossible d'interroger SITADEL ou l'annuaire mairie pour ce numéro.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   if (analyzedProjects.length === 0) {
     return null; // Pas de dossiers DP à afficher
@@ -126,7 +206,8 @@ export default function DpInstructionDashboardBanner({
                 Suivi des Délais d'Instruction — Déclarations Préalables (DP)
               </h3>
               {stats.accordTacite > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white animate-pulse shadow-xs">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white animate-pulse shadow-xs flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
                   {stats.accordTacite} accord{stats.accordTacite > 1 ? 's' : ''} tacite{stats.accordTacite > 1 ? 's' : ''} acquis !
                 </span>
               )}
@@ -142,7 +223,7 @@ export default function DpInstructionDashboardBanner({
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer"
           >
             {isExpanded ? (
               <>
@@ -159,12 +240,46 @@ export default function DpInstructionDashboardBanner({
         </div>
       </div>
 
+      {/* ═══ BARRE DE RECHERCHE & SYNCHRONISATION MULTI-SOURCES (AVEC OU SANS ESPACES) ═══ */}
+      <div className="p-3 sm:px-6 bg-slate-50/40 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <div className="relative flex-1 min-w-[280px] max-w-xl">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSearchAndSync(searchQuery);
+            }}
+            placeholder="Rechercher ou synchroniser un n° DP avec/sans espaces (ex: DP0871262600074 ou DP 087 126 26 00074)..."
+            className="w-full pl-9 pr-24 py-1.5 text-xs bg-white border border-slate-200 focus:border-indigo-500 rounded-xl font-medium outline-none transition-all shadow-2xs placeholder:text-slate-400"
+          />
+          <button
+            type="button"
+            onClick={() => handleSearchAndSync(searchQuery)}
+            disabled={isSyncing}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all disabled:opacity-50 cursor-pointer shadow-2xs"
+            title="Interroger SITADEL / DiDo SDES et l'Annuaire officiel de la Mairie"
+          >
+            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'Recherche...' : 'Rechercher'}</span>
+          </button>
+        </div>
+
+        {syncSuccessMsg && (
+          <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200 flex items-center gap-1.5 animate-fadeIn">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{syncSuccessMsg}</span>
+          </div>
+        )}
+      </div>
+
       {/* 4 Pilules de Filtres rapides avec compteurs dynamiques */}
       <div className="p-3 sm:px-6 bg-white border-b border-slate-100 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setFilter('all')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
             filter === 'all'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -179,7 +294,7 @@ export default function DpInstructionDashboardBanner({
         <button
           type="button"
           onClick={() => setFilter('en_cours')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
             filter === 'en_cours'
               ? 'bg-amber-500 text-white shadow-xs'
               : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80'
@@ -194,16 +309,16 @@ export default function DpInstructionDashboardBanner({
         <button
           type="button"
           onClick={() => setFilter('accord_tacite')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
             filter === 'accord_tacite'
               ? 'bg-emerald-600 text-white shadow-xs animate-pulse ring-2 ring-emerald-400/50'
               : stats.accordTacite > 0
-                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold animate-pulse'
+                ? 'bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold animate-pulse shadow-xs'
                 : 'bg-slate-100 text-slate-500'
           }`}
         >
           <span>🚨 Délai dépassé — Accord tacite à réclamer</span>
-          <span className={`px-1.5 py-0.2 rounded-md text-[10px] ${filter === 'accord_tacite' ? 'bg-emerald-800 text-white' : 'bg-emerald-600 text-white'}`}>
+          <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-black ${filter === 'accord_tacite' ? 'bg-emerald-800 text-white' : 'bg-white text-emerald-900'}`}>
             {stats.accordTacite}
           </span>
         </button>
@@ -211,7 +326,7 @@ export default function DpInstructionDashboardBanner({
         <button
           type="button"
           onClick={() => setFilter('certificat_obtenu')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
             filter === 'certificat_obtenu'
               ? 'bg-blue-600 text-white shadow-xs'
               : 'bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200/80'
@@ -233,10 +348,10 @@ export default function DpInstructionDashboardBanner({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-4 sm:px-6 divide-y divide-slate-100 max-h-[380px] overflow-y-auto">
+            <div className="p-4 sm:px-6 divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
               {filteredList.length === 0 ? (
                 <div className="py-6 text-center text-xs text-slate-400 font-medium italic">
-                  Aucun dossier ne correspond à ce filtre.
+                  Aucun dossier ne correspond à votre filtre ou recherche.
                 </div>
               ) : (
                 filteredList.map((item) => {
@@ -248,7 +363,7 @@ export default function DpInstructionDashboardBanner({
                     <div
                       key={item.project.id}
                       onClick={() => onSelectProject && onSelectProject(item.project)}
-                      className={`py-3 px-3 rounded-xl transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-3 cursor-pointer ${
+                      className={`py-3.5 px-3 rounded-xl transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-3 cursor-pointer ${
                         isSelected 
                           ? 'bg-blue-50/80 border border-blue-200/80 shadow-2xs' 
                           : 'hover:bg-slate-50'
@@ -264,19 +379,30 @@ export default function DpInstructionDashboardBanner({
                             {item.title}
                           </h4>
                         </div>
-                        <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
-                          <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
-                          <span>{item.commune} {item.dpt ? `(${item.dpt})` : ''}</span>
+                        <p className="text-[11px] text-slate-500 font-medium flex flex-wrap items-center gap-1.5">
+                          <span className="flex items-center gap-1 text-slate-700 font-bold">
+                            <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                            {item.commune} {item.dpt ? `(${item.dpt})` : ''}
+                          </span>
                           <span className="text-slate-300">&bull;</span>
-                          <span>Déposé le : <strong className="text-slate-700">{tl?.depositDateFormatted || '—'}</strong></span>
+                          <span>Déposé le : <strong className="text-slate-800">{tl?.depositDateFormatted || '—'}</strong></span>
                           <span className="text-slate-300">&bull;</span>
-                          <span>Échéance légale : <strong className="text-slate-700">{tl?.legalDueDateFormatted || '—'}</strong></span>
+                          <span>Échéance légale : <strong className="text-slate-800">{tl?.legalDueDateFormatted || '—'}</strong></span>
+                          {item.mairieInfo?.email && (
+                            <>
+                              <span className="text-slate-300">&bull;</span>
+                              <span className="text-indigo-700 font-bold flex items-center gap-1">
+                                <Mail className="w-2.5 h-2.5" />
+                                {item.mairieInfo.email}
+                              </span>
+                            </>
+                          )}
                         </p>
                       </div>
 
-                      {/* Colonne 2 : Barre de progression + Badge d'état */}
+                      {/* Colonne 2 : Barre de progression + Badge d'état + Boutons d'action */}
                       <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-between md:justify-end">
-                        <div className="w-32 hidden lg:flex flex-col gap-1 text-[10px]">
+                        <div className="w-28 hidden lg:flex flex-col gap-1 text-[10px]">
                           <div className="flex justify-between font-bold text-slate-500">
                             <span>Progression</span>
                             <span>{tl?.progressPercent || 0}%</span>
@@ -296,7 +422,7 @@ export default function DpInstructionDashboardBanner({
                           {isTacit ? (
                             <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm animate-pulse">
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              ACCORD TACITE ACQUIS
+                              ACCORD TACITE ({tl?.counterBadge || 'J+X'})
                             </span>
                           ) : tl?.status === 'certificat_obtenu' ? (
                             <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1">
@@ -306,28 +432,53 @@ export default function DpInstructionDashboardBanner({
                           ) : (
                             <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              J-{tl?.daysRemaining || 0}
+                              {tl?.counterBadge || 'En cours'}
                             </span>
                           )}
                         </div>
 
-                        {/* Bouton Action */}
+                        {/* Boutons Actions Directs */}
                         <div className="shrink-0 flex items-center gap-1.5">
                           {isTacit && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (onRequestCertificate) {
-                                  onRequestCertificate(item.project, tl);
-                                }
-                              }}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center gap-1 shadow-sm transition-all cursor-pointer"
-                              title="Générer la demande officielle de certificat d'accord tacite"
-                            >
-                              <FileText className="w-3.5 h-3.5" />
-                              <span>Réclamer Certificat</span>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onRequestCertificate) {
+                                    onRequestCertificate({
+                                      project: item.project,
+                                      timeline: tl,
+                                      mairieInfo: item.mairieInfo || item.project.dp_mairie_info || null
+                                    });
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                                title="Préparer et copier l'email pour la Mairie"
+                              >
+                                <Mail className="w-3.5 h-3.5 text-indigo-600" />
+                                <span className="hidden sm:inline">Mail Mairie</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onRequestCertificate) {
+                                    onRequestCertificate({
+                                      project: item.project,
+                                      timeline: tl,
+                                      mairieInfo: item.mairieInfo || item.project.dp_mairie_info || null
+                                    });
+                                  }
+                                }}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                                title="Générer la demande officielle de certificat d'accord tacite"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Réclamer Certificat</span>
+                              </button>
+                            </>
                           )}
 
                           <button
@@ -336,8 +487,8 @@ export default function DpInstructionDashboardBanner({
                               e.stopPropagation();
                               if (onSelectProject) onSelectProject(item.project);
                             }}
-                            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
-                            title="Ouvrir le dossier"
+                            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
+                            title="Ouvrir l'étude du dossier"
                           >
                             <ChevronRight className="w-4 h-4" />
                           </button>

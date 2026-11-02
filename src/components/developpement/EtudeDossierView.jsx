@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import DpInstructionCard from './DpInstructionCard';
 import DpInstructionDashboardBanner from './DpInstructionDashboardBanner';
 import DemandeCertificatTaciteModal from './DemandeCertificatTaciteModal';
+import { resolveProjectDepositDate, formatToIsoDate } from '@/services/dpInstructionService';
 
 /**
  * EtudeDossierView — Vue détaillée du workflow de développement d'un projet solaire
@@ -206,6 +207,12 @@ export default function EtudeDossierView({
             registrationNumber: existingNum,
           };
         }
+        if (key === 'dp') {
+          const resolvedDate = resolveProjectDepositDate(project, initialized.dp);
+          if (resolvedDate && !initialized.dp.depositDate) {
+            initialized.dp.depositDate = formatToIsoDate(resolvedDate);
+          }
+        }
       });
       setStepsState(initialized);
     } else {
@@ -220,6 +227,10 @@ export default function EtudeDossierView({
           registrationNumber: project?.[`${s.id}_registration_number`] || project?.[`numero_${s.id}`] || project?.[`num_${s.id}`] || '',
         };
       });
+      const resolvedDate = resolveProjectDepositDate(project, defaultState.dp);
+      if (resolvedDate) {
+        defaultState.dp.depositDate = formatToIsoDate(resolvedDate);
+      }
       setStepsState(defaultState);
     }
   }, [project?.id, project?.devWorkflow, project?.devComments]);
@@ -565,12 +576,20 @@ export default function EtudeDossierView({
           stepState={stepsState.dp || {}}
           onUpdateStep={(updates) => updateStep('dp', updates)}
           onOpenUrbanismeWizard={() => handleStepAction(step)}
-          onRequestCertificate={(data) => {
+          onRequestCertificate={(arg1, arg2, arg3) => {
+            let p = arg1;
+            let tl = arg2;
+            let m = arg3;
+            if (arg1 && typeof arg1 === 'object' && ('project' in arg1 || 'timeline' in arg1)) {
+              p = arg1.project;
+              tl = arg1.timeline;
+              m = arg1.mairieInfo;
+            }
             setCertificatModalData({
               isOpen: true,
-              project: data?.project || project,
-              timeline: data?.timeline,
-              mairieInfo: data?.mairieInfo,
+              project: p || project,
+              timeline: tl,
+              mairieInfo: m || p?.dp_mairie_info || stepsState?.dp?.dp_mairie_info || null,
             });
           }}
         />
@@ -973,12 +992,20 @@ export default function EtudeDossierView({
         onSelectProject={(p) => {
           if (onSelectProject) onSelectProject(p);
         }}
-        onRequestCertificate={(p, timeline) => {
+        onRequestCertificate={(arg1, arg2, arg3) => {
+          let p = arg1;
+          let tl = arg2;
+          let m = arg3;
+          if (arg1 && typeof arg1 === 'object' && ('project' in arg1 || 'timeline' in arg1)) {
+            p = arg1.project;
+            tl = arg1.timeline;
+            m = arg1.mairieInfo;
+          }
           setCertificatModalData({
             isOpen: true,
             project: p || project,
-            timeline: timeline,
-            mairieInfo: p?.dp_mairie_info || null,
+            timeline: tl,
+            mairieInfo: m || p?.dp_mairie_info || null,
           });
         }}
       />

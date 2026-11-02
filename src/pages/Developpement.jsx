@@ -831,12 +831,20 @@ export default function Developpement() {
                 projects={projects}
                 activeProjectId={selectedProject?.id}
                 onSelectProject={handleSelectProjectFromList}
-                onRequestCertificate={(p, timeline) => {
+                onRequestCertificate={(arg1, arg2, arg3) => {
+                  let p = arg1;
+                  let tl = arg2;
+                  let m = arg3;
+                  if (arg1 && typeof arg1 === 'object' && ('project' in arg1 || 'timeline' in arg1)) {
+                    p = arg1.project;
+                    tl = arg1.timeline;
+                    m = arg1.mairieInfo;
+                  }
                   setDpCertificatModal({
                     isOpen: true,
                     project: p || selectedProject,
-                    timeline: timeline,
-                    mairieInfo: p?.dp_mairie_info || null,
+                    timeline: tl,
+                    mairieInfo: m || p?.dp_mairie_info || null,
                   });
                 }}
               />
