@@ -1187,6 +1187,13 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
     const isNoBattery = isAcama;
+    const isBattery = !isNoBattery && (
+        project?.solutionType === 'battery' || 
+        Boolean(project?.isBatteryStandAlone) || 
+        Boolean(project?.isBatterySA) || 
+        Boolean(project?.isBattery) || 
+        (project?.type || '').toLowerCase().includes('batterie')
+    );
 
     const hasNotice = Boolean(includeNotice || project?.includeNotice || project?.hasNotice);
     const rawNoticeText = noticeText || project?.noticeText || (isBattery ? getBessCadre41Text(project) : (project?.noticeAgricole || project?.pc_notice || project?.description));
