@@ -280,6 +280,22 @@ export default function AdminEnedis() {
 
       setData(result.data);
       setPrm(targetPrm);
+      if (result?.data?.mandate?.titulaire) {
+        setOwnerName(result.data.mandate.titulaire);
+      } else if (existingConsent?.titulaire) {
+        setOwnerName(existingConsent.titulaire);
+      }
+      if (result?.data?.mandate?.adresse) {
+        setOwnerAddress(result.data.mandate.adresse);
+      } else if (existingConsent?.adresse) {
+        setOwnerAddress(existingConsent.adresse);
+      }
+      if (annualKwhVal > 0 && annualKwhVal !== 5850) {
+        setCustomKwh(String(annualKwhVal));
+      }
+      if (result?.data?.peakKw > 0) {
+        setCustomPeakKw(String(result.data.peakKw));
+      }
       setActiveTab('interrogation');
       loadConsents(); // Rafraîchir l'historique après récupération
 
@@ -292,18 +308,21 @@ export default function AdminEnedis() {
         });
       } else if (isPending) {
         setStatus('disconnected');
-        const descMsg = result?.enedisError?.description || result?.message || "Le mandat eIDAS est bien scellé. En attente de propagation Enedis SGE (délai 24h ouvrées). Saisissez les données ou importez une facture pour continuer l'étude.";
+        const rawDesc = result?.enedisError?.description || result?.message;
+        const descMsg = typeof rawDesc === 'string' 
+          ? rawDesc 
+          : (rawDesc?.message || (rawDesc ? JSON.stringify(rawDesc) : "Le mandat eIDAS est bien scellé. En attente de propagation Enedis SGE (délai 24h ouvrées)."));
         toast({ 
           title: "En attente de propagation Enedis SGE", 
           description: descMsg, 
           variant: "warning" 
         });
-        if (!annualConsoParam) {
-          setIsManualModalOpen(true);
-        }
       } else {
         setStatus('disconnected');
-        let errorMsg = result?.enedisError?.description || result?.message || "Aucun consentement trouvé ou données non disponibles pour ce PRM.";
+        let errorMsg = (typeof result?.enedisError?.description === 'string' ? result.enedisError.description : null) || 
+                       (typeof result?.message === 'string' ? result.message : null) || 
+                       (result?.enedisError?.description ? (result.enedisError.description.message || JSON.stringify(result.enedisError.description)) : null) ||
+                       "Aucun consentement trouvé ou données non disponibles pour ce PRM.";
         if (result?.data?.daily?.error) {
           const status = result.data.daily.status;
           if (status === 500) {
@@ -325,13 +344,15 @@ export default function AdminEnedis() {
       if (err?.response?.data?.details) {
         msg = typeof err.response.data.details === 'string' ? err.response.data.details : JSON.stringify(err.response.data.details);
       } else if (err?.response?.data?.error) {
-        msg = typeof err.response.data.error === 'string' ? err.response.data.error : JSON.stringify(err.response.data.error);
+        msg = typeof err.response.data.error === 'string' ? err.response.data.error : (err.response.data.error?.message || JSON.stringify(err.response.data.error));
       } else if (err?.response?.data?.message) {
         msg = typeof err.response.data.message === 'string' ? err.response.data.message : JSON.stringify(err.response.data.message);
       } else if (typeof err?.message === 'string') {
         msg = err.message;
       } else if (typeof err === 'string') {
         msg = err;
+      } else if (err) {
+        msg = JSON.stringify(err);
       }
       toast({ 
         title: "Erreur technique Enedis", 

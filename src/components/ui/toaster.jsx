@@ -32,9 +32,17 @@ export function Toaster() {
 								)}
 							</div>
 							<div className="grid gap-0.5 flex-1 pr-2">
-								{title && <ToastTitle>{title}</ToastTitle>}
+								{title && (
+									<ToastTitle>
+										{typeof title === 'string' ? title : (title?.message || JSON.stringify(title))}
+									</ToastTitle>
+								)}
 								{description && (
-									<ToastDescription>{description}</ToastDescription>
+									<ToastDescription>
+										{typeof description === 'string' 
+											? description 
+											: (description?.description || description?.message || description?.error || JSON.stringify(description))}
+									</ToastDescription>
 								)}
 							</div>
 						</div>
