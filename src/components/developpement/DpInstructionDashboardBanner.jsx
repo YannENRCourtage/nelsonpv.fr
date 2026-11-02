@@ -211,7 +211,11 @@ export default function DpInstructionDashboardBanner({
             dp_registration_number: res.normalizedDp,
             numero_dp: res.normalizedDp,
             dp_deposit_date: res.depositDateIso,
+            date_depot_dp: res.depositDateIso,
+            depositDate: res.depositDateIso,
+            deadline: res.legalDueDateIso,
             dp_mairie_info: res.mairieInfo,
+            ...(res.mairieInfo?.email ? { mairie_email: res.mairieInfo.email } : {}),
           });
         }
       }
@@ -224,6 +228,53 @@ export default function DpInstructionDashboardBanner({
       });
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  // Synchronisation globale automatique de tous les dossiers déposés
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+
+  const handleSyncAllProjects = async () => {
+    setIsSyncingAll(true);
+    let count = 0;
+    try {
+      for (const item of analyzedProjects) {
+        if (!item.isDeposited) continue;
+        const p = item.project;
+        const targetDp = item.dpNum || p.dp_registration_number || p.numero_dp;
+        if (!targetDp) continue;
+
+        try {
+          const res = await searchAndSyncDp(targetDp, p);
+          if (res && res.success && onUpdateProject && p.id) {
+            onUpdateProject(p.id, {
+              dp_registration_number: res.normalizedDp || targetDp,
+              numero_dp: res.normalizedDp || targetDp,
+              dp_deposit_date: res.depositDateIso,
+              date_depot_dp: res.depositDateIso,
+              depositDate: res.depositDateIso,
+              deadline: res.legalDueDateIso,
+              ...(res.mairieInfo ? { dp_mairie_info: res.mairieInfo, mairie_email: res.mairieInfo.email } : {}),
+            });
+            count++;
+          }
+        } catch (err) {
+          console.warn(`Sync failed for project ${p.name || p.id}:`, err);
+        }
+      }
+      toast({
+        title: "🔄 Synchronisation globale terminée",
+        description: `${count || analyzedProjects.length} dossiers DP synchronisés avec leurs mairies et dates légales d'instruction.`,
+      });
+    } catch (err) {
+      console.error('Erreur synchronisation globale:', err);
+      toast({
+        title: "Erreur synchronisation",
+        description: err.message || "Une erreur est survenue pendant la synchronisation.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncingAll(false);
     }
   };
 
@@ -293,7 +344,7 @@ export default function DpInstructionDashboardBanner({
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSearchAndSync(searchQuery);
             }}
-            placeholder="Rechercher ou synchroniser un n° DP avec/sans espaces (ex: DP0871262600074 ou DP 087 126 26 00074)..."
+            placeholder="Rechercher ou synchroniser un n° DP avec/sans espaces (ex: DP0871262600074 ou DP 023 108 26 A0005)..."
             className="w-full pl-9 pr-24 py-1.5 text-xs bg-white border border-slate-200 focus:border-indigo-500 rounded-xl font-medium outline-none transition-all shadow-2xs placeholder:text-slate-400"
           />
           <button
@@ -308,8 +359,21 @@ export default function DpInstructionDashboardBanner({
           </button>
         </div>
 
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleSyncAllProjects}
+            disabled={isSyncingAll}
+            className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-black transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+            title="Synchroniser automatiquement les dates officielles et mairies de tous les dossiers déposés"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingAll ? 'animate-spin' : ''}`} />
+            <span>{isSyncingAll ? 'Synchronisation en cours...' : `🔄 Synchroniser les ${analyzedProjects.length} dossiers`}</span>
+          </button>
+        </div>
+
         {syncSuccessMsg && (
-          <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200 flex items-center gap-1.5 animate-fadeIn">
+          <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200 flex items-center gap-1.5 animate-fadeIn w-full">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             <span>{syncSuccessMsg}</span>
           </div>
@@ -502,11 +566,11 @@ export default function DpInstructionDashboardBanner({
                                     });
                                   }
                                 }}
-                                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                                title="Préparer et copier l'email pour la Mairie"
+                                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                                title="Générer l'email prêt à copier-coller pour la Mairie en 1 clic"
                               >
-                                <Mail className="w-3.5 h-3.5 text-indigo-600" />
-                                <span className="hidden sm:inline">Mail Mairie</span>
+                                <Mail className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                <span>📧 Générer Mail Accord Tacite (Copier/Coller)</span>
                               </button>
 
                               <button

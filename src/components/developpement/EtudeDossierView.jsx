@@ -262,11 +262,18 @@ export default function EtudeDossierView({
         project[`numero_${stepId}`] = updates.registrationNumber;
       }
       if (stepId === 'dp') {
-        if (updates.depositDate !== undefined) project.dp_deposit_date = updates.depositDate;
+        if (updates.depositDate !== undefined) {
+          project.dp_deposit_date = updates.depositDate;
+          project.date_depot_dp = updates.depositDate;
+          project.dpDepositDate = updates.depositDate;
+          project.depositDate = updates.depositDate;
+        }
+        if (updates.deadline !== undefined) project.dp_deadline = updates.deadline;
         if (updates.regime !== undefined) project.dp_regime = updates.regime;
         if (updates.hasComplement !== undefined) project.dp_has_complement = updates.hasComplement;
         if (updates.complementDate !== undefined) project.dp_complement_date = updates.complementDate;
         if (updates.dp_mairie_info !== undefined) project.dp_mairie_info = updates.dp_mairie_info;
+        if (updates.mairie_email !== undefined) project.mairie_email = updates.mairie_email;
         if (updates.certificateObtained !== undefined) project.dp_certificate_obtained = updates.certificateObtained;
         if (updates.displayDate !== undefined) project.dp_display_date = updates.displayDate;
       }

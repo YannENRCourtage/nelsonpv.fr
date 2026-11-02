@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Clock, AlertTriangle, CheckCircle2, ChevronRight, 
   Building, Mail, Phone, MapPin, Calendar, Sparkles, RefreshCw, 
-  ExternalLink, ShieldCheck, Check, Info, Search
+  ExternalLink, ShieldCheck, Check, Info, Search, Paperclip
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { 
@@ -14,7 +14,8 @@ import {
   formatToIsoDate,
   formatToFrenchDate,
   normalizeDpNumber,
-  searchAndSyncDp
+  searchAndSyncDp,
+  extractDataFromReceiptFile
 } from '@/services/dpInstructionService';
 
 export default function DpInstructionCard({
@@ -128,51 +129,46 @@ export default function DpInstructionCard({
     }
   }, [dpNumber]);
 
-  // Recherche & synchronisation globale (SITADEL & Mairie)
+  // Recherche & synchronisation multi-sources (SITADEL, Web affichage, documents & jalons)
   const handleSearchAndSync = async () => {
     if (!dpNumber) return;
     setIsSearching(true);
     try {
-      const res = await searchAndSyncDp(dpNumber, { project, stepState });
+      const res = await searchAndSyncDp(dpNumber, project, stepState);
       if (res.normalizedDp) {
         setDpNumber(res.normalizedDp);
       }
       if (res.mairieInfo) {
         setMairieInfo(res.mairieInfo);
       }
-      let finalDepositDate = depositDate;
-      if (res.depositDateIso && (!depositDate || res.fromSitadel)) {
-        finalDepositDate = res.depositDateIso;
-        setDepositDate(res.depositDateIso);
+      const finalDepositDate = res.depositDateIso || depositDate;
+      if (finalDepositDate) {
+        setDepositDate(finalDepositDate);
       }
-      const tl = calculateDpTimeline({
+      const tl = res.timeline || calculateDpTimeline({
         depositDate: finalDepositDate,
         regime,
         hasComplement,
         complementDate,
         displayDate,
       });
+
       if (onUpdateStep) {
         onUpdateStep({
           registrationNumber: res.normalizedDp || dpNumber,
           dp_registration_number: res.normalizedDp || dpNumber,
           numero_dp: res.normalizedDp || dpNumber,
           ...(res.mairieInfo ? { dp_mairie_info: res.mairieInfo, mairie_email: res.mairieInfo.email } : {}),
-          ...(finalDepositDate ? { depositDate: finalDepositDate, dp_deposit_date: finalDepositDate } : {}),
+          ...(finalDepositDate ? { depositDate: finalDepositDate, dp_deposit_date: finalDepositDate, date_depot_dp: finalDepositDate } : {}),
           ...(tl?.legalDueDateIso ? { deadline: tl.legalDueDateIso } : {}),
         });
       }
-      if (res.fromSitadel) {
-        toast({
-          title: "Dossier trouvé dans SITADEL !",
-          description: `Date de dépôt officielle : ${res.depositDateFrench || res.depositDateIso}. Mairie : ${res.mairieInfo?.nomMairie || 'Identifiée'}.`,
-        });
-      } else {
-        toast({
-          title: "Mairie identifiée & DP formatée",
-          description: `${res.mairieInfo?.nomMairie || 'Commune identifiée'}. ${res.message || ''}`,
-        });
-      }
+
+      const statutLabel = tl?.isOverdue ? 'Accord tacite acquis' : 'En cours d\'instruction';
+      toast({
+        title: "✅ DP synchronisée",
+        description: `Mairie de ${res.communeName || 'la commune'} • Dépôt : ${res.depositDateFormatted || '—'} • Échéance : ${tl?.legalDueDateFormatted || '—'} (${statutLabel})`,
+      });
     } catch (err) {
       console.error('Erreur synchronisation DP:', err);
       toast({
@@ -182,6 +178,69 @@ export default function DpInstructionCard({
       });
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  // BONUS : Lecture automatique de récépissé ou courrier mairie (PDF ou image)
+  const [isReadingReceipt, setIsReadingReceipt] = useState(false);
+
+  const handleImportReceipt = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsReadingReceipt(true);
+    try {
+      const data = await extractDataFromReceiptFile(file);
+      let newDp = dpNumber;
+      let newDate = depositDate;
+      let newRegime = regime;
+
+      if (data?.dpNumber) {
+        newDp = data.dpNumber;
+        setDpNumber(data.dpNumber);
+        detectAndFetchMairie(data.dpNumber, true);
+      }
+      if (data?.depositDateIso) {
+        newDate = data.depositDateIso;
+        setDepositDate(data.depositDateIso);
+      }
+      if (data?.regime) {
+        newRegime = data.regime;
+        setRegime(data.regime);
+      }
+
+      const tl = calculateDpTimeline({
+        depositDate: newDate,
+        regime: newRegime,
+        hasComplement,
+        complementDate,
+        displayDate,
+      });
+
+      if (onUpdateStep) {
+        onUpdateStep({
+          registrationNumber: newDp,
+          dp_registration_number: newDp,
+          numero_dp: newDp,
+          ...(newDate ? { depositDate: newDate, dp_deposit_date: newDate, date_depot_dp: newDate } : {}),
+          regime: newRegime,
+          ...(tl?.legalDueDateIso ? { deadline: tl.legalDueDateIso } : {}),
+        });
+      }
+
+      toast({
+        title: "📄 Récépissé analysé avec succès !",
+        description: `${newDp ? `DP : ${newDp} • ` : ''}${newDate ? `Dépôt : ${data.depositDateFormatted} • ` : ''}Délai : ${newRegime === '2_mois' ? '2 mois' : '1 mois'} (${tl.isOverdue ? 'Accord tacite acquis' : 'En cours'})`,
+      });
+    } catch (err) {
+      console.error('Erreur lecture récépissé:', err);
+      toast({
+        title: "Erreur lecture récépissé",
+        description: err.message || "Impossible de lire le document.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsReadingReceipt(false);
+      e.target.value = '';
     }
   };
 
@@ -387,12 +446,27 @@ export default function DpInstructionCard({
                 type="button"
                 onClick={handleSearchAndSync}
                 disabled={isSearching || !dpNumber}
-                title="Rechercher dans SITADEL & Mairie"
+                title="Rechercher et synchroniser dans SITADEL, Web & Mairie"
                 className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1 shadow-2xs transition-all disabled:opacity-50 cursor-pointer shrink-0"
               >
                 <Sparkles className={`w-3 h-3 ${isSearching ? 'animate-spin' : ''}`} />
                 <span>{isSearching ? '...' : 'Sync'}</span>
               </button>
+
+              <label 
+                title="Importer un récépissé de dépôt ou courrier mairie (PDF ou image)"
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg text-[10.5px] font-bold flex items-center gap-1 border border-slate-200 shadow-2xs transition-all cursor-pointer shrink-0"
+              >
+                <Paperclip className={`w-3 h-3 ${isReadingReceipt ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
+                <span>{isReadingReceipt ? 'Lecture...' : '📎 Lire Récépissé'}</span>
+                <input
+                  type="file"
+                  accept="application/pdf,image/*"
+                  className="hidden"
+                  onChange={handleImportReceipt}
+                  disabled={isReadingReceipt}
+                />
+              </label>
             </div>
           </div>
 
