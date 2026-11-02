@@ -166,7 +166,22 @@ export function normalizeDpNumber(rawInput) {
   if (!rawInput) return null;
   const raw = String(rawInput).trim().toUpperCase();
   const digits = raw.replace(/[^A-Z0-9]/g, '');
-  if (!digits || digits.length < 5) return null;
+  if (!digits || digits.length < 5) {
+    return {
+      type: 'DP',
+      dpt2: '',
+      dpt3: '',
+      comm3: '',
+      codeInsee: null,
+      year: '26',
+      fullYear: 2026,
+      dossierNum: '',
+      normalized: rawInput,
+      formatted: rawInput,
+      cleanNoSpace: digits,
+      numDau: digits,
+    };
+  }
 
   let type = 'DP';
   let rest = digits;
@@ -284,25 +299,32 @@ export function normalizeDpNumber(rawInput) {
 
 /**
  * Extrait le code INSEE à 5 caractères depuis un numéro de DP français.
+ * Fonction pure et indépendante : n'appelle JAMAIS normalizeDpNumber pour éviter toute récursion.
  */
 export function extractInseeFromDpNumber(dpNumber) {
   if (!dpNumber) return null;
-  const normalized = normalizeDpNumber(dpNumber);
-  if (normalized?.codeInsee) return normalized.codeInsee;
-
   const raw = String(dpNumber).trim().toUpperCase();
-  const clean = raw.replace(/^D\.?P\.?\s*/i, '').replace(/[\s\-_.]/g, '');
+  const clean = raw.replace(/^D\.?P\.?\s*/i, '').replace(/^P\.?C\.?\s*/i, '').replace(/[^A-Z0-9]/g, '');
   if (!clean || clean.length < 5) return null;
 
+  // DOM (971 à 976)
   if (/^97[1-6]\d{2}/.test(clean)) return clean.slice(0, 5);
+
+  // Corse (2A ou 2B)
   const corseMatch = clean.match(/^(?:0)?(2[AB])(\d{3})/i);
   if (corseMatch) return `${corseMatch[1].toUpperCase()}${corseMatch[2]}`;
-  const metro00Match = clean.match(/^00([1-9])(\d{3})/);
-  if (metro00Match) return `0${metro00Match[1]}${metro00Match[2]}`;
+
+  // Métropole 3 chiffres de département (ex: 087 126... -> 87126, 024 253... -> 24253)
   const metro3Match = clean.match(/^0([1-9]\d)(\d{3})/);
   if (metro3Match) return `${metro3Match[1]}${metro3Match[2]}`;
+
+  // Métropole 2 chiffres de département (ex: 87 126... -> 87126, 24 253... -> 24253)
   const metro2Match = clean.match(/^([0-9]{2})(\d{3})/);
   if (metro2Match) return `${metro2Match[1]}${metro2Match[2]}`;
+
+  // Cas avec 00 (ex: 001 234 -> 01234)
+  const metro00Match = clean.match(/^00([1-9])(\d{3})/);
+  if (metro00Match) return `0${metro00Match[1]}${metro00Match[2]}`;
 
   return null;
 }
