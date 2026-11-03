@@ -98,8 +98,10 @@ export async function getAllCachedMediaForProject(projectId) {
           const { buildingKey, imageKey, dataUrl } = item;
           if (!dataUrl) continue;
 
-          if (buildingKey === 'b0' || buildingKey === 'general' || !buildingKey) {
-            if (['facade_sud', 'facade_nord', 'facade_est', 'facade_ouest', 'vue_couverture', 'situation_ign', 'satellite', 'masse_projet'].includes(imageKey)) {
+          const isCaptureKey = ['facade_sud', 'facade_nord', 'facade_est', 'facade_ouest', 'vue_couverture', 'situation_ign', 'satellite', 'masse_projet', 'masse_projet_2', 'masse_projet_3', 'masse_capture', 'masse_capture_2', 'masse_capture_3', 'ign'].includes(imageKey);
+
+          if (buildingKey === 'b0' || buildingKey === 'general' || buildingKey === 'bat-sa-1' || buildingKey === 'bat-1' || buildingKey === 'omb-1' || !buildingKey) {
+            if (isCaptureKey) {
               result.captures[imageKey] = dataUrl;
             } else {
               result.photos[imageKey] = dataUrl;
@@ -110,7 +112,7 @@ export async function getAllCachedMediaForProject(projectId) {
             result.buildingsMedia[buildingKey] = { captures: {}, photos: {} };
           }
 
-          if (['facade_sud', 'facade_nord', 'facade_est', 'facade_ouest', 'vue_couverture'].includes(imageKey)) {
+          if (isCaptureKey) {
             result.buildingsMedia[buildingKey].captures[imageKey] = dataUrl;
           } else {
             result.buildingsMedia[buildingKey].photos[imageKey] = dataUrl;
@@ -250,6 +252,17 @@ export async function persistProjectUrbanismeMedia(projectId, activeTenantId, ca
         }
       }
 
+      ['masse_capture', 'masse_capture_2', 'masse_capture_3'].forEach(mKey => {
+        const val = b[mKey];
+        if (val && typeof val === 'string' && val.startsWith('data:')) {
+          uploadTasks.push(
+            uploadUrbanismeDataUrl(val, projectId, bKey, mKey).then(url => {
+              if (url) b[mKey] = url;
+            })
+          );
+        }
+      });
+
       if (b.photos) {
         for (const [k, val] of Object.entries(b.photos)) {
           if (val && typeof val === 'string' && val.startsWith('data:')) {
@@ -283,7 +296,7 @@ export async function persistProjectUrbanismeMedia(projectId, activeTenantId, ca
     const firestoreCaptures = stripDataUrls(cleanCaptures);
     const firestorePhotos = stripDataUrls(cleanPhotos);
     const firestoreBuildings = cleanBuildings.map(b => ({
-      ...b,
+      ...stripDataUrls(b),
       captures: stripDataUrls(b.captures),
       photos: stripDataUrls(b.photos),
     }));

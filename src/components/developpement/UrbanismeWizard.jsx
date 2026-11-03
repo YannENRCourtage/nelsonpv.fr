@@ -2252,7 +2252,11 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   });
   const [isPlacingTransfo, setIsPlacingTransfo] = useState(false);
   const masseMapInstancesRef = useRef({});
+  const masseViewTabsRef = useRef({});
+  masseViewTabsRef.current = masseViewTabs;
+  const latestMasseCapturesRef = useRef({});
   const captureStructureMasseMapRef = useRef(null);
+  const captureAllActiveMasseMapsRef = useRef(null);
   const masseRotationDebounceRef = useRef(null);
   const masseGpsDebounceRef = useRef(null);
   const masseMapChangeDebounceRef = useRef(null);
@@ -2303,7 +2307,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     setMeasuringMasseStrId(null);
     setTimeout(() => {
       if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+        captureStructureMasseMapRef.current(strId, masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1, null, true);
       }
     }, 150);
   }, [masseViewTabs]);
@@ -2320,7 +2324,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
     setTimeout(() => {
       if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+        captureStructureMasseMapRef.current(strId, masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1, null, true);
       }
     }, 150);
   }, [masseViewTabs]);
@@ -2336,7 +2340,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
     setTimeout(() => {
       if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+        captureStructureMasseMapRef.current(strId, masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1, null, true);
       }
     }, 150);
   }, [masseViewTabs]);
@@ -2351,7 +2355,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
     setTimeout(() => {
       if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+        captureStructureMasseMapRef.current(strId, masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1, null, true);
       }
     }, 250);
   }, [masseViewTabs]);
@@ -2396,7 +2400,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
     setTimeout(() => {
       if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+        captureStructureMasseMapRef.current(strId, masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1, null, true);
       }
     }, 200);
   }, [masseViewTabs]);
@@ -2418,7 +2422,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       if (masseVpDebounceRef.current) clearTimeout(masseVpDebounceRef.current);
       masseVpDebounceRef.current = setTimeout(() => {
         if (typeof captureStructureMasseMapRef.current === 'function') {
-          captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+          captureStructureMasseMapRef.current(strId, masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1, null, true);
         }
       }, 800);
     }
@@ -2456,7 +2460,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
     setTimeout(() => {
       if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+        captureStructureMasseMapRef.current(strId, masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1, null, true);
       }
     }, 200);
   }, [masseViewTabs]);
@@ -2474,7 +2478,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       if (masseAccessDebounceRef.current) clearTimeout(masseAccessDebounceRef.current);
       masseAccessDebounceRef.current = setTimeout(() => {
         if (typeof captureStructureMasseMapRef.current === 'function') {
-          captureStructureMasseMapRef.current(strId, masseViewTabs[strId] || 1);
+          captureStructureMasseMapRef.current(strId, masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1, null, true);
         }
       }, 800);
     }
@@ -2626,19 +2630,79 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const saveWizardState = useCallback((overrides = {}) => {
     if (!project?.id) return;
 
-    const currentSol = (overrides.solutions || solutions)[overrides.solutionType || solutionType] || (overrides.solutions || solutions).building;
+    const baseSolutions = overrides.solutions || solutions;
+    const activeSolKey = overrides.solutionType || solutionType;
+    const latestMapByStr = latestMasseCapturesRef.current || {};
+    const enrichBuildingWithLatestMasse = (b) => {
+      if (!b) return b;
+      const bId = b.id || (activeSolKey === 'battery' ? 'bat-sa-1' : 'bat-1');
+      const m = latestMapByStr[bId] || (activeSolKey === 'battery' ? latestMapByStr['bat-sa-1'] : null);
+      if (!m) return b;
+      const nextB = { ...b, captures: { ...(b.captures || {}) }, urbanisme_captures: { ...(b.urbanisme_captures || {}) } };
+      if (m[1]?.dataUrl) {
+        nextB.masse_capture = m[1].dataUrl;
+        nextB.captures.masse_projet = m[1].dataUrl;
+        nextB.urbanisme_captures.masse_projet = m[1].dataUrl;
+        if (m[1].zoom) { nextB.masse_zoom = m[1].zoom; nextB.captures.masse_zoom = m[1].zoom; nextB.urbanisme_captures.masse_zoom = m[1].zoom; }
+        if (m[1].centerLat) nextB.masse_center_lat = m[1].centerLat;
+        if (m[1].centerLng) nextB.masse_center_lng = m[1].centerLng;
+      }
+      if (m[2]?.dataUrl) {
+        nextB.masse_capture_2 = m[2].dataUrl;
+        nextB.captures.masse_projet_2 = m[2].dataUrl;
+        nextB.urbanisme_captures.masse_projet_2 = m[2].dataUrl;
+        if (m[2].zoom) { nextB.masse_zoom_2 = m[2].zoom; nextB.captures.masse_zoom_2 = m[2].zoom; nextB.urbanisme_captures.masse_zoom_2 = m[2].zoom; }
+        if (m[2].centerLat) nextB.masse_center_lat_2 = m[2].centerLat;
+        if (m[2].centerLng) nextB.masse_center_lng_2 = m[2].centerLng;
+      }
+      if (m[3]?.dataUrl) {
+        nextB.masse_capture_3 = m[3].dataUrl;
+        nextB.captures.masse_projet_3 = m[3].dataUrl;
+        nextB.urbanisme_captures.masse_projet_3 = m[3].dataUrl;
+        if (m[3].zoom) { nextB.masse_zoom_3 = m[3].zoom; nextB.captures.masse_zoom_3 = m[3].zoom; nextB.urbanisme_captures.masse_zoom_3 = m[3].zoom; }
+        if (m[3].centerLat) nextB.masse_center_lat_3 = m[3].centerLat;
+        if (m[3].centerLng) nextB.masse_center_lng_3 = m[3].centerLng;
+      }
+      return nextB;
+    };
+    const enrichedSolutions = { ...baseSolutions };
+    ['building', 'ombriere', 'battery'].forEach(sk => {
+      if (enrichedSolutions[sk]?.buildings) {
+        enrichedSolutions[sk] = {
+          ...enrichedSolutions[sk],
+          buildings: enrichedSolutions[sk].buildings.map(enrichBuildingWithLatestMasse)
+        };
+      }
+    });
+    const currentSol = enrichedSolutions[activeSolKey] || enrichedSolutions.building;
     const currentBuildings = currentSol?.buildings || [];
+    const primaryBId = currentBuildings[0]?.id || (activeSolKey === 'battery' ? 'bat-sa-1' : 'bat-1');
+    const primaryM = latestMapByStr[primaryBId] || latestMapByStr['bat-sa-1'] || {};
+    const mergedCaptures = {
+      ...captures,
+      ...(primaryM[1]?.dataUrl ? { masse_projet: primaryM[1].dataUrl, ...(primaryM[1].zoom ? { masse_zoom: primaryM[1].zoom } : {}) } : {}),
+      ...(primaryM[2]?.dataUrl ? { masse_projet_2: primaryM[2].dataUrl, ...(primaryM[2].zoom ? { masse_zoom_2: primaryM[2].zoom } : {}) } : {}),
+      ...(primaryM[3]?.dataUrl ? { masse_projet_3: primaryM[3].dataUrl, ...(primaryM[3].zoom ? { masse_zoom_3: primaryM[3].zoom } : {}) } : {}),
+    };
     const mergedEditedProject = {
       ...editedProject,
-      ...(overrides.editedProject || {})
+      ...(overrides.editedProject || {}),
+      ...(primaryM[1]?.dataUrl ? { masse_capture: primaryM[1].dataUrl, ...(primaryM[1].zoom ? { masse_zoom: primaryM[1].zoom } : {}), ...(primaryM[1].centerLat ? { masse_center_lat: primaryM[1].centerLat } : {}), ...(primaryM[1].centerLng ? { masse_center_lng: primaryM[1].centerLng } : {}) } : {}),
+      ...(primaryM[2]?.dataUrl ? { masse_capture_2: primaryM[2].dataUrl, ...(primaryM[2].zoom ? { masse_zoom_2: primaryM[2].zoom } : {}), ...(primaryM[2].centerLat ? { masse_center_lat_2: primaryM[2].centerLat } : {}), ...(primaryM[2].centerLng ? { masse_center_lng_2: primaryM[2].centerLng } : {}) } : {}),
+      ...(primaryM[3]?.dataUrl ? { masse_capture_3: primaryM[3].dataUrl, ...(primaryM[3].zoom ? { masse_zoom_3: primaryM[3].zoom } : {}), ...(primaryM[3].centerLat ? { masse_center_lat_3: primaryM[3].centerLat } : {}), ...(primaryM[3].centerLng ? { masse_center_lng_3: primaryM[3].centerLng } : {}) } : {}),
+      urbanisme_captures: {
+        ...(editedProject?.urbanisme_captures || {}),
+        ...(overrides.editedProject?.urbanisme_captures || {}),
+        ...mergedCaptures
+      }
     };
 
     const targetStep = overrides.step !== undefined ? overrides.step : step;
 
     const rawStateToSave = {
       step: targetStep,
-      solutionType: overrides.solutionType || solutionType,
-      solutions: overrides.solutions || solutions,
+      solutionType: activeSolKey,
+      solutions: enrichedSolutions,
       editedProject: mergedEditedProject,
       noticeText: overrides.noticeText !== undefined ? overrides.noticeText : noticeText,
       isNoticeUserModified: overrides.isNoticeUserModified !== undefined ? overrides.isNoticeUserModified : isNoticeUserModified,
@@ -2668,7 +2732,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       persistProjectUrbanismeMedia(
         project.id,
         activeTenantId,
-        captures,
+        mergedCaptures,
         photos,
         currentBuildings
       ).catch(err => {
@@ -3017,7 +3081,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     if (masseRotationDebounceRef.current) clearTimeout(masseRotationDebounceRef.current);
     masseRotationDebounceRef.current = setTimeout(() => {
       if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(targetId, masseViewTabs[targetId] || 1);
+        captureStructureMasseMapRef.current(targetId, masseViewTabsRef.current[targetId] || masseViewTabs[targetId] || 1, null, true);
       }
     }, 400);
   }, [solutionType, masseViewTabs]);
@@ -3068,7 +3132,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     if (masseGpsDebounceRef.current) clearTimeout(masseGpsDebounceRef.current);
     masseGpsDebounceRef.current = setTimeout(() => {
       if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(targetId, masseViewTabs[targetId] || 1);
+        captureStructureMasseMapRef.current(targetId, masseViewTabsRef.current[targetId] || masseViewTabs[targetId] || 1, null, true);
       }
     }, 400);
   }, [solutionType, masseViewTabs]);
@@ -3180,7 +3244,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     if (masseMapChangeDebounceRef.current) clearTimeout(masseMapChangeDebounceRef.current);
     masseMapChangeDebounceRef.current = setTimeout(() => {
       if (typeof captureStructureMasseMapRef.current === 'function') {
-        captureStructureMasseMapRef.current(targetId, viewNum);
+        captureStructureMasseMapRef.current(targetId, masseViewTabsRef.current[targetId] || viewNum, null, true);
       }
     }, 800);
   }, [solutionType]);
@@ -4963,9 +5027,23 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     }).catch(err => console.warn('[UrbanismeWizard] Upload Storage échoué:', err));
   };
 
-  // Sauvegarde d'une capture fidèle de plan de masse (DP2 / PC2) pour Vue 1 ou Vue 2
+  // Sauvegarde d'une capture fidèle de plan de masse (DP2 / PC2) pour Vue 1, Vue 2 ou Vue 3
   const handleSaveMasseCapture = useCallback((targetId, dataUrl, viewNum = 1, zoom = null, centerLat = null, centerLng = null) => {
     if (!dataUrl) return;
+
+    const captureKey = viewNum === 3 ? 'masse_projet_3' : (viewNum === 2 ? 'masse_projet_2' : 'masse_projet');
+    const zoomKey = viewNum === 3 ? 'masse_zoom_3' : (viewNum === 2 ? 'masse_zoom_2' : 'masse_zoom');
+
+    // Synchronisation immédiate dans la ref pour éviter toute fermeture (closure) périmée lors du clic sur Suivant / Générer
+    if (!latestMasseCapturesRef.current[targetId]) {
+      latestMasseCapturesRef.current[targetId] = {};
+    }
+    latestMasseCapturesRef.current[targetId][viewNum] = {
+      dataUrl,
+      ...(zoom ? { zoom: Number(zoom) } : {}),
+      ...(centerLat ? { centerLat: Number(centerLat) } : {}),
+      ...(centerLng ? { centerLng: Number(centerLng) } : {}),
+    };
 
     setSolutions(prev => {
       const nextSol = { ...prev };
@@ -4979,32 +5057,49 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
           });
           if (bIdx !== -1) {
             const nextList = [...nextSol[solKey].buildings];
+            const prevB = nextList[bIdx] || {};
+            const nextBCaptures = {
+              ...(prevB.captures || {}),
+              [captureKey]: dataUrl,
+              ...(zoom ? { [zoomKey]: zoom } : {})
+            };
+            const nextBUrbanismeCaptures = {
+              ...(prevB.urbanisme_captures || {}),
+              [captureKey]: dataUrl,
+              ...(zoom ? { [zoomKey]: zoom } : {})
+            };
             if (viewNum === 3) {
               nextList[bIdx] = {
-                ...nextList[bIdx],
+                ...prevB,
                 id: targetId,
                 masse_capture_3: dataUrl,
                 ...(zoom ? { masse_zoom_3: zoom } : {}),
                 ...(centerLat ? { masse_center_lat_3: centerLat } : {}),
                 ...(centerLng ? { masse_center_lng_3: centerLng } : {}),
+                captures: nextBCaptures,
+                urbanisme_captures: nextBUrbanismeCaptures,
               };
             } else if (viewNum === 2) {
               nextList[bIdx] = {
-                ...nextList[bIdx],
+                ...prevB,
                 id: targetId,
                 masse_capture_2: dataUrl,
                 ...(zoom ? { masse_zoom_2: zoom } : {}),
                 ...(centerLat ? { masse_center_lat_2: centerLat } : {}),
                 ...(centerLng ? { masse_center_lng_2: centerLng } : {}),
+                captures: nextBCaptures,
+                urbanisme_captures: nextBUrbanismeCaptures,
               };
             } else {
               nextList[bIdx] = {
-                ...nextList[bIdx],
+                ...prevB,
                 id: targetId,
                 masse_capture: dataUrl,
                 ...(zoom ? { masse_zoom: zoom } : {}),
                 ...(centerLat ? { masse_center_lat: centerLat } : {}),
                 ...(centerLng ? { masse_center_lng: centerLng } : {}),
+                captures: nextBCaptures,
+                urbanisme_captures: nextBUrbanismeCaptures,
               };
             }
             nextSol[solKey] = { ...nextSol[solKey], buildings: nextList };
@@ -5019,6 +5114,16 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     setBuildings(prev => prev.map(b => {
       const currentId = b.id ? String(b.id) : '';
       if (b.id === targetId || currentId === targetId || (prev.length === 1 && (targetId.startsWith('bat-') || targetId.startsWith('omb-') || targetId.startsWith('bat-sa-')))) {
+        const nextBCaptures = {
+          ...(b.captures || {}),
+          [captureKey]: dataUrl,
+          ...(zoom ? { [zoomKey]: zoom } : {})
+        };
+        const nextBUrbanismeCaptures = {
+          ...(b.urbanisme_captures || {}),
+          [captureKey]: dataUrl,
+          ...(zoom ? { [zoomKey]: zoom } : {})
+        };
         if (viewNum === 3) {
           return {
             ...b,
@@ -5026,6 +5131,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
             ...(zoom ? { masse_zoom_3: zoom } : {}),
             ...(centerLat ? { masse_center_lat_3: centerLat } : {}),
             ...(centerLng ? { masse_center_lng_3: centerLng } : {}),
+            captures: nextBCaptures,
+            urbanisme_captures: nextBUrbanismeCaptures,
           };
         } else if (viewNum === 2) {
           return {
@@ -5034,6 +5141,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
             ...(zoom ? { masse_zoom_2: zoom } : {}),
             ...(centerLat ? { masse_center_lat_2: centerLat } : {}),
             ...(centerLng ? { masse_center_lng_2: centerLng } : {}),
+            captures: nextBCaptures,
+            urbanisme_captures: nextBUrbanismeCaptures,
           };
         } else {
           return {
@@ -5042,14 +5151,14 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
             ...(zoom ? { masse_zoom: zoom } : {}),
             ...(centerLat ? { masse_center_lat: centerLat } : {}),
             ...(centerLng ? { masse_center_lng: centerLng } : {}),
+            captures: nextBCaptures,
+            urbanisme_captures: nextBUrbanismeCaptures,
           };
         }
       }
       return b;
     }));
 
-    const captureKey = viewNum === 3 ? 'masse_projet_3' : (viewNum === 2 ? 'masse_projet_2' : 'masse_projet');
-    const zoomKey = viewNum === 3 ? 'masse_zoom_3' : (viewNum === 2 ? 'masse_zoom_2' : 'masse_zoom');
     setCaptures(prev => ({ 
       ...prev, 
       [captureKey]: dataUrl,
@@ -5073,7 +5182,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
   }, [persistMediaItem, solutionType]);
 
   // Capture haute résolution fidèle du plan de masse sans décalage
-  const captureStructureMasseMap = useCallback(async (strId, viewNum = 1, forceShowDimensions = null) => {
+  const captureStructureMasseMap = useCallback(async (strId, viewNum = 1, forceShowDimensions = null, forceLiveCapture = false) => {
     const map = masseMapInstancesRef.current[strId];
     const targetStr = allConfiguredStructures.find(s => s.id === strId);
     const activeList = allConfiguredStructures.filter(str => selectedStructureIds.includes(str.id));
@@ -5086,16 +5195,18 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const bLat = Number(targetStr?.lat || (targetStr?.gps ? targetStr.gps.split(',')[0] : null) || 43.43571);
     const bLng = Number(targetStr?.lng || (targetStr?.gps ? targetStr.gps.split(',')[1] : null) || -1.17644);
 
-    const isCurrentViewOnScreen = map && (masseViewTabs[strId] || 1) === viewNum;
+    const currentTabOnMap = masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1;
+    const isCurrentViewOnScreen = Boolean(map && (forceLiveCapture || currentTabOnMap === viewNum));
     const liveZoom = isCurrentViewOnScreen ? map.getZoom() : null;
     const liveCenter = isCurrentViewOnScreen ? map.getCenter() : null;
 
-    const cLat = liveCenter ? liveCenter.lat : Number((viewNum === 3 ? targetStr?.masse_center_lat_3 : (viewNum === 2 ? targetStr?.masse_center_lat_2 : targetStr?.masse_center_lat)) || bLat);
-    const cLng = liveCenter ? liveCenter.lng : Number((viewNum === 3 ? targetStr?.masse_center_lng_3 : (viewNum === 2 ? targetStr?.masse_center_lng_2 : targetStr?.masse_center_lng)) || bLng);
+    const refEntry = latestMasseCapturesRef.current?.[strId]?.[viewNum];
+    const cLat = liveCenter ? liveCenter.lat : Number(refEntry?.centerLat || (viewNum === 3 ? targetStr?.masse_center_lat_3 : (viewNum === 2 ? targetStr?.masse_center_lat_2 : targetStr?.masse_center_lat)) || bLat);
+    const cLng = liveCenter ? liveCenter.lng : Number(refEntry?.centerLng || (viewNum === 3 ? targetStr?.masse_center_lng_3 : (viewNum === 2 ? targetStr?.masse_center_lng_2 : targetStr?.masse_center_lng)) || bLng);
 
     // Zoom exact choisi par l'utilisateur (sans forçage artificiel)
     const defaultZoom = viewNum === 3 ? 15 : (viewNum === 2 ? 16 : 18);
-    const cZoom = Number(liveZoom || (viewNum === 3 ? targetStr?.masse_zoom_3 : (viewNum === 2 ? targetStr?.masse_zoom_2 : targetStr?.masse_zoom)) || defaultZoom);
+    const cZoom = Number(liveZoom || refEntry?.zoom || (viewNum === 3 ? targetStr?.masse_zoom_3 : (viewNum === 2 ? targetStr?.masse_zoom_2 : targetStr?.masse_zoom)) || defaultZoom);
 
     let dataUrl = null;
     const strDistances = masseDistances[strId] || targetStr?.masseDistances || [];
@@ -5109,11 +5220,11 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     } else {
       // 2. Si la vue n'est PAS à l'écran : ne JAMAIS déplacer la carte Leaflet interactive en direct.
       // Vérifier d'abord si une capture existe déjà pour préserver le cadrage de l'utilisateur
-      const existingCapture = viewNum === 3
+      const existingCapture = refEntry?.dataUrl || (viewNum === 3
         ? (targetStr?.masse_capture_3 || captures?.masse_projet_3 || editedProject?.urbanisme_captures?.masse_projet_3 || editedProject?.masse_capture_3)
         : viewNum === 2
           ? (targetStr?.masse_capture_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2)
-          : (targetStr?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture);
+          : (targetStr?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture));
 
       if (existingCapture) {
         return existingCapture;
@@ -5140,15 +5251,16 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     captureStructureMasseMapRef.current = captureStructureMasseMap;
   }, [captureStructureMasseMap]);
 
-  // Bascule active entre la Vue 1 et la Vue 2 d'une structure
+  // Bascule active entre la Vue 1, la Vue 2 et la Vue 3 d'une structure
   const handleSwitchMasseView = useCallback(async (strId, targetViewNum) => {
-    const currentView = masseViewTabs[strId] || 1;
+    const currentView = masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1;
     if (currentView === targetViewNum) return;
 
     // 1. Sauvegarder la capture de la vue en cours avant de basculer
-    await captureStructureMasseMap(strId, currentView);
+    await captureStructureMasseMap(strId, currentView, null, true);
 
-    // 2. Changer d'onglet
+    // 2. Changer d'onglet (synchroniser ref immédiatement)
+    masseViewTabsRef.current = { ...masseViewTabsRef.current, [strId]: targetViewNum };
     setMasseViewTabs(prev => ({ ...prev, [strId]: targetViewNum }));
 
     // 3. Déplacer la carte sur la vue cible
@@ -5157,20 +5269,21 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     if (map && targetStr) {
       const bLat = Number(targetStr.lat || (targetStr.gps ? targetStr.gps.split(',')[0] : null) || 43.43571);
       const bLng = Number(targetStr.lng || (targetStr.gps ? targetStr.gps.split(',')[1] : null) || -1.17644);
+      const refTarget = latestMasseCapturesRef.current?.[strId]?.[targetViewNum];
       
       let cLat, cLng, cZoom;
       if (targetViewNum === 3) {
-        cLat = Number(targetStr.masse_center_lat_3 || bLat);
-        cLng = Number(targetStr.masse_center_lng_3 || bLng);
-        cZoom = Number(targetStr.masse_zoom_3 || Math.max(12, (Number(targetStr.masse_zoom) || 18) - 3));
+        cLat = Number(refTarget?.centerLat || targetStr.masse_center_lat_3 || bLat);
+        cLng = Number(refTarget?.centerLng || targetStr.masse_center_lng_3 || bLng);
+        cZoom = Number(refTarget?.zoom || targetStr.masse_zoom_3 || Math.max(12, (Number(targetStr.masse_zoom) || 18) - 3));
       } else if (targetViewNum === 2) {
-        cLat = Number(targetStr.masse_center_lat_2 || bLat);
-        cLng = Number(targetStr.masse_center_lng_2 || bLng);
-        cZoom = Number(targetStr.masse_zoom_2 || Math.max(12, (Number(targetStr.masse_zoom) || 18) - 2));
+        cLat = Number(refTarget?.centerLat || targetStr.masse_center_lat_2 || bLat);
+        cLng = Number(refTarget?.centerLng || targetStr.masse_center_lng_2 || bLng);
+        cZoom = Number(refTarget?.zoom || targetStr.masse_zoom_2 || Math.max(12, (Number(targetStr.masse_zoom) || 18) - 2));
       } else {
-        cLat = Number(targetStr.masse_center_lat || bLat);
-        cLng = Number(targetStr.masse_center_lng || bLng);
-        cZoom = Number(targetStr.masse_zoom || 18);
+        cLat = Number(refTarget?.centerLat || targetStr.masse_center_lat || bLat);
+        cLng = Number(refTarget?.centerLng || targetStr.masse_center_lng || bLng);
+        cZoom = Number(refTarget?.zoom || targetStr.masse_zoom || 18);
       }
 
       map._isProgrammaticMoving = true;
@@ -5180,20 +5293,31 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         map.invalidateSize();
       }, 100);
 
-      // 4. Capturer automatiquement la vue cible une fois chargée
-      setTimeout(() => {
-        captureStructureMasseMap(strId, targetViewNum);
-      }, 400);
+      // 4. Capturer automatiquement la vue cible une fois chargée UNIQUEMENT si elle n'a pas encore été capturée
+      const existingTargetCapture = refTarget?.dataUrl || (targetViewNum === 3
+        ? (targetStr.masse_capture_3 || captures?.masse_projet_3 || editedProject?.urbanisme_captures?.masse_projet_3 || editedProject?.masse_capture_3)
+        : targetViewNum === 2
+          ? (targetStr.masse_capture_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2)
+          : (targetStr.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture));
+      if (!existingTargetCapture) {
+        setTimeout(() => {
+          if (typeof captureStructureMasseMapRef.current === 'function') {
+            captureStructureMasseMapRef.current(strId, targetViewNum, null, true);
+          }
+        }, 450);
+      }
     }
-  }, [masseViewTabs, captureStructureMasseMap, allConfiguredStructures]);
+  }, [masseViewTabs, captureStructureMasseMap, allConfiguredStructures, captures, editedProject]);
 
   // Ajout d'une 2nde vue pour la structure
   const handleAddMasseView2 = useCallback(async (strId) => {
-    // 1. Sauvegarder la Vue 1
-    await captureStructureMasseMap(strId, 1);
+    const curView = masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1;
+    // 1. Sauvegarder la vue courante
+    await captureStructureMasseMap(strId, curView, null, true);
 
     // 2. Activer la Vue 2
     setHasMasseView2(prev => ({ ...prev, [strId]: true }));
+    masseViewTabsRef.current = { ...masseViewTabsRef.current, [strId]: 2 };
     setMasseViewTabs(prev => ({ ...prev, [strId]: 2 }));
 
     const map = masseMapInstancesRef.current[strId];
@@ -5214,14 +5338,20 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       handleMasseMapChange(strId, { centerLat: bLat, centerLng: bLng, zoom: newZoom }, 2);
 
       setTimeout(() => {
-        captureStructureMasseMap(strId, 2);
-      }, 400);
+        if (typeof captureStructureMasseMapRef.current === 'function') {
+          captureStructureMasseMapRef.current(strId, 2, null, true);
+        }
+      }, 450);
     }
-  }, [captureStructureMasseMap, allConfiguredStructures, handleMasseMapChange]);
+  }, [captureStructureMasseMap, allConfiguredStructures, handleMasseMapChange, masseViewTabs]);
 
   // Suppression de la 2nde vue
   const handleRemoveMasseView2 = useCallback((strId) => {
+    if (latestMasseCapturesRef.current?.[strId]) {
+      delete latestMasseCapturesRef.current[strId][2];
+    }
     setHasMasseView2(prev => ({ ...prev, [strId]: false }));
+    masseViewTabsRef.current = { ...masseViewTabsRef.current, [strId]: 1 };
     setMasseViewTabs(prev => ({ ...prev, [strId]: 1 }));
 
     setSolutions(prev => {
@@ -5290,10 +5420,11 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
   // Ajout d'une 3ème vue pour la structure
   const handleAddMasseView3 = useCallback(async (strId) => {
-    const curView = masseViewTabs[strId] || 1;
-    await captureStructureMasseMap(strId, curView);
+    const curView = masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1;
+    await captureStructureMasseMap(strId, curView, null, true);
 
     setHasMasseView3(prev => ({ ...prev, [strId]: true }));
+    masseViewTabsRef.current = { ...masseViewTabsRef.current, [strId]: 3 };
     setMasseViewTabs(prev => ({ ...prev, [strId]: 3 }));
 
     const map = masseMapInstancesRef.current[strId];
@@ -5314,15 +5445,22 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       handleMasseMapChange(strId, { centerLat: bLat, centerLng: bLng, zoom: newZoom }, 3);
 
       setTimeout(() => {
-        captureStructureMasseMap(strId, 3);
-      }, 400);
+        if (typeof captureStructureMasseMapRef.current === 'function') {
+          captureStructureMasseMapRef.current(strId, 3, null, true);
+        }
+      }, 450);
     }
   }, [captureStructureMasseMap, allConfiguredStructures, handleMasseMapChange, masseViewTabs]);
 
   // Suppression de la 3ème vue
   const handleRemoveMasseView3 = useCallback((strId) => {
+    if (latestMasseCapturesRef.current?.[strId]) {
+      delete latestMasseCapturesRef.current[strId][3];
+    }
     setHasMasseView3(prev => ({ ...prev, [strId]: false }));
-    setMasseViewTabs(prev => ({ ...prev, [strId]: hasMasseView2[strId] ? 2 : 1 }));
+    const nextTab = hasMasseView2[strId] ? 2 : 1;
+    masseViewTabsRef.current = { ...masseViewTabsRef.current, [strId]: nextTab };
+    setMasseViewTabs(prev => ({ ...prev, [strId]: nextTab }));
 
     setSolutions(prev => {
       const nextSol = { ...prev };
@@ -5391,12 +5529,12 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
   // Capture manuelle à la demande avec confirmation visuelle
   const handleManualCapture = useCallback(async (strId) => {
-    const activeView = masseViewTabs[strId] || 1;
+    const activeView = masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1;
     const targetStr = allConfiguredStructures.find(s => s.id === strId);
     const isDim = masseShowDimensions[strId] !== undefined
       ? Boolean(masseShowDimensions[strId])
       : (targetStr?.masse_show_dimensions !== false);
-    const res = await captureStructureMasseMap(strId, activeView, isDim);
+    const res = await captureStructureMasseMap(strId, activeView, isDim, true);
     if (res) {
       setMasseCapturedToast(prev => ({ ...prev, [strId]: `Vue ${activeView} capturée !` }));
       setTimeout(() => {
@@ -5446,28 +5584,40 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
   }, [allConfiguredStructures, masseShowDimensions, masseViewTabs, captureStructureMasseMap]);
 
   // Capture de toutes les visionneuses de plan de masse actives
-  const captureAllActiveMasseMaps = useCallback(async () => {
+  const captureAllActiveMasseMaps = useCallback(async (onlyIfMissing = false) => {
     const activeList = allConfiguredStructures.filter(str => selectedStructureIds.includes(str.id));
     for (const str of activeList) {
-      const activeView = masseViewTabs[str.id] || 1;
+      const activeView = masseViewTabsRef.current[str.id] || masseViewTabs[str.id] || 1;
       const isDim = masseShowDimensions[str.id] !== undefined
         ? Boolean(masseShowDimensions[str.id])
         : (str.masse_show_dimensions !== false);
-      await captureStructureMasseMap(str.id, activeView, isDim);
+      const refStr = latestMasseCapturesRef.current?.[str.id] || {};
+      const existingActive = refStr[activeView]?.dataUrl || (activeView === 3
+        ? (str.masse_capture_3 || captures?.masse_projet_3 || editedProject?.urbanisme_captures?.masse_projet_3 || editedProject?.masse_capture_3)
+        : activeView === 2
+          ? (str.masse_capture_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2)
+          : (str.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture));
+      if (!onlyIfMissing || !existingActive) {
+        await captureStructureMasseMap(str.id, activeView, isDim, true);
+      }
       if (hasMasseView2[str.id] && activeView !== 2) {
-        const existing2 = str.masse_capture_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2;
+        const existing2 = refStr[2]?.dataUrl || str.masse_capture_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2;
         if (!existing2) {
-          await captureStructureMasseMap(str.id, 2, isDim);
+          await captureStructureMasseMap(str.id, 2, isDim, false);
         }
       }
       if (hasMasseView3[str.id] && activeView !== 3) {
-        const existing3 = str.masse_capture_3 || captures?.masse_projet_3 || editedProject?.urbanisme_captures?.masse_projet_3 || editedProject?.masse_capture_3;
+        const existing3 = refStr[3]?.dataUrl || str.masse_capture_3 || captures?.masse_projet_3 || editedProject?.urbanisme_captures?.masse_projet_3 || editedProject?.masse_capture_3;
         if (!existing3) {
-          await captureStructureMasseMap(str.id, 3, isDim);
+          await captureStructureMasseMap(str.id, 3, isDim, false);
         }
       }
     }
   }, [allConfiguredStructures, selectedStructureIds, masseViewTabs, hasMasseView2, hasMasseView3, captureStructureMasseMap, masseShowDimensions, captures, editedProject]);
+
+  useEffect(() => {
+    captureAllActiveMasseMapsRef.current = captureAllActiveMasseMaps;
+  }, [captureAllActiveMasseMaps]);
 
   // Auto-détection de Vue 2 et Vue 3 si existantes dans le projet (capture réelle uniquement)
   useEffect(() => {
@@ -5505,10 +5655,12 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
   useEffect(() => {
     if (step !== 4) return;
     const timer = setTimeout(() => {
-      captureAllActiveMasseMaps();
+      if (typeof captureAllActiveMasseMapsRef.current === 'function') {
+        captureAllActiveMasseMapsRef.current(true);
+      }
     }, 1200);
     return () => clearTimeout(timer);
-  }, [step, captureAllActiveMasseMaps]);
+  }, [step]);
 
   // Sauvegarde simulation 3D après projet (DP6 / PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
@@ -5967,13 +6119,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || lng);
       
       const map = masseMapInstancesRef.current[b.id];
-      const isView1OnMap = map && (masseViewTabs[b.id] || 1) === 1;
+      const currentTab = masseViewTabsRef.current[b.id] || masseViewTabs[b.id] || 1;
+      const isView1OnMap = Boolean(map && currentTab === 1);
+      const refMasse = latestMasseCapturesRef.current?.[b.id] || (isBattery ? latestMasseCapturesRef.current?.['bat-sa-1'] : null) || {};
 
       // Zoom exact choisi par l'utilisateur
-      let bZoom = Number((isView1OnMap ? map.getZoom() : b.masse_zoom) || 18);
+      let bZoom = Number(refMasse[1]?.zoom || (isView1OnMap ? map.getZoom() : b.masse_zoom) || captures?.masse_zoom || editedProject?.masse_zoom || 18);
 
-      const bCenterLat = Number((isView1OnMap ? map.getCenter().lat : b.masse_center_lat) || bLat);
-      const bCenterLng = Number((isView1OnMap ? map.getCenter().lng : b.masse_center_lng) || bLng);
+      const bCenterLat = Number(refMasse[1]?.centerLat || (isView1OnMap ? map.getCenter().lat : b.masse_center_lat) || bLat);
+      const bCenterLng = Number(refMasse[1]?.centerLng || (isView1OnMap ? map.getCenter().lng : b.masse_center_lng) || bLng);
 
       const bShowDim = masseShowDimensions[b.id] !== undefined
         ? Boolean(masseShowDimensions[b.id])
@@ -5982,18 +6136,20 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       // --- VUE 1 : Plan de masse avec zoom exact et cotations / mesures personnalisées ---
       const strDistances1 = masseDistances[b.id] || b.masseDistances || [];
       let masse1 = null;
-      if (b.masse_capture) {
+      if (refMasse[1]?.dataUrl && refMasse[1].dataUrl.length > 50) {
+        masse1 = refMasse[1].dataUrl;
+      } else if (b.masse_capture && typeof b.masse_capture === 'string' && b.masse_capture.length > 50) {
         masse1 = b.masse_capture;
-      } else if (captures?.masse_projet) {
+      } else if (captures?.masse_projet && typeof captures.masse_projet === 'string' && captures.masse_projet.length > 50) {
         masse1 = captures.masse_projet;
-      } else if (editedProject?.masse_capture) {
+      } else if (editedProject?.masse_capture && typeof editedProject.masse_capture === 'string' && editedProject.masse_capture.length > 50) {
         masse1 = editedProject.masse_capture;
-      } else if (editedProject?.urbanisme_captures?.masse_projet) {
+      } else if (editedProject?.urbanisme_captures?.masse_projet && typeof editedProject.urbanisme_captures.masse_projet === 'string' && editedProject.urbanisme_captures.masse_projet.length > 50) {
         masse1 = editedProject.urbanisme_captures.masse_projet;
       } else if (isView1OnMap) {
         const strVps = masseViewpoints[b.id] || b.masseViewpoints || null;
         const strAcc = masseAccess[b.id] || b.masseAccess || null;
-        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances1, sdisPoint, strVps, strAcc);
+        masse1 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances1, sdisPoint, strVps, strAcc, pdlPoint, transfoPoint);
       } else {
         const strVps = masseViewpoints[b.id] || b.masseViewpoints || null;
         const strAcc = masseAccess[b.id] || b.masseAccess || null;
@@ -6001,29 +6157,34 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         masse1 = await generateStaticMapImage(bCenterLat, bCenterLng, 'osm', bZoom, updatedBuildings, bShowDim, strDistances1, sdisPoint, {
           viewpoints: strVps,
           accessPoint: strAcc,
-          showCadastre: strCad
+          showCadastre: strCad,
+          pdlPoint,
+          transfoPoint
         });
       }
 
       // --- VUE 2 (si demandée et capturée) ---
       const hasCap2 = Boolean(
+        (refMasse[2]?.dataUrl && refMasse[2].dataUrl.length > 50) ||
         (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50) ||
         (captures?.masse_projet_2 && typeof captures.masse_projet_2 === 'string' && captures.masse_projet_2.length > 50) ||
         (editedProject?.masse_capture_2 && typeof editedProject.masse_capture_2 === 'string' && editedProject.masse_capture_2.length > 50) ||
         (editedProject?.urbanisme_captures?.masse_projet_2 && typeof editedProject.urbanisme_captures.masse_projet_2 === 'string' && editedProject.urbanisme_captures.masse_projet_2.length > 50)
       );
-      const isView2OnMap = map && masseViewTabs[b.id] === 2;
+      const isView2OnMap = Boolean(map && currentTab === 2);
       const wantsVue2 = hasCap2 || (Boolean(hasMasseView2[b.id]) && isView2OnMap);
       let masse2 = null;
-      let bZoom2 = Number(b.masse_zoom_2 || captures?.masse_zoom_2 || editedProject?.masse_zoom_2 || Math.max(12, bZoom - 2));
-      let bCenterLat2 = Number(b.masse_center_lat_2 || editedProject?.masse_center_lat_2 || bCenterLat);
-      let bCenterLng2 = Number(b.masse_center_lng_2 || editedProject?.masse_center_lng_2 || bCenterLng);
+      let bZoom2 = Number(refMasse[2]?.zoom || b.masse_zoom_2 || captures?.masse_zoom_2 || editedProject?.masse_zoom_2 || editedProject?.urbanisme_captures?.masse_zoom_2 || Math.max(12, bZoom - 2));
+      let bCenterLat2 = Number(refMasse[2]?.centerLat || b.masse_center_lat_2 || editedProject?.masse_center_lat_2 || bCenterLat);
+      let bCenterLng2 = Number(refMasse[2]?.centerLng || b.masse_center_lng_2 || editedProject?.masse_center_lng_2 || bCenterLng);
 
       if (wantsVue2) {
         const strDistances2 = masseDistances[b.id] || b.masseDistances || [];
         const strVps2 = masseViewpoints[b.id] || b.masseViewpoints || null;
         const strAcc2 = masseAccess[b.id] || b.masseAccess || null;
-        if (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50) {
+        if (refMasse[2]?.dataUrl && refMasse[2].dataUrl.length > 50) {
+          masse2 = refMasse[2].dataUrl;
+        } else if (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50) {
           masse2 = b.masse_capture_2;
         } else if (captures?.masse_projet_2 && typeof captures.masse_projet_2 === 'string' && captures.masse_projet_2.length > 50) {
           masse2 = captures.masse_projet_2;
@@ -6041,23 +6202,26 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
       // --- VUE 3 (si demandée et capturée) ---
       const hasCap3 = Boolean(
+        (refMasse[3]?.dataUrl && refMasse[3].dataUrl.length > 50) ||
         (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50) ||
         (captures?.masse_projet_3 && typeof captures.masse_projet_3 === 'string' && captures.masse_projet_3.length > 50) ||
         (editedProject?.masse_capture_3 && typeof editedProject.masse_capture_3 === 'string' && editedProject.masse_capture_3.length > 50) ||
         (editedProject?.urbanisme_captures?.masse_projet_3 && typeof editedProject.urbanisme_captures.masse_projet_3 === 'string' && editedProject.urbanisme_captures.masse_projet_3.length > 50)
       );
-      const isView3OnMap = map && masseViewTabs[b.id] === 3;
+      const isView3OnMap = Boolean(map && currentTab === 3);
       const wantsVue3 = hasCap3 || (Boolean(hasMasseView3[b.id]) && isView3OnMap);
       let masse3 = null;
-      let bZoom3 = Number(b.masse_zoom_3 || captures?.masse_zoom_3 || editedProject?.masse_zoom_3 || Math.max(12, bZoom - 3));
-      let bCenterLat3 = Number(b.masse_center_lat_3 || editedProject?.masse_center_lat_3 || bCenterLat);
-      let bCenterLng3 = Number(b.masse_center_lng_3 || editedProject?.masse_center_lng_3 || bCenterLng);
+      let bZoom3 = Number(refMasse[3]?.zoom || b.masse_zoom_3 || captures?.masse_zoom_3 || editedProject?.masse_zoom_3 || editedProject?.urbanisme_captures?.masse_zoom_3 || Math.max(12, bZoom - 3));
+      let bCenterLat3 = Number(refMasse[3]?.centerLat || b.masse_center_lat_3 || editedProject?.masse_center_lat_3 || bCenterLat);
+      let bCenterLng3 = Number(refMasse[3]?.centerLng || b.masse_center_lng_3 || editedProject?.masse_center_lng_3 || bCenterLng);
 
       if (wantsVue3) {
         const strDistances3 = masseDistances[b.id] || b.masseDistances || [];
         const strVps3 = masseViewpoints[b.id] || b.masseViewpoints || null;
         const strAcc3 = masseAccess[b.id] || b.masseAccess || null;
-        if (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50) {
+        if (refMasse[3]?.dataUrl && refMasse[3].dataUrl.length > 50) {
+          masse3 = refMasse[3].dataUrl;
+        } else if (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50) {
           masse3 = b.masse_capture_3;
         } else if (captures?.masse_projet_3 && typeof captures.masse_projet_3 === 'string' && captures.masse_projet_3.length > 50) {
           masse3 = captures.masse_projet_3;
@@ -9970,8 +10134,11 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
               <div className="flex items-center gap-2.5">
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     syncActiveConfigToSolutions();
+                    if (step === 4) {
+                      await captureAllActiveMasseMaps();
+                    }
                     saveWizardState();
                     toast({
                       title: 'Étape sauvegardée',
