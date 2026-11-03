@@ -437,7 +437,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
             const ax = centerX + (accExactX - exactX) * tileSize;
             const ay = centerY + (accExactY - exactY) * tileSize;
             const accLenPx = Math.max(42, Number(acc.dist || 20) * pxPerMeter * 0.75);
-            drawAccessArrow(ctx, { x: ax, y: ay }, acc.angle || 0, accLenPx, 'ACCÈS TERRAIN');
+            drawAccessArrow(ctx, { x: ax, y: ay }, acc.angle || 0, accLenPx, 'ACCÈS');
           }
 
           // Raccordement électrique automatique Dalle BESS -> PDL -> Transfo

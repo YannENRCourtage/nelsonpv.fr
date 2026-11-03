@@ -549,13 +549,14 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
     if (accessPoint && accessPoint.enabled && accessPoint.lat && accessPoint.lng) {
       const pt = map.latLngToContainerPoint([accessPoint.lat, accessPoint.lng]);
       const accLenPx = Math.max(42, Number(accessPoint.dist || 20) * pxPerMeter * 0.75);
-      drawAccessArrow(ctx, pt, accessPoint.angle || 0, accLenPx, 'ACCÈS TERRAIN');
+      drawAccessArrow(ctx, pt, accessPoint.angle || 0, accLenPx, 'ACCÈS');
     }
 
     // 2f. Raccordement électrique automatique Dalle BESS -> PDL -> Transfo
     if (pdlPoint || transfoPoint) {
-      const sLen = Number(targetStr?.length || (targetStr?.bayCount || 5) * (targetStr?.baySpacing || 7.5) || 20);
-      const totalWid = Number(targetStr?.totalWidth || targetStr?.width || 10);
+      const isBatTarget = targetStr?.solutionKey === 'battery' || targetStr?.isBattery || (targetStr?.buildingType || '').includes('battery');
+      const sLen = isBatTarget ? Number(targetStr?.length || 6.20) : Number(targetStr?.length || (targetStr?.bayCount || 5) * (targetStr?.baySpacing || 7.5) || 20);
+      const totalWid = isBatTarget ? Number(targetStr?.width || 3.20) : Number(targetStr?.totalWidth || targetStr?.width || 10);
       const sRot = Number(targetStr?.rotation || 0);
       const strLat = Number(targetStr?.lat || (targetStr?.gps ? targetStr.gps.split(',')[0] : null) || map.getCenter().lat);
       const strLng = Number(targetStr?.lng || (targetStr?.gps ? targetStr.gps.split(',')[1] : null) || map.getCenter().lng);
@@ -599,8 +600,8 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
         let minLeft = Infinity;
         let minRight = Infinity;
 
-        if (customDistances && Array.isArray(customDistances)) {
-          customDistances.forEach(cd => {
+        if (distances && Array.isArray(distances)) {
+          distances.forEach(cd => {
             if (cd.p1 && cd.p2) {
               const p1 = map.latLngToContainerPoint(cd.p1);
               const p2 = map.latLngToContainerPoint(cd.p2);
@@ -1747,7 +1748,7 @@ function SingleAccessItem({ accessPoint, targetCenter = null, onUpdateAccess, is
   const mPerLat = 111139;
   const mPerLng = 111139 * Math.cos((lat * Math.PI) / 180);
 
-  // Calcul du bord droit ou gauche de la bulle "ACCÈS TERRAIN" pour que la flèche parte de ce bord
+  // Calcul du bord droit ou gauche de la bulle "ACCÈS" pour que la flèche parte de ce bord
   const getEdgeAndTip = (bLat, bLng, aDeg, dMeters) => {
     const r = (aDeg * Math.PI) / 180;
     const isRight = Math.sin(r) >= 0;
@@ -1758,7 +1759,7 @@ function SingleAccessItem({ accessPoint, targetCenter = null, onUpdateAccess, is
     if (map) {
       try {
         const pt = map.latLngToContainerPoint([bLat, bLng]);
-        const edgePt = L.point(pt.x + (isRight ? 68 : -68), pt.y);
+        const edgePt = L.point(pt.x + (isRight ? 46 : -46), pt.y);
         const edgeLl = map.containerPointToLatLng(edgePt);
         sLat = edgeLl.lat;
         sLng = edgeLl.lng;
@@ -1775,15 +1776,15 @@ function SingleAccessItem({ accessPoint, targetCenter = null, onUpdateAccess, is
     return L.divIcon({
       className: 'bg-transparent',
       html: `
-        <div style="width: 172px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: grab; user-select: none; pointer-events: auto;">
+        <div style="width: 120px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: grab; user-select: none; pointer-events: auto;">
           <div style="background: #16a34a; color: #ffffff; font-size: 11.5px; font-weight: 800; padding: 5px 12px; border-radius: 9999px; border: 2.5px solid #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.45); white-space: nowrap; display: flex; align-items: center; gap: 6px; font-family: sans-serif; letter-spacing: 0.5px; pointer-events: auto;">
-            <span>ACCÈS TERRAIN</span>
+            <span>ACCÈS</span>
             <span id="acc-badge-angle" style="font-size: 10px; opacity: 0.95; background: rgba(0,0,0,0.3); padding: 1.5px 6px; border-radius: 5px; font-family: monospace; font-weight: 900;">${Math.round(angle)}°</span>
           </div>
         </div>
       `,
-      iconSize: [172, 42],
-      iconAnchor: [86, 21]
+      iconSize: [120, 42],
+      iconAnchor: [60, 21]
     });
   }, [Math.round(angle)]);
 
@@ -2339,6 +2340,18 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const masseMapInstancesRef = useRef({});
   const masseViewTabsRef = useRef({});
   masseViewTabsRef.current = masseViewTabs;
+  const masseDistancesRef = useRef({});
+  masseDistancesRef.current = masseDistances;
+  const masseViewpointsRef = useRef({});
+  masseViewpointsRef.current = masseViewpoints;
+  const masseAccessRef = useRef({});
+  masseAccessRef.current = masseAccess;
+  const sdisPointRef = useRef(null);
+  sdisPointRef.current = sdisPoint;
+  const pdlPointRef = useRef(null);
+  pdlPointRef.current = pdlPoint;
+  const transfoPointRef = useRef(null);
+  transfoPointRef.current = transfoPoint;
   const latestMasseCapturesRef = useRef({});
   const captureStructureMasseMapRef = useRef(null);
   const captureAllActiveMasseMapsRef = useRef(null);
@@ -2480,6 +2493,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           }
         }
       };
+      masseViewpointsRef.current = next;
       setEditedProject(proj => ({ ...proj, masseViewpoints: next }));
       return next;
     });
@@ -2500,6 +2514,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           [vpKey]: updatedVp
         }
       };
+      masseViewpointsRef.current = next;
       setEditedProject(proj => ({ ...proj, masseViewpoints: next }));
       return next;
     });
@@ -2540,6 +2555,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           angle: angle || 0
         }
       };
+      masseAccessRef.current = next;
       setEditedProject(proj => ({ ...proj, masseAccess: next }));
       return next;
     });
@@ -2556,6 +2572,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         ...prev,
         [strId]: updatedAccess
       };
+      masseAccessRef.current = next;
       setEditedProject(proj => ({ ...proj, masseAccess: next }));
       return next;
     });
@@ -5294,14 +5311,17 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const cZoom = Number(liveZoom || refEntry?.zoom || (viewNum === 3 ? targetStr?.masse_zoom_3 : (viewNum === 2 ? targetStr?.masse_zoom_2 : targetStr?.masse_zoom)) || defaultZoom);
 
     let dataUrl = null;
-    const strDistances = masseDistances[strId] || targetStr?.masseDistances || [];
-    const strViewpoints = masseViewpoints[strId] || targetStr?.masseViewpoints || null;
-    const strAccess = masseAccess[strId] || targetStr?.masseAccess || null;
+    const strDistances = masseDistancesRef.current[strId] || masseDistances[strId] || targetStr?.masseDistances || [];
+    const strViewpoints = masseViewpointsRef.current[strId] || masseViewpoints[strId] || targetStr?.masseViewpoints || null;
+    const strAccess = masseAccessRef.current[strId] || masseAccess[strId] || targetStr?.masseAccess || null;
+    const curSdis = sdisPointRef.current !== undefined ? sdisPointRef.current : sdisPoint;
+    const curPdl = pdlPointRef.current !== undefined ? pdlPointRef.current : pdlPoint;
+    const curTransfo = transfoPointRef.current !== undefined ? transfoPointRef.current : transfoPoint;
     const strShowCadastre = masseShowCadastre[strId] !== undefined ? masseShowCadastre[strId] : true;
 
     // 1. Si la vue demandée est actuellement affichée à l'écran, capture directe sur Leaflet
     if (map && isCurrentViewOnScreen) {
-      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim, strDistances, sdisPoint, strViewpoints, strAccess, pdlPoint, transfoPoint);
+      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim, strDistances, curSdis, strViewpoints, strAccess, curPdl, curTransfo);
     } else {
       // 2. Si la vue n'est PAS à l'écran : ne JAMAIS déplacer la carte Leaflet interactive en direct.
       // Vérifier d'abord si une capture existe déjà pour préserver le cadrage de l'utilisateur
@@ -5316,12 +5336,12 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       }
 
       // Génération statique propre hors-écran (sans toucher au Leaflet monté)
-      dataUrl = await generateStaticMapImage(cLat, cLng, 'osm', cZoom, activeList, showDim, strDistances, sdisPoint, {
+      dataUrl = await generateStaticMapImage(cLat, cLng, 'osm', cZoom, activeList, showDim, strDistances, curSdis, {
         viewpoints: strViewpoints,
         accessPoint: strAccess,
         showCadastre: strShowCadastre,
-        pdlPoint,
-        transfoPoint
+        pdlPoint: curPdl,
+        transfoPoint: curTransfo
       });
     }
 
@@ -5378,19 +5398,12 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         map.invalidateSize();
       }, 100);
 
-      // 4. Capturer automatiquement la vue cible une fois chargée UNIQUEMENT si elle n'a pas encore été capturée
-      const existingTargetCapture = refTarget?.dataUrl || (targetViewNum === 3
-        ? (targetStr.masse_capture_3 || captures?.masse_projet_3 || editedProject?.urbanisme_captures?.masse_projet_3 || editedProject?.masse_capture_3)
-        : targetViewNum === 2
-          ? (targetStr.masse_capture_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2)
-          : (targetStr.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture));
-      if (!existingTargetCapture) {
-        setTimeout(() => {
-          if (typeof captureStructureMasseMapRef.current === 'function') {
-            captureStructureMasseMapRef.current(strId, targetViewNum, null, true);
-          }
-        }, 450);
-      }
+      // 4. Rafraîchir automatiquement la capture de la vue cible une fois chargée pour intégrer tout nouvel élément (PDL, Transfo, DP07, DP08, Accès)
+      setTimeout(() => {
+        if (typeof captureStructureMasseMapRef.current === 'function') {
+          captureStructureMasseMapRef.current(strId, targetViewNum, null, true);
+        }
+      }, 450);
     }
   }, [masseViewTabs, captureStructureMasseMap, allConfiguredStructures, captures, editedProject]);
 
@@ -8546,9 +8559,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                      <button
                                        type="button"
                                        onClick={() => {
+                                         sdisPointRef.current = null;
                                          setSdisPoint(null);
                                          setIsPlacingSdis(false);
                                          setEditedProject(prev => ({ ...prev, sdisPoint: null }));
+                                         setTimeout(() => {
+                                           if (typeof captureStructureMasseMapRef.current === 'function') {
+                                             captureStructureMasseMapRef.current(str.id, masseViewTabsRef.current[str.id] || 1, null, true);
+                                           }
+                                         }, 150);
                                        }}
                                        className="p-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
                                        title="Supprimer la borne SDIS"
@@ -8583,9 +8602,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                        <button
                                          type="button"
                                          onClick={() => {
+                                           pdlPointRef.current = null;
                                            setPdlPoint(null);
                                            setIsPlacingPdl(false);
                                            setEditedProject(prev => ({ ...prev, pdlPoint: null }));
+                                           setTimeout(() => {
+                                             if (typeof captureStructureMasseMapRef.current === 'function') {
+                                               captureStructureMasseMapRef.current(str.id, masseViewTabsRef.current[str.id] || 1, null, true);
+                                             }
+                                           }, 150);
                                          }}
                                          className="p-1 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-red-50 hover:text-red-600 text-emerald-700 transition-colors"
                                          title="Supprimer le point PDL"
@@ -8621,9 +8646,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                        <button
                                          type="button"
                                          onClick={() => {
+                                           transfoPointRef.current = null;
                                            setTransfoPoint(null);
                                            setIsPlacingTransfo(false);
                                            setEditedProject(prev => ({ ...prev, transfoPoint: null }));
+                                           setTimeout(() => {
+                                             if (typeof captureStructureMasseMapRef.current === 'function') {
+                                               captureStructureMasseMapRef.current(str.id, masseViewTabsRef.current[str.id] || 1, null, true);
+                                             }
+                                           }, 150);
                                          }}
                                          className="p-1 rounded-lg border border-blue-200 bg-blue-50 hover:bg-red-50 hover:text-red-600 text-blue-700 transition-colors"
                                          title="Supprimer le point Transfo"
@@ -8954,9 +8985,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                      sdisPoint={sdisPoint}
                                      isPlacing={isPlacingSdis}
                                      onSetSdisPoint={(pt) => {
+                                       sdisPointRef.current = pt;
                                        setSdisPoint(pt);
                                        setIsPlacingSdis(false);
                                        setEditedProject(prev => ({ ...prev, sdisPoint: pt }));
+                                       setTimeout(() => {
+                                         if (typeof captureStructureMasseMapRef.current === 'function') {
+                                           captureStructureMasseMapRef.current(str.id, masseViewTabsRef.current[str.id] || 1, null, true);
+                                         }
+                                       }, 200);
                                      }}
                                    />
 
@@ -8966,16 +9003,28 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                      pdlPoint={pdlPoint}
                                      isPlacingPdl={isPlacingPdl}
                                      onSetPdlPoint={(pt) => {
+                                       pdlPointRef.current = pt;
                                        setPdlPoint(pt);
                                        setIsPlacingPdl(false);
                                        setEditedProject(prev => ({ ...prev, pdlPoint: pt }));
+                                       setTimeout(() => {
+                                         if (typeof captureStructureMasseMapRef.current === 'function') {
+                                           captureStructureMasseMapRef.current(str.id, masseViewTabsRef.current[str.id] || 1, null, true);
+                                         }
+                                       }, 200);
                                      }}
                                      transfoPoint={transfoPoint}
                                      isPlacingTransfo={isPlacingTransfo}
                                      onSetTransfoPoint={(pt) => {
+                                       transfoPointRef.current = pt;
                                        setTransfoPoint(pt);
                                        setIsPlacingTransfo(false);
                                        setEditedProject(prev => ({ ...prev, transfoPoint: pt }));
+                                       setTimeout(() => {
+                                         if (typeof captureStructureMasseMapRef.current === 'function') {
+                                           captureStructureMasseMapRef.current(str.id, masseViewTabsRef.current[str.id] || 1, null, true);
+                                         }
+                                       }, 200);
                                      }}
                                      customDistances={masseDistances[str.id] || []}
                                    />

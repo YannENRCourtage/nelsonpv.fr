@@ -462,19 +462,19 @@ export function drawViewpointCone(ctx, camPt, angleDeg = 0, distPx = 45, label =
 /**
  * Dessine une flèche d'accès terrain sur un canvas 2D.
  * La flèche part depuis la droite (si orientée vers l'Est) ou la gauche (si orientée vers l'Ouest)
- * de la bulle où est indiqué "ACCÈS TERRAIN".
+ * de la bulle où est indiqué "ACCÈS".
  */
-export function drawAccessArrow(ctx, accPt, angleDeg = 0, lenPx = 42, label = 'ACCÈS TERRAIN') {
+export function drawAccessArrow(ctx, accPt, angleDeg = 0, lenPx = 42, label = 'ACCÈS') {
   if (!accPt) return;
   const rad = (angleDeg * Math.PI) / 180;
 
   ctx.save();
 
-  // Dimensions de la bulle "ACCÈS TERRAIN" centrée sur accPt
-  const textLabel = label || 'ACCÈS TERRAIN';
+  // Dimensions de la bulle "ACCÈS" centrée sur accPt
+  const textLabel = (!label || label === 'ACCÈS TERRAIN' || label === 'ACCES TERRAIN') ? 'ACCÈS' : label;
   ctx.font = 'bold 9px sans-serif';
   const textW = ctx.measureText(textLabel).width;
-  const badgeW = Math.max(86, textW + 20);
+  const badgeW = Math.max(54, textW + 18);
   const badgeH = 19;
   const bx = accPt.x - badgeW / 2;
   const by = accPt.y - badgeH / 2;
