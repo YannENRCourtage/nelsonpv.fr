@@ -4,7 +4,7 @@ import {
     Search, Filter, CheckSquare, Square, Trash, Copy, ArrowUp, ArrowDown,
     // Icons for tabs & sub-items
     Users, Briefcase, Lock, Wallet, CreditCard, Table2, FolderOpen, Menu,
-    GitFork, ChevronRight, ChevronDown, Layers, FolderPlus, Sparkles
+    GitFork, ChevronRight, ChevronDown, Layers, FolderPlus, Sparkles, Mic
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ import SubItemButton from '@/components/monday/SubItemButton.jsx';
 import SubItemsTable from '@/components/monday/SubItemsTable.jsx';
 import GroupSelectionModal from '@/components/monday/GroupSelectionModal.jsx';
 import AutoGroupModal from '@/components/monday/AutoGroupModal.jsx';
+import MeetinglyCopilotView from '@/components/monday/MeetinglyCopilotView.jsx';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 
 // Helper for Tab Icons
@@ -2574,6 +2575,27 @@ export default function Monday() {
                             );
                         })}
 
+                        {/* Onglet dédié : Meetingly IA (Enregistreur & Copilote) */}
+                        <div className="pt-2 mt-2 border-t border-slate-700/80">
+                            <button
+                                onClick={() => {
+                                    setActiveTabId('__meetingly_ia__');
+                                    setIsSidebarOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
+                                    activeTabId === '__meetingly_ia__'
+                                        ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 shadow-lg shadow-indigo-500/50 text-white'
+                                        : 'bg-slate-800/80 hover:bg-slate-700/70 text-indigo-200 border border-indigo-500/30'
+                                }`}
+                            >
+                                <div className="text-left">
+                                    <span className="font-bold text-sm block">🎙️ Meetingly IA</span>
+                                    <span className="text-[10px] text-indigo-200/80 block">Enregistreur & Copilote</span>
+                                </div>
+                                <Mic className="w-5 h-5 text-indigo-300 shrink-0" />
+                            </button>
+                        </div>
+
                         {/* ... Nouveau tableau button code ... */}
                         {isAddingTab ? (
                             <div className="flex items-center gap-2 px-2 mt-4 animate-in fade-in slide-in-from-left-2 text-white">
@@ -2619,6 +2641,18 @@ export default function Monday() {
 
                     {/* Mobile/Tablet Tab Navigation Bar */}
                     <div className="lg:hidden mb-6 flex overflow-x-auto pb-2 gap-2 no-scrollbar">
+                        <button
+                            onClick={() => setActiveTabId('__meetingly_ia__')}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all text-sm font-bold border",
+                                activeTabId === '__meetingly_ia__'
+                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
+                                    : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:border-indigo-300"
+                            )}
+                        >
+                            <Mic className="w-4 h-4" />
+                            <span>🎙️ Meetingly IA</span>
+                        </button>
                         {tabs.map(tab => {
                             const Icon = getTabIcon(tab.name);
                             const isActive = activeTabId === tab.id;
@@ -2640,7 +2674,9 @@ export default function Monday() {
                         })}
                     </div>
 
-                    {activeTab ? (
+                    {activeTabId === '__meetingly_ia__' ? (
+                        <MeetinglyCopilotView tabs={tabs} />
+                    ) : activeTab ? (
                         <>
                             <div className="flex justify-between items-center mb-6">
                                 <div>
