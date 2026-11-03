@@ -509,9 +509,8 @@ export default function BatteryStationVisualizer({
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(203, 213, 225);
-      const cleanProj = (projectName || batteryStorage?.projectName || 'Projet BESS').toString().trim();
       doc.text(
-        `Projet : ${cleanProj}  |  Dalle béton armé : ${dLen.toFixed(2)} m × ${dWid.toFixed(2)} m (${dArea.toFixed(2)} m² < 20 m²)  |  ${qty} armoires CESC 261 (H: 2.38 m)  |  Clôture RAL 6005 (H: 2.00 m)`,
+        `Dalle béton armé : ${dLen.toFixed(2)} m × ${dWid.toFixed(2)} m (${dArea.toFixed(2)} m² < 20 m²)  |  ${qty} armoires CESC 261 (H : 2.38 m)  |  Clôture RAL 6005 (H : 2.00 m)`,
         marginX + 4,
         20.5
       );
@@ -550,7 +549,7 @@ export default function BatteryStationVisualizer({
       doc.roundedRect(marginX, box2Y, contentW, 7.5, 2, 2, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.text(
         `2. VUE DE FACE (FAÇADE SUD) — ÉLÉVATION COTÉE (LONGUEUR DALLE ${dLen.toFixed(2)} M • HAUTEUR ARMOIRES 2.38 M • CLÔTURE 2.00 M)`,
         marginX + 3.5,

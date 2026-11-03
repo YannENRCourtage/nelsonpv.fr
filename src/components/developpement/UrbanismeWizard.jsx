@@ -7464,20 +7464,6 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                             );
                           })()}
 
-                          {/* Bouton de génération PDF 1 page (Plan de Masse + Vue de Face) */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (bessPdfExportRef.current) {
-                                bessPdfExportRef.current();
-                              }
-                            }}
-                            className="w-full py-2.5 px-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-extrabold rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
-                            title="Générer un PDF d'une seule page contenant le Plan de Masse (dalle + clôture cotée) en haut et la Vue de Face cotée en dessous"
-                          >
-                            <Download className="w-4 h-4 shrink-0" />
-                            <span>Générer PDF (Plan de Masse & Vue de Face)</span>
-                          </button>
 
                           {/* Sécurité SDIS & Rétention */}
                           <div className="bg-amber-50/80 rounded-xl p-2.5 border border-amber-200/80 text-[11px] text-amber-900 space-y-1">
