@@ -899,3 +899,322 @@ export function exportMeetingReportToPDF(reportData, transcriptEntries = []) {
   doc.save(fileName);
   return fileName;
 }
+
+/**
+ * Extrait le texte lisible d'un fichier importé (.txt, .eml, .csv, .md, .json, .docx, .xlsx, .pdf)
+ * afin d'alimenter le contexte de l'IA NELSON avant ou pendant la conversation.
+ */
+export async function extractTextFromUploadedFile(file) {
+  if (!file) return '';
+  const name = (file.name || '').toLowerCase();
+
+  try {
+    // 1. Fichiers texte brut, mails (.eml), CSV, Markdown, JSON
+    if (
+      name.endsWith('.txt') ||
+      name.endsWith('.eml') ||
+      name.endsWith('.csv') ||
+      name.endsWith('.md') ||
+      name.endsWith('.json') ||
+      name.endsWith('.html') ||
+      file.type.startsWith('text/')
+    ) {
+      const raw = await file.text();
+      return raw.slice(0, 25000);
+    }
+
+    // 2. Fichiers Word (.docx) via JSZip
+    if (name.endsWith('.docx')) {
+      const JSZip = (await import('jszip')).default;
+      const buf = await file.arrayBuffer();
+      const zip = await JSZip.loadAsync(buf);
+      const docXml = zip.file('word/document.xml');
+      if (docXml) {
+        const xmlStr = await docXml.async('string');
+        const cleaned = xmlStr
+          .replace(/<\/w:p>/g, '\n')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        return cleaned.slice(0, 25000);
+      }
+    }
+
+    // 3. Fichiers Excel (.xlsx / .xls)
+    if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+      const XLSX = await import('xlsx');
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const lines = [];
+      wb.SheetNames.slice(0, 4).forEach((sheetName) => {
+        const sheet = wb.Sheets[sheetName];
+        const csv = XLSX.utils.sheet_to_csv(sheet);
+        if (csv && csv.trim()) {
+          lines.push(`[Feuille ${sheetName}]\n${csv.trim()}`);
+        }
+      });
+      return lines.join('\n\n').slice(0, 25000);
+    }
+
+    // 4. Fichiers PDF : extraction des chaînes lisibles ou métadonnées
+    if (name.endsWith('.pdf') || file.type === 'application/pdf') {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      const decoder = new TextDecoder('latin1');
+      const rawPdf = decoder.decode(bytes);
+      const textChunks = [];
+      const regex = /\(([^()\\]{3,200})\)/g;
+      let m;
+      while ((m = regex.exec(rawPdf)) !== null) {
+        const s = m[1].replace(/[^\x20-\x7EÀ-ÿ]/g, ' ').trim();
+        if (s.length > 3 && /[a-zA-ZÀ-ÿ]{2,}/.test(s)) {
+          textChunks.push(s);
+        }
+        if (textChunks.length > 600) break;
+      }
+      if (textChunks.length > 5) {
+        return textChunks.join(' ').slice(0, 25000);
+      }
+      return `Document PDF joint : ${file.name} (${(file.size / 1024).toFixed(1)} Ko).`;
+    }
+  } catch (err) {
+    console.warn('[Meetingly] Extraction texte fichier:', err);
+  }
+
+  return `Document fourni : ${file.name} (${(file.size / 1024).toFixed(1)} Ko).`;
+}
+
+/**
+ * Copilote IA NELSON en direct : répond aux questions de l'utilisateur en croisant :
+ * - les interlocuteurs (Nom, Entreprise, Poste),
+ * - la retranscription en direct de la conversation,
+ * - les mails / textes collés et les documents chargés avant ou pendant l'appel.
+ */
+export async function askNelsonMeetingAI({
+  question,
+  participants = [],
+  transcriptEntries = [],
+  contextText = '',
+  uploadedDocs = [],
+  linkedRow = null,
+}) {
+  const q = String(question || '').trim();
+  if (!q) return '';
+
+  const speaker1 = participants[0] || { name: 'Yann', company: 'ENR COURTAGE', role: 'Dirigeant' };
+  const otherSpeakers = participants.slice(1).filter((p) => p.name || p.company);
+  const interlocutorsSummary = participants
+    .filter((p) => p.name || p.company)
+    .map((p) => `${p.name || 'Interlocuteur'}${p.company ? ` (${p.company}${p.role ? ` - ${p.role}` : ''})` : ''}`)
+    .join(', ');
+
+  const transcriptFull = transcriptEntries
+    .map((t) => `[${t.timestamp || '00:00'}] ${t.speaker}: ${t.text}`)
+    .join('\n');
+
+  const docsFull = uploadedDocs
+    .map((d) => `[Document: ${d.name}]\n${d.extractedText || ''}`)
+    .join('\n\n');
+
+  const combinedKnowledge = [contextText, docsFull, transcriptFull].filter(Boolean).join('\n\n');
+
+  // 1. Tentative d'appel Gemini API si clé configurée dans l'environnement Vite
+  const geminiKey =
+    typeof import.meta !== 'undefined' && import.meta.env
+      ? import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_AI_KEY
+      : null;
+
+  if (geminiKey) {
+    try {
+      const systemPrompt = [
+        `Tu es l'IA Copilote de réunion de la plateforme NELSON pour ${speaker1.name} (${speaker1.company}).`,
+        `Interlocuteurs présents : ${interlocutorsSummary || 'Non précisés'}.`,
+        linkedRow ? `Dossier Monday rattaché : ${linkedRow.title} (${linkedRow.tableName}).` : '',
+        contextText ? `--- MAILS & TEXTES DE CONTEXTE FOURNIS ---\n${contextText.slice(0, 12000)}` : '',
+        docsFull ? `--- DOCUMENTS CHARGÉS ---\n${docsFull.slice(0, 12000)}` : '',
+        transcriptFull
+          ? `--- RETRANSCRIPTION EN DIRECT DE LA CONVERSATION ---\n${transcriptFull.slice(-12000)}`
+          : `--- RETRANSCRIPTION EN DIRECT ---\n(Aucune parole transcrite pour l'instant)`,
+        `\nRéponds en français de manière directe, structurée, opérationnelle et donne des éléments précis (chiffres, clauses, arguments ou formulation prête à dire à l'oral) à ${speaker1.name}.`,
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: `${systemPrompt}\n\nQuestion de ${speaker1.name} : ${q}` }],
+              },
+            ],
+          }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (aiReply && aiReply.trim()) {
+          return aiReply.trim();
+        }
+      }
+    } catch (err) {
+      console.warn('[Meetingly AI] Fallback local activé:', err);
+    }
+  }
+
+  // 2. Moteur d'analyse contextuelle locale haute précision (croise Conversation + Mails + Documents)
+  const qLower = q.toLowerCase();
+  const otherLabel =
+    otherSpeakers.length > 0
+      ? otherSpeakers.map((p) => `${p.name || 'votre interlocuteur'}${p.company ? ` (${p.company})` : ''}`).join(', ')
+      : 'votre interlocuteur';
+
+  // Extraire les phrases pertinentes du contexte (mails/documents) et de la conversation selon les mots de la question
+  const keywords = qLower
+    .replace(/[^a-z0-9àâäéèêëîïôöùûüç\s]/gi, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 3 && !['dans', 'avec', 'pour', 'quel', 'quelle', 'quels', 'quelles', 'comment', 'avoir', 'cette', 'entre', 'plus', 'sont', 'vous', 'nous', 'dire', 'faire', 'mail', 'document', 'conversation'].includes(w));
+
+  const contextSentences = [contextText, docsFull]
+    .filter(Boolean)
+    .join('\n')
+    .split(/(?<=[.!?;\n])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 12);
+
+  const matchingContextSentences =
+    keywords.length > 0
+      ? contextSentences.filter((s) => keywords.some((kw) => s.toLowerCase().includes(kw)))
+      : contextSentences.slice(0, 4);
+
+  const matchingTranscriptEntries =
+    keywords.length > 0
+      ? transcriptEntries.filter((t) => keywords.some((kw) => (t.text || '').toLowerCase().includes(kw)))
+      : transcriptEntries.slice(-5);
+
+  // Chiffres, montants, puissances ou dates détectés dans le contexte + conversation
+  const numbersDetected = Array.from(
+    new Set(
+      (combinedKnowledge.match(/\b\d+(?:[.,]\d+)?\s*(?:€|k€|M€|%|kW|kWc|MW|MWh|kWh|m²|m2|ans|mois|jours|PRM)\b/gi) || []).map((x) =>
+        x.trim()
+      )
+    )
+  ).slice(0, 10);
+
+  // Cas 1 : Demande de résumé de la conversation en cours
+  if (/r[eé]sum|synth[eè]se|dit jusqu|point sur l/i.test(qLower)) {
+    const recentLines = transcriptEntries.slice(-6);
+    return [
+      `📌 **Synthèse en direct de l'échange (${interlocutorsSummary || 'ENR COURTAGE'})** :`,
+      recentLines.length > 0
+        ? `• **Derniers points abordés à l'oral (${transcriptEntries.length} interventions)** :\n` +
+          recentLines.map((l) => `  - [${l.timestamp}] **${l.speaker}** : « ${l.text} »`).join('\n')
+        : `• Aucune intervention vocale enregistrée pour le moment (la transcription s'affiche dès que vous parlez).`,
+      contextSentences.length > 0
+        ? `• **Rappel des éléments clés issus des mails / documents fournis** :\n` +
+          contextSentences
+            .slice(0, 4)
+            .map((s) => `  - ${s.slice(0, 220)}`)
+            .join('\n')
+        : '',
+      numbersDetected.length > 0
+        ? `• **Données chiffrées identifiées** : ${numbersDetected.join(' • ')}.`
+        : '',
+      `\n💡 **Suggestion pour ${speaker1.name}** : Vous pouvez valider ces points avec ${otherLabel} avant de passer au calendrier des prochaines étapes.`,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+  }
+
+  // Cas 2 : Demande de rédaction de mail ou message de suivi
+  if (/mail|email|courriel|[eé]cri|r[eé]dige/i.test(qLower)) {
+    const destName = otherSpeakers[0]?.name || 'Madame, Monsieur';
+    const destCompany = otherSpeakers[0]?.company ? ` (${otherSpeakers[0].company})` : '';
+    return [
+      `✉️ **Proposition de mail prête à envoyer à ${destName}${destCompany}** :`,
+      `---`,
+      `**Objet :** Suivi de notre échange — ${speaker1.company} x ${otherSpeakers[0]?.company || 'Projet Énergie'}`,
+      ``,
+      `Bonjour ${destName},`,
+      ``,
+      `Je vous remercie pour la qualité de notre échange de ce jour.`,
+      transcriptEntries.length > 0
+        ? `Comme évoqué ensemble lors de notre point (${transcriptEntries
+            .slice(-3)
+            .map((t) => t.text)
+            .join(' / ')
+            .slice(0, 180)}), nous avançons sur la validation technique et administrative du dossier.`
+        : `Comme convenu lors de notre entretien, nous consolidons les éléments techniques, réglementaires et contractuels abordés ensemble.`,
+      contextSentences.length > 0
+        ? `En complément des éléments transmis (${contextSentences[0].slice(0, 140)}), nous restons à votre disposition pour finaliser les prochaines étapes.`
+        : '',
+      ``,
+      `Bien cordialement,`,
+      `**${speaker1.name}** — ${speaker1.role || 'Dirigeant'}, ${speaker1.company}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  // Cas 3 : Que répondre / Argumentaire / Vigilance / Vérification de cohérence avec les documents & mails
+  const parts = [];
+  parts.push(
+    `🤖 **Analyse IA NELSON pour ${speaker1.name} (face à ${otherLabel})** :`
+  );
+
+  if (matchingContextSentences.length > 0) {
+    parts.push(
+      `📂 **Éléments trouvés dans vos documents & mails fournis** :\n` +
+        matchingContextSentences
+          .slice(0, 4)
+          .map((s) => `• « ${s.slice(0, 240)} »`)
+          .join('\n')
+    );
+  } else if (contextSentences.length > 0) {
+    parts.push(
+      `📂 **Contexte issu de vos documents / mails (${uploadedDocs.length} doc(s) joint(s))** :\n` +
+        contextSentences
+          .slice(0, 3)
+          .map((s) => `• ${s.slice(0, 220)}`)
+          .join('\n')
+    );
+  }
+
+  if (matchingTranscriptEntries.length > 0) {
+    parts.push(
+      `🎙️ **Ce qui a été dit pendant la conversation à ce sujet** :\n` +
+        matchingTranscriptEntries
+          .slice(-4)
+          .map((t) => `• [${t.timestamp}] **${t.speaker}** : « ${t.text} »`)
+          .join('\n')
+    );
+  } else if (transcriptEntries.length > 0) {
+    parts.push(
+      `🎙️ **Dernières paroles captées en direct** :\n` +
+        transcriptEntries
+          .slice(-3)
+          .map((t) => `• [${t.timestamp}] **${t.speaker}** : « ${t.text} »`)
+          .join('\n')
+    );
+  }
+
+  if (numbersDetected.length > 0) {
+    parts.push(`📊 **Repères chiffrés détectés dans le dossier** : ${numbersDetected.join(' | ')}.`);
+  }
+
+  parts.push(
+    `💡 **Ce que vous pouvez répondre / demander maintenant à ${otherLabel}** :\n` +
+      `• *« Au vu des éléments que nous avons au dossier${
+        numbersDetected.length > 0 ? ` (${numbersDetected.slice(0, 3).join(', ')})` : ''
+      }, pouvons-nous confirmer ensemble ce point et verrouiller la prochaine échéance ? »*\n` +
+      `• Vérifiez les 3 engagements clés : **périmètre technique / administratif**, **conditions financières ou contractuelles**, et **date de retour attendue**.`
+  );
+
+  return parts.join('\n\n');
+}
+

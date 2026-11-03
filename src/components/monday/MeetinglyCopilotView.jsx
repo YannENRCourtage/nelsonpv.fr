@@ -7,7 +7,6 @@ import {
   Pause,
   Square,
   Download,
-  Upload,
   FileText,
   Sparkles,
   Plus,
@@ -16,13 +15,18 @@ import {
   AlertTriangle,
   Clock,
   Users,
-  Briefcase,
   Send,
   Volume2,
-  RefreshCw,
-  CheckSquare,
   FolderOpen,
   MessageSquarePlus,
+  Bot,
+  Paperclip,
+  Mail,
+  UserCheck,
+  Building2,
+  Briefcase,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import apiService from '@/services/api';
 import { getRowTitle } from '@/components/MondayUpdatesDrawer.jsx';
@@ -36,12 +40,85 @@ import {
   sanitizeFileToken,
   buildStructuredMeetingReport,
   exportMeetingReportToPDF,
+  extractTextFromUploadedFile,
+  askNelsonMeetingAI,
 } from '@/services/MeetingAudioRecorderService.js';
 
 export default function MeetinglyCopilotView({ tabs = [] }) {
   const { user } = useAuth();
 
-  // ── 1. RATTACHEMENT AUX TABLEAUX MONDAY ("Projets" & "LEADS") ─────────────
+  // Nom de l'utilisateur connecté à NELSON (ex: Yann)
+  const connectedUserName = useMemo(() => {
+    return user?.displayName || user?.firstName || user?.name || 'Yann';
+  }, [user]);
+
+  // ── 1. INTERLOCUTEURS SIMPLIFIÉS (1er = Utilisateur connecté à NELSON) ────
+  const [participants, setParticipants] = useState(() => [
+    {
+      id: 'p-1',
+      name: user?.displayName || user?.firstName || user?.name || 'Yann',
+      company: 'ENR COURTAGE',
+      role: user?.role || 'Dirigeant',
+      isSelf: true,
+    },
+    {
+      id: 'p-2',
+      name: '',
+      company: '',
+      role: '',
+      isSelf: false,
+    },
+  ]);
+
+  // Mettre à jour le 1er interlocuteur si `user` charge de manière asynchrone
+  useEffect(() => {
+    if (!connectedUserName) return;
+    setParticipants((prev) =>
+      prev.map((p, idx) =>
+        idx === 0 && (!p.name || p.name === 'Yann')
+          ? { ...p, name: connectedUserName }
+          : p
+      )
+    );
+  }, [connectedUserName]);
+
+  const handleUpdateParticipant = (id, field, value) => {
+    setParticipants((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+    );
+  };
+
+  const handleAddParticipant = () => {
+    setParticipants((prev) => [
+      ...prev,
+      {
+        id: `p-${Date.now()}`,
+        name: '',
+        company: '',
+        role: '',
+        isSelf: false,
+      },
+    ]);
+  };
+
+  const handleRemoveParticipant = (id) => {
+    setParticipants((prev) => prev.filter((p, idx) => idx === 0 || p.id !== id));
+  };
+
+  // Liste des étiquettes d'intervenants pour la transcription en direct
+  const speakerOptions = useMemo(() => {
+    return participants.map((p, idx) => {
+      const baseName = (p.name || '').trim() || (idx === 0 ? connectedUserName : `Interlocuteur ${idx + 1}`);
+      const comp = (p.company || '').trim();
+      return {
+        id: p.id,
+        label: comp ? `${baseName} (${comp})` : baseName,
+        shortName: baseName,
+      };
+    });
+  }, [participants, connectedUserName]);
+
+  // ── 2. RATTACHEMENT OPTIONNEL AUX TABLEAUX MONDAY ("Projets" & "LEADS") ───
   const targetTabs = useMemo(() => {
     return (tabs || []).filter((t) => {
       const n = (t.name || '').toLowerCase();
@@ -50,8 +127,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
   }, [tabs]);
 
   const [mondayRowsByTab, setMondayRowsByTab] = useState({});
-  const [selectedLinkedKey, setSelectedLinkedKey] = useState(''); // `${tableId}::${rowId}`
-  const [dossierSearch, setDossierSearch] = useState('');
+  const [selectedLinkedKey, setSelectedLinkedKey] = useState('');
 
   useEffect(() => {
     const unsubs = [];
@@ -97,22 +173,11 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     return list;
   }, [targetTabs, mondayRowsByTab]);
 
-  const filteredLinkableRows = useMemo(() => {
-    if (!dossierSearch.trim()) return allLinkableRows;
-    const q = dossierSearch.toLowerCase();
-    return allLinkableRows.filter(
-      (item) =>
-        item.title.toLowerCase().includes(q) ||
-        item.tableName.toLowerCase().includes(q) ||
-        Object.values(item.data || {}).some((v) => String(v || '').toLowerCase().includes(q))
-    );
-  }, [allLinkableRows, dossierSearch]);
-
   const selectedLinkedRow = useMemo(() => {
     return allLinkableRows.find((r) => r.key === selectedLinkedKey) || null;
   }, [allLinkableRows, selectedLinkedKey]);
 
-  // ── 2. ÉTAT DE L'ENREGISTREUR AUDIO MULTIPISTE & TRANSCRIPTION ───────────
+  // ── 3. ÉTAT DE L'ENREGISTREUR AUDIO & GRANDE VISIONNEUSE DE TRANSCRIPTION ──
   const [recordMode, setRecordMode] = useState('phone'); // 'phone' | 'teams'
   const [recordingState, setRecordingState] = useState('idle'); // 'idle' | 'recording' | 'paused'
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -127,27 +192,40 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
 
   const [transcriptEntries, setTranscriptEntries] = useState([]);
   const [interimTranscript, setInterimTranscript] = useState('');
-  const [activeSpeaker, setActiveSpeaker] = useState('ENR Courtage');
+  const [activeSpeakerIndex, setActiveSpeakerIndex] = useState(0);
   const [quickNoteInput, setQuickNoteInput] = useState('');
   const [quickNotes, setQuickNotes] = useState([]);
 
   const recorderServiceRef = useRef(null);
   const timerIntervalRef = useRef(null);
   const elapsedSecondsRef = useRef(0);
-  const activeSpeakerRef = useRef('ENR Courtage');
+  const activeSpeakerLabelRef = useRef('');
   const recordingStateRef = useRef('idle');
   const speechRecognitionRef = useRef(null);
   const waveformCanvasRef = useRef(null);
   const animFrameRef = useRef(null);
   const importAudioInputRef = useRef(null);
+  const transcriptEndRef = useRef(null);
+
+  const currentSpeakerLabel =
+    speakerOptions[activeSpeakerIndex]?.label ||
+    speakerOptions[0]?.label ||
+    `${connectedUserName} (ENR COURTAGE)`;
 
   useEffect(() => {
-    activeSpeakerRef.current = activeSpeaker;
-  }, [activeSpeaker]);
+    activeSpeakerLabelRef.current = currentSpeakerLabel;
+  }, [currentSpeakerLabel]);
 
   useEffect(() => {
     recordingStateRef.current = recordingState;
   }, [recordingState]);
+
+  // Auto-scroll de la visionneuse de transcription
+  useEffect(() => {
+    if (transcriptEndRef.current) {
+      transcriptEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [transcriptEntries, interimTranscript]);
 
   const showToast = useCallback((msg, type = 'success') => {
     setToastBanner({ msg, type });
@@ -156,47 +234,163 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     }, 4500);
   }, []);
 
-  // ── 3. ÉTAT DES 6 SECTIONS ÉDITABLES DU COMPTE-RENDU ─────────────────────
-  const [report, setReport] = useState(() =>
-    buildStructuredMeetingReport({
-      transcriptEntries: [],
-      quickNotes: [],
-      meta: { mode: 'phone' },
-      linkedRow: null,
-    })
-  );
+  // ── 4. ÉTAT DU COPILOTE IA NELSON (DOCUMENTS, MAILS & QUESTIONS EN DIRECT) ─
+  const [contextText, setContextText] = useState('');
+  const [uploadedDocs, setUploadedDocs] = useState([]); // [{ id, name, size, extractedText }]
+  const [aiMessages, setAiMessages] = useState([
+    {
+      id: 'welcome-ai',
+      role: 'assistant',
+      timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      content:
+        "Bonjour ! Je suis l'IA Copilote NELSON. Vous pouvez me fournir vos documents, contrats ou mails reçus avant ou pendant l'appel, et me poser toutes vos questions en direct sur la conversation en cours.",
+    },
+  ]);
+  const [aiQuestionInput, setAiQuestionInput] = useState('');
+  const [isAiThinking, setIsAiThinking] = useState(false);
+  const [showContextPanel, setShowContextPanel] = useState(true);
+  const docInputRef = useRef(null);
+  const aiChatEndRef = useRef(null);
 
-  // Mettre à jour automatiquement le dossier rattaché dans les infos de la réunion
-  const handleSelectLinkedDossier = (key) => {
-    setSelectedLinkedKey(key);
-    const found = allLinkableRows.find((r) => r.key === key) || null;
-    if (found) {
-      setReport((prev) => ({
+  useEffect(() => {
+    if (aiChatEndRef.current) {
+      aiChatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [aiMessages, isAiThinking]);
+
+  const handleUploadContextDocs = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    e.target.value = '';
+
+    const newDocs = [];
+    for (const file of files) {
+      const extractedText = await extractTextFromUploadedFile(file);
+      newDocs.push({
+        id: `doc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: file.name,
+        size: file.size,
+        extractedText,
+      });
+    }
+
+    setUploadedDocs((prev) => [...prev, ...newDocs]);
+    showToast(
+      `${newDocs.length} document(s) analysé(s) et intégré(s) au contexte de l'IA NELSON !`
+    );
+  };
+
+  const handleAskNelsonAI = async (customPrompt = null) => {
+    const questionText = (customPrompt !== null ? customPrompt : aiQuestionInput).trim();
+    if (!questionText || isAiThinking) return;
+
+    if (customPrompt === null) {
+      setAiQuestionInput('');
+    }
+
+    const userMsg = {
+      id: `usr_${Date.now()}`,
+      role: 'user',
+      timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      content: questionText,
+    };
+    setAiMessages((prev) => [...prev, userMsg]);
+    setIsAiThinking(true);
+
+    try {
+      const answer = await askNelsonMeetingAI({
+        question: questionText,
+        participants,
+        transcriptEntries,
+        contextText,
+        uploadedDocs,
+        linkedRow: selectedLinkedRow,
+      });
+
+      setAiMessages((prev) => [
         ...prev,
-        title:
-          !prev.title || prev.title.includes('Client / Prospect')
-            ? `Réunion & Suivi — ${found.title}`
-            : prev.title,
-        participants: `Yann BARBERIS (ENR Courtage), ${found.title}`,
-        linkedTableId: found.tableId,
-        linkedTableName: found.tableName,
-        linkedRowId: found.rowId,
-        linkedRowTitle: found.title,
-      }));
-    } else {
-      setReport((prev) => ({
+        {
+          id: `ai_${Date.now()}`,
+          role: 'assistant',
+          timestamp: new Date().toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          content: answer,
+        },
+      ]);
+    } catch (err) {
+      setAiMessages((prev) => [
         ...prev,
-        linkedTableId: '',
-        linkedTableName: '',
-        linkedRowId: '',
-        linkedRowTitle: '',
-      }));
+        {
+          id: `ai_err_${Date.now()}`,
+          role: 'assistant',
+          timestamp: new Date().toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          content: "Une erreur est survenue lors de l'analyse. Veuillez réessayer.",
+        },
+      ]);
+    } finally {
+      setIsAiThinking(false);
     }
   };
 
-  // ── 4. HISTORIQUE DES RÉUNIONS (INDEXEDDB) ───────────────────────────────
+  // ── 5. COMPTE-RENDU AUTOMATIQUE BASÉ SUR LES INTERLOCUTEURS & LA CONVERSATION
+  const buildCurrentReportObject = useCallback(
+    (customDuration = null) => {
+      const formattedParticipants = participants
+        .filter((p) => (p.name || '').trim() || (p.company || '').trim())
+        .map((p) => {
+          const n = (p.name || '').trim() || 'Interlocuteur';
+          const c = (p.company || '').trim();
+          const r = (p.role || '').trim();
+          if (c && r) return `${n} (${c} — ${r})`;
+          if (c) return `${n} (${c})`;
+          if (r) return `${n} (${r})`;
+          return n;
+        })
+        .join(', ');
+
+      const secondSpeaker = participants[1] || {};
+      const otherTitle =
+        secondSpeaker.company?.trim() ||
+        secondSpeaker.name?.trim() ||
+        selectedLinkedRow?.title ||
+        'Interlocuteur';
+
+      const autoTitle = `Réunion ${participants[0]?.company || 'ENR COURTAGE'} x ${otherTitle}`;
+
+      return buildStructuredMeetingReport({
+        transcriptEntries,
+        quickNotes: [
+          ...quickNotes,
+          ...(contextText.trim()
+            ? [{ timestamp: 'Contexte', text: contextText.trim().slice(0, 300) }]
+            : []),
+        ],
+        meta: {
+          mode: recordMode,
+          title: autoTitle,
+          clientName: otherTitle,
+          dateTime: new Date().toLocaleString('fr-FR', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+          }),
+          duration: customDuration || formatDurationHms(elapsedSecondsRef.current || elapsedSeconds),
+          participants: formattedParticipants,
+          statusPriority: 'Suivi Actif',
+          includeTranscriptInPdf: true,
+        },
+        linkedRow: selectedLinkedRow,
+      });
+    },
+    [participants, transcriptEntries, quickNotes, contextText, recordMode, elapsedSeconds, selectedLinkedRow]
+  );
+
+  // ── 6. HISTORIQUE DES RÉUNIONS (INDEXEDDB) ───────────────────────────────
   const [meetingsHistory, setMeetingsHistory] = useState([]);
-  const [playingHistoryId, setPlayingHistoryId] = useState(null);
   const [historyAudioUrls, setHistoryAudioUrls] = useState({});
   const [pushingMondayId, setPushingMondayId] = useState(null);
 
@@ -237,7 +431,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     };
   }, [loadHistory]);
 
-  // ── 5. VISUALISEUR D'ONDE (WAVEFORM & SPECTRE DYNAMIQUE SUR CANVAS) ──────
+  // ── 7. VISUALISEUR D'ONDE (WAVEFORM SUR CANVAS) ──────────────────────────
   const startWaveformVisualizer = useCallback((analyser) => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     const canvas = waveformCanvasRef.current;
@@ -255,14 +449,6 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, W, H);
 
-      // Grille subtile
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, H / 2);
-      ctx.lineTo(W, H / 2);
-      ctx.stroke();
-
       if (recordingStateRef.current === 'paused') {
         ctx.fillStyle = '#94a3b8';
         ctx.font = 'bold 12px system-ui, sans-serif';
@@ -274,7 +460,6 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       analyser.getByteFrequencyData(freqData);
       analyser.getByteTimeDomainData(timeData);
 
-      // Barres de spectre fréquentiel
       const barCount = 48;
       const step = Math.max(1, Math.floor(bufferLength / barCount));
       const barW = (W / barCount) * 0.68;
@@ -283,7 +468,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       for (let i = 0; i < barCount; i++) {
         const val = freqData[i * step] || 0;
         const norm = val / 255;
-        const barH = Math.max(4, norm * (H - 14));
+        const barH = Math.max(4, norm * (H - 10));
         const x = i * (barW + gap) + gap / 2;
         const y = (H - barH) / 2;
 
@@ -297,7 +482,6 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
         ctx.fill();
       }
 
-      // Ligne d'onde temporelle superposée
       ctx.lineWidth = 2;
       ctx.strokeStyle = 'rgba(52, 211, 153, 0.85)';
       ctx.beginPath();
@@ -327,16 +511,10 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(0, canvas.height / 2);
-      ctx.lineTo(canvas.width, canvas.height / 2);
-      ctx.stroke();
     }
   }, []);
 
-  // ── 6. TRANSCRIPTION CONTINUE EN DIRECT (WEB SPEECH API FR-FR) ───────────
+  // ── 8. TRANSCRIPTION CONTINUE EN DIRECT (FR-FR) ──────────────────────────
   const startSpeechRecognition = useCallback(() => {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) return;
@@ -362,7 +540,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
                 {
                   id: `tr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
                   timestamp: stamp,
-                  speaker: activeSpeakerRef.current,
+                  speaker: activeSpeakerLabelRef.current,
                   text: cleanTxt,
                 },
               ]);
@@ -402,7 +580,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     }
   }, []);
 
-  // ── 7. CONTRÔLES D'ENREGISTREMENT (DÉMARRER / PAUSE / ARRÊTER) ───────────
+  // ── 9. DÉMARRER / PAUSE / ARRÊTER L'ENREGISTREMENT ───────────────────────
   const handleStartRecording = async () => {
     setErrorMessage(null);
     setAudioWarning(null);
@@ -430,15 +608,6 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
 
       startWaveformVisualizer(startInfo.analyser);
       startSpeechRecognition();
-
-      setReport((prev) => ({
-        ...prev,
-        dateTime: new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
-        channel:
-          recordMode === 'teams'
-            ? 'Visioconférence Microsoft Teams / Meet'
-            : 'Appel Téléphonique',
-      }));
     } catch (err) {
       setErrorMessage(
         err?.message ||
@@ -464,7 +633,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     }
   };
 
-  const handleStopAndGenerateReport = async () => {
+  const handleStopRecording = async () => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
@@ -498,70 +667,44 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       setCurrentAudioMime(recordedMime);
     }
 
-    // Structurer automatiquement les 6 sections du compte-rendu
-    const generatedReport = buildStructuredMeetingReport({
-      transcriptEntries,
-      quickNotes,
-      meta: {
-        mode: recordMode,
-        title: report.title,
-        dateTime:
-          report.dateTime ||
-          new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
-        duration: finalDurationStr,
-        participants: report.participants,
-        statusPriority: report.statusPriority,
-        includeTranscriptInPdf: report.includeTranscriptInPdf,
-      },
-      linkedRow: selectedLinkedRow,
-    });
-
-    setReport(generatedReport);
-
-    // Sauvegarder automatiquement dans IndexedDB (Historique)
+    const generatedReport = buildCurrentReportObject(finalDurationStr);
     const meetingId = currentMeetingId || `mtg_${Date.now()}`;
     setCurrentMeetingId(meetingId);
 
-    const recordToSave = {
-      id: meetingId,
-      createdAt: new Date().toISOString(),
-      mode: recordMode,
-      duration: finalDurationStr,
-      mimeType: recordedMime,
-      audioBlob: recordedBlob,
-      report: generatedReport,
-      transcriptEntries,
-      quickNotes,
-    };
-
     try {
-      await saveMeetingToIndexedDB(recordToSave);
+      await saveMeetingToIndexedDB({
+        id: meetingId,
+        createdAt: new Date().toISOString(),
+        mode: recordMode,
+        duration: finalDurationStr,
+        mimeType: recordedMime,
+        audioBlob: recordedBlob,
+        participants,
+        contextText,
+        uploadedDocs,
+        report: generatedReport,
+        transcriptEntries,
+        quickNotes,
+      });
       await loadHistory();
-      showToast('Enregistrement terminé et compte-rendu structuré automatiquement !');
+      showToast('Enregistrement terminé et sauvegardé dans vos archives !');
     } catch (err) {
       console.warn('[Meetingly] Sauvegarde IndexedDB:', err);
     }
   };
 
-  // ── 8. IMPORT D'UN FICHIER AUDIO EXTERNE (.mp3, .wav, .m4a, .webm) ───────
+  // ── 10. IMPORT AUDIO EXTERNE & EXPORT PDF / AUDIO / MONDAY ───────────────
   const handleImportAudioFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
 
-    setErrorMessage(null);
     const url = URL.createObjectURL(file);
-
-    // Lire la durée du fichier audio importé
     const durationSec = await new Promise((resolve) => {
       const tempAudio = document.createElement('audio');
       tempAudio.preload = 'metadata';
       tempAudio.onloadedmetadata = () => {
-        if (tempAudio.duration && isFinite(tempAudio.duration)) {
-          resolve(Math.round(tempAudio.duration));
-        } else {
-          resolve(0);
-        }
+        resolve(tempAudio.duration && isFinite(tempAudio.duration) ? Math.round(tempAudio.duration) : 0);
       };
       tempAudio.onerror = () => resolve(0);
       tempAudio.src = url;
@@ -574,36 +717,10 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     setCurrentAudioUrl(url);
     setCurrentAudioMime(file.type || 'audio/mpeg');
 
-    const cleanFileBase = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ');
-    const importedNote = {
-      id: `note_${Date.now()}`,
-      timestamp: '00:00:00',
-      text: `Fichier audio importé : ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} Mo).`,
-    };
-    const nextNotes = [...quickNotes, importedNote];
-    setQuickNotes(nextNotes);
-
-    const generatedReport = buildStructuredMeetingReport({
-      transcriptEntries,
-      quickNotes: nextNotes,
-      meta: {
-        mode: 'import',
-        title: selectedLinkedRow
-          ? `Compte-Rendu — ${selectedLinkedRow.title}`
-          : `Compte-Rendu Audio — ${cleanFileBase}`,
-        dateTime: new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
-        duration: durStr,
-        participants: report.participants,
-        statusPriority: report.statusPriority,
-        includeTranscriptInPdf: report.includeTranscriptInPdf,
-      },
-      linkedRow: selectedLinkedRow,
-    });
-
-    setReport(generatedReport);
-
+    const generatedReport = buildCurrentReportObject(durStr);
     const meetingId = `mtg_imp_${Date.now()}`;
     setCurrentMeetingId(meetingId);
+
     await saveMeetingToIndexedDB({
       id: meetingId,
       createdAt: new Date().toISOString(),
@@ -611,68 +728,17 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       duration: durStr,
       mimeType: file.type || 'audio/mpeg',
       audioBlob: file,
+      participants,
+      contextText,
+      uploadedDocs,
       report: generatedReport,
       transcriptEntries,
-      quickNotes: nextNotes,
-    });
-    await loadHistory();
-    showToast(`Fichier audio « ${file.name} » importé et structuré avec succès !`);
-  };
-
-  // ── 9. RÉGÉNÉRATION DE LA SYNTHÈSE & SAUVEGARDE DES MODIFICATIONS ────────
-  const handleRegenerateSummary = async () => {
-    const regenerated = buildStructuredMeetingReport({
-      transcriptEntries,
-      quickNotes,
-      meta: {
-        mode: recordMode,
-        title: report.title,
-        dateTime: report.dateTime,
-        duration: report.duration || formatDurationHms(elapsedSeconds),
-        participants: report.participants,
-        statusPriority: report.statusPriority,
-        includeTranscriptInPdf: report.includeTranscriptInPdf,
-      },
-      linkedRow: selectedLinkedRow,
-    });
-    setReport(regenerated);
-
-    if (currentMeetingId) {
-      await saveMeetingToIndexedDB({
-        id: currentMeetingId,
-        createdAt: new Date().toISOString(),
-        mode: recordMode,
-        duration: regenerated.duration,
-        mimeType: currentAudioMime,
-        audioBlob: currentAudioBlob,
-        report: regenerated,
-        transcriptEntries,
-        quickNotes,
-      });
-      await loadHistory();
-    }
-    showToast('Synthèse et structure du compte-rendu régénérées !');
-  };
-
-  const handleSaveCurrentChanges = async () => {
-    const meetingId = currentMeetingId || `mtg_${Date.now()}`;
-    setCurrentMeetingId(meetingId);
-    await saveMeetingToIndexedDB({
-      id: meetingId,
-      createdAt: new Date().toISOString(),
-      mode: recordMode,
-      duration: report.duration || formatDurationHms(elapsedSeconds),
-      mimeType: currentAudioMime,
-      audioBlob: currentAudioBlob,
-      report,
-      transcriptEntries,
       quickNotes,
     });
     await loadHistory();
-    showToast('Compte-rendu sauvegardé dans les archives Meetingly IA !');
+    showToast(`Fichier audio « ${file.name} » importé !`);
   };
 
-  // ── 10. TÉLÉCHARGEMENT DU FICHIER AUDIO (.webm / .mp3 / .wav) ────────────
   const handleDownloadAudio = (blob, titleOrClient, dateStr, mimeType = 'audio/webm') => {
     if (!blob) return;
     const ext = mimeType.includes('mp4')
@@ -695,14 +761,19 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
 
-  // ── 11. POUSSER LE COMPTE-RENDU DANS MONDAY (COLONNE MAJ) ─────────────────
-  const handlePushToMonday = async (targetReport = report) => {
+  const handleExportCurrentPDF = () => {
+    const rep = buildCurrentReportObject();
+    exportMeetingReportToPDF(rep, transcriptEntries);
+  };
+
+  const handlePushToMonday = async (customReport = null) => {
+    const targetReport = customReport || buildCurrentReportObject();
     const tableId = targetReport.linkedTableId || selectedLinkedRow?.tableId;
     const rowId = targetReport.linkedRowId || selectedLinkedRow?.rowId;
 
     if (!tableId || !rowId) {
       setErrorMessage(
-        'Veuillez sélectionner un dossier « Projets » ou « LEADS » à rattacher avant de pousser le compte-rendu dans Monday.'
+        'Sélectionnez un dossier Monday (Projets / LEADS) dans la barre ci-dessus pour y pousser le compte-rendu.'
       );
       return;
     }
@@ -713,41 +784,27 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     try {
       const tabRows = mondayRowsByTab[tableId] || [];
       const targetRow = tabRows.find((r) => r.id === rowId);
-      if (!targetRow) {
-        throw new Error('Ligne introuvable dans le tableau Monday sélectionné.');
-      }
+      if (!targetRow) throw new Error('Ligne Monday introuvable.');
 
-      const authorName = user?.displayName || user?.firstName || user?.name || 'Yann BARBERIS';
+      const authorName = connectedUserName;
       const authorAvatar = user?.photoURL || user?.avatar || '/avatars/yann.jpg';
-      const authorRole = user?.role || 'ENR COURTAGE — Copilote Meetingly IA';
-
-      const actionsFormatted = (targetReport.actionPlan || [])
-        .map((a, idx) => `  ${idx + 1}. [${a.owner || 'ENR Courtage'} — ${a.dueDate || 'À définir'}] ${a.action}`)
-        .join('\n');
+      const authorRole = user?.role || 'ENR COURTAGE — Meetingly IA';
 
       const updateText = [
         `🎙️ COMPTE-RENDU DE RÉUNION (${targetReport.channel || 'Appel / Visio'})`,
-        `📌 Objet : ${targetReport.title || 'Point Projet'}`,
-        `📅 Date : ${targetReport.dateTime || new Date().toLocaleDateString('fr-FR')} • Durée : ${targetReport.duration || '00:00:00'}`,
-        `👥 Participants : ${targetReport.participants || 'ENR Courtage & Client'}`,
+        `📌 Objet : ${targetReport.title}`,
+        `📅 Date : ${targetReport.dateTime} • Durée : ${targetReport.duration}`,
+        `👥 Interlocuteurs : ${targetReport.participants}`,
         ``,
-        `🔹 SYNTHÈSE EXÉCUTIVE :`,
-        `${targetReport.executiveSummary || '—'}`,
+        `🔹 SYNTHÈSE :`,
+        `${targetReport.executiveSummary}`,
         ``,
-        `🔹 POINTS CLÉS TECHNIQUES & FINANCIERS :`,
-        `${targetReport.keyPointsText || '—'}`,
-        ``,
-        `✅ DÉCISIONS ACTÉES :`,
-        `${targetReport.decisionsText || '—'}`,
-        ``,
-        `📋 PLAN D'ACTION (NEXT STEPS) :`,
-        `${actionsFormatted || '  • Aucun point en attente'}`,
+        `🔹 POINTS ABORDÉS :`,
+        `${targetReport.keyPointsText}`,
       ].join('\n');
 
       const existingUpdates = Array.isArray(targetRow.data?.__updates)
         ? targetRow.data.__updates
-        : Array.isArray(targetRow.updates)
-        ? targetRow.updates
         : [];
 
       const newUpdateObj = {
@@ -763,96 +820,47 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
         liked: false,
       };
 
-      const updatedData = {
-        ...(targetRow.data || {}),
-        __updates: [newUpdateObj, ...existingUpdates],
-      };
+      await apiService.updateMondayRow(tableId, rowId, {
+        data: {
+          ...(targetRow.data || {}),
+          __updates: [newUpdateObj, ...existingUpdates],
+        },
+      });
 
-      await apiService.updateMondayRow(tableId, rowId, { data: updatedData });
-
-      try {
-        const { createComment } = await import('@/services/firebase/comments.service');
-        const uid = user?.uid || user?.id || 'unknown';
-        await createComment(rowId, uid, authorName, updateText, null, user?.email, {
-          context: 'monday',
-          tableId,
-          tableName: targetReport.linkedTableName || 'Monday',
-          rowName: targetReport.linkedRowTitle || targetRow.title || 'Dossier',
-        });
-      } catch (_) {}
-
-      showToast(
-        `Compte-rendu poussé dans la colonne MAJ de « ${
-          targetReport.linkedRowTitle || targetRow.title
-        } » (${targetReport.linkedTableName || 'Monday'}) !`
-      );
+      showToast(`Compte-rendu ajouté dans la colonne MAJ de « ${targetRow.title} » !`);
     } catch (err) {
-      setErrorMessage(
-        err?.message || "Erreur lors de l'envoi du compte-rendu dans la colonne MAJ de Monday."
-      );
+      setErrorMessage(err?.message || "Erreur lors de l'envoi dans Monday.");
     } finally {
       setPushingMondayId(null);
     }
   };
 
-  // ── 12. AJOUT DE NOTE RAPIDE HORODATÉE & TAGS MÉTIERS ────────────────────
-  const handleAddQuickNote = (e) => {
+  const handleAddManualTranscriptLine = (e) => {
     if (e) e.preventDefault();
     if (!quickNoteInput.trim()) return;
     const stamp = formatDurationHms(elapsedSeconds);
-    const newEntry = {
+    const entry = {
       id: `tr_manual_${Date.now()}`,
       timestamp: stamp,
-      speaker: activeSpeaker,
+      speaker: currentSpeakerLabel,
       text: quickNoteInput.trim(),
     };
-    setTranscriptEntries((prev) => [...prev, newEntry]);
-    setQuickNotes((prev) => [...prev, { id: newEntry.id, timestamp: stamp, text: quickNoteInput.trim() }]);
+    setTranscriptEntries((prev) => [...prev, entry]);
+    setQuickNotes((prev) => [...prev, { id: entry.id, timestamp: stamp, text: quickNoteInput.trim() }]);
     setQuickNoteInput('');
   };
 
-  const handleInsertPresetTag = (tagSnippet) => {
-    setReport((prev) => ({
-      ...prev,
-      keyPointsText: prev.keyPointsText
-        ? `${prev.keyPointsText}\n• ${tagSnippet}`
-        : `• ${tagSnippet}`,
-    }));
-  };
-
-  const handleAddActionRow = () => {
-    setReport((prev) => ({
-      ...prev,
-      actionPlan: [
-        ...(prev.actionPlan || []),
-        {
-          id: `act_${Date.now()}`,
-          action: '',
-          owner: 'ENR Courtage',
-          dueDate: new Date(Date.now() + 7 * 86400000).toLocaleDateString('fr-FR'),
-        },
-      ],
-    }));
-  };
-
-  const handleUpdateActionRow = (id, field, value) => {
-    setReport((prev) => ({
-      ...prev,
-      actionPlan: (prev.actionPlan || []).map((a) => (a.id === id ? { ...a, [field]: value } : a)),
-    }));
-  };
-
-  const handleDeleteActionRow = (id) => {
-    setReport((prev) => ({
-      ...prev,
-      actionPlan: (prev.actionPlan || []).filter((a) => a.id !== id),
-    }));
-  };
-
-  const handleLoadMeetingFromHistory = (item) => {
+  const handleLoadHistoryItem = (item) => {
     setCurrentMeetingId(item.id);
-    setRecordMode(item.mode === 'teams' ? 'teams' : 'phone');
-    setReport(item.report || buildStructuredMeetingReport({ meta: item }));
+    if (Array.isArray(item.participants) && item.participants.length > 0) {
+      setParticipants(item.participants);
+    }
+    if (typeof item.contextText === 'string') {
+      setContextText(item.contextText);
+    }
+    if (Array.isArray(item.uploadedDocs)) {
+      setUploadedDocs(item.uploadedDocs);
+    }
     setTranscriptEntries(item.transcriptEntries || []);
     setQuickNotes(item.quickNotes || []);
     if (item.audioBlob instanceof Blob) {
@@ -860,69 +868,17 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       setCurrentAudioUrl(historyAudioUrls[item.id] || URL.createObjectURL(item.audioBlob));
       setCurrentAudioMime(item.mimeType || 'audio/webm');
     }
-    if (item.report?.linkedTableId && item.report?.linkedRowId) {
-      setSelectedLinkedKey(`${item.report.linkedTableId}::${item.report.linkedRowId}`);
-    }
-    showToast(`Compte-rendu « ${item.report?.title || 'Réunion'} » chargé dans l'éditeur.`);
+    showToast(`Échange « ${item.report?.title || 'Réunion'} » rechargé.`);
   };
 
   const handleDeleteHistoryItem = async (id) => {
     await deleteMeetingFromIndexedDB(id);
-    if (currentMeetingId === id) {
-      setCurrentMeetingId(null);
-    }
+    if (currentMeetingId === id) setCurrentMeetingId(null);
     await loadHistory();
   };
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Bandeau supérieur Meetingly IA */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-5 text-white border border-indigo-500/30 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-              🎙️ MEETINGLY IA — ENREGISTREUR MULTIPISTE & COPILOTE
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-              Téléphone • Microsoft Teams • Google Meet • Zoom
-            </span>
-          </div>
-          <h2 className="text-xl lg:text-2xl font-black tracking-tight">
-            Enregistreur Audio Multipiste & Générateur de Compte-Rendu PDF A4
-          </h2>
-          <p className="text-xs lg:text-sm text-slate-300">
-            Capturez simultanément votre micro et le son système de vos réunions Teams/Meet ou appels téléphoniques, structurez le compte-rendu ENR COURTAGE et poussez-le en 1 clic dans vos tableaux Monday.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <input
-            ref={importAudioInputRef}
-            type="file"
-            accept=".mp3,.wav,.m4a,.webm,.ogg,audio/*"
-            onChange={handleImportAudioFile}
-            className="hidden"
-          />
-          <button
-            type="button"
-            onClick={() => importAudioInputRef.current?.click()}
-            className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm"
-          >
-            <FolderOpen className="w-4 h-4 text-amber-400" />
-            <span>📂 Importer un fichier audio (.mp3, .wav, .m4a, .webm)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => exportMeetingReportToPDF(report, transcriptEntries)}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
-          >
-            <FileText className="w-4 h-4" />
-            <span>📄 Exporter le Compte-Rendu en PDF (A4)</span>
-          </button>
-        </div>
-      </div>
-
       {/* Alertes & Toasts */}
       {toastBanner && (
         <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center justify-between shadow-sm">
@@ -956,629 +912,649 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
         </div>
       )}
 
-      {/* GRILLE PRINCIPALE : GAUCHE (Enregistreur + Compte-Rendu 6 sections) / DROITE (Historique & Archives Monday) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        {/* ═══ COLONNE GAUCHE & CENTRALE (8/12) ═══════════════════════════════ */}
+        {/* ═══ COLONNE PRINCIPALE GAUCHE (8/12) ═══════════════════════════════ */}
         <div className="xl:col-span-8 space-y-6">
-          {/* BLOC A — CONSOLE D'ENREGISTREMENT AUDIO MULTIPISTE */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          {/* ── CARTE 1 : INTERLOCUTEURS + ENREGISTREMENT & GRANDE VISIONNEUSE ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
+            {/* En-tête compact avec export PDF et import audio */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                  <Mic className="w-4 h-4 text-indigo-600" />
-                  <span>1. Console d'Enregistrement Audio Multipiste</span>
-                </h3>
+                <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Mic className="w-5 h-5 text-indigo-600" />
+                  <span>Meetingly IA — Enregistrement & Retranscription en Direct</span>
+                </h2>
                 <p className="text-xs text-slate-500">
-                  Choisissez la source sonore et rattachez l'échange à une ligne de vos tableaux Projets ou LEADS.
+                  Indiquez vos interlocuteurs puis cliquez sur Enregistrer pour démarrer la retranscription en direct.
                 </p>
               </div>
 
-              {/* Chronomètre numérique */}
-              <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl border border-slate-700">
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    recordingState === 'recording'
-                      ? 'bg-red-500 animate-ping'
-                      : recordingState === 'paused'
-                      ? 'bg-amber-400'
-                      : 'bg-slate-500'
-                  }`}
-                />
-                <Clock className="w-4 h-4 text-indigo-400" />
-                <span className="font-mono text-lg font-black tracking-wider">
-                  {formatDurationHms(elapsedSeconds)}
-                </span>
-              </div>
-            </div>
-
-            {/* Sélection du Mode : Appel Téléphonique vs Réunion Teams / Meet / Zoom */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <button
-                type="button"
-                disabled={recordingState !== 'idle'}
-                onClick={() => setRecordMode('phone')}
-                className={`p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
-                  recordMode === 'phone'
-                    ? 'bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/20'
-                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                } ${recordingState !== 'idle' ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                <div
-                  className={`p-2.5 rounded-xl ${
-                    recordMode === 'phone' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  <PhoneCall className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-extrabold text-slate-900">
-                    📞 Mode 1 — Appel Téléphonique / Micro Salle
-                  </div>
-                  <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
-                    Capte votre voix et le téléphone posé en haut-parleur (gain auto + sans coupure d'écho).
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                disabled={recordingState !== 'idle'}
-                onClick={() => setRecordMode('teams')}
-                className={`p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
-                  recordMode === 'teams'
-                    ? 'bg-indigo-50/90 border-indigo-500 ring-2 ring-indigo-500/20'
-                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                } ${recordingState !== 'idle' ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                <div
-                  className={`p-2.5 rounded-xl ${
-                    recordMode === 'teams' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  <Monitor className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-extrabold text-slate-900">
-                    💻 Mode 2 — Réunion Teams / Google Meet / Zoom
-                  </div>
-                  <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
-                    Mixage Web Audio API : fusionne votre microphone et le son système de vos interlocuteurs sur 1 piste.
-                  </p>
-                </div>
-              </button>
-            </div>
-
-            {/* Sélecteur de Dossier Monday (Projets / LEADS) */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <div className="md:col-span-5">
-                <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
-                  🔍 Filtrer un dossier Monday (Projets / LEADS)
-                </label>
+              <div className="flex items-center gap-2 flex-wrap">
                 <input
-                  type="text"
-                  value={dossierSearch}
-                  onChange={(e) => setDossierSearch(e.target.value)}
-                  placeholder="Rechercher un nom de client, commune, projet..."
-                  className="w-full text-xs rounded-lg border border-slate-300 bg-white px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  ref={importAudioInputRef}
+                  type="file"
+                  accept=".mp3,.wav,.m4a,.webm,.ogg,audio/*"
+                  onChange={handleImportAudioFile}
+                  className="hidden"
                 />
-              </div>
-              <div className="md:col-span-7">
-                <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
-                  🔗 Dossier Monday rattaché ({filteredLinkableRows.length} disponibles)
-                </label>
-                <select
-                  value={selectedLinkedKey}
-                  onChange={(e) => handleSelectLinkedDossier(e.target.value)}
-                  className="w-full text-xs font-semibold rounded-lg border border-slate-300 bg-white px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                <button
+                  type="button"
+                  onClick={() => importAudioInputRef.current?.click()}
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <option value="">— Aucun dossier rattaché (Réunion libre) —</option>
-                  {filteredLinkableRows.map((item) => (
-                    <option key={item.key} value={item.key}>
-                      [{item.tableName}] {item.title}
-                    </option>
-                  ))}
-                </select>
+                  <FolderOpen className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Importer audio</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportCurrentPDF}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>📄 Exporter Compte-Rendu PDF</span>
+                </button>
               </div>
             </div>
 
-            {/* Visualiseur d'onde (Waveform / Spectre Canvas) & Boutons d'action */}
-            <div className="space-y-3">
-              <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 h-20 flex items-center justify-center">
-                <canvas
-                  ref={waveformCanvasRef}
-                  width={720}
-                  height={80}
-                  className="w-full h-20 block"
-                />
-                {recordingState === 'idle' && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="text-xs font-semibold text-slate-400 bg-slate-900/80 px-3 py-1 rounded-full border border-slate-700">
-                      Spectre audio prêt • Cliquez sur « Enregistrer » pour démarrer la capture
-                    </span>
-                  </div>
-                )}
+            {/* 1. LISTE DES INTERLOCUTEURS (1er = Utilisateur connecté à NELSON) */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-indigo-600" />
+                  <span>Interlocuteurs de la conversation</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddParticipant}
+                  className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Ajouter un interlocuteur</span>
+                </button>
               </div>
 
-              <div className="flex items-center justify-between gap-2.5 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {recordingState === 'idle' ? (
+              <div className="space-y-2">
+                {participants.map((p, idx) => (
+                  <div
+                    key={p.id}
+                    className={`grid grid-cols-1 sm:grid-cols-12 gap-2 items-center p-2.5 rounded-xl border ${
+                      idx === 0
+                        ? 'bg-indigo-50/50 border-indigo-200'
+                        : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <div className="sm:col-span-4">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-extrabold shrink-0 ${
+                            idx === 0
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {idx === 0 ? 'Vous (NELSON)' : `Interlocuteur ${idx + 1}`}
+                        </span>
+                        <input
+                          type="text"
+                          value={p.name}
+                          onChange={(e) =>
+                            handleUpdateParticipant(p.id, 'name', e.target.value)
+                          }
+                          placeholder="Nom & Prénom..."
+                          className="w-full text-xs font-bold rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-4">
+                      <div className="relative flex items-center">
+                        <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={p.company}
+                          onChange={(e) =>
+                            handleUpdateParticipant(p.id, 'company', e.target.value)
+                          }
+                          placeholder="Entreprise (ex: SOLAIME, Mairie, Client...)"
+                          className="w-full text-xs font-semibold rounded-lg border border-slate-300 bg-white pl-8 pr-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <div className="relative flex items-center">
+                        <Briefcase className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={p.role}
+                          onChange={(e) =>
+                            handleUpdateParticipant(p.id, 'role', e.target.value)
+                          }
+                          placeholder="Poste (optionnel)"
+                          className="w-full text-xs rounded-lg border border-slate-300 bg-white pl-8 pr-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-1 flex justify-end">
+                      {idx > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveParticipant(p.id)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                          title="Retirer cet interlocuteur"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <UserCheck className="w-4 h-4 text-indigo-600 mr-1.5" title="Utilisateur connecté" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. BARRE DE COMMANDE D'ENREGISTREMENT (1 CLIC) */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-slate-900 text-white p-3.5 rounded-2xl border border-slate-800 shadow-inner">
+              <div className="flex items-center gap-2 flex-wrap">
+                {recordingState === 'idle' ? (
+                  <button
+                    type="button"
+                    onClick={handleStartRecording}
+                    className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-black flex items-center gap-2.5 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
+                  >
+                    <span className="w-3 h-3 rounded-full bg-white animate-pulse" />
+                    <span>⏺️ Enregistrer</span>
+                  </button>
+                ) : (
+                  <>
                     <button
                       type="button"
-                      onClick={handleStartRecording}
-                      className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-extrabold flex items-center gap-2 shadow-md shadow-red-600/20 transition-all cursor-pointer"
+                      onClick={handleTogglePause}
+                      className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer"
                     >
-                      <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
-                      <span>⏺️ Enregistrer ({recordMode === 'teams' ? 'Teams / Visio' : 'Téléphone / Micro'})</span>
+                      {recordingState === 'paused' ? (
+                        <>
+                          <Play className="w-4 h-4" />
+                          <span>Reprendre</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pause className="w-4 h-4" />
+                          <span>Pause</span>
+                        </>
+                      )}
                     </button>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleTogglePause}
-                        className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
-                      >
-                        {recordingState === 'paused' ? (
-                          <>
-                            <Play className="w-4 h-4" />
-                            <span>▶️ Reprendre</span>
-                          </>
-                        ) : (
-                          <>
-                            <Pause className="w-4 h-4" />
-                            <span>⏸️ Pause</span>
-                          </>
-                        )}
-                      </button>
 
-                      <button
-                        type="button"
-                        onClick={handleStopAndGenerateReport}
-                        className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition-all cursor-pointer"
-                      >
-                        <Square className="w-4 h-4 text-red-400 fill-red-400" />
-                        <span>⏹️ Arrêter & Générer le Compte-Rendu</span>
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                {/* Lecteur Audio immédiat si une piste est disponible */}
-                {currentAudioUrl && (
-                  <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 flex-1 min-w-[260px]">
-                    <Volume2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <audio controls src={currentAudioUrl} className="h-8 flex-1 max-w-xs" />
-                    {currentAudioBlob && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleDownloadAudio(
-                            currentAudioBlob,
-                            report.linkedRowTitle || report.title,
-                            new Date().toISOString(),
-                            currentAudioMime
-                          )
-                        }
-                        className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
-                        title="Télécharger l'enregistrement audio"
-                      >
-                        <Download className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Télécharger l'audio</span>
-                      </button>
-                    )}
-                  </div>
+                    <button
+                      type="button"
+                      onClick={handleStopRecording}
+                      className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Square className="w-4 h-4 text-red-600 fill-red-600" />
+                      <span>⏹️ Arrêter & Sauvegarder</span>
+                    </button>
+                  </>
                 )}
+
+                {/* Sélecteur compact Téléphone vs Teams/Visio */}
+                <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
+                  <button
+                    type="button"
+                    disabled={recordingState !== 'idle'}
+                    onClick={() => setRecordMode('phone')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      recordMode === 'phone'
+                        ? 'bg-blue-600 text-white shadow'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <PhoneCall className="w-3.5 h-3.5" />
+                    <span>Téléphone / Micro</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={recordingState !== 'idle'}
+                    onClick={() => setRecordMode('teams')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      recordMode === 'teams'
+                        ? 'bg-indigo-600 text-white shadow'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <Monitor className="w-3.5 h-3.5" />
+                    <span>Teams / Meet / Zoom</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Spectre Audio compact + Chronomètre */}
+              <div className="flex items-center gap-3">
+                <canvas
+                  ref={waveformCanvasRef}
+                  width={220}
+                  height={40}
+                  className="w-36 sm:w-48 h-10 rounded-lg bg-slate-950 border border-slate-800"
+                />
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 font-mono text-base font-black tracking-wider">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      recordingState === 'recording'
+                        ? 'bg-red-500 animate-ping'
+                        : recordingState === 'paused'
+                        ? 'bg-amber-400'
+                        : 'bg-slate-600'
+                    }`}
+                  />
+                  <span>{formatDurationHms(elapsedSeconds)}</span>
+                </div>
               </div>
             </div>
 
-            {/* Barre de transcription en direct & prise de notes horodatées */}
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-2.5">
+            {/* Lecteur audio si un enregistrement vient d'être terminé */}
+            {currentAudioUrl && (
+              <div className="flex items-center gap-3 bg-slate-100 px-3.5 py-2 rounded-xl border border-slate-200 flex-wrap">
+                <Volume2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                <audio controls src={currentAudioUrl} className="h-8 flex-1 min-w-[220px]" />
+                {currentAudioBlob && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDownloadAudio(
+                        currentAudioBlob,
+                        participants[1]?.company || participants[1]?.name || 'Reunion',
+                        new Date().toISOString(),
+                        currentAudioMime
+                      )
+                    }
+                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Télécharger l'audio</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* 3. GRANDE VISIONNEUSE DE RETRANSCRIPTION EN DIRECT */}
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold text-slate-800">
-                    💬 Transcription en direct (fr-FR) & Notes horodatées
+                  <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                    💬 Retranscription en direct de la conversation
                   </span>
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold">
                     {transcriptEntries.length} intervention(s)
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-slate-500 font-semibold">Intervenant actif :</span>
-                  {['ENR Courtage', 'Client', 'Partenaire'].map((spk) => (
+                {/* Boutons pour basculer l'interlocuteur qui parle */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] text-slate-500 font-semibold">Qui parle :</span>
+                  {speakerOptions.map((spk, idx) => (
                     <button
-                      key={spk}
+                      key={spk.id}
                       type="button"
-                      onClick={() => setActiveSpeaker(spk)}
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                        activeSpeaker === spk
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      onClick={() => setActiveSpeakerIndex(idx)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeSpeakerIndex === idx
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                       }`}
                     >
-                      {spk}
+                      {spk.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Flux de transcription */}
-              <div className="max-h-36 overflow-y-auto bg-white rounded-lg border border-slate-200 p-2.5 space-y-1.5 text-xs">
+              {/* Grande fenêtre de transcription (h-80 = 320px) */}
+              <div className="h-80 overflow-y-auto bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 p-4 space-y-3 shadow-inner">
                 {transcriptEntries.length === 0 && !interimTranscript ? (
-                  <p className="text-slate-400 italic text-xs">
-                    Les paroles transcrites en direct et vos notes rapides s'afficheront ici avec leur horodatage...
-                  </p>
+                  <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-2">
+                    <Mic className="w-8 h-8 text-slate-600" />
+                    <p className="text-sm font-bold text-slate-300">
+                      La retranscription en direct s'affichera ici dès que vous cliquez sur « Enregistrer »
+                    </p>
+                    <p className="text-xs text-slate-500 max-w-md">
+                      Vous pouvez également saisir ou compléter des notes directement dans la barre ci-dessous pendant l'échange.
+                    </p>
+                  </div>
                 ) : (
-                  transcriptEntries.map((item) => (
-                    <div key={item.id} className="flex items-start gap-2 text-xs leading-relaxed">
-                      <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded shrink-0">
-                        {item.timestamp}
-                      </span>
-                      <span className="font-bold text-slate-800 shrink-0">{item.speaker} :</span>
-                      <span className="text-slate-700 flex-1">{item.text}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setTranscriptEntries((prev) => prev.filter((x) => x.id !== item.id))
-                        }
-                        className="text-slate-300 hover:text-red-500 text-[10px]"
+                  transcriptEntries.map((item) => {
+                    const isSelfSpeaker =
+                      item.speaker.toLowerCase().includes((connectedUserName || 'yann').toLowerCase()) ||
+                      item.speaker.toLowerCase().includes('enr courtage');
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex flex-col rounded-xl p-3 border ${
+                          isSelfSpeaker
+                            ? 'bg-indigo-950/60 border-indigo-500/30 ml-0 mr-8'
+                            : 'bg-slate-900/90 border-slate-700/70 ml-8 mr-0'
+                        }`}
                       >
-                        ✕
-                      </button>
-                    </div>
-                  ))
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[11px] font-bold text-indigo-400 bg-indigo-950 px-1.5 py-0.5 rounded">
+                              {item.timestamp}
+                            </span>
+                            <span
+                              className={`text-xs font-extrabold ${
+                                isSelfSpeaker ? 'text-indigo-300' : 'text-emerald-300'
+                              }`}
+                            >
+                              {item.speaker}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTranscriptEntries((prev) =>
+                                prev.filter((x) => x.id !== item.id)
+                              )
+                            }
+                            className="text-slate-500 hover:text-red-400 text-xs"
+                            title="Supprimer cette ligne"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <p className="text-sm text-slate-100 leading-relaxed">{item.text}</p>
+                      </div>
+                    );
+                  })
                 )}
+
                 {interimTranscript && (
-                  <div className="text-xs text-indigo-600 italic animate-pulse">
-                    [{formatDurationHms(elapsedSeconds)}] {activeSpeaker} : {interimTranscript}...
+                  <div className="rounded-xl p-3 bg-indigo-900/30 border border-indigo-500/40 text-sm text-indigo-200 italic animate-pulse">
+                    <span className="font-mono text-xs font-bold mr-2">
+                      [{formatDurationHms(elapsedSeconds)}]
+                    </span>
+                    <span className="font-bold mr-1">{currentSpeakerLabel} :</span>
+                    <span>{interimTranscript}...</span>
                   </div>
                 )}
+                <div ref={transcriptEndRef} />
               </div>
 
-              {/* Saisie rapide d'une note horodatée */}
-              <form onSubmit={handleAddQuickNote} className="flex items-center gap-2">
+              {/* Barre d'ajout manuel de phrase / note dans la retranscription */}
+              <form onSubmit={handleAddManualTranscriptLine} className="flex items-center gap-2">
                 <input
                   type="text"
                   value={quickNoteInput}
                   onChange={(e) => setQuickNoteInput(e.target.value)}
-                  placeholder="Saisissez une note clé en direct (ex: PRM 16238205462430, 4 armoires BESS 500 kW, accord DP)..."
-                  className="flex-1 text-xs rounded-lg border border-slate-300 bg-white px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder={`Ajouter une note ou parole pour ${currentSpeakerLabel}...`}
+                  className="flex-1 text-xs rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
                 <button
                   type="submit"
-                  className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Ajouter note</span>
+                  <Plus className="w-4 h-4" />
+                  <span>Ajouter à la transcription</span>
                 </button>
               </form>
             </div>
           </div>
 
-          {/* BLOC B — LES 6 SECTIONS ÉDITABLES DU COMPTE-RENDU AVANT EXPORT PDF */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
-                  <span>2. Éditeur Structuré du Compte-Rendu Officiel (6 Sections)</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Vérifiez ou complétez les 6 sections ci-dessous avant d'exporter le PDF A4 ou de pousser dans Monday.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={handleRegenerateSummary}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>✨ Régénérer la synthèse</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveCurrentChanges}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Sauvegarder l'archive</span>
-                </button>
-              </div>
-            </div>
-
-            {/* SECTION 1 — Informations de la réunion */}
-            <div className="space-y-3 bg-slate-50/80 p-4 rounded-xl border border-slate-200">
-              <div className="text-xs font-black text-slate-800 uppercase tracking-wide">
-                Section 1 — Informations de la réunion
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="md:col-span-2">
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Titre / Objet de la réunion
-                  </label>
-                  <input
-                    type="text"
-                    value={report.title || ''}
-                    onChange={(e) => setReport((prev) => ({ ...prev, title: e.target.value }))}
-                    className="w-full text-xs font-bold rounded-lg border border-slate-300 bg-white px-3 py-2"
-                  />
+          {/* ── CARTE 2 : GRAND CADRE COPILOTE IA NELSON (QUESTIONS + DOCUMENTS & MAILS) ── */}
+          <div className="bg-white rounded-2xl border-2 border-indigo-500/30 shadow-md overflow-hidden">
+            {/* Bandeau du Copilote IA */}
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-5 py-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0">
+                  <Bot className="w-6 h-6" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Canal d'échange
-                  </label>
-                  <select
-                    value={report.channel || 'Appel Téléphonique'}
-                    onChange={(e) => setReport((prev) => ({ ...prev, channel: e.target.value }))}
-                    className="w-full text-xs font-semibold rounded-lg border border-slate-300 bg-white px-3 py-2"
-                  >
-                    <option value="Appel Téléphonique">Appel Téléphonique</option>
-                    <option value="Visioconférence Microsoft Teams / Meet">
-                      Visioconférence Microsoft Teams / Meet
-                    </option>
-                    <option value="Réunion Présentielle / Visite Technique">
-                      Réunion Présentielle / Visite Technique
-                    </option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Date & Heure
-                  </label>
-                  <input
-                    type="text"
-                    value={report.dateTime || ''}
-                    onChange={(e) => setReport((prev) => ({ ...prev, dateTime: e.target.value }))}
-                    className="w-full text-xs rounded-lg border border-slate-300 bg-white px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Durée</label>
-                  <input
-                    type="text"
-                    value={report.duration || ''}
-                    onChange={(e) => setReport((prev) => ({ ...prev, duration: e.target.value }))}
-                    className="w-full text-xs font-mono rounded-lg border border-slate-300 bg-white px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Statut / Priorité
-                  </label>
-                  <input
-                    type="text"
-                    value={report.statusPriority || ''}
-                    onChange={(e) =>
-                      setReport((prev) => ({ ...prev, statusPriority: e.target.value }))
-                    }
-                    className="w-full text-xs font-semibold rounded-lg border border-slate-300 bg-white px-3 py-2"
-                  />
-                </div>
-                <div className="md:col-span-3">
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Participants / Interlocuteurs
-                  </label>
-                  <input
-                    type="text"
-                    value={report.participants || ''}
-                    onChange={(e) =>
-                      setReport((prev) => ({ ...prev, participants: e.target.value }))
-                    }
-                    className="w-full text-xs rounded-lg border border-slate-300 bg-white px-3 py-2"
-                  />
+                  <h3 className="text-base font-black tracking-tight flex items-center gap-2">
+                    <span>Copilote IA NELSON — Assistant de Conversation en Direct</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                      Connecté à la transcription & aux documents
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    Fournissez vos documents, contrats ou mails reçus avant ou pendant l'appel, et posez vos questions en direct à l'IA.
+                  </p>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowContextPanel((prev) => !prev)}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+              >
+                <Paperclip className="w-3.5 h-3.5 text-indigo-300" />
+                <span>
+                  Contexte & Pièces ({uploadedDocs.length} doc{uploadedDocs.length > 1 ? 's' : ''})
+                </span>
+                {showContextPanel ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
             </div>
 
-            {/* SECTION 2 — Synthèse Exécutive (Executive Summary) */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-black text-blue-900 uppercase tracking-wide">
-                Section 2 — Synthèse Exécutive (Executive Summary)
-              </label>
-              <textarea
-                rows={4}
-                value={report.executiveSummary || ''}
-                onChange={(e) =>
-                  setReport((prev) => ({ ...prev, executiveSummary: e.target.value }))
-                }
-                className="w-full text-xs leading-relaxed rounded-xl border border-blue-200 bg-blue-50/30 p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Résumé clair en 4 à 5 lignes des enjeux de l'échange..."
-              />
-            </div>
+            <div className="p-5 space-y-5">
+              {/* VOLET 1 : DOCUMENTS, MAILS REÇUS & TEXTES FOURNIS À L'IA (AVANT OU PENDANT L'APPEL) */}
+              {showContextPanel && (
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                        <Mail className="w-4 h-4 text-indigo-600" />
+                        <span>
+                          1. Documents, Mails reçus & Textes de contexte (avant ou pendant la conversation)
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Collez ici les mails reçus, propositions ou clauses, ou importez vos fichiers (.pdf, .docx, .xlsx, .txt, .eml).
+                      </p>
+                    </div>
 
-            {/* SECTION 3 — Points Clés & Données Techniques / Financières Évoquées */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <label className="block text-xs font-black text-slate-800 uppercase tracking-wide">
-                  Section 3 — Points Clés & Données Techniques / Financières Évoquées
-                </label>
-                <div className="flex items-center gap-1 flex-wrap">
-                  {[
-                    {
-                      label: '+ BESS 500 kW (< 20 m²)',
-                      text: 'Station Batteries BESS Stand-Alone 500 kW / 1044 kWh (4 armoires CESC / SAFRA, dalle béton 6.20m × 3.20m = 19.84 m²).',
-                    },
-                    {
-                      label: '+ Solaime / Ombrière Barconnière',
-                      text: 'Étude photovoltaïque (Solaime / Ombrière Barconnière / Séchoir BatiTech) : dimensionnement kWc et intégration.',
-                    },
-                    {
-                      label: '+ Enedis PRM & Raccordement',
-                      text: 'Collecte Mandat eIDAS Enedis Datahub SGE Tiers, vérification PRM et distance PDL / Transfo HTA.',
-                    },
-                    {
-                      label: '+ Urbanisme DP / PC',
-                      text: 'Constitution du dossier Déclaration Préalable (DP1 à DP8 + notice sécurité incendie BESS) et dépôt mairie.',
-                    },
-                  ].map((preset) => (
-                    <button
-                      key={preset.label}
-                      type="button"
-                      onClick={() => handleInsertPresetTag(preset.text)}
-                      className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 text-[10px] font-bold transition-colors cursor-pointer"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <textarea
-                rows={5}
-                value={report.keyPointsText || ''}
-                onChange={(e) => setReport((prev) => ({ ...prev, keyPointsText: e.target.value }))}
-                className="w-full text-xs leading-relaxed rounded-xl border border-slate-300 bg-white p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
-                placeholder="• Puissances (kW / MWh), modèles (Batteries BESS SAFRA, Solaime, Séchoir BatiTech, Ombrières Barconnière), Enedis (PRM, BT/HTA), Urbanisme (DP/PC)..."
-              />
-            </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={docInputRef}
+                        type="file"
+                        multiple
+                        accept=".pdf,.txt,.csv,.json,.md,.docx,.xlsx,.xls,.eml,.html"
+                        onChange={handleUploadContextDocs}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => docInputRef.current?.click()}
+                        className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
+                      >
+                        <Paperclip className="w-3.5 h-3.5" />
+                        <span>📎 Joindre des documents (.pdf, .docx, .xlsx, .txt, .eml)</span>
+                      </button>
+                    </div>
+                  </div>
 
-            {/* SECTION 4 — Décisions Actées & Accords */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-black text-emerald-900 uppercase tracking-wide">
-                Section 4 — Décisions Actées & Accords Validés en Séance
-              </label>
-              <textarea
-                rows={3}
-                value={report.decisionsText || ''}
-                onChange={(e) => setReport((prev) => ({ ...prev, decisionsText: e.target.value }))}
-                className="w-full text-xs leading-relaxed rounded-xl border border-emerald-200 bg-emerald-50/30 p-3 focus:ring-2 focus:ring-emerald-500 outline-none"
-                placeholder="• Liste à puces des validations obtenues pendant l'appel..."
-              />
-            </div>
-
-            {/* SECTION 5 — Plan d'Action & Prochaines Étapes (Next Steps) */}
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-black text-slate-800 uppercase tracking-wide">
-                  Section 5 — Plan d'Action & Prochaines Étapes (Next Steps)
-                </label>
-                <button
-                  type="button"
-                  onClick={handleAddActionRow}
-                  className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Ajouter une action</span>
-                </button>
-              </div>
-
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-800 text-white text-[11px] font-bold">
-                      <th className="py-2 px-3">Action à réaliser</th>
-                      <th className="py-2 px-3 w-44">Responsable</th>
-                      <th className="py-2 px-3 w-32">Échéance</th>
-                      <th className="py-2 px-2 w-10 text-center"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 text-xs">
-                    {(report.actionPlan || []).map((row) => (
-                      <tr key={row.id} className="bg-white hover:bg-slate-50">
-                        <td className="p-2">
-                          <input
-                            type="text"
-                            value={row.action || ''}
-                            onChange={(e) =>
-                              handleUpdateActionRow(row.id, 'action', e.target.value)
-                            }
-                            placeholder="Décrire la tâche à réaliser..."
-                            className="w-full text-xs rounded border border-slate-200 px-2 py-1.5"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <select
-                            value={row.owner || 'ENR Courtage'}
-                            onChange={(e) =>
-                              handleUpdateActionRow(row.id, 'owner', e.target.value)
-                            }
-                            className="w-full text-xs font-semibold rounded border border-slate-200 px-2 py-1.5 bg-white"
-                          >
-                            <option value="ENR Courtage">ENR Courtage</option>
-                            <option value="Client">Client</option>
-                            <option value="Partenaire">Partenaire</option>
-                            <option value="ENR Courtage & Client">ENR Courtage & Client</option>
-                          </select>
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="text"
-                            value={row.dueDate || ''}
-                            onChange={(e) =>
-                              handleUpdateActionRow(row.id, 'dueDate', e.target.value)
-                            }
-                            placeholder="JJ/MM/AAAA"
-                            className="w-full text-xs rounded border border-slate-200 px-2 py-1.5"
-                          />
-                        </td>
-                        <td className="p-2 text-center">
+                  {/* Liste des documents joints */}
+                  {uploadedDocs.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap pt-1">
+                      {uploadedDocs.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-indigo-200 text-xs font-bold text-slate-800 shadow-2xs"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                          <span className="truncate max-w-[220px]">{doc.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-extrabold">
+                            Lu par l'IA
+                          </span>
                           <button
                             type="button"
-                            onClick={() => handleDeleteActionRow(row.id)}
-                            className="text-slate-400 hover:text-red-600 p-1"
+                            onClick={() =>
+                              setUploadedDocs((prev) => prev.filter((d) => d.id !== doc.id))
+                            }
+                            className="text-slate-400 hover:text-red-600 ml-1"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            ✕
                           </button>
-                        </td>
-                      </tr>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Zone de collage de mails / textes */}
+                  <textarea
+                    rows={4}
+                    value={contextText}
+                    onChange={(e) => setContextText(e.target.value)}
+                    placeholder="Collez ici les mails reçus, extraits de contrat, chiffres clés, historique client ou notes préparatoires (accessible et modifiable même pendant l'enregistrement)..."
+                    className="w-full text-xs leading-relaxed rounded-xl border border-slate-300 bg-white p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+              )}
+
+              {/* VOLET 2 : GRAND CADRE DE QUESTIONS / RÉPONSES EN DIRECT AVEC L'IA DE NELSON */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-black text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-indigo-600" />
+                    <span>2. Posez vos questions à l'IA de NELSON sur la conversation en cours</span>
+                  </span>
+
+                  {/* Questions rapides en 1 clic */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      '💡 Que répondre maintenant à mon interlocuteur ?',
+                      '🔍 Vérifie la cohérence avec les mails / documents fournis',
+                      '📋 Résume ce qui vient d’être dit',
+                      '⚠️ Quels points de vigilance ou questions poser ?',
+                      '✉️ Rédige un mail de suivi',
+                    ].map((quickPrompt) => (
+                      <button
+                        key={quickPrompt}
+                        type="button"
+                        onClick={() => handleAskNelsonAI(quickPrompt)}
+                        className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[11px] font-bold transition-colors cursor-pointer"
+                      >
+                        {quickPrompt}
+                      </button>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </div>
+                </div>
 
-            {/* SECTION 6 — Option d'inclusion de l'annexe de transcription horodatée */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-200">
-              <label className="flex items-center gap-2.5 text-xs font-bold text-slate-800 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={Boolean(report.includeTranscriptInPdf)}
-                  onChange={(e) =>
-                    setReport((prev) => ({ ...prev, includeTranscriptInPdf: e.target.checked }))
-                  }
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-                />
-                <span>
-                  Section 6 — Inclure l'annexe de transcription horodatée à la fin du PDF (
-                  {transcriptEntries.length} intervention(s))
-                </span>
-              </label>
+                {/* Fenêtre de réponses de l'IA (h-80 = 320px) */}
+                <div className="h-80 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+                  {aiMessages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col rounded-2xl p-3.5 text-xs leading-relaxed ${
+                        msg.role === 'user'
+                          ? 'bg-indigo-600 text-white ml-12 mr-0 self-end shadow-xs'
+                          : 'bg-white text-slate-800 border border-slate-200 mr-6 ml-0 shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span
+                          className={`font-extrabold text-[11px] ${
+                            msg.role === 'user' ? 'text-indigo-100' : 'text-indigo-600'
+                          }`}
+                        >
+                          {msg.role === 'user'
+                            ? `👤 ${connectedUserName}`
+                            : '🤖 IA NELSON (Copilote en direct)'}
+                        </span>
+                        <span
+                          className={`text-[10px] font-mono ${
+                            msg.role === 'user' ? 'text-indigo-200' : 'text-slate-400'
+                          }`}
+                        >
+                          {msg.timestamp}
+                        </span>
+                      </div>
+                      <div className="whitespace-pre-line text-xs sm:text-[13px]">
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
 
-              {/* Boutons principaux d'export PDF & Push Monday */}
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => handlePushToMonday(report)}
-                  disabled={Boolean(pushingMondayId)}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  {isAiThinking && (
+                    <div className="rounded-2xl p-3.5 bg-white border border-indigo-200 text-xs text-indigo-700 font-semibold animate-pulse">
+                      🤖 L'IA de NELSON analyse la conversation en cours et vos documents...
+                    </div>
+                  )}
+                  <div ref={aiChatEndRef} />
+                </div>
+
+                {/* Barre de saisie pour poser une question à l'IA */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleAskNelsonAI();
+                  }}
+                  className="flex items-center gap-2"
                 >
-                  <MessageSquarePlus className="w-4 h-4" />
-                  <span>📌 Pousser dans Monday (MAJ)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => exportMeetingReportToPDF(report, transcriptEntries)}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-blue-600/25 transition-all cursor-pointer"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>📄 Exporter le Compte-Rendu en PDF (A4)</span>
-                </button>
+                  <input
+                    type="text"
+                    value={aiQuestionInput}
+                    onChange={(e) => setAiQuestionInput(e.target.value)}
+                    placeholder="Posez votre question à l'IA de NELSON (ex: Que dit le contrat sur ce point ? Que lui répondre sur le tarif ? Résume ses demandes)..."
+                    className="flex-1 text-xs sm:text-sm rounded-xl border-2 border-indigo-200 bg-white px-4 py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isAiThinking}
+                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-md transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>Demander à l'IA</span>
+                  </button>
+                </form>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ═══ COLONNE DROITE (4/12) : HISTORIQUE DES RÉUNIONS & ENREGISTREMENTS ═ */}
+        {/* ═══ COLONNE DROITE (4/12) : RATTACHEMENT MONDAY & HISTORIQUE ════════ */}
         <div className="xl:col-span-4 space-y-4">
+          {/* Rattachement rapide optionnel à un dossier Monday */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+            <label className="block text-xs font-black text-slate-800">
+              🔗 Rattacher à un dossier Monday (optionnel)
+            </label>
+            <select
+              value={selectedLinkedKey}
+              onChange={(e) => setSelectedLinkedKey(e.target.value)}
+              className="w-full text-xs font-semibold rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+            >
+              <option value="">— Aucun dossier rattaché —</option>
+              {allLinkableRows.map((item) => (
+                <option key={item.key} value={item.key}>
+                  [{item.tableName}] {item.title}
+                </option>
+              ))}
+            </select>
+            {selectedLinkedRow && (
+              <button
+                type="button"
+                onClick={() => handlePushToMonday()}
+                disabled={Boolean(pushingMondayId)}
+                className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                <MessageSquarePlus className="w-4 h-4" />
+                <span>📌 Pousser le compte-rendu dans « {selectedLinkedRow.title} »</span>
+              </button>
+            )}
+          </div>
+
+          {/* Historique des Réunions & Enregistrements */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-sm font-black text-slate-900">
-                  🗂️ Historique des Réunions & Enregistrements
+                  🗂️ Historique des Réunions
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Archives locales (IndexedDB) avec piste audio, export PDF 1-clic et envoi Monday.
+                  Réécoutez vos appels ou téléchargez le PDF A4.
                 </p>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-extrabold">
@@ -1591,16 +1567,13 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
                 <Mic className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className="text-xs font-bold text-slate-600">Aucun enregistrement archivé</p>
                 <p className="text-[11px] text-slate-400">
-                  Lancez un enregistrement Téléphone ou Microsoft Teams, ou importez un fichier audio pour créer votre premier compte-rendu.
+                  Vos conversations enregistrées apparaîtront automatiquement ici.
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[750px] overflow-y-auto pr-1">
+              <div className="space-y-3 max-h-[680px] overflow-y-auto pr-1">
                 {meetingsHistory.map((item) => {
                   const rep = item.report || {};
-                  const isTeamsItem =
-                    item.mode === 'teams' ||
-                    String(rep.channel || '').toLowerCase().includes('teams');
                   const audioUrl = historyAudioUrls[item.id];
                   const isActiveItem = currentMeetingId === item.id;
 
@@ -1615,35 +1588,19 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div
-                          onClick={() => handleLoadMeetingFromHistory(item)}
+                          onClick={() => handleLoadHistoryItem(item)}
                           className="cursor-pointer flex-1 min-w-0"
                         >
                           <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
-                                isTeamsItem
-                                  ? 'bg-indigo-100 text-indigo-800'
-                                  : item.mode === 'import'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}
-                            >
-                              {isTeamsItem ? '💻 Teams / Visio' : item.mode === 'import' ? '📂 Audio Importé' : '📞 Téléphone'}
-                            </span>
                             <span className="text-[10px] font-mono font-bold text-slate-500">
                               ⏱ {item.duration || rep.duration || '00:00:00'}
                             </span>
-                            {rep.linkedRowTitle && (
-                              <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold truncate max-w-[160px]">
-                                🔗 {rep.linkedRowTitle}
-                              </span>
-                            )}
                           </div>
                           <h4 className="text-xs font-extrabold text-slate-900 truncate">
-                            {rep.title || 'Réunion sans titre'}
+                            {rep.title || 'Réunion'}
                           </h4>
-                          <p className="text-[11px] text-slate-500">
-                            {rep.dateTime || new Date(item.createdAt).toLocaleString('fr-FR')}
+                          <p className="text-[11px] text-slate-500 truncate">
+                            {rep.participants || ''}
                           </p>
                         </div>
 
@@ -1657,14 +1614,12 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
                         </button>
                       </div>
 
-                      {/* Lecteur audio intégré */}
                       {audioUrl && (
                         <div className="pt-1">
                           <audio controls src={audioUrl} className="w-full h-8" />
                         </div>
                       )}
 
-                      {/* Boutons d'actions rapides : Audio / PDF / Pousser dans Monday */}
                       <div className="flex items-center gap-1.5 flex-wrap pt-1">
                         {item.audioBlob && (
                           <button
@@ -1672,7 +1627,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
                             onClick={() =>
                               handleDownloadAudio(
                                 item.audioBlob,
-                                rep.linkedRowTitle || rep.title,
+                                rep.title,
                                 item.createdAt,
                                 item.mimeType
                               )
@@ -1693,16 +1648,6 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
                         >
                           <FileText className="w-3 h-3" />
                           <span>📄 PDF</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handlePushToMonday(rep)}
-                          className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer ml-auto"
-                          title="Ajouter automatiquement le compte-rendu dans la colonne MAJ du dossier Monday rattaché"
-                        >
-                          <Send className="w-3 h-3" />
-                          <span>📌 Pousser dans Monday</span>
                         </button>
                       </div>
                     </div>
