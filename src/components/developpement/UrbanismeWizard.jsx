@@ -40,6 +40,7 @@ import LandscapeIntegrationModal from './LandscapeIntegrationModal';
 import Building3DViewer from './Building3DViewer';
 import BatteryStationVisualizer from './BatteryStationVisualizer';
 import BatteryInsertionCompositor from './BatteryInsertionCompositor';
+import { DEFAULT_DP6_BESS_JUSTIFICATION } from '../editor/DPPlates';
 import { findBessOdreData } from '@/data/bessOdreMatrix.js';
 import html2canvas from 'html2canvas';
 import { MapContainer, TileLayer, Marker, Polygon, Polyline, Tooltip, Popup, useMap, useMapEvents, CircleMarker } from 'react-leaflet';
@@ -6275,6 +6276,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       noticeAgricole: effectiveNotice,
       pc_notice: effectiveNotice,
       notice_descriptive: effectiveNotice,
+      dp6_justification: editedProject?.dp6_justification || project?.dp6_justification || DEFAULT_DP6_BESS_JUSTIFICATION,
       urbanisme_captures: finalCaptures,
       captures: finalCaptures,
       masse_capture: masseMap,
@@ -7708,6 +7710,47 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                       </div>
                     </div>
                   </div>
+
+                  {/* Encadré de justification paysagère et agricole DP6 (Station Batteries Stand-Alone) */}
+                  {(solutionType === 'battery' || b.isBattery || b.solutionType === 'battery') && (
+                    <div className="border border-slate-300 rounded-2xl p-3 bg-slate-50/90 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-left">
+                          <FileText className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+                          <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-tight">
+                            Note de justification de l'insertion paysagère et agricole (Art. R. 431-10 c du Code de l'urbanisme — Bas de planche DP6)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditedProject(prev => ({
+                              ...prev,
+                              dp6_justification: DEFAULT_DP6_BESS_JUSTIFICATION
+                            }));
+                          }}
+                          className="px-2 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all flex-shrink-0"
+                          title="Réinitialiser les 3 points de justification par défaut"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Par défaut
+                        </button>
+                      </div>
+                      <textarea
+                        rows={4}
+                        value={editedProject?.dp6_justification !== undefined ? editedProject.dp6_justification : DEFAULT_DP6_BESS_JUSTIFICATION}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditedProject(prev => ({
+                            ...prev,
+                            dp6_justification: val
+                          }));
+                        }}
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-[11px] leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+                        placeholder="Justification de l'insertion paysagère et agricole sur la planche DP6..."
+                      />
+                    </div>
+                  )}
 
                   {/* DP7/PC7 & DP8/PC8 */}
                   <div className="grid grid-cols-2 gap-4">

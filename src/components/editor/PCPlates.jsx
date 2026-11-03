@@ -1396,10 +1396,29 @@ export const PlateInsertion = ({ project, captures, photos, isInteractive, onUpl
     const photoAvant = safePhotos.avant || safeCaptures.photo_avant || project?.pc_photos?.avant || project?.photos?.avant || '';
     const photoApres = safePhotos.apres || safeCaptures.photo_apres || project?.pc_photos?.apres || project?.photos?.apres || '';
 
+    const isBattery = Boolean(
+        project?.isBattery ||
+        project?.isBatteryStandAlone ||
+        project?.solutionType === 'battery' ||
+        project?.urbanisme_solutionType === 'battery' ||
+        project?.installationType === 'Station Batteries Stand-Alone' ||
+        (project?.type || '').toLowerCase().includes('batterie') ||
+        (project?.buildingName || '').toLowerCase().includes('batterie')
+    );
+
+    const defaultBessJustification = `• Bonne intégration dans le paysage et vis-à-vis des tiers : Installation technique de gabarit très réduit (emprise au sol inférieure à 20 m², soit 19,84 m², et hauteur limitée à 2,38 m). Les teintes mates des armoires et la clôture en treillis rigide vert mousse (RAL 6005) s'intègrent sobrement dans la trame végétale existante, sans nuisance visuelle ni co-visibilité directe pour les habitations riveraines.
+• Absence d'atteinte au caractère de la zone agricole (Art. L. 151-11 C. Urb.) : Équipement d'intérêt collectif et services publics (régulation et sécurisation du réseau public d'électricité Enedis) implanté en bordure immédiate des ouvrages électriques existants (< 30 m) sur un délaissé de parcelle non cultivé de moins de 20 m². Le projet ne consomme aucune terre agricole exploitable et ne génère aucune gêne pour les circulations d'engins agricoles.
+• Mesures paysagères mises en œuvre : Maintien intégral des haies, arbres et écrans végétaux existants aux abords immédiats de la station, et habillage par clôture perméable RAL 6005 conforme au PLU (complétée le cas échéant par une revégétalisation d'essences locales en périphérie).`;
+
+    const rawJustification = project?.dp6_justification !== undefined && project?.dp6_justification !== null && String(project.dp6_justification).trim() !== ''
+        ? String(project.dp6_justification)
+        : defaultBessJustification;
+    const justificationLines = rawJustification.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
     return (
         <div style={PAGE_STYLE} id="pc-plate-insertion">
             <PlateHeader title="PC6 : DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE" project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '124mm', marginBottom: '6mm' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: isBattery ? '112mm' : '124mm', marginBottom: isBattery ? '2.5mm' : '6mm' }}>
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', position: 'relative', background: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ padding: '2mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.25' }}>
                         <div>1. VUE DE L'ÉTAT INITIAL DU SITE</div>
@@ -1432,6 +1451,51 @@ export const PlateInsertion = ({ project, captures, photos, isInteractive, onUpl
                     </div>
                 </div>
             </div>
+
+            {isBattery && (
+                <div style={{
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '2.2mm 3.5mm',
+                    marginBottom: '2mm',
+                    fontSize: '8.5pt',
+                    lineHeight: '1.32',
+                    color: '#1e293b',
+                    boxSizing: 'border-box'
+                }}>
+                    <div style={{
+                        fontWeight: 'bold',
+                        color: '#0f172a',
+                        marginBottom: '1.2mm',
+                        fontSize: '8.5pt',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.2px'
+                    }}>
+                        NOTE DE JUSTIFICATION DE L'INSERTION PAYSAGÈRE ET AGRICOLE (ART. R. 431-10 c DU CODE DE L'URBANISME)
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1mm' }}>
+                        {justificationLines.map((line, idx) => {
+                            const colonIdx = line.indexOf(':');
+                            if (colonIdx > 0 && colonIdx < 110) {
+                                const prefix = line.slice(0, colonIdx + 1);
+                                const rest = line.slice(colonIdx + 1);
+                                return (
+                                    <div key={idx} style={{ textAlign: 'justify' }}>
+                                        <strong style={{ color: '#0f172a' }}>{prefix}</strong>{rest}
+                                    </div>
+                                );
+                            }
+                            return (
+                                <div key={idx} style={{ textAlign: 'justify' }}>
+                                    {line}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             <Footer project={project} />
         </div>
     );
