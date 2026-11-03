@@ -417,8 +417,39 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     });
   }, []);
 
+  const forceRefreshAudioPermissionsCache = useCallback(async () => {
+    try {
+      if ('caches' in window) {
+        const keys = await window.caches.keys();
+        await Promise.all(keys.map((k) => window.caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.update()));
+      }
+    } catch (_) {}
+    const url = new URL(window.location.href);
+    url.searchParams.set('mic_refresh', String(Date.now()));
+    window.location.replace(url.toString());
+  }, []);
+
   useEffect(() => {
     loadHistory();
+
+    // Si le document HTML en cache possède encore l'ancien en-tête Permissions-Policy: microphone=(),
+    // on purge automatiquement le cache Service Worker une fois pour récupérer le nouvel en-tête Vercel.
+    try {
+      const policyObj = document.permissionsPolicy || document.featurePolicy;
+      const isPolicyBlocked =
+        policyObj && typeof policyObj.allowsFeature === 'function'
+          ? !policyObj.allowsFeature('microphone')
+          : false;
+      if (isPolicyBlocked && !sessionStorage.getItem('nelson_mic_policy_refreshed_v2')) {
+        sessionStorage.setItem('nelson_mic_policy_refreshed_v2', '1');
+        forceRefreshAudioPermissionsCache();
+      }
+    } catch (_) {}
+
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -429,7 +460,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
         } catch (_) {}
       }
     };
-  }, [loadHistory]);
+  }, [loadHistory, forceRefreshAudioPermissionsCache]);
 
   // ── 7. VISUALISEUR D'ONDE (WAVEFORM SUR CANVAS) ──────────────────────────
   const startWaveformVisualizer = useCallback((analyser) => {
@@ -903,12 +934,23 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       )}
 
       {errorMessage && (
-        <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-start gap-2.5 shadow-sm">
-          <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-          <div className="flex-1">{errorMessage}</div>
-          <button onClick={() => setErrorMessage(null)} className="text-red-800 font-bold text-[11px]">
-            ✕
-          </button>
+        <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex flex-wrap items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-start gap-2.5 flex-1 min-w-[240px]">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">{errorMessage}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={forceRefreshAudioPermissionsCache}
+              className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shadow-sm transition-colors"
+            >
+              🔄 Réinitialiser & Activer le micro
+            </button>
+            <button onClick={() => setErrorMessage(null)} className="text-red-800 font-bold text-[11px] px-1">
+              ✕
+            </button>
+          </div>
         </div>
       )}
 

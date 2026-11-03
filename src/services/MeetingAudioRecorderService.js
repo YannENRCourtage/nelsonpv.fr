@@ -151,25 +151,83 @@ export class MeetingAudioRecorderService {
     this.analyserNode.fftSize = 256;
     this.analyserNode.smoothingTimeConstant = 0.8;
 
-    // 1. Capture du flux microphone
-    this.micStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: mode === 'phone' ? false : true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-      video: false,
-    });
+    // 1. Capture du flux microphone (avec fallback si les contraintes avancées sont refusées par le pilote)
+    let systemAudioWarning = null;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.cleanup();
+      throw new Error("L'accès au microphone n'est pas disponible sur ce navigateur (HTTPS requis).");
+    }
 
-    const micSource = this.audioContext.createMediaStreamSource(this.micStream);
-    const micGain = this.audioContext.createGain();
-    micGain.gain.value = 1.0;
-    micSource.connect(micGain);
-    micGain.connect(this.destinationNode);
-    micGain.connect(this.analyserNode);
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: mode === 'phone' ? false : true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: false,
+      });
+    } catch (firstMicErr) {
+      // Second essai avec contraintes audio standard
+      try {
+        this.micStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: false,
+        });
+      } catch (micErr) {
+        const policyObj = document.permissionsPolicy || document.featurePolicy;
+        const isPolicyBlocked =
+          policyObj && typeof policyObj.allowsFeature === 'function'
+            ? !policyObj.allowsFeature('microphone')
+            : false;
+
+        if (isPolicyBlocked) {
+          this.cleanup();
+          const policyErr = new Error(
+            "Mise à jour des permissions audio requise : cliquez sur « Réinitialiser le cache & Activer le micro » ou rechargez la page (Ctrl + F5)."
+          );
+          policyErr.code = 'PERMISSIONS_POLICY_BLOCKED';
+          throw policyErr;
+        }
+
+        if (mode !== 'teams') {
+          this.cleanup();
+          const errName = micErr?.name || '';
+          const errMsg = micErr?.message || '';
+          if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
+            throw new Error(
+              "Aucun microphone détecté sur cet ordinateur. Branchez un micro/casque ou utilisez le mode « Teams / Meet / Zoom » pour enregistrer le son de votre écran."
+            );
+          }
+          if (
+            errName === 'NotAllowedError' ||
+            errName === 'PermissionDeniedError' ||
+            /permission denied/i.test(errMsg)
+          ) {
+            const permErr = new Error(
+              "Accès au microphone refusé par le navigateur. Cliquez sur l'icône 🔒 (ou paramètres du site) tout en haut de la fenêtre NELSON et passez « Microphone » sur « Autoriser », ou cliquez sur « Réinitialiser & Réessayer »."
+            );
+            permErr.code = 'MIC_PERMISSION_DENIED';
+            throw permErr;
+          }
+          throw micErr;
+        } else {
+          systemAudioWarning =
+            "Microphone non détecté ou non autorisé : seul le son système de la réunion (Teams / Meet / Zoom) sera enregistré.";
+        }
+      }
+    }
+
+    if (this.micStream) {
+      const micSource = this.audioContext.createMediaStreamSource(this.micStream);
+      const micGain = this.audioContext.createGain();
+      micGain.gain.value = 1.0;
+      micSource.connect(micGain);
+      micGain.connect(this.destinationNode);
+      micGain.connect(this.analyserNode);
+    }
 
     // 2. Si Mode Teams / Visio : capture du flux audio système/onglet et mixage
-    let systemAudioWarning = null;
     if (mode === 'teams') {
       try {
         this.displayStream = await navigator.mediaDevices.getDisplayMedia({

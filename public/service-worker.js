@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nelson-pwa-v8-20261102';
+const CACHE_NAME = 'nelson-pwa-v9-20261103-mic';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -44,7 +44,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-First strategy for HTML, JS and CSS to ensure instant updates after Vercel deployments
+  // Network-First strategy for HTML, JS and CSS to ensure instant updates and fresh HTTP headers (Permissions-Policy) after Vercel deployments
   const isCodeAsset = event.request.mode === 'navigate' || 
                       event.request.url.includes('.js') || 
                       event.request.url.includes('.css') || 
@@ -52,7 +52,7 @@ self.addEventListener('fetch', (event) => {
 
   if (isCodeAsset) {
     event.respondWith(
-      fetch(event.request, { cache: 'no-cache' })
+      fetch(event.request, { cache: 'reload' })
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
