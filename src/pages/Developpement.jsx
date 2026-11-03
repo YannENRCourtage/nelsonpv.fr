@@ -1067,6 +1067,10 @@ export default function Developpement() {
                 ...(hasVue2Capture ? {
                   masse_projet_2: vue2Photo,
                   masse_zoom_2: bEffectiveZoom2
+                } : {}),
+                ...(hasVue3Capture ? {
+                  masse_projet_3: vue3Photo,
+                  masse_zoom_3: bEffectiveZoom3
                 } : {})
               };
               const bPhotos = {
@@ -1140,6 +1144,7 @@ export default function Developpement() {
                       <PlateMasse 
                         project={{ 
                           ...bProj, 
+                          buildings: bProj.buildings ? bProj.buildings.map((ob, obIdx) => obIdx === bIdx ? { ...ob, masse_capture: vue2Photo, masse_capture_2: vue2Photo, masse_zoom: bEffectiveZoom2, masse_zoom_2: bEffectiveZoom2 } : ob) : [{ ...b, masse_capture: vue2Photo, masse_capture_2: vue2Photo, masse_zoom: bEffectiveZoom2, masse_zoom_2: bEffectiveZoom2 }],
                           masse_zoom: bEffectiveZoom2,
                           masse_zoom_2: bEffectiveZoom2,
                           masse_capture: vue2Photo,
@@ -1162,6 +1167,7 @@ export default function Developpement() {
                       <PlateMasse 
                         project={{ 
                           ...bProj, 
+                          buildings: bProj.buildings ? bProj.buildings.map((ob, obIdx) => obIdx === bIdx ? { ...ob, masse_capture: vue3Photo, masse_capture_3: vue3Photo, masse_zoom: bEffectiveZoom3, masse_zoom_3: bEffectiveZoom3 } : ob) : [{ ...b, masse_capture: vue3Photo, masse_capture_3: vue3Photo, masse_zoom: bEffectiveZoom3, masse_zoom_3: bEffectiveZoom3 }],
                           masse_zoom: bEffectiveZoom3,
                           masse_zoom_3: bEffectiveZoom3,
                           masse_capture: vue3Photo,
@@ -1250,6 +1256,10 @@ export default function Developpement() {
                 ...(hasVue2Capture ? {
                   masse_projet_2: vue2Photo,
                   masse_zoom_2: bEffectiveZoom2
+                } : {}),
+                ...(hasVue3Capture ? {
+                  masse_projet_3: vue3Photo,
+                  masse_zoom_3: bEffectiveZoom3
                 } : {})
               };
               const bPhotos = {
@@ -1316,6 +1326,7 @@ export default function Developpement() {
                       <PCPlateMasse 
                         project={{ 
                           ...bProj, 
+                          buildings: bProj.buildings ? bProj.buildings.map((ob, obIdx) => obIdx === bIdx ? { ...ob, masse_capture: vue2Photo, masse_capture_2: vue2Photo, masse_zoom: bEffectiveZoom2, masse_zoom_2: bEffectiveZoom2 } : ob) : [{ ...b, masse_capture: vue2Photo, masse_capture_2: vue2Photo, masse_zoom: bEffectiveZoom2, masse_zoom_2: bEffectiveZoom2 }],
                           masse_zoom: bEffectiveZoom2,
                           masse_zoom_2: bEffectiveZoom2,
                           masse_capture: vue2Photo,
@@ -1338,6 +1349,7 @@ export default function Developpement() {
                       <PCPlateMasse 
                         project={{ 
                           ...bProj, 
+                          buildings: bProj.buildings ? bProj.buildings.map((ob, obIdx) => obIdx === bIdx ? { ...ob, masse_capture: vue3Photo, masse_capture_3: vue3Photo, masse_zoom: bEffectiveZoom3, masse_zoom_3: bEffectiveZoom3 } : ob) : [{ ...b, masse_capture: vue3Photo, masse_capture_3: vue3Photo, masse_zoom: bEffectiveZoom3, masse_zoom_3: bEffectiveZoom3 }],
                           masse_zoom: bEffectiveZoom3,
                           masse_zoom_3: bEffectiveZoom3,
                           masse_capture: vue3Photo,

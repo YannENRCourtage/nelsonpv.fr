@@ -246,6 +246,20 @@ export async function preloadProjectImages(project) {
         );
     }
 
+    // 3bis. Convertir masse_capture directes au niveau du projet
+    if (cloned.masse_capture && typeof cloned.masse_capture === 'string' && !cloned.masse_capture.startsWith('data:')) {
+        const dataUrl = await fetchImageAsDataUrl(cloned.masse_capture);
+        if (dataUrl) cloned.masse_capture = dataUrl;
+    }
+    if (cloned.masse_capture_2 && typeof cloned.masse_capture_2 === 'string' && !cloned.masse_capture_2.startsWith('data:')) {
+        const dataUrl = await fetchImageAsDataUrl(cloned.masse_capture_2);
+        if (dataUrl) cloned.masse_capture_2 = dataUrl;
+    }
+    if (cloned.masse_capture_3 && typeof cloned.masse_capture_3 === 'string' && !cloned.masse_capture_3.startsWith('data:')) {
+        const dataUrl = await fetchImageAsDataUrl(cloned.masse_capture_3);
+        if (dataUrl) cloned.masse_capture_3 = dataUrl;
+    }
+
     // 4. Convertir pour chaque bâtiment configuré
     if (Array.isArray(cloned.buildings)) {
         await Promise.all(

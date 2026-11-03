@@ -257,9 +257,11 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload, viewNum
     return (
         <div style={PAGE_STYLE} id={`pc-plate-masse${viewNumber === 3 ? '-vue3' : (viewNumber === 2 ? '-vue2' : '')}`}>
             <PlateHeader 
-                title={viewNumber === 2 
-                    ? "PC2 : PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Vue 2 — Zoom étendu — Coté dans les 3 dimensions — Art. R. 431-9)" 
-                    : "PC2 : PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Coté dans les 3 dimensions — Art. R. 431-9)"} 
+                title={viewNumber === 3
+                    ? "PC2 : PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Vue 3 — Zoom d'ensemble — Coté dans les 3 dimensions — Art. R. 431-9)"
+                    : (viewNumber === 2 
+                        ? "PC2 : PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Vue 2 — Zoom étendu — Coté dans les 3 dimensions — Art. R. 431-9)" 
+                        : "PC2 : PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Coté dans les 3 dimensions — Art. R. 431-9)")} 
                 project={project} 
             />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '135mm', marginBottom: '5mm' }}>
@@ -299,7 +301,7 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload, viewNum
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                         <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                            PC2 — Plan de Masse{viewNumber === 2 ? ' (Vue 2)' : ''} : {bDisplayName} (OpenStreetMap Zoom {bZoom})
+                                            PC2 — Plan de Masse{viewNumber === 3 ? ' (Vue 3)' : (viewNumber === 2 ? ' (Vue 2)' : '')} : {bDisplayName} (OpenStreetMap Zoom {bZoom})
                                         </span>
                                         <span style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 1.5mm', borderRadius: '2mm' }}>
                                             {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
@@ -360,7 +362,7 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload, viewNum
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                 <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                    PC2 — Plan de Masse{viewNumber === 2 ? ' (Vue 2)' : ''} : {bDisplayName} (OpenStreetMap Zoom {bZoom})
+                                    PC2 — Plan de Masse{viewNumber === 3 ? ' (Vue 3)' : (viewNumber === 2 ? ' (Vue 2)' : '')} : {bDisplayName} (OpenStreetMap Zoom {bZoom})
                                 </span>
                                 <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 2mm', borderRadius: '2mm' }}>
                                     {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)

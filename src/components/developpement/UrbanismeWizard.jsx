@@ -6013,7 +6013,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         (editedProject?.urbanisme_captures?.masse_projet_2 && typeof editedProject.urbanisme_captures.masse_projet_2 === 'string' && editedProject.urbanisme_captures.masse_projet_2.length > 50)
       );
       const isView2OnMap = map && masseViewTabs[b.id] === 2;
-      const wantsVue2 = Boolean(hasMasseView2[b.id]) && (hasCap2 || isView2OnMap);
+      const wantsVue2 = hasCap2 || (Boolean(hasMasseView2[b.id]) && isView2OnMap);
       let masse2 = null;
       let bZoom2 = Number(b.masse_zoom_2 || captures?.masse_zoom_2 || editedProject?.masse_zoom_2 || Math.max(12, bZoom - 2));
       let bCenterLat2 = Number(b.masse_center_lat_2 || editedProject?.masse_center_lat_2 || bCenterLat);
@@ -6047,7 +6047,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         (editedProject?.urbanisme_captures?.masse_projet_3 && typeof editedProject.urbanisme_captures.masse_projet_3 === 'string' && editedProject.urbanisme_captures.masse_projet_3.length > 50)
       );
       const isView3OnMap = map && masseViewTabs[b.id] === 3;
-      const wantsVue3 = Boolean(hasMasseView3[b.id]) && (hasCap3 || isView3OnMap);
+      const wantsVue3 = hasCap3 || (Boolean(hasMasseView3[b.id]) && isView3OnMap);
       let masse3 = null;
       let bZoom3 = Number(b.masse_zoom_3 || captures?.masse_zoom_3 || editedProject?.masse_zoom_3 || Math.max(12, bZoom - 3));
       let bCenterLat3 = Number(b.masse_center_lat_3 || editedProject?.masse_center_lat_3 || bCenterLat);
@@ -6107,7 +6107,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const b1Zoom = buildingsWithMasse[0]?.masse_zoom || 18;
     const masseMap = buildingsWithMasse[0]?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture || await generateStaticMapImage(b1CenterLat, b1CenterLng, 'osm', b1Zoom, updatedBuildings, firstShowDim, b1Distances, sdisPoint, { pdlPoint, transfoPoint });
     const masseMap2 = (buildingsWithMasse[0]?.masse_capture_2 && typeof buildingsWithMasse[0].masse_capture_2 === 'string' && buildingsWithMasse[0].masse_capture_2.length > 50) ? buildingsWithMasse[0].masse_capture_2 : null;
-    const masseMap3 = (buildingsWithMasse[0]?.masse_capture_3 && typeof buildingsWithMasse[0].masse_capture_3 === 'string' && buildingsWithMasse[0].masse_capture_3.length > 50) ? buildingsWithMasse[0].masse_capture_3 : null;
+    const masseMap3 = (buildingsWithMasse[0]?.masse_capture_3 && typeof buildingsWithMasse[0].masse_capture_3 === 'string' && buildingsWithMasse[0].masse_capture_3.length > 50) ? buildingsWithMasse[0].masse_capture_3 : (captures?.masse_projet_3 || editedProject?.urbanisme_captures?.masse_projet_3 || editedProject?.masse_capture_3 || null);
 
     const allBuildingsCaptures = updatedBuildings.reduce((acc, b) => ({
       ...acc,

@@ -363,19 +363,23 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
     return (
         <div style={PAGE_STYLE} id={`dp-plate-masse${viewNumber === 3 ? '-vue3' : (viewNumber === 2 ? '-vue2' : '')}`}>
             <PlateHeader 
-                title={viewNumber === 2 
-                    ? "DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Vue 2 — Zoom étendu — Coté dans les 3 dimensions — Art. R. 431-36 b)" 
-                    : "DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Coté dans les 3 dimensions — Art. R. 431-36 b)"} 
+                title={viewNumber === 3
+                    ? "DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Vue 3 — Zoom d'ensemble — Coté dans les 3 dimensions — Art. R. 431-36 b)"
+                    : (viewNumber === 2 
+                        ? "DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Vue 2 — Zoom étendu — Coté dans les 3 dimensions — Art. R. 431-36 b)" 
+                        : "DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Coté dans les 3 dimensions — Art. R. 431-36 b)")} 
                 project={project} 
             />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '135mm', marginBottom: '5mm' }}>
                 {isMulti ? (
                     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(rawBuildings.length, 2)}, 1fr)`, gap: '4mm', flex: 1, height: '100%' }}>
                         {rawBuildings.map((b, idx) => {
-                            const bPhoto = (viewNumber === 2 
-                                ? (b?.masse_capture_2 || captures?.masse_projet_2 || project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2) 
-                                : (b?.masse_capture || (idx === 0 ? captures?.masse_projet : null) || project?.masse_capture || project?.urbanisme_captures?.masse_projet)) 
-                                || (viewNumber === 2 ? '' : captures?.satellite);
+                            const bPhoto = (viewNumber === 3
+                                ? (b?.masse_capture_3 || captures?.masse_projet_3 || project?.masse_capture_3 || project?.urbanisme_captures?.masse_projet_3)
+                                : (viewNumber === 2 
+                                    ? (b?.masse_capture_2 || captures?.masse_projet_2 || project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2) 
+                                    : (b?.masse_capture || (idx === 0 ? captures?.masse_projet : null) || project?.masse_capture || project?.urbanisme_captures?.masse_projet))) 
+                                || (viewNumber > 1 ? '' : captures?.satellite);
                             let bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
                             let bW = Number(b.totalWidth || b.width || project?.largeur || 20);
                             if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
@@ -398,9 +402,11 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                             }
                             if (!bDisplayName) bDisplayName = isBatB ? 'Station Batteries Stand-Alone' : ((isAcama || project?.solutionType === 'building') ? `Bâtiment ${idx + 1}` : `Ombrière ${idx + 1}`);
 
-                            const bZoomRaw = (viewNumber === 2 
-                                ? (b?.masse_zoom_2 || captures?.masse_zoom_2 || project?.masse_zoom_2 || project?.urbanisme_captures?.masse_zoom_2 || captures?.masse_zoom || 16) 
-                                : (b?.masse_zoom || (idx === 0 ? captures?.masse_zoom : null) || project?.masse_zoom || project?.urbanisme_captures?.masse_zoom || 18));
+                            const bZoomRaw = (viewNumber === 3
+                                ? (b?.masse_zoom_3 || captures?.masse_zoom_3 || project?.masse_zoom_3 || project?.urbanisme_captures?.masse_zoom_3 || captures?.masse_zoom || 15)
+                                : (viewNumber === 2 
+                                    ? (b?.masse_zoom_2 || captures?.masse_zoom_2 || project?.masse_zoom_2 || project?.urbanisme_captures?.masse_zoom_2 || captures?.masse_zoom || 16) 
+                                    : (b?.masse_zoom || (idx === 0 ? captures?.masse_zoom : null) || project?.masse_zoom || project?.urbanisme_captures?.masse_zoom || 18)));
                             const bZoom = bZoomRaw;
                             const bRidge = Number(b.ridgeHeight || project?.hauteur_faitage || 6.2);
                             const bEave = Number(b.eaveHeight || project?.hauteur_egout || 4.5);
@@ -432,10 +438,12 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                     </div>
                 ) : (() => {
                     const b = rawBuildings[0];
-                    const bPhoto = (viewNumber === 2 
-                        ? (b?.masse_capture_2 || captures?.masse_projet_2 || project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2) 
-                        : (b?.masse_capture || captures?.masse_projet || project?.masse_capture || project?.urbanisme_captures?.masse_projet)) 
-                        || (viewNumber === 2 ? '' : captures?.satellite);
+                    const bPhoto = (viewNumber === 3
+                        ? (b?.masse_capture_3 || captures?.masse_projet_3 || project?.masse_capture_3 || project?.urbanisme_captures?.masse_projet_3)
+                        : (viewNumber === 2 
+                            ? (b?.masse_capture_2 || captures?.masse_projet_2 || project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2) 
+                            : (b?.masse_capture || captures?.masse_projet || project?.masse_capture || project?.urbanisme_captures?.masse_projet))) 
+                        || (viewNumber > 1 ? '' : captures?.satellite);
                     let bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
                     let bW = Number(b?.totalWidth || b?.width || project?.largeur || 20);
                     if (isNoBattery && (bW <= 6.0 || bLen <= 6.0)) {
@@ -458,9 +466,11 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                     }
                     if (!bDisplayName) bDisplayName = isBatB ? 'Station Batteries Stand-Alone' : ((isAcama || project?.solutionType === 'building') ? 'Bâtiment 1' : 'Ombrière 1');
 
-                    const bZoomRaw = (viewNumber === 2 
-                        ? (b?.masse_zoom_2 || captures?.masse_zoom_2 || project?.masse_zoom_2 || project?.urbanisme_captures?.masse_zoom_2 || captures?.masse_zoom || 16) 
-                        : (b?.masse_zoom || captures?.masse_zoom || project?.masse_zoom || project?.urbanisme_captures?.masse_zoom || 18));
+                    const bZoomRaw = (viewNumber === 3
+                        ? (b?.masse_zoom_3 || captures?.masse_zoom_3 || project?.masse_zoom_3 || project?.urbanisme_captures?.masse_zoom_3 || captures?.masse_zoom || 15)
+                        : (viewNumber === 2 
+                            ? (b?.masse_zoom_2 || captures?.masse_zoom_2 || project?.masse_zoom_2 || project?.urbanisme_captures?.masse_zoom_2 || captures?.masse_zoom || 16) 
+                            : (b?.masse_zoom || captures?.masse_zoom || project?.masse_zoom || project?.urbanisme_captures?.masse_zoom || 18)));
                     const bZoom = bZoomRaw;
                     const bRidge = Number(b?.ridgeHeight || project?.hauteur_faitage || 6.2);
                     const bEave = Number(b?.eaveHeight || project?.hauteur_egout || 4.5);
