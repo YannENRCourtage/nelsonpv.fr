@@ -310,7 +310,7 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
     }
 
     // Vue 2 du plan de masse si existante (UNIQUEMENT si capture réelle de la vue 2)
-    const hasVue2Capture1 = Boolean(
+    const hasVue2Capture1 = safeProject.hasMasseView2 !== false && Boolean(
       (safeProject.masse_capture_2 && typeof safeProject.masse_capture_2 === 'string' && safeProject.masse_capture_2.length > 50) ||
       (safeProject.urbanisme_captures?.masse_projet_2 && typeof safeProject.urbanisme_captures.masse_projet_2 === 'string' && safeProject.urbanisme_captures.masse_projet_2.length > 50) ||
       (safeProject.captures?.masse_projet_2 && typeof safeProject.captures.masse_projet_2 === 'string' && safeProject.captures.masse_projet_2.length > 50) ||
@@ -325,7 +325,7 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
     }
 
     // Vue 3 du plan de masse si existante (UNIQUEMENT si capture réelle de la vue 3)
-    const hasVue3Capture1 = Boolean(
+    const hasVue3Capture1 = safeProject.hasMasseView3 !== false && Boolean(
       (safeProject.masse_capture_3 && typeof safeProject.masse_capture_3 === 'string' && safeProject.masse_capture_3.length > 50) ||
       (safeProject.urbanisme_captures?.masse_projet_3 && typeof safeProject.urbanisme_captures.masse_projet_3 === 'string' && safeProject.urbanisme_captures.masse_projet_3.length > 50) ||
       (safeProject.captures?.masse_projet_3 && typeof safeProject.captures.masse_projet_3 === 'string' && safeProject.captures.masse_projet_3.length > 50) ||

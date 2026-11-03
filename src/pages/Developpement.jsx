@@ -386,6 +386,10 @@ export default function Developpement() {
           description: projectToUse.description,
           objet_travaux: projectToUse.objet_travaux,
           noticeText: projectToUse.noticeText,
+          hasMasseView2: projectToUse.hasMasseView2,
+          hasMasseView3: projectToUse.hasMasseView3,
+          masse_capture_2: projectToUse.masse_capture_2 || null,
+          masse_capture_3: projectToUse.masse_capture_3 || null,
         });
       }
 
@@ -442,7 +446,7 @@ export default function Developpement() {
             for (let bIdx = 0; bIdx < bList.length; bIdx++) {
               const suffix = bIdx === 0 ? '' : `-${bIdx}`;
               plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse` : `${prefix}plate-masse${suffix}`);
-              const hasMasse2 = Boolean(
+              const hasMasse2 = projectToUse.hasMasseView2 !== false && bList[bIdx]?.hasMasseView2 !== false && Boolean(
                 (bList[bIdx]?.masse_capture_2 && typeof bList[bIdx].masse_capture_2 === 'string' && bList[bIdx].masse_capture_2.length > 50) ||
                 (bList[bIdx]?.captures?.masse_projet_2 && typeof bList[bIdx].captures.masse_projet_2 === 'string' && bList[bIdx].captures.masse_projet_2.length > 50) ||
                 (projectToUse.urbanisme_captures?.masse_projet_2 && typeof projectToUse.urbanisme_captures.masse_projet_2 === 'string' && projectToUse.urbanisme_captures.masse_projet_2.length > 50) ||
@@ -452,7 +456,7 @@ export default function Developpement() {
               if (hasMasse2) {
                 plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue2` : `${prefix}plate-masse-vue2${suffix}`);
               }
-              const hasMasse3 = Boolean(
+              const hasMasse3 = projectToUse.hasMasseView3 !== false && bList[bIdx]?.hasMasseView3 !== false && Boolean(
                 (bList[bIdx]?.masse_capture_3 && typeof bList[bIdx].masse_capture_3 === 'string' && bList[bIdx].masse_capture_3.length > 50) ||
                 (bList[bIdx]?.captures?.masse_projet_3 && typeof bList[bIdx].captures.masse_projet_3 === 'string' && bList[bIdx].captures.masse_projet_3.length > 50) ||
                 (projectToUse.urbanisme_captures?.masse_projet_3 && typeof projectToUse.urbanisme_captures.masse_projet_3 === 'string' && projectToUse.urbanisme_captures.masse_projet_3.length > 50) ||
@@ -509,7 +513,7 @@ export default function Developpement() {
             const suffix = bIdx === 0 ? '' : `-${bIdx}`;
             if (!selectedPages || selectedPages.masse) {
               plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse` : `${prefix}plate-masse${suffix}`);
-              const hasMasse2 = Boolean(
+              const hasMasse2 = projectToUse.hasMasseView2 !== false && bList[bIdx]?.hasMasseView2 !== false && Boolean(
                 (bList[bIdx]?.masse_capture_2 && typeof bList[bIdx].masse_capture_2 === 'string' && bList[bIdx].masse_capture_2.length > 50) ||
                 (bList[bIdx]?.captures?.masse_projet_2 && typeof bList[bIdx].captures.masse_projet_2 === 'string' && bList[bIdx].captures.masse_projet_2.length > 50) ||
                 (projectToUse.urbanisme_captures?.masse_projet_2 && typeof projectToUse.urbanisme_captures.masse_projet_2 === 'string' && projectToUse.urbanisme_captures.masse_projet_2.length > 50) ||
@@ -519,7 +523,7 @@ export default function Developpement() {
               if (hasMasse2) {
                 plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue2` : `${prefix}plate-masse-vue2${suffix}`);
               }
-              const hasMasse3 = Boolean(
+              const hasMasse3 = projectToUse.hasMasseView3 !== false && bList[bIdx]?.hasMasseView3 !== false && Boolean(
                 (bList[bIdx]?.masse_capture_3 && typeof bList[bIdx].masse_capture_3 === 'string' && bList[bIdx].masse_capture_3.length > 50) ||
                 (bList[bIdx]?.captures?.masse_projet_3 && typeof bList[bIdx].captures.masse_projet_3 === 'string' && bList[bIdx].captures.masse_projet_3.length > 50) ||
                 (projectToUse.urbanisme_captures?.masse_projet_3 && typeof projectToUse.urbanisme_captures.masse_projet_3 === 'string' && projectToUse.urbanisme_captures.masse_projet_3.length > 50) ||
@@ -553,7 +557,7 @@ export default function Developpement() {
             const suffix = bIdx === 0 ? '' : `-${bIdx}`;
             if (!selectedPages || selectedPages.masse !== false) {
               plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse` : `dev-plate-masse${suffix}`);
-              const hasMasse2 = Boolean(
+              const hasMasse2 = projectToUse.hasMasseView2 !== false && bList[bIdx]?.hasMasseView2 !== false && Boolean(
                 (bList[bIdx]?.masse_capture_2 && typeof bList[bIdx].masse_capture_2 === 'string' && bList[bIdx].masse_capture_2.length > 50) ||
                 (bList[bIdx]?.captures?.masse_projet_2 && typeof bList[bIdx].captures.masse_projet_2 === 'string' && bList[bIdx].captures.masse_projet_2.length > 50) ||
                 (projectToUse.urbanisme_captures?.masse_projet_2 && typeof projectToUse.urbanisme_captures.masse_projet_2 === 'string' && projectToUse.urbanisme_captures.masse_projet_2.length > 50) ||
@@ -563,7 +567,7 @@ export default function Developpement() {
               if (hasMasse2) {
                 plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse-vue2` : `dev-plate-masse-vue2${suffix}`);
               }
-              const hasMasse3 = Boolean(
+              const hasMasse3 = projectToUse.hasMasseView3 !== false && bList[bIdx]?.hasMasseView3 !== false && Boolean(
                 (bList[bIdx]?.masse_capture_3 && typeof bList[bIdx].masse_capture_3 === 'string' && bList[bIdx].masse_capture_3.length > 50) ||
                 (bList[bIdx]?.captures?.masse_projet_3 && typeof bList[bIdx].captures.masse_projet_3 === 'string' && bList[bIdx].captures.masse_projet_3.length > 50) ||
                 (projectToUse.urbanisme_captures?.masse_projet_3 && typeof projectToUse.urbanisme_captures.masse_projet_3 === 'string' && projectToUse.urbanisme_captures.masse_projet_3.length > 50) ||
@@ -1038,7 +1042,7 @@ export default function Developpement() {
               const bRawZoom = Number(b.masse_zoom || activeProj.masse_zoom || 18);
               const bEffectiveZoom = bRawZoom;
               const bEffectiveZoom2 = Number(b.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || Math.max(12, bEffectiveZoom - 2));
-              const hasVue2Capture = Boolean(
+              const hasVue2Capture = activeProj.hasMasseView2 !== false && b.hasMasseView2 !== false && Boolean(
                 (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50) || 
                 (activeProj.masse_capture_2 && typeof activeProj.masse_capture_2 === 'string' && activeProj.masse_capture_2.length > 50) || 
                 (activeProj.urbanisme_captures?.masse_projet_2 && typeof activeProj.urbanisme_captures.masse_projet_2 === 'string' && activeProj.urbanisme_captures.masse_projet_2.length > 50) || 
@@ -1048,7 +1052,7 @@ export default function Developpement() {
               );
               const vue2Photo = hasVue2Capture ? (b.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2 || activeProj.captures?.masse_projet_2 || b.captures?.masse_projet_2 || b.urbanisme_captures?.masse_projet_2) : null;
               const bEffectiveZoom3 = Number(b.masse_zoom_3 || activeProj.masse_zoom_3 || activeProj.urbanisme_captures?.masse_zoom_3 || Math.max(12, bEffectiveZoom - 3));
-              const hasVue3Capture = Boolean(
+              const hasVue3Capture = activeProj.hasMasseView3 !== false && b.hasMasseView3 !== false && Boolean(
                 (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50) || 
                 (activeProj.masse_capture_3 && typeof activeProj.masse_capture_3 === 'string' && activeProj.masse_capture_3.length > 50) || 
                 (activeProj.urbanisme_captures?.masse_projet_3 && typeof activeProj.urbanisme_captures.masse_projet_3 === 'string' && activeProj.urbanisme_captures.masse_projet_3.length > 50) || 
@@ -1227,7 +1231,7 @@ export default function Developpement() {
               const bRawZoom = Number(b.masse_zoom || activeProj.masse_zoom || 18);
               const bEffectiveZoom = bRawZoom;
               const bEffectiveZoom2 = Number(b.masse_zoom_2 || activeProj.masse_zoom_2 || activeProj.urbanisme_captures?.masse_zoom_2 || Math.max(12, bEffectiveZoom - 2));
-              const hasVue2Capture = Boolean(
+              const hasVue2Capture = activeProj.hasMasseView2 !== false && b.hasMasseView2 !== false && Boolean(
                 (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50) || 
                 (activeProj.masse_capture_2 && typeof activeProj.masse_capture_2 === 'string' && activeProj.masse_capture_2.length > 50) || 
                 (activeProj.urbanisme_captures?.masse_projet_2 && typeof activeProj.urbanisme_captures.masse_projet_2 === 'string' && activeProj.urbanisme_captures.masse_projet_2.length > 50) || 
@@ -1237,7 +1241,7 @@ export default function Developpement() {
               );
               const vue2Photo = hasVue2Capture ? (b.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2 || activeProj.captures?.masse_projet_2 || b.captures?.masse_projet_2 || b.urbanisme_captures?.masse_projet_2) : null;
               const bEffectiveZoom3 = Number(b.masse_zoom_3 || activeProj.masse_zoom_3 || activeProj.urbanisme_captures?.masse_zoom_3 || Math.max(12, bEffectiveZoom - 3));
-              const hasVue3Capture = Boolean(
+              const hasVue3Capture = activeProj.hasMasseView3 !== false && b.hasMasseView3 !== false && Boolean(
                 (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50) || 
                 (activeProj.masse_capture_3 && typeof activeProj.masse_capture_3 === 'string' && activeProj.masse_capture_3.length > 50) || 
                 (activeProj.urbanisme_captures?.masse_projet_3 && typeof activeProj.urbanisme_captures.masse_projet_3 === 'string' && activeProj.urbanisme_captures.masse_projet_3.length > 50) || 

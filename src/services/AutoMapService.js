@@ -918,7 +918,7 @@ export async function getOrGenerateProjectMaps(project) {
   }
 
   // 4. DP2 / PC2 Vue 2 (zoom étendu) si configurée
-  if (!result.masse_projet_2 && (project?.masse_capture_2 || project?.masse_zoom_2 || project?.hasMasseView2)) {
+  if (!result.masse_projet_2 && project?.hasMasseView2 === true) {
     const buildingsToUse = (project?.buildings && project.buildings.length > 0)
       ? project.buildings
       : null;
@@ -940,7 +940,7 @@ export async function getOrGenerateProjectMaps(project) {
   }
 
   // 5. DP2 / PC2 Vue 3 (zoom différent) si configurée
-  if (!result.masse_projet_3 && (project?.masse_capture_3 || project?.masse_zoom_3 || project?.hasMasseView3)) {
+  if (!result.masse_projet_3 && project?.hasMasseView3 === true) {
     const buildingsToUse = (project?.buildings && project.buildings.length > 0)
       ? project.buildings
       : null;

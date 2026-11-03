@@ -42,10 +42,10 @@ function getDb() {
 }
 
 /**
- * Sauvegarde une image en cache local IndexedDB (Base64 / Data URL)
+ * Sauvegarde une image en cache local IndexedDB (Base64 / Data URL), ou la supprime si dataUrl est null/vide
  */
 export async function cacheMediaLocal(projectId, buildingKey, imageKey, dataUrl) {
-  if (!projectId || !imageKey || !dataUrl) return;
+  if (!projectId || !imageKey) return;
   try {
     const db = await getDb();
     if (!db) return;
@@ -53,14 +53,18 @@ export async function cacheMediaLocal(projectId, buildingKey, imageKey, dataUrl)
     const id = `${projectId}::${buildingKey || 'b0'}::${imageKey}`;
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    store.put({
-      id,
-      projectId,
-      buildingKey: buildingKey || 'b0',
-      imageKey,
-      dataUrl,
-      updatedAt: Date.now(),
-    });
+    if (!dataUrl) {
+      store.delete(id);
+    } else {
+      store.put({
+        id,
+        projectId,
+        buildingKey: buildingKey || 'b0',
+        imageKey,
+        dataUrl,
+        updatedAt: Date.now(),
+      });
+    }
 
     return new Promise((resolve) => {
       tx.oncomplete = () => resolve();
@@ -68,6 +72,38 @@ export async function cacheMediaLocal(projectId, buildingKey, imageKey, dataUrl)
     });
   } catch (e) {
     console.warn('[UrbanismeMediaCache] Erreur cache local:', e);
+  }
+}
+
+/**
+ * Supprime toutes les entrées d'un projet pour une liste de clés d'image (ex: ['masse_projet_2', 'masse_capture_2'])
+ */
+export async function removeCachedMediaLocal(projectId, imageKeys = []) {
+  if (!projectId || !Array.isArray(imageKeys) || imageKeys.length === 0) return;
+  try {
+    const db = await getDb();
+    if (!db) return;
+
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const index = store.index('projectId');
+    const request = index.getAll(projectId);
+
+    request.onsuccess = () => {
+      const records = request.result || [];
+      for (const item of records) {
+        if (imageKeys.includes(item.imageKey)) {
+          store.delete(item.id);
+        }
+      }
+    };
+
+    return new Promise((resolve) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch (e) {
+    console.warn('[UrbanismeMediaCache] Erreur suppression cache local:', e);
   }
 }
 
