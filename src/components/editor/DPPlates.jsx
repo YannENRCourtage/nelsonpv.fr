@@ -361,7 +361,7 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
     const isMulti = rawBuildings.length > 1;
 
     return (
-        <div style={PAGE_STYLE} id={`dp-plate-masse${viewNumber === 2 ? '-vue2' : ''}`}>
+        <div style={PAGE_STYLE} id={`dp-plate-masse${viewNumber === 3 ? '-vue3' : (viewNumber === 2 ? '-vue2' : '')}`}>
             <PlateHeader 
                 title={viewNumber === 2 
                     ? "DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS (Vue 2 — Zoom étendu — Coté dans les 3 dimensions — Art. R. 431-36 b)" 
@@ -409,7 +409,7 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                         <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                            DP2 — Plan de Masse{viewNumber === 2 ? ' (Vue 2)' : ''} : {bDisplayName} (OpenStreetMap Zoom {bZoom})
+                                            DP2 — Plan de Masse{viewNumber === 3 ? ' (Vue 3)' : (viewNumber === 2 ? ' (Vue 2)' : '')} : {bDisplayName} (OpenStreetMap Zoom {bZoom})
                                         </span>
                                         <span style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 1.5mm', borderRadius: '2mm' }}>
                                             {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
@@ -469,7 +469,7 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                 <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                    DP2 — Plan de Masse{viewNumber === 2 ? ' (Vue 2)' : ''} : {bDisplayName} (OpenStreetMap Zoom {bZoom})
+                                    DP2 — Plan de Masse{viewNumber === 3 ? ' (Vue 3)' : (viewNumber === 2 ? ' (Vue 2)' : '')} : {bDisplayName} (OpenStreetMap Zoom {bZoom})
                                 </span>
                                 <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 2mm', borderRadius: '2mm' }}>
                                     {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)

@@ -302,6 +302,10 @@ export async function preloadProjectImages(project) {
                         const dataUrl = await fetchImageAsDataUrl(b.masse_capture_2);
                         if (dataUrl) b.masse_capture_2 = dataUrl;
                     }
+                    if (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && !b.masse_capture_3.startsWith('data:')) {
+                        const dataUrl = await fetchImageAsDataUrl(b.masse_capture_3);
+                        if (dataUrl) b.masse_capture_3 = dataUrl;
+                    }
                     // Photos du bâtiment
                     if (b.photos && typeof b.photos === 'object') {
                         const bKeys = Object.keys(b.photos);
@@ -349,6 +353,10 @@ export async function preloadProjectImages(project) {
                     if (b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && !b.masse_capture_2.startsWith('data:')) {
                         const dataUrl = await fetchImageAsDataUrl(b.masse_capture_2);
                         if (dataUrl) b.masse_capture_2 = dataUrl;
+                    }
+                    if (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && !b.masse_capture_3.startsWith('data:')) {
+                        const dataUrl = await fetchImageAsDataUrl(b.masse_capture_3);
+                        if (dataUrl) b.masse_capture_3 = dataUrl;
                     }
                 }
             })

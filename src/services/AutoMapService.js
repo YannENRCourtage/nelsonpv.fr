@@ -170,6 +170,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
         if (hasBuildings) {
           // Repère Plan de Masse avec emprise exacte, position GPS personnalisée et rotation de chaque bâtiment
           const bList = buildings;
+          let primaryBuildingCorners = null;
 
           // Facteur d'échelle mètres -> pixels au niveau de zoom courant
           const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, currentZoom + 8);
@@ -300,6 +301,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
               drawDimensionLine(ctx, pixelCorners[1], pixelCorners[2], centerPt, `${bWidth.toFixed(1)} M`, strokeColor, 20);
             }
 
+            if (!primaryBuildingCorners || isBattery) { primaryBuildingCorners = pixelCorners; }
             ctx.restore();
           });
 
@@ -435,6 +437,194 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
             const ax = centerX + (accExactX - exactX) * tileSize;
             const ay = centerY + (accExactY - exactY) * tileSize;
             drawAccessArrow(ctx, { x: ax, y: ay }, acc.angle || 0, 38, 'ACCÈS TERRAIN');
+          }
+
+          // Raccordement électrique automatique Dalle BESS -> PDL -> Transfo
+          const pdl = options?.pdlPoint;
+          const transfo = options?.transfoPoint;
+          if (primaryBuildingCorners && (pdl || transfo)) {
+            const targetForCorner = pdl || transfo;
+            const targetRad = (Number(targetForCorner.lat) * Math.PI) / 180;
+            const targetExactX = ((Number(targetForCorner.lng) + 180) / 360) * n;
+            const targetExactY = ((1 - Math.log(Math.tan(targetRad) + 1 / Math.cos(targetRad)) / Math.PI) / 2) * n;
+            const targetX = centerX + (targetExactX - exactX) * tileSize;
+            const targetY = centerY + (targetExactY - exactY) * tileSize;
+
+            let bestCorner = primaryBuildingCorners[0];
+            let minD = Infinity;
+            for (const c of primaryBuildingCorners) {
+              const d = Math.hypot(c.x - targetX, c.y - targetY);
+              if (d < minD) {
+                minD = d;
+                bestCorner = c;
+              }
+            }
+
+            let pdlPx = null;
+            if (pdl && pdl.lat && pdl.lng) {
+              const r = (Number(pdl.lat) * Math.PI) / 180;
+              const ex = ((Number(pdl.lng) + 180) / 360) * n;
+              const ey = ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n;
+              pdlPx = { x: centerX + (ex - exactX) * tileSize, y: centerY + (ey - exactY) * tileSize };
+            }
+
+            let transfoPx = null;
+            if (transfo && transfo.lat && transfo.lng) {
+              const r = (Number(transfo.lat) * Math.PI) / 180;
+              const ex = ((Number(transfo.lng) + 180) / 360) * n;
+              const ey = ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n;
+              transfoPx = { x: centerX + (ex - exactX) * tileSize, y: centerY + (ey - exactY) * tileSize };
+            }
+
+            // Câble 1 : Dalle BESS -> PDL
+            if (pdlPx) {
+              const dDistMeters = Math.hypot(pdlPx.x - bestCorner.x, pdlPx.y - bestCorner.y) * metersPerPx;
+              ctx.save();
+              ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+              ctx.lineWidth = 5;
+              ctx.beginPath();
+              ctx.moveTo(bestCorner.x, bestCorner.y);
+              ctx.lineTo(pdlPx.x, pdlPx.y);
+              ctx.stroke();
+
+              ctx.strokeStyle = '#059669';
+              ctx.lineWidth = 3;
+              ctx.setLineDash([6, 4]);
+              ctx.beginPath();
+              ctx.moveTo(bestCorner.x, bestCorner.y);
+              ctx.lineTo(pdlPx.x, pdlPx.y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+
+              ctx.fillStyle = '#059669';
+              ctx.beginPath();
+              ctx.arc(bestCorner.x, bestCorner.y, 4, 0, 2 * Math.PI);
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              const midX = (bestCorner.x + pdlPx.x) / 2;
+              const midY = (bestCorner.y + pdlPx.y) / 2;
+              const lbl = `⚡ BESS → PDL (${dDistMeters.toFixed(1)} m)`;
+              ctx.font = 'bold 9px sans-serif';
+              const tw = ctx.measureText(lbl).width;
+              ctx.fillStyle = 'rgba(6, 78, 59, 0.9)';
+              ctx.fillRect(midX - tw / 2 - 4, midY - 7, tw + 8, 14);
+              ctx.fillStyle = '#ffffff';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(lbl, midX, midY);
+              ctx.restore();
+            }
+
+            // Câble 2 : PDL -> Transfo
+            if (pdlPx && transfoPx) {
+              const dDistMeters = Math.hypot(transfoPx.x - pdlPx.x, transfoPx.y - pdlPx.y) * metersPerPx;
+              ctx.save();
+              ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+              ctx.lineWidth = 5;
+              ctx.beginPath();
+              ctx.moveTo(pdlPx.x, pdlPx.y);
+              ctx.lineTo(transfoPx.x, transfoPx.y);
+              ctx.stroke();
+
+              ctx.strokeStyle = '#2563eb';
+              ctx.lineWidth = 3;
+              ctx.setLineDash([6, 4]);
+              ctx.beginPath();
+              ctx.moveTo(pdlPx.x, pdlPx.y);
+              ctx.lineTo(transfoPx.x, transfoPx.y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+
+              const midX = (pdlPx.x + transfoPx.x) / 2;
+              const midY = (pdlPx.y + transfoPx.y) / 2;
+              const lbl = `⚡ PDL → Transfo (${dDistMeters.toFixed(1)} m)`;
+              ctx.font = 'bold 9px sans-serif';
+              const tw = ctx.measureText(lbl).width;
+              ctx.fillStyle = 'rgba(30, 58, 138, 0.9)';
+              ctx.fillRect(midX - tw / 2 - 4, midY - 7, tw + 8, 14);
+              ctx.fillStyle = '#ffffff';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(lbl, midX, midY);
+              ctx.restore();
+            } else if (!pdlPx && transfoPx) {
+              const dDistMeters = Math.hypot(transfoPx.x - bestCorner.x, transfoPx.y - bestCorner.y) * metersPerPx;
+              ctx.save();
+              ctx.strokeStyle = '#2563eb';
+              ctx.lineWidth = 3;
+              ctx.setLineDash([6, 4]);
+              ctx.beginPath();
+              ctx.moveTo(bestCorner.x, bestCorner.y);
+              ctx.lineTo(transfoPx.x, transfoPx.y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.restore();
+            }
+
+            // Badge PDL
+            if (pdlPx) {
+              ctx.save();
+              const bw = 78, bh = 18;
+              const bx = pdlPx.x - bw / 2, by = pdlPx.y - 28;
+              ctx.fillStyle = '#047857';
+              ctx.fillRect(pdlPx.x - 1.5, by + bh, 3, 10);
+              ctx.beginPath();
+              ctx.arc(pdlPx.x, pdlPx.y, 4, 0, 2 * Math.PI);
+              ctx.fillStyle = '#047857';
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              ctx.beginPath();
+              ctx.roundRect(bx, by, bw, bh, 4);
+              ctx.fillStyle = '#047857';
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 9px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('🔌 PDL ENEDIS', pdlPx.x, by + bh / 2);
+              ctx.restore();
+            }
+
+            // Badge Transfo
+            if (transfoPx) {
+              ctx.save();
+              const bw = 84, bh = 18;
+              const bx = transfoPx.x - bw / 2, by = transfoPx.y - 28;
+              ctx.fillStyle = '#1d4ed8';
+              ctx.fillRect(transfoPx.x - 1.5, by + bh, 3, 10);
+              ctx.beginPath();
+              ctx.arc(transfoPx.x, transfoPx.y, 4, 0, 2 * Math.PI);
+              ctx.fillStyle = '#1d4ed8';
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              ctx.beginPath();
+              ctx.roundRect(bx, by, bw, bh, 4);
+              ctx.fillStyle = '#1d4ed8';
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 9px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('⚡ TRANSFO HTA', transfoPx.x, by + bh / 2);
+              ctx.restore();
+            }
           }
 
           // Flèche Nord officielle en haut à droite
@@ -758,6 +948,28 @@ export async function getOrGenerateProjectMaps(project) {
       { isBattery }
     );
     if (masseData2) result.masse_projet_2 = masseData2;
+  }
+
+  // 5. DP2 / PC2 Vue 3 (zoom différent) si configurée
+  if (!result.masse_projet_3 && (project?.masse_capture_3 || project?.masse_zoom_3 || project?.hasMasseView3)) {
+    const buildingsToUse = (project?.buildings && project.buildings.length > 0)
+      ? project.buildings
+      : null;
+    const cLat3 = Number(project?.masse_center_lat_3 || project?.buildings?.[0]?.masse_center_lat_3 || lat);
+    const cLng3 = Number(project?.masse_center_lng_3 || project?.buildings?.[0]?.masse_center_lng_3 || lng);
+    const z3 = Number(project?.masse_zoom_3 || project?.buildings?.[0]?.masse_zoom_3 || Math.max(12, (Number(project?.masse_zoom) || 18) - 3));
+    const masseData3 = await generateStaticMapImage(
+      cLat3,
+      cLng3,
+      'osm',
+      z3,
+      buildingsToUse,
+      true,
+      project?.masseDistances || [],
+      project?.sdisPoint,
+      { isBattery, pdlPoint: project?.pdlPoint, transfoPoint: project?.transfoPoint }
+    );
+    if (masseData3) result.masse_projet_3 = masseData3;
   }
 
   return result;

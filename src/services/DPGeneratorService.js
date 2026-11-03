@@ -324,6 +324,21 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
       }
     }
 
+    // Vue 3 du plan de masse si existante (UNIQUEMENT si capture réelle de la vue 3)
+    const hasVue3Capture1 = Boolean(
+      (safeProject.masse_capture_3 && typeof safeProject.masse_capture_3 === 'string' && safeProject.masse_capture_3.length > 50) ||
+      (safeProject.urbanisme_captures?.masse_projet_3 && typeof safeProject.urbanisme_captures.masse_projet_3 === 'string' && safeProject.urbanisme_captures.masse_projet_3.length > 50) ||
+      (safeProject.captures?.masse_projet_3 && typeof safeProject.captures.masse_projet_3 === 'string' && safeProject.captures.masse_projet_3.length > 50) ||
+      (safeProject.buildings?.[0]?.masse_capture_3 && typeof safeProject.buildings[0].masse_capture_3 === 'string' && safeProject.buildings[0].masse_capture_3.length > 50)
+    );
+    const masse3DomId = isPC ? 'dev-pc-plate-masse-vue3' : 'dev-plate-masse-vue3';
+    if (hasVue3Capture1 && document.getElementById(masse3DomId)) {
+      const masse3Bytes = await captureDomElementToPdfBytes(masse3DomId);
+      if (masse3Bytes) {
+        zip.file(`${prefix}2_Plan_de_Masse_Vue3.pdf`, masse3Bytes);
+      }
+    }
+
     // Multi-bâtiments supplémentaires pour le Plan de Masse (DP2 / PC2)
     if (safeProject.buildings && safeProject.buildings.length > 1) {
       for (let bIdx = 1; bIdx < safeProject.buildings.length; bIdx++) {
@@ -345,6 +360,18 @@ export async function exportDossierDepotZip({ project, type = 'dp', chosenType, 
           const bVue2Bytes = await captureDomElementToPdfBytes(bVue2Id);
           if (bVue2Bytes) {
             zip.file(`${prefix}2_Plan_de_Masse_Vue2_Batiment_${bIdx + 1}.pdf`, bVue2Bytes);
+          }
+        }
+        const hasVue3CaptureB = Boolean(
+          (b?.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50) ||
+          (b?.captures?.masse_projet_3 && typeof b.captures.masse_projet_3 === 'string' && b.captures.masse_projet_3.length > 50) ||
+          (b?.urbanisme_captures?.masse_projet_3 && typeof b.urbanisme_captures.masse_projet_3 === 'string' && b.urbanisme_captures.masse_projet_3.length > 50)
+        );
+        const bVue3Id = isPC ? `dev-pc-plate-masse-vue3-${bIdx}` : `dev-plate-masse-vue3-${bIdx}`;
+        if (hasVue3CaptureB && document.getElementById(bVue3Id)) {
+          const bVue3Bytes = await captureDomElementToPdfBytes(bVue3Id);
+          if (bVue3Bytes) {
+            zip.file(`${prefix}2_Plan_de_Masse_Vue3_Batiment_${bIdx + 1}.pdf`, bVue3Bytes);
           }
         }
       }

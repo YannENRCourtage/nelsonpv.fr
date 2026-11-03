@@ -452,6 +452,16 @@ export default function Developpement() {
               if (hasMasse2) {
                 plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue2` : `${prefix}plate-masse-vue2${suffix}`);
               }
+              const hasMasse3 = Boolean(
+                (bList[bIdx]?.masse_capture_3 && typeof bList[bIdx].masse_capture_3 === 'string' && bList[bIdx].masse_capture_3.length > 50) ||
+                (bList[bIdx]?.captures?.masse_projet_3 && typeof bList[bIdx].captures.masse_projet_3 === 'string' && bList[bIdx].captures.masse_projet_3.length > 50) ||
+                (projectToUse.urbanisme_captures?.masse_projet_3 && typeof projectToUse.urbanisme_captures.masse_projet_3 === 'string' && projectToUse.urbanisme_captures.masse_projet_3.length > 50) ||
+                (projectToUse.masse_capture_3 && typeof projectToUse.masse_capture_3 === 'string' && projectToUse.masse_capture_3.length > 50) ||
+                (projectToUse.captures?.masse_projet_3 && typeof projectToUse.captures.masse_projet_3 === 'string' && projectToUse.captures.masse_projet_3.length > 50)
+              );
+              if (hasMasse3) {
+                plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue3` : `${prefix}plate-masse-vue3${suffix}`);
+              }
             }
           }
         } else if (pieceId === 'section_notice') {
@@ -509,6 +519,16 @@ export default function Developpement() {
               if (hasMasse2) {
                 plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue2` : `${prefix}plate-masse-vue2${suffix}`);
               }
+              const hasMasse3 = Boolean(
+                (bList[bIdx]?.masse_capture_3 && typeof bList[bIdx].masse_capture_3 === 'string' && bList[bIdx].masse_capture_3.length > 50) ||
+                (bList[bIdx]?.captures?.masse_projet_3 && typeof bList[bIdx].captures.masse_projet_3 === 'string' && bList[bIdx].captures.masse_projet_3.length > 50) ||
+                (projectToUse.urbanisme_captures?.masse_projet_3 && typeof projectToUse.urbanisme_captures.masse_projet_3 === 'string' && projectToUse.urbanisme_captures.masse_projet_3.length > 50) ||
+                (projectToUse.masse_capture_3 && typeof projectToUse.masse_capture_3 === 'string' && projectToUse.masse_capture_3.length > 50) ||
+                (projectToUse.captures?.masse_projet_3 && typeof projectToUse.captures.masse_projet_3 === 'string' && projectToUse.captures.masse_projet_3.length > 50)
+              );
+              if (hasMasse3) {
+                plateIds.push(bList.length === 1 && bIdx === 0 ? `${prefix}plate-masse-vue3` : `${prefix}plate-masse-vue3${suffix}`);
+              }
             }
             if (!selectedPages || selectedPages.section_notice) plateIds.push(`${prefix}plate-section-notice${suffix}`);
             if (!selectedPages || selectedPages.facades) plateIds.push(`${prefix}plate-facades${suffix}`);
@@ -542,6 +562,16 @@ export default function Developpement() {
               );
               if (hasMasse2) {
                 plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse-vue2` : `dev-plate-masse-vue2${suffix}`);
+              }
+              const hasMasse3 = Boolean(
+                (bList[bIdx]?.masse_capture_3 && typeof bList[bIdx].masse_capture_3 === 'string' && bList[bIdx].masse_capture_3.length > 50) ||
+                (bList[bIdx]?.captures?.masse_projet_3 && typeof bList[bIdx].captures.masse_projet_3 === 'string' && bList[bIdx].captures.masse_projet_3.length > 50) ||
+                (projectToUse.urbanisme_captures?.masse_projet_3 && typeof projectToUse.urbanisme_captures.masse_projet_3 === 'string' && projectToUse.urbanisme_captures.masse_projet_3.length > 50) ||
+                (projectToUse.masse_capture_3 && typeof projectToUse.masse_capture_3 === 'string' && projectToUse.masse_capture_3.length > 50) ||
+                (projectToUse.captures?.masse_projet_3 && typeof projectToUse.captures.masse_projet_3 === 'string' && projectToUse.captures.masse_projet_3.length > 50)
+              );
+              if (hasMasse3) {
+                plateIds.push(bList.length === 1 && bIdx === 0 ? `dev-plate-masse-vue3` : `dev-plate-masse-vue3${suffix}`);
               }
             }
             if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
@@ -1017,6 +1047,16 @@ export default function Developpement() {
                 (b.urbanisme_captures?.masse_projet_2 && typeof b.urbanisme_captures.masse_projet_2 === 'string' && b.urbanisme_captures.masse_projet_2.length > 50)
               );
               const vue2Photo = hasVue2Capture ? (b.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2 || activeProj.captures?.masse_projet_2 || b.captures?.masse_projet_2 || b.urbanisme_captures?.masse_projet_2) : null;
+              const bEffectiveZoom3 = Number(b.masse_zoom_3 || activeProj.masse_zoom_3 || activeProj.urbanisme_captures?.masse_zoom_3 || Math.max(12, bEffectiveZoom - 3));
+              const hasVue3Capture = Boolean(
+                (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50) || 
+                (activeProj.masse_capture_3 && typeof activeProj.masse_capture_3 === 'string' && activeProj.masse_capture_3.length > 50) || 
+                (activeProj.urbanisme_captures?.masse_projet_3 && typeof activeProj.urbanisme_captures.masse_projet_3 === 'string' && activeProj.urbanisme_captures.masse_projet_3.length > 50) || 
+                (activeProj.captures?.masse_projet_3 && typeof activeProj.captures.masse_projet_3 === 'string' && activeProj.captures.masse_projet_3.length > 50) || 
+                (b.captures?.masse_projet_3 && typeof b.captures.masse_projet_3 === 'string' && b.captures.masse_projet_3.length > 50) || 
+                (b.urbanisme_captures?.masse_projet_3 && typeof b.urbanisme_captures.masse_projet_3 === 'string' && b.urbanisme_captures.masse_projet_3.length > 50)
+              );
+              const vue3Photo = hasVue3Capture ? (b.masse_capture_3 || activeProj.masse_capture_3 || activeProj.urbanisme_captures?.masse_projet_3 || activeProj.captures?.masse_projet_3 || b.captures?.masse_projet_3 || b.urbanisme_captures?.masse_projet_3) : null;
               const bCaptures = {
                 ...(activeProj.captures || {}),
                 ...(activeProj.urbanisme_captures || {}),
@@ -1116,6 +1156,28 @@ export default function Developpement() {
                       />
                     </div>
                   )}
+                  {/* DP2 — Troisième page Plan de masse (Vue 3 - Zoom différent) UNIQUEMENT si capture réelle */}
+                  {hasVue3Capture && (
+                    <div id={`dev-plate-masse-vue3${suffix}`}>
+                      <PlateMasse 
+                        project={{ 
+                          ...bProj, 
+                          masse_zoom: bEffectiveZoom3,
+                          masse_zoom_3: bEffectiveZoom3,
+                          masse_capture: vue3Photo,
+                          masse_capture_3: vue3Photo
+                        }} 
+                        captures={{ 
+                          ...bCaptures, 
+                          masse_projet: vue3Photo,
+                          masse_projet_3: vue3Photo,
+                          masse_zoom: bEffectiveZoom3,
+                          masse_zoom_3: bEffectiveZoom3
+                        }} 
+                        viewNumber={3}
+                      />
+                    </div>
+                  )}
                   {/* DP3 — Plan en coupe par bâtiment */}
                   <div id={`dev-plate-section${suffix}`}>
                     <PlateSection 
@@ -1168,6 +1230,16 @@ export default function Developpement() {
                 (b.urbanisme_captures?.masse_projet_2 && typeof b.urbanisme_captures.masse_projet_2 === 'string' && b.urbanisme_captures.masse_projet_2.length > 50)
               );
               const vue2Photo = hasVue2Capture ? (b.masse_capture_2 || activeProj.masse_capture_2 || activeProj.urbanisme_captures?.masse_projet_2 || activeProj.captures?.masse_projet_2 || b.captures?.masse_projet_2 || b.urbanisme_captures?.masse_projet_2) : null;
+              const bEffectiveZoom3 = Number(b.masse_zoom_3 || activeProj.masse_zoom_3 || activeProj.urbanisme_captures?.masse_zoom_3 || Math.max(12, bEffectiveZoom - 3));
+              const hasVue3Capture = Boolean(
+                (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50) || 
+                (activeProj.masse_capture_3 && typeof activeProj.masse_capture_3 === 'string' && activeProj.masse_capture_3.length > 50) || 
+                (activeProj.urbanisme_captures?.masse_projet_3 && typeof activeProj.urbanisme_captures.masse_projet_3 === 'string' && activeProj.urbanisme_captures.masse_projet_3.length > 50) || 
+                (activeProj.captures?.masse_projet_3 && typeof activeProj.captures.masse_projet_3 === 'string' && activeProj.captures.masse_projet_3.length > 50) || 
+                (b.captures?.masse_projet_3 && typeof b.captures.masse_projet_3 === 'string' && b.captures.masse_projet_3.length > 50) || 
+                (b.urbanisme_captures?.masse_projet_3 && typeof b.urbanisme_captures.masse_projet_3 === 'string' && b.urbanisme_captures.masse_projet_3.length > 50)
+              );
+              const vue3Photo = hasVue3Capture ? (b.masse_capture_3 || activeProj.masse_capture_3 || activeProj.urbanisme_captures?.masse_projet_3 || activeProj.captures?.masse_projet_3 || b.captures?.masse_projet_3 || b.urbanisme_captures?.masse_projet_3) : null;
               const bCaptures = {
                 ...(activeProj.captures || {}),
                 ...(activeProj.urbanisme_captures || {}),
@@ -1257,6 +1329,28 @@ export default function Developpement() {
                           masse_zoom_2: bEffectiveZoom2
                         }} 
                         viewNumber={2}
+                      />
+                    </div>
+                  )}
+                  {/* PC2 — Troisième page Plan de masse (Vue 3 - Zoom différent) UNIQUEMENT si capture réelle */}
+                  {hasVue3Capture && (
+                    <div id={`dev-pc-plate-masse-vue3${suffix}`}>
+                      <PCPlateMasse 
+                        project={{ 
+                          ...bProj, 
+                          masse_zoom: bEffectiveZoom3,
+                          masse_zoom_3: bEffectiveZoom3,
+                          masse_capture: vue3Photo,
+                          masse_capture_3: vue3Photo
+                        }} 
+                        captures={{ 
+                          ...bCaptures, 
+                          masse_projet: vue3Photo,
+                          masse_projet_3: vue3Photo,
+                          masse_zoom: bEffectiveZoom3,
+                          masse_zoom_3: bEffectiveZoom3
+                        }} 
+                        viewNumber={3}
                       />
                     </div>
                   )}

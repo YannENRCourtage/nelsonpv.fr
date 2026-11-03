@@ -7,7 +7,7 @@ import {
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
   Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus,
   Compass, User, Download, Lock, Unlock, Move, Flame,
-  Landmark, ExternalLink, Copy, CheckCheck, Save
+  Landmark, ExternalLink, Copy, CheckCheck, Save, Cpu
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { fetchUrbanismeMairiePortal } from '@/services/urbanismeRoutingService';
@@ -42,7 +42,7 @@ import BatteryStationVisualizer from './BatteryStationVisualizer';
 import BatteryInsertionCompositor from './BatteryInsertionCompositor';
 import { findBessOdreData } from '@/data/bessOdreMatrix.js';
 import html2canvas from 'html2canvas';
-import { MapContainer, TileLayer, Marker, Polygon, Polyline, Tooltip, Popup, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polygon, Polyline, Tooltip, Popup, useMap, useMapEvents, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -230,8 +230,51 @@ function getOrientationLabel(deg) {
   return 'Sud';
 }
 
+// Trouve le coin de la dalle béton le plus proche d'un point cible (PDL ou Transfo)
+function getClosestCornerToPoint(corners, targetPoint) {
+  if (!corners || !Array.isArray(corners) || corners.length === 0 || !targetPoint || !targetPoint.lat || !targetPoint.lng) {
+    return null;
+  }
+  let minD = Infinity;
+  let best = null;
+  for (const c of corners) {
+    const cLat = Number(c[0] !== undefined ? c[0] : c.lat);
+    const cLng = Number(c[1] !== undefined ? c[1] : c.lng);
+    const dLat = (cLat - Number(targetPoint.lat)) * 111320;
+    const dLng = (cLng - Number(targetPoint.lng)) * 111320 * Math.cos((cLat * Math.PI) / 180);
+    const d = Math.hypot(dLat, dLng);
+    if (d < minD) {
+      minD = d;
+      best = { lat: cLat, lng: cLng, distMeters: Math.round(d * 10) / 10 };
+    }
+  }
+  return best;
+}
+
+// Distance en mètres entre deux points géographiques
+function getPointsDistanceMeters(p1, p2) {
+  if (!p1 || !p2) return 0;
+  const lat1 = Number(p1.lat !== undefined ? p1.lat : p1[0]);
+  const lng1 = Number(p1.lng !== undefined ? p1.lng : p1[1]);
+  const lat2 = Number(p2.lat !== undefined ? p2.lat : p2[0]);
+  const lng2 = Number(p2.lng !== undefined ? p2.lng : p2[1]);
+  const dLat = (lat2 - lat1) * 111320;
+  const dLng = (lng2 - lng1) * 111320 * Math.cos((lat1 * Math.PI) / 180);
+  return Math.round(Math.hypot(dLat, dLng) * 10) / 10;
+}
+
+// Point milieu entre deux points géographiques
+function getPointsMidpoint(p1, p2) {
+  if (!p1 || !p2) return null;
+  const lat1 = Number(p1.lat !== undefined ? p1.lat : p1[0]);
+  const lng1 = Number(p1.lng !== undefined ? p1.lng : p1[1]);
+  const lat2 = Number(p2.lat !== undefined ? p2.lat : p2[0]);
+  const lng2 = Number(p2.lng !== undefined ? p2.lng : p2[1]);
+  return [(lat1 + lat2) / 2, (lng1 + lng2) / 2];
+}
+
 // Capture directe haute fidélité d'une carte Leaflet sans passer par html2canvas sur le SVG (élimine tout décalage)
-async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [], showDimensions = true, distances = [], sdisPoint = null, viewpoints = null, accessPoint = null) {
+async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [], showDimensions = true, distances = [], sdisPoint = null, viewpoints = null, accessPoint = null, pdlPoint = null, transfoPoint = null) {
   if (!map) return null;
   try {
     const size = map.getSize();
@@ -505,6 +548,124 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
     if (accessPoint && accessPoint.enabled && accessPoint.lat && accessPoint.lng) {
       const pt = map.latLngToContainerPoint([accessPoint.lat, accessPoint.lng]);
       drawAccessArrow(ctx, pt, accessPoint.angle || 0, 38, 'ACCÈS TERRAIN');
+    }
+
+    // 2f. Raccordement électrique automatique Dalle BESS -> PDL -> Transfo
+    if (pdlPoint || transfoPoint) {
+      const sLen = Number(targetStr?.length || (targetStr?.bayCount || 5) * (targetStr?.baySpacing || 7.5) || 20);
+      const totalWid = Number(targetStr?.totalWidth || targetStr?.width || 10);
+      const sRot = Number(targetStr?.rotation || 0);
+      const strLat = Number(targetStr?.lat || (targetStr?.gps ? targetStr.gps.split(',')[0] : null) || map.getCenter().lat);
+      const strLng = Number(targetStr?.lng || (targetStr?.gps ? targetStr.gps.split(',')[1] : null) || map.getCenter().lng);
+      const corners = getBuildingCorners(strLat, strLng, sLen, totalWid, sRot);
+
+      const drawCable = (ptA, ptB, color, labelText) => {
+        ctx.save();
+        // Ombre / contour noir pour contraste
+        ctx.beginPath();
+        ctx.moveTo(ptA.x, ptA.y);
+        ctx.lineTo(ptB.x, ptB.y);
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.setLineDash([]);
+        ctx.stroke();
+
+        // Ligne de câble pointillée
+        ctx.beginPath();
+        ctx.moveTo(ptA.x, ptA.y);
+        ctx.lineTo(ptB.x, ptB.y);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = color;
+        ctx.setLineDash([7, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Label au milieu
+        if (labelText) {
+          const midX = (ptA.x + ptB.x) / 2;
+          const midY = (ptA.y + ptB.y) / 2;
+          ctx.font = 'bold 8.5px sans-serif';
+          const textW = ctx.measureText(labelText).width;
+          const padX = 6;
+          const padY = 3;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+          ctx.beginPath();
+          ctx.roundRect(midX - textW / 2 - padX, midY - 7 - padY, textW + padX * 2, 14 + padY * 2, 4);
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = color;
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(labelText, midX, midY);
+        }
+        ctx.restore();
+      };
+
+      const drawBadge = (pt, color, text) => {
+        ctx.save();
+        ctx.font = 'bold 9px sans-serif';
+        const textW = ctx.measureText(text).width;
+        const badgeW = textW + 16;
+        const badgeH = 18;
+        const bx = pt.x - badgeW / 2;
+        const by = pt.y - 28;
+
+        ctx.fillStyle = color;
+        ctx.fillRect(pt.x - 1.5, by + badgeH, 3, 10);
+
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.roundRect(bx, by, badgeW, badgeH, 4);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, pt.x, by + badgeH / 2);
+        ctx.restore();
+      };
+
+      const hasPdl = Boolean(pdlPoint && pdlPoint.lat && pdlPoint.lng);
+      const hasTransfo = Boolean(transfoPoint && transfoPoint.lat && transfoPoint.lng);
+      const firstTarget = hasPdl ? pdlPoint : (hasTransfo ? transfoPoint : null);
+      const closest = getClosestCornerToPoint(corners, firstTarget);
+
+      if (closest) {
+        const closestPt = map.latLngToContainerPoint([closest.lat, closest.lng]);
+
+        if (hasPdl) {
+          const pdlPt = map.latLngToContainerPoint([pdlPoint.lat, pdlPoint.lng]);
+          const d1 = getPointsDistanceMeters(closest, pdlPoint);
+          drawCable(closestPt, pdlPt, '#059669', `⚡ BESS → PDL (${d1} m)`);
+
+          if (hasTransfo) {
+            const transfoPt = map.latLngToContainerPoint([transfoPoint.lat, transfoPoint.lng]);
+            const d2 = getPointsDistanceMeters(pdlPoint, transfoPoint);
+            drawCable(pdlPt, transfoPt, '#2563eb', `⚡ PDL → Transfo (${d2} m)`);
+            drawBadge(transfoPt, '#1d4ed8', '⚡ TRANSFO HTA');
+          }
+          drawBadge(pdlPt, '#047857', '🔌 PDL ENEDIS');
+        } else if (hasTransfo) {
+          const transfoPt = map.latLngToContainerPoint([transfoPoint.lat, transfoPoint.lng]);
+          const d = getPointsDistanceMeters(closest, transfoPoint);
+          drawCable(closestPt, transfoPt, '#2563eb', `⚡ BESS → Transfo (${d} m)`);
+          drawBadge(transfoPt, '#1d4ed8', '⚡ TRANSFO HTA');
+        }
+      }
     }
 
     // 3. Flèche Nord officielle en haut à droite
@@ -932,6 +1093,223 @@ function MasseSdisLayer({ sdisPoint, isPlacing, onSetSdisPoint }) {
         iconSize: [0, 0]
       })}
     />
+  );
+}
+
+function MasseGridConnectionLayer({
+  corners,
+  pdlPoint,
+  isPlacingPdl,
+  onSetPdlPoint,
+  transfoPoint,
+  isPlacingTransfo,
+  onSetTransfoPoint
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (isPlacingPdl || isPlacingTransfo) {
+      map.getContainer().style.cursor = 'crosshair';
+      map.dragging.disable();
+    } else {
+      map.getContainer().style.cursor = '';
+      map.dragging.enable();
+    }
+  }, [isPlacingPdl, isPlacingTransfo, map]);
+
+  useMapEvents({
+    click(e) {
+      if (isPlacingPdl) {
+        L.DomEvent.stopPropagation(e);
+        onSetPdlPoint({ lat: e.latlng.lat, lng: e.latlng.lng });
+      } else if (isPlacingTransfo) {
+        L.DomEvent.stopPropagation(e);
+        onSetTransfoPoint({ lat: e.latlng.lat, lng: e.latlng.lng });
+      }
+    }
+  });
+
+  const hasPdl = Boolean(pdlPoint && pdlPoint.lat && pdlPoint.lng);
+  const hasTransfo = Boolean(transfoPoint && transfoPoint.lat && transfoPoint.lng);
+
+  if (!hasPdl && !hasTransfo && !isPlacingPdl && !isPlacingTransfo) return null;
+
+  // Calcul du coin de la dalle béton le plus proche du PDL (ou du transfo si seul)
+  const firstTarget = hasPdl ? pdlPoint : (hasTransfo ? transfoPoint : null);
+  const closestCorner = firstTarget ? getClosestCornerToPoint(corners, firstTarget) : null;
+
+  // Distances métriques
+  const distBessToPdl = (closestCorner && hasPdl) ? getPointsDistanceMeters(closestCorner, pdlPoint) : null;
+  const distPdlToTransfo = (hasPdl && hasTransfo) ? getPointsDistanceMeters(pdlPoint, transfoPoint) : null;
+  const distBessToTransfo = (closestCorner && !hasPdl && hasTransfo) ? getPointsDistanceMeters(closestCorner, transfoPoint) : null;
+
+  // Milieux pour les labels
+  const midBessPdl = (closestCorner && hasPdl) ? getPointsMidpoint(closestCorner, pdlPoint) : null;
+  const midPdlTransfo = (hasPdl && hasTransfo) ? getPointsMidpoint(pdlPoint, transfoPoint) : null;
+  const midBessTransfo = (closestCorner && !hasPdl && hasTransfo) ? getPointsMidpoint(closestCorner, transfoPoint) : null;
+
+  return (
+    <>
+      {/* 1. Raccordement Dalle BESS -> PDL */}
+      {closestCorner && hasPdl && (
+        <>
+          {/* Halo noir sous la ligne */}
+          <Polyline
+            positions={[[closestCorner.lat, closestCorner.lng], [pdlPoint.lat, pdlPoint.lng]]}
+            pathOptions={{ color: '#000000', weight: 6, opacity: 0.35, lineCap: 'round', interactive: false }}
+          />
+          {/* Ligne verte Enedis pointillée */}
+          <Polyline
+            positions={[[closestCorner.lat, closestCorner.lng], [pdlPoint.lat, pdlPoint.lng]]}
+            pathOptions={{ color: '#059669', weight: 3.5, dashArray: '7, 6', opacity: 0.95, lineCap: 'round', interactive: false }}
+          />
+          {/* Point d'ancrage sur le coin de la dalle */}
+          <CircleMarker
+            center={[closestCorner.lat, closestCorner.lng]}
+            radius={4.5}
+            pathOptions={{ color: '#ffffff', fillColor: '#059669', fillOpacity: 1, weight: 1.5, interactive: false }}
+          />
+          {/* Label de métrage */}
+          {midBessPdl && (
+            <Marker
+              position={midBessPdl}
+              interactive={false}
+              icon={L.divIcon({
+                className: 'bg-transparent',
+                html: `
+                  <div style="transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.88); color: #34d399; font-size: 9.5px; font-weight: 800; padding: 1.5px 6px; border-radius: 4px; border: 1px solid #059669; box-shadow: 0 1px 4px rgba(0,0,0,0.4); white-space: nowrap; pointer-events: none; font-family: sans-serif; letter-spacing: 0.3px;">
+                    ⚡ BESS → PDL (${distBessToPdl} m)
+                  </div>
+                `,
+                iconSize: [0, 0]
+              })}
+            />
+          )}
+        </>
+      )}
+
+      {/* 2. Raccordement PDL -> Transfo */}
+      {hasPdl && hasTransfo && (
+        <>
+          {/* Halo noir sous la ligne */}
+          <Polyline
+            positions={[[pdlPoint.lat, pdlPoint.lng], [transfoPoint.lat, transfoPoint.lng]]}
+            pathOptions={{ color: '#000000', weight: 6, opacity: 0.35, lineCap: 'round', interactive: false }}
+          />
+          {/* Ligne bleue Enedis pointillée */}
+          <Polyline
+            positions={[[pdlPoint.lat, pdlPoint.lng], [transfoPoint.lat, transfoPoint.lng]]}
+            pathOptions={{ color: '#2563eb', weight: 3.5, dashArray: '7, 6', opacity: 0.95, lineCap: 'round', interactive: false }}
+          />
+          {/* Label de métrage */}
+          {midPdlTransfo && (
+            <Marker
+              position={midPdlTransfo}
+              interactive={false}
+              icon={L.divIcon({
+                className: 'bg-transparent',
+                html: `
+                  <div style="transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.88); color: #60a5fa; font-size: 9.5px; font-weight: 800; padding: 1.5px 6px; border-radius: 4px; border: 1px solid #2563eb; box-shadow: 0 1px 4px rgba(0,0,0,0.4); white-space: nowrap; pointer-events: none; font-family: sans-serif; letter-spacing: 0.3px;">
+                    ⚡ PDL → Transfo (${distPdlToTransfo} m)
+                  </div>
+                `,
+                iconSize: [0, 0]
+              })}
+            />
+          )}
+        </>
+      )}
+
+      {/* 2-bis. Raccordement direct Dalle BESS -> Transfo si PDL non placé */}
+      {!hasPdl && hasTransfo && closestCorner && (
+        <>
+          <Polyline
+            positions={[[closestCorner.lat, closestCorner.lng], [transfoPoint.lat, transfoPoint.lng]]}
+            pathOptions={{ color: '#000000', weight: 6, opacity: 0.35, lineCap: 'round', interactive: false }}
+          />
+          <Polyline
+            positions={[[closestCorner.lat, closestCorner.lng], [transfoPoint.lat, transfoPoint.lng]]}
+            pathOptions={{ color: '#2563eb', weight: 3.5, dashArray: '7, 6', opacity: 0.95, lineCap: 'round', interactive: false }}
+          />
+          <CircleMarker
+            center={[closestCorner.lat, closestCorner.lng]}
+            radius={4.5}
+            pathOptions={{ color: '#ffffff', fillColor: '#2563eb', fillOpacity: 1, weight: 1.5, interactive: false }}
+          />
+          {midBessTransfo && (
+            <Marker
+              position={midBessTransfo}
+              interactive={false}
+              icon={L.divIcon({
+                className: 'bg-transparent',
+                html: `
+                  <div style="transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.88); color: #60a5fa; font-size: 9.5px; font-weight: 800; padding: 1.5px 6px; border-radius: 4px; border: 1px solid #2563eb; box-shadow: 0 1px 4px rgba(0,0,0,0.4); white-space: nowrap; pointer-events: none; font-family: sans-serif; letter-spacing: 0.3px;">
+                    ⚡ BESS → Transfo (${distBessToTransfo} m)
+                  </div>
+                `,
+                iconSize: [0, 0]
+              })}
+            />
+          )}
+        </>
+      )}
+
+      {/* 3. Marqueur interactif PDL */}
+      {hasPdl && (
+        <Marker
+          position={[pdlPoint.lat, pdlPoint.lng]}
+          draggable={true}
+          eventHandlers={{
+            dragend(e) {
+              const pos = e.target.getLatLng();
+              onSetPdlPoint({ lat: pos.lat, lng: pos.lng });
+            }
+          }}
+          icon={L.divIcon({
+            className: 'bg-transparent',
+            html: `
+              <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none;">
+                <div style="background: #047857; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2.5px 7px; border-radius: 6px; border: 1.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px; font-family: sans-serif;">
+                  <span style="font-size: 11px; line-height: 1;">🔌</span>
+                  <span>PDL ENEDIS</span>
+                </div>
+                <div style="width: 3px; height: 12px; background: #047857; box-shadow: 0 1px 2px rgba(0,0,0,0.3);"></div>
+                <div style="width: 8px; height: 8px; background: #047857; border-radius: 50%; border: 1.5px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
+              </div>
+            `,
+            iconSize: [0, 0]
+          })}
+        />
+      )}
+
+      {/* 4. Marqueur interactif Transfo */}
+      {hasTransfo && (
+        <Marker
+          position={[transfoPoint.lat, transfoPoint.lng]}
+          draggable={true}
+          eventHandlers={{
+            dragend(e) {
+              const pos = e.target.getLatLng();
+              onSetTransfoPoint({ lat: pos.lat, lng: pos.lng });
+            }
+          }}
+          icon={L.divIcon({
+            className: 'bg-transparent',
+            html: `
+              <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none;">
+                <div style="background: #1d4ed8; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2.5px 7px; border-radius: 6px; border: 1.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px; font-family: sans-serif;">
+                  <span style="font-size: 11px; line-height: 1;">⚡</span>
+                  <span>TRANSFO HTA</span>
+                </div>
+                <div style="width: 3px; height: 12px; background: #1d4ed8; box-shadow: 0 1px 2px rgba(0,0,0,0.3);"></div>
+                <div style="width: 8px; height: 8px; background: #1d4ed8; border-radius: 50%; border: 1.5px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
+              </div>
+            `,
+            iconSize: [0, 0]
+          })}
+        />
+      )}
+    </>
   );
 }
 
@@ -1841,8 +2219,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
   const [selectedStructureIds, setSelectedStructureIds] = useState([]);
   const [activeMasseStructureId, setActiveMasseStructureId] = useState(null);
-  const [masseViewTabs, setMasseViewTabs] = useState({}); // { [strId]: 1 | 2 }
+  const [masseViewTabs, setMasseViewTabs] = useState({}); // { [strId]: 1 | 2 | 3 }
   const [hasMasseView2, setHasMasseView2] = useState({}); // { [strId]: boolean }
+  const [hasMasseView3, setHasMasseView3] = useState({}); // { [strId]: boolean }
   const [masseShowDimensions, setMasseShowDimensions] = useState({}); // { [strId]: boolean }
   const [masseDistances, setMasseDistances] = useState({}); // { [strId]: [ { id, p1, p2, meters } ] }
   const [measuringMasseStrId, setMeasuringMasseStrId] = useState(null); // ID de structure en cours de cotation
@@ -1853,6 +2232,24 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [masseAccess, setMasseAccess] = useState({}); // { [strId]: { enabled, lat, lng, angle } }
   const [sdisPoint, setSdisPoint] = useState(project?.sdisPoint || null);
   const [isPlacingSdis, setIsPlacingSdis] = useState(false);
+  const [pdlPoint, setPdlPoint] = useState(() => {
+    if (project?.pdlPoint) return project.pdlPoint;
+    if (Array.isArray(project?.markers)) {
+      const m = project.markers.find(x => x.type === 'pdl' || x.label?.toUpperCase() === 'PDL');
+      if (m && m.lat && m.lng) return { lat: m.lat, lng: m.lng };
+    }
+    return null;
+  });
+  const [isPlacingPdl, setIsPlacingPdl] = useState(false);
+  const [transfoPoint, setTransfoPoint] = useState(() => {
+    if (project?.transfoPoint) return project.transfoPoint;
+    if (Array.isArray(project?.markers)) {
+      const m = project.markers.find(x => x.type === 'transfo' || x.label?.toUpperCase().includes('TRANSFO'));
+      if (m && m.lat && m.lng) return { lat: m.lat, lng: m.lng };
+    }
+    return null;
+  });
+  const [isPlacingTransfo, setIsPlacingTransfo] = useState(false);
   const masseMapInstancesRef = useRef({});
   const captureStructureMasseMapRef = useRef(null);
   const masseRotationDebounceRef = useRef(null);
@@ -1865,7 +2262,13 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     if (project?.sdisPoint !== undefined) {
       setSdisPoint(project.sdisPoint);
     }
-  }, [project?.id, project?.sdisPoint]);
+    if (project?.pdlPoint !== undefined) {
+      setPdlPoint(project.pdlPoint);
+    }
+    if (project?.transfoPoint !== undefined) {
+      setTransfoPoint(project.transfoPoint);
+    }
+  }, [project?.id, project?.sdisPoint, project?.pdlPoint, project?.transfoPoint]);
 
   // ── Aiguillage Mairie & Téléservice SVE (Étape 7 Validation) ──────────────
   const [mairieRouting, setMairieRouting] = useState({
@@ -2689,7 +3092,15 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           });
           if (bIdx !== -1) {
             const nextList = [...nextSol[solKey].buildings];
-            if (viewNum === 2) {
+            if (viewNum === 3) {
+              nextList[bIdx] = {
+                ...nextList[bIdx],
+                id: targetId,
+                masse_center_lat_3: numLat,
+                masse_center_lng_3: numLng,
+                masse_zoom_3: numZoom,
+              };
+            } else if (viewNum === 2) {
               nextList[bIdx] = {
                 ...nextList[bIdx],
                 id: targetId,
@@ -2719,7 +3130,14 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     setBuildings(prev => prev.map(b => {
       const currentId = b.id ? String(b.id) : '';
       if (b.id === targetId || currentId === targetId || (prev.length === 1 && (targetId.startsWith('bat-') || targetId.startsWith('omb-') || targetId.startsWith('bat-sa-')))) {
-        if (viewNum === 2) {
+        if (viewNum === 3) {
+          return {
+            ...b,
+            masse_center_lat_3: numLat,
+            masse_center_lng_3: numLng,
+            masse_zoom_3: numZoom,
+          };
+        } else if (viewNum === 2) {
           return {
             ...b,
             masse_center_lat_2: numLat,
@@ -2738,9 +3156,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       return b;
     }));
 
-    const zoomKey = viewNum === 2 ? 'masse_zoom_2' : 'masse_zoom';
-    const centerLatKey = viewNum === 2 ? 'masse_center_lat_2' : 'masse_center_lat';
-    const centerLngKey = viewNum === 2 ? 'masse_center_lng_2' : 'masse_center_lng';
+    const zoomKey = viewNum === 3 ? 'masse_zoom_3' : (viewNum === 2 ? 'masse_zoom_2' : 'masse_zoom');
+    const centerLatKey = viewNum === 3 ? 'masse_center_lat_3' : (viewNum === 2 ? 'masse_center_lat_2' : 'masse_center_lat');
+    const centerLngKey = viewNum === 3 ? 'masse_center_lng_3' : (viewNum === 2 ? 'masse_center_lng_2' : 'masse_center_lng');
 
     setCaptures(prev => ({
       ...prev,
@@ -4560,7 +4978,16 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
           });
           if (bIdx !== -1) {
             const nextList = [...nextSol[solKey].buildings];
-            if (viewNum === 2) {
+            if (viewNum === 3) {
+              nextList[bIdx] = {
+                ...nextList[bIdx],
+                id: targetId,
+                masse_capture_3: dataUrl,
+                ...(zoom ? { masse_zoom_3: zoom } : {}),
+                ...(centerLat ? { masse_center_lat_3: centerLat } : {}),
+                ...(centerLng ? { masse_center_lng_3: centerLng } : {}),
+              };
+            } else if (viewNum === 2) {
               nextList[bIdx] = {
                 ...nextList[bIdx],
                 id: targetId,
@@ -4591,7 +5018,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     setBuildings(prev => prev.map(b => {
       const currentId = b.id ? String(b.id) : '';
       if (b.id === targetId || currentId === targetId || (prev.length === 1 && (targetId.startsWith('bat-') || targetId.startsWith('omb-') || targetId.startsWith('bat-sa-')))) {
-        if (viewNum === 2) {
+        if (viewNum === 3) {
+          return {
+            ...b,
+            masse_capture_3: dataUrl,
+            ...(zoom ? { masse_zoom_3: zoom } : {}),
+            ...(centerLat ? { masse_center_lat_3: centerLat } : {}),
+            ...(centerLng ? { masse_center_lng_3: centerLng } : {}),
+          };
+        } else if (viewNum === 2) {
           return {
             ...b,
             masse_capture_2: dataUrl,
@@ -4612,8 +5047,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       return b;
     }));
 
-    const captureKey = viewNum === 2 ? 'masse_projet_2' : 'masse_projet';
-    const zoomKey = viewNum === 2 ? 'masse_zoom_2' : 'masse_zoom';
+    const captureKey = viewNum === 3 ? 'masse_projet_3' : (viewNum === 2 ? 'masse_projet_2' : 'masse_projet');
+    const zoomKey = viewNum === 3 ? 'masse_zoom_3' : (viewNum === 2 ? 'masse_zoom_2' : 'masse_zoom');
     setCaptures(prev => ({ 
       ...prev, 
       [captureKey]: dataUrl,
@@ -4628,7 +5063,9 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       },
       ...(viewNum === 1 
         ? { masse_capture: dataUrl, ...(zoom ? { masse_zoom: zoom } : {}), ...(centerLat ? { masse_center_lat: centerLat } : {}), ...(centerLng ? { masse_center_lng: centerLng } : {}) }
-        : { masse_capture_2: dataUrl, ...(zoom ? { masse_zoom_2: zoom } : {}), ...(centerLat ? { masse_center_lat_2: centerLat } : {}), ...(centerLng ? { masse_center_lng_2: centerLng } : {}) }
+        : viewNum === 2
+          ? { masse_capture_2: dataUrl, ...(zoom ? { masse_zoom_2: zoom } : {}), ...(centerLat ? { masse_center_lat_2: centerLat } : {}), ...(centerLng ? { masse_center_lng_2: centerLng } : {}) }
+          : { masse_capture_3: dataUrl, ...(zoom ? { masse_zoom_3: zoom } : {}), ...(centerLat ? { masse_center_lat_3: centerLat } : {}), ...(centerLng ? { masse_center_lng_3: centerLng } : {}) }
       )
     }));
     persistMediaItem(targetId, captureKey, dataUrl, 'captures');
@@ -4652,12 +5089,12 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const liveZoom = isCurrentViewOnScreen ? map.getZoom() : null;
     const liveCenter = isCurrentViewOnScreen ? map.getCenter() : null;
 
-    const cLat = liveCenter ? liveCenter.lat : Number((viewNum === 2 ? targetStr?.masse_center_lat_2 : targetStr?.masse_center_lat) || bLat);
-    const cLng = liveCenter ? liveCenter.lng : Number((viewNum === 2 ? targetStr?.masse_center_lng_2 : targetStr?.masse_center_lng) || bLng);
+    const cLat = liveCenter ? liveCenter.lat : Number((viewNum === 3 ? targetStr?.masse_center_lat_3 : (viewNum === 2 ? targetStr?.masse_center_lat_2 : targetStr?.masse_center_lat)) || bLat);
+    const cLng = liveCenter ? liveCenter.lng : Number((viewNum === 3 ? targetStr?.masse_center_lng_3 : (viewNum === 2 ? targetStr?.masse_center_lng_2 : targetStr?.masse_center_lng)) || bLng);
 
     // Zoom exact choisi par l'utilisateur (sans forçage artificiel)
-    const defaultZoom = viewNum === 2 ? 16 : 18;
-    const cZoom = Number(liveZoom || (viewNum === 2 ? targetStr?.masse_zoom_2 : targetStr?.masse_zoom) || defaultZoom);
+    const defaultZoom = viewNum === 3 ? 15 : (viewNum === 2 ? 16 : 18);
+    const cZoom = Number(liveZoom || (viewNum === 3 ? targetStr?.masse_zoom_3 : (viewNum === 2 ? targetStr?.masse_zoom_2 : targetStr?.masse_zoom)) || defaultZoom);
 
     let dataUrl = null;
     const strDistances = masseDistances[strId] || targetStr?.masseDistances || [];
@@ -4667,13 +5104,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
     // 1. Si la vue demandée est actuellement affichée à l'écran, capture directe sur Leaflet
     if (map && isCurrentViewOnScreen) {
-      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim, strDistances, sdisPoint, strViewpoints, strAccess);
+      dataUrl = await captureDirectLeafletMap(map, targetStr, activeList, showDim, strDistances, sdisPoint, strViewpoints, strAccess, pdlPoint, transfoPoint);
     } else {
       // 2. Si la vue n'est PAS à l'écran : ne JAMAIS déplacer la carte Leaflet interactive en direct.
       // Vérifier d'abord si une capture existe déjà pour préserver le cadrage de l'utilisateur
-      const existingCapture = viewNum === 2
-        ? (targetStr?.masse_capture_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2)
-        : (targetStr?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture);
+      const existingCapture = viewNum === 3
+        ? (targetStr?.masse_capture_3 || captures?.masse_projet_3 || editedProject?.urbanisme_captures?.masse_projet_3 || editedProject?.masse_capture_3)
+        : viewNum === 2
+          ? (targetStr?.masse_capture_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2)
+          : (targetStr?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture);
 
       if (existingCapture) {
         return existingCapture;
@@ -4683,7 +5122,9 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       dataUrl = await generateStaticMapImage(cLat, cLng, 'osm', cZoom, activeList, showDim, strDistances, sdisPoint, {
         viewpoints: strViewpoints,
         accessPoint: strAccess,
-        showCadastre: strShowCadastre
+        showCadastre: strShowCadastre,
+        pdlPoint,
+        transfoPoint
       });
     }
 
@@ -4692,7 +5133,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       return dataUrl;
     }
     return null;
-  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs, masseDistances, masseViewpoints, masseAccess, masseShowCadastre, sdisPoint, captures, editedProject]);
+  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs, masseDistances, masseViewpoints, masseAccess, masseShowCadastre, sdisPoint, pdlPoint, transfoPoint, captures, editedProject]);
 
   useEffect(() => {
     captureStructureMasseMapRef.current = captureStructureMasseMap;
@@ -4717,7 +5158,11 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       const bLng = Number(targetStr.lng || (targetStr.gps ? targetStr.gps.split(',')[1] : null) || -1.17644);
       
       let cLat, cLng, cZoom;
-      if (targetViewNum === 2) {
+      if (targetViewNum === 3) {
+        cLat = Number(targetStr.masse_center_lat_3 || bLat);
+        cLng = Number(targetStr.masse_center_lng_3 || bLng);
+        cZoom = Number(targetStr.masse_zoom_3 || Math.max(12, (Number(targetStr.masse_zoom) || 18) - 3));
+      } else if (targetViewNum === 2) {
         cLat = Number(targetStr.masse_center_lat_2 || bLat);
         cLng = Number(targetStr.masse_center_lng_2 || bLng);
         cZoom = Number(targetStr.masse_zoom_2 || Math.max(12, (Number(targetStr.masse_zoom) || 18) - 2));
@@ -4842,6 +5287,107 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     }
   }, [allConfiguredStructures]);
 
+  // Ajout d'une 3ème vue pour la structure
+  const handleAddMasseView3 = useCallback(async (strId) => {
+    const curView = masseViewTabs[strId] || 1;
+    await captureStructureMasseMap(strId, curView);
+
+    setHasMasseView3(prev => ({ ...prev, [strId]: true }));
+    setMasseViewTabs(prev => ({ ...prev, [strId]: 3 }));
+
+    const map = masseMapInstancesRef.current[strId];
+    const targetStr = allConfiguredStructures.find(s => s.id === strId);
+    if (map && targetStr) {
+      const bLat = Number(targetStr.lat || (targetStr.gps ? targetStr.gps.split(',')[0] : null) || 43.43571);
+      const bLng = Number(targetStr.lng || (targetStr.gps ? targetStr.gps.split(',')[1] : null) || -1.17644);
+      const curZoom = Number(targetStr.masse_zoom_2 || targetStr.masse_zoom || (map ? map.getZoom() : 18));
+      const newZoom = Math.max(12, curZoom - 2);
+
+      map._isProgrammaticMoving = true;
+      map.setView([bLat, bLng], newZoom, { animate: false });
+      setTimeout(() => {
+        map._isProgrammaticMoving = false;
+        map.invalidateSize();
+      }, 100);
+
+      handleMasseMapChange(strId, { centerLat: bLat, centerLng: bLng, zoom: newZoom }, 3);
+
+      setTimeout(() => {
+        captureStructureMasseMap(strId, 3);
+      }, 400);
+    }
+  }, [captureStructureMasseMap, allConfiguredStructures, handleMasseMapChange, masseViewTabs]);
+
+  // Suppression de la 3ème vue
+  const handleRemoveMasseView3 = useCallback((strId) => {
+    setHasMasseView3(prev => ({ ...prev, [strId]: false }));
+    setMasseViewTabs(prev => ({ ...prev, [strId]: hasMasseView2[strId] ? 2 : 1 }));
+
+    setSolutions(prev => {
+      const nextSol = { ...prev };
+      ['building', 'ombriere', 'battery'].forEach(solKey => {
+        if (nextSol[solKey]?.buildings) {
+          nextSol[solKey] = {
+            ...nextSol[solKey],
+            buildings: nextSol[solKey].buildings.map(b => {
+              if (b.id === strId) {
+                const { masse_capture_3, masse_zoom_3, masse_center_lat_3, masse_center_lng_3, ...rest } = b;
+                return rest;
+              }
+              return b;
+            })
+          };
+        }
+      });
+      return nextSol;
+    });
+
+    setBuildings(prev => prev.map(b => {
+      if (b.id === strId) {
+        const { masse_capture_3, masse_zoom_3, masse_center_lat_3, masse_center_lng_3, ...rest } = b;
+        return rest;
+      }
+      return b;
+    }));
+
+    setCaptures(prev => {
+      const next = { ...prev };
+      delete next.masse_projet_3;
+      delete next.masse_zoom_3;
+      return next;
+    });
+
+    setEditedProject(prev => {
+      const next = { ...prev };
+      delete next.masse_capture_3;
+      delete next.masse_zoom_3;
+      delete next.masse_center_lat_3;
+      delete next.masse_center_lng_3;
+      if (next.urbanisme_captures) {
+        delete next.urbanisme_captures.masse_projet_3;
+        delete next.urbanisme_captures.masse_zoom_3;
+      }
+      return next;
+    });
+
+    const map = masseMapInstancesRef.current[strId];
+    const targetStr = allConfiguredStructures.find(s => s.id === strId);
+    if (map && targetStr) {
+      const bLat = Number(targetStr.lat || (targetStr.gps ? targetStr.gps.split(',')[0] : null) || 43.43571);
+      const bLng = Number(targetStr.lng || (targetStr.gps ? targetStr.gps.split(',')[1] : null) || -1.17644);
+      const fallbackView = hasMasseView2[strId] ? 2 : 1;
+      const cLat = Number((fallbackView === 2 ? targetStr.masse_center_lat_2 : targetStr.masse_center_lat) || bLat);
+      const cLng = Number((fallbackView === 2 ? targetStr.masse_center_lng_2 : targetStr.masse_center_lng) || bLng);
+      const cZoom = Number((fallbackView === 2 ? targetStr.masse_zoom_2 : targetStr.masse_zoom) || (fallbackView === 2 ? 16 : 18));
+      map._isProgrammaticMoving = true;
+      map.setView([cLat, cLng], cZoom, { animate: false });
+      setTimeout(() => {
+        map._isProgrammaticMoving = false;
+        map.invalidateSize();
+      }, 100);
+    }
+  }, [allConfiguredStructures, hasMasseView2]);
+
   // Capture manuelle à la demande avec confirmation visuelle
   const handleManualCapture = useCallback(async (strId) => {
     const activeView = masseViewTabs[strId] || 1;
@@ -4907,37 +5453,50 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         ? Boolean(masseShowDimensions[str.id])
         : (str.masse_show_dimensions !== false);
       await captureStructureMasseMap(str.id, activeView, isDim);
-      if (hasMasseView2[str.id]) {
-        const otherView = activeView === 1 ? 2 : 1;
-        const existingOther = otherView === 2
-          ? (str.masse_capture_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2)
-          : (str.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture);
-        if (!existingOther) {
-          await captureStructureMasseMap(str.id, otherView, isDim);
+      if (hasMasseView2[str.id] && activeView !== 2) {
+        const existing2 = str.masse_capture_2 || captures?.masse_projet_2 || editedProject?.urbanisme_captures?.masse_projet_2 || editedProject?.masse_capture_2;
+        if (!existing2) {
+          await captureStructureMasseMap(str.id, 2, isDim);
+        }
+      }
+      if (hasMasseView3[str.id] && activeView !== 3) {
+        const existing3 = str.masse_capture_3 || captures?.masse_projet_3 || editedProject?.urbanisme_captures?.masse_projet_3 || editedProject?.masse_capture_3;
+        if (!existing3) {
+          await captureStructureMasseMap(str.id, 3, isDim);
         }
       }
     }
-  }, [allConfiguredStructures, selectedStructureIds, masseViewTabs, hasMasseView2, captureStructureMasseMap, masseShowDimensions, captures, editedProject]);
+  }, [allConfiguredStructures, selectedStructureIds, masseViewTabs, hasMasseView2, hasMasseView3, captureStructureMasseMap, masseShowDimensions, captures, editedProject]);
 
-  // Auto-détection de Vue 2 si existante dans le projet (capture réelle uniquement)
+  // Auto-détection de Vue 2 et Vue 3 si existantes dans le projet (capture réelle uniquement)
   useEffect(() => {
     const view2Map = {};
-    let found = false;
+    const view3Map = {};
     allConfiguredStructures.forEach(str => {
       const hasCap2 = Boolean(str.masse_capture_2 && typeof str.masse_capture_2 === 'string' && str.masse_capture_2.length > 50);
       if (hasCap2) {
         view2Map[str.id] = true;
-        found = true;
+      }
+      const hasCap3 = Boolean(str.masse_capture_3 && typeof str.masse_capture_3 === 'string' && str.masse_capture_3.length > 50);
+      if (hasCap3) {
+        view3Map[str.id] = true;
       }
     });
-    if (!found && allConfiguredStructures.length > 0) {
+    if (allConfiguredStructures.length > 0) {
       const pCap2 = project?.masse_capture_2 || project?.urbanisme_captures?.masse_projet_2;
       if (pCap2 && typeof pCap2 === 'string' && pCap2.length > 50) {
         view2Map[allConfiguredStructures[0].id] = true;
       }
+      const pCap3 = project?.masse_capture_3 || project?.urbanisme_captures?.masse_projet_3;
+      if (pCap3 && typeof pCap3 === 'string' && pCap3.length > 50) {
+        view3Map[allConfiguredStructures[0].id] = true;
+      }
     }
     if (Object.keys(view2Map).length > 0) {
       setHasMasseView2(prev => ({ ...view2Map, ...prev }));
+    }
+    if (Object.keys(view3Map).length > 0) {
+      setHasMasseView3(prev => ({ ...view3Map, ...prev }));
     }
   }, [allConfiguredStructures, project]);
 
@@ -5475,7 +6034,41 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
           bZoom2 = Number(map.getZoom() || bZoom2);
           bCenterLat2 = Number(map.getCenter().lat || bCenterLat2);
           bCenterLng2 = Number(map.getCenter().lng || bCenterLng2);
-          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances2, sdisPoint, strVps2, strAcc2);
+          masse2 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances2, sdisPoint, strVps2, strAcc2, pdlPoint, transfoPoint);
+        }
+      }
+
+      // --- VUE 3 (si demandée et capturée) ---
+      const hasCap3 = Boolean(
+        (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50) ||
+        (captures?.masse_projet_3 && typeof captures.masse_projet_3 === 'string' && captures.masse_projet_3.length > 50) ||
+        (editedProject?.masse_capture_3 && typeof editedProject.masse_capture_3 === 'string' && editedProject.masse_capture_3.length > 50) ||
+        (editedProject?.urbanisme_captures?.masse_projet_3 && typeof editedProject.urbanisme_captures.masse_projet_3 === 'string' && editedProject.urbanisme_captures.masse_projet_3.length > 50)
+      );
+      const isView3OnMap = map && masseViewTabs[b.id] === 3;
+      const wantsVue3 = Boolean(hasMasseView3[b.id]) && (hasCap3 || isView3OnMap);
+      let masse3 = null;
+      let bZoom3 = Number(b.masse_zoom_3 || captures?.masse_zoom_3 || editedProject?.masse_zoom_3 || Math.max(12, bZoom - 3));
+      let bCenterLat3 = Number(b.masse_center_lat_3 || editedProject?.masse_center_lat_3 || bCenterLat);
+      let bCenterLng3 = Number(b.masse_center_lng_3 || editedProject?.masse_center_lng_3 || bCenterLng);
+
+      if (wantsVue3) {
+        const strDistances3 = masseDistances[b.id] || b.masseDistances || [];
+        const strVps3 = masseViewpoints[b.id] || b.masseViewpoints || null;
+        const strAcc3 = masseAccess[b.id] || b.masseAccess || null;
+        if (b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50) {
+          masse3 = b.masse_capture_3;
+        } else if (captures?.masse_projet_3 && typeof captures.masse_projet_3 === 'string' && captures.masse_projet_3.length > 50) {
+          masse3 = captures.masse_projet_3;
+        } else if (editedProject?.masse_capture_3 && typeof editedProject.masse_capture_3 === 'string' && editedProject.masse_capture_3.length > 50) {
+          masse3 = editedProject.masse_capture_3;
+        } else if (editedProject?.urbanisme_captures?.masse_projet_3 && typeof editedProject.urbanisme_captures.masse_projet_3 === 'string' && editedProject.urbanisme_captures.masse_projet_3.length > 50) {
+          masse3 = editedProject.urbanisme_captures.masse_projet_3;
+        } else if (isView3OnMap) {
+          bZoom3 = Number(map.getZoom() || bZoom3);
+          bCenterLat3 = Number(map.getCenter().lat || bCenterLat3);
+          bCenterLng3 = Number(map.getCenter().lng || bCenterLng3);
+          masse3 = await captureDirectLeafletMap(map, b, updatedBuildings, bShowDim, strDistances3, sdisPoint, strVps3, strAcc3, pdlPoint, transfoPoint);
         }
       }
 
@@ -5494,6 +6087,12 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
           masse_zoom_2: bZoom2,
           masse_center_lat_2: bCenterLat2,
           masse_center_lng_2: bCenterLng2,
+        } : {}),
+        ...(wantsVue3 && masse3 ? {
+          masse_capture_3: masse3,
+          masse_zoom_3: bZoom3,
+          masse_center_lat_3: bCenterLat3,
+          masse_center_lng_3: bCenterLng3,
         } : {})
       };
     }));
@@ -5505,8 +6104,9 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const b1CenterLat = buildingsWithMasse[0]?.masse_center_lat || lat;
     const b1CenterLng = buildingsWithMasse[0]?.masse_center_lng || lng;
     const b1Zoom = buildingsWithMasse[0]?.masse_zoom || 18;
-    const masseMap = buildingsWithMasse[0]?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture || await generateStaticMapImage(b1CenterLat, b1CenterLng, 'osm', b1Zoom, updatedBuildings, firstShowDim, b1Distances, sdisPoint);
+    const masseMap = buildingsWithMasse[0]?.masse_capture || captures?.masse_projet || editedProject?.urbanisme_captures?.masse_projet || editedProject?.masse_capture || await generateStaticMapImage(b1CenterLat, b1CenterLng, 'osm', b1Zoom, updatedBuildings, firstShowDim, b1Distances, sdisPoint, { pdlPoint, transfoPoint });
     const masseMap2 = (buildingsWithMasse[0]?.masse_capture_2 && typeof buildingsWithMasse[0].masse_capture_2 === 'string' && buildingsWithMasse[0].masse_capture_2.length > 50) ? buildingsWithMasse[0].masse_capture_2 : null;
+    const masseMap3 = (buildingsWithMasse[0]?.masse_capture_3 && typeof buildingsWithMasse[0].masse_capture_3 === 'string' && buildingsWithMasse[0].masse_capture_3.length > 50) ? buildingsWithMasse[0].masse_capture_3 : null;
 
     const allBuildingsCaptures = updatedBuildings.reduce((acc, b) => ({
       ...acc,
@@ -5528,8 +6128,10 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       ...(satMap ? { satellite: satMap } : {}),
       ...(masseMap ? { masse_projet: masseMap } : {}),
       ...(masseMap2 ? { masse_projet_2: masseMap2 } : {}),
+      ...(masseMap3 ? { masse_projet_3: masseMap3 } : {}),
       masse_zoom: buildingsWithMasse[0]?.masse_zoom || 18,
-      ...(masseMap2 ? { masse_zoom_2: buildingsWithMasse[0]?.masse_zoom_2 || 16 } : {})
+      ...(masseMap2 ? { masse_zoom_2: buildingsWithMasse[0]?.masse_zoom_2 || 16 } : {}),
+      ...(masseMap3 ? { masse_zoom_3: buildingsWithMasse[0]?.masse_zoom_3 || 15 } : {})
     };
 
     const finalPhotos = {
@@ -5547,6 +6149,10 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         masse_capture_2: b.masse_capture_2,
         masse_zoom_2: b.masse_zoom_2 || 16 
       } : {}),
+      ...(b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50 ? { 
+        masse_capture_3: b.masse_capture_3,
+        masse_zoom_3: b.masse_zoom_3 || 15 
+      } : {}),
       captures: { 
         ...(b.captures || {}), 
         ...(b.urbanisme_captures || {}),
@@ -5555,6 +6161,10 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         ...(b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50 ? {
           masse_projet_2: b.masse_capture_2,
           masse_zoom_2: b.masse_zoom_2 || 16
+        } : {}),
+        ...(b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50 ? {
+          masse_projet_3: b.masse_capture_3,
+          masse_zoom_3: b.masse_zoom_3 || 15
         } : {})
       },
       urbanisme_captures: { 
@@ -5565,6 +6175,10 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         ...(b.masse_capture_2 && typeof b.masse_capture_2 === 'string' && b.masse_capture_2.length > 50 ? {
           masse_projet_2: b.masse_capture_2,
           masse_zoom_2: b.masse_zoom_2 || 16
+        } : {}),
+        ...(b.masse_capture_3 && typeof b.masse_capture_3 === 'string' && b.masse_capture_3.length > 50 ? {
+          masse_projet_3: b.masse_capture_3,
+          masse_zoom_3: b.masse_zoom_3 || 15
         } : {})
       },
       photos: { ...(b.photos || {}), ...(b.pc_photos || {}) },
@@ -5627,6 +6241,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       terrain_numero: (activeParcellesForNotice[0]?.numero || editedProject?.cadastre_numero || '').trim(),
       terrain_surface: activeParcellesForNotice.length > 1 ? String(totalNoticeSurfaceVal) : (activeParcellesForNotice[0]?.surface || editedProject?.cadastre_surface || ''),
       sdisPoint: sdisPoint || editedProject?.sdisPoint || project?.sdisPoint || null,
+      pdlPoint: pdlPoint || editedProject?.pdlPoint || project?.pdlPoint || null,
+      transfoPoint: transfoPoint || editedProject?.transfoPoint || project?.transfoPoint || null,
       isAcama,
       isGreenInvest,
       cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
@@ -5665,6 +6281,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       masse_zoom: buildingsWithMasse[0]?.masse_zoom || 18,
       ...(masseMap2 ? { masse_capture_2: masseMap2 } : {}),
       ...(buildingsWithMasse[0]?.masse_zoom_2 ? { masse_zoom_2: buildingsWithMasse[0].masse_zoom_2 } : {}),
+      ...(masseMap3 ? { masse_capture_3: masseMap3 } : {}),
+      ...(buildingsWithMasse[0]?.masse_zoom_3 ? { masse_zoom_3: buildingsWithMasse[0].masse_zoom_3 } : {}),
       pc_photos: finalPhotos,
       photos: finalPhotos,
       buildings: enrichedBuildings,
@@ -7498,6 +8116,49 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                       <span>+ 2nde vue (zoom différent)</span>
                                     </button>
                                   )}
+
+                                  {/* Onglet Vue 3 si activée (ou bouton d'ajout si Vue 2 déjà présente) */}
+                                  {hasMasseView2[str.id] && (
+                                    hasMasseView3[str.id] ? (
+                                      <div className="flex items-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSwitchMasseView(str.id, 3)}
+                                          className={`px-2.5 py-1 rounded-l-lg font-bold text-[11px] flex items-center gap-1.5 transition-all shadow-2xs ${
+                                            masseViewTabs[str.id] === 3
+                                              ? 'bg-purple-600 text-white shadow-xs'
+                                              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                                          }`}
+                                        >
+                                          <Sparkles className="w-3.5 h-3.5" />
+                                          <span>Vue 3 (3ème page)</span>
+                                          <span className={`text-[10px] px-1 rounded ${
+                                            masseViewTabs[str.id] === 3 ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                                          }`}>
+                                            Z{str.masse_zoom_3 || 15}
+                                          </span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveMasseView3(str.id)}
+                                          title="Supprimer la 3ème vue"
+                                          className="p-1 rounded-r-lg border border-l-0 border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 text-slate-400 transition-colors"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleAddMasseView3(str.id)}
+                                        className="px-2 py-1 rounded-lg font-bold text-[11px] bg-white text-purple-700 border border-purple-200 hover:bg-purple-50 flex items-center gap-1 transition-all shadow-2xs"
+                                        title="Ajouter une 3ème capture avec un zoom différent créant une 3ème page DP2 / PC2"
+                                      >
+                                        <Plus className="w-3.5 h-3.5 text-purple-600" />
+                                        <span>+ 3ème vue (zoom différent)</span>
+                                      </button>
+                                    )
+                                  )}
                                 </div>
 
                                  {/* Boutons d'action droite : Côtes, Carte fixe, Tracer distance & Capturer */}
@@ -7603,6 +8264,82 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                        <X className="w-3 h-3" />
                                      </button>
                                    )}
+
+                                   {/* Outil de placement PDL ENEDIS */}
+                                   <div className="flex items-center gap-0.5">
+                                     <button
+                                       type="button"
+                                       onClick={() => {
+                                         setIsPlacingPdl(!isPlacingPdl);
+                                         if (isPlacingTransfo) setIsPlacingTransfo(false);
+                                         if (isPlacingSdis) setIsPlacingSdis(false);
+                                       }}
+                                       className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
+                                         isPlacingPdl
+                                           ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs animate-pulse'
+                                           : pdlPoint
+                                             ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                       }`}
+                                       title="Placer ou déplacer le Point de Livraison (PDL) Enedis sur la carte avec raccordement automatique"
+                                     >
+                                       <span className="text-xs">🔌</span>
+                                       <span>{isPlacingPdl ? 'Cliquer carte...' : (pdlPoint ? 'PDL ENEDIS' : '+ PDL')}</span>
+                                     </button>
+
+                                     {pdlPoint && (
+                                       <button
+                                         type="button"
+                                         onClick={() => {
+                                           setPdlPoint(null);
+                                           setIsPlacingPdl(false);
+                                           setEditedProject(prev => ({ ...prev, pdlPoint: null }));
+                                         }}
+                                         className="p-1 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-red-50 hover:text-red-600 text-emerald-700 transition-colors"
+                                         title="Supprimer le point PDL"
+                                       >
+                                         <X className="w-3 h-3" />
+                                       </button>
+                                     )}
+                                   </div>
+
+                                   {/* Outil de placement Transformateur HTA */}
+                                   <div className="flex items-center gap-0.5">
+                                     <button
+                                       type="button"
+                                       onClick={() => {
+                                         setIsPlacingTransfo(!isPlacingTransfo);
+                                         if (isPlacingPdl) setIsPlacingPdl(false);
+                                         if (isPlacingSdis) setIsPlacingSdis(false);
+                                       }}
+                                       className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
+                                         isPlacingTransfo
+                                           ? 'bg-blue-600 text-white border-blue-700 shadow-xs animate-pulse'
+                                           : transfoPoint
+                                             ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100'
+                                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                       }`}
+                                       title="Placer ou déplacer le Transformateur HTA sur la carte avec raccordement automatique"
+                                     >
+                                       <span className="text-xs">⚡</span>
+                                       <span>{isPlacingTransfo ? 'Cliquer carte...' : (transfoPoint ? 'TRANSFO HTA' : '+ Transfo')}</span>
+                                     </button>
+
+                                     {transfoPoint && (
+                                       <button
+                                         type="button"
+                                         onClick={() => {
+                                           setTransfoPoint(null);
+                                           setIsPlacingTransfo(false);
+                                           setEditedProject(prev => ({ ...prev, transfoPoint: null }));
+                                         }}
+                                         className="p-1 rounded-lg border border-blue-200 bg-blue-50 hover:bg-red-50 hover:text-red-600 text-blue-700 transition-colors"
+                                         title="Supprimer le point Transfo"
+                                       >
+                                         <X className="w-3 h-3" />
+                                       </button>
+                                     )}
+                                   </div>
 
                                     {/* Bouton Toggle Cadastre (IGN Parcellaire Express) */}
                                     {(() => {
@@ -7869,10 +8606,10 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                  <MapContainer
                                    key={`map-masse-${str.id}-${activeStructures.length}`}
                                    center={[
-                                     Number((masseViewTabs[str.id] === 2 ? str.masse_center_lat_2 : str.masse_center_lat) || strLat),
-                                     Number((masseViewTabs[str.id] === 2 ? str.masse_center_lng_2 : str.masse_center_lng) || strLng)
+                                     Number((masseViewTabs[str.id] === 3 ? str.masse_center_lat_3 : (masseViewTabs[str.id] === 2 ? str.masse_center_lat_2 : str.masse_center_lat)) || strLat),
+                                     Number((masseViewTabs[str.id] === 3 ? str.masse_center_lng_3 : (masseViewTabs[str.id] === 2 ? str.masse_center_lng_2 : str.masse_center_lng)) || strLng)
                                    ]}
-                                   zoom={Number((masseViewTabs[str.id] === 2 ? str.masse_zoom_2 : str.masse_zoom) || (masseViewTabs[str.id] === 2 ? 16 : 18))}
+                                   zoom={Number((masseViewTabs[str.id] === 3 ? str.masse_zoom_3 : (masseViewTabs[str.id] === 2 ? str.masse_zoom_2 : str.masse_zoom)) || (masseViewTabs[str.id] === 3 ? 15 : (masseViewTabs[str.id] === 2 ? 16 : 18)))}
                                    scrollWheelZoom={true}
                                    className="h-full w-full"
                                    style={{ height: '100%', width: '100%' }}
@@ -7928,6 +8665,25 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                        setSdisPoint(pt);
                                        setIsPlacingSdis(false);
                                        setEditedProject(prev => ({ ...prev, sdisPoint: pt }));
+                                     }}
+                                   />
+
+                                   {/* Raccordement électrique automatique Dalle BESS -> PDL -> Transfo */}
+                                   <MasseGridConnectionLayer
+                                     corners={corners}
+                                     pdlPoint={pdlPoint}
+                                     isPlacingPdl={isPlacingPdl}
+                                     onSetPdlPoint={(pt) => {
+                                       setPdlPoint(pt);
+                                       setIsPlacingPdl(false);
+                                       setEditedProject(prev => ({ ...prev, pdlPoint: pt }));
+                                     }}
+                                     transfoPoint={transfoPoint}
+                                     isPlacingTransfo={isPlacingTransfo}
+                                     onSetTransfoPoint={(pt) => {
+                                       setTransfoPoint(pt);
+                                       setIsPlacingTransfo(false);
+                                       setEditedProject(prev => ({ ...prev, transfoPoint: pt }));
                                      }}
                                    />
 
