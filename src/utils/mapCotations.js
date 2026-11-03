@@ -460,26 +460,54 @@ export function drawViewpointCone(ctx, camPt, angleDeg = 0, distPx = 45, label =
 }
 
 /**
- * Dessine une flèche d'accès terrain sur un canvas 2D
+ * Dessine une flèche d'accès terrain sur un canvas 2D.
+ * La flèche part depuis la droite (si orientée vers l'Est) ou la gauche (si orientée vers l'Ouest)
+ * de la bulle où est indiqué "ACCÈS TERRAIN".
  */
-export function drawAccessArrow(ctx, accPt, angleDeg = 0, lenPx = 38, label = 'ACCÈS TERRAIN') {
+export function drawAccessArrow(ctx, accPt, angleDeg = 0, lenPx = 42, label = 'ACCÈS TERRAIN') {
   if (!accPt) return;
   const rad = (angleDeg * Math.PI) / 180;
-  const targetX = accPt.x + Math.sin(rad) * lenPx;
-  const targetY = accPt.y - Math.cos(rad) * lenPx;
 
   ctx.save();
 
-  // Corps de flèche large vert
+  // Dimensions de la bulle "ACCÈS TERRAIN" centrée sur accPt
+  const textLabel = label || 'ACCÈS TERRAIN';
+  ctx.font = 'bold 9px sans-serif';
+  const textW = ctx.measureText(textLabel).width;
+  const badgeW = Math.max(86, textW + 20);
+  const badgeH = 19;
+  const bx = accPt.x - badgeW / 2;
+  const by = accPt.y - badgeH / 2;
+
+  // Point de départ de la flèche : bord droit ou bord gauche de la bulle "ACCÈS TERRAIN"
+  const isRight = Math.sin(rad) >= 0;
+  const startX = isRight ? (bx + badgeW) : bx;
+  const startY = accPt.y;
+
+  const shaftLen = Math.max(42, lenPx);
+  const targetX = startX + Math.sin(rad) * shaftLen;
+  const targetY = startY - Math.cos(rad) * shaftLen;
+
+  // 1. Halo blanc sous le corps de flèche pour un contraste parfait sur la carte
   ctx.beginPath();
-  ctx.moveTo(accPt.x, accPt.y);
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(targetX, targetY);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.lineWidth = 6.5;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // 2. Corps de flèche large vert partant du bord gauche ou droit de la bulle
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
   ctx.lineTo(targetX, targetY);
   ctx.strokeStyle = '#16a34a';
   ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
   ctx.stroke();
 
-  // Pointe de flèche
-  const arrLen = 10;
+  // 3. Pointe de flèche au bout du segment
+  const arrLen = 11;
   const arrAngle = Math.PI / 5;
   const backAngle = rad + Math.PI;
   ctx.beginPath();
@@ -489,22 +517,17 @@ export function drawAccessArrow(ctx, accPt, angleDeg = 0, lenPx = 38, label = 'A
   ctx.closePath();
   ctx.fillStyle = '#16a34a';
   ctx.fill();
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   ctx.strokeStyle = '#ffffff';
   ctx.stroke();
 
-  // Badge d'accès
-  const badgeW = 90;
-  const badgeH = 18;
-  const bx = accPt.x - badgeW / 2;
-  const by = accPt.y - 20;
-
+  // 4. Bulle "ACCÈS TERRAIN" (forme pilule arrondie)
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(bx, by, badgeW, badgeH, 5);
+  if (ctx.roundRect) ctx.roundRect(bx, by, badgeW, badgeH, 9.5);
   else ctx.rect(bx, by, badgeW, badgeH);
   ctx.fillStyle = '#15803d';
   ctx.fill();
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.8;
   ctx.strokeStyle = '#ffffff';
   ctx.stroke();
 
@@ -512,7 +535,7 @@ export function drawAccessArrow(ctx, accPt, angleDeg = 0, lenPx = 38, label = 'A
   ctx.font = 'bold 9px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`➜ ${label}`, accPt.x, by + badgeH / 2);
+  ctx.fillText(textLabel, accPt.x, by + badgeH / 2);
 
   ctx.restore();
 }

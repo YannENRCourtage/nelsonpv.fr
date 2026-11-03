@@ -548,7 +548,8 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
     // 2e. Rendu de la voie d'accès terrain
     if (accessPoint && accessPoint.enabled && accessPoint.lat && accessPoint.lng) {
       const pt = map.latLngToContainerPoint([accessPoint.lat, accessPoint.lng]);
-      drawAccessArrow(ctx, pt, accessPoint.angle || 0, 38, 'ACCÈS TERRAIN');
+      const accLenPx = Math.max(42, Number(accessPoint.dist || 20) * pxPerMeter * 0.75);
+      drawAccessArrow(ctx, pt, accessPoint.angle || 0, accLenPx, 'ACCÈS TERRAIN');
     }
 
     // 2f. Raccordement électrique automatique Dalle BESS -> PDL -> Transfo
@@ -560,7 +561,7 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
       const strLng = Number(targetStr?.lng || (targetStr?.gps ? targetStr.gps.split(',')[1] : null) || map.getCenter().lng);
       const corners = getBuildingCorners(strLat, strLng, sLen, totalWid, sRot);
 
-      const drawCable = (ptA, ptB, color, labelText) => {
+      const drawCable = (ptA, ptB, color) => {
         ctx.save();
         // Ombre / contour noir pour contraste
         ctx.beginPath();
@@ -580,36 +581,55 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
         ctx.setLineDash([7, 5]);
         ctx.stroke();
         ctx.setLineDash([]);
-
-        // Label au milieu
-        if (labelText) {
-          const midX = (ptA.x + ptB.x) / 2;
-          const midY = (ptA.y + ptB.y) / 2;
-          ctx.font = 'bold 8.5px sans-serif';
-          const textW = ctx.measureText(labelText).width;
-          const padX = 6;
-          const padY = 3;
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-          ctx.beginPath();
-          ctx.roundRect(midX - textW / 2 - padX, midY - 7 - padY, textW + padX * 2, 14 + padY * 2, 4);
-          ctx.fill();
-          ctx.lineWidth = 1;
-          ctx.strokeStyle = color;
-          ctx.stroke();
-
-          ctx.fillStyle = '#ffffff';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(labelText, midX, midY);
-        }
         ctx.restore();
       };
 
-      const drawBadge = (pt, color, text) => {
+      const pickBadgeDistanceSide = (pt) => {
+        const leftCand = { x: pt.x - 60, y: pt.y - 19 };
+        const rightCand = { x: pt.x + 60, y: pt.y - 19 };
+
+        const distToSeg = (p, a, b) => {
+          const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+          if (l2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+          let t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
+          t = Math.max(0, Math.min(1, t));
+          return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
+        };
+
+        let minLeft = Infinity;
+        let minRight = Infinity;
+
+        if (customDistances && Array.isArray(customDistances)) {
+          customDistances.forEach(cd => {
+            if (cd.p1 && cd.p2) {
+              const p1 = map.latLngToContainerPoint(cd.p1);
+              const p2 = map.latLngToContainerPoint(cd.p2);
+              minLeft = Math.min(minLeft, distToSeg(leftCand, p1, p2));
+              minRight = Math.min(minRight, distToSeg(rightCand, p1, p2));
+            }
+          });
+        }
+
+        if (corners && corners.length >= 4) {
+          const cPts = corners.map(c => map.latLngToContainerPoint(Array.isArray(c) ? c : [c.lat, c.lng]));
+          for (let i = 0; i < cPts.length; i++) {
+            const a = cPts[i];
+            const b = cPts[(i + 1) % cPts.length];
+            minLeft = Math.min(minLeft, distToSeg(leftCand, a, b));
+            minRight = Math.min(minRight, distToSeg(rightCand, a, b));
+          }
+        }
+
+        if (pt.x < 140) return 'right';
+        if (pt.x > size.x - 140) return 'left';
+        return minLeft >= minRight ? 'left' : 'right';
+      };
+
+      const drawBadge = (pt, color, text, distText = null, side = 'left') => {
         ctx.save();
         ctx.font = 'bold 9px sans-serif';
         const textW = ctx.measureText(text).width;
-        const badgeW = textW + 16;
+        const badgeW = textW + 14;
         const badgeH = 18;
         const bx = pt.x - badgeW / 2;
         const by = pt.y - 28;
@@ -637,6 +657,31 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, pt.x, by + badgeH / 2);
+
+        // Indication de distance à droite ou à gauche du badge PDL / TRANSFO
+        if (distText) {
+          ctx.font = 'bold 8.5px sans-serif';
+          const dTextW = ctx.measureText(distText).width;
+          const dPadX = 6;
+          const dW = dTextW + dPadX * 2;
+          const dH = 16;
+          const dY = by + (badgeH - dH) / 2;
+          const dX = side === 'right' ? (bx + badgeW + 5) : (bx - dW - 5);
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+          ctx.beginPath();
+          ctx.roundRect(dX, dY, dW, dH, 4);
+          ctx.fill();
+          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = color;
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(distText, dX + dW / 2, dY + dH / 2);
+        }
+
         ctx.restore();
       };
 
@@ -651,20 +696,23 @@ async function captureDirectLeafletMap(map, targetStr, allActiveStructures = [],
         if (hasPdl) {
           const pdlPt = map.latLngToContainerPoint([pdlPoint.lat, pdlPoint.lng]);
           const d1 = getPointsDistanceMeters(closest, pdlPoint);
-          drawCable(closestPt, pdlPt, '#059669', `⚡ BESS → PDL (${d1} m)`);
+          drawCable(closestPt, pdlPt, '#059669');
 
           if (hasTransfo) {
             const transfoPt = map.latLngToContainerPoint([transfoPoint.lat, transfoPoint.lng]);
             const d2 = getPointsDistanceMeters(pdlPoint, transfoPoint);
-            drawCable(pdlPt, transfoPt, '#2563eb', `⚡ PDL → Transfo (${d2} m)`);
-            drawBadge(transfoPt, '#1d4ed8', '⚡ TRANSFO HTA');
+            drawCable(pdlPt, transfoPt, '#2563eb');
+            const transfoSide = pickBadgeDistanceSide(transfoPt);
+            drawBadge(transfoPt, '#1d4ed8', '⚡ TRANSFO', `⚡ PDL → TRANSFO (${d2} m)`, transfoSide);
           }
-          drawBadge(pdlPt, '#047857', '🔌 PDL ENEDIS');
+          const pdlSide = pickBadgeDistanceSide(pdlPt);
+          drawBadge(pdlPt, '#047857', '🔌 PDL', `⚡ BESS → PDL (${d1} m)`, pdlSide);
         } else if (hasTransfo) {
           const transfoPt = map.latLngToContainerPoint([transfoPoint.lat, transfoPoint.lng]);
           const d = getPointsDistanceMeters(closest, transfoPoint);
-          drawCable(closestPt, transfoPt, '#2563eb', `⚡ BESS → Transfo (${d} m)`);
-          drawBadge(transfoPt, '#1d4ed8', '⚡ TRANSFO HTA');
+          drawCable(closestPt, transfoPt, '#2563eb');
+          const transfoSide = pickBadgeDistanceSide(transfoPt);
+          drawBadge(transfoPt, '#1d4ed8', '⚡ TRANSFO', `⚡ BESS → TRANSFO (${d} m)`, transfoSide);
         }
       }
     }
@@ -1104,7 +1152,8 @@ function MasseGridConnectionLayer({
   onSetPdlPoint,
   transfoPoint,
   isPlacingTransfo,
-  onSetTransfoPoint
+  onSetTransfoPoint,
+  customDistances = []
 }) {
   const map = useMap();
 
@@ -1144,10 +1193,60 @@ function MasseGridConnectionLayer({
   const distPdlToTransfo = (hasPdl && hasTransfo) ? getPointsDistanceMeters(pdlPoint, transfoPoint) : null;
   const distBessToTransfo = (closestCorner && !hasPdl && hasTransfo) ? getPointsDistanceMeters(closestCorner, transfoPoint) : null;
 
-  // Milieux pour les labels
-  const midBessPdl = (closestCorner && hasPdl) ? getPointsMidpoint(closestCorner, pdlPoint) : null;
-  const midPdlTransfo = (hasPdl && hasTransfo) ? getPointsMidpoint(pdlPoint, transfoPoint) : null;
-  const midBessTransfo = (closestCorner && !hasPdl && hasTransfo) ? getPointsMidpoint(closestCorner, transfoPoint) : null;
+  // Choix du côté (gauche ou droite) pour afficher la distance à côté du badge PDL / TRANSFO
+  const pickSideForLatLng = (ll) => {
+    if (!map || !ll) return 'left';
+    try {
+      const pt = map.latLngToContainerPoint([ll.lat, ll.lng]);
+      const size = map.getSize();
+      const leftCand = { x: pt.x - 60, y: pt.y - 19 };
+      const rightCand = { x: pt.x + 60, y: pt.y - 19 };
+
+      const distToSeg = (p, a, b) => {
+        const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+        if (l2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+        let t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
+      };
+
+      let minLeft = Infinity;
+      let minRight = Infinity;
+
+      if (customDistances && Array.isArray(customDistances)) {
+        customDistances.forEach(cd => {
+          if (cd.p1 && cd.p2) {
+            const p1 = map.latLngToContainerPoint(cd.p1);
+            const p2 = map.latLngToContainerPoint(cd.p2);
+            minLeft = Math.min(minLeft, distToSeg(leftCand, p1, p2));
+            minRight = Math.min(minRight, distToSeg(rightCand, p1, p2));
+          }
+        });
+      }
+
+      if (corners && corners.length >= 4) {
+        const cPts = corners.map(c => map.latLngToContainerPoint(Array.isArray(c) ? c : [c.lat, c.lng]));
+        for (let i = 0; i < cPts.length; i++) {
+          const a = cPts[i];
+          const b = cPts[(i + 1) % cPts.length];
+          minLeft = Math.min(minLeft, distToSeg(leftCand, a, b));
+          minRight = Math.min(minRight, distToSeg(rightCand, a, b));
+        }
+      }
+
+      if (pt.x < 140) return 'right';
+      if (pt.x > size.x - 140) return 'left';
+      return minLeft >= minRight ? 'left' : 'right';
+    } catch (_) {
+      return 'left';
+    }
+  };
+
+  const pdlSide = hasPdl ? pickSideForLatLng(pdlPoint) : 'left';
+  const transfoSide = hasTransfo ? pickSideForLatLng(transfoPoint) : 'left';
+  const transfoDistText = hasPdl
+    ? (distPdlToTransfo !== null ? `⚡ PDL → TRANSFO (${distPdlToTransfo} m)` : null)
+    : (distBessToTransfo !== null ? `⚡ BESS → TRANSFO (${distBessToTransfo} m)` : null);
 
   return (
     <>
@@ -1170,22 +1269,6 @@ function MasseGridConnectionLayer({
             radius={4.5}
             pathOptions={{ color: '#ffffff', fillColor: '#059669', fillOpacity: 1, weight: 1.5, interactive: false }}
           />
-          {/* Label de métrage */}
-          {midBessPdl && (
-            <Marker
-              position={midBessPdl}
-              interactive={false}
-              icon={L.divIcon({
-                className: 'bg-transparent',
-                html: `
-                  <div style="transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.88); color: #34d399; font-size: 9.5px; font-weight: 800; padding: 1.5px 6px; border-radius: 4px; border: 1px solid #059669; box-shadow: 0 1px 4px rgba(0,0,0,0.4); white-space: nowrap; pointer-events: none; font-family: sans-serif; letter-spacing: 0.3px;">
-                    ⚡ BESS → PDL (${distBessToPdl} m)
-                  </div>
-                `,
-                iconSize: [0, 0]
-              })}
-            />
-          )}
         </>
       )}
 
@@ -1202,22 +1285,6 @@ function MasseGridConnectionLayer({
             positions={[[pdlPoint.lat, pdlPoint.lng], [transfoPoint.lat, transfoPoint.lng]]}
             pathOptions={{ color: '#2563eb', weight: 3.5, dashArray: '7, 6', opacity: 0.95, lineCap: 'round', interactive: false }}
           />
-          {/* Label de métrage */}
-          {midPdlTransfo && (
-            <Marker
-              position={midPdlTransfo}
-              interactive={false}
-              icon={L.divIcon({
-                className: 'bg-transparent',
-                html: `
-                  <div style="transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.88); color: #60a5fa; font-size: 9.5px; font-weight: 800; padding: 1.5px 6px; border-radius: 4px; border: 1px solid #2563eb; box-shadow: 0 1px 4px rgba(0,0,0,0.4); white-space: nowrap; pointer-events: none; font-family: sans-serif; letter-spacing: 0.3px;">
-                    ⚡ PDL → Transfo (${distPdlToTransfo} m)
-                  </div>
-                `,
-                iconSize: [0, 0]
-              })}
-            />
-          )}
         </>
       )}
 
@@ -1237,25 +1304,10 @@ function MasseGridConnectionLayer({
             radius={4.5}
             pathOptions={{ color: '#ffffff', fillColor: '#2563eb', fillOpacity: 1, weight: 1.5, interactive: false }}
           />
-          {midBessTransfo && (
-            <Marker
-              position={midBessTransfo}
-              interactive={false}
-              icon={L.divIcon({
-                className: 'bg-transparent',
-                html: `
-                  <div style="transform: translate(-50%, -50%); background: rgba(15, 23, 42, 0.88); color: #60a5fa; font-size: 9.5px; font-weight: 800; padding: 1.5px 6px; border-radius: 4px; border: 1px solid #2563eb; box-shadow: 0 1px 4px rgba(0,0,0,0.4); white-space: nowrap; pointer-events: none; font-family: sans-serif; letter-spacing: 0.3px;">
-                    ⚡ BESS → Transfo (${distBessToTransfo} m)
-                  </div>
-                `,
-                iconSize: [0, 0]
-              })}
-            />
-          )}
         </>
       )}
 
-      {/* 3. Marqueur interactif PDL */}
+      {/* 3. Marqueur interactif PDL avec distance à sa gauche ou à sa droite */}
       {hasPdl && (
         <Marker
           position={[pdlPoint.lat, pdlPoint.lng]}
@@ -1270,9 +1322,16 @@ function MasseGridConnectionLayer({
             className: 'bg-transparent',
             html: `
               <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none;">
-                <div style="background: #047857; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2.5px 7px; border-radius: 6px; border: 1.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px; font-family: sans-serif;">
-                  <span style="font-size: 11px; line-height: 1;">🔌</span>
-                  <span>PDL ENEDIS</span>
+                <div style="position: relative; display: flex; align-items: center;">
+                  <div style="background: #047857; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2.5px 7px; border-radius: 6px; border: 1.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px; font-family: sans-serif;">
+                    <span style="font-size: 11px; line-height: 1;">🔌</span>
+                    <span>PDL</span>
+                  </div>
+                  ${distBessToPdl !== null ? `
+                    <div style="position: absolute; ${pdlSide === 'right' ? 'left: calc(100% + 5px);' : 'right: calc(100% + 5px);'} top: 50%; transform: translateY(-50%); background: rgba(15, 23, 42, 0.90); color: #ffffff; font-size: 9.5px; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1.2px solid #059669; box-shadow: 0 1px 4px rgba(0,0,0,0.4); white-space: nowrap; pointer-events: none; font-family: sans-serif; letter-spacing: 0.3px;">
+                      ⚡ BESS → PDL (${distBessToPdl} m)
+                    </div>
+                  ` : ''}
                 </div>
                 <div style="width: 3px; height: 12px; background: #047857; box-shadow: 0 1px 2px rgba(0,0,0,0.3);"></div>
                 <div style="width: 8px; height: 8px; background: #047857; border-radius: 50%; border: 1.5px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
@@ -1283,7 +1342,7 @@ function MasseGridConnectionLayer({
         />
       )}
 
-      {/* 4. Marqueur interactif Transfo */}
+      {/* 4. Marqueur interactif Transfo avec distance à sa gauche ou à sa droite */}
       {hasTransfo && (
         <Marker
           position={[transfoPoint.lat, transfoPoint.lng]}
@@ -1298,9 +1357,16 @@ function MasseGridConnectionLayer({
             className: 'bg-transparent',
             html: `
               <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none;">
-                <div style="background: #1d4ed8; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2.5px 7px; border-radius: 6px; border: 1.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px; font-family: sans-serif;">
-                  <span style="font-size: 11px; line-height: 1;">⚡</span>
-                  <span>TRANSFO HTA</span>
+                <div style="position: relative; display: flex; align-items: center;">
+                  <div style="background: #1d4ed8; color: #ffffff; font-size: 10px; font-weight: 900; padding: 2.5px 7px; border-radius: 6px; border: 1.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px; font-family: sans-serif;">
+                    <span style="font-size: 11px; line-height: 1;">⚡</span>
+                    <span>TRANSFO</span>
+                  </div>
+                  ${transfoDistText ? `
+                    <div style="position: absolute; ${transfoSide === 'right' ? 'left: calc(100% + 5px);' : 'right: calc(100% + 5px);'} top: 50%; transform: translateY(-50%); background: rgba(15, 23, 42, 0.90); color: #ffffff; font-size: 9.5px; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1.2px solid #2563eb; box-shadow: 0 1px 4px rgba(0,0,0,0.4); white-space: nowrap; pointer-events: none; font-family: sans-serif; letter-spacing: 0.3px;">
+                      ${transfoDistText}
+                    </div>
+                  ` : ''}
                 </div>
                 <div style="width: 3px; height: 12px; background: #1d4ed8; box-shadow: 0 1px 2px rgba(0,0,0,0.3);"></div>
                 <div style="width: 8px; height: 8px; background: #1d4ed8; border-radius: 50%; border: 1.5px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
@@ -1669,7 +1735,7 @@ function SingleAccessItem({ accessPoint, targetCenter = null, onUpdateAccess, is
   const lat = accessPoint.lat;
   const lng = accessPoint.lng;
   const angle = Number(accessPoint.angle || 0);
-  const dist = Number(accessPoint.dist || 20);
+  const dist = Number(accessPoint.dist || 25);
 
   const lineRef = useRef(null);
   const tipMarkerRef = useRef(null);
@@ -1680,8 +1746,30 @@ function SingleAccessItem({ accessPoint, targetCenter = null, onUpdateAccess, is
   const rad = (angle * Math.PI) / 180;
   const mPerLat = 111139;
   const mPerLng = 111139 * Math.cos((lat * Math.PI) / 180);
-  const tipLat = lat + (Math.cos(rad) * dist) / mPerLat;
-  const tipLng = lng + (Math.sin(rad) * dist) / (mPerLng || 1);
+
+  // Calcul du bord droit ou gauche de la bulle "ACCÈS TERRAIN" pour que la flèche parte de ce bord
+  const getEdgeAndTip = (bLat, bLng, aDeg, dMeters) => {
+    const r = (aDeg * Math.PI) / 180;
+    const isRight = Math.sin(r) >= 0;
+    const mPL = 111139;
+    const mPG = 111139 * Math.cos((bLat * Math.PI) / 180);
+    let sLat = bLat;
+    let sLng = bLng;
+    if (map) {
+      try {
+        const pt = map.latLngToContainerPoint([bLat, bLng]);
+        const edgePt = L.point(pt.x + (isRight ? 68 : -68), pt.y);
+        const edgeLl = map.containerPointToLatLng(edgePt);
+        sLat = edgeLl.lat;
+        sLng = edgeLl.lng;
+      } catch (_) {}
+    }
+    const tLat = sLat + (Math.cos(r) * dMeters) / mPL;
+    const tLng = sLng + (Math.sin(r) * dMeters) / (mPG || 1);
+    return { sLat, sLng, tLat, tLng };
+  };
+
+  const { sLat: startLat, sLng: startLng, tLat: tipLat, tLng: tipLng } = getEdgeAndTip(lat, lng, angle, dist);
 
   const baseIcon = useMemo(() => {
     return L.divIcon({
@@ -1689,7 +1777,6 @@ function SingleAccessItem({ accessPoint, targetCenter = null, onUpdateAccess, is
       html: `
         <div style="width: 172px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: grab; user-select: none; pointer-events: auto;">
           <div style="background: #16a34a; color: #ffffff; font-size: 11.5px; font-weight: 800; padding: 5px 12px; border-radius: 9999px; border: 2.5px solid #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.45); white-space: nowrap; display: flex; align-items: center; gap: 6px; font-family: sans-serif; letter-spacing: 0.5px; pointer-events: auto;">
-            <span style="font-size: 14px; font-weight: 900;">➜</span>
             <span>ACCÈS TERRAIN</span>
             <span id="acc-badge-angle" style="font-size: 10px; opacity: 0.95; background: rgba(0,0,0,0.3); padding: 1.5px 6px; border-radius: 5px; font-family: monospace; font-weight: 900;">${Math.round(angle)}°</span>
           </div>
@@ -1718,10 +1805,10 @@ function SingleAccessItem({ accessPoint, targetCenter = null, onUpdateAccess, is
 
   return (
     <>
-      {/* Ligne flèche verte */}
+      {/* Ligne flèche verte partant de la droite ou de la gauche de la bulle ACCÈS TERRAIN */}
       <Polyline
         ref={lineRef}
-        positions={[[lat, lng], [tipLat, tipLng]]}
+        positions={[[startLat, startLng], [tipLat, tipLng]]}
         interactive={false}
         pathOptions={{ color: '#16a34a', weight: 5 }}
       />
@@ -1739,14 +1826,10 @@ function SingleAccessItem({ accessPoint, targetCenter = null, onUpdateAccess, is
           drag(e) {
             const pos = e.target.getLatLng();
             const a = accRef.current.angle || 0;
-            const d = accRef.current.dist || 20;
-            const r = (a * Math.PI) / 180;
-            const mPL = 111139;
-            const mPG = 111139 * Math.cos((pos.lat * Math.PI) / 180);
-            const nTLat = pos.lat + (Math.cos(r) * d) / mPL;
-            const nTLng = pos.lng + (Math.sin(r) * d) / (mPG || 1);
+            const d = accRef.current.dist || 25;
+            const { sLat: nSLat, sLng: nSLng, tLat: nTLat, tLng: nTLng } = getEdgeAndTip(pos.lat, pos.lng, a, d);
 
-            if (lineRef.current) lineRef.current.setLatLngs([[pos.lat, pos.lng], [nTLat, nTLng]]);
+            if (lineRef.current) lineRef.current.setLatLngs([[nSLat, nSLng], [nTLat, nTLng]]);
             if (tipMarkerRef.current) tipMarkerRef.current.setLatLng([nTLat, nTLng]);
           },
           dragend(e) {
@@ -1882,9 +1965,8 @@ function SingleAccessItem({ accessPoint, targetCenter = null, onUpdateAccess, is
             const dy = (pos.lat - curLat) * mPL;
             const dx = (pos.lng - curLng) * mPG;
             const newAngle = Math.round((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360);
-            const newDist = Math.max(10, Math.min(60, Math.round(Math.sqrt(dx * dx + dy * dy))));
-
-            if (lineRef.current) lineRef.current.setLatLngs([[curLat, curLng], [pos.lat, pos.lng]]);
+            const { sLat: nSLat, sLng: nSLng } = getEdgeAndTip(curLat, curLng, newAngle, 25);
+            if (lineRef.current) lineRef.current.setLatLngs([[nSLat, nSLng], [pos.lat, pos.lng]]);
 
             const badgeEl = document.getElementById('acc-badge-angle');
             if (badgeEl) badgeEl.textContent = `${newAngle}°`;
@@ -1903,7 +1985,10 @@ function SingleAccessItem({ accessPoint, targetCenter = null, onUpdateAccess, is
             const dy = (pos.lat - curLat) * mPL;
             const dx = (pos.lng - curLng) * mPG;
             const finalAngle = Math.round((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360);
-            const finalDist = Math.max(10, Math.min(60, Math.round(Math.sqrt(dx * dx + dy * dy))));
+            const { sLat: nSLat, sLng: nSLng } = getEdgeAndTip(curLat, curLng, finalAngle, 25);
+            const dyEdge = (pos.lat - nSLat) * mPL;
+            const dxEdge = (pos.lng - nSLng) * mPG;
+            const finalDist = Math.max(12, Math.min(70, Math.round(Math.sqrt(dxEdge * dxEdge + dyEdge * dyEdge))));
             if (onUpdateAccess) {
               onUpdateAccess({ ...accRef.current, angle: finalAngle, dist: finalDist });
             }
@@ -8491,7 +8576,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                        title="Placer ou déplacer le Point de Livraison (PDL) Enedis sur la carte avec raccordement automatique"
                                      >
                                        <span className="text-xs">🔌</span>
-                                       <span>{isPlacingPdl ? 'Cliquer carte...' : (pdlPoint ? 'PDL ENEDIS' : '+ PDL')}</span>
+                                       <span>{isPlacingPdl ? 'Cliquer carte...' : (pdlPoint ? 'PDL' : '+ PDL')}</span>
                                      </button>
 
                                      {pdlPoint && (
@@ -8529,7 +8614,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                        title="Placer ou déplacer le Transformateur HTA sur la carte avec raccordement automatique"
                                      >
                                        <span className="text-xs">⚡</span>
-                                       <span>{isPlacingTransfo ? 'Cliquer carte...' : (transfoPoint ? 'TRANSFO HTA' : '+ Transfo')}</span>
+                                       <span>{isPlacingTransfo ? 'Cliquer carte...' : (transfoPoint ? 'TRANSFO' : '+ Transfo')}</span>
                                      </button>
 
                                      {transfoPoint && (
@@ -8892,6 +8977,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                        setIsPlacingTransfo(false);
                                        setEditedProject(prev => ({ ...prev, transfoPoint: pt }));
                                      }}
+                                     customDistances={masseDistances[str.id] || []}
                                    />
 
                                    {/* Tracés de distance / côtes manuelles enregistrées et outil de tracé interactif */}

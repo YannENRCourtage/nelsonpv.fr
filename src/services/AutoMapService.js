@@ -436,7 +436,8 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
             const accExactY = ((1 - Math.log(Math.tan(accRad) + 1 / Math.cos(accRad)) / Math.PI) / 2) * n;
             const ax = centerX + (accExactX - exactX) * tileSize;
             const ay = centerY + (accExactY - exactY) * tileSize;
-            drawAccessArrow(ctx, { x: ax, y: ay }, acc.angle || 0, 38, 'ACCÈS TERRAIN');
+            const accLenPx = Math.max(42, Number(acc.dist || 20) * pxPerMeter * 0.75);
+            drawAccessArrow(ctx, { x: ax, y: ay }, acc.angle || 0, accLenPx, 'ACCÈS TERRAIN');
           }
 
           // Raccordement électrique automatique Dalle BESS -> PDL -> Transfo
@@ -476,9 +477,13 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
               transfoPx = { x: centerX + (ex - exactX) * tileSize, y: centerY + (ey - exactY) * tileSize };
             }
 
+            let d1Label = null;
+            let d2Label = null;
+
             // Câble 1 : Dalle BESS -> PDL
             if (pdlPx) {
               const dDistMeters = Math.hypot(pdlPx.x - bestCorner.x, pdlPx.y - bestCorner.y) * metersPerPx;
+              d1Label = `⚡ BESS → PDL (${dDistMeters.toFixed(1)} m)`;
               ctx.save();
               ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
               ctx.lineWidth = 5;
@@ -503,24 +508,13 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
               ctx.strokeStyle = '#ffffff';
               ctx.lineWidth = 1.5;
               ctx.stroke();
-
-              const midX = (bestCorner.x + pdlPx.x) / 2;
-              const midY = (bestCorner.y + pdlPx.y) / 2;
-              const lbl = `⚡ BESS → PDL (${dDistMeters.toFixed(1)} m)`;
-              ctx.font = 'bold 9px sans-serif';
-              const tw = ctx.measureText(lbl).width;
-              ctx.fillStyle = 'rgba(6, 78, 59, 0.9)';
-              ctx.fillRect(midX - tw / 2 - 4, midY - 7, tw + 8, 14);
-              ctx.fillStyle = '#ffffff';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(lbl, midX, midY);
               ctx.restore();
             }
 
             // Câble 2 : PDL -> Transfo
             if (pdlPx && transfoPx) {
               const dDistMeters = Math.hypot(transfoPx.x - pdlPx.x, transfoPx.y - pdlPx.y) * metersPerPx;
+              d2Label = `⚡ PDL → TRANSFO (${dDistMeters.toFixed(1)} m)`;
               ctx.save();
               ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
               ctx.lineWidth = 5;
@@ -537,21 +531,10 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
               ctx.lineTo(transfoPx.x, transfoPx.y);
               ctx.stroke();
               ctx.setLineDash([]);
-
-              const midX = (pdlPx.x + transfoPx.x) / 2;
-              const midY = (pdlPx.y + transfoPx.y) / 2;
-              const lbl = `⚡ PDL → Transfo (${dDistMeters.toFixed(1)} m)`;
-              ctx.font = 'bold 9px sans-serif';
-              const tw = ctx.measureText(lbl).width;
-              ctx.fillStyle = 'rgba(30, 58, 138, 0.9)';
-              ctx.fillRect(midX - tw / 2 - 4, midY - 7, tw + 8, 14);
-              ctx.fillStyle = '#ffffff';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(lbl, midX, midY);
               ctx.restore();
             } else if (!pdlPx && transfoPx) {
               const dDistMeters = Math.hypot(transfoPx.x - bestCorner.x, transfoPx.y - bestCorner.y) * metersPerPx;
+              d2Label = `⚡ BESS → TRANSFO (${dDistMeters.toFixed(1)} m)`;
               ctx.save();
               ctx.strokeStyle = '#2563eb';
               ctx.lineWidth = 3;
@@ -564,16 +547,20 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
               ctx.restore();
             }
 
-            // Badge PDL
-            if (pdlPx) {
+            const drawStaticBadge = (pt, color, text, distLabel, side) => {
               ctx.save();
-              const bw = 78, bh = 18;
-              const bx = pdlPx.x - bw / 2, by = pdlPx.y - 28;
-              ctx.fillStyle = '#047857';
-              ctx.fillRect(pdlPx.x - 1.5, by + bh, 3, 10);
+              ctx.font = 'bold 9px sans-serif';
+              const tw = ctx.measureText(text).width;
+              const bw = tw + 14;
+              const bh = 18;
+              const bx = pt.x - bw / 2;
+              const by = pt.y - 28;
+
+              ctx.fillStyle = color;
+              ctx.fillRect(pt.x - 1.5, by + bh, 3, 10);
               ctx.beginPath();
-              ctx.arc(pdlPx.x, pdlPx.y, 4, 0, 2 * Math.PI);
-              ctx.fillStyle = '#047857';
+              ctx.arc(pt.x, pt.y, 4, 0, 2 * Math.PI);
+              ctx.fillStyle = color;
               ctx.fill();
               ctx.strokeStyle = '#ffffff';
               ctx.lineWidth = 1.5;
@@ -581,49 +568,51 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
 
               ctx.beginPath();
               ctx.roundRect(bx, by, bw, bh, 4);
-              ctx.fillStyle = '#047857';
+              ctx.fillStyle = color;
               ctx.fill();
               ctx.strokeStyle = '#ffffff';
               ctx.lineWidth = 1.5;
               ctx.stroke();
 
               ctx.fillStyle = '#ffffff';
-              ctx.font = 'bold 9px sans-serif';
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
-              ctx.fillText('🔌 PDL ENEDIS', pdlPx.x, by + bh / 2);
+              ctx.fillText(text, pt.x, by + bh / 2);
+
+              if (distLabel) {
+                ctx.font = 'bold 8.5px sans-serif';
+                const dtw = ctx.measureText(distLabel).width;
+                const dw = dtw + 12;
+                const dh = 16;
+                const dy = by + (bh - dh) / 2;
+                const dx = side === 'right' ? (bx + bw + 5) : (bx - dw - 5);
+
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+                ctx.beginPath();
+                ctx.roundRect(dx, dy, dw, dh, 4);
+                ctx.fill();
+                ctx.lineWidth = 1.2;
+                ctx.strokeStyle = color;
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(distLabel, dx + dw / 2, dy + dh / 2);
+              }
               ctx.restore();
+            };
+
+            // Badge PDL
+            if (pdlPx) {
+              const side = pdlPx.x > bestCorner.x + 15 ? 'right' : 'left';
+              drawStaticBadge(pdlPx, '#047857', '🔌 PDL', d1Label, side);
             }
 
             // Badge Transfo
             if (transfoPx) {
-              ctx.save();
-              const bw = 84, bh = 18;
-              const bx = transfoPx.x - bw / 2, by = transfoPx.y - 28;
-              ctx.fillStyle = '#1d4ed8';
-              ctx.fillRect(transfoPx.x - 1.5, by + bh, 3, 10);
-              ctx.beginPath();
-              ctx.arc(transfoPx.x, transfoPx.y, 4, 0, 2 * Math.PI);
-              ctx.fillStyle = '#1d4ed8';
-              ctx.fill();
-              ctx.strokeStyle = '#ffffff';
-              ctx.lineWidth = 1.5;
-              ctx.stroke();
-
-              ctx.beginPath();
-              ctx.roundRect(bx, by, bw, bh, 4);
-              ctx.fillStyle = '#1d4ed8';
-              ctx.fill();
-              ctx.strokeStyle = '#ffffff';
-              ctx.lineWidth = 1.5;
-              ctx.stroke();
-
-              ctx.fillStyle = '#ffffff';
-              ctx.font = 'bold 9px sans-serif';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText('⚡ TRANSFO HTA', transfoPx.x, by + bh / 2);
-              ctx.restore();
+              const side = transfoPx.x > bestCorner.x + 15 ? 'right' : 'left';
+              drawStaticBadge(transfoPx, '#1d4ed8', '⚡ TRANSFO', d2Label, side);
             }
           }
 
