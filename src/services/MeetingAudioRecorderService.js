@@ -104,6 +104,8 @@ export class MeetingAudioRecorderService {
     this.displayStream = null;
     this.destinationNode = null;
     this.analyserNode = null;
+    this.micAnalyser = null;
+    this.sysAnalyser = null;
     this.mediaRecorder = null;
     this.chunks = [];
     this.mode = 'phone'; // 'phone' | 'teams'
@@ -148,8 +150,8 @@ export class MeetingAudioRecorderService {
 
     this.destinationNode = this.audioContext.createMediaStreamDestination();
     this.analyserNode = this.audioContext.createAnalyser();
-    this.analyserNode.fftSize = 256;
-    this.analyserNode.smoothingTimeConstant = 0.8;
+    this.analyserNode.fftSize = 1024;
+    this.analyserNode.smoothingTimeConstant = 0.72;
 
     // 1. Capture du flux microphone (avec fallback si les contraintes avancées sont refusées par le pilote)
     let systemAudioWarning = null;
@@ -222,9 +224,13 @@ export class MeetingAudioRecorderService {
       const micSource = this.audioContext.createMediaStreamSource(this.micStream);
       const micGain = this.audioContext.createGain();
       micGain.gain.value = 1.0;
+      this.micAnalyser = this.audioContext.createAnalyser();
+      this.micAnalyser.fftSize = 1024;
+      this.micAnalyser.smoothingTimeConstant = 0.65;
       micSource.connect(micGain);
       micGain.connect(this.destinationNode);
       micGain.connect(this.analyserNode);
+      micGain.connect(this.micAnalyser);
     }
 
     // 2. Si Mode Teams / Visio : capture du flux audio système/onglet et mixage
@@ -247,9 +253,13 @@ export class MeetingAudioRecorderService {
           const sysSource = this.audioContext.createMediaStreamSource(sysAudioOnlyStream);
           const sysGain = this.audioContext.createGain();
           sysGain.gain.value = 1.05;
+          this.sysAnalyser = this.audioContext.createAnalyser();
+          this.sysAnalyser.fftSize = 1024;
+          this.sysAnalyser.smoothingTimeConstant = 0.65;
           sysSource.connect(sysGain);
           sysGain.connect(this.destinationNode);
           sysGain.connect(this.analyserNode);
+          sysGain.connect(this.sysAnalyser);
         } else {
           systemAudioWarning =
             "Attention : aucune piste audio système n'a été détectée dans le partage d'écran. Pensez à cocher « Partager l'audio de l'onglet / du système » dans la fenêtre du navigateur pour enregistrer la voix de vos interlocuteurs Teams/Meet. Le microphone reste enregistré.";
@@ -368,8 +378,402 @@ export class MeetingAudioRecorderService {
     }
     this.destinationNode = null;
     this.analyserNode = null;
+    this.micAnalyser = null;
+    this.sysAnalyser = null;
     this.mediaRecorder = null;
   }
+
+  /**
+   * Extrait en temps réel les caractéristiques acoustiques de la voix en cours
+   * (Pitch fondamental F0, centroïde spectral, ratio basses fréquences micro vs haut-parleur téléphone,
+   *  enveloppe formantique 8 bandes et canal source Micro vs Teams/Système).
+   */
+  sampleVoiceFrame() {
+    if (!this.analyserNode || !this.audioContext) return null;
+
+    const sampleRate = this.audioContext.sampleRate || 48000;
+    const fftSize = this.analyserNode.fftSize || 1024;
+    const binCount = this.analyserNode.frequencyBinCount;
+    const binHz = sampleRate / fftSize;
+
+    // 1. Détection du canal actif en mode Teams / Visio (Micro local vs Son système distant)
+    let sourceChannel = 'mixed';
+    let micRms = 0;
+    let sysRms = 0;
+
+    const computeAnalyserRms = (analyser) => {
+      if (!analyser) return 0;
+      const buf = new Uint8Array(analyser.fftSize);
+      analyser.getByteTimeDomainData(buf);
+      let sumSq = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const norm = (buf[i] - 128) / 128;
+        sumSq += norm * norm;
+      }
+      return Math.sqrt(sumSq / buf.length);
+    };
+
+    if (this.micAnalyser) {
+      micRms = computeAnalyserRms(this.micAnalyser);
+    }
+    if (this.sysAnalyser && this.hasSystemAudio) {
+      sysRms = computeAnalyserRms(this.sysAnalyser);
+      if (sysRms > 0.012 && sysRms > micRms * 1.15) {
+        sourceChannel = 'remote';
+      } else if (micRms > 0.012 && micRms >= sysRms) {
+        sourceChannel = 'local';
+      }
+    }
+
+    // 2. Analyse temporelle globale (RMS + estimation du Pitch F0 par autocorrélation)
+    const timeBuf = new Uint8Array(fftSize);
+    this.analyserNode.getByteTimeDomainData(timeBuf);
+    const floatSignal = new Float32Array(fftSize);
+    let sumSq = 0;
+    for (let i = 0; i < fftSize; i++) {
+      const v = (timeBuf[i] - 128) / 128;
+      floatSignal[i] = v;
+      sumSq += v * v;
+    }
+    const rms = Math.sqrt(sumSq / fftSize);
+    if (rms < 0.013) {
+      return { isSpeaking: false, rms, sourceChannel };
+    }
+
+    // Autocorrélation normalisée dans la plage vocale humaine (75 Hz à 360 Hz)
+    const minLag = Math.max(2, Math.floor(sampleRate / 360));
+    const maxLag = Math.min(Math.floor(fftSize / 2) - 1, Math.floor(sampleRate / 75));
+    let bestLag = -1;
+    let bestCorr = 0;
+
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      let corr = 0;
+      let normA = 0;
+      let normB = 0;
+      const len = fftSize - lag;
+      for (let i = 0; i < len; i += 2) {
+        const a = floatSignal[i];
+        const b = floatSignal[i + lag];
+        corr += a * b;
+        normA += a * a;
+        normB += b * b;
+      }
+      const denom = Math.sqrt(normA * normB);
+      const normCorr = denom > 1e-6 ? corr / denom : 0;
+      if (normCorr > bestCorr) {
+        bestCorr = normCorr;
+        bestLag = lag;
+      }
+    }
+
+    const pitchHz = bestLag > 0 && bestCorr > 0.32 ? Math.round(sampleRate / bestLag) : 0;
+
+    // 3. Analyse spectrale (8 bandes vocales de 80 Hz à 4800 Hz + Centroïde + Ratio Basses/Médiums)
+    const freqBuf = new Uint8Array(binCount);
+    this.analyserNode.getByteFrequencyData(freqBuf);
+
+    const bandEdgesHz = [80, 220, 380, 620, 980, 1480, 2200, 3200, 4800];
+    const bands = new Array(8).fill(0);
+    let totalBandEnergy = 0;
+    let lowEnergy = 0; // 80 - 300 Hz (très fort en voix directe micro, coupé par un haut-parleur de téléphone)
+    let midHighEnergy = 0; // 300 - 3400 Hz (bande téléphonique)
+    let weightedFreqSum = 0;
+    let totalSpectralEnergy = 0;
+
+    for (let b = 0; b < binCount; b++) {
+      const freq = b * binHz;
+      if (freq < 75 || freq > 4800) continue;
+      const mag = freqBuf[b] / 255;
+      const energy = mag * mag;
+      weightedFreqSum += freq * mag;
+      totalSpectralEnergy += mag;
+
+      if (freq <= 300) lowEnergy += energy;
+      else if (freq <= 3400) midHighEnergy += energy;
+
+      for (let k = 0; k < 8; k++) {
+        if (freq >= bandEdgesHz[k] && freq < bandEdgesHz[k + 1]) {
+          bands[k] += energy;
+          totalBandEnergy += energy;
+          break;
+        }
+      }
+    }
+
+    if (totalBandEnergy < 1e-5) {
+      return { isSpeaking: false, rms, sourceChannel };
+    }
+
+    const normalizedBands = bands.map((e) => Number((e / totalBandEnergy).toFixed(4)));
+    const centroidHz =
+      totalSpectralEnergy > 1e-5 ? Math.round(weightedFreqSum / totalSpectralEnergy) : 800;
+    const lowBandRatio =
+      lowEnergy + midHighEnergy > 1e-5
+        ? Number((lowEnergy / (lowEnergy + midHighEnergy)).toFixed(4))
+        : 0.3;
+
+    return {
+      isSpeaking: true,
+      rms: Number(rms.toFixed(4)),
+      pitchHz,
+      centroidHz,
+      lowBandRatio,
+      bands: normalizedBands,
+      sourceChannel,
+      timestampMs: Date.now(),
+    };
+  }
+}
+
+/**
+ * Agrège une série de trames vocales en une empreinte vocale consolidée (Voice Signature)
+ */
+export function aggregateVoiceFrames(frames = []) {
+  const valid = frames.filter((f) => f && f.isSpeaking && Array.isArray(f.bands));
+  if (valid.length === 0) return null;
+
+  const pitched = valid.filter((f) => f.pitchHz >= 75 && f.pitchHz <= 360);
+  const avgPitch =
+    pitched.length > 0
+      ? Math.round(pitched.reduce((acc, f) => acc + f.pitchHz, 0) / pitched.length)
+      : 155;
+
+  const avgCentroid = Math.round(
+    valid.reduce((acc, f) => acc + (f.centroidHz || 900), 0) / valid.length
+  );
+  const avgLowRatio = Number(
+    (valid.reduce((acc, f) => acc + (f.lowBandRatio ?? 0.3), 0) / valid.length).toFixed(4)
+  );
+  const avgRms = Number(
+    (valid.reduce((acc, f) => acc + (f.rms || 0.03), 0) / valid.length).toFixed(4)
+  );
+
+  const avgBands = new Array(8).fill(0);
+  valid.forEach((f) => {
+    for (let k = 0; k < 8; k++) {
+      avgBands[k] += f.bands[k] || 0;
+    }
+  });
+  const normSum = avgBands.reduce((a, b) => a + b, 0) || 1;
+  const finalBands = avgBands.map((v) => Number((v / normSum).toFixed(4)));
+
+  const remoteCount = valid.filter((f) => f.sourceChannel === 'remote').length;
+  const localCount = valid.filter((f) => f.sourceChannel === 'local').length;
+  let sourceChannel = 'mixed';
+  if (remoteCount > valid.length * 0.45) sourceChannel = 'remote';
+  else if (localCount > valid.length * 0.45) sourceChannel = 'local';
+
+  return {
+    pitchHz: avgPitch,
+    centroidHz: avgCentroid,
+    lowBandRatio: avgLowRatio,
+    rms: avgRms,
+    bands: finalBands,
+    sourceChannel,
+    sampleCount: valid.length,
+  };
+}
+
+/**
+ * Calcule la distance acoustique entre deux empreintes vocales (0 = voix identique, > 0.20 = voix différente)
+ */
+export function computeVoiceDistance(sigA, sigB) {
+  if (!sigA || !sigB) return 0.5;
+
+  // Si les deux signaux proviennent de canaux physiques différents (Micro vs Son Système Teams)
+  if (
+    sigA.sourceChannel &&
+    sigB.sourceChannel &&
+    sigA.sourceChannel !== 'mixed' &&
+    sigB.sourceChannel !== 'mixed' &&
+    sigA.sourceChannel !== sigB.sourceChannel
+  ) {
+    return 0.95;
+  }
+
+  const pitchDiff =
+    sigA.pitchHz > 0 && sigB.pitchHz > 0 ? Math.abs(sigA.pitchHz - sigB.pitchHz) / 85 : 0.12;
+  const lowRatioDiff = Math.abs((sigA.lowBandRatio ?? 0.3) - (sigB.lowBandRatio ?? 0.3)) * 2.1;
+  const centroidDiff = Math.abs((sigA.centroidHz || 900) - (sigB.centroidHz || 900)) / 850;
+
+  let bandL1 = 0;
+  if (Array.isArray(sigA.bands) && Array.isArray(sigB.bands)) {
+    for (let k = 0; k < Math.min(sigA.bands.length, sigB.bands.length); k++) {
+      bandL1 += Math.abs((sigA.bands[k] || 0) - (sigB.bands[k] || 0));
+    }
+  }
+
+  return Number(
+    (pitchDiff * 0.32 + lowRatioDiff * 0.28 + centroidDiff * 0.15 + bandL1 * 0.25).toFixed(4)
+  );
+}
+
+/**
+ * Fusionne une nouvelle empreinte vocale dans le profil d'un interlocuteur
+ * (weight = 0.78 lors d'une affectation manuelle par l'utilisateur pour mémoriser immédiatement la voix)
+ */
+export function mergeVoiceSignatureIntoProfile(existingProfile, newSignature, weight = 0.32) {
+  if (!newSignature) return existingProfile || null;
+  if (!existingProfile) {
+    return {
+      ...newSignature,
+      bands: Array.isArray(newSignature.bands) ? [...newSignature.bands] : new Array(8).fill(0.125),
+      samplesLearned: 1,
+    };
+  }
+
+  const w = Math.max(0.1, Math.min(0.9, weight));
+  const inv = 1 - w;
+  const mergedBands = new Array(8).fill(0).map((_, k) => {
+    const a = existingProfile.bands?.[k] ?? 0.125;
+    const b = newSignature.bands?.[k] ?? 0.125;
+    return Number((a * inv + b * w).toFixed(4));
+  });
+
+  return {
+    pitchHz: Math.round((existingProfile.pitchHz || 155) * inv + (newSignature.pitchHz || 155) * w),
+    centroidHz: Math.round(
+      (existingProfile.centroidHz || 900) * inv + (newSignature.centroidHz || 900) * w
+    ),
+    lowBandRatio: Number(
+      ((existingProfile.lowBandRatio ?? 0.3) * inv + (newSignature.lowBandRatio ?? 0.3) * w).toFixed(4)
+    ),
+    rms: Number(((existingProfile.rms || 0.03) * inv + (newSignature.rms || 0.03) * w).toFixed(4)),
+    bands: mergedBands,
+    sourceChannel:
+      newSignature.sourceChannel !== 'mixed'
+        ? newSignature.sourceChannel
+        : existingProfile.sourceChannel || 'mixed',
+    samplesLearned: (existingProfile.samplesLearned || 1) + 1,
+    manuallyCalibrated: existingProfile.manuallyCalibrated || weight >= 0.65,
+  };
+}
+
+/**
+ * Identifie automatiquement quel interlocuteur parle à partir de l'empreinte vocale de l'intervention
+ * et met à jour les profils vocaux des interlocuteurs.
+ */
+export function identifySpeakerFromVoice({
+  signature,
+  speakerProfiles = {},
+  participantsCount = 2,
+  currentSpeakerIndex = 0,
+}) {
+  const count = Math.max(1, participantsCount);
+  const nextProfiles = { ...speakerProfiles };
+
+  if (!signature) {
+    return {
+      speakerIndex: currentSpeakerIndex,
+      confidence: 0.6,
+      updatedProfiles: nextProfiles,
+      reason: 'fallback',
+    };
+  }
+
+  // 1. En mode Teams/Visio avec piste système active : séparation physique directe Micro vs Système
+  if (signature.sourceChannel === 'local') {
+    nextProfiles[0] = mergeVoiceSignatureIntoProfile(nextProfiles[0], signature, 0.25);
+    return {
+      speakerIndex: 0,
+      confidence: 0.98,
+      updatedProfiles: nextProfiles,
+      reason: 'channel-local',
+    };
+  }
+
+  if (signature.sourceChannel === 'remote' && count >= 2) {
+    // Chercher parmi les interlocuteurs distants (index >= 1)
+    let bestRemoteIdx = 1;
+    let bestDist = Infinity;
+    for (let idx = 1; idx < count; idx++) {
+      if (nextProfiles[idx]) {
+        const d = computeVoiceDistance(signature, nextProfiles[idx]);
+        if (d < bestDist) {
+          bestDist = d;
+          bestRemoteIdx = idx;
+        }
+      } else if (bestDist > 0.24) {
+        bestRemoteIdx = idx;
+        break;
+      }
+    }
+    nextProfiles[bestRemoteIdx] = mergeVoiceSignatureIntoProfile(
+      nextProfiles[bestRemoteIdx],
+      signature,
+      0.3
+    );
+    return {
+      speakerIndex: bestRemoteIdx,
+      confidence: 0.95,
+      updatedProfiles: nextProfiles,
+      reason: 'channel-remote',
+    };
+  }
+
+  // 2. Mode Téléphone / Micro : diarisation acoustique multi-interlocuteurs
+  const enrolledIndices = Object.keys(nextProfiles)
+    .map((k) => Number(k))
+    .filter((idx) => idx >= 0 && idx < count && nextProfiles[idx]);
+
+  // Première voix entendue -> enregistrée sur l'interlocuteur actif (par défaut Yann = 0)
+  if (enrolledIndices.length === 0) {
+    const initIdx = currentSpeakerIndex < count ? currentSpeakerIndex : 0;
+    nextProfiles[initIdx] = mergeVoiceSignatureIntoProfile(null, signature, 1.0);
+    return {
+      speakerIndex: initIdx,
+      confidence: 0.9,
+      updatedProfiles: nextProfiles,
+      reason: 'initial-enrollment',
+    };
+  }
+
+  // Calculer la distance acoustique avec chaque interlocuteur ayant déjà une empreinte vocale
+  let closestIdx = enrolledIndices[0];
+  let minDistance = Infinity;
+
+  enrolledIndices.forEach((idx) => {
+    const d = computeVoiceDistance(signature, nextProfiles[idx]);
+    if (d < minDistance) {
+      minDistance = d;
+      closestIdx = idx;
+    }
+  });
+
+  // S'il reste au moins un interlocuteur dont la voix n'a pas encore été enregistrée
+  // et que la voix actuelle diffère sensiblement des voix connues (seuil >= 0.19),
+  // c'est le nouvel interlocuteur qui prend la parole !
+  if (enrolledIndices.length < count && minDistance >= 0.19) {
+    let newSpeakerIdx = 1;
+    for (let i = 0; i < count; i++) {
+      if (!nextProfiles[i]) {
+        newSpeakerIdx = i;
+        break;
+      }
+    }
+    nextProfiles[newSpeakerIdx] = mergeVoiceSignatureIntoProfile(null, signature, 1.0);
+    return {
+      speakerIndex: newSpeakerIdx,
+      confidence: 0.88,
+      updatedProfiles: nextProfiles,
+      reason: 'new-voice-detected',
+    };
+  }
+
+  // Sinon, on attribue la parole à l'interlocuteur dont l'empreinte vocale est la plus proche
+  nextProfiles[closestIdx] = mergeVoiceSignatureIntoProfile(
+    nextProfiles[closestIdx],
+    signature,
+    0.22
+  );
+  const confidence = Math.max(0.55, Math.min(0.98, Number((1 - minDistance).toFixed(2))));
+
+  return {
+    speakerIndex: closestIdx,
+    confidence,
+    updatedProfiles: nextProfiles,
+    reason: 'matched-profile',
+  };
 }
 
 /**
@@ -979,6 +1383,31 @@ export async function extractTextFromUploadedFile(file) {
     ) {
       const raw = await file.text();
       return raw.slice(0, 25000);
+    }
+
+    // 1.b Fichiers Outlook (.msg) : extraction des flux UTF-16LE et ASCII du courriel
+    if (name.endsWith('.msg')) {
+      const buf = await file.arrayBuffer();
+      const utf16Text = new TextDecoder('utf-16le', { fatal: false }).decode(buf);
+      const utf8Text = new TextDecoder('latin1').decode(buf);
+      const extractedBlocks = [];
+      const u16Matches = utf16Text.match(/[\x20-\x7EÀ-ÿ\r\n\t]{18,}/g) || [];
+      u16Matches.forEach((chunk) => {
+        const clean = chunk.replace(/\s+/g, ' ').trim();
+        if (clean.length > 20 && /[a-zA-ZÀ-ÿ]{3,}/.test(clean)) {
+          extractedBlocks.push(clean);
+        }
+      });
+      const u8Matches = utf8Text.match(/[\x20-\x7EÀ-ÿ\r\n\t]{24,}/g) || [];
+      u8Matches.forEach((chunk) => {
+        const clean = chunk.replace(/\s+/g, ' ').trim();
+        if (clean.length > 24 && /[a-zA-ZÀ-ÿ]{4,}/.test(clean) && !/Root Entry|__substg1\.0/i.test(clean)) {
+          extractedBlocks.push(clean);
+        }
+      });
+      if (extractedBlocks.length > 0) {
+        return Array.from(new Set(extractedBlocks)).join('\n').slice(0, 25000);
+      }
     }
 
     // 2. Fichiers Word (.docx) via JSZip

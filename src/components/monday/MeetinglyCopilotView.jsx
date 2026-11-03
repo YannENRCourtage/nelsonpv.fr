@@ -42,6 +42,10 @@ import {
   exportMeetingReportToPDF,
   extractTextFromUploadedFile,
   askNelsonMeetingAI,
+  aggregateVoiceFrames,
+  computeVoiceDistance,
+  mergeVoiceSignatureIntoProfile,
+  identifySpeakerFromVoice,
 } from '@/services/MeetingAudioRecorderService.js';
 
 export default function MeetinglyCopilotView({ tabs = [] }) {
@@ -193,13 +197,24 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
   const [transcriptEntries, setTranscriptEntries] = useState([]);
   const [interimTranscript, setInterimTranscript] = useState('');
   const [activeSpeakerIndex, setActiveSpeakerIndex] = useState(0);
+  const [autoVoiceRecognition, setAutoVoiceRecognition] = useState(true);
+  const [speakerProfilesState, setSpeakerProfilesState] = useState({});
+  const [liveVoicePitch, setLiveVoicePitch] = useState(0);
   const [quickNoteInput, setQuickNoteInput] = useState('');
   const [quickNotes, setQuickNotes] = useState([]);
 
   const recorderServiceRef = useRef(null);
   const timerIntervalRef = useRef(null);
+  const voiceMonitorIntervalRef = useRef(null);
   const elapsedSecondsRef = useRef(0);
+  const activeSpeakerIndexRef = useRef(0);
   const activeSpeakerLabelRef = useRef('');
+  const speakerOptionsRef = useRef(speakerOptions);
+  const autoVoiceRecognitionRef = useRef(true);
+  const speakerProfilesRef = useRef({});
+  const currentUtteranceFramesRef = useRef([]);
+  const recentVoiceFramesRef = useRef([]);
+  const lastManualSpeakerClickMsRef = useRef(0);
   const recordingStateRef = useRef('idle');
   const speechRecognitionRef = useRef(null);
   const waveformCanvasRef = useRef(null);
@@ -213,8 +228,17 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     `${connectedUserName} (ENR COURTAGE)`;
 
   useEffect(() => {
+    speakerOptionsRef.current = speakerOptions;
+  }, [speakerOptions]);
+
+  useEffect(() => {
+    activeSpeakerIndexRef.current = activeSpeakerIndex;
     activeSpeakerLabelRef.current = currentSpeakerLabel;
-  }, [currentSpeakerLabel]);
+  }, [activeSpeakerIndex, currentSpeakerLabel]);
+
+  useEffect(() => {
+    autoVoiceRecognitionRef.current = autoVoiceRecognition;
+  }, [autoVoiceRecognition]);
 
   useEffect(() => {
     recordingStateRef.current = recordingState;
@@ -233,6 +257,103 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       setToastBanner((prev) => (prev?.msg === msg ? null : prev));
     }, 4500);
   }, []);
+
+  /**
+   * Sélectionne manuellement un interlocuteur ET lui associe l'empreinte vocale en cours
+   * pour que le moteur de diarisation reconnaisse automatiquement sa voix dès qu'il reparle.
+   */
+  const handleSelectAndCalibrateSpeaker = useCallback(
+    (targetIdx) => {
+      setActiveSpeakerIndex(targetIdx);
+      activeSpeakerIndexRef.current = targetIdx;
+      const targetLabel =
+        speakerOptionsRef.current[targetIdx]?.label || `Interlocuteur ${targetIdx + 1}`;
+      activeSpeakerLabelRef.current = targetLabel;
+      lastManualSpeakerClickMsRef.current = Date.now();
+
+      // Si des trames vocales viennent d'être captées (ou sur la dernière intervention), on calibre l'empreinte vocale de cet interlocuteur
+      const recentSig = aggregateVoiceFrames(recentVoiceFramesRef.current.slice(-18));
+      if (recentSig) {
+        speakerProfilesRef.current = {
+          ...speakerProfilesRef.current,
+          [targetIdx]: mergeVoiceSignatureIntoProfile(
+            speakerProfilesRef.current[targetIdx],
+            recentSig,
+            0.85
+          ),
+        };
+        setSpeakerProfilesState({ ...speakerProfilesRef.current });
+        showToast(
+          `🎙️ Voix actuelle associée à « ${targetLabel} » — elle sera reconnue automatiquement dès qu'elle reparlera.`
+        );
+      }
+    },
+    [showToast]
+  );
+
+  /**
+   * Affecte une intervention (bulle) à un interlocuteur précis ET apprend l'empreinte vocale de cette bulle
+   * pour que toutes les interventions ayant cette même voix soient reconnues automatiquement.
+   */
+  const handleAssignBubbleSpeaker = useCallback(
+    (entryId, targetIdx) => {
+      const targetLabel =
+        speakerOptionsRef.current[targetIdx]?.label || `Interlocuteur ${targetIdx + 1}`;
+
+      setTranscriptEntries((prev) => {
+        const targetEntry = prev.find((item) => item.id === entryId);
+        const targetSig =
+          targetEntry?.voiceSignature ||
+          aggregateVoiceFrames(recentVoiceFramesRef.current.slice(-15));
+
+        if (targetSig) {
+          speakerProfilesRef.current = {
+            ...speakerProfilesRef.current,
+            [targetIdx]: mergeVoiceSignatureIntoProfile(
+              speakerProfilesRef.current[targetIdx],
+              targetSig,
+              0.88
+            ),
+          };
+          setSpeakerProfilesState({ ...speakerProfilesRef.current });
+        }
+
+        // Mettre à jour la bulle cliquée + propager aux bulles ayant la même signature vocale (non verrouillées manuellement)
+        return prev.map((item) => {
+          if (item.id === entryId) {
+            return {
+              ...item,
+              speaker: targetLabel,
+              speakerIndex: targetIdx,
+              manuallyAssigned: true,
+            };
+          }
+          if (
+            !item.manuallyAssigned &&
+            targetSig &&
+            item.voiceSignature &&
+            computeVoiceDistance(item.voiceSignature, targetSig) < 0.14
+          ) {
+            return {
+              ...item,
+              speaker: targetLabel,
+              speakerIndex: targetIdx,
+            };
+          }
+          return item;
+        });
+      });
+
+      setActiveSpeakerIndex(targetIdx);
+      activeSpeakerIndexRef.current = targetIdx;
+      activeSpeakerLabelRef.current = targetLabel;
+      lastManualSpeakerClickMsRef.current = Date.now();
+      showToast(
+        `🎙️ Voix attribuée et mémorisée pour « ${targetLabel} » : ses prochaines prises de parole seront reconnues automatiquement.`
+      );
+    },
+    [showToast]
+  );
 
   // ── 4. ÉTAT DU COPILOTE IA NELSON (DOCUMENTS, MAILS & QUESTIONS EN DIRECT) ─
   const [contextText, setContextText] = useState('');
@@ -537,6 +658,11 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
+    if (voiceMonitorIntervalRef.current) {
+      clearInterval(voiceMonitorIntervalRef.current);
+      voiceMonitorIntervalRef.current = null;
+    }
+    setLiveVoicePitch(0);
     const canvas = waveformCanvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
@@ -545,7 +671,65 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
     }
   }, []);
 
-  // ── 8. TRANSCRIPTION CONTINUE EN DIRECT (FR-FR) ──────────────────────────
+  // ── 7.b ANALYSE VOCALE TEMPS RÉEL & CHANGEMENT AUTO D'INTERLOCUTEUR ──────
+  const startVoiceMonitoring = useCallback(() => {
+    if (voiceMonitorIntervalRef.current) {
+      clearInterval(voiceMonitorIntervalRef.current);
+    }
+    currentUtteranceFramesRef.current = [];
+    recentVoiceFramesRef.current = [];
+
+    voiceMonitorIntervalRef.current = setInterval(() => {
+      if (recordingStateRef.current !== 'recording' || !recorderServiceRef.current) return;
+      const frame = recorderServiceRef.current.sampleVoiceFrame();
+      if (!frame || !frame.isSpeaking) return;
+
+      if (frame.pitchHz > 0) {
+        setLiveVoicePitch(frame.pitchHz);
+      }
+
+      currentUtteranceFramesRef.current.push(frame);
+      if (currentUtteranceFramesRef.current.length > 60) {
+        currentUtteranceFramesRef.current.shift();
+      }
+
+      recentVoiceFramesRef.current.push(frame);
+      if (recentVoiceFramesRef.current.length > 35) {
+        recentVoiceFramesRef.current.shift();
+      }
+
+      // Bascule en direct pendant que la personne parle (toutes les 7 trames vocales ~0.6s)
+      if (
+        autoVoiceRecognitionRef.current &&
+        currentUtteranceFramesRef.current.length >= 6 &&
+        currentUtteranceFramesRef.current.length % 6 === 0 &&
+        Date.now() - lastManualSpeakerClickMsRef.current > 3500
+      ) {
+        const liveSig = aggregateVoiceFrames(currentUtteranceFramesRef.current.slice(-12));
+        if (liveSig) {
+          const diarization = identifySpeakerFromVoice({
+            signature: liveSig,
+            speakerProfiles: speakerProfilesRef.current,
+            participantsCount: speakerOptionsRef.current.length,
+            currentSpeakerIndex: activeSpeakerIndexRef.current,
+          });
+          speakerProfilesRef.current = diarization.updatedProfiles;
+          setSpeakerProfilesState({ ...diarization.updatedProfiles });
+
+          if (diarization.speakerIndex !== activeSpeakerIndexRef.current) {
+            const nextIdx = diarization.speakerIndex;
+            const nextLabel =
+              speakerOptionsRef.current[nextIdx]?.label || `Interlocuteur ${nextIdx + 1}`;
+            activeSpeakerIndexRef.current = nextIdx;
+            activeSpeakerLabelRef.current = nextLabel;
+            setActiveSpeakerIndex(nextIdx);
+          }
+        }
+      }
+    }, 85);
+  }, []);
+
+  // ── 8. TRANSCRIPTION CONTINUE EN DIRECT (FR-FR) AVEC DIARISATION VOCALE ──
   const startSpeechRecognition = useCallback(() => {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) return;
@@ -566,12 +750,63 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
             const cleanTxt = txt.trim();
             if (cleanTxt) {
               const stamp = formatDurationHms(elapsedSecondsRef.current);
+
+              // Empreinte vocale de la phrase qui vient d'être prononcée
+              const utteranceFrames =
+                currentUtteranceFramesRef.current.length > 0
+                  ? currentUtteranceFramesRef.current
+                  : recentVoiceFramesRef.current.slice(-16);
+              const utteranceSig = aggregateVoiceFrames(utteranceFrames);
+              currentUtteranceFramesRef.current = [];
+
+              let resolvedSpeakerIdx = activeSpeakerIndexRef.current;
+              const wasManuallySelectedRecently =
+                Date.now() - lastManualSpeakerClickMsRef.current <= 3500;
+
+              if (utteranceSig) {
+                if (wasManuallySelectedRecently || !autoVoiceRecognitionRef.current) {
+                  // L'utilisateur a sélectionné l'interlocuteur : on calibre sa voix avec cette intervention
+                  speakerProfilesRef.current = {
+                    ...speakerProfilesRef.current,
+                    [resolvedSpeakerIdx]: mergeVoiceSignatureIntoProfile(
+                      speakerProfilesRef.current[resolvedSpeakerIdx],
+                      utteranceSig,
+                      0.82
+                    ),
+                  };
+                  setSpeakerProfilesState({ ...speakerProfilesRef.current });
+                } else {
+                  // Reconnaissance automatique de l'interlocuteur par sa voix
+                  const diarization = identifySpeakerFromVoice({
+                    signature: utteranceSig,
+                    speakerProfiles: speakerProfilesRef.current,
+                    participantsCount: speakerOptionsRef.current.length,
+                    currentSpeakerIndex: activeSpeakerIndexRef.current,
+                  });
+                  resolvedSpeakerIdx = diarization.speakerIndex;
+                  speakerProfilesRef.current = diarization.updatedProfiles;
+                  setSpeakerProfilesState({ ...diarization.updatedProfiles });
+
+                  if (resolvedSpeakerIdx !== activeSpeakerIndexRef.current) {
+                    activeSpeakerIndexRef.current = resolvedSpeakerIdx;
+                    setActiveSpeakerIndex(resolvedSpeakerIdx);
+                  }
+                }
+              }
+
+              const resolvedSpeakerLabel =
+                speakerOptionsRef.current[resolvedSpeakerIdx]?.label ||
+                activeSpeakerLabelRef.current;
+              activeSpeakerLabelRef.current = resolvedSpeakerLabel;
+
               setTranscriptEntries((prev) => [
                 ...prev,
                 {
                   id: `tr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
                   timestamp: stamp,
-                  speaker: activeSpeakerLabelRef.current,
+                  speaker: resolvedSpeakerLabel,
+                  speakerIndex: resolvedSpeakerIdx,
+                  voiceSignature: utteranceSig || null,
                   text: cleanTxt,
                 },
               ]);
@@ -638,6 +873,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       }, 1000);
 
       startWaveformVisualizer(startInfo.analyser);
+      startVoiceMonitoring();
       startSpeechRecognition();
     } catch (err) {
       setErrorMessage(
@@ -1223,32 +1459,71 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
             {/* 3. GRANDE VISIONNEUSE DE RETRANSCRIPTION EN DIRECT */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
                     💬 Retranscription en direct de la conversation
                   </span>
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold">
                     {transcriptEntries.length} intervention(s)
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setAutoVoiceRecognition((v) => !v)}
+                    className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                      autoVoiceRecognition
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                        : 'bg-slate-100 text-slate-600 border-slate-300'
+                    }`}
+                    title="Bascule automatiquement d'interlocuteur dès que le timbre ou la fréquence de la voix change"
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        autoVoiceRecognition ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                      }`}
+                    />
+                    <span>
+                      {autoVoiceRecognition
+                        ? `Reconnaissance vocale auto${liveVoicePitch > 0 ? ` (${liveVoicePitch} Hz)` : ''}`
+                        : 'Reconnaissance vocale auto (Off)'}
+                    </span>
+                  </button>
                 </div>
 
-                {/* Boutons pour basculer l'interlocuteur qui parle */}
+                {/* Boutons pour basculer et calibrer l'empreinte vocale de l'interlocuteur qui parle */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] text-slate-500 font-semibold">Qui parle :</span>
-                  {speakerOptions.map((spk, idx) => (
-                    <button
-                      key={spk.id}
-                      type="button"
-                      onClick={() => setActiveSpeakerIndex(idx)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        activeSpeakerIndex === idx
-                          ? 'bg-indigo-600 text-white shadow-xs'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      {spk.label}
-                    </button>
-                  ))}
+                  <span className="text-[11px] text-slate-500 font-semibold">
+                    Qui parle (cliquer pour calibrer la voix) :
+                  </span>
+                  {speakerOptions.map((spk, idx) => {
+                    const hasVoiceProfile = Boolean(speakerProfilesState[idx]);
+                    return (
+                      <button
+                        key={spk.id}
+                        type="button"
+                        onClick={() => handleSelectAndCalibrateSpeaker(idx)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          activeSpeakerIndex === idx
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                        title="Cliquez pendant que cet interlocuteur parle pour mémoriser l'empreinte de sa voix"
+                      >
+                        <span>{spk.label}</span>
+                        {hasVoiceProfile && (
+                          <span
+                            className={`text-[10px] px-1 rounded ${
+                              activeSpeakerIndex === idx
+                                ? 'bg-indigo-500 text-emerald-200'
+                                : 'bg-emerald-100 text-emerald-700'
+                            }`}
+                            title="Empreinte vocale mémorisée"
+                          >
+                            🎙️
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1261,12 +1536,13 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
                       La retranscription en direct s'affichera ici dès que vous cliquez sur « Enregistrer »
                     </p>
                     <p className="text-xs text-slate-500 max-w-md">
-                      Vous pouvez également saisir ou compléter des notes directement dans la barre ci-dessous pendant l'échange.
+                      Le changement de voix est détecté automatiquement. Vous pouvez aussi affecter une bulle à un interlocuteur en 1 clic pour que NELSON mémorise sa voix.
                     </p>
                   </div>
                 ) : (
                   transcriptEntries.map((item) => {
                     const isSelfSpeaker =
+                      item.speakerIndex === 0 ||
                       item.speaker.toLowerCase().includes((connectedUserName || 'yann').toLowerCase()) ||
                       item.speaker.toLowerCase().includes('enr courtage');
                     return (
@@ -1278,8 +1554,8 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
                             : 'bg-slate-900/90 border-slate-700/70 ml-8 mr-0'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-mono text-[11px] font-bold text-indigo-400 bg-indigo-950 px-1.5 py-0.5 rounded">
                               {item.timestamp}
                             </span>
@@ -1290,6 +1566,26 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
                             >
                               {item.speaker}
                             </span>
+
+                            {/* Boutons rapides pour réaffecter la voix de cette intervention à un autre interlocuteur */}
+                            {speakerOptions.length > 1 && (
+                              <div className="flex items-center gap-1 ml-1">
+                                {speakerOptions.map((spk, idx) => {
+                                  if (spk.label === item.speaker) return null;
+                                  return (
+                                    <button
+                                      key={spk.id}
+                                      type="button"
+                                      onClick={() => handleAssignBubbleSpeaker(item.id, idx)}
+                                      className="px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-indigo-600 text-slate-300 hover:text-white border border-slate-700 text-[10px] font-semibold transition-colors cursor-pointer"
+                                      title={`Affecter cette intervention et mémoriser cette voix pour ${spk.label}`}
+                                    >
+                                      ⇄ Affecter à {spk.shortName}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                           <button
                             type="button"
