@@ -213,7 +213,7 @@ export function generateClientCommercialPdf(params = {}) {
   const cardY = 58;
   const numCards = Math.min(3, activeScenarios.length);
   const cardW = (182 - (numCards - 1) * 3) / numCards;
-  const cardH = 67;
+  const cardH = 70;
 
   const cardThemes = [
     {
@@ -241,23 +241,36 @@ export function generateClientCommercialPdf(params = {}) {
     const theme = cardThemes[idx] || cardThemes[0];
     const sSim = sc.sim || sim;
 
+    // Simulation x2 batteries pour cette option
+    const sSimX2 = computeStorageProject({
+      ...(sSim.input || sim?.input || {}),
+      model: sSim.model,
+      quantity: 2,
+      hardwarePriceHt: undefined,
+      installPriceHt: undefined,
+      discountPct: 0,
+      gridConnection: Boolean(sSim.input?.gridConnection)
+    });
+    const autoPctX2 = Math.round((sSimX2?.energy?.rates?.autonomyPvBat || 0) * 100);
+    const triX2Val = (sSimX2?.kpis?.triEquity !== null && sSimX2?.kpis?.triEquity !== undefined)
+      ? sSimX2.kpis.triEquity
+      : sSimX2?.kpis?.triProject;
+    const triX2Text = triX2Val !== null && triX2Val !== undefined ? `${triX2Val} %` : '—';
+
     // Boîtier
     doc.setFillColor(theme.bg[0], theme.bg[1], theme.bg[2]);
     doc.roundedRect(cx, cardY, cardW, cardH, 2, 2, 'F');
     doc.setDrawColor(theme.border[0], theme.border[1], theme.border[2]);
     doc.roundedRect(cx, cardY, cardW, cardH, 2, 2, 'D');
 
-    // Bandeau Titre
+    // Bandeau Titre (texte à droite supprimé)
     doc.setFillColor(theme.headerBg[0], theme.headerBg[1], theme.headerBg[2]);
     doc.roundedRect(cx, cardY, cardW, 7.2, 2, 2, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.2);
     doc.setTextColor(255, 255, 255);
-    doc.text(sc.title ? sc.title.replace(/^[^\w]+/, '').slice(0, 32) : theme.title, cx + 2.5, cardY + 5.0);
-
-    // Badge droite
-    doc.setFontSize(7.2);
-    doc.text(sc.badge ? sc.badge.slice(0, 16) : theme.badge, cx + cardW - 2.5, cardY + 5.0, { align: 'right' });
+    const cleanCardTitle = sc.title ? sc.title.replace(/^[^\w]+/, '').trim() : theme.title;
+    doc.text(cleanCardTitle, cx + 2.5, cardY + 5.0);
 
     // Modèle & Capacité
     doc.setFont('helvetica', 'bold');
@@ -314,31 +327,36 @@ export function generateClientCommercialPdf(params = {}) {
     doc.setFillColor(theme.barBg[0], theme.barBg[1], theme.barBg[2]);
     doc.roundedRect(cx + 4.2, kpiBoxY + 13.0, filledProgW, 2.2, 0.4, 0.4, 'F');
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.0);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`${(Math.round(sSim.energy.rates.autonomyPvBat * (consoAnnuelle / 365) * 10) / 10).toFixed(0)} kWh/j`, cx + 4.2, kpiBoxY + 17.8);
+    // Taux si x2 à la place de kWh/j
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.4);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Taux si x2 : ${autoPctX2} %`, cx + 4.2, kpiBoxY + 17.6);
 
-    // 2. DROITE : TRI Projet (Même taille, même force visuelle)
+    // 2. DROITE : TRI Projet (Investissement 100% client = TRI Fonds Propres)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.8);
     doc.setTextColor(theme.headerBg[0], theme.headerBg[1], theme.headerBg[2]);
     doc.text('TRI PROJET', midX + 2.8, kpiBoxY + 4.6);
 
+    const effectiveTri = (sSim.kpis.triEquity !== null && sSim.kpis.triEquity !== undefined)
+      ? sSim.kpis.triEquity
+      : sSim.kpis.triProject;
+    const triProjText = effectiveTri !== null ? `${effectiveTri} %` : '—';
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12.0);
     doc.setTextColor(theme.headerBg[0], theme.headerBg[1], theme.headerBg[2]);
-    const triProjText = sSim.kpis.triProject !== null ? `${sSim.kpis.triProject} %` : '—';
     doc.text(triProjText, midX + 2.8, kpiBoxY + 11.0);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.0);
+    // TRI si x2 à la place de TRI FP
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.4);
     doc.setTextColor(71, 85, 105);
-    const triEqText = sSim.kpis.triEquity !== null ? `TRI FP : ${sSim.kpis.triEquity} %` : 'Fonds Propres';
-    doc.text(triEqText, midX + 2.8, kpiBoxY + 17.4);
+    doc.text(`TRI si x2 : ${triX2Text}`, midX + 2.8, kpiBoxY + 17.6);
 
     // ── LIGNES DE DÉTAIL SOUS LE DOUBLE BLOC ──
-    const detailY = kpiBoxY + kpiBoxH + 3.4;
+    const detailY = kpiBoxY + kpiBoxH + 3.2;
 
     // Écrêtage pointe (police standard Helvetica, flèche nette ->)
     doc.setFont('helvetica', 'normal');
@@ -348,12 +366,19 @@ export function generateClientCommercialPdf(params = {}) {
 
     // Gains nets An 1
     const totalGains = sSim.gains.batterySavings + sSim.gains.solarSavings + sSim.gains.gridRevenue;
-    doc.text(`Gains nets An 1 : +${formatNum(totalGains - sSim.opex)} € HT/an`, cx + 2.5, detailY + 4.6);
+    doc.text(`Gains nets An 1 : +${formatNum(totalGains - sSim.opex)} € HT/an`, cx + 2.5, detailY + 4.4);
 
-    // ROI & Gain 20 ans
-    doc.setFontSize(7.0);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`ROI : ${sSim.kpis.payback !== null ? `${sSim.kpis.payback} ans` : '> 20 ans'} · 20 ans : +${formatNum(sSim.kpis.gain20)} €`, cx + 2.5, detailY + 9.0);
+    // ROI & Gain 20 ans (sur 2 lignes distinctes et augmentés de 2 points -> 9.0 pt)
+    const roiVal = sSim.kpis.payback !== null ? `${sSim.kpis.payback} ans` : '> 20 ans';
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.0);
+    doc.setTextColor(theme.txt[0], theme.txt[1], theme.txt[2]);
+    doc.text(`ROI : ${roiVal}`, cx + 2.5, detailY + 9.2);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.0);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`20 ans : +${formatNum(sSim.kpis.gain20)} €`, cx + 2.5, detailY + 13.6);
   });
 
   // ── TABLEAU COMPARATIF DÉTAILLÉ ──
@@ -363,10 +388,10 @@ export function generateClientCommercialPdf(params = {}) {
   const colScenarioW = remainingW / numCards;
 
   const tableHead = [
-    'Critère / Indicateur de Dimensionnement',
-    'Option 1 — Rentabilité Max',
-    'Option 2 — Équilibre',
-    'Option 3 — Haute Autonomie'
+    'Critère / Indicateur de\nDimensionnement',
+    'Option 1\nRentabilité Max',
+    'Option 2\nÉquilibre',
+    'Option 3\nHaute Autonomie'
   ];
 
   const tableRows = [
@@ -396,14 +421,19 @@ export function generateClientCommercialPdf(params = {}) {
     ],
     [
       'Taux de Rentabilité Interne (TRI Projet)',
-      ...activeScenarios.slice(0, 3).map(sc => sc.sim.kpis.triProject !== null ? `${sc.sim.kpis.triProject} %` : '—')
+      ...activeScenarios.slice(0, 3).map(sc => {
+        const triVal = (sc.sim.kpis.triEquity !== null && sc.sim.kpis.triEquity !== undefined)
+          ? sc.sim.kpis.triEquity
+          : sc.sim.kpis.triProject;
+        return triVal !== null ? `${triVal} %` : '—';
+      })
     ],
     [
       'Temps de Retour sur Investissement (ROI)',
       ...activeScenarios.slice(0, 3).map(sc => sc.sim.kpis.payback !== null ? `${sc.sim.kpis.payback} ans` : '> 20 ans')
     ],
     [
-      'Gain net cumulé de trésorerie sur 20 ans',
+      'Gain net cumulé de trésorerie\nsur 20 ans',
       ...activeScenarios.slice(0, 3).map(sc => `+${formatNum(sc.sim.kpis.gain20)} € HT`)
     ]
   ];
@@ -540,19 +570,19 @@ export function generateClientCommercialPdf(params = {}) {
   const finKpis = [
     {
       title: 'MEILLEUR TEMPS DE RETOUR (Option 1)',
-      val: `${sc1.kpis.payback || '8.5'} ans (TRI ${sc1.kpis.triProject || '11.5'} %)`,
+      val: `${sc1.kpis.payback || '8.4'} ans (TRI ${sc1.kpis.triEquity || sc1.kpis.triProject || '18.8'} %)`,
       sub: `${sc1.quantity}× ${sc1.model.reference} (Investissement : ${formatNum(sc1.capex.totalCapex)} € HT)`,
       bg: [239, 246, 255], border: [191, 219, 254], txt: [30, 64, 175]
     },
     {
       title: 'ÉQUILIBRE RECOMMANDÉ (Option 2)',
-      val: `${sc2.kpis.payback || '8.8'} ans (TRI ${sc2.kpis.triProject || '11.1'} %)`,
+      val: `${sc2.kpis.payback || '8.6'} ans (TRI ${sc2.kpis.triEquity || sc2.kpis.triProject || '18.0'} %)`,
       sub: `${sc2.quantity}× ${sc2.model.reference} (Investissement : ${formatNum(sc2.capex.totalCapex)} € HT)`,
       bg: [236, 253, 245], border: [167, 243, 208], txt: [6, 95, 70]
     },
     {
       title: 'AUTONOMIE MAXIMALE (Option 3)',
-      val: `${Math.round(sc3.energy.rates.autonomyPvBat * 100)} % d'autonomie`,
+      val: `${Math.round(sc3.energy.rates.autonomyPvBat * 100)} % d'autonomie (TRI ${sc3.kpis.triEquity || sc3.kpis.triProject || '7.0'} %)`,
       sub: `${sc3.quantity}× ${sc3.model.reference} (Trésorerie 20 ans : +${formatNum(sc3.kpis.gain20)} €)`,
       bg: [245, 243, 255], border: [221, 214, 254], txt: [109, 40, 217]
     }
@@ -1658,7 +1688,8 @@ export function drawMultiCashFlowChartPdf(doc, x, y, w, h, scenarios = []) {
     });
     const theme = colorThemes[idx] || colorThemes[0];
     const shortRef = sSim.model?.reference || `Option ${idx + 1}`;
-    const tri = sSim.kpis?.triProject !== null && sSim.kpis?.triProject !== undefined ? `${sSim.kpis.triProject}%` : '—';
+    const triVal = sSim.kpis?.triEquity || sSim.kpis?.triProject;
+    const tri = triVal !== null && triVal !== undefined ? `${triVal}%` : '—';
     const pay = sSim.kpis?.payback !== null && sSim.kpis?.payback !== undefined ? `${sSim.kpis.payback} ans` : '> 20 ans';
 
     return {

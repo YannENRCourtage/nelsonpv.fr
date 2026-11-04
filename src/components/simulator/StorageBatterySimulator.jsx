@@ -1465,12 +1465,11 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                     </span>
                     <div className="flex items-baseline justify-center gap-2 mt-0.5">
                       <span className="text-2xl sm:text-3xl font-black text-amber-400">
-                        {simRes.kpis?.triProject != null ? simRes.kpis.triProject.toFixed(1) : '0.0'} %
+                        {(simRes.kpis?.triEquity ?? simRes.kpis?.triProject) != null ? (simRes.kpis?.triEquity ?? simRes.kpis?.triProject).toFixed(1) : '0.0'} %
                       </span>
-                      <span className="text-xs font-bold text-slate-400">(Projet)</span>
                     </div>
                     <div className="text-[11px] text-slate-300 font-medium mt-1">
-                      TRI Fonds Propres ({equityPct}%) : <strong className="text-emerald-400">{simRes.kpis?.triEquity != null ? `${simRes.kpis.triEquity.toFixed(1)} %` : 'N/A'}</strong>
+                      TRI Projet : <strong className="text-amber-300">{simRes.kpis?.triProject != null ? `${simRes.kpis.triProject.toFixed(1)} %` : 'N/A'}</strong> · Fonds Propres ({equityPct}%) : <strong className="text-emerald-400">{simRes.kpis?.triEquity != null ? `${simRes.kpis.triEquity.toFixed(1)} %` : 'N/A'}</strong>
                     </div>
                   </div>
 
