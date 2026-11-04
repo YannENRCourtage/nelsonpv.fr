@@ -370,15 +370,15 @@ export function generateClientCommercialPdf(params = {}) {
   const tableRows = [
     [
       'Modèle BESS & Puissance / Capacité',
-      ...activeScenarios.slice(0, 3).map(sc => `${sc.sim.quantity}× ${sc.sim.model.reference} (${sc.sim.capacityKwh.toFixed(1)} kWh / ${sc.sim.powerKw.toFixed(0)} kW)`)
+      ...activeScenarios.slice(0, 3).map(sc => `${sc.sim.quantity}× ${sc.sim.model.reference}\n(${sc.sim.capacityKwh.toFixed(1)} kWh / ${sc.sim.powerKw.toFixed(0)} kW)`)
     ],
     [
       'Couverture énergétique du site (%)',
-      ...activeScenarios.slice(0, 3).map(sc => `${Math.round(sc.sim.energy.rates.autonomyPvBat * 100)} % (${(Math.round(sc.sim.energy.rates.autonomyPvBat * (consoAnnuelle / 365) * 10) / 10).toFixed(1)} kWh/j)`)
+      ...activeScenarios.slice(0, 3).map(sc => `${Math.round(sc.sim.energy.rates.autonomyPvBat * 100)} %\n(${((Math.round(sc.sim.energy.rates.autonomyPvBat * (consoAnnuelle / 365) * 10) / 10)).toFixed(1)} kWh/j)`)
     ],
     [
       'Écrêtage de pointe TURPE Enedis',
-      ...activeScenarios.slice(0, 3).map(sc => `${sc.sim.energy.peakKw.toFixed(1)} kW -> ${sc.sim.energy.newPeakKw.toFixed(1)} kW (-${sc.sim.energy.shaveKw.toFixed(1)} kW)`)
+      ...activeScenarios.slice(0, 3).map(sc => `${sc.sim.energy.peakKw.toFixed(1)} kW -> ${sc.sim.energy.newPeakKw.toFixed(1)} kW\n(-${sc.sim.energy.shaveKw.toFixed(1)} kW)`)
     ],
     [
       'Investissement Total Clé en Main\n(CAPEX HT)',
@@ -415,13 +415,13 @@ export function generateClientCommercialPdf(params = {}) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 7.4,
-      cellPadding: 2.2
+      fontSize: 8.4, // Augmenté d'un point (+1 pt)
+      cellPadding: 2.0
     },
     styles: {
       font: 'helvetica',
-      fontSize: 7.0,
-      cellPadding: 2.3,
+      fontSize: 8.0, // Augmenté d'un point (+1 pt)
+      cellPadding: 2.0,
       textColor: [30, 41, 59]
     },
     columnStyles: {
@@ -436,14 +436,14 @@ export function generateClientCommercialPdf(params = {}) {
 
   // ── ENCADRÉ PÉDAGOGIQUE SOUS LE COMPARATIF ──
   const noteY = doc.lastAutoTable.finalY + 2.5;
-  const noteH = 30;
+  const noteH = 29;
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(14, noteY, 182, noteH, 2, 2, 'F');
   doc.setDrawColor(203, 213, 225);
   doc.roundedRect(14, noteY, 182, noteH, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
+  doc.setFontSize(8.0);
   doc.setTextColor(15, 23, 42);
   doc.text('NOTE D\'ARBITRAGE TECHNIQUE & RECOMMANDATION ENR COURTAGE', 18, noteY + 5.0);
 
@@ -461,38 +461,58 @@ export function generateClientCommercialPdf(params = {}) {
   ];
   let nty = noteY + 9.0;
   noteLines.forEach(l => {
+    // Espace supplémentaire avant • Option 3
+    if (l.startsWith('• Option 3')) {
+      nty += 2.2;
+    }
     doc.text(l, 18, nty);
-    nty += 3.2;
+    nty += 3.1;
   });
 
-  // ── BLOC ENGAGEMENTS QUALITÉ & GARANTIES ──
+  // ── BLOC ENGAGEMENTS QUALITÉ & GARANTIES (4 CADRES AVEC COULEURS DIFFÉRENTES & POLICE +2 PT) ──
   const guarY = noteY + noteH + 2.5;
   const guarW = (182 - 3 * 2.5) / 4;
-  const guarH = 14;
+  const guarH = 18; // Hauteur augmentée pour contenir le texte agrandi
   const guars = [
-    { title: 'CELLULES LFP GARANTIES 10 ANS', desc: '6 000 cycles à 90% DoD, rétention capacité > 80%.' },
-    { title: 'SUPERVISION & EMS 24/7', desc: 'Pilotage dynamique automatique selon tarifs et météo.' },
-    { title: 'HOMOLOGATION CONSUEL / VDE', desc: 'Conformité stricte aux normes Enedis & découplage.' },
-    { title: 'DÉCLARATION PRÉALABLE INCLUSE', desc: 'Dossier DP d\'urbanisme clé en main géré par Nelson.' }
+    {
+      title: 'CELLULES LFP GARANTIES 10 ANS',
+      desc: '6 000 cycles à 90% DoD, rétention capacité > 80%.',
+      bg: [239, 246, 255], border: [191, 219, 254], titleColor: [30, 64, 175]
+    },
+    {
+      title: 'SUPERVISION & EMS 24/7',
+      desc: 'Pilotage dynamique automatique selon tarifs et météo.',
+      bg: [236, 253, 245], border: [167, 243, 208], titleColor: [5, 150, 105]
+    },
+    {
+      title: 'HOMOLOGATION CONSUEL / VDE',
+      desc: 'Conformité stricte aux normes Enedis & découplage.',
+      bg: [254, 243, 199], border: [253, 230, 138], titleColor: [180, 83, 9]
+    },
+    {
+      title: 'DÉCLARATION PRÉALABLE INCLUSE',
+      desc: 'Dossier DP d\'urbanisme clé en main géré par Nelson.',
+      bg: [245, 243, 255], border: [221, 214, 254], titleColor: [124, 58, 237]
+    }
   ];
 
   guars.forEach((g, gIdx) => {
     const gx = 14 + gIdx * (guarW + 2.5);
-    doc.setFillColor(255, 255, 255);
+    doc.setFillColor(g.bg[0], g.bg[1], g.bg[2]);
     doc.roundedRect(gx, guarY, guarW, guarH, 1.5, 1.5, 'F');
-    doc.setDrawColor(226, 232, 240);
+    doc.setDrawColor(g.border[0], g.border[1], g.border[2]);
     doc.roundedRect(gx, guarY, guarW, guarH, 1.5, 1.5, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.2);
-    doc.setTextColor(30, 64, 175);
-    doc.text(g.title, gx + 2, guarY + 4.5);
+    doc.setFontSize(8.2); // +2 points (était 6.2)
+    doc.setTextColor(g.titleColor[0], g.titleColor[1], g.titleColor[2]);
+    doc.text(g.title, gx + 2.2, guarY + 4.8);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.8);
-    doc.setTextColor(100, 116, 139);
-    const splDesc = doc.splitTextToSize(g.desc, guarW - 4);
-    doc.text(splDesc, gx + 2, guarY + 8.2);
+    doc.setFontSize(7.8); // +2 points (était 5.8)
+    doc.setTextColor(51, 65, 85);
+    const splDesc = doc.splitTextToSize(g.desc, guarW - 4.4);
+    doc.text(splDesc, gx + 2.2, guarY + 9.2);
   });
 
   drawFooter(doc, 1, totalPages, false);
@@ -555,14 +575,14 @@ export function generateClientCommercialPdf(params = {}) {
     doc.text(fk.sub, fx + 2.5, 51.0);
   });
 
-  // Graphique comparatif multi-courbes de trésorerie sur 20 ans (hauteur agrandie = 105 mm)
-  drawMultiCashFlowChartPdf(doc, 14, 55, 182, 105, activeScenarios);
+  // Graphique comparatif multi-courbes de trésorerie sur 20 ans (hauteur ajustée = 80 mm)
+  drawMultiCashFlowChartPdf(doc, 14, 55, 182, 80, activeScenarios);
 
-  // Tableau comparatif de Cash-flow sur 20 ans (police augmentée de 2 points)
+  // Tableau comparatif de Cash-flow sur 20 ans (renvoi à la ligne avant (Cumul €))
   const milestoneYears = [0, 1, 2, 3, 5, 7, 10, 15, 20];
   const cfTableHead = [
     'Échéance',
-    ...activeScenarios.slice(0, 3).map((sc, i) => `${sc.title ? sc.title.replace(/^[^\w]+/, '').slice(0, 18) : `Option ${i + 1}`} (Cumul €)`)
+    ...activeScenarios.slice(0, 3).map((sc, i) => `${sc.title ? sc.title.replace(/^[^\w]+/, '').slice(0, 18) : `Option ${i + 1}`}\n(Cumul €)`)
   ];
 
   const cfTableRows = milestoneYears.map(yrNum => {
@@ -582,7 +602,7 @@ export function generateClientCommercialPdf(params = {}) {
   });
 
   autoTable(doc, {
-    startY: 163.5,
+    startY: 138.5,
     margin: { left: 14, right: 14 },
     theme: 'plain',
     headStyles: {
@@ -590,13 +610,13 @@ export function generateClientCommercialPdf(params = {}) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 8.8,
+      fontSize: 8.4,
       cellPadding: 1.4
     },
     styles: {
       font: 'helvetica',
-      fontSize: 8.4,
-      cellPadding: 1.3,
+      fontSize: 8.2,
+      cellPadding: 1.1,
       textColor: [30, 41, 59]
     },
     columnStyles: {
@@ -609,9 +629,9 @@ export function generateClientCommercialPdf(params = {}) {
     body: cfTableRows
   });
 
-  // Chronogramme prévisionnel de déploiement à 6 étapes : hauteur ajustée à 68 mm
+  // Chronogramme prévisionnel de déploiement à 6 étapes : hauteur optimisée pour rester sur la page
   const chronoY = doc.lastAutoTable.finalY + 3.0;
-  const chronoH = 68;
+  const chronoH = 48;
   drawChronogrammeGantt(doc, 14, chronoY, 182, chronoH, Boolean(sim.grid));
 
   drawFooter(doc, 2, totalPages, false);
@@ -643,7 +663,7 @@ export function generateClientCommercialPdf(params = {}) {
       bg: [254, 243, 199], border: [253, 230, 138], txt: [146, 64, 14], titleColor: [180, 83, 9]
     },
     {
-      title: isSolar ? 'AVEC SOLAIRE + BESS' : 'COUVERTURE BATTERIE & ARBITRAGE',
+      title: isSolar ? 'AVEC SOLAIRE + BESS' : 'COUVERTURE BATTERIE',
       val: `${Math.round(sim.energy.rates.autonomyPvBat * 100)} %`,
       sub: isSolar
         ? `Autoconsommation : ${Math.round(sim.energy.rates.autoconsoPvBat * 100)} %`
@@ -1637,7 +1657,8 @@ export function drawMultiCashFlowChartPdf(doc, x, y, w, h, scenarios = []) {
 
     return {
       title: sc.title || `Option ${idx + 1}`,
-      label: `Opt ${idx + 1} (${shortRef}) : TRI ${tri} · ROI ${pay}`,
+      shortRef,
+      label: `Opt ${idx + 1} (${shortRef})`,
       color: theme.rgb,
       capex,
       years: yrs,
@@ -1646,22 +1667,30 @@ export function drawMultiCashFlowChartPdf(doc, x, y, w, h, scenarios = []) {
     };
   });
 
-  // Légende en haut
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
-  const legendStartY = y + 10.0;
+  // Légende en 2 lignes par option (Option en ligne 1, TRI & ROI en ligne 2 sous chaque option correspondante)
+  const legColW = (w - 8) / 3;
   validScenarios.forEach((sc, idx) => {
-    const legX = x + 4 + idx * 58;
+    const legX = x + 4 + idx * legColW;
+
+    // Ligne 1 : Puce de couleur et nom de l'option
     doc.setFillColor(sc.color[0], sc.color[1], sc.color[2]);
-    doc.circle(legX + 1.2, legendStartY - 1.0, 1.2, 'F');
+    doc.circle(legX + 1.2, y + 8.8, 1.2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.0);
     doc.setTextColor(sc.color[0], sc.color[1], sc.color[2]);
-    doc.text(sc.label, legX + 3.4, legendStartY);
+    doc.text(`Opt ${idx + 1} (${sc.shortRef})`, legX + 3.8, y + 9.8);
+
+    // Ligne 2 : TRI & ROI directement en dessous de l'option correspondante
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.4);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`TRI : ${sc.tri} · ROI : ${sc.payback}`, legX + 3.8, y + 13.5);
   });
 
   const plotX = x + 18;
-  const plotY = y + 14.5;
+  const plotY = y + 15.5;
   const plotW = w - 24;
-  const plotH = h - 22.0;
+  const plotH = h - 23.0;
 
   globalMin = Math.floor(globalMin / 10000) * 10000;
   globalMax = Math.ceil((globalMax * 1.10) / 10000) * 10000;
@@ -1828,9 +1857,9 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
   doc.roundedRect(x, y, w, h, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11.0);
+  doc.setFontSize(10.0);
   doc.setTextColor(15, 23, 42);
-  doc.text('CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT', x + 4, y + 5.2);
+  doc.text('CHRONOGRAMME PRÉVISIONNEL DE DÉPLOIEMENT', x + 4, y + 4.8);
 
   const badgeBg = includeGrid ? [239, 246, 255] : [240, 253, 244];
   const badgeBorder = includeGrid ? [191, 219, 254] : [187, 247, 208];
@@ -1838,13 +1867,13 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
   const badgeLabel = includeGrid ? 'Délai total : ~5 à 6 mois (Raccordement Enedis)' : 'Délai total : ~8 à 10 semaines';
 
   doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
-  doc.roundedRect(x + w - 82, y + 1.8, 78, 6.2, 1.2, 1.2, 'F');
+  doc.roundedRect(x + w - 82, y + 1.5, 78, 5.5, 1.0, 1.0, 'F');
   doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2]);
-  doc.roundedRect(x + w - 82, y + 1.8, 78, 6.2, 1.2, 1.2, 'D');
+  doc.roundedRect(x + w - 82, y + 1.5, 78, 5.5, 1.0, 1.0, 'D');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(7.8);
   doc.setTextColor(badgeTxt[0], badgeTxt[1], badgeTxt[2]);
-  doc.text(badgeLabel, x + w - 43, y + 6.0, { align: 'center' });
+  doc.text(badgeLabel, x + w - 43, y + 5.2, { align: 'center' });
 
   const colNameW = 76;
   const colStartX = x + colNameW;
@@ -1852,15 +1881,15 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
   const numCols = includeGrid ? 6 : 5;
   const colW = totalColsW / numCols;
 
-  const tableHeaderY = y + 9.5;
-  const tableHeaderH = 5.2;
+  const tableHeaderY = y + 8.0;
+  const tableHeaderH = 4.6;
   doc.setFillColor(241, 245, 249);
   doc.rect(x + 2, tableHeaderY, w - 4, tableHeaderH, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(7.8);
   doc.setTextColor(71, 85, 105);
-  doc.text('Étape / Jalon opérationnel', x + 4, tableHeaderY + 3.6);
+  doc.text('Étape / Jalon opérationnel', x + 4, tableHeaderY + 3.2);
 
   const colLabels = includeGrid
     ? ['Mois 1', 'Mois 2', 'Mois 3', 'Mois 4', 'Mois 5', 'Mois 6']
@@ -1868,7 +1897,7 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
 
   colLabels.forEach((lbl, cIdx) => {
     const cx = colStartX + cIdx * colW;
-    doc.text(lbl, cx + colW / 2, tableHeaderY + 3.6, { align: 'center' });
+    doc.text(lbl, cx + colW / 2, tableHeaderY + 3.2, { align: 'center' });
   });
 
   const wk = (s, e) => ({ startFrac: (s - 1) / 10, endFrac: e / 10 });
@@ -1891,9 +1920,9 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
       ];
 
   const rowsStartY = tableHeaderY + tableHeaderH;
-  const availableRowsH = (y + h - 1.5) - rowsStartY;
-  const rowH = Math.max(4.8, availableRowsH / steps.length);
-  const barH = Math.min(6.2, rowH * 0.65);
+  const availableRowsH = (y + h - 1.2) - rowsStartY;
+  const rowH = Math.max(4.2, availableRowsH / steps.length);
+  const barH = Math.min(4.4, rowH * 0.70);
 
   steps.forEach((step, sIdx) => {
     const ry = rowsStartY + sIdx * rowH;
@@ -1907,19 +1936,19 @@ function drawChronogrammeGantt(doc, x, y, w, h, includeGrid = false) {
     }
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.8);
+    doc.setFontSize(7.8);
     doc.setTextColor(30, 41, 59);
-    doc.text(step.name, x + 4, ry + rowH / 2 + 1.4);
+    doc.text(step.name, x + 4, ry + rowH / 2 + 1.2);
 
     const barX = colStartX + step.startFrac * totalColsW + 0.5;
     const barWidth = Math.max(7, (step.endFrac - step.startFrac) * totalColsW - 1);
 
     doc.setFillColor(step.color[0], step.color[1], step.color[2]);
-    doc.roundedRect(barX, ry + (rowH - barH) / 2, barWidth, barH, 0.8, 0.8, 'F');
+    doc.roundedRect(barX, ry + (rowH - barH) / 2, barWidth, barH, 0.7, 0.7, 'F');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.8);
+    doc.setFontSize(7.0);
     doc.setTextColor(255, 255, 255);
-    doc.text(step.label, barX + barWidth / 2, ry + rowH / 2 + 1.2, { align: 'center' });
+    doc.text(step.label, barX + barWidth / 2, ry + rowH / 2 + 1.0, { align: 'center' });
   });
 }
