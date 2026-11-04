@@ -573,20 +573,36 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     }
   };
 
-  // Export PDF Bancaire
+  // Export PDF Bancaire avec choix préalable de l'option BESS
   const [isExportingBank, setIsExportingBank] = useState(false);
+  const [showBankOptionModal, setShowBankOptionModal] = useState(false);
+
   const handleExportBankPdf = () => {
+    setShowBankOptionModal(true);
+  };
+
+  const handleGenerateBankPdfForScenario = (targetScenario, optionNumber = 1) => {
     setIsExportingBank(true);
     try {
+      const scenarioSim = targetScenario?.sim || sim;
+      const modelName = targetScenario?.model
+        ? `${targetScenario.quantity}× ${targetScenario.model.name || targetScenario.model.reference} (${(targetScenario.model.capacityKwh * targetScenario.quantity).toFixed(1)} kWh / ${(targetScenario.model.powerKw * targetScenario.quantity).toFixed(0)} kW)`
+        : `${scenarioSim.quantity}× ${scenarioSim.model?.name || scenarioSim.model?.reference} (${scenarioSim.capacityKwh.toFixed(1)} kWh / ${scenarioSim.powerKw.toFixed(0)} kW)`;
+
       generateBankDossierPdf({
-        sim,
+        sim: scenarioSim,
         projectInfo: { clientName, prm: selectedPrm, address: siteAddress },
+        selectedOptionNumber: optionNumber,
+        selectedOptionTitle: targetScenario?.title || `Option ${optionNumber}`,
+        selectedOptionModelName: modelName,
         scenarios: computedScenarios
       });
+
       toast({
-        title: 'Dossier Bancaire téléchargé ✓',
-        description: 'Le dossier complet de financement sur 4 pages est prêt pour la banque.'
+        title: `Dossier Bancaire téléchargé (Option ${optionNumber}) ✓`,
+        description: `Le dossier complet de financement pour l'Option ${optionNumber} (${targetScenario?.model?.reference || ''}) a été généré.`
       });
+      setShowBankOptionModal(false);
     } catch (e) {
       console.error(e);
       toast({ title: 'Erreur export bancaire', description: e.message, variant: 'destructive' });
@@ -1475,8 +1491,8 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                   </div>
                 </div>
 
-                {/* 8. Bouton d'action pour appliquer cette option */}
-                <div className="mt-5 pt-3 border-t border-slate-800/80">
+                {/* 8. Boutons d'action pour appliquer cette option ou exporter son dossier bancaire */}
+                <div className="mt-5 pt-3 border-t border-slate-800/80 flex flex-col gap-2">
                   <button
                     type="button"
                     onClick={() => handleApplyScenarioToSimulator(sc)}
@@ -1490,6 +1506,16 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                   >
                     <Eye className="w-4 h-4" />
                     <span>{isCurrentSim ? '✓ Option active dans le simulateur' : '👁️ Voir les courbes de cette option'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateBankPdfForScenario(sc, isOpt1 ? 1 : isOpt2 ? 2 : 3)}
+                    disabled={isExportingBank}
+                    className="w-full py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 transition-all cursor-pointer"
+                  >
+                    <Landmark className="w-3.5 h-3.5 text-amber-300" />
+                    <span>🏦 Dossier Bancaire (Option {isOpt1 ? 1 : isOpt2 ? 2 : 3})</span>
                   </button>
                 </div>
               </div>
@@ -1940,6 +1966,102 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
           </table>
         </div>
       </div>
+
+      {/* ── MODAL : SÉLECTION DE L'OPTION POUR LE DOSSIER BANCAIRE ── */}
+      {showBankOptionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 shadow-2xl text-white relative">
+            <button
+              type="button"
+              onClick={() => setShowBankOptionModal(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm font-bold transition-all cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center shrink-0">
+                <Landmark className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white">
+                  Dossier de Financement Bancaire — Choix de l'Option BESS
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Sélectionnez l'option de dimensionnement que vous souhaitez soumettre à la banque :
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 mt-6">
+              {computedScenarios.slice(0, 3).map((sc, scIdx) => {
+                const optNum = scIdx + 1;
+                const isOpt2 = sc.id === 'opt2';
+                const sSim = sc.sim || sim;
+                return (
+                  <div
+                    key={sc.id}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                      isOpt2
+                        ? 'bg-slate-800/90 border-emerald-500/50 hover:border-emerald-400'
+                        : 'bg-slate-800/50 border-slate-700/60 hover:border-slate-600'
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                          isOpt2 ? 'bg-emerald-400 text-slate-950' : 'bg-slate-700 text-slate-200'
+                        }`}>
+                          Option {optNum} {isOpt2 && '· Recommandée'}
+                        </span>
+                        <span className="text-xs font-bold text-amber-400">
+                          {sc.badge}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-black text-white mt-1">
+                        {sc.title}
+                      </h4>
+                      <div className="text-xs text-slate-300 mt-1 flex items-center gap-2.5 flex-wrap">
+                        <span>Modèle : <strong className="text-white">{sc.quantity}× {sc.model.reference}</strong> ({sc.model.capacityKwh * sc.quantity} kWh / {sc.model.powerKw * sc.quantity} kW)</span>
+                        <span>•</span>
+                        <span>CAPEX : <strong className="text-white">{fmtEur(sSim.capex?.totalCapex || sc.turnkeyPrice)} HT</strong></span>
+                        <span>•</span>
+                        <span>TRI : <strong className="text-emerald-400">{sSim.kpis?.triProject != null ? `${sSim.kpis.triProject.toFixed(1)} %` : '—'}</strong></span>
+                        <span>•</span>
+                        <span>DSCR : <strong className="text-blue-300">{sSim.financing?.dscrAvg != null ? `${sSim.financing.dscrAvg.toFixed(2)}x` : '—'}</strong></span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateBankPdfForScenario(sc, optNum)}
+                      disabled={isExportingBank}
+                      className={`px-4 py-2.5 rounded-xl font-black text-xs shrink-0 flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
+                        isOpt2
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950'
+                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
+                      }`}
+                    >
+                      <Landmark className="w-3.5 h-3.5" />
+                      <span>Générer Dossier (Option {optNum})</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end mt-5 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowBankOptionModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-all cursor-pointer"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

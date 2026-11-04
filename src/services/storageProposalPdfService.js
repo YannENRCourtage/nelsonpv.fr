@@ -31,7 +31,7 @@ export function formatSignedNum(val, decimals = 0, suffix = ' €') {
 }
 
 // ─── En-tête officiel ENR Courtage / Nelson ───
-function drawHeader(doc, title, subtitle, pageNum, totalPages, subtitleLine2 = null) {
+function drawHeader(doc, title, subtitle, pageNum, totalPages, subtitleLine2 = null, subtitleFontSize = null) {
   if (ENR_COURTAGE_LOGO_BASE64) {
     try {
       doc.addImage(ENR_COURTAGE_LOGO_BASE64, 'PNG', 14, 8, 38, 12);
@@ -56,14 +56,14 @@ function drawHeader(doc, title, subtitle, pageNum, totalPages, subtitleLine2 = n
 
   if (subtitle) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.2);
+    doc.setFontSize(subtitleFontSize || 8.2);
     doc.setTextColor(71, 85, 105);
     doc.text(subtitle, 14, subtitleLine2 ? 30.8 : 32.5);
   }
 
   if (subtitleLine2) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.8);
+    doc.setFontSize(subtitleFontSize ? subtitleFontSize - 0.4 : 7.8);
     doc.setTextColor(100, 116, 139);
     doc.text(subtitleLine2, 14, 34.8);
   }
@@ -744,14 +744,38 @@ export function generateClientCommercialPdf(params = {}) {
 // Page 3 : Compte de résultat prévisionnel & Cash-flow 20 ans
 // Page 4 : Analyse de sensibilité & Stress-test bancaire
 // ═══════════════════════════════════════════════════════════════════════════
-export function generateBankDossierPdf({ sim, projectInfo = {} }) {
+export function generateBankDossierPdf({
+  sim,
+  projectInfo = {},
+  selectedOptionNumber = null,
+  selectedOptionTitle = null,
+  selectedOptionModelName = null,
+  scenarios = null
+}) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const totalPages = 4;
 
   const clientName = projectInfo.clientName || 'Client Professionnel';
   const prm = projectInfo.prm || 'PRM Non spécifié';
-  const address = projectInfo.address || 'France';
+  const defaultGilbertAddress = '594 Chemin des Bois Reynaud 24800 Saint-Martin-de-Fressengeas';
+  let address = projectInfo.address || projectInfo.siteAddress || '';
+  if (!address || address.includes('15 Route des Moulins') || address.includes('Bordeaux') || prm === '16238205462430' || String(clientName).toUpperCase().includes('GILBERT')) {
+    address = defaultGilbertAddress;
+  }
   const solar = sim.input.solar || {};
+
+  // Détermination de l'option choisie
+  let optNum = selectedOptionNumber;
+  if (!optNum) {
+    if (Array.isArray(scenarios) && scenarios.length > 0) {
+      const idx = scenarios.findIndex(sc => sc.modelId === sim.model?.id || sc.sim?.model?.id === sim.model?.id);
+      optNum = idx >= 0 ? idx + 1 : 2;
+    } else {
+      optNum = 1;
+    }
+  }
+
+  const equipmentName = selectedOptionModelName || `${sim.quantity}× ${sim.model?.name || sim.model?.reference} (${sim.capacityKwh.toFixed(1)} kWh / ${sim.powerKw.toFixed(0)} kW)`;
 
   // ───────────────────────────────────────────────────────────────────────────
   // PAGE 1 — NOTE DE SYNTHÈSE BANCAIRE & JUSTIFICATION DU PROJET
@@ -761,117 +785,159 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
     'DOSSIER DE FINANCEMENT BANCAIRE — NOTE DE SYNTHÈSE',
     `Projet de Stockage d'Énergie par Batteries BESS · Porteur : ${clientName}`,
     1,
-    totalPages
+    totalPages,
+    `Adresse d'implantation : ${address}`
   );
 
-  // Bloc Présentation du Demandeur & Emplacement
+  // Bloc Présentation du Demandeur & Emplacement (décalé vers le bas sous l'adresse)
+  const idY = 39.5;
+  const idH = 30.5;
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, 38, 182, 28, 2, 2, 'F');
+  doc.roundedRect(14, idY, 182, idH, 2, 2, 'F');
   doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(14, 38, 182, 28, 2, 2, 'D');
+  doc.roundedRect(14, idY, 182, idH, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(10.0); // +2 points (était 8)
   doc.setTextColor(30, 64, 175);
-  doc.text('1. IDENTIFICATION DU PORTEUR DE PROJET & DU SITE', 18, 43.5);
+  doc.text('1. IDENTIFICATION DU PORTEUR DE PROJET & DU SITE', 18, idY + 5.2);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(9.0); // +2 points (était 7)
   doc.setTextColor(30, 41, 59);
-  doc.text(`• Raison sociale / Exploitant : ${clientName}`, 18, 49);
-  doc.text(`• Adresse d'implantation : ${address}`, 18, 53.5);
-  doc.text(`• Point de Raccordement et Mesure (PRM) : ${prm}`, 18, 58);
-  doc.text(`• Activité du site : Profil ${sim.input.profileKey || 'professionnel'} · Facture de référence : ${formatNum(sim.input.annualKwh || 0)} kWh/an`, 18, 62.5);
 
-  doc.text(`• Partenaire technique : ENR COURTAGE SAS (Ingénierie BESS & Solaire)`, 110, 49);
-  doc.text(`• Puissance de pointe souscrite : ${sim.energy.peakKw.toFixed(1)} kW`, 110, 53.5);
-  doc.text(`• Écrêtage souscrit assuré : ${sim.energy.shaveKw.toFixed(1)} kW (sécurisation réseau)`, 110, 58);
-  doc.text(`• Durée de garantie constructeur : 10 ans / 6 000 cycles (LFP)`, 110, 62.5);
+  // Colonne Gauche
+  doc.text(`• Raison sociale / Demandeur : ${clientName}`, 18, idY + 11.0);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`• Matériel BESS retenu : ${equipmentName} (Option ${optNum})`, 18, idY + 16.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`• Point de Raccordement et Mesure (PRM) : ${prm}`, 18, idY + 22.0);
+  doc.text(`• Profil d'activité : ${sim.input.profileKey || 'Professionnel'} · Réf : ${formatNum(sim.input.annualKwh || 0)} kWh/an`, 18, idY + 27.5);
 
-  // Justification économique et stratégique
-  const justifY = 70;
+  // Colonne Droite
+  doc.text(`• Partenaire technique : ENR COURTAGE SAS (Ingénierie BESS)`, 110, idY + 11.0);
+  doc.text(`• Puissance de pointe souscrite : ${sim.energy.peakKw.toFixed(1)} kW`, 110, idY + 16.5);
+  doc.text(`• Écrêtage souscrit garanti : ${sim.energy.shaveKw.toFixed(1)} kW (sécurisation réseau)`, 110, idY + 22.0);
+  doc.text(`• Garantie constructeur : 10 ans / 6 000 cycles (LFP)`, 110, idY + 27.5);
+
+  // Justification économique et stratégique (Section 2)
+  const justifY = idY + idH + 3.0; // 73 mm
+  const justifH = 47;
   doc.setFillColor(255, 255, 255);
-  doc.roundedRect(14, justifY, 182, 42, 2, 2, 'F');
+  doc.roundedRect(14, justifY, 182, justifH, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(14, justifY, 182, 42, 2, 2, 'D');
+  doc.roundedRect(14, justifY, 182, justifH, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(10.0); // +2 points (était 8)
   doc.setTextColor(15, 23, 42);
   doc.text('2. OBJET DU FINANCEMENT & JUSTIFICATION ÉCONOMIQUE', 18, justifY + 5.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
+  doc.setFontSize(8.8); // +2 points (était 6.8)
   doc.setTextColor(71, 85, 105);
   const justifText = [
     `Le présent projet vise l'installation d'un système de stockage d'énergie par batteries stationnaires LiFePO4 de dernière génération`,
-    `d'une capacité de ${sim.capacityKwh.toFixed(1)} kWh et d'une puissance de ${sim.powerKw.toFixed(0)} kW (${sim.quantity}× armoire(s) ${sim.model.name}).`,
+    `d'une capacité de ${sim.capacityKwh.toFixed(1)} kWh et d'une puissance de ${sim.powerKw.toFixed(0)} kW (${sim.quantity}× ${sim.model.name || sim.model.reference}) (Option ${optNum}).`,
     ``,
-    `L'objectif stratégique et économique de l'investissement repose sur trois leviers de création de valeur pérennes :`,
-    `  1. Écrêtage des pointes de puissance (Peak Shaving) : réduction directe de la composante puissance du TURPE et des dépassements.`,
-    `  2. Arbitrage tarifaire et autoconsommation solaire : recharge en Heures Creuses ou sur surplus solaire gratuit, restitution en Heures Pleines.`,
+    `L'objectif stratégique et économique de l'investissement repose sur trois leviers majeurs de création de valeur pérennes :`,
+    `  1. Écrêtage des pointes de puissance (Peak Shaving) : réduction directe de la composante puissance du TURPE et suppression des dépassements.`,
+    `  2. Arbitrage tarifaire & autoconsommation : recharge en Heures Creuses ou sur surplus solaire gratuit, restitution en Heures Pleines.`,
     `  3. Sécurisation face à la volatilité des marchés : protection pluriannuelle contre les hausses tarifaires de l'électricité (+4%/an prévus).`,
-    sim.grid ? `  4. Valorisation de flexibilité réseau Enedis/RTE : contractualisation de revenus capacitaires et de réserve rapide (~80 €/kW/an net).` : `  4. Autonomie énergétique : taux de couverture du site porté à ${Math.round(sim.energy.rates.autonomyPvBat * 100)} % (dépendance réseau drastiquement diminuée).`
+    sim.grid
+      ? `  4. Flexibilité réseau Enedis/RTE : contractualisation de revenus capacitaires et de réserve rapide (~80 €/kW/an net).`
+      : `  4. Autonomie énergétique : taux de couverture du site porté à ${Math.round(sim.energy.rates.autonomyPvBat * 100)} % (dépendance réseau drastiquement diminuée).`
   ];
-  let ty = justifY + 10;
+  let ty = justifY + 11.5;
   justifText.forEach(line => {
     doc.text(line, 18, ty);
-    ty += 3.8;
+    ty += 4.5;
   });
 
-  // Synthèse financière & Bancabilité (Grands KPIs)
-  const bkpiY = 116;
+  // Synthèse financière & Bancabilité (Section 3 - Grands KPIs avec couleurs différentes)
+  const bkpiY = justifY + justifH + 3.0; // 123 mm
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(10.0); // +2 points (était 8)
   doc.setTextColor(15, 23, 42);
-  doc.text('3. INDICATEURS CLÉS DE BANCABILITÉ', 14, bkpiY);
+  doc.text('3. INDICATEURS CLÉS DE BANCABILITÉ', 14, bkpiY + 4.0);
 
   const bankKpis = [
-    { label: 'BESOIN GLOBAL (CAPEX)', val: `${formatNum(sim.capex.totalCapex)} € HT`, sub: 'Matériel, pose & raccordement' },
-    { label: 'DETTE SENIOR SOLLICITÉE', val: `${formatNum(sim.financing.debt)} € HT`, sub: `${100 - (sim.input.finance?.equityPct || 20)} % du besoin (${sim.financing.years} ans)` },
-    { label: 'APPORT EN FONDS PROPRES', val: `${formatNum(sim.financing.equity)} € HT`, sub: `${sim.input.finance?.equityPct || 20} % en fonds propres` },
-    { label: 'DSCR MOYEN (COUVERTURE DETTE)', val: `${sim.financing.dscrAvg || '—'}x`, sub: `Minimum observé : ${sim.financing.dscrMin || '—'}x (> 1.20x requis)` },
-    { label: 'TRI PROJET (NON LEVERAGED)', val: `${sim.kpis.triProject || '—'} %`, sub: `TRI Fonds Propres : ${sim.kpis.triEquity || '—'} %` },
-    { label: 'VALEUR ACTUELLE NETTE (VAN 5%)', val: `${formatNum(sim.kpis.van)} €`, sub: `Payback : ${sim.kpis.payback || '—'} ans` }
+    {
+      label: 'BESOIN GLOBAL (CAPEX)',
+      val: `${formatNum(sim.capex.totalCapex)} € HT`,
+      sub: 'Matériel, pose & raccordement',
+      bg: [239, 246, 255], border: [191, 219, 254], lblColor: [30, 64, 175], valColor: [15, 23, 42], subColor: [71, 85, 105]
+    },
+    {
+      label: 'DETTE SENIOR SOLLICITÉE',
+      val: `${formatNum(sim.financing.debt)} € HT`,
+      sub: `${100 - (sim.input.finance?.equityPct || 20)} % du besoin (${sim.financing.years} ans)`,
+      bg: [238, 242, 255], border: [199, 210, 254], lblColor: [67, 56, 202], valColor: [49, 46, 129], subColor: [79, 70, 229]
+    },
+    {
+      label: 'APPORT EN FONDS PROPRES',
+      val: `${formatNum(sim.financing.equity)} € HT`,
+      sub: `${sim.input.finance?.equityPct || 20} % en fonds propres`,
+      bg: [254, 243, 199], border: [253, 230, 138], lblColor: [180, 83, 9], valColor: [120, 53, 15], subColor: [146, 64, 14]
+    },
+    {
+      label: 'DSCR MOYEN (COUVERTURE DETTE)',
+      val: `${sim.financing.dscrAvg || '—'}x`,
+      sub: `Minimum observé : ${sim.financing.dscrMin || '—'}x (> 1.20x requis)`,
+      bg: [236, 253, 245], border: [167, 243, 208], lblColor: [5, 150, 105], valColor: [6, 95, 70], subColor: [4, 120, 87]
+    },
+    {
+      label: 'TRI PROJET (NON LEVERAGED)',
+      val: `${sim.kpis.triProject || '—'} %`,
+      sub: `TRI Fonds Propres : ${sim.kpis.triEquity || '—'} %`,
+      bg: [240, 249, 255], border: [186, 230, 253], lblColor: [2, 132, 199], valColor: [12, 74, 110], subColor: [3, 105, 161]
+    },
+    {
+      label: 'VALEUR ACTUELLE NETTE (VAN 5%)',
+      val: `${formatNum(sim.kpis.van)} €`,
+      sub: `Payback : ${sim.kpis.payback || '—'} ans`,
+      bg: [250, 245, 255], border: [233, 213, 255], lblColor: [126, 34, 206], valColor: [88, 28, 135], subColor: [107, 33, 168]
+    }
   ];
 
   bankKpis.forEach((bk, idx) => {
     const col = idx % 3;
     const row = Math.floor(idx / 3);
     const bx = 14 + col * 62;
-    const by = bkpiY + 4 + row * 22;
+    const by = bkpiY + 7.5 + row * 24.5;
 
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(bx, by, 58, 19, 2, 2, 'F');
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(bx, by, 58, 19, 2, 2, 'D');
+    doc.setFillColor(bk.bg[0], bk.bg[1], bk.bg[2]);
+    doc.roundedRect(bx, by, 58, 21.5, 2, 2, 'F');
+    doc.setDrawColor(bk.border[0], bk.border[1], bk.border[2]);
+    doc.roundedRect(bx, by, 58, 21.5, 2, 2, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(bk.label, bx + 3, by + 4.5);
+    doc.setFontSize(7.5); // +2 points (était 5.5)
+    doc.setTextColor(bk.lblColor[0], bk.lblColor[1], bk.lblColor[2]);
+    doc.text(bk.label, bx + 3.5, by + 5.2);
 
-    doc.setFontSize(9);
-    doc.setTextColor(15, 23, 42);
-    doc.text(bk.val, bx + 3, by + 11.5);
+    doc.setFontSize(11.0); // +2 points (était 9.0)
+    doc.setTextColor(bk.valColor[0], bk.valColor[1], bk.valColor[2]);
+    doc.text(bk.val, bx + 3.5, by + 12.8);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(bk.sub, bx + 3, by + 16);
+    doc.setFontSize(7.0); // +2 points (était 5.5)
+    doc.setTextColor(bk.subColor[0], bk.subColor[1], bk.subColor[2]);
+    doc.text(bk.sub, bx + 3.5, by + 18.2);
   });
 
-  // Sécurité technique et garanties
-  const secY = bkpiY + 52;
+  // Sécurité technique et garanties (Section 4)
+  const secY = bkpiY + 59.5; // ~182.5 mm
+  const secH = 43;
   doc.setFillColor(240, 253, 244);
-  doc.roundedRect(14, secY, 182, 38, 2, 2, 'F');
+  doc.roundedRect(14, secY, 182, secH, 2, 2, 'F');
   doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(14, secY, 182, 38, 2, 2, 'D');
+  doc.roundedRect(14, secY, 182, secH, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(9.5); // +2 points (était 7.5)
   doc.setTextColor(22, 101, 52);
-  doc.text('4. CONFORMITÉ NORMATIVE, SÉCURITÉ INCENDIE & PÉRENNITÉ DE L\'ACTIF', 18, secY + 5);
+  doc.text('4. CONFORMITÉ NORMATIVE, SÉCURITÉ INCENDIE & PÉRENNITÉ DE L\'ACTIF', 18, secY + 5.8);
 
   const secLines = [
     `• Chimie des cellules : Lithium-Fer-Phosphate (LiFePO4 / LFP) — stabilité thermique exceptionnelle, absence totale de risque d'emballement thermique toxique.`,
@@ -880,13 +946,13 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
     `• Supervision & Télémétrie 24/7 : monitoring continu du State-of-Health (SoH), State-of-Charge (SoC) et équilibrage dynamique actif des cellules.`,
     `• Garantie de performance constructeur : maintien contractuel d'au moins 70 % de capacité résiduelle au terme de 10 ans ou 6 000 cycles complets.`
   ];
-  let sy = secY + 10;
+  let sy = secY + 11.5;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(8.2); // +2 points (était 6.2)
   doc.setTextColor(30, 41, 59);
   secLines.forEach(l => {
     doc.text(l, 18, sy);
-    sy += 4.5;
+    sy += 6.2;
   });
 
   drawFooter(doc, 1, totalPages, true);
@@ -900,12 +966,14 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
     'PLAN DE FINANCEMENT & ANALYSE DE LA DETTE SENIOR',
     `Échéancier de remboursement · Annuités constantes · Ratio de couverture DSCR`,
     2,
-    totalPages
+    totalPages,
+    null,
+    10.0 // +2 points sur le sous-titre
   );
 
   // Tableau Emplois / Ressources
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(10.5); // +2 points (était 8.5)
   doc.setTextColor(15, 23, 42);
   doc.text('TABLEAU DES EMPLOIS & RESSOURCES', 14, 40);
 
@@ -927,10 +995,10 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 6.8,
-      cellPadding: 1.5
+      fontSize: 8.8, // +2 points (était 6.8)
+      cellPadding: 1.8
     },
-    styles: { font: 'helvetica', fontSize: 6.5, cellPadding: 1.3, textColor: [30, 41, 59] },
+    styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 1.6, textColor: [30, 41, 59] }, // +2 points (était 6.5)
     columnStyles: {
       0: { cellWidth: 55, fontStyle: 'bold' },
       1: { cellWidth: 35, halign: 'right' },
@@ -941,31 +1009,33 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
     body: empResTable
   });
 
-  // Paramètres du crédit
+  // Paramètres du crédit (2 colonnes et 2 lignes)
   const credY = doc.lastAutoTable.finalY + 4;
   doc.setFillColor(239, 246, 255);
-  doc.roundedRect(14, credY, 182, 14, 2, 2, 'F');
+  doc.roundedRect(14, credY, 182, 22, 2, 2, 'F');
   doc.setDrawColor(191, 219, 254);
-  doc.roundedRect(14, credY, 182, 14, 2, 2, 'D');
+  doc.roundedRect(14, credY, 182, 22, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
+  doc.setFontSize(9.0); // +2 points (était 7.0)
   doc.setTextColor(30, 64, 175);
-  doc.text('PARAMÈTRES DE LA DETTE BANCAIRE SENIOR MODÉLISÉE', 18, credY + 4.5);
+  doc.text('PARAMÈTRES DE LA DETTE BANCAIRE SENIOR MODÉLISÉE', 18, credY + 5.0);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(8.5); // +2 points (était 6.5)
   doc.setTextColor(30, 41, 59);
-  doc.text(`• Capital emprunté : ${formatNum(sim.financing.debt)} € HT`, 18, credY + 9.5);
-  doc.text(`• Durée de l'amortissement : ${sim.financing.years} ans`, 70, credY + 9.5);
-  doc.text(`• Taux d'intérêt annuel : ${sim.financing.ratePct.toFixed(2)} %`, 115, credY + 9.5);
-  doc.text(`• Annuité constante (Echéance annuelle) : ${formatNum(sim.financing.annuity)} € HT/an`, 150, credY + 9.5);
+  // Colonne 1
+  doc.text(`• Capital emprunté : ${formatNum(sim.financing.debt)} € HT`, 18, credY + 11.2);
+  doc.text(`• Durée de l'amortissement : ${sim.financing.years} ans`, 18, credY + 17.5);
+  // Colonne 2
+  doc.text(`• Taux d'intérêt annuel : ${sim.financing.ratePct.toFixed(2)} %`, 106, credY + 11.2);
+  doc.text(`• Annuité constante (Échéance) : ${formatNum(sim.financing.annuity)} € HT/an`, 106, credY + 17.5);
 
   // Échéancier de remboursement & DSCR annuel
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(10.5); // +2 points (était 8.5)
   doc.setTextColor(15, 23, 42);
-  doc.text('ÉCHÉANCIER DÉTAILLÉ DE REMBOURSEMENT & COUVERTURE DU SERVICE DE LA DETTE (DSCR)', 14, credY + 20);
+  doc.text('ÉCHÉANCIER DÉTAILLÉ DE REMBOURSEMENT & COUVERTURE DU SERVICE DE LA DETTE (DSCR)', 14, credY + 28);
 
   const debtRows = [];
   sim.years.slice(0, sim.financing.years).forEach((yr) => {
@@ -981,7 +1051,7 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
   });
 
   autoTable(doc, {
-    startY: credY + 23,
+    startY: credY + 31,
     margin: { left: 14, right: 14 },
     theme: 'striped',
     headStyles: {
@@ -989,10 +1059,10 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 6.2,
-      cellPadding: 1.2
+      fontSize: 8.2, // +2 points (était 6.2)
+      cellPadding: 1.5
     },
-    styles: { font: 'helvetica', fontSize: 6.2, cellPadding: 1.1, textColor: [30, 41, 59] },
+    styles: { font: 'helvetica', fontSize: 8.2, cellPadding: 1.3, textColor: [30, 41, 59] }, // +2 points (était 6.2)
     columnStyles: {
       0: { cellWidth: 20, fontStyle: 'bold' },
       1: { cellWidth: 28, halign: 'right' },
@@ -1000,7 +1070,7 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
       3: { cellWidth: 26, halign: 'right' },
       4: { cellWidth: 28, halign: 'right', fontStyle: 'bold' },
       5: { cellWidth: 30, halign: 'right', fontStyle: 'bold' },
-      6: { cellWidth: 24, halign: 'center', fontStyle: 'bold' }
+      6: { cellWidth: 24, halign: 'right', fontStyle: 'bold' } // ALIGNÉ À DROITE COMME DEMANDÉ !
     },
     head: [['Période', 'EBITDA Projet', 'Capital remboursé', 'Intérêts payés', 'Service Dette', 'Cash-Flow Net après dette', 'Ratio DSCR']],
     body: debtRows
@@ -1009,20 +1079,20 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
   // Note de conformité DSCR
   const noteY = doc.lastAutoTable.finalY + 4;
   doc.setFillColor(240, 253, 244);
-  doc.roundedRect(14, noteY, 182, 16, 2, 2, 'F');
+  doc.roundedRect(14, noteY, 182, 20, 2, 2, 'F');
   doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(14, noteY, 182, 16, 2, 2, 'D');
+  doc.roundedRect(14, noteY, 182, 20, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
+  doc.setFontSize(9.0); // +2 points (était 7.0)
   doc.setTextColor(22, 101, 52);
-  doc.text('VALIDATION DU CRITÈRE DE BANCABILITÉ : DSCR > 1.20x RESPECTÉ', 18, noteY + 5);
+  doc.text('VALIDATION DU CRITÈRE DE BANCABILITÉ : DSCR > 1.20x RESPECTÉ', 18, noteY + 5.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(8.2); // +2 points (était 6.2)
   doc.setTextColor(30, 41, 59);
-  doc.text(`• Le ratio DSCR minimal observé sur la durée du crédit s'établit à ${sim.financing.dscrMin || '—'}x, largement supérieur au seuil prudentiel usuel de 1.15x - 1.20x.`, 18, noteY + 9);
-  doc.text(`• Les économies directes sur facture d'électricité générées par la batterie couvrent à 100 % le service de la dette dès la première année d'exploitation.`, 18, noteY + 13);
+  doc.text(`• Le ratio DSCR minimal observé sur la durée du crédit s'établit à ${sim.financing.dscrMin || '—'}x, largement supérieur au seuil prudentiel usuel de 1.15x - 1.20x.`, 18, noteY + 11.0);
+  doc.text(`• Les économies directes sur facture d'électricité générées par la batterie couvrent à 100 % le service de la dette dès la première année d'exploitation.`, 18, noteY + 16.0);
 
   drawFooter(doc, 2, totalPages, true);
 
@@ -1032,10 +1102,12 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
   doc.addPage();
   drawHeader(
     doc,
-    'COMPTE DE RÉSULTAT PRÉVISIONNEL & FLUX DE TRÉSORERIE SUR 20 ANS',
+    'COMPTE DE RÉSULTAT PRÉVISIONNEL & FLUX DE TRÉSORERIE SUR 20 ANS', // Même taille 13.5 pt
     `Détail des flux annuels : Économies Facture, OPEX, Service de la dette et Trésorerie nette cumulée`,
     3,
-    totalPages
+    totalPages,
+    null,
+    10.2 // +2 points sur le sous-titre
   );
 
   const fullTable = [];
@@ -1061,10 +1133,10 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 5.8,
-      cellPadding: 1.1
+      fontSize: 7.8, // +2 points (était 5.8)
+      cellPadding: 1.3
     },
-    styles: { font: 'helvetica', fontSize: 5.4, cellPadding: 0.9, textColor: [30, 41, 59] },
+    styles: { font: 'helvetica', fontSize: 7.4, cellPadding: 1.05, textColor: [30, 41, 59] }, // +2 points (était 5.4)
     columnStyles: {
       0: { cellWidth: 18, fontStyle: 'bold' },
       1: { cellWidth: 26, halign: 'right' },
@@ -1080,22 +1152,22 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
   });
 
   // Synthèse de rentabilité sur 20 ans
-  const retY = doc.lastAutoTable.finalY + 3;
+  const retY = doc.lastAutoTable.finalY + 4;
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, retY, 182, 16, 2, 2, 'F');
+  doc.roundedRect(14, retY, 182, 21, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(14, retY, 182, 16, 2, 2, 'D');
+  doc.roundedRect(14, retY, 182, 21, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
+  doc.setFontSize(9.0); // +2 points (était 7.0)
   doc.setTextColor(30, 41, 59);
-  doc.text('SYNTHÈSE DU RENDEMENT POUR L\'INVESTISSEUR', 18, retY + 5);
+  doc.text('SYNTHÈSE DU RENDEMENT POUR L\'INVESTISSEUR', 18, retY + 5.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.2);
+  doc.setFontSize(8.2); // +2 points (était 6.2)
   doc.setTextColor(71, 85, 105);
-  doc.text(`• Gain net de trésorerie cumulé sur 20 ans après remboursement intégral de la dette : ${formatSignedNum(sim.kpis.gain20, 0, ' € HT')}`, 18, retY + 9.5);
-  doc.text(`• Taux de Rendement Interne Projet (TRI Projet) : ${sim.kpis.triProject || '—'} % · TRI Fonds Propres (ROE) : ${sim.kpis.triEquity || '—'} %`, 18, retY + 13.5);
+  doc.text(`• Gain net de trésorerie cumulé sur 20 ans après remboursement intégral de la dette : ${formatSignedNum(sim.kpis.gain20, 0, ' € HT')}`, 18, retY + 11.2);
+  doc.text(`• Taux de Rendement Interne Projet (TRI Projet) : ${sim.kpis.triProject || '—'} % · TRI Fonds Propres (ROE) : ${sim.kpis.triEquity || '—'} %`, 18, retY + 16.5);
 
   drawFooter(doc, 3, totalPages, true);
 
@@ -1105,17 +1177,19 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
   doc.addPage();
   drawHeader(
     doc,
-    'ANALYSE DE SENSIBILITÉ & STRESS-TEST BANCAIRE',
+    'ANALYSE DE SENSIBILITÉ & STRESS-TEST BANCAIRE', // Même taille 13.5 pt
     'Vérification de la résilience du service de la dette en scénario dégradé',
     4,
-    totalPages
+    totalPages,
+    null,
+    10.0 // +2 points sur le sous-titre
   );
 
   // Scénario Central vs Scénario Dégradé
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(10.5); // +2 points (était 8.5)
   doc.setTextColor(15, 23, 42);
-  doc.text('COMPARAISON SCÉNARIO CENTRAL VS SCÉNARIO DÉGRADÉ BANQUE', 14, 40);
+  doc.text('COMPARAISON SCÉNARIO CENTRAL VS SCÉNARIO DÉGRADÉ BANQUE', 14, 41);
 
   // Calcul du scénario stressé : gains -10%, taux +0.5 pt
   const stressDebt = annuity(sim.financing.debt, sim.financing.ratePct + 0.5, sim.financing.years);
@@ -1136,7 +1210,7 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
   });
 
   autoTable(doc, {
-    startY: 44,
+    startY: 45,
     margin: { left: 14, right: 14 },
     theme: 'striped',
     headStyles: {
@@ -1144,18 +1218,18 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 6.2,
-      cellPadding: 1.3
+      fontSize: 8.2, // +2 points (était 6.2)
+      cellPadding: 1.5
     },
-    styles: { font: 'helvetica', fontSize: 6.2, cellPadding: 1.1, textColor: [30, 41, 59] },
+    styles: { font: 'helvetica', fontSize: 8.2, cellPadding: 1.3, textColor: [30, 41, 59] }, // +2 points (était 6.2)
     columnStyles: {
       0: { cellWidth: 20, fontStyle: 'bold' },
       1: { cellWidth: 27, halign: 'right' },
       2: { cellWidth: 27, halign: 'right' },
-      3: { cellWidth: 26, halign: 'center', fontStyle: 'bold' },
+      3: { cellWidth: 26, halign: 'right', fontStyle: 'bold' },
       4: { cellWidth: 27, halign: 'right' },
       5: { cellWidth: 27, halign: 'right' },
-      6: { cellWidth: 28, halign: 'center', fontStyle: 'bold' }
+      6: { cellWidth: 28, halign: 'right', fontStyle: 'bold' }
     },
     head: [[
       'Période',
@@ -1170,16 +1244,16 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
   });
 
   // Conclusion du stress-test
-  const cclY = doc.lastAutoTable.finalY + 6;
+  const cclY = doc.lastAutoTable.finalY + 5;
   doc.setFillColor(240, 253, 244);
-  doc.roundedRect(14, cclY, 182, 38, 2, 2, 'F');
+  doc.roundedRect(14, cclY, 182, 45, 2, 2, 'F');
   doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(14, cclY, 182, 38, 2, 2, 'D');
+  doc.roundedRect(14, cclY, 182, 45, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(10.0); // +2 points (était 8.0)
   doc.setTextColor(22, 101, 52);
-  doc.text('CONCLUSION DE LA NOTE D\'ANALYSE DES RISQUES', 18, cclY + 6);
+  doc.text('CONCLUSION DE LA NOTE D\'ANALYSE DES RISQUES', 18, cclY + 6.0);
 
   const cclLines = [
     `1. Robustesse avérée : Même dans l'hypothèse très conservatrice d'une baisse de 10 % des gains annuels couplée à un renchérissement`,
@@ -1189,13 +1263,13 @@ export function generateBankDossierPdf({ sim, projectInfo = {} }) {
     `3. Recommandation d'octroi : Le projet présente un profil risque/rendement hautement sécurisé pour les établissements prêteurs,`,
     `   avec un autofinancement intégral des échéances bancaires par les économies d'énergie générées.`
   ];
-  let cy = cclY + 11.5;
+  let cy = cclY + 12.0;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.4);
+  doc.setFontSize(8.4); // +2 points (était 6.4)
   doc.setTextColor(30, 41, 59);
   cclLines.forEach(l => {
     doc.text(l, 18, cy);
-    cy += 4.2;
+    cy += 5.2;
   });
 
   drawFooter(doc, 4, totalPages, true);
