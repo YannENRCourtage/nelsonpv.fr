@@ -447,40 +447,49 @@ export function generateClientCommercialPdf(params = {}) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 8.4, // Augmenté d'un point (+1 pt)
-      cellPadding: 2.0
+      fontSize: 8.2,
+      cellPadding: 1.6
     },
     styles: {
       font: 'helvetica',
-      fontSize: 8.0, // Augmenté d'un point (+1 pt)
-      cellPadding: 2.0,
+      fontSize: 7.6,
+      cellPadding: 1.5,
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { cellWidth: col0W, fontStyle: 'bold' },
+      0: { cellWidth: col0W, fontStyle: 'bold', halign: 'left' },
       1: { cellWidth: colScenarioW, halign: 'center' },
       2: { cellWidth: colScenarioW, halign: 'center' },
       3: { cellWidth: colScenarioW, halign: 'center' }
+    },
+    didParseCell: (data) => {
+      if (data.section === 'head') {
+        if (data.column.index === 0) {
+          data.cell.styles.halign = 'left';
+        } else {
+          data.cell.styles.halign = 'center';
+        }
+      }
     },
     head: [tableHead],
     body: tableRows
   });
 
   // ── ENCADRÉ PÉDAGOGIQUE SOUS LE COMPARATIF ──
-  const noteY = doc.lastAutoTable.finalY + 2.5;
-  const noteH = 34; // Hauteur augmentée pour contenir tout le texte avec marge
+  const noteY = doc.lastAutoTable.finalY + 2.0;
+  const noteH = 29.5; // Très légèrement réduit pour préserver l'espace avec le footer
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(14, noteY, 182, noteH, 2, 2, 'F');
   doc.setDrawColor(203, 213, 225);
   doc.roundedRect(14, noteY, 182, noteH, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.0);
+  doc.setFontSize(7.8);
   doc.setTextColor(15, 23, 42);
-  doc.text('NOTE D\'ARBITRAGE TECHNIQUE & RECOMMANDATION ENR COURTAGE', 18, noteY + 5.0);
+  doc.text('NOTE D\'ARBITRAGE TECHNIQUE & RECOMMANDATION ENR COURTAGE', 18, noteY + 4.6);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
+  doc.setFontSize(6.7);
   doc.setTextColor(51, 65, 85);
   const noteLines = [
     `• Options 1 & 2 (54 à 61 kWh — ST54K & ST62K) : Offrent le meilleur TRI (> 11 %) et un retour sur investissement rapide (< 9 ans).`,
@@ -491,20 +500,20 @@ export function generateClientCommercialPdf(params = {}) {
     `  son TRI peut être doublé au-delà de 12 % à 15 % en activant la valorisation sur les services système réseau Enedis/RTE (réserve rapide FCR ~80 €/kW/an net)`,
     `  ou en couplage avec une future centrale photovoltaïque sur toiture ou ombrière.`
   ];
-  let nty = noteY + 8.8;
+  let nty = noteY + 8.0;
   noteLines.forEach(l => {
     // Espace supplémentaire avant • Option 3
     if (l.startsWith('• Option 3')) {
-      nty += 2.0;
+      nty += 1.8;
     }
     doc.text(l, 18, nty);
-    nty += 3.1;
+    nty += 2.9;
   });
 
-  // ── BLOC ENGAGEMENTS QUALITÉ & GARANTIES (4 CADRES AVEC RETOUR À LA LIGNE SI DÉPASSEMENT) ──
-  const guarY = noteY + noteH + 2.5;
+  // ── BLOC ENGAGEMENTS QUALITÉ & GARANTIES (4 CADRES BIEN AU-DESSUS DU FOOTER) ──
+  const guarY = noteY + noteH + 2.0;
   const guarW = (182 - 3 * 2.5) / 4;
-  const guarH = 19; // Hauteur adaptée pour accueillir le titre multi-lignes et la description
+  const guarH = 15.5; // Hauteur réduite pour rester nettement au-dessus de la ligne footer
   const guars = [
     {
       title: 'CELLULES LFP GARANTIES 10 ANS',
@@ -536,15 +545,15 @@ export function generateClientCommercialPdf(params = {}) {
     doc.roundedRect(gx, guarY, guarW, guarH, 1.5, 1.5, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.0);
+    doc.setFontSize(7.6);
     doc.setTextColor(g.titleColor[0], g.titleColor[1], g.titleColor[2]);
     const splTitle = doc.splitTextToSize(g.title, guarW - 4.4);
-    doc.text(splTitle, gx + 2.2, guarY + 4.2);
+    doc.text(splTitle, gx + 2.2, guarY + 3.8);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.4);
+    doc.setFontSize(6.8);
     doc.setTextColor(51, 65, 85);
-    const descStartY = guarY + 4.2 + (splTitle.length * 3.4);
+    const descStartY = guarY + 3.8 + (splTitle.length * 2.85);
     const splDesc = doc.splitTextToSize(g.desc, guarW - 4.4);
     doc.text(splDesc, gx + 2.2, descStartY);
   });
