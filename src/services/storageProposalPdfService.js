@@ -122,7 +122,7 @@ export function buildDefaultComparativeScenarios(sim) {
   return [
     {
       id: 'opt1',
-      title: 'Option 1 — Rentabilité Maximale (ROI Rapide)',
+      title: 'Option 1 — Rentabilité Max',
       badge: `Meilleur TRI (${sim1.kpis.triProject || '11.5'} %)`,
       model: m54,
       modelId: 'ST54K',
@@ -133,7 +133,7 @@ export function buildDefaultComparativeScenarios(sim) {
     },
     {
       id: 'opt2',
-      title: 'Option 2 — Équilibre Puissance / Écrêtage (Recommandée)',
+      title: 'Option 2 — Équilibre',
       badge: `Équilibre Écrêtage / Budget (TRI ${sim2.kpis.triProject || '11.1'} %)`,
       model: m62,
       modelId: 'ST62K',
@@ -144,7 +144,7 @@ export function buildDefaultComparativeScenarios(sim) {
     },
     {
       id: 'opt3',
-      title: 'Option 3 — Haute Autonomie & Capacité Industrielle',
+      title: 'Option 3 — Haute Autonomie',
       badge: `Haute Autonomie (TRI ${sim3.kpis.triProject || '5.8'} %)`,
       model: m261,
       modelId: 'UNIV_ESS_261_AC',
@@ -217,19 +217,19 @@ export function generateClientCommercialPdf(params = {}) {
 
   const cardThemes = [
     {
-      title: 'OPTION 1 : ROI RAPIDE',
+      title: 'Option 1 — Rentabilité Max',
       badge: 'Meilleur TRI',
       bg: [239, 246, 255], border: [191, 219, 254], headerBg: [37, 99, 235],
       txt: [30, 64, 175], barBg: [37, 99, 235]
     },
     {
-      title: 'OPTION 2 : ÉQUILIBRE',
+      title: 'Option 2 — Équilibre',
       badge: 'Recommandée',
       bg: [236, 253, 245], border: [167, 243, 208], headerBg: [5, 150, 105],
       txt: [6, 95, 70], barBg: [16, 185, 129]
     },
     {
-      title: 'OPTION 3 : HAUTE AUTONOMIE',
+      title: 'Option 3 — Haute Autonomie',
       badge: 'Capacité C&I',
       bg: [245, 243, 255], border: [221, 214, 254], headerBg: [124, 58, 237],
       txt: [109, 40, 217], barBg: [139, 92, 246]
@@ -253,7 +253,7 @@ export function generateClientCommercialPdf(params = {}) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.2);
     doc.setTextColor(255, 255, 255);
-    doc.text(sc.title ? sc.title.replace(/^[^\w]+/, '').slice(0, 26) : theme.title, cx + 2.5, cardY + 5.0);
+    doc.text(sc.title ? sc.title.replace(/^[^\w]+/, '').slice(0, 32) : theme.title, cx + 2.5, cardY + 5.0);
 
     // Badge droite
     doc.setFontSize(7.2);
@@ -364,7 +364,9 @@ export function generateClientCommercialPdf(params = {}) {
 
   const tableHead = [
     'Critère / Indicateur de Dimensionnement',
-    ...activeScenarios.slice(0, 3).map((sc, i) => sc.title ? sc.title.replace(/^[^\w]+/, '').slice(0, 24) : `Option ${i + 1}`)
+    'Option 1 — Rentabilité Max',
+    'Option 2 — Équilibre',
+    'Option 3 — Haute Autonomie'
   ];
 
   const tableRows = [
@@ -436,7 +438,7 @@ export function generateClientCommercialPdf(params = {}) {
 
   // ── ENCADRÉ PÉDAGOGIQUE SOUS LE COMPARATIF ──
   const noteY = doc.lastAutoTable.finalY + 2.5;
-  const noteH = 29;
+  const noteH = 34; // Hauteur augmentée pour contenir tout le texte avec marge
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(14, noteY, 182, noteH, 2, 2, 'F');
   doc.setDrawColor(203, 213, 225);
@@ -459,20 +461,20 @@ export function generateClientCommercialPdf(params = {}) {
     `  son TRI peut être doublé au-delà de 12 % à 15 % en activant la valorisation sur les services système réseau Enedis/RTE (réserve rapide FCR ~80 €/kW/an net)`,
     `  ou en couplage avec une future centrale photovoltaïque sur toiture ou ombrière.`
   ];
-  let nty = noteY + 9.0;
+  let nty = noteY + 8.8;
   noteLines.forEach(l => {
     // Espace supplémentaire avant • Option 3
     if (l.startsWith('• Option 3')) {
-      nty += 2.2;
+      nty += 2.0;
     }
     doc.text(l, 18, nty);
     nty += 3.1;
   });
 
-  // ── BLOC ENGAGEMENTS QUALITÉ & GARANTIES (4 CADRES AVEC COULEURS DIFFÉRENTES & POLICE +2 PT) ──
+  // ── BLOC ENGAGEMENTS QUALITÉ & GARANTIES (4 CADRES AVEC RETOUR À LA LIGNE SI DÉPASSEMENT) ──
   const guarY = noteY + noteH + 2.5;
   const guarW = (182 - 3 * 2.5) / 4;
-  const guarH = 18; // Hauteur augmentée pour contenir le texte agrandi
+  const guarH = 19; // Hauteur adaptée pour accueillir le titre multi-lignes et la description
   const guars = [
     {
       title: 'CELLULES LFP GARANTIES 10 ANS',
@@ -490,7 +492,7 @@ export function generateClientCommercialPdf(params = {}) {
       bg: [254, 243, 199], border: [253, 230, 138], titleColor: [180, 83, 9]
     },
     {
-      title: 'DÉCLARATION PRÉALABLE INCLUSE',
+      title: 'DÉCLARATION PRÉALABLE\nINCLUSE',
       desc: 'Dossier DP d\'urbanisme clé en main géré par Nelson.',
       bg: [245, 243, 255], border: [221, 214, 254], titleColor: [124, 58, 237]
     }
@@ -504,15 +506,17 @@ export function generateClientCommercialPdf(params = {}) {
     doc.roundedRect(gx, guarY, guarW, guarH, 1.5, 1.5, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.2); // +2 points (était 6.2)
+    doc.setFontSize(8.0);
     doc.setTextColor(g.titleColor[0], g.titleColor[1], g.titleColor[2]);
-    doc.text(g.title, gx + 2.2, guarY + 4.8);
+    const splTitle = doc.splitTextToSize(g.title, guarW - 4.4);
+    doc.text(splTitle, gx + 2.2, guarY + 4.2);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.8); // +2 points (était 5.8)
+    doc.setFontSize(7.4);
     doc.setTextColor(51, 65, 85);
+    const descStartY = guarY + 4.2 + (splTitle.length * 3.4);
     const splDesc = doc.splitTextToSize(g.desc, guarW - 4.4);
-    doc.text(splDesc, gx + 2.2, guarY + 9.2);
+    doc.text(splDesc, gx + 2.2, descStartY);
   });
 
   drawFooter(doc, 1, totalPages, false);
@@ -578,11 +582,13 @@ export function generateClientCommercialPdf(params = {}) {
   // Graphique comparatif multi-courbes de trésorerie sur 20 ans (hauteur ajustée = 80 mm)
   drawMultiCashFlowChartPdf(doc, 14, 55, 182, 80, activeScenarios);
 
-  // Tableau comparatif de Cash-flow sur 20 ans (renvoi à la ligne avant (Cumul €))
-  const milestoneYears = [0, 1, 2, 3, 5, 7, 10, 15, 20];
+  // Tableau comparatif de Cash-flow sur 20 ans (avec années 8, 9, 11, 12, 13, 14)
+  const milestoneYears = [0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20];
   const cfTableHead = [
     'Échéance',
-    ...activeScenarios.slice(0, 3).map((sc, i) => `${sc.title ? sc.title.replace(/^[^\w]+/, '').slice(0, 18) : `Option ${i + 1}`}\n(Cumul €)`)
+    'Option 1 — Rentabilité\n(Cumul €)',
+    'Option 2 — Équilibre\n(Cumul €)',
+    'Option 3 — Haute Autonomie\n(Cumul €)'
   ];
 
   const cfTableRows = milestoneYears.map(yrNum => {
@@ -602,7 +608,7 @@ export function generateClientCommercialPdf(params = {}) {
   });
 
   autoTable(doc, {
-    startY: 138.5,
+    startY: 137.0,
     margin: { left: 14, right: 14 },
     theme: 'plain',
     headStyles: {
@@ -610,13 +616,13 @@ export function generateClientCommercialPdf(params = {}) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 8.4,
-      cellPadding: 1.4
+      fontSize: 8.0,
+      cellPadding: 1.1
     },
     styles: {
       font: 'helvetica',
-      fontSize: 8.2,
-      cellPadding: 1.1,
+      fontSize: 7.6,
+      cellPadding: 0.85,
       textColor: [30, 41, 59]
     },
     columnStyles: {
@@ -630,8 +636,8 @@ export function generateClientCommercialPdf(params = {}) {
   });
 
   // Chronogramme prévisionnel de déploiement à 6 étapes : hauteur optimisée pour rester sur la page
-  const chronoY = doc.lastAutoTable.finalY + 3.0;
-  const chronoH = 48;
+  const chronoY = doc.lastAutoTable.finalY + 2.5;
+  const chronoH = 44;
   drawChronogrammeGantt(doc, 14, chronoY, 182, chronoH, Boolean(sim.grid));
 
   drawFooter(doc, 2, totalPages, false);
@@ -701,10 +707,10 @@ export function generateClientCommercialPdf(params = {}) {
   });
 
   // Graphique 24h vectoriel de charge & écrêtage
-  drawDaily24hChartPdf(doc, 14, 55, 182, 75, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
+  drawDaily24hChartPdf(doc, 14, 55, 182, 74, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
 
-  // Tableau synthétique de la Journée type heure par heure avec Niveau de Charge (hauteur 67 mm : toutes les lignes intégrées)
-  drawHourlyJourneyTablePdf(doc, 14, 133, 182, 67, sim.energy.chart, sim.capacityKwh);
+  // Tableau synthétique de la Journée type heure par heure avec Niveau de Charge (hauteur augmentée à 72 mm : confort visuel parfait)
+  drawHourlyJourneyTablePdf(doc, 14, 131, 182, 72, sim.energy.chart, sim.capacityKwh);
 
   // 4 Piliers Opérationnels & Explication de la journée type (espace aéré au-dessus)
   const pillarW = (182 - 3 * 2.5) / 4;
@@ -718,14 +724,14 @@ export function generateClientCommercialPdf(params = {}) {
   pillars.forEach((p, pIdx) => {
     const px = 14 + pIdx * (pillarW + 2.5);
     doc.setFillColor(p.bg[0], p.bg[1], p.bg[2]);
-    doc.roundedRect(px, 204.5, pillarW, 22, 2, 2, 'F');
+    doc.roundedRect(px, 205.5, pillarW, 21, 2, 2, 'F');
     doc.setDrawColor(p.border[0], p.border[1], p.border[2]);
-    doc.roundedRect(px, 204.5, pillarW, 22, 2, 2, 'D');
+    doc.roundedRect(px, 205.5, pillarW, 21, 2, 2, 'D');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.8);
     doc.setTextColor(p.txt[0], p.txt[1], p.txt[2]);
-    doc.text(p.title, px + 2.5, 209.5);
+    doc.text(p.title, px + 2.5, 210.0);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
@@ -735,7 +741,7 @@ export function generateClientCommercialPdf(params = {}) {
   });
 
   // Note explicative (exploitant toute la largeur du cadre avec police agrandie à 9.0 pt)
-  const noteBoxY = 230.0;
+  const noteBoxY = 229.0;
   const noteBoxH = 21.0;
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(14, noteBoxY, 182, noteBoxH, 2, 2, 'F');

@@ -366,7 +366,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
   const [scenariosConfig, setScenariosConfig] = useState([
     {
       id: 'opt1',
-      title: 'Option 1 — Rentabilité Maximale (ROI Rapide)',
+      title: 'Option 1 — Rentabilité Max',
       modelId: 'ST54K',
       quantity: 1,
       customHwPrice: null,
@@ -376,7 +376,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     },
     {
       id: 'opt2',
-      title: 'Option 2 — Équilibre Puissance / Écrêtage (Recommandée)',
+      title: 'Option 2 — Équilibre',
       modelId: 'ST62K',
       quantity: 1,
       customHwPrice: null,
@@ -386,7 +386,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     },
     {
       id: 'opt3',
-      title: 'Option 3 — Haute Autonomie & Capacité Industrielle',
+      title: 'Option 3 — Haute Autonomie',
       modelId: 'UNIV_ESS_261_AC',
       quantity: 1,
       customHwPrice: null,

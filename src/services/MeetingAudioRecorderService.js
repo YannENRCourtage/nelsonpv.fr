@@ -645,7 +645,8 @@ export function mergeVoiceSignatureIntoProfile(existingProfile, newSignature, we
         ? newSignature.sourceChannel
         : existingProfile.sourceChannel || 'mixed',
     samplesLearned: (existingProfile.samplesLearned || 1) + 1,
-    manuallyCalibrated: existingProfile.manuallyCalibrated || weight >= 0.65,
+    manuallyCalibrated: Boolean(existingProfile?.manuallyCalibrated || weight >= 0.65),
+    isDesignated: Boolean(existingProfile?.isDesignated || existingProfile?.manuallyCalibrated || weight >= 0.65),
   };
 }
 
@@ -674,6 +675,7 @@ export function identifySpeakerFromVoice({
   // 1. En mode Teams/Visio avec piste système active : séparation physique directe Micro vs Système
   if (signature.sourceChannel === 'local') {
     nextProfiles[0] = mergeVoiceSignatureIntoProfile(nextProfiles[0], signature, 0.25);
+    nextProfiles[0].isDesignated = true;
     return {
       speakerIndex: 0,
       confidence: 0.98,
@@ -693,9 +695,6 @@ export function identifySpeakerFromVoice({
           bestDist = d;
           bestRemoteIdx = idx;
         }
-      } else if (bestDist > 0.24) {
-        bestRemoteIdx = idx;
-        break;
       }
     }
     nextProfiles[bestRemoteIdx] = mergeVoiceSignatureIntoProfile(
@@ -711,28 +710,37 @@ export function identifySpeakerFromVoice({
     };
   }
 
-  // 2. Mode Téléphone / Micro : diarisation acoustique multi-interlocuteurs
-  const enrolledIndices = Object.keys(nextProfiles)
+  // 2. Mode Téléphone / Micro : diarisation acoustique basée STRICTEMENT sur les interlocuteurs DÉSIGNÉS par l'utilisateur
+  const designatedIndices = Object.keys(nextProfiles)
     .map((k) => Number(k))
-    .filter((idx) => idx >= 0 && idx < count && nextProfiles[idx]);
+    .filter(
+      (idx) =>
+        idx >= 0 &&
+        idx < count &&
+        nextProfiles[idx] &&
+        (nextProfiles[idx].isDesignated || nextProfiles[idx].manuallyCalibrated)
+    );
 
-  // Première voix entendue -> enregistrée sur l'interlocuteur actif (par défaut Yann = 0)
-  if (enrolledIndices.length === 0) {
-    const initIdx = currentSpeakerIndex < count ? currentSpeakerIndex : 0;
-    nextProfiles[initIdx] = mergeVoiceSignatureIntoProfile(null, signature, 1.0);
+  // RÈGLE CLÉ : Tant que moins de 2 interlocuteurs ont été désignés/calibrés par l'utilisateur,
+  // l'automate NE DOIT PAS basculer aléatoirement. La parole reste attribuée à l'interlocuteur actif / désigné.
+  if (designatedIndices.length < 2) {
+    const keepIdx = designatedIndices.includes(currentSpeakerIndex)
+      ? currentSpeakerIndex
+      : (designatedIndices[0] ?? currentSpeakerIndex);
     return {
-      speakerIndex: initIdx,
-      confidence: 0.9,
+      speakerIndex: keepIdx,
+      confidence: 0.75,
       updatedProfiles: nextProfiles,
-      reason: 'initial-enrollment',
+      reason: 'waiting-second-speaker-designation',
     };
   }
 
-  // Calculer la distance acoustique avec chaque interlocuteur ayant déjà une empreinte vocale
-  let closestIdx = enrolledIndices[0];
+  // DÈS QUE 2 INTERLOCUTEURS OU PLUS SONT DÉSIGNÉS :
+  // L'automate compare la signature vocale reçue avec les profils calibrés et choisit le profil le plus proche
+  let closestIdx = designatedIndices[0];
   let minDistance = Infinity;
 
-  enrolledIndices.forEach((idx) => {
+  designatedIndices.forEach((idx) => {
     const d = computeVoiceDistance(signature, nextProfiles[idx]);
     if (d < minDistance) {
       minDistance = d;
@@ -740,39 +748,22 @@ export function identifySpeakerFromVoice({
     }
   });
 
-  // S'il reste au moins un interlocuteur dont la voix n'a pas encore été enregistrée
-  // et que la voix actuelle diffère sensiblement des voix connues (seuil >= 0.19),
-  // c'est le nouvel interlocuteur qui prend la parole !
-  if (enrolledIndices.length < count && minDistance >= 0.19) {
-    let newSpeakerIdx = 1;
-    for (let i = 0; i < count; i++) {
-      if (!nextProfiles[i]) {
-        newSpeakerIdx = i;
-        break;
-      }
-    }
-    nextProfiles[newSpeakerIdx] = mergeVoiceSignatureIntoProfile(null, signature, 1.0);
-    return {
-      speakerIndex: newSpeakerIdx,
-      confidence: 0.88,
-      updatedProfiles: nextProfiles,
-      reason: 'new-voice-detected',
-    };
-  }
-
-  // Sinon, on attribue la parole à l'interlocuteur dont l'empreinte vocale est la plus proche
+  // Mise à jour adaptative continue du profil de l'interlocuteur reconnu
   nextProfiles[closestIdx] = mergeVoiceSignatureIntoProfile(
     nextProfiles[closestIdx],
     signature,
-    0.22
+    0.20
   );
-  const confidence = Math.max(0.55, Math.min(0.98, Number((1 - minDistance).toFixed(2))));
+  nextProfiles[closestIdx].isDesignated = true;
+  nextProfiles[closestIdx].manuallyCalibrated = true;
+
+  const confidence = Math.max(0.60, Math.min(0.98, Number((1 - minDistance).toFixed(2))));
 
   return {
     speakerIndex: closestIdx,
     confidence,
     updatedProfiles: nextProfiles,
-    reason: 'matched-profile',
+    reason: 'matched-designated-speaker',
   };
 }
 

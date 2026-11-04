@@ -212,6 +212,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
   const speakerOptionsRef = useRef(speakerOptions);
   const autoVoiceRecognitionRef = useRef(true);
   const speakerProfilesRef = useRef({});
+  const pendingCalibrationRef = useRef(null);
   const currentUtteranceFramesRef = useRef([]);
   const recentVoiceFramesRef = useRef([]);
   const lastManualSpeakerClickMsRef = useRef(0);
@@ -260,7 +261,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
 
   /**
    * Sélectionne manuellement un interlocuteur ET lui associe l'empreinte vocale en cours
-   * pour que le moteur de diarisation reconnaisse automatiquement sa voix dès qu'il reparle.
+   * pour que le moteur de diarisation reconnaisse ensuite automatiquement sa voix.
    */
   const handleSelectAndCalibrateSpeaker = useCallback(
     (targetIdx) => {
@@ -271,20 +272,34 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
       activeSpeakerLabelRef.current = targetLabel;
       lastManualSpeakerClickMsRef.current = Date.now();
 
-      // Si des trames vocales viennent d'être captées (ou sur la dernière intervention), on calibre l'empreinte vocale de cet interlocuteur
+      // On arme l'accumulation immédiate des trames de parole en cours ou imminentes
+      pendingCalibrationRef.current = {
+        speakerIndex: targetIdx,
+        frames: [],
+        startedAt: Date.now(),
+      };
+
+      // Si des trames vocales récentes sont déjà captées, on calibre immédiatement
       const recentSig = aggregateVoiceFrames(recentVoiceFramesRef.current.slice(-18));
       if (recentSig) {
+        const merged = mergeVoiceSignatureIntoProfile(
+          speakerProfilesRef.current[targetIdx],
+          recentSig,
+          0.88
+        );
+        merged.isDesignated = true;
+        merged.manuallyCalibrated = true;
         speakerProfilesRef.current = {
           ...speakerProfilesRef.current,
-          [targetIdx]: mergeVoiceSignatureIntoProfile(
-            speakerProfilesRef.current[targetIdx],
-            recentSig,
-            0.85
-          ),
+          [targetIdx]: merged,
         };
         setSpeakerProfilesState({ ...speakerProfilesRef.current });
         showToast(
-          `🎙️ Voix actuelle associée à « ${targetLabel} » — elle sera reconnue automatiquement dès qu'elle reparlera.`
+          `✓ Voix de « ${targetLabel} » mémorisée et calibrée avec succès !`
+        );
+      } else {
+        showToast(
+          `🎙️ Calibration : parlez maintenant pour associer votre voix à « ${targetLabel} »`
         );
       }
     },
@@ -307,13 +322,16 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
           aggregateVoiceFrames(recentVoiceFramesRef.current.slice(-15));
 
         if (targetSig) {
+          const merged = mergeVoiceSignatureIntoProfile(
+            speakerProfilesRef.current[targetIdx],
+            targetSig,
+            0.88
+          );
+          merged.isDesignated = true;
+          merged.manuallyCalibrated = true;
           speakerProfilesRef.current = {
             ...speakerProfilesRef.current,
-            [targetIdx]: mergeVoiceSignatureIntoProfile(
-              speakerProfilesRef.current[targetIdx],
-              targetSig,
-              0.88
-            ),
+            [targetIdx]: merged,
           };
           setSpeakerProfilesState({ ...speakerProfilesRef.current });
         }
@@ -698,12 +716,53 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
         recentVoiceFramesRef.current.shift();
       }
 
-      // Bascule en direct pendant que la personne parle (toutes les 7 trames vocales ~0.6s)
+      // Si une calibration est en cours pour l'interlocuteur sélectionné : accumuler ses trames directes
+      if (
+        pendingCalibrationRef.current &&
+        pendingCalibrationRef.current.speakerIndex === activeSpeakerIndexRef.current
+      ) {
+        const pCal = pendingCalibrationRef.current;
+        pCal.frames.push(frame);
+        if (
+          pCal.frames.length >= 8 ||
+          (Date.now() - pCal.startedAt > 1800 && pCal.frames.length >= 3)
+        ) {
+          const calSig = aggregateVoiceFrames(pCal.frames);
+          if (calSig) {
+            const merged = mergeVoiceSignatureIntoProfile(
+              speakerProfilesRef.current[pCal.speakerIndex],
+              calSig,
+              0.88
+            );
+            merged.isDesignated = true;
+            merged.manuallyCalibrated = true;
+            speakerProfilesRef.current = {
+              ...speakerProfilesRef.current,
+              [pCal.speakerIndex]: merged,
+            };
+            setSpeakerProfilesState({ ...speakerProfilesRef.current });
+            const sLabel =
+              speakerOptionsRef.current[pCal.speakerIndex]?.label ||
+              `Interlocuteur ${pCal.speakerIndex + 1}`;
+            showToast(`✓ Empreinte vocale de « ${sLabel} » calibrée !`);
+          }
+          pendingCalibrationRef.current = null;
+        }
+      }
+
+      // Bascule automatique en direct : UNIQUEMENT si au moins 2 interlocuteurs ont été désignés par l'utilisateur
+      const designatedCount = Object.keys(speakerProfilesRef.current).filter(
+        (k) =>
+          speakerProfilesRef.current[k]?.isDesignated ||
+          speakerProfilesRef.current[k]?.manuallyCalibrated
+      ).length;
+
       if (
         autoVoiceRecognitionRef.current &&
+        designatedCount >= 2 &&
         currentUtteranceFramesRef.current.length >= 6 &&
         currentUtteranceFramesRef.current.length % 6 === 0 &&
-        Date.now() - lastManualSpeakerClickMsRef.current > 3500
+        Date.now() - lastManualSpeakerClickMsRef.current > 3000
       ) {
         const liveSig = aggregateVoiceFrames(currentUtteranceFramesRef.current.slice(-12));
         if (liveSig) {
@@ -727,7 +786,7 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
         }
       }
     }, 85);
-  }, []);
+  }, [showToast]);
 
   // ── 8. TRANSCRIPTION CONTINUE EN DIRECT (FR-FR) AVEC DIARISATION VOCALE ──
   const startSpeechRecognition = useCallback(() => {
@@ -761,22 +820,31 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
 
               let resolvedSpeakerIdx = activeSpeakerIndexRef.current;
               const wasManuallySelectedRecently =
-                Date.now() - lastManualSpeakerClickMsRef.current <= 3500;
+                Date.now() - lastManualSpeakerClickMsRef.current <= 3800;
+
+              const designatedCount = Object.keys(speakerProfilesRef.current).filter(
+                (k) =>
+                  speakerProfilesRef.current[k]?.isDesignated ||
+                  speakerProfilesRef.current[k]?.manuallyCalibrated
+              ).length;
 
               if (utteranceSig) {
-                if (wasManuallySelectedRecently || !autoVoiceRecognitionRef.current) {
-                  // L'utilisateur a sélectionné l'interlocuteur : on calibre sa voix avec cette intervention
+                if (wasManuallySelectedRecently || !autoVoiceRecognitionRef.current || designatedCount < 2) {
+                  // L'utilisateur a sélectionné l'interlocuteur manuellement : on calibre sa voix avec cette intervention
+                  const merged = mergeVoiceSignatureIntoProfile(
+                    speakerProfilesRef.current[resolvedSpeakerIdx],
+                    utteranceSig,
+                    0.85
+                  );
+                  merged.isDesignated = true;
+                  merged.manuallyCalibrated = true;
                   speakerProfilesRef.current = {
                     ...speakerProfilesRef.current,
-                    [resolvedSpeakerIdx]: mergeVoiceSignatureIntoProfile(
-                      speakerProfilesRef.current[resolvedSpeakerIdx],
-                      utteranceSig,
-                      0.82
-                    ),
+                    [resolvedSpeakerIdx]: merged,
                   };
                   setSpeakerProfilesState({ ...speakerProfilesRef.current });
                 } else {
-                  // Reconnaissance automatique de l'interlocuteur par sa voix
+                  // Reconnaissance automatique parmi les interlocuteurs préalablement désignés
                   const diarization = identifySpeakerFromVoice({
                     signature: utteranceSig,
                     speakerProfiles: speakerProfilesRef.current,
@@ -1489,36 +1557,51 @@ export default function MeetinglyCopilotView({ tabs = [] }) {
                   </button>
                 </div>
 
-                {/* Boutons pour basculer et calibrer l'empreinte vocale de l'interlocuteur qui parle */}
+                {/* Boutons pour désigner et calibrer l'empreinte vocale de chaque interlocuteur */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[11px] text-slate-500 font-semibold">
-                    Qui parle (cliquer pour calibrer la voix) :
+                    Qui parle (cliquer en parlant pour calibrer) :
                   </span>
                   {speakerOptions.map((spk, idx) => {
-                    const hasVoiceProfile = Boolean(speakerProfilesState[idx]);
+                    const isCalibrated = Boolean(
+                      speakerProfilesState[idx]?.isDesignated ||
+                      speakerProfilesState[idx]?.manuallyCalibrated
+                    );
+                    const isActive = activeSpeakerIndex === idx;
                     return (
                       <button
                         key={spk.id}
                         type="button"
                         onClick={() => handleSelectAndCalibrateSpeaker(idx)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                          activeSpeakerIndex === idx
-                            ? 'bg-indigo-600 text-white shadow-xs'
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400'
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                         }`}
-                        title="Cliquez pendant que cet interlocuteur parle pour mémoriser l'empreinte de sa voix"
+                        title="Parlez et cliquez pour désigner cet interlocuteur et calibrer son empreinte vocale"
                       >
                         <span>{spk.label}</span>
-                        {hasVoiceProfile && (
+                        {isCalibrated ? (
                           <span
-                            className={`text-[10px] px-1 rounded ${
-                              activeSpeakerIndex === idx
-                                ? 'bg-indigo-500 text-emerald-200'
+                            className={`text-[10px] px-1.5 py-0.2 rounded font-bold flex items-center gap-1 ${
+                              isActive
+                                ? 'bg-emerald-500 text-white'
                                 : 'bg-emerald-100 text-emerald-700'
                             }`}
-                            title="Empreinte vocale mémorisée"
+                            title="Voix calibrée et enregistrée pour la reconnaissance automatique"
                           >
-                            🎙️
+                            ✓ Calibré
+                          </span>
+                        ) : (
+                          <span
+                            className={`text-[10px] px-1.5 py-0.2 rounded flex items-center gap-1 ${
+                              isActive
+                                ? 'bg-indigo-700 text-indigo-100'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                            title="Cliquez pendant qu'il parle pour calibrer sa voix"
+                          >
+                            🎯 À calibrer
                           </span>
                         )}
                       </button>
