@@ -1695,18 +1695,62 @@ function RoutingLayerManager({ isRoutingActive, routingPoints, setRoutingPoints,
 
         const startStr = `${start.lng},${start.lat}`;
         const endStr = `${end.lng},${end.lat}`;
+        const interStr = intermediates.length > 0 ? intermediates.map(p => `${p.lng},${p.lat}`).join('|') : null;
         
-        let url = `https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&start=${startStr}&end=${endStr}`;
-        
-        if (intermediates.length > 0) {
-          const interStr = intermediates.map(p => `${p.lng},${p.lat}`).join('|');
-          url += `&intermediates=${interStr}`;
+        let data = null;
+
+        // 1. Service IGN Géoplateforme principal : bdtopo-valhalla
+        try {
+          let urlValhalla = `https://data.geopf.fr/navigation/itineraire?resource=bdtopo-valhalla&profile=car&optimization=fastest&start=${startStr}&end=${endStr}`;
+          if (interStr) urlValhalla += `&intermediates=${interStr}`;
+          const res = await fetch(urlValhalla);
+          if (res.ok) {
+            data = await res.json();
+          }
+        } catch (eVal) {
+          console.warn("[Routing] Valhalla request error, trying fallback...", eVal);
         }
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Erreur lors du calcul de l'itinéraire");
-        
-        const data = await res.json();
+        // 2. Repli IGN Géoplateforme secondaire : bdtopo-pgr
+        if (!data || !data.geometry) {
+          try {
+            let urlPgr = `https://data.geopf.fr/navigation/itineraire?resource=bdtopo-pgr&profile=car&optimization=fastest&start=${startStr}&end=${endStr}`;
+            if (interStr) urlPgr += `&intermediates=${interStr}`;
+            const resPgr = await fetch(urlPgr);
+            if (resPgr.ok) {
+              data = await resPgr.json();
+            }
+          } catch (ePgr) {
+            console.warn("[Routing] PGR request error, trying OSRM fallback...", ePgr);
+          }
+        }
+
+        // 3. Repli tertiaire : OSRM public (au cas où l'IGN est en panne ou indisponible)
+        if (!data || !data.geometry) {
+          const coordsStr = routingPoints.map(p => `${p.lng},${p.lat}`).join(';');
+          const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson&steps=true`;
+          const resOsrm = await fetch(osrmUrl);
+          if (resOsrm.ok) {
+            const osrmJson = await resOsrm.json();
+            const route = osrmJson.routes?.[0];
+            if (route) {
+              data = {
+                distance: route.distance,
+                duration: route.duration,
+                geometry: route.geometry,
+                portions: (route.legs || []).map(leg => ({
+                  distance: leg.distance,
+                  duration: leg.duration,
+                  steps: leg.steps || []
+                }))
+              };
+            }
+          }
+        }
+
+        if (!data || !data.geometry) {
+          throw new Error("Impossible de calculer l'itinéraire entre ces points");
+        }
         setRouteData(data);
         if (onRouteUpdate) {
           onRouteUpdate({
