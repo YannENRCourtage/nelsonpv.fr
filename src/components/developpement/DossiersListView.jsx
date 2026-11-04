@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { getUserColor } from '@/lib/utils';
 import { apiService } from '@/services/api';
+import { BESS_PORTFOLIO_SITES, getProjectBessPortfolio, normalizePortfolioName } from '@/data/bessPortfolioData';
 
 /**
  * DossiersListView — Vue Monday.com des dossiers de développement (sur 2 lignes par projet)
@@ -23,6 +24,7 @@ export default function DossiersListView({
   const [searchTerm, setSearchTerm] = useState('');
   const [onlyMyProjects, setOnlyMyProjects] = useState(false);
   const [selectedStatuses, setSelectedStatuses] = useState(['all']);
+  const [selectedPortfolio, setSelectedPortfolio] = useState('all'); // 'all' | 'VOLTA' | 'FARADAY'
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [commentInputs, setCommentInputs] = useState({});
 
@@ -141,6 +143,83 @@ export default function DossiersListView({
     setSelectedStatuses(updated);
   };
 
+  // Détection du portefeuille (VOLTA ou FARADAY) pour chaque projet
+  const getProjectPortfolio = (p) => {
+    if (!p) return null;
+    try {
+      const fromBess = getProjectBessPortfolio(p);
+      if (fromBess) {
+        const norm = normalizePortfolioName(fromBess);
+        if (norm.includes('FARADAY') || norm.includes('TESLA') || norm === 'SPV B') return 'FARADAY';
+        if (norm.includes('VOLTA') || norm === 'SPV A') return 'VOLTA';
+      }
+    } catch (_) {}
+
+    const direct = p.bess_portfolio || 
+                   p.portfolio_bess || 
+                   p.portefeuille_bess || 
+                   p.bessPortfolio || 
+                   p.portefeuille || 
+                   p.portfolio || 
+                   p.pv_portfolio || 
+                   p.data?.bess_portfolio || 
+                   p.data?.portefeuille || 
+                   p.bp_bess_data?.portfolio || 
+                   p.bpAcamaState?.bess_portfolio || 
+                   '';
+    const s = String(direct).toUpperCase().trim();
+    if (s.includes('FARADAY') || s.includes('TESLA') || s === 'SPV B') return 'FARADAY';
+    if (s.includes('VOLTA') || s === 'SPV A') return 'VOLTA';
+
+    if (p.spv === 'SPV B') return 'FARADAY';
+    if (p.spv === 'SPV A') return 'VOLTA';
+
+    const pName = (p.name || '').toUpperCase().trim();
+    const pClient = (p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`).toUpperCase().trim();
+
+    // Exclusion explicite DUPORT, LABEGUERIE, LARDY et CELERIE de VOLTA (ils sont FARADAY)
+    if (pName.includes('DUPORT') || pClient.includes('DUPORT') ||
+        pName.includes('LABEGUERIE') || pClient.includes('LABEGUERIE') ||
+        pName.includes('LARDY') || pClient.includes('LARDY') ||
+        pName.includes('CELERIE') || pClient.includes('CELERIE')) {
+      return 'FARADAY';
+    }
+
+    if (Array.isArray(BESS_PORTFOLIO_SITES)) {
+      const matchSite = BESS_PORTFOLIO_SITES.find(site => {
+        if (p.id && site.id && (p.id === site.id || p.id === `site_${site.id}`)) return true;
+        const sName = (site.name || '').toUpperCase().trim();
+        const sCity = (site.city || '').toUpperCase().trim();
+        const pCity = (p.city || p.commune || '').toUpperCase().trim();
+        if (sName && (pName === sName || pName.includes(sName) || sName.includes(pName))) return true;
+        if (sCity && pCity && sCity === pCity && (pName.includes(sName) || sName.includes(pName))) return true;
+        return false;
+      });
+
+      if (matchSite) {
+        if (matchSite.bess_portfolio === 'FARADAY' || matchSite.spv === 'SPV B') return 'FARADAY';
+        return 'VOLTA';
+      }
+    }
+
+    const comm = (p.devComments || p.description || p.notes || '').toUpperCase();
+    if (comm.includes('FARADAY')) return 'FARADAY';
+    if (comm.includes('VOLTA')) return 'VOLTA';
+
+    return null;
+  };
+
+  const portfolioCounts = useMemo(() => {
+    let volta = 0;
+    let faraday = 0;
+    projects.forEach(p => {
+      const port = getProjectPortfolio(p);
+      if (port === 'VOLTA') volta++;
+      else if (port === 'FARADAY') faraday++;
+    });
+    return { VOLTA: volta, FARADAY: faraday, all: projects.length };
+  }, [projects]);
+
   const filteredProjects = useMemo(() => {
     return projects.filter(p => {
       if (onlyMyProjects && currentUser) {
@@ -156,6 +235,12 @@ export default function DossiersListView({
         const isCreator = createdBy.includes(uName) || createdBy.includes(uFirst);
 
         if (!isCommercial && !isChef && !isCreator && !p.is_mine) return false;
+      }
+
+      // Filtre portefeuille (VOLTA ou FARADAY)
+      if (selectedPortfolio !== 'all') {
+        const port = getProjectPortfolio(p);
+        if (port !== selectedPortfolio) return false;
       }
 
       if (!selectedStatuses.includes('all')) {
@@ -185,7 +270,7 @@ export default function DossiersListView({
       }
       return true;
     });
-  }, [projects, onlyMyProjects, currentUser, selectedStatuses, searchTerm]);
+  }, [projects, onlyMyProjects, currentUser, selectedStatuses, selectedPortfolio, searchTerm]);
 
   // Sauvegarde rapide du commentaire (Local + Firestore en temps réel + sync chat)
   const handleSaveComment = async (projectId, e) => {
@@ -305,6 +390,52 @@ export default function DossiersListView({
             <span>Mes projets</span>
             {onlyMyProjects && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>}
           </button>
+
+          {/* Filtres Portefeuille BESS : VOLTA / FARADAY */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setSelectedPortfolio('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all whitespace-nowrap ${
+                selectedPortfolio === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              Tous ({portfolioCounts.all})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedPortfolio(selectedPortfolio === 'VOLTA' ? 'all' : 'VOLTA')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                selectedPortfolio === 'VOLTA'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-amber-800 hover:text-amber-900 hover:bg-amber-100/60'
+              }`}
+              title="Filtrer uniquement sur le portefeuille VOLTA"
+            >
+              <span>⚡ VOLTA</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${selectedPortfolio === 'VOLTA' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'}`}>
+                {portfolioCounts.VOLTA}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedPortfolio(selectedPortfolio === 'FARADAY' ? 'all' : 'FARADAY')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                selectedPortfolio === 'FARADAY'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-emerald-800 hover:text-emerald-900 hover:bg-emerald-100/60'
+              }`}
+              title="Filtrer uniquement sur le portefeuille FARADAY"
+            >
+              <span>🔋 FARADAY</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${selectedPortfolio === 'FARADAY' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-900'}`}>
+                {portfolioCounts.FARADAY}
+              </span>
+            </button>
+          </div>
+
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto no-scrollbar scrollbar-none max-w-full flex-nowrap shrink-0 touch-pan-x" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
               <button key={key} onClick={() => handleToggleStatus(key)} className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all whitespace-nowrap shrink-0 ${selectedStatuses.includes(key) ? `${cfg.bg} ${cfg.text} shadow-xs scale-102` : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'}`}>
@@ -336,6 +467,7 @@ export default function DossiersListView({
             const isSelected = activeProjectId === p.id;
             const devProgress = getProjectDevProgress(p);
             const registeredNum = p.dp_registration_number || p.devWorkflow?.dp?.registrationNumber || p.pc_registration_number || p.devWorkflow?.pc?.registrationNumber || p.cu_registration_number || p.devWorkflow?.cu?.registrationNumber;
+            const projectPortfolio = getProjectPortfolio(p);
 
             return (
               <motion.div
@@ -362,6 +494,22 @@ export default function DossiersListView({
                         <span className="text-[11px] font-black px-2 py-0.5 bg-slate-100 text-blue-900 border border-slate-200 rounded-md tracking-wider flex-shrink-0 font-mono shadow-2xs">
                           {dossierNumbersMap[p.id || index] || p.dossier_num || `2632${String(index + 1).padStart(2, '0')}`}
                         </span>
+                        {projectPortfolio && (
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPortfolio(projectPortfolio);
+                            }}
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-md border flex items-center gap-1 shrink-0 transition-transform hover:scale-105 shadow-2xs ${
+                              projectPortfolio === 'VOLTA'
+                                ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                : 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                            }`}
+                            title={`Portefeuille ${projectPortfolio} — Cliquer pour filtrer`}
+                          >
+                            {projectPortfolio === 'VOLTA' ? '⚡ VOLTA' : '🔋 FARADAY'}
+                          </span>
+                        )}
                         {registeredNum && (
                           <span className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded flex-shrink-0 truncate max-w-[130px]" title={`N° d'enregistrement : ${registeredNum}`}>
                             {registeredNum}

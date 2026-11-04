@@ -672,30 +672,24 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       }
 
       // Tableau 4.4 : Destination, sous-destination des constructions et tableau des surfaces
-      // Pour les batteries BESS : inscription explicite de "0" m² partout (armoires techniques non closes et non couvertes)
+      // Pour les batteries BESS : inscription de 4 m² dans les 4 cellules (Locaux techniques créée & totale, Totaux créée & totale)
       if (isBat) {
-        setField(['W2TA1', 'topmostSubform[0].Page6[0].W2TA1[0]', 'topmostSubform[0].Page8[0].W2TA1[0]'], '0', 9.5); // Surface existante
-        setField(['W2TB1', 'topmostSubform[0].Page6[0].W2TB1[0]', 'topmostSubform[0].Page8[0].W2TB1[0]'], '0', 9.5); // Surface créée
-        setField(['W2TF1', 'topmostSubform[0].Page6[0].W2TF1[0]', 'topmostSubform[0].Page8[0].W2TF1[0]'], '0', 9.5); // Surface totale
-        setField(['W2SA1', 'topmostSubform[0].Page6[0].W2SA1[0]', 'topmostSubform[0].Page8[0].W2SA1[0]'], '0', 9.5); // Total existant
-        setField(['W2SB1', 'topmostSubform[0].Page6[0].W2SB1[0]', 'topmostSubform[0].Page8[0].W2SB1[0]'], '0', 9.5); // Total créé
-        setField(['W2SF1', 'topmostSubform[0].Page6[0].W2SF1[0]', 'topmostSubform[0].Page8[0].W2SF1[0]'], '0', 9.5); // Total final
+        const fillTable44 = (baseName, val) => {
+          setField([
+            baseName,
+            `topmostSubform[0].Page5[0].${baseName}[0]`,
+            `topmostSubform[0].Page6[0].${baseName}[0]`,
+            `topmostSubform[0].Page7[0].${baseName}[0]`,
+            `topmostSubform[0].Page8[0].${baseName}[0]`,
+          ], val, 9.5);
+        };
 
-        // Mention explicite sous le tableau des surfaces
-        try {
-          const pages = pdfDoc.getPages();
-          const pSurf = pages[7] || pages[6];
-          if (pSurf) {
-            const helvB = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-            pSurf.drawText('0 m2 (Armoires techniques non closes/couvertes - Emprise au sol : 19,84 m2)', {
-              x: 180,
-              y: 110,
-              size: 6.8,
-              font: helvB,
-              color: rgb(0.1, 0.2, 0.45),
-            });
-          }
-        } catch (_) {}
+        fillTable44('W2TA1', '0'); // Locaux techniques - Surface existante
+        fillTable44('W2TB1', '4'); // Locaux techniques - Surface créée
+        fillTable44('W2TF1', '4'); // Locaux techniques - Surface totale
+        fillTable44('W2SA1', '0'); // Surfaces totales - Total existant
+        fillTable44('W2SB1', '4'); // Surfaces totales - Total créé
+        fillTable44('W2SF1', '4'); // Surfaces totales - Total final
 
         // Rubrique Stationnement : explicitement 0 avant et 0 après
         setField(['S1A_stationnementavant', 'topmostSubform[0].Page7[0].S1A_stationnementavant[0]', 'topmostSubform[0].Page9[0].S1A_stationnementavant[0]'], '0', 9.5);
