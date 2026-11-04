@@ -62,7 +62,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
   const [prmList, setPrmList] = useState([]);
   const [selectedPrm, setSelectedPrm] = useState('16238205462430');
   const [clientName, setClientName] = useState('Eric GILBERT');
-  const [siteAddress, setSiteAddress] = useState('15 Route des Moulins, 33000 Bordeaux');
+  const [siteAddress, setSiteAddress] = useState('594 Chemin des Bois Reynaud 24800 Saint-Martin-de-Fressengeas');
 
   // Données de consommation
   const [annualKwh, setAnnualKwh] = useState(184200);
@@ -160,7 +160,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
       {
         prm: '16238205462430',
         name: 'Eric GILBERT',
-        address: '15 Route des Moulins, 33000 Bordeaux',
+        address: '594 Chemin des Bois Reynaud 24800 Saint-Martin-de-Fressengeas',
         annualKwh: 184200,
         peakKw: 76.0,
         profile: 'agricole'
@@ -1532,7 +1532,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
           </div>
           <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
             <span className="text-[10px] font-bold text-emerald-800 block uppercase">
-              {solarEnabled ? 'Avec Solaire + Batterie' : 'COUVERTURE BATTERIE & ARBITRAGE HP/HC'}
+              {solarEnabled ? 'Avec Solaire + Batterie' : 'COUVERTURE BATTERIE & ARBITRAGE'}
             </span>
             <span className="text-lg font-black text-emerald-900">
               {Math.round(sim.energy.rates.autonomyPvBat * 100)} %
@@ -1540,18 +1540,18 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
             <span className="text-[10px] text-emerald-700 block font-bold">
               {solarEnabled
                 ? `Autoconsommation : ${Math.round(sim.energy.rates.autoconsoPvBat * 100)} %`
-                : 'Part du besoin journalier transférée / écrêtée par la batterie'}
+                : "Part de l'énergie consommée"}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
             <span className="text-[10px] font-bold text-blue-800 block uppercase">
-              {solarEnabled ? 'Surplus Solaire Stocké' : 'Énergie Cyclée / Arbitrage'}
+              {solarEnabled ? 'Surplus Solaire Stocké' : 'ÉNERGIE TRANSFÉRÉE / AN'}
             </span>
             <span className="text-lg font-black text-blue-900">
               {fmtNum(solarEnabled ? sim.energy.totals.batFromPv : (sim.energy.totals.batThroughput || (sim.energy.totals.importHpBat + sim.energy.totals.importHcBat)))} kWh
             </span>
             <span className="text-[10px] text-blue-700 block">
-              {solarEnabled ? 'Énergie gratuite / an' : 'Cycle annuel batterie'}
+              {solarEnabled ? 'Énergie gratuite / an' : 'Cycles HC / HP'}
             </span>
           </div>
         </div>

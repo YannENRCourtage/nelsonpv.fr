@@ -163,7 +163,11 @@ export function generateClientCommercialPdf(params = {}) {
 
   const clientName = projectInfo.clientName || params.clientName || params.prmInfo?.titulaire || 'Client Professionnel';
   const prm = projectInfo.prm || params.prm || params.prmInfo?.prm || 'PRM Non spécifié';
-  const address = projectInfo.address || params.address || projectInfo.siteAddress || params.siteAddress || '';
+  const defaultGilbertAddress = '594 Chemin des Bois Reynaud 24800 Saint-Martin-de-Fressengeas';
+  let address = projectInfo.address || params.address || projectInfo.siteAddress || params.siteAddress || '';
+  if (!address || address.includes('15 Route des Moulins') || address.includes('Bordeaux') || prm === '16238205462430' || String(clientName).toUpperCase().includes('GILBERT')) {
+    address = defaultGilbertAddress;
+  }
   const solar = sim.input.solar || {};
 
   // Récupération ou construction automatique des 3 scénarios comparatifs
@@ -203,7 +207,7 @@ export function generateClientCommercialPdf(params = {}) {
   const consoAnnuelle = Math.round((sim.input.annualKwh || 0));
   const dailyMoy = Math.round((consoAnnuelle / 365) * 10) / 10;
   doc.text(`• Consommation annuelle : ${formatNum(consoAnnuelle)} kWh/an (Moyenne : ${dailyMoy.toFixed(1).replace('.', ',')} kWh/j)`, 105, 46.8);
-  doc.text(`• Puissance de pointe mesurée : ${sim.energy.peakKw.toFixed(1)} kW (Effacement de pointe TURPE souscrit)`, 105, 51.5);
+  doc.text(`• Puissance de pointe mesurée : ${sim.energy.peakKw.toFixed(1)} kW`, 105, 51.5);
 
   // ── CARTES COMPARATIVES CÔTE À CÔTE (3 SCÉNARIOS) ──
   const cardY = 58;
@@ -257,68 +261,99 @@ export function generateClientCommercialPdf(params = {}) {
 
     // Modèle & Capacité
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.2);
+    doc.setFontSize(8.0);
     doc.setTextColor(15, 23, 42);
     const modelRef = `${sSim.quantity}× ${sSim.model.name || sSim.model.reference}`;
-    doc.text(modelRef.slice(0, 30), cx + 2.5, cardY + 11.5);
+    doc.text(modelRef.slice(0, 30), cx + 2.5, cardY + 11.2);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.8);
+    doc.setFontSize(6.6);
     doc.setTextColor(71, 85, 105);
-    doc.text(`${sSim.capacityKwh.toFixed(1)} kWh · ${sSim.powerKw.toFixed(0)} kW`, cx + 2.5, cardY + 15.5);
+    doc.text(`${sSim.capacityKwh.toFixed(1)} kWh · ${sSim.powerKw.toFixed(0)} kW`, cx + 2.5, cardY + 15.0);
 
     // Prix Clé en Main
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.8);
+    doc.setFontSize(8.2);
     doc.setTextColor(theme.txt[0], theme.txt[1], theme.txt[2]);
-    doc.text(`${formatNum(sSim.capex.totalCapex)} € HT clé en main`, cx + 2.5, cardY + 20.8);
+    doc.text(`${formatNum(sSim.capex.totalCapex)} € HT clé en main`, cx + 2.5, cardY + 19.5);
 
-    // Taux de Couverture & Barre visuelle
+    // ── GRAND PAVÉ DOUBLE KPI (TRI & COUVERTURE MIS EN VALEUR EN TÊTE À TÊTE) ──
+    const kpiBoxY = cardY + 21.8;
+    const kpiBoxH = 17.5;
+    const boxInnerW = cardW - 5;
+    const halfBoxW = boxInnerW / 2;
+    const midX = cx + 2.5 + halfBoxW;
+
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(cx + 2.5, kpiBoxY, boxInnerW, kpiBoxH, 1.2, 1.2, 'F');
+    doc.setDrawColor(theme.border[0], theme.border[1], theme.border[2]);
+    doc.roundedRect(cx + 2.5, kpiBoxY, boxInnerW, kpiBoxH, 1.2, 1.2, 'D');
+
+    // Séparateur vertical central
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(midX, kpiBoxY + 1.8, midX, kpiBoxY + kpiBoxH - 1.8);
+
+    // 1. GAUCHE : Taux de Couverture Site
     const autoPct = Math.round(sSim.energy.rates.autonomyPvBat * 100);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.8);
-    doc.setTextColor(30, 41, 59);
-    doc.text(`Couverture site : ${autoPct} %`, cx + 2.5, cardY + 25.8);
-
-    // Barre de progression
-    const barWMax = cardW - 5;
-    const barHProg = 2.4;
-    doc.setFillColor(226, 232, 240);
-    doc.roundedRect(cx + 2.5, cardY + 27.2, barWMax, barHProg, 0.6, 0.6, 'F');
-    const filledW = Math.max(2, (Math.min(100, autoPct) / 100) * barWMax);
-    doc.setFillColor(theme.barBg[0], theme.barBg[1], theme.barBg[2]);
-    doc.roundedRect(cx + 2.5, cardY + 27.2, filledW, barHProg, 0.6, 0.6, 'F');
-
-    // Écrêtage pointe
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(5.6);
     doc.setTextColor(71, 85, 105);
-    doc.text(`Pointe : ${sSim.energy.peakKw.toFixed(0)} kW → ${sSim.energy.newPeakKw.toFixed(0)} kW (-${sSim.energy.shaveKw.toFixed(0)} kW)`, cx + 2.5, cardY + 33.5);
-
-    // Économies / Gains An 1
-    const totalGains = sSim.gains.batterySavings + sSim.gains.solarSavings + sSim.gains.gridRevenue;
-    doc.text(`Gains nets An 1 : +${formatNum(totalGains - sSim.opex)} € HT/an`, cx + 2.5, cardY + 38.0);
-
-    // TRI Projet & TRI Fonds Propres (En grand)
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(cx + 2.5, cardY + 41.5, cardW - 5, 10, 1.2, 1.2, 'F');
-    doc.setDrawColor(theme.border[0], theme.border[1], theme.border[2]);
-    doc.roundedRect(cx + 2.5, cardY + 41.5, cardW - 5, 10, 1.2, 1.2, 'D');
+    doc.text('COUVERTURE SITE', cx + 4.2, kpiBoxY + 4.0);
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(theme.headerBg[0], theme.headerBg[1], theme.headerBg[2]);
-    doc.text(`TRI : ${sSim.kpis.triProject !== null ? `${sSim.kpis.triProject} %` : '—'}`, cx + 4.5, cardY + 48.0);
+    doc.setFontSize(10.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${autoPct} %`, cx + 4.2, kpiBoxY + 9.6);
+
+    // Barre de progression couverture
+    const barProgW = halfBoxW - 4.5;
+    doc.setFillColor(226, 232, 240);
+    doc.roundedRect(cx + 4.2, kpiBoxY + 11.6, barProgW, 2.0, 0.4, 0.4, 'F');
+    const filledProgW = Math.max(1.8, (Math.min(100, autoPct) / 100) * barProgW);
+    doc.setFillColor(theme.barBg[0], theme.barBg[1], theme.barBg[2]);
+    doc.roundedRect(cx + 4.2, kpiBoxY + 11.6, filledProgW, 2.0, 0.4, 0.4, 'F');
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`TRI FP : ${sSim.kpis.triEquity !== null ? `${sSim.kpis.triEquity} %` : '—'}`, cx + cardW - 4.5, cardY + 48.0, { align: 'right' });
+    doc.setFontSize(4.8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`${(Math.round(sSim.energy.rates.autonomyPvBat * (consoAnnuelle / 365) * 10) / 10).toFixed(0)} kWh/j`, cx + 4.2, kpiBoxY + 15.6);
 
-    // Payback & Trésorerie 20 ans
-    doc.setFontSize(6.4);
+    // 2. DROITE : TRI Projet (Même taille, même force visuelle)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(5.6);
+    doc.setTextColor(theme.headerBg[0], theme.headerBg[1], theme.headerBg[2]);
+    doc.text('TRI PROJET', midX + 2.8, kpiBoxY + 4.0);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(theme.headerBg[0], theme.headerBg[1], theme.headerBg[2]);
+    const triProjText = sSim.kpis.triProject !== null ? `${sSim.kpis.triProject} %` : '—';
+    doc.text(triProjText, midX + 2.8, kpiBoxY + 9.6);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.2);
     doc.setTextColor(71, 85, 105);
-    doc.text(`ROI : ${sSim.kpis.payback !== null ? `${sSim.kpis.payback} ans` : '> 20 ans'} · 20 ans : +${formatNum(sSim.kpis.gain20)} €`, cx + 2.5, cardY + 55.5);
+    const triEqText = sSim.kpis.triEquity !== null ? `TRI FP : ${sSim.kpis.triEquity} %` : 'Fonds Propres';
+    doc.text(triEqText, midX + 2.8, kpiBoxY + 15.2);
+
+    // ── LIGNES DE DÉTAIL SOUS LE DOUBLE BLOC ──
+    const detailY = kpiBoxY + kpiBoxH + 3.2;
+
+    // Écrêtage pointe (police standard Helvetica, flèche nette ->)
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.4);
+    doc.setTextColor(51, 65, 85);
+    doc.text(`Pointe : ${sSim.energy.peakKw.toFixed(0)} kW -> ${sSim.energy.newPeakKw.toFixed(0)} kW (-${sSim.energy.shaveKw.toFixed(0)} kW)`, cx + 2.5, detailY);
+
+    // Gains nets An 1
+    const totalGains = sSim.gains.batterySavings + sSim.gains.solarSavings + sSim.gains.gridRevenue;
+    doc.text(`Gains nets An 1 : +${formatNum(totalGains - sSim.opex)} € HT/an`, cx + 2.5, detailY + 4.2);
+
+    // ROI & Gain 20 ans
+    doc.setFontSize(6.2);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`ROI : ${sSim.kpis.payback !== null ? `${sSim.kpis.payback} ans` : '> 20 ans'} · 20 ans : +${formatNum(sSim.kpis.gain20)} €`, cx + 2.5, detailY + 8.4);
   });
 
   // ── TABLEAU COMPARATIF DÉTAILLÉ ──
@@ -343,7 +378,7 @@ export function generateClientCommercialPdf(params = {}) {
     ],
     [
       'Écrêtage de pointe TURPE Enedis',
-      ...activeScenarios.slice(0, 3).map(sc => `${sc.sim.energy.peakKw.toFixed(1)} kW → ${sc.sim.energy.newPeakKw.toFixed(1)} kW (-${sc.sim.energy.shaveKw.toFixed(1)} kW)`)
+      ...activeScenarios.slice(0, 3).map(sc => `${sc.sim.energy.peakKw.toFixed(1)} kW -> ${sc.sim.energy.newPeakKw.toFixed(1)} kW (-${sc.sim.energy.shaveKw.toFixed(1)} kW)`)
     ],
     [
       'Investissement Total Clé en Main (CAPEX HT)',
@@ -380,13 +415,13 @@ export function generateClientCommercialPdf(params = {}) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 7.2,
-      cellPadding: 1.5
+      fontSize: 7.4,
+      cellPadding: 2.2
     },
     styles: {
       font: 'helvetica',
-      fontSize: 6.8,
-      cellPadding: 1.3,
+      fontSize: 7.0,
+      cellPadding: 2.3,
       textColor: [30, 41, 59]
     },
     columnStyles: {
@@ -520,8 +555,8 @@ export function generateClientCommercialPdf(params = {}) {
     doc.text(fk.sub, fx + 2.5, 51.0);
   });
 
-  // Graphique comparatif multi-courbes de trésorerie sur 20 ans
-  drawMultiCashFlowChartPdf(doc, 14, 56, 182, 57, activeScenarios);
+  // Graphique comparatif multi-courbes de trésorerie sur 20 ans (hauteur augmentée)
+  drawMultiCashFlowChartPdf(doc, 14, 55, 182, 68, activeScenarios);
 
   // Tableau comparatif de Cash-flow sur 20 ans (Années 0, 1, 2, 3, 5, 10, 15, 20)
   const milestoneYears = [0, 1, 2, 3, 5, 7, 10, 15, 20];
@@ -547,7 +582,7 @@ export function generateClientCommercialPdf(params = {}) {
   });
 
   autoTable(doc, {
-    startY: 115.5,
+    startY: 125.5,
     margin: { left: 14, right: 14 },
     theme: 'plain',
     headStyles: {
@@ -574,9 +609,9 @@ export function generateClientCommercialPdf(params = {}) {
     body: cfTableRows
   });
 
-  // Chronogramme prévisionnel de déploiement à 6 étapes (incluant Autorisation d'urbanisme)
-  const chronoY = doc.lastAutoTable.finalY + 3;
-  const chronoH = Math.min(84, Math.max(56, 280 - chronoY));
+  // Chronogramme prévisionnel de déploiement à 6 étapes : s'étend jusqu'en bas avant le footer (y=280.5)
+  const chronoY = doc.lastAutoTable.finalY + 3.5;
+  const chronoH = Math.max(65, 280.5 - chronoY);
   drawChronogrammeGantt(doc, 14, chronoY, 182, chronoH, Boolean(sim.grid));
 
   drawFooter(doc, 2, totalPages, false);
@@ -608,17 +643,17 @@ export function generateClientCommercialPdf(params = {}) {
       bg: [254, 243, 199], border: [253, 230, 138], txt: [146, 64, 14], titleColor: [180, 83, 9]
     },
     {
-      title: isSolar ? 'AVEC SOLAIRE + BESS' : 'COUVERTURE BATTERIE & ARBITRAGE HP/HC',
+      title: isSolar ? 'AVEC SOLAIRE + BESS' : 'COUVERTURE BATTERIE & ARBITRAGE',
       val: `${Math.round(sim.energy.rates.autonomyPvBat * 100)} %`,
       sub: isSolar
         ? `Autoconsommation : ${Math.round(sim.energy.rates.autoconsoPvBat * 100)} %`
-        : 'Part du besoin transférée/écrêtée',
+        : "Part de l'énergie consommée",
       bg: [236, 253, 245], border: [167, 243, 208], txt: [6, 95, 70], titleColor: [4, 120, 87]
     },
     {
       title: isSolar ? 'SURPLUS SOLAIRE STOCKÉ' : 'ÉNERGIE TRANSFÉRÉE / AN',
       val: isSolar ? `${formatNum(sim.energy.totals.batFromPv)} kWh` : `${formatNum(sim.capacityKwh * 0.92 * 365)} kWh`,
-      sub: isSolar ? 'Énergie gratuite / an' : 'Cycles Heures Creuses → Pleines',
+      sub: isSolar ? 'Énergie gratuite / an' : 'Cycles HC / HP',
       bg: [239, 246, 255], border: [191, 219, 254], txt: [30, 64, 175], titleColor: [37, 99, 235]
     }
   ];
@@ -641,14 +676,15 @@ export function generateClientCommercialPdf(params = {}) {
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.0);
+    doc.setTextColor(100, 116, 139);
     doc.text(r.sub, rx + 2.5, 51.0);
   });
 
-  // Graphique 24h vectoriel de charge & écrêtage
-  drawDaily24hChartPdf(doc, 14, 56, 182, 68, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
+  // Graphique 24h vectoriel de charge & écrêtage (hauteur augmentée de 68 mm à 84 mm)
+  drawDaily24hChartPdf(doc, 14, 56, 182, 84, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
 
   // Tableau synthétique de la Journée type heure par heure avec Niveau de Charge (SOC %)
-  drawHourlyJourneyTablePdf(doc, 14, 127, 182, 65, sim.energy.chart, sim.capacityKwh);
+  drawHourlyJourneyTablePdf(doc, 14, 143, 182, 57, sim.energy.chart, sim.capacityKwh);
 
   // 4 Piliers Opérationnels & Explication de la journée type
   const pillarW = (182 - 3 * 2.5) / 4;
@@ -662,33 +698,33 @@ export function generateClientCommercialPdf(params = {}) {
   pillars.forEach((p, pIdx) => {
     const px = 14 + pIdx * (pillarW + 2.5);
     doc.setFillColor(p.bg[0], p.bg[1], p.bg[2]);
-    doc.roundedRect(px, 195, pillarW, 23, 2, 2, 'F');
+    doc.roundedRect(px, 203, pillarW, 23, 2, 2, 'F');
     doc.setDrawColor(p.border[0], p.border[1], p.border[2]);
-    doc.roundedRect(px, 195, pillarW, 23, 2, 2, 'D');
+    doc.roundedRect(px, 203, pillarW, 23, 2, 2, 'D');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.8);
     doc.setTextColor(p.txt[0], p.txt[1], p.txt[2]);
-    doc.text(p.title, px + 2.5, 200.5);
+    doc.text(p.title, px + 2.5, 208.5);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
     doc.setTextColor(71, 85, 105);
     const splitDesc = doc.splitTextToSize(p.desc, pillarW - 5);
-    doc.text(splitDesc, px + 2.5, 205.5);
+    doc.text(splitDesc, px + 2.5, 213.5);
   });
 
   // Note explicative
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, 221, 182, 19, 2, 2, 'F');
+  doc.roundedRect(14, 229, 182, 19, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(14, 221, 182, 19, 2, 2, 'D');
+  doc.roundedRect(14, 229, 182, 19, 2, 2, 'D');
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.0);
   doc.setTextColor(100, 116, 139);
-  doc.text('Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation', 18, 226.5);
-  doc.text('et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour en chargeant prioritairement sur le surplus solaire', 18, 231.5);
-  doc.text('(ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 236.5);
+  doc.text('Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation', 18, 234.5);
+  doc.text('et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour en chargeant prioritairement sur le surplus solaire', 18, 239.5);
+  doc.text('(ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 244.5);
 
   drawFooter(doc, 3, totalPages, false);
 
