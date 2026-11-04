@@ -682,11 +682,26 @@ export function generateClientCommercialPdf(params = {}) {
   drawFooter(doc, 2, totalPages, false);
 
   // ── PAGE 3 : PROFIL JOURNALIER DE CHARGE 24H & FONCTIONNEMENT BESS ──
+  // Sélection du scénario à plus fort taux de couverture pour la simulation de la journée type
+  const bestCoverageScenario = (Array.isArray(activeScenarios) && activeScenarios.length > 0)
+    ? [...activeScenarios].sort((a, b) => {
+        const rateA = a.sim?.energy?.rates?.autonomyPvBat ?? 0;
+        const rateB = b.sim?.energy?.rates?.autonomyPvBat ?? 0;
+        return rateB - rateA;
+      })[0]
+    : { sim };
+
+  const p3Sim = bestCoverageScenario.sim || sim;
+  const p3PowerKw = p3Sim.powerKw || p3Sim.model?.powerKw || 232;
+  const p3CapacityKwh = p3Sim.capacityKwh || p3Sim.model?.capacityKwh || 261;
+  const p3ModelName = p3Sim.model?.name || p3Sim.model?.reference || 'UNIV ESS 261 AC';
+  const p3CoveragePct = Math.round((p3Sim.energy?.rates?.autonomyPvBat || 0) * 100);
+
   doc.addPage();
   drawHeader(
     doc,
     'PROFIL JOURNALIER DE CHARGE 24H & JOURNÉE TYPE BESS',
-    `Courbe de charge 24h du site, recharge sur surplus solaire ou Heures Creuses, effacement de pointe TURPE et niveau de charge BESS (%)`,
+    `Simulation sur l'option à plus forte couverture : Puissance ${p3PowerKw.toFixed(0)} kW (${p3CapacityKwh.toFixed(0)} kWh · Couverture ${p3CoveragePct} %) · Effacement de pointe & SOC (%)`,
     3,
     totalPages
   );
@@ -703,21 +718,21 @@ export function generateClientCommercialPdf(params = {}) {
     },
     {
       title: isSolar ? 'AVEC SOLAIRE SEUL' : 'SANS SOLAIRE (0 KWC)',
-      val: isSolar ? `${Math.round(sim.energy.rates.autonomyPv * 100)} %` : '0 %',
-      sub: isSolar ? `Autoconso : ${Math.round(sim.energy.rates.autoconsoPv * 100)} %` : '100% réseau Enedis',
+      val: isSolar ? `${Math.round(p3Sim.energy.rates.autonomyPv * 100)} %` : '0 %',
+      sub: isSolar ? `Autoconso : ${Math.round(p3Sim.energy.rates.autoconsoPv * 100)} %` : '100% réseau Enedis',
       bg: [254, 243, 199], border: [253, 230, 138], txt: [146, 64, 14], titleColor: [180, 83, 9]
     },
     {
       title: isSolar ? 'AVEC SOLAIRE + BESS' : 'COUVERTURE BATTERIE',
-      val: `${Math.round(sim.energy.rates.autonomyPvBat * 100)} %`,
+      val: `${p3CoveragePct} %`,
       sub: isSolar
-        ? `Autoconsommation : ${Math.round(sim.energy.rates.autoconsoPvBat * 100)} %`
+        ? `Autoconsommation : ${Math.round(p3Sim.energy.rates.autoconsoPvBat * 100)} %`
         : "Part de l'énergie consommée",
       bg: [236, 253, 245], border: [167, 243, 208], txt: [6, 95, 70], titleColor: [4, 120, 87]
     },
     {
       title: isSolar ? 'SURPLUS SOLAIRE STOCKÉ' : 'ÉNERGIE TRANSFÉRÉE / AN',
-      val: isSolar ? `${formatNum(sim.energy.totals.batFromPv)} kWh` : `${formatNum(sim.capacityKwh * 0.92 * 365)} kWh`,
+      val: isSolar ? `${formatNum(p3Sim.energy.totals.batFromPv)} kWh` : `${formatNum(p3Sim.capacityKwh * 0.92 * 365)} kWh`,
       sub: isSolar ? 'Énergie gratuite / an' : 'Cycles HC / HP',
       bg: [239, 246, 255], border: [191, 219, 254], txt: [30, 64, 175], titleColor: [37, 99, 235]
     }
@@ -745,11 +760,32 @@ export function generateClientCommercialPdf(params = {}) {
     doc.text(r.sub, rx + 2.5, 51.0);
   });
 
-  // Graphique 24h vectoriel de charge & écrêtage (hauteur augmentée à 80 mm avec espaces aérés sous légende et sur axe X)
-  drawDaily24hChartPdf(doc, 14, 55, 182, 80, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
+  // Graphique 24h vectoriel de charge & écrêtage (hauteur 80 mm avec indication claire de la puissance BESS)
+  drawDaily24hChartPdf(
+    doc,
+    14,
+    55,
+    182,
+    80,
+    p3Sim.energy.chart,
+    p3Sim.energy.peakKw,
+    p3Sim.energy.newPeakKw,
+    Boolean(solar?.enabled),
+    p3PowerKw,
+    p3CapacityKwh
+  );
 
-  // Tableau synthétique de la Journée type heure par heure avec Niveau de Charge (hauteur 70 mm : intégration aérée)
-  drawHourlyJourneyTablePdf(doc, 14, 137, 182, 70, sim.energy.chart, sim.capacityKwh);
+  // Tableau synthétique de la Journée type heure par heure avec Niveau de Charge & Puissance BESS
+  drawHourlyJourneyTablePdf(
+    doc,
+    14,
+    137,
+    182,
+    70,
+    p3Sim.energy.chart,
+    p3Sim.capacityKwh,
+    p3PowerKw
+  );
 
   // 4 Piliers Opérationnels & Explication de la journée type (espace aéré au-dessus)
   const pillarW = (182 - 3 * 2.5) / 4;
@@ -787,7 +823,7 @@ export function generateClientCommercialPdf(params = {}) {
   doc.setDrawColor(226, 232, 240);
   doc.roundedRect(14, noteBoxY, 182, noteBoxH, 2, 2, 'D');
 
-  const fullNoteText = "Note de modélisation : Ce profil journalier modélise une journée représentative des cycles de consommation et d'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour en chargeant prioritairement sur le surplus solaire (ou en Heures Creuses) et en restituant l'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.";
+  const fullNoteText = `Note de modélisation : Ce profil journalier modélise une journée représentative pour la solution à plus fort taux de couverture (${p3Sim.quantity || 1}× ${p3ModelName} · Puissance ${p3PowerKw.toFixed(0)} kW / ${p3CapacityKwh.toFixed(0)} kWh · Taux de couverture ${p3CoveragePct} %). La batterie charge en Heures Creuses (ou sur surplus solaire) et restitue l'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.`;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.0);
   doc.setTextColor(71, 85, 105);
@@ -1390,7 +1426,19 @@ function getMonotoneSplinePoints(pts, steps = 4) {
 }
 
 // ─── Graphique Vectoriel Journalier 24h & Écrêtage BESS (réutilisable) ───
-function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newPeakKw = 49.5, solarEnabled = false) {
+function drawDaily24hChartPdf(
+  doc,
+  x,
+  y,
+  w,
+  h,
+  chartData = [],
+  peakKw = 90,
+  newPeakKw = 49.5,
+  solarEnabled = false,
+  batteryPowerKw = null,
+  batteryCapKwh = null
+) {
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(x, y, w, h, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
@@ -1399,12 +1447,16 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('Courbe Journalière de Charge 24h & Écrêtage de Pointe BESS', x + 4, y + 4.8);
+  const chartTitle = batteryPowerKw
+    ? `Courbe Journalière de Charge 24h & Écrêtage de Pointe BESS — Puissance BESS : ${batteryPowerKw.toFixed(0)} kW`
+    : 'Courbe Journalière de Charge 24h & Écrêtage de Pointe BESS';
+  doc.text(chartTitle, x + 4, y + 4.8);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.8);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Pointe avant : ${peakKw.toFixed(1)} kW  -  Pointe après BESS : ${newPeakKw.toFixed(1)} kW (-${(peakKw - newPeakKw).toFixed(1)} kW écrêtés)`, x + 4, y + 8.8);
+  const powerSub = batteryPowerKw ? ` (${batteryPowerKw.toFixed(0)} kW)` : '';
+  doc.text(`Pointe avant : ${peakKw.toFixed(1)} kW  -  Pointe après BESS${powerSub} : ${newPeakKw.toFixed(1)} kW (-${(peakKw - newPeakKw).toFixed(1)} kW écrêtés)`, x + 4, y + 8.8);
 
   const legItems = [
     { label: 'Conso Site (kW)', color: [100, 116, 139], type: 'dash' },
@@ -1578,7 +1630,7 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
 }
 
 // ─── Tableau Fonctionnement Journée Type 24h & SOC % (réutilisable) ───
-function drawHourlyJourneyTablePdf(doc, x, y, w, h, chartData = [], capacityKwh = 261) {
+function drawHourlyJourneyTablePdf(doc, x, y, w, h, chartData = [], capacityKwh = 261, powerKw = null) {
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(x, y, w, h, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
@@ -1587,7 +1639,10 @@ function drawHourlyJourneyTablePdf(doc, x, y, w, h, chartData = [], capacityKwh 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('FONCTIONNEMENT DÉTAILLÉ SUR UNE JOURNÉE TYPE & NIVEAU DE CHARGE HORAIRE (%)', x + 3.5, y + 4.8);
+  const tableTitle = powerKw
+    ? `FONCTIONNEMENT DÉTAILLÉ SUR UNE JOURNÉE TYPE & NIVEAU DE CHARGE HORAIRE (%) — PUISSANCE : ${powerKw.toFixed(0)} KW`
+    : 'FONCTIONNEMENT DÉTAILLÉ SUR UNE JOURNÉE TYPE & NIVEAU DE CHARGE HORAIRE (%)';
+  doc.text(tableTitle, x + 3.5, y + 4.8);
 
   const halfW = (w - 7) / 2;
   const leftX = x + 2.5;
