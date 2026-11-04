@@ -24,7 +24,8 @@ import {
   Check,
   Play,
   Pause,
-  Activity
+  Activity,
+  Eye
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -59,13 +60,13 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
   // ── 1. Source des données : 'prm' (Enedis Data Connect) ou 'manual' ──
   const [sourceMode, setSourceMode] = useState('prm');
   const [prmList, setPrmList] = useState([]);
-  const [selectedPrm, setSelectedPrm] = useState('50009371514981');
-  const [clientName, setClientName] = useState('EARL DES TERRES VIEILLES');
-  const [siteAddress, setSiteAddress] = useState('LIEU DIT TERRES VIEILLES, 24310 BRANTOME EN PERIGORD');
+  const [selectedPrm, setSelectedPrm] = useState('16238205462430');
+  const [clientName, setClientName] = useState('Eric GILBERT');
+  const [siteAddress, setSiteAddress] = useState('15 Route des Moulins, 33000 Bordeaux');
 
   // Données de consommation
-  const [annualKwh, setAnnualKwh] = useState(211781);
-  const [peakKw, setPeakKw] = useState(90.0);
+  const [annualKwh, setAnnualKwh] = useState(184200);
+  const [peakKw, setPeakKw] = useState(76.0);
   const [profileKey, setProfileKey] = useState('agricole');
   const [hpPrice, setHpPrice] = useState(0.20);
   const [hcPrice, setHcPrice] = useState(0.14);
@@ -156,6 +157,14 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
   // Initialisation et chargement des PRM Enedis (via API ou cache local)
   const refreshPrmList = useCallback(async () => {
     const fallbackList = [
+      {
+        prm: '16238205462430',
+        name: 'Eric GILBERT',
+        address: '15 Route des Moulins, 33000 Bordeaux',
+        annualKwh: 184200,
+        peakKw: 76.0,
+        profile: 'agricole'
+      },
       {
         prm: '50009371514981',
         name: 'EARL DES TERRES VIEILLES',
@@ -353,6 +362,153 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     equityPct
   ]);
 
+  // ── 3 Scénarios Comparatifs (A, B, C) pour l'affichage interactif & l'export PDF ──
+  const [scenariosConfig, setScenariosConfig] = useState([
+    {
+      id: 'opt1',
+      title: 'Option 1 — Rentabilité Maximale (ROI Rapide)',
+      modelId: 'ST54K',
+      quantity: 1,
+      customHwPrice: null,
+      customInstallPrice: null,
+      bonusGridFcr: false,
+      includedInPdf: true
+    },
+    {
+      id: 'opt2',
+      title: 'Option 2 — Équilibre Puissance / Écrêtage (Recommandée)',
+      modelId: 'ST62K',
+      quantity: 1,
+      customHwPrice: null,
+      customInstallPrice: null,
+      bonusGridFcr: false,
+      includedInPdf: true
+    },
+    {
+      id: 'opt3',
+      title: 'Option 3 — Haute Autonomie & Capacité Industrielle',
+      modelId: 'UNIV_ESS_261_AC',
+      quantity: 1,
+      customHwPrice: null,
+      customInstallPrice: null,
+      bonusGridFcr: false,
+      includedInPdf: true
+    }
+  ]);
+
+  const computedScenarios = useMemo(() => {
+    return scenariosConfig.map(sc => {
+      const model = STORAGE_CATALOG.find(m => m.id === sc.modelId) || STORAGE_CATALOG[0];
+      const hwPrice = sc.customHwPrice !== null ? sc.customHwPrice : (customBatteryPrices[sc.modelId] !== undefined ? customBatteryPrices[sc.modelId] : undefined);
+      const computedSim = computeStorageProject({
+        annualKwh,
+        peakKw,
+        profileKey,
+        hourlyProfileKw: sourceMode === 'prm' ? hourlyProfile : null,
+        hpPrice,
+        hcPrice,
+        turpePowerPrice: turpePrice,
+        solar: {
+          enabled: solarEnabled,
+          isNew: solarIsNew,
+          kwc: Number(solarKwc) || 0,
+          specificYield: Number(solarSpecificYield) || 1180,
+          capexHt: Number(solarCapexHt) || 0,
+          allowSurplusResale,
+          sellPrice: allowSurplusResale ? (Number(solarSellPrice) || avgPrmConsoTariff) : 0,
+          avgConsoTariff: avgPrmConsoTariff
+        },
+        model,
+        quantity: sc.quantity,
+        hardwarePriceHt: hwPrice,
+        installPriceHt: sc.customInstallPrice !== null ? sc.customInstallPrice : undefined,
+        discountPct,
+        indexationPct,
+        gridConnection: !!sc.bonusGridFcr,
+        gridDistanceM: 25,
+        gridRevenuePerKw: 80,
+        finance: {
+          ratePct: Number(loanRatePct) || 4.2,
+          years: Number(loanYears) || 10,
+          equityPct: Number(equityPct) || 20
+        },
+        horizon: 20
+      });
+
+      const triVal = computedSim.kpis.triProject || 0;
+      let badgeLabel = '';
+      if (sc.id === 'opt1') {
+        badgeLabel = `Meilleur TRI (${triVal.toFixed(1)} %)`;
+      } else if (sc.id === 'opt2') {
+        badgeLabel = `Équilibre Écrêtage / Budget (TRI ${triVal.toFixed(1)} %)`;
+      } else {
+        badgeLabel = sc.bonusGridFcr
+          ? `Haute Autonomie + FCR (${triVal.toFixed(1)} %)`
+          : `Haute Autonomie (TRI ${triVal.toFixed(1)} %)`;
+      }
+
+      return {
+        ...sc,
+        model,
+        badge: badgeLabel,
+        turnkeyPrice: computedSim.capex.capexTotalNetHt,
+        sim: computedSim
+      };
+    });
+  }, [
+    scenariosConfig,
+    annualKwh,
+    peakKw,
+    profileKey,
+    sourceMode,
+    hourlyProfile,
+    hpPrice,
+    hcPrice,
+    turpePrice,
+    solarEnabled,
+    solarIsNew,
+    solarKwc,
+    solarSpecificYield,
+    solarCapexHt,
+    allowSurplusResale,
+    solarSellPrice,
+    avgPrmConsoTariff,
+    customBatteryPrices,
+    discountPct,
+    indexationPct,
+    loanRatePct,
+    loanYears,
+    equityPct
+  ]);
+
+  const handleScenarioModelChange = (id, newModelId) => {
+    setScenariosConfig(prev => prev.map(s => s.id === id ? { ...s, modelId: newModelId, customHwPrice: null, customInstallPrice: null } : s));
+  };
+
+  const handleScenarioQuantityChange = (id, newQty) => {
+    setScenariosConfig(prev => prev.map(s => s.id === id ? { ...s, quantity: Math.max(1, Number(newQty) || 1) } : s));
+  };
+
+  const handleScenarioToggleBonusFcr = (id) => {
+    setScenariosConfig(prev => prev.map(s => s.id === id ? { ...s, bonusGridFcr: !s.bonusGridFcr } : s));
+  };
+
+  const handleScenarioTogglePdf = (id) => {
+    setScenariosConfig(prev => prev.map(s => s.id === id ? { ...s, includedInPdf: !s.includedInPdf } : s));
+  };
+
+  const handleApplyScenarioToSimulator = (sc) => {
+    setSelectedModelId(sc.modelId);
+    setQuantity(sc.quantity);
+    if (sc.bonusGridFcr !== undefined) {
+      setGridConnection(sc.bonusGridFcr);
+    }
+    toast({
+      title: `Scénario appliqué : ${sc.model.name} (${sc.quantity}×)`,
+      description: 'La courbe de charge 24h, le cash-flow et les indicateurs du simulateur ont été synchronisés.'
+    });
+  };
+
   // Transmettre l'état de simulation au parent (pour sauvegarder / exporter)
   useEffect(() => {
     if (onStateUpdate) {
@@ -402,7 +558,8 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     try {
       generateClientCommercialPdf({
         sim,
-        projectInfo: { clientName, prm: selectedPrm, address: siteAddress }
+        projectInfo: { clientName, prm: selectedPrm, address: siteAddress },
+        scenarios: computedScenarios
       });
       toast({
         title: 'Étude Commerciale téléchargée ✓',
@@ -423,7 +580,8 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     try {
       generateBankDossierPdf({
         sim,
-        projectInfo: { clientName, prm: selectedPrm, address: siteAddress }
+        projectInfo: { clientName, prm: selectedPrm, address: siteAddress },
+        scenarios: computedScenarios
       });
       toast({
         title: 'Dossier Bancaire téléchargé ✓',
@@ -1067,6 +1225,279 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
         </div>
       </div>
 
+      {/* ── MODULE COMPARATIF MULTI-PROPOSITIONS (3 SCÉNARIOS A, B, C) ── */}
+      <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 border border-slate-800 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 font-black text-[10px] uppercase tracking-wider">
+                Multi-Propositions BESS
+              </span>
+              <span className="text-xs font-bold text-slate-400">
+                Profil actif : {clientName} (PRM {selectedPrm})
+              </span>
+            </div>
+            <h3 className="text-lg font-black text-white mt-1 flex items-center gap-2">
+              <span>📊 Comparatif Multi-Propositions Adaptées au Profil du Site</span>
+              <span className="text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-lg border border-amber-400/20">
+                Affichées dans l'Offre PDF
+              </span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Comparez les compromis réels entre Rentabilité pure (ROI rapide), Équilibre Puissance/Écrêtage, ou Haute Autonomie Industrielle.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportCommercialPdf}
+              disabled={isExportingCommercial}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <FileDown className="w-3.5 h-3.5 text-slate-950" />
+              <span>Générer l'Offre PDF Comparative</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 3 Cartes de Scénarios en 3 colonnes */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-5">
+          {computedScenarios.map((sc) => {
+            const isOpt1 = sc.id === 'opt1';
+            const isOpt2 = sc.id === 'opt2';
+            const isOpt3 = sc.id === 'opt3';
+
+            const cardBorder = isOpt2
+              ? 'border-emerald-500/60 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/40 bg-gradient-to-b from-slate-800/90 to-slate-900'
+              : isOpt1
+              ? 'border-blue-500/40 bg-gradient-to-b from-slate-800/60 to-slate-900'
+              : 'border-purple-500/40 bg-gradient-to-b from-slate-800/60 to-slate-900';
+
+            const badgeBg = isOpt2
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+              : isOpt1
+              ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+              : 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+
+            const isCurrentSim = selectedModelId === sc.modelId && quantity === sc.quantity;
+            const simRes = sc.sim;
+            const autPct = Math.round((simRes.energy?.rates?.autonomyPvBat || 0) * 100);
+
+            return (
+              <div
+                key={sc.id}
+                className={`rounded-2xl border ${cardBorder} p-4 sm:p-5 flex flex-col justify-between transition-all relative overflow-hidden`}
+              >
+                {/* Ruban Recommandé pour Option 2 */}
+                {isOpt2 && (
+                  <div className="absolute top-0 right-0 bg-emerald-500 text-slate-950 text-[9px] font-black uppercase px-3 py-0.5 rounded-bl-xl tracking-wider shadow-sm">
+                    ⭐ Recommandé Nelson
+                  </div>
+                )}
+
+                <div>
+                  {/* Titre & Checkbox PDF */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                        {isOpt1 ? '⚡ Proposition 1' : isOpt2 ? '⚖️ Proposition 2' : '🛡️ Proposition 3'}
+                      </span>
+                      <h4 className="text-sm font-black text-white mt-0.5 leading-snug">
+                        {isOpt1 ? 'Rentabilité Maximale (ROI Rapide)' : isOpt2 ? 'Équilibre Puissance / Écrêtage' : 'Haute Autonomie Industrielle'}
+                      </h4>
+                    </div>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-slate-300 bg-slate-800/80 hover:bg-slate-800 px-2 py-1 rounded-lg border border-slate-700/60 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={sc.includedInPdf !== false}
+                        onChange={() => handleScenarioTogglePdf(sc.id)}
+                        className="rounded border-slate-600 text-amber-500 focus:ring-0 cursor-pointer"
+                      />
+                      <span>PDF</span>
+                    </label>
+                  </div>
+
+                  {/* Badge Dynamique */}
+                  <div className="mt-2.5">
+                    <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-black border ${badgeBg}`}>
+                      {sc.badge}
+                    </span>
+                  </div>
+
+                  {/* 1. Modèle & Capacité (kWh / kW) */}
+                  <div className="mt-4 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                      Modèle &amp; Capacité
+                    </label>
+                    <select
+                      value={sc.modelId}
+                      onChange={(e) => handleScenarioModelChange(sc.id, e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
+                    >
+                      {STORAGE_CATALOG.map(m => (
+                        <option key={m.id} value={m.id} className="bg-slate-900 text-white">
+                          {m.reference} ({m.capacityKwh} kWh / {m.powerKw} kW) — {fmtEur(m.turnkeyInstalledPriceHT)} HT
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800/60 text-xs">
+                      <span className="text-slate-400 font-medium">Quantité :</span>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 4].map(q => (
+                          <button
+                            key={q}
+                            type="button"
+                            onClick={() => handleScenarioQuantityChange(sc.id, q)}
+                            className={`px-2 py-0.5 rounded text-[11px] font-black transition-all ${
+                              sc.quantity === q
+                                ? 'bg-amber-400 text-slate-950'
+                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                            }`}
+                          >
+                            {q}×
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-1 text-[11px] font-bold text-slate-300">
+                      <span>Capacité totale :</span>
+                      <span className="text-amber-400 font-black">
+                        {(sc.model.capacityKwh * sc.quantity).toFixed(1)} kWh · {(sc.model.powerKw * sc.quantity).toFixed(1)} kW
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Switch Option 3 FCR */}
+                  {isOpt3 && (
+                    <div className="mt-3 p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!sc.bonusGridFcr}
+                          onChange={() => handleScenarioToggleBonusFcr(sc.id)}
+                          className="mt-0.5 rounded border-purple-400 text-purple-600 focus:ring-0 cursor-pointer"
+                        />
+                        <div className="text-[11px] leading-tight">
+                          <span className="font-black text-purple-200 block">
+                            Simuler avec Raccordement Réseau FCR (+80 €/kW/an net)
+                          </span>
+                          <span className="text-[10px] text-purple-300/80 block mt-0.5">
+                            Valorisation réserve Enedis (+{fmtEur(sc.model.powerKw * sc.quantity * 80)} HT/an) faisant bondir le TRI
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* 2. Investissement Clé en Main HT */}
+                  <div className="mt-3 flex items-center justify-between p-2.5 rounded-xl bg-slate-950/40 border border-slate-800/80">
+                    <span className="text-xs text-slate-400 font-bold">Investissement clé en main :</span>
+                    <span className="text-sm font-black text-white">
+                      {fmtEur(simRes.capex.capexTotalNetHt)} <span className="text-[10px] text-slate-400 font-normal">HT</span>
+                    </span>
+                  </div>
+
+                  {/* 3. Taux de Couverture & Autonomie */}
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-slate-400 font-bold">Couverture / Autonomie :</span>
+                      <span className="font-black text-emerald-400">{autPct} %</span>
+                    </div>
+                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-emerald-500 to-teal-400 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.max(5, autPct))}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-500 block mt-0.5">
+                      Part du besoin journalier ({Math.round(annualKwh / 365)} kWh/j) couverte
+                    </span>
+                  </div>
+
+                  {/* 4. Abaissement de la Pointe */}
+                  <div className="mt-3 flex items-center justify-between text-xs p-2 rounded-lg bg-slate-950/40 border border-slate-800/60">
+                    <span className="text-slate-400 font-medium">Pointe :</span>
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <span className="text-slate-400">{peakKw.toFixed(1)} kW</span>
+                      <span className="text-slate-500">→</span>
+                      <span className="text-emerald-400 font-black">{simRes.energy.newPeakKw.toFixed(1)} kW</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-black">
+                        -{simRes.energy.shaveKw.toFixed(1)} kW
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 5. Économies Annuelles & EBITDA Année 1 */}
+                  <div className="mt-3 space-y-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Économies brutes :</span>
+                      <span className="font-bold text-slate-200">+{fmtEur(simRes.gains.batterySavings + simRes.gains.solarSavings)} HT/an</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">EBITDA net Année 1 :</span>
+                      <span className="font-black text-emerald-400">+{fmtEur(simRes.ebitda.year1)} HT/an</span>
+                    </div>
+                  </div>
+
+                  {/* 6. TRI PROJET & TRI FONDS PROPRES (Grand affichage) */}
+                  <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-slate-950 to-slate-900 border border-amber-400/30 text-center">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
+                      Taux de Rentabilité Interne (TRI)
+                    </span>
+                    <div className="flex items-baseline justify-center gap-2 mt-0.5">
+                      <span className="text-2xl sm:text-3xl font-black text-amber-400">
+                        {simRes.kpis.triProject.toFixed(1)} %
+                      </span>
+                      <span className="text-xs font-bold text-slate-400">(Projet)</span>
+                    </div>
+                    <div className="text-[11px] text-slate-300 font-medium mt-1">
+                      TRI Fonds Propres ({equityPct}%) : <strong className="text-emerald-400">{simRes.kpis.triEquity ? `${simRes.kpis.triEquity.toFixed(1)} %` : 'N/A'}</strong>
+                    </div>
+                  </div>
+
+                  {/* 7. Payback & Cash-flow net 20 ans */}
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2 rounded-lg bg-slate-950/40 border border-slate-800/60">
+                      <span className="text-[10px] text-slate-400 block font-medium">Temps de Retour :</span>
+                      <span className="font-black text-white text-sm">
+                        {simRes.kpis.paybackYears ? `${simRes.kpis.paybackYears.toFixed(1)} ans` : '> 20 ans'}
+                      </span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-950/40 border border-slate-800/60">
+                      <span className="text-[10px] text-slate-400 block font-medium">Cash net 20 ans :</span>
+                      <span className="font-black text-emerald-400 text-sm">
+                        +{fmtEur(simRes.financials.cumul20)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 8. Bouton d'action pour appliquer cette option */}
+                <div className="mt-5 pt-3 border-t border-slate-800/80">
+                  <button
+                    type="button"
+                    onClick={() => handleApplyScenarioToSimulator(sc)}
+                    className={`w-full py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      isCurrentSim
+                        ? 'bg-slate-800 text-emerald-400 border border-emerald-500/40 cursor-default'
+                        : isOpt2
+                        ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20'
+                        : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
+                    }`}
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>{isCurrentSim ? '✓ Option active dans le simulateur' : '👁️ Voir les courbes de cette option'}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── SECTION 4 : RÉSULTATS ÉNERGÉTIQUES & GRAPHIQUE 24H AVANT/APRÈS ── */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
@@ -1100,18 +1531,28 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
             <span className="text-[10px] text-amber-700 block">Autoconsommation : {Math.round(sim.energy.rates.autoconsoPv * 100)} %</span>
           </div>
           <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-            <span className="text-[10px] font-bold text-emerald-800 block uppercase">Avec Solaire + Batterie</span>
+            <span className="text-[10px] font-bold text-emerald-800 block uppercase">
+              {solarEnabled ? 'Avec Solaire + Batterie' : 'COUVERTURE BATTERIE & ARBITRAGE HP/HC'}
+            </span>
             <span className="text-lg font-black text-emerald-900">
               {Math.round(sim.energy.rates.autonomyPvBat * 100)} %
             </span>
-            <span className="text-[10px] text-emerald-700 block font-bold">Autoconsommation : {Math.round(sim.energy.rates.autoconsoPvBat * 100)} %</span>
+            <span className="text-[10px] text-emerald-700 block font-bold">
+              {solarEnabled
+                ? `Autoconsommation : ${Math.round(sim.energy.rates.autoconsoPvBat * 100)} %`
+                : 'Part du besoin journalier transférée / écrêtée par la batterie'}
+            </span>
           </div>
           <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
-            <span className="text-[10px] font-bold text-blue-800 block uppercase">Surplus Solaire Stocké</span>
-            <span className="text-lg font-black text-blue-900">
-              {fmtNum(sim.energy.totals.batFromPv)} kWh
+            <span className="text-[10px] font-bold text-blue-800 block uppercase">
+              {solarEnabled ? 'Surplus Solaire Stocké' : 'Énergie Cyclée / Arbitrage'}
             </span>
-            <span className="text-[10px] text-blue-700 block">Énergie gratuite / an</span>
+            <span className="text-lg font-black text-blue-900">
+              {fmtNum(solarEnabled ? sim.energy.totals.batFromPv : (sim.energy.totals.batThroughput || (sim.energy.totals.importHpBat + sim.energy.totals.importHcBat)))} kWh
+            </span>
+            <span className="text-[10px] text-blue-700 block">
+              {solarEnabled ? 'Énergie gratuite / an' : 'Cycle annuel batterie'}
+            </span>
           </div>
         </div>
 

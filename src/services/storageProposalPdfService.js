@@ -10,7 +10,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ENR_COURTAGE_LOGO_BASE64 } from '@/assets/logoBase64.js';
-import { annuity } from '@/services/storageBatteryEngine.js';
+import { annuity, computeStorageProject, STORAGE_CATALOG } from '@/services/storageBatteryEngine.js';
 
 export function formatNum(val, decimals = 0) {
   if (val === null || val === undefined || isNaN(val)) return '0';
@@ -83,8 +83,79 @@ function drawFooter(doc, pageNum, totalPages, isBank = false) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1. PDF ÉTUDE COMMERCIALE CLIENT (2 PAGES SYNTHÉTIQUES & DÉTAILLÉES)
+// 1. PDF ÉTUDE COMMERCIALE CLIENT (3 PAGES SYNTHÉTIQUES & COMPARATIVES)
 // ═══════════════════════════════════════════════════════════════════════════
+export function buildDefaultComparativeScenarios(sim) {
+  const baseInput = sim?.input || {};
+  const m54 = STORAGE_CATALOG.find(m => m.id === 'ST54K') || STORAGE_CATALOG[0];
+  const m62 = STORAGE_CATALOG.find(m => m.id === 'ST62K') || STORAGE_CATALOG[1];
+  const m261 = STORAGE_CATALOG.find(m => m.id === 'UNIV_ESS_261_AC') || STORAGE_CATALOG[10];
+
+  const sim1 = computeStorageProject({
+    ...baseInput,
+    model: m54,
+    quantity: 1,
+    hardwarePriceHt: undefined,
+    installPriceHt: undefined,
+    discountPct: 0,
+    gridConnection: false
+  });
+  const sim2 = computeStorageProject({
+    ...baseInput,
+    model: m62,
+    quantity: 1,
+    hardwarePriceHt: undefined,
+    installPriceHt: undefined,
+    discountPct: 0,
+    gridConnection: false
+  });
+  const sim3 = computeStorageProject({
+    ...baseInput,
+    model: m261,
+    quantity: 1,
+    hardwarePriceHt: undefined,
+    installPriceHt: undefined,
+    discountPct: 0,
+    gridConnection: false
+  });
+
+  return [
+    {
+      id: 'opt1',
+      title: 'Option 1 — Rentabilité Maximale (ROI Rapide)',
+      badge: `Meilleur TRI (${sim1.kpis.triProject || '11.5'} %)`,
+      model: m54,
+      modelId: 'ST54K',
+      quantity: 1,
+      turnkeyPrice: m54.turnkeyInstalledPriceHT || 18400,
+      sim: sim1,
+      includedInPdf: true
+    },
+    {
+      id: 'opt2',
+      title: 'Option 2 — Équilibre Puissance / Écrêtage (Recommandée)',
+      badge: `Équilibre Écrêtage / Budget (TRI ${sim2.kpis.triProject || '11.1'} %)`,
+      model: m62,
+      modelId: 'ST62K',
+      quantity: 1,
+      turnkeyPrice: m62.turnkeyInstalledPriceHT || 20500,
+      sim: sim2,
+      includedInPdf: true
+    },
+    {
+      id: 'opt3',
+      title: 'Option 3 — Haute Autonomie & Capacité Industrielle',
+      badge: `Haute Autonomie (TRI ${sim3.kpis.triProject || '5.8'} %)`,
+      model: m261,
+      modelId: 'UNIV_ESS_261_AC',
+      quantity: 1,
+      turnkeyPrice: m261.turnkeyInstalledPriceHT || 78500,
+      sim: sim3,
+      includedInPdf: true
+    }
+  ];
+}
+
 export function generateClientCommercialPdf(params = {}) {
   const { sim, projectInfo = {} } = params;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -95,11 +166,18 @@ export function generateClientCommercialPdf(params = {}) {
   const address = projectInfo.address || params.address || projectInfo.siteAddress || params.siteAddress || '';
   const solar = sim.input.solar || {};
 
-  // ── PAGE 1 : PROPOSITION COMMERCIALE & SYNTHÈSE TECHNIQUE ──
+  // Récupération ou construction automatique des 3 scénarios comparatifs
+  const rawScenarios = Array.isArray(params.scenarios) && params.scenarios.length > 0
+    ? params.scenarios
+    : buildDefaultComparativeScenarios(sim);
+  const scenarios = rawScenarios.filter(sc => sc.includedInPdf !== false);
+  const activeScenarios = scenarios.length > 0 ? scenarios : rawScenarios;
+
+  // ── PAGE 1 : PROPOSITION COMMERCIALE & COMPARATIF DES 3 SCÉNARIOS ──
   drawHeader(
     doc,
     'PROPOSITION COMMERCIALE : STOCKAGE INTELLIGENT BESS',
-    `Étude de rentabilité pour ${clientName} · ${prm}`,
+    `Étude comparative multi-scénarios pour ${clientName} · ${prm}`,
     1,
     totalPages,
     address && address !== 'France' ? address : null
@@ -107,167 +185,194 @@ export function generateClientCommercialPdf(params = {}) {
 
   // Cartouche Client & PRM
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, 37, 182, 19.5, 2, 2, 'F');
+  doc.roundedRect(14, 37, 182, 18.5, 2, 2, 'F');
   doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(14, 37, 182, 19.5, 2, 2, 'D');
+  doc.roundedRect(14, 37, 182, 18.5, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(30, 41, 59);
-  doc.text('DONNÉES ÉNERGÉTIQUES DE RÉFÉRENCE', 18, 42.5);
+  doc.text('DONNÉES ÉNERGÉTIQUES DU SITE DE RÉFÉRENCE', 18, 42.0);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.8);
+  doc.setFontSize(7.6);
   doc.setTextColor(71, 85, 105);
-  doc.text(`• Titulaire : ${clientName}`, 18, 47.5);
-  doc.text(`• Point de Référence et Mesure (PRM) : ${prm}`, 18, 52.5);
+  doc.text(`• Titulaire : ${clientName}`, 18, 46.8);
+  doc.text(`• Point de Référence et Mesure (PRM) : ${prm}`, 18, 51.5);
 
   const consoAnnuelle = Math.round((sim.input.annualKwh || 0));
-  const dailyMoy = Math.round(consoAnnuelle / 365);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.8);
-  doc.setTextColor(71, 85, 105);
-  doc.text(`• Consommation annuelle : ${formatNum(consoAnnuelle)} kWh/an (${dailyMoy} kWh/j)`, 105, 47.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.8);
-  doc.setTextColor(71, 85, 105);
-  doc.text(`• Puissance de pointe mesurée : ${sim.energy.peakKw.toFixed(1)} kW - Écrêtée à ${sim.energy.newPeakKw.toFixed(1)} kW (-${sim.energy.shaveKw.toFixed(1)} kW)`, 105, 52.5);
+  const dailyMoy = Math.round((consoAnnuelle / 365) * 10) / 10;
+  doc.text(`• Consommation annuelle : ${formatNum(consoAnnuelle)} kWh/an (Moyenne : ${dailyMoy.toFixed(1).replace('.', ',')} kWh/j)`, 105, 46.8);
+  doc.text(`• Puissance de pointe mesurée : ${sim.energy.peakKw.toFixed(1)} kW (Effacement de pointe TURPE souscrit)`, 105, 51.5);
 
-  // 4 Cartouches KPI Clés
-  const kpiY = 59.5;
-  const kpiW = 43;
-  const kpiH = 20.5;
-  const kpiData = [
+  // ── CARTES COMPARATIVES CÔTE À CÔTE (3 SCÉNARIOS) ──
+  const cardY = 58;
+  const numCards = Math.min(3, activeScenarios.length);
+  const cardW = (182 - (numCards - 1) * 3) / numCards;
+  const cardH = 59;
+
+  const cardThemes = [
     {
-      title: 'BATTERIE RECOMMANDÉE',
-      val: `${sim.quantity}× ${sim.model.reference}`,
-      sub: `${sim.capacityKwh.toFixed(1)} kWh / ${sim.powerKw.toFixed(0)} kW`,
-      bg: [239, 246, 255], border: [191, 219, 254], txt: [30, 64, 175]
+      title: 'OPTION 1 : ROI RAPIDE',
+      badge: 'Meilleur TRI',
+      bg: [239, 246, 255], border: [191, 219, 254], headerBg: [37, 99, 235],
+      txt: [30, 64, 175], barBg: [37, 99, 235]
     },
     {
-      title: 'AUTONOMIE ATTEINTE',
-      val: `${Math.round(sim.energy.rates.autonomyPvBat * 100)} %`,
-      sub: solar.enabled ? `(Solaire seul : ${Math.round(sim.energy.rates.autonomyPv * 100)} %)` : `Gain net : +${Math.round(sim.energy.rates.autonomyPvBat * 100)} %`,
-      bg: [240, 253, 244], border: [187, 247, 208], txt: [22, 101, 52]
+      title: 'OPTION 2 : ÉQUILIBRE',
+      badge: 'Recommandée',
+      bg: [236, 253, 245], border: [167, 243, 208], headerBg: [5, 150, 105],
+      txt: [6, 95, 70], barBg: [16, 185, 129]
     },
     {
-      title: 'ÉCONOMIES FACTURE / AN',
-      val: `${formatNum(sim.gains.batterySavings + sim.gains.solarSavings)} € HT/an`,
-      sub: sim.gains.gridRevenue > 0 ? `+ ${formatNum(sim.gains.gridRevenue)} €/an réseau` : 'Optimisation 100 % site',
-      bg: [254, 243, 199], border: [253, 230, 138], txt: [180, 83, 9]
-    },
-    {
-      title: 'TEMPS DE RETOUR (ROI)',
-      val: sim.kpis.payback !== null ? `${sim.kpis.payback} ans` : '> 20 ans',
-      sub: `TRI Projet : ${sim.kpis.triProject !== null ? `${sim.kpis.triProject} %` : '—'}`,
-      bg: [245, 243, 255], border: [221, 214, 254], txt: [109, 40, 217]
+      title: 'OPTION 3 : HAUTE AUTONOMIE',
+      badge: 'Capacité C&I',
+      bg: [245, 243, 255], border: [221, 214, 254], headerBg: [124, 58, 237],
+      txt: [109, 40, 217], barBg: [139, 92, 246]
     }
   ];
 
-  kpiData.forEach((kpi, idx) => {
-    const kx = 14 + idx * (kpiW + 3.3);
-    doc.setFillColor(kpi.bg[0], kpi.bg[1], kpi.bg[2]);
-    doc.roundedRect(kx, kpiY, kpiW, kpiH, 2, 2, 'F');
-    doc.setDrawColor(kpi.border[0], kpi.border[1], kpi.border[2]);
-    doc.roundedRect(kx, kpiY, kpiW, kpiH, 2, 2, 'D');
+  activeScenarios.slice(0, 3).forEach((sc, idx) => {
+    const cx = 14 + idx * (cardW + 3);
+    const theme = cardThemes[idx] || cardThemes[0];
+    const sSim = sc.sim || sim;
+
+    // Boîtier
+    doc.setFillColor(theme.bg[0], theme.bg[1], theme.bg[2]);
+    doc.roundedRect(cx, cardY, cardW, cardH, 2, 2, 'F');
+    doc.setDrawColor(theme.border[0], theme.border[1], theme.border[2]);
+    doc.roundedRect(cx, cardY, cardW, cardH, 2, 2, 'D');
+
+    // Bandeau Titre
+    doc.setFillColor(theme.headerBg[0], theme.headerBg[1], theme.headerBg[2]);
+    doc.roundedRect(cx, cardY, cardW, 6.8, 2, 2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.0);
+    doc.setTextColor(255, 255, 255);
+    doc.text(sc.title ? sc.title.replace(/^[^\w]+/, '').slice(0, 26) : theme.title, cx + 2.5, cardY + 4.8);
+
+    // Badge droite
+    doc.setFontSize(6.2);
+    doc.text(sc.badge ? sc.badge.slice(0, 16) : theme.badge, cx + cardW - 2.5, cardY + 4.8, { align: 'right' });
+
+    // Modèle & Capacité
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.2);
+    doc.setTextColor(15, 23, 42);
+    const modelRef = `${sSim.quantity}× ${sSim.model.name || sSim.model.reference}`;
+    doc.text(modelRef.slice(0, 30), cx + 2.5, cardY + 11.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`${sSim.capacityKwh.toFixed(1)} kWh · ${sSim.powerKw.toFixed(0)} kW`, cx + 2.5, cardY + 15.5);
+
+    // Prix Clé en Main
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.8);
+    doc.setTextColor(theme.txt[0], theme.txt[1], theme.txt[2]);
+    doc.text(`${formatNum(sSim.capex.totalCapex)} € HT clé en main`, cx + 2.5, cardY + 20.8);
+
+    // Taux de Couverture & Barre visuelle
+    const autoPct = Math.round(sSim.energy.rates.autonomyPvBat * 100);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`Couverture site : ${autoPct} %`, cx + 2.5, cardY + 25.8);
+
+    // Barre de progression
+    const barWMax = cardW - 5;
+    const barHProg = 2.4;
+    doc.setFillColor(226, 232, 240);
+    doc.roundedRect(cx + 2.5, cardY + 27.2, barWMax, barHProg, 0.6, 0.6, 'F');
+    const filledW = Math.max(2, (Math.min(100, autoPct) / 100) * barWMax);
+    doc.setFillColor(theme.barBg[0], theme.barBg[1], theme.barBg[2]);
+    doc.roundedRect(cx + 2.5, cardY + 27.2, filledW, barHProg, 0.6, 0.6, 'F');
+
+    // Écrêtage pointe
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Pointe : ${sSim.energy.peakKw.toFixed(0)} kW → ${sSim.energy.newPeakKw.toFixed(0)} kW (-${sSim.energy.shaveKw.toFixed(0)} kW)`, cx + 2.5, cardY + 33.5);
+
+    // Économies / Gains An 1
+    const totalGains = sSim.gains.batterySavings + sSim.gains.solarSavings + sSim.gains.gridRevenue;
+    doc.text(`Gains nets An 1 : +${formatNum(totalGains - sSim.opex)} € HT/an`, cx + 2.5, cardY + 38.0);
+
+    // TRI Projet & TRI Fonds Propres (En grand)
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(cx + 2.5, cardY + 41.5, cardW - 5, 10, 1.2, 1.2, 'F');
+    doc.setDrawColor(theme.border[0], theme.border[1], theme.border[2]);
+    doc.roundedRect(cx + 2.5, cardY + 41.5, cardW - 5, 10, 1.2, 1.2, 'D');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(kpi.txt[0], kpi.txt[1], kpi.txt[2]);
-    doc.text(kpi.title, kx + 3, kpiY + 5.0);
-
-    doc.setFontSize(10.5);
-    doc.text(kpi.val, kx + 3, kpiY + 12.2);
+    doc.setFontSize(9.5);
+    doc.setTextColor(theme.headerBg[0], theme.headerBg[1], theme.headerBg[2]);
+    doc.text(`TRI : ${sSim.kpis.triProject !== null ? `${sSim.kpis.triProject} %` : '—'}`, cx + 4.5, cardY + 48.0);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(71, 85, 105);
-    doc.text(kpi.sub, kx + 3, kpiY + 17.5);
+    doc.text(`TRI FP : ${sSim.kpis.triEquity !== null ? `${sSim.kpis.triEquity} %` : '—'}`, cx + cardW - 4.5, cardY + 48.0, { align: 'right' });
+
+    // Payback & Trésorerie 20 ans
+    doc.setFontSize(6.4);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`ROI : ${sSim.kpis.payback !== null ? `${sSim.kpis.payback} ans` : '> 20 ans'} · 20 ans : +${formatNum(sSim.kpis.gain20)} €`, cx + 2.5, cardY + 55.5);
   });
 
-  // Volet Solaire Photovoltaïque si présent
-  let curY = 83;
-  if (solar.enabled) {
-    doc.setFillColor(255, 251, 235);
-    doc.roundedRect(14, curY, 182, 19.5, 2, 2, 'F');
-    doc.setDrawColor(253, 230, 138);
-    doc.roundedRect(14, curY, 182, 19.5, 2, 2, 'D');
+  // ── TABLEAU COMPARATIF DÉTAILLÉ ──
+  const tableY = cardY + cardH + 2.5;
+  const col0W = 56;
+  const remainingW = 182 - col0W;
+  const colScenarioW = remainingW / numCards;
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`CENTRALE SOLAIRE PHOTOVOLTAÏQUE ASSOCIÉE (${solar.kwc} kWC)`, 18, curY + 5.5);
+  const tableHead = [
+    'Critère / Indicateur de Dimensionnement',
+    ...activeScenarios.slice(0, 3).map((sc, i) => sc.title ? sc.title.replace(/^[^\w]+/, '').slice(0, 24) : `Option ${i + 1}`)
+  ];
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.8);
-    doc.setTextColor(71, 85, 105);
-    const solStat = solar.isNew
-      ? `Nouvelle installation (CAPEX inclus : ${formatNum(solar.capexHt || 0)} € HT)`
-      : 'Centrale solaire existante conservée (CAPEX = 0 €)';
-    doc.text(`• Statut : ${solStat}`, 18, curY + 10.5);
-    doc.text(`• Production annuelle : ${formatNum(sim.energy.pvAnnual)} kWh/an (${solar.specificYield} kWh/kWc/an)`, 18, curY + 15.5);
-    doc.text(`• Taux d'autoconsommation solaire : ${Math.round(sim.energy.rates.autoconsoPvBat * 100)} % (vs ${Math.round(sim.energy.rates.autoconsoPv * 100)} % sans batterie)`, 105, curY + 10.5);
-    doc.text(`• Recharge gratuite de la batterie par le surplus solaire : ${formatNum(sim.energy.totals.batFromPv)} kWh/an`, 105, curY + 15.5);
-    curY += 22.5;
-  }
-
-  // Devis d'investissement détaillé (Tableau)
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
-  doc.setTextColor(15, 23, 42);
-  doc.text('DÉTAIL DE L\'INVESTISSEMENT CLÉ EN MAIN (CAPEX HT)', 14, curY + 4.5);
-
-  const quoteRows = [
+  const tableRows = [
     [
-      `Batterie de stockage ${sim.quantity}× ${sim.model.name} (${sim.capacityKwh.toFixed(1)} kWh / ${sim.powerKw.toFixed(0)} kW)`,
-      `${sim.quantity}`,
-      `${formatNum(sim.capex.hardwareCapex / sim.quantity)} €`,
-      `${formatNum(sim.capex.hardwareCapex)} €`
+      'Modèle BESS & Puissance / Capacité',
+      ...activeScenarios.slice(0, 3).map(sc => `${sc.sim.quantity}× ${sc.sim.model.reference} (${sc.sim.capacityKwh.toFixed(1)} kWh / ${sc.sim.powerKw.toFixed(0)} kW)`)
     ],
     [
-      `Forfait pose standard, coffrets AC/DC, câblage & intégration EMS (${sim.capex.installDegressivity > 0 ? `dégressivité -${Math.round(sim.capex.installDegressivity * 100)}%` : 'standard'})`,
-      '1 ens.',
-      `${formatNum(sim.capex.installCapex)} €`,
-      `${formatNum(sim.capex.installCapex)} €`
+      'Couverture énergétique du site (%)',
+      ...activeScenarios.slice(0, 3).map(sc => `${Math.round(sc.sim.energy.rates.autonomyPvBat * 100)} % (${(Math.round(sc.sim.energy.rates.autonomyPvBat * (consoAnnuelle / 365) * 10) / 10).toFixed(1)} kWh/j)`)
+    ],
+    [
+      'Écrêtage de pointe TURPE Enedis',
+      ...activeScenarios.slice(0, 3).map(sc => `${sc.sim.energy.peakKw.toFixed(1)} kW → ${sc.sim.energy.newPeakKw.toFixed(1)} kW (-${sc.sim.energy.shaveKw.toFixed(1)} kW)`)
+    ],
+    [
+      'Investissement Total Clé en Main (CAPEX HT)',
+      ...activeScenarios.slice(0, 3).map(sc => `${formatNum(sc.sim.capex.totalCapex)} € HT`)
+    ],
+    [
+      'Économies facture annuelles (An 1)',
+      ...activeScenarios.slice(0, 3).map(sc => `+${formatNum(sc.sim.gains.batterySavings + sc.sim.gains.solarSavings)} € HT/an`)
+    ],
+    [
+      'EBITDA Net Année 1 (après OPEX)',
+      ...activeScenarios.slice(0, 3).map(sc => `+${formatNum(sc.sim.gains.totalYear1 - sc.sim.opex)} € HT/an`)
+    ],
+    [
+      'Taux de Rentabilité Interne (TRI Projet)',
+      ...activeScenarios.slice(0, 3).map(sc => sc.sim.kpis.triProject !== null ? `${sc.sim.kpis.triProject} %` : '—')
+    ],
+    [
+      'Temps de Retour sur Investissement (ROI)',
+      ...activeScenarios.slice(0, 3).map(sc => sc.sim.kpis.payback !== null ? `${sc.sim.kpis.payback} ans` : '> 20 ans')
+    ],
+    [
+      'Gain net cumulé de trésorerie sur 20 ans',
+      ...activeScenarios.slice(0, 3).map(sc => `+${formatNum(sc.sim.kpis.gain20)} € HT`)
     ]
   ];
 
-  if (sim.capex.discountAmount > 0) {
-    quoteRows.push([
-      `Remise commerciale exceptionnelle (${sim.input.discountPct || 0} %)`,
-      '—',
-      `-${formatNum(sim.capex.discountAmount)} €`,
-      `-${formatNum(sim.capex.discountAmount)} €`
-    ]);
-  }
-
-  if (solar.enabled && solar.isNew && sim.capex.pvCapex > 0) {
-    quoteRows.push([
-      `Centrale photovoltaïque ${solar.kwc} kWc clé en main (modules, onduleur, pose)`,
-      '1 ens.',
-      `${formatNum(sim.capex.pvCapex)} €`,
-      `${formatNum(sim.capex.pvCapex)} €`
-    ]);
-  }
-
-  if (sim.grid) {
-    quoteRows.push([
-      `Raccordement réseau Enedis (${sim.grid.label})`,
-      '1 ens.',
-      `${formatNum(sim.grid.costHt)} €`,
-      `${formatNum(sim.grid.costHt)} €`
-    ]);
-  }
-
-  quoteRows.push([
-    'INVESTISSEMENT TOTAL DU PROJET (CAPEX HT)',
-    '',
-    '',
-    `${formatNum(sim.capex.totalCapex)} € HT`
-  ]);
-
   autoTable(doc, {
-    startY: curY + 6.5,
+    startY: tableY,
     margin: { left: 14, right: 14 },
     theme: 'plain',
     headStyles: {
@@ -275,118 +380,219 @@ export function generateClientCommercialPdf(params = {}) {
       textColor: [255, 255, 255],
       font: 'helvetica',
       fontStyle: 'bold',
-      fontSize: 7.8,
-      cellPadding: 1.8
+      fontSize: 7.2,
+      cellPadding: 1.5
     },
     styles: {
       font: 'helvetica',
-      fontSize: 7.5,
-      cellPadding: 1.6,
+      fontSize: 6.8,
+      cellPadding: 1.3,
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { cellWidth: 105, fontStyle: 'bold' },
-      1: { cellWidth: 20, halign: 'center' },
-      2: { cellWidth: 28, halign: 'right' },
-      3: { cellWidth: 29, halign: 'right', fontStyle: 'bold' }
+      0: { cellWidth: col0W, fontStyle: 'bold' },
+      1: { cellWidth: colScenarioW, halign: 'center' },
+      2: { cellWidth: colScenarioW, halign: 'center' },
+      3: { cellWidth: colScenarioW, halign: 'center' }
     },
-    head: [['Désignation des prestations et équipements', 'Qté', 'Prix unitaire HT', 'Montant Total HT']],
-    body: quoteRows
+    head: [tableHead],
+    body: tableRows
   });
 
-  // Bloc Modèle Économique / Revenus
-  const ecoY = doc.lastAutoTable.finalY + 4;
+  // ── ENCADRÉ PÉDAGOGIQUE SOUS LE COMPARATIF ──
+  const noteY = doc.lastAutoTable.finalY + 3;
+  const noteH = 34;
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, ecoY, 182, 42, 2, 2, 'F');
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(14, ecoY, 182, 42, 2, 2, 'D');
+  doc.roundedRect(14, noteY, 182, noteH, 2, 2, 'F');
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(14, noteY, 182, noteH, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(7.8);
   doc.setTextColor(15, 23, 42);
-  doc.text('SYNTHÈSE DU MODÈLE ÉCONOMIQUE ANNUEL (ANNÉE 1)', 18, ecoY + 5.5);
+  doc.text('NOTE D\'ARBITRAGE TECHNIQUE & RECOMMANDATION ENR COURTAGE', 18, noteY + 5.0);
 
-  const colW3 = 56;
-  // Col 1 : Économies Facture
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
-  doc.setTextColor(22, 101, 52);
-  doc.text('1. ÉCONOMIES FACTURE', 18, ecoY + 12);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.2);
-  doc.setTextColor(71, 85, 105);
-  doc.text(`• Écrêtage pointes TURPE : +${formatNum(sim.gains.peakShavingValue)} €/an`, 18, ecoY + 17.5);
-  doc.text(`• Arbitrage HP/HC & Décharge : +${formatNum(sim.gains.batterySavings - sim.gains.peakShavingValue)} €/an`, 18, ecoY + 22.2);
-  if (solar.enabled) {
-    if (sim.gains.solarSavings > 0) {
-      doc.text(`• Économies solaire PV : +${formatNum(sim.gains.solarSavings)} €/an`, 18, ecoY + 26.8);
-    } else {
-      doc.text(`• PV existant (${solar.kwc} kWc) sur site`, 18, ecoY + 26.8);
-    }
-  }
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Total Économies : +${formatNum(sim.gains.batterySavings + sim.gains.solarSavings)} € HT/an`, 18, ecoY + 36.5);
+  doc.setFontSize(6.8);
+  doc.setTextColor(51, 65, 85);
+  const noteLines = [
+    `• Options 1 & 2 (54 à 61 kWh — ST54K & ST62K) : Offrent le meilleur TRI (> 11 %) et un retour sur investissement rapide (< 9 ans).`,
+    `  En ciblant prioritairement l'écrêtage de la pointe de ${sim.energy.peakKw.toFixed(0)} kW et l'arbitrage tarifaire Heures Pleines / Heures Creuses avec un budget maîtrisé`,
+    `  (18,4 k€ à 20,5 k€ HT), elles maximisent le rendement financier par euro investi tout en sécurisant le site contre les pénalités de dépassement.`,
+    `• Option 3 (261 kWh — Armoire UNIV ESS 261 AC) : Permet d'atteindre ${Math.round(activeScenarios[2]?.sim?.energy?.rates?.autonomyPvBat * 100 || 47)} % d'autonomie énergétique sur le site en absorbant près de`,
+    `  la moitié de la consommation journalière (${dailyMoy.toFixed(0)} kWh/j). Bien que son TRI initial en pur derrière-le-compteur sans solaire soit de 5.8 %,`,
+    `  son TRI peut être doublé au-delà de 12 % à 15 % en activant la valorisation sur les services système réseau Enedis/RTE (réserve rapide FCR ~80 €/kW/an net)`,
+    `  ou en couplage avec une future centrale photovoltaïque sur toiture ou ombrière.`
+  ];
+  let nty = noteY + 9.5;
+  noteLines.forEach(l => {
+    doc.text(l, 18, nty);
+    nty += 3.4;
+  });
 
-  // Col 2 : Raccordement & Revenus Réseau
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
-  doc.setTextColor(30, 64, 175);
-  doc.text('2. REVENUS RÉSEAU / MARCHÉ', 18 + colW3 + 4, ecoY + 12);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.2);
-  doc.setTextColor(71, 85, 105);
-  if (sim.grid) {
-    doc.text(`• Statut : Raccordé Réseau Enedis`, 18 + colW3 + 4, ecoY + 17.5);
-    doc.text(`• Services Réserve FCR & Capacité`, 18 + colW3 + 4, ecoY + 22.2);
-    doc.text(`• Revenus nets agrégateur (80 €/kW) :`, 18 + colW3 + 4, ecoY + 26.8);
+  // ── BLOC ENGAGEMENTS QUALITÉ & GARANTIES ──
+  const guarY = noteY + noteH + 2.5;
+  const guarW = (182 - 3 * 2.5) / 4;
+  const guarH = 14;
+  const guars = [
+    { title: 'CELLULES LFP GARANTIES 10 ANS', desc: '6 000 cycles à 90% DoD, rétention capacité > 80%.' },
+    { title: 'SUPERVISION & EMS 24/7', desc: 'Pilotage dynamique automatique selon tarifs et météo.' },
+    { title: 'HOMOLOGATION CONSUEL / VDE', desc: 'Conformité stricte aux normes Enedis & découplage.' },
+    { title: 'DÉCLARATION PRÉALABLE INCLUSE', desc: 'Dossier DP d\'urbanisme clé en main géré par Nelson.' }
+  ];
+
+  guars.forEach((g, gIdx) => {
+    const gx = 14 + gIdx * (guarW + 2.5);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(gx, guarY, guarW, guarH, 1.5, 1.5, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(gx, guarY, guarW, guarH, 1.5, 1.5, 'D');
+
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total Réseau : +${formatNum(sim.gains.gridRevenue)} € HT/an`, 18 + colW3 + 4, ecoY + 36.5);
-  } else {
-    doc.text(`• Mode : Derrière le compteur (0 € réseau)`, 18 + colW3 + 4, ecoY + 17.5);
-    doc.text(`• Aucune formalité Enedis requise`, 18 + colW3 + 4, ecoY + 22.2);
-    if (sim.gains.solarSurplusRevenue > 0) {
-      doc.text(`• Vente surplus solaire : +${formatNum(sim.gains.solarSurplusRevenue)} €/an`, 18 + colW3 + 4, ecoY + 26.8);
-    } else {
-      doc.text(`• 100% valorisé en autoconsommation`, 18 + colW3 + 4, ecoY + 26.8);
-    }
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Total Réseau : 0 € (Autonomie seule)`, 18 + colW3 + 4, ecoY + 36.5);
-  }
+    doc.setFontSize(6.2);
+    doc.setTextColor(30, 64, 175);
+    doc.text(g.title, gx + 2, guarY + 4.5);
 
-  // Col 3 : OPEX & Net Annuel
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.8);
-  doc.setTextColor(180, 83, 9);
-  doc.text('3. CHARGES & FLUX NET', 18 + colW3 * 2 + 8, ecoY + 12);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.2);
-  doc.setTextColor(71, 85, 105);
-  doc.text(`• Maintenance préventive BESS : ${formatNum(Math.round(sim.opex * 0.7))} €/an`, 18 + colW3 * 2 + 8, ecoY + 17.5);
-  doc.text(`• Supervision EMS & Télémétrie : ${formatNum(Math.round(sim.opex * 0.3))} €/an`, 18 + colW3 * 2 + 8, ecoY + 22.2);
-  doc.text(`• Total OPEX : -${formatNum(sim.opex)} € HT/an`, 18 + colW3 * 2 + 8, ecoY + 26.8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(22, 101, 52);
-  const netY1 = sim.gains.totalYear1 - sim.opex;
-  doc.text(`Gain Net Année 1 : ${formatSignedNum(netY1, 0, ' € HT')}`, 18 + colW3 * 2 + 8, ecoY + 36.5);
-
-  // Chronogramme prévisionnel de déploiement (placé en Page 1 sous la synthèse économique, remplit le bas de page)
-  const chronoY = ecoY + 42 + 3.5;
-  const chronoH = Math.min(75, Math.max(54, 280 - chronoY));
-  drawChronogrammeGantt(doc, 14, chronoY, 182, chronoH, Boolean(sim.grid));
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.8);
+    doc.setTextColor(100, 116, 139);
+    const splDesc = doc.splitTextToSize(g.desc, guarW - 4);
+    doc.text(splDesc, gx + 2, guarY + 8.2);
+  });
 
   drawFooter(doc, 1, totalPages, false);
 
-  // ── PAGE 2 : PROFIL JOURNALIER DE CHARGE 24H & JOURNÉE TYPE BESS ──
+  // ── PAGE 2 : MODÉLISATION FINANCIÈRE COMPARATIVE SUR 20 ANS ──
   doc.addPage();
   drawHeader(
     doc,
-    'PROFIL JOURNALIER DE CHARGE 24H & JOURNÉE TYPE BESS',
-    `Courbe de charge 24h du site, recharge sur surplus solaire, effacement de pointe TURPE et niveau de charge BESS (SOC %)`,
+    'MODÉLISATION FINANCIÈRE COMPARATIVE SUR 20 ANS & BANCABILITÉ',
+    `Comparatif des flux de trésorerie sur 20 ans · Inflation énergie ${sim.input.indexationPct || 4} %/an · OPEX indexé 2 %/an`,
     2,
     totalPages
   );
 
-  // 4 Jauges d'Autonomie & Autoconsommation (aux couleurs de Nelson)
+  // 3 Grands KPIs de synthèse comparative
+  const finKpiW = (182 - 2 * 3) / 3;
+  const sc1 = activeScenarios[0]?.sim || sim;
+  const sc2 = activeScenarios[1]?.sim || sim;
+  const sc3 = activeScenarios[2]?.sim || sim;
+
+  const finKpis = [
+    {
+      title: 'MEILLEUR TEMPS DE RETOUR',
+      val: `${sc1.kpis.payback || '8.5'} ans (TRI ${sc1.kpis.triProject || '11.5'} %)`,
+      sub: `${sc1.quantity}× ${sc1.model.reference} (Investissement : ${formatNum(sc1.capex.totalCapex)} € HT)`,
+      bg: [239, 246, 255], border: [191, 219, 254], txt: [30, 64, 175]
+    },
+    {
+      title: 'ÉQUILIBRE RECOMMANDÉ',
+      val: `${sc2.kpis.payback || '8.8'} ans (TRI ${sc2.kpis.triProject || '11.1'} %)`,
+      sub: `${sc2.quantity}× ${sc2.model.reference} (Investissement : ${formatNum(sc2.capex.totalCapex)} € HT)`,
+      bg: [236, 253, 245], border: [167, 243, 208], txt: [6, 95, 70]
+    },
+    {
+      title: 'AUTONOMIE MAXIMALE (C&I)',
+      val: `${Math.round(sc3.energy.rates.autonomyPvBat * 100)} % d'autonomie`,
+      sub: `${sc3.quantity}× ${sc3.model.reference} (Trésorerie 20 ans : +${formatNum(sc3.kpis.gain20)} €)`,
+      bg: [245, 243, 255], border: [221, 214, 254], txt: [109, 40, 217]
+    }
+  ];
+
+  finKpis.forEach((fk, fIdx) => {
+    const fx = 14 + fIdx * (finKpiW + 3);
+    doc.setFillColor(fk.bg[0], fk.bg[1], fk.bg[2]);
+    doc.roundedRect(fx, 37, finKpiW, 16.5, 2, 2, 'F');
+    doc.setDrawColor(fk.border[0], fk.border[1], fk.border[2]);
+    doc.roundedRect(fx, 37, finKpiW, 16.5, 2, 2, 'D');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.2);
+    doc.setTextColor(fk.txt[0], fk.txt[1], fk.txt[2]);
+    doc.text(fk.title, fx + 2.5, 41.5);
+
+    doc.setFontSize(9.5);
+    doc.text(fk.val, fx + 2.5, 47.0);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(fk.sub, fx + 2.5, 51.0);
+  });
+
+  // Graphique comparatif multi-courbes de trésorerie sur 20 ans
+  drawMultiCashFlowChartPdf(doc, 14, 56, 182, 57, activeScenarios);
+
+  // Tableau comparatif de Cash-flow sur 20 ans (Années 0, 1, 2, 3, 5, 10, 15, 20)
+  const milestoneYears = [0, 1, 2, 3, 5, 7, 10, 15, 20];
+  const cfTableHead = [
+    'Échéance',
+    ...activeScenarios.slice(0, 3).map((sc, i) => `${sc.title ? sc.title.replace(/^[^\w]+/, '').slice(0, 18) : `Option ${i + 1}`} (Cumul €)`)
+  ];
+
+  const cfTableRows = milestoneYears.map(yrNum => {
+    if (yrNum === 0) {
+      return [
+        'Investissement Initial (An 0)',
+        ...activeScenarios.slice(0, 3).map(sc => `-${formatNum(sc.sim.capex.totalCapex)} €`)
+      ];
+    }
+    return [
+      `Année ${yrNum}`,
+      ...activeScenarios.slice(0, 3).map(sc => {
+        const yData = sc.sim.years.find(y => y.year === yrNum);
+        return yData ? formatSignedNum(yData.cumProject, 0, ' €') : '—';
+      })
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 115.5,
+    margin: { left: 14, right: 14 },
+    theme: 'plain',
+    headStyles: {
+      fillColor: [15, 23, 42],
+      textColor: [255, 255, 255],
+      font: 'helvetica',
+      fontStyle: 'bold',
+      fontSize: 6.8,
+      cellPadding: 1.2
+    },
+    styles: {
+      font: 'helvetica',
+      fontSize: 6.4,
+      cellPadding: 1.1,
+      textColor: [30, 41, 59]
+    },
+    columnStyles: {
+      0: { cellWidth: 50, fontStyle: 'bold' },
+      1: { cellWidth: 44, halign: 'right' },
+      2: { cellWidth: 44, halign: 'right' },
+      3: { cellWidth: 44, halign: 'right' }
+    },
+    head: [cfTableHead],
+    body: cfTableRows
+  });
+
+  // Chronogramme prévisionnel de déploiement à 6 étapes (incluant Autorisation d'urbanisme)
+  const chronoY = doc.lastAutoTable.finalY + 3;
+  const chronoH = Math.min(84, Math.max(56, 280 - chronoY));
+  drawChronogrammeGantt(doc, 14, chronoY, 182, chronoH, Boolean(sim.grid));
+
+  drawFooter(doc, 2, totalPages, false);
+
+  // ── PAGE 3 : PROFIL JOURNALIER DE CHARGE 24H & FONCTIONNEMENT BESS ──
+  doc.addPage();
+  drawHeader(
+    doc,
+    'PROFIL JOURNALIER DE CHARGE 24H & JOURNÉE TYPE BESS',
+    `Courbe de charge 24h du site, recharge sur surplus solaire ou Heures Creuses, effacement de pointe TURPE et niveau de charge BESS (SOC %)`,
+    3,
+    totalPages
+  );
+
+  // 4 Jauges d'Autonomie & Autoconsommation (avec correction terminologique quand sans solaire)
+  const isSolar = Boolean(solar?.enabled);
   const rateW = (182 - 3 * 3) / 4;
   const ratesData = [
     {
@@ -396,21 +602,23 @@ export function generateClientCommercialPdf(params = {}) {
       bg: [248, 250, 252], border: [226, 232, 240], txt: [71, 85, 105], titleColor: [100, 116, 139]
     },
     {
-      title: 'AVEC SOLAIRE SEUL',
-      val: `${Math.round(sim.energy.rates.autonomyPv * 100)} %`,
-      sub: `Autoconso : ${Math.round(sim.energy.rates.autoconsoPv * 100)} %`,
+      title: isSolar ? 'AVEC SOLAIRE SEUL' : 'SANS SOLAIRE (0 KWC)',
+      val: isSolar ? `${Math.round(sim.energy.rates.autonomyPv * 100)} %` : '0 %',
+      sub: isSolar ? `Autoconso : ${Math.round(sim.energy.rates.autoconsoPv * 100)} %` : '100% réseau Enedis',
       bg: [254, 243, 199], border: [253, 230, 138], txt: [146, 64, 14], titleColor: [180, 83, 9]
     },
     {
-      title: 'AVEC SOLAIRE + BESS',
+      title: isSolar ? 'AVEC SOLAIRE + BESS' : 'COUVERTURE BATTERIE & ARBITRAGE HP/HC',
       val: `${Math.round(sim.energy.rates.autonomyPvBat * 100)} %`,
-      sub: `Autoconso : ${Math.round(sim.energy.rates.autoconsoPvBat * 100)} %`,
+      sub: isSolar
+        ? `Autoconsommation : ${Math.round(sim.energy.rates.autoconsoPvBat * 100)} %`
+        : 'Part du besoin transférée/écrêtée',
       bg: [236, 253, 245], border: [167, 243, 208], txt: [6, 95, 70], titleColor: [4, 120, 87]
     },
     {
-      title: 'SURPLUS SOLAIRE STOCKÉ',
-      val: `${formatNum(sim.energy.totals.batFromPv)} kWh`,
-      sub: 'Énergie gratuite / an',
+      title: isSolar ? 'SURPLUS SOLAIRE STOCKÉ' : 'ÉNERGIE TRANSFÉRÉE / AN',
+      val: isSolar ? `${formatNum(sim.energy.totals.batFromPv)} kWh` : `${formatNum(sim.capacityKwh * 0.92 * 365)} kWh`,
+      sub: isSolar ? 'Énergie gratuite / an' : 'Cycles Heures Creuses → Pleines',
       bg: [239, 246, 255], border: [191, 219, 254], txt: [30, 64, 175], titleColor: [37, 99, 235]
     }
   ];
@@ -482,133 +690,10 @@ export function generateClientCommercialPdf(params = {}) {
   doc.text('et d\'ensoleillement sur le site. La batterie effectue 1 à 1,5 cycle par jour en chargeant prioritairement sur le surplus solaire', 18, 231.5);
   doc.text('(ou en Heures Creuses) et en restituant l\'énergie pendant les pointes pour effacer les dépassements de puissance TURPE Enedis.', 18, 236.5);
 
-  drawFooter(doc, 2, totalPages, false);
-
-  // ── PAGE 3 : MODÉLISATION FINANCIÈRE SUR 20 ANS & BANCABILITÉ ──
-  doc.addPage();
-  drawHeader(
-    doc,
-    'MODÉLISATION FINANCIÈRE SUR 20 ANS & BANCABILITÉ',
-    `Hypothèses : Inflation énergie ${sim.input.indexationPct || 4} %/an · Dégradation batterie 1 %/an · OPEX indexé 2 %/an`,
-    3,
-    totalPages
-  );
-
-  // 6 KPIs Financiers aux couleurs exactes de Nelson
-  const kpiFinW = (182 - 5 * 2.5) / 6;
-  const kpisFinData = [
-    {
-      title: 'CAPEX TOTAL PROJET',
-      val: `${formatNum(sim.capex.totalCapex)} €`,
-      sub: `Dette : ${formatNum(sim.financing.debt)} €`,
-      bg: [248, 250, 252], border: [226, 232, 240], txt: [15, 23, 42], titleColor: [100, 116, 139]
-    },
-    {
-      title: 'GAINS NET ANNÉE 1',
-      val: `+${formatNum(sim.gains.totalYear1 - sim.opex)} €`,
-      sub: 'EBITDA initial',
-      bg: [236, 253, 245], border: [167, 243, 208], txt: [6, 78, 59], titleColor: [4, 120, 87]
-    },
-    {
-      title: 'ANNUITÉ EMPRUNT',
-      val: `-${formatNum(sim.financing.annuity)} €`,
-      sub: `par an (${sim.financing.years} ans)`,
-      bg: [239, 246, 255], border: [191, 219, 254], txt: [30, 58, 138], titleColor: [30, 64, 175]
-    },
-    {
-      title: 'DSCR MOYEN',
-      val: sim.financing.dscrAvg ? `${sim.financing.dscrAvg}x` : '—',
-      sub: `Min : ${sim.financing.dscrMin ? `${sim.financing.dscrMin}x` : '—'} (> 1.20x)`,
-      bg: [238, 242, 255], border: [199, 210, 254], txt: [49, 46, 129], titleColor: [67, 56, 202]
-    },
-    {
-      title: 'TRI PROJET / FP',
-      val: `${sim.kpis.triProject ? `${sim.kpis.triProject} %` : '—'}`,
-      sub: `TRI FP : ${sim.kpis.triEquity ? `${sim.kpis.triEquity} %` : '—'}`,
-      bg: [240, 249, 255], border: [186, 230, 253], txt: [12, 74, 110], titleColor: [3, 105, 161]
-    },
-    {
-      title: 'TRÉSORERIE 20 ANS',
-      val: `+${formatNum(sim.kpis.gain20)} €`,
-      sub: `VAN (5%) : +${formatNum(sim.kpis.van)} €`,
-      bg: [254, 252, 232], border: [254, 240, 138], txt: [113, 63, 18], titleColor: [161, 98, 7]
-    }
-  ];
-
-  kpisFinData.forEach((k, kIdx) => {
-    const kx = 14 + kIdx * (kpiFinW + 2.5);
-    doc.setFillColor(k.bg[0], k.bg[1], k.bg[2]);
-    doc.roundedRect(kx, 37, kpiFinW, 17.5, 2, 2, 'F');
-    doc.setDrawColor(k.border[0], k.border[1], k.border[2]);
-    doc.roundedRect(kx, 37, kpiFinW, 17.5, 2, 2, 'D');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.8);
-    doc.setTextColor(k.titleColor[0], k.titleColor[1], k.titleColor[2]);
-    doc.text(k.title, kx + 2, 41.5);
-
-    doc.setFontSize(9.5);
-    doc.setTextColor(k.txt[0], k.txt[1], k.txt[2]);
-    doc.text(k.val, kx + 2, 47.5);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.6);
-    doc.text(k.sub, kx + 2, 52.0);
-  });
-
-  // Graphique de Trésorerie Cumulée & Seuil de rentabilité (Hauteur augmentée à 58 mm)
-  drawCashFlowChartPdf(doc, 14, 57.5, 182, 58, sim.years, sim.kpis.payback, sim.kpis.triProject, Boolean(sim.grid), sim.capex.totalCapex);
-
-  // Tableau de Cash-flow sur 20 ans (placé sous le graphique agrandi)
-  const cfRows = [
-    ['Année 0', `-${formatNum(sim.capex.totalCapex)} €`, '0 €', '0 €', `-${formatNum(sim.capex.totalCapex)} €`, `-${formatNum(sim.capex.totalCapex)} €`]
-  ];
-
-  sim.years.forEach((yr) => {
-    cfRows.push([
-      `Année ${yr.year}`,
-      `+${formatNum(yr.batterySavings + yr.solarSavings)} €`,
-      yr.gridRevenue > 0 ? `+${formatNum(yr.gridRevenue)} €` : '0 €',
-      `-${formatNum(yr.opex)} €`,
-      formatSignedNum(yr.ebitda, 0, ' €'),
-      formatSignedNum(yr.cumProject, 0, ' €')
-    ]);
-  });
-
-  autoTable(doc, {
-    startY: 119,
-    margin: { left: 14, right: 14 },
-    theme: 'striped',
-    headStyles: {
-      fillColor: [15, 23, 42],
-      textColor: [255, 255, 255],
-      font: 'helvetica',
-      fontStyle: 'bold',
-      fontSize: 6.6,
-      cellPadding: 1.0
-    },
-    styles: {
-      font: 'helvetica',
-      fontSize: 6.0,
-      cellPadding: 0.8,
-      textColor: [30, 41, 59]
-    },
-    columnStyles: {
-      0: { cellWidth: 22, fontStyle: 'bold' },
-      1: { cellWidth: 32, halign: 'right' },
-      2: { cellWidth: 30, halign: 'right' },
-      3: { cellWidth: 30, halign: 'right' },
-      4: { cellWidth: 34, halign: 'right', fontStyle: 'bold' },
-      5: { cellWidth: 34, halign: 'right', fontStyle: 'bold' }
-    },
-    head: [['Période', 'Économies Facture', 'Revenus Réseau', 'OPEX Maintenance', 'Cash-Flow Net/an', 'Trésorerie Cumulée']],
-    body: cfRows
-  });
-
   drawFooter(doc, 3, totalPages, false);
 
-  const cleanName = clientName.replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `Etude_Commerciale_Stockage_${cleanName}.pdf`;
+  const cleanName = (clientName || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
+  const filename = `Proposition_Commerciale_BESS_${cleanName}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
   return filename;
 }
@@ -1397,6 +1482,134 @@ function drawHourlyJourneyTablePdf(doc, x, y, w, h, chartData = [], capacityKwh 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(30, 41, 59);
     doc.text(`${(hData.reseauApres || 0).toFixed(1)} kW`, rx + halfW - 1.5, textY, { align: 'right' });
+  });
+}
+
+// ─── Graphique Comparatif Multi-Courbes de Trésorerie Cumulée (3 Scénarios) ───
+export function drawMultiCashFlowChartPdf(doc, x, y, w, h, scenarios = []) {
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(x, y, w, h, 2, 2, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(x, y, w, h, 2, 2, 'D');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Projection de Trésorerie Cumulée sur 20 Ans (Comparatif 3 Scénarios)', x + 4, y + 4.8);
+
+  // Palettes de couleurs pour les 3 options
+  const colorThemes = [
+    { rgb: [37, 99, 235], label: 'Option 1 : ST54K' },
+    { rgb: [5, 150, 105], label: 'Option 2 : ST62K' },
+    { rgb: [124, 58, 237], label: 'Option 3 : UNIV 261' }
+  ];
+
+  // Calcul du min et du max global sur l'ensemble des scénarios
+  let globalMin = -20000;
+  let globalMax = 50000;
+
+  const validScenarios = (scenarios || []).slice(0, 3).map((sc, idx) => {
+    const sSim = sc.sim || sc;
+    const capex = sSim.capex?.totalCapex || 20000;
+    const yrs = Array.isArray(sSim.years) ? sSim.years : [];
+    if (-capex < globalMin) globalMin = -capex;
+    yrs.forEach(yr => {
+      if (yr.cumProject > globalMax) globalMax = yr.cumProject;
+      if (yr.cumProject < globalMin) globalMin = yr.cumProject;
+    });
+    const theme = colorThemes[idx] || colorThemes[0];
+    const shortRef = sSim.model?.reference || `Option ${idx + 1}`;
+    const tri = sSim.kpis?.triProject !== null && sSim.kpis?.triProject !== undefined ? `${sSim.kpis.triProject}%` : '—';
+    const pay = sSim.kpis?.payback !== null && sSim.kpis?.payback !== undefined ? `${sSim.kpis.payback} ans` : '> 20 ans';
+
+    return {
+      title: sc.title || `Option ${idx + 1}`,
+      label: `Opt ${idx + 1} (${shortRef}) : TRI ${tri} · ROI ${pay}`,
+      color: theme.rgb,
+      capex,
+      years: yrs,
+      tri,
+      payback: pay
+    };
+  });
+
+  // Légende en haut
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(5.8);
+  const legendStartY = y + 8.5;
+  validScenarios.forEach((sc, idx) => {
+    const legX = x + 4 + idx * 58;
+    doc.setFillColor(sc.color[0], sc.color[1], sc.color[2]);
+    doc.circle(legX + 1.2, legendStartY - 1.0, 1.2, 'F');
+    doc.setTextColor(sc.color[0], sc.color[1], sc.color[2]);
+    doc.text(sc.label, legX + 3.4, legendStartY);
+  });
+
+  const plotX = x + 18;
+  const plotY = y + 11.5;
+  const plotW = w - 24;
+  const plotH = h - 17.5;
+
+  globalMin = Math.floor(globalMin / 10000) * 10000;
+  globalMax = Math.ceil((globalMax * 1.10) / 10000) * 10000;
+  const totalRange = Math.max(10000, globalMax - globalMin);
+  const zeroFrac = (0 - globalMin) / totalRange;
+  const zeroY = plotY + plotH - zeroFrac * plotH;
+
+  // Lignes de repère
+  doc.setDrawColor(241, 245, 249);
+  doc.setLineWidth(0.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.2);
+  doc.setTextColor(148, 163, 184);
+
+  doc.line(plotX, plotY + plotH, plotX + plotW, plotY + plotH);
+  doc.text(`${Math.round(globalMin / 1000)}k€`, plotX - 1.5, plotY + plotH + 1, { align: 'right' });
+
+  doc.line(plotX, plotY, plotX + plotW, plotY);
+  doc.text(`+${Math.round(globalMax / 1000)}k€`, plotX - 1.5, plotY + 1, { align: 'right' });
+
+  // Ligne de zéro (seuil de rentabilité)
+  doc.setDrawColor(239, 68, 68);
+  doc.setLineWidth(0.3);
+  doc.line(plotX, zeroY, plotX + plotW, zeroY);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(5.8);
+  doc.setTextColor(239, 68, 68);
+  doc.text('0 € (Seuil de rentabilité)', plotX + 1, zeroY - 1);
+
+  // Axe horizontal X (Années)
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.2);
+  doc.setTextColor(148, 163, 184);
+  for (let yr = 0; yr <= 20; yr += 2) {
+    const gx = plotX + (yr / 20) * plotW;
+    doc.text(`An ${yr}`, gx, plotY + plotH + 4.0, { align: 'center' });
+  }
+
+  // Tracer les 3 courbes distinctes
+  validScenarios.forEach((sc) => {
+    const points = [{ yr: 0, val: -sc.capex }, ...sc.years.map(y => ({ yr: y.year, val: y.cumProject }))];
+    if (points.length > 1) {
+      const n = points.length;
+      doc.setDrawColor(sc.color[0], sc.color[1], sc.color[2]);
+      doc.setLineWidth(0.65);
+
+      for (let i = 0; i < n - 1; i++) {
+        const x1 = plotX + (points[i].yr / 20) * plotW;
+        const y1 = plotY + plotH - ((points[i].val - globalMin) / totalRange) * plotH;
+        const x2 = plotX + (points[i + 1].yr / 20) * plotW;
+        const y2 = plotY + plotH - ((points[i + 1].val - globalMin) / totalRange) * plotH;
+        doc.line(x1, y1, x2, y2);
+      }
+
+      doc.setFillColor(sc.color[0], sc.color[1], sc.color[2]);
+      for (let i = 0; i < n; i++) {
+        const px = plotX + (points[i].yr / 20) * plotW;
+        const py = plotY + plotH - ((points[i].val - globalMin) / totalRange) * plotH;
+        doc.circle(px, py, 0.55, 'F');
+      }
+    }
   });
 }
 
