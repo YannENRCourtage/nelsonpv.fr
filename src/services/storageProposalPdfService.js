@@ -583,7 +583,7 @@ export function generateClientCommercialPdf(params = {}) {
     {
       title: 'AUTONOMIE MAXIMALE (Option 3)',
       val: `${Math.round(sc3.energy.rates.autonomyPvBat * 100)} % d'autonomie (TRI ${sc3.kpis.triEquity || sc3.kpis.triProject || '7.0'} %)`,
-      sub: `${sc3.quantity}× ${sc3.model.reference} (Trésorerie 20 ans : +${formatNum(sc3.kpis.gain20)} €)`,
+      sub: `${sc3.quantity}× ${sc3.model.reference} (Investissement : ${formatNum(sc3.capex.totalCapex)} € HT)`,
       bg: [245, 243, 255], border: [221, 214, 254], txt: [109, 40, 217]
     }
   ];
@@ -609,8 +609,8 @@ export function generateClientCommercialPdf(params = {}) {
     doc.text(fk.sub, fx + 2.5, 51.0);
   });
 
-  // Graphique comparatif multi-courbes de trésorerie sur 20 ans (hauteur ajustée = 80 mm)
-  drawMultiCashFlowChartPdf(doc, 14, 55, 182, 80, activeScenarios);
+  // Graphique comparatif multi-courbes de trésorerie sur 20 ans (hauteur ajustée = 86 mm avec espaces aérés)
+  drawMultiCashFlowChartPdf(doc, 14, 55.5, 182, 86, activeScenarios);
 
   // Tableau comparatif de Cash-flow sur 20 ans (avec années 8, 9, 11, 12, 13, 14)
   const milestoneYears = [0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20];
@@ -638,7 +638,7 @@ export function generateClientCommercialPdf(params = {}) {
   });
 
   autoTable(doc, {
-    startY: 137.0,
+    startY: 143.5,
     margin: { left: 14, right: 14 },
     theme: 'plain',
     headStyles: {
@@ -736,11 +736,11 @@ export function generateClientCommercialPdf(params = {}) {
     doc.text(r.sub, rx + 2.5, 51.0);
   });
 
-  // Graphique 24h vectoriel de charge & écrêtage
-  drawDaily24hChartPdf(doc, 14, 55, 182, 74, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
+  // Graphique 24h vectoriel de charge & écrêtage (hauteur augmentée à 80 mm avec espaces aérés sous légende et sur axe X)
+  drawDaily24hChartPdf(doc, 14, 55, 182, 80, sim.energy.chart, sim.energy.peakKw, sim.energy.newPeakKw, Boolean(solar?.enabled));
 
-  // Tableau synthétique de la Journée type heure par heure avec Niveau de Charge (hauteur augmentée à 72 mm : confort visuel parfait)
-  drawHourlyJourneyTablePdf(doc, 14, 131, 182, 72, sim.energy.chart, sim.capacityKwh);
+  // Tableau synthétique de la Journée type heure par heure avec Niveau de Charge (hauteur 70 mm : intégration aérée)
+  drawHourlyJourneyTablePdf(doc, 14, 137, 182, 70, sim.energy.chart, sim.capacityKwh);
 
   // 4 Piliers Opérationnels & Explication de la journée type (espace aéré au-dessus)
   const pillarW = (182 - 3 * 2.5) / 4;
@@ -754,25 +754,25 @@ export function generateClientCommercialPdf(params = {}) {
   pillars.forEach((p, pIdx) => {
     const px = 14 + pIdx * (pillarW + 2.5);
     doc.setFillColor(p.bg[0], p.bg[1], p.bg[2]);
-    doc.roundedRect(px, 205.5, pillarW, 21, 2, 2, 'F');
+    doc.roundedRect(px, 209.5, pillarW, 20, 2, 2, 'F');
     doc.setDrawColor(p.border[0], p.border[1], p.border[2]);
-    doc.roundedRect(px, 205.5, pillarW, 21, 2, 2, 'D');
+    doc.roundedRect(px, 209.5, pillarW, 20, 2, 2, 'D');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.8);
     doc.setTextColor(p.txt[0], p.txt[1], p.txt[2]);
-    doc.text(p.title, px + 2.5, 210.0);
+    doc.text(p.title, px + 2.5, 214.0);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
     doc.setTextColor(71, 85, 105);
     const splitDesc = doc.splitTextToSize(p.desc, pillarW - 5);
-    doc.text(splitDesc, px + 2.5, 214.5);
+    doc.text(splitDesc, px + 2.5, 218.5);
   });
 
   // Note explicative (exploitant toute la largeur du cadre avec police agrandie à 9.0 pt)
-  const noteBoxY = 229.0;
-  const noteBoxH = 21.0;
+  const noteBoxY = 232.0;
+  const noteBoxH = 20.0;
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(14, noteBoxY, 182, noteBoxH, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
@@ -1427,10 +1427,11 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
     legX += doc.getTextWidth(item.label) + 7.0;
   });
 
+  // Espace généreux sous la légende
   const plotX = x + 13;
-  const plotY = y + 16;
+  const plotY = y + 18.5;
   const plotW = w - 26;
-  const plotH = h - 23;
+  const plotH = h - 26.5;
 
   let maxKw = Math.max(10, peakKw * 1.1);
   chartData.forEach(d => {
@@ -1458,13 +1459,14 @@ function drawDaily24hChartPdf(doc, x, y, w, h, chartData = [], peakKw = 90, newP
     doc.setTextColor(148, 163, 184);
   }
 
+  // Axe horizontal X (Heures) avec espace aéré au-dessus
   const tickHours = [0, 3, 6, 9, 12, 15, 18, 21, 23];
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.2);
   doc.setTextColor(100, 116, 139);
   tickHours.forEach(th => {
     const gx = plotX + (th / 23) * plotW;
-    doc.text(`${String(th).padStart(2, '0')}h`, gx, plotY + plotH + 3.8, { align: 'center' });
+    doc.text(`${String(th).padStart(2, '0')}h`, gx, plotY + plotH + 5.2, { align: 'center' });
   });
 
   const n = chartData.length;
@@ -1724,10 +1726,11 @@ export function drawMultiCashFlowChartPdf(doc, x, y, w, h, scenarios = []) {
     doc.text(`TRI : ${sc.tri} · ROI : ${sc.payback}`, legX + 3.8, y + 13.5);
   });
 
+  // Espace généreux sous la ligne TRI & ROI avant le tracé
   const plotX = x + 18;
-  const plotY = y + 15.5;
+  const plotY = y + 19.0;
   const plotW = w - 24;
-  const plotH = h - 23.0;
+  const plotH = h - 28.0;
 
   globalMin = Math.floor(globalMin / 10000) * 10000;
   globalMax = Math.ceil((globalMax * 1.10) / 10000) * 10000;
@@ -1757,13 +1760,13 @@ export function drawMultiCashFlowChartPdf(doc, x, y, w, h, scenarios = []) {
   doc.setTextColor(239, 68, 68);
   doc.text('0 € (Seuil de rentabilité)', plotX + 1, zeroY - 1);
 
-  // Axe horizontal X (Années)
+  // Axe horizontal X (Années) avec espace aéré au-dessus
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.2);
+  doc.setFontSize(8.0);
   doc.setTextColor(148, 163, 184);
   for (let yr = 0; yr <= 20; yr += 2) {
     const gx = plotX + (yr / 20) * plotW;
-    doc.text(`An ${yr}`, gx, plotY + plotH + 4.5, { align: 'center' });
+    doc.text(`An ${yr}`, gx, plotY + plotH + 5.8, { align: 'center' });
   }
 
   // Tracer les 3 courbes distinctes
