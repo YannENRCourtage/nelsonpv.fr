@@ -451,7 +451,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
         ...sc,
         model,
         badge: badgeLabel,
-        turnkeyPrice: computedSim.capex.capexTotalNetHt,
+        turnkeyPrice: computedSim.capex?.totalCapex || (computedSim.capex?.batteryCapex || 0),
         sim: computedSim
       };
     });
@@ -1396,7 +1396,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                   <div className="mt-3 flex items-center justify-between p-2.5 rounded-xl bg-slate-950/40 border border-slate-800/80">
                     <span className="text-xs text-slate-400 font-bold">Investissement clé en main :</span>
                     <span className="text-sm font-black text-white">
-                      {fmtEur(simRes.capex.capexTotalNetHt)} <span className="text-[10px] text-slate-400 font-normal">HT</span>
+                      {fmtEur(simRes.capex?.totalCapex || sc.turnkeyPrice || 0)} <span className="text-[10px] text-slate-400 font-normal">HT</span>
                     </span>
                   </div>
 
@@ -1423,9 +1423,9 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                     <div className="flex items-center gap-1.5 font-bold">
                       <span className="text-slate-400">{peakKw.toFixed(1)} kW</span>
                       <span className="text-slate-500">→</span>
-                      <span className="text-emerald-400 font-black">{simRes.energy.newPeakKw.toFixed(1)} kW</span>
+                      <span className="text-emerald-400 font-black">{simRes.energy?.newPeakKw != null ? simRes.energy.newPeakKw.toFixed(1) : '-'} kW</span>
                       <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-black">
-                        -{simRes.energy.shaveKw.toFixed(1)} kW
+                        -{simRes.energy?.shaveKw != null ? simRes.energy.shaveKw.toFixed(1) : '0.0'} kW
                       </span>
                     </div>
                   </div>
@@ -1434,11 +1434,11 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                   <div className="mt-3 space-y-1 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Économies brutes :</span>
-                      <span className="font-bold text-slate-200">+{fmtEur(simRes.gains.batterySavings + simRes.gains.solarSavings)} HT/an</span>
+                      <span className="font-bold text-slate-200">+{fmtEur((simRes.gains?.batterySavings || 0) + (simRes.gains?.solarSavings || 0))} HT/an</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">EBITDA net Année 1 :</span>
-                      <span className="font-black text-emerald-400">+{fmtEur(simRes.ebitda.year1)} HT/an</span>
+                      <span className="font-black text-emerald-400">+{fmtEur(simRes.years?.[0]?.ebitda ?? ((simRes.gains?.totalYear1 || 0) - (simRes.opex?.totalYear1 || 0)))} HT/an</span>
                     </div>
                   </div>
 
@@ -1449,12 +1449,12 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                     </span>
                     <div className="flex items-baseline justify-center gap-2 mt-0.5">
                       <span className="text-2xl sm:text-3xl font-black text-amber-400">
-                        {simRes.kpis.triProject.toFixed(1)} %
+                        {simRes.kpis?.triProject != null ? simRes.kpis.triProject.toFixed(1) : '0.0'} %
                       </span>
                       <span className="text-xs font-bold text-slate-400">(Projet)</span>
                     </div>
                     <div className="text-[11px] text-slate-300 font-medium mt-1">
-                      TRI Fonds Propres ({equityPct}%) : <strong className="text-emerald-400">{simRes.kpis.triEquity ? `${simRes.kpis.triEquity.toFixed(1)} %` : 'N/A'}</strong>
+                      TRI Fonds Propres ({equityPct}%) : <strong className="text-emerald-400">{simRes.kpis?.triEquity != null ? `${simRes.kpis.triEquity.toFixed(1)} %` : 'N/A'}</strong>
                     </div>
                   </div>
 
@@ -1463,13 +1463,13 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                     <div className="p-2 rounded-lg bg-slate-950/40 border border-slate-800/60">
                       <span className="text-[10px] text-slate-400 block font-medium">Temps de Retour :</span>
                       <span className="font-black text-white text-sm">
-                        {simRes.kpis.paybackYears ? `${simRes.kpis.paybackYears.toFixed(1)} ans` : '> 20 ans'}
+                        {simRes.kpis?.payback != null ? `${simRes.kpis.payback.toFixed(1)} ans` : '> 20 ans'}
                       </span>
                     </div>
                     <div className="p-2 rounded-lg bg-slate-950/40 border border-slate-800/60">
                       <span className="text-[10px] text-slate-400 block font-medium">Cash net 20 ans :</span>
                       <span className="font-black text-emerald-400 text-sm">
-                        +{fmtEur(simRes.financials.cumul20)}
+                        +{fmtEur(simRes.kpis?.gain20 ?? (simRes.years?.[simRes.years.length - 1]?.cumProject || 0))}
                       </span>
                     </div>
                   </div>
