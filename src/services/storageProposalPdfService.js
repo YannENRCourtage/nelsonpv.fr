@@ -923,8 +923,31 @@ export function generateBankDossierPdf({
   doc.text(`• Garantie constructeur : 10 ans / 6 000 cycles (LFP)`, 110, idY + 27.7);
 
   // Justification économique et stratégique (Section 2)
-  const justifY = idY + idH + 3.0; // 74.5 mm
-  const justifH = 46;
+  const justifY = idY + idH + 2.5; // ~74.0 mm
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.4);
+  const justifParagraphs = [
+    `Le présent projet vise l'installation d'un système de stockage d'énergie par batteries stationnaires LiFePO4 de dernière génération d'une capacité de ${sim.capacityKwh.toFixed(1)} kWh et d'une puissance de ${sim.powerKw.toFixed(0)} kW (${sim.quantity}× ${sim.model.name || sim.model.reference}) (Option ${optNum}).`,
+    `L'objectif stratégique et économique de l'investissement repose sur des leviers majeurs de création de valeur pérennes :`,
+    `  1. Écrêtage des pointes de puissance (Peak Shaving) : réduction directe de la composante puissance du TURPE et suppression des dépassements.`,
+    `  2. Arbitrage tarifaire & autoconsommation : recharge en Heures Creuses ou sur surplus solaire gratuit, restitution en Heures Pleines.`,
+    `  3. Sécurisation face à la volatilité des marchés : protection pluriannuelle contre les hausses tarifaires de l'électricité (+4%/an prévus).`,
+    sim.grid
+      ? `  4. Flexibilité réseau Enedis/RTE : contractualisation de revenus capacitaires et de réserve rapide (~80 €/kW/an net).`
+      : `  4. Autonomie énergétique : taux de couverture du site porté à ${Math.round(sim.energy.rates.autonomyPvBat * 100)} % (dépendance réseau drastiquement diminuée).`
+  ];
+
+  let totalJustifHeight = 0;
+  const wrappedJustif = justifParagraphs.map((para, pIdx) => {
+    const lines = doc.splitTextToSize(para, 172);
+    const spacing = (pIdx === 0 || pIdx === 1) ? 2.0 : 1.2;
+    totalJustifHeight += lines.length * 4.0 + spacing;
+    return { lines, spacing };
+  });
+
+  const justifH = Math.max(48, 11.0 + totalJustifHeight + 2.0);
+
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(14, justifY, 182, justifH, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
@@ -936,28 +959,16 @@ export function generateBankDossierPdf({
   doc.text('2. OBJET DU FINANCEMENT & JUSTIFICATION ÉCONOMIQUE', 18, justifY + 5.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.8); // +2 points (était 6.8)
+  doc.setFontSize(8.4);
   doc.setTextColor(71, 85, 105);
-  const justifText = [
-    `Le présent projet vise l'installation d'un système de stockage d'énergie par batteries stationnaires LiFePO4 de dernière génération`,
-    `d'une capacité de ${sim.capacityKwh.toFixed(1)} kWh et d'une puissance de ${sim.powerKw.toFixed(0)} kW (${sim.quantity}× ${sim.model.name || sim.model.reference}) (Option ${optNum}).`,
-    ``,
-    `L'objectif stratégique et économique de l'investissement repose sur trois leviers majeurs de création de valeur pérennes :`,
-    `  1. Écrêtage des pointes de puissance (Peak Shaving) : réduction directe de la composante puissance du TURPE et suppression des dépassements.`,
-    `  2. Arbitrage tarifaire & autoconsommation : recharge en Heures Creuses ou sur surplus solaire gratuit, restitution en Heures Pleines.`,
-    `  3. Sécurisation face à la volatilité des marchés : protection pluriannuelle contre les hausses tarifaires de l'électricité (+4%/an prévus).`,
-    sim.grid
-      ? `  4. Flexibilité réseau Enedis/RTE : contractualisation de revenus capacitaires et de réserve rapide (~80 €/kW/an net).`
-      : `  4. Autonomie énergétique : taux de couverture du site porté à ${Math.round(sim.energy.rates.autonomyPvBat * 100)} % (dépendance réseau drastiquement diminuée).`
-  ];
-  let ty = justifY + 11.5;
-  justifText.forEach(line => {
-    doc.text(line, 18, ty);
-    ty += 4.5;
+  let ty = justifY + 11.2;
+  wrappedJustif.forEach(item => {
+    doc.text(item.lines, 18, ty);
+    ty += item.lines.length * 4.0 + item.spacing;
   });
 
   // Synthèse financière & Bancabilité (Section 3 - Grands KPIs avec couleurs différentes)
-  const bkpiY = justifY + justifH + 3.0; // 123 mm
+  const bkpiY = justifY + justifH + 2.5;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10.0); // +2 points (était 8)
   doc.setTextColor(15, 23, 42);
@@ -1029,7 +1040,7 @@ export function generateBankDossierPdf({
   });
 
   // Sécurité technique et garanties (Section 4)
-  const secY = bkpiY + 59.5; // ~183 mm
+  const secY = bkpiY + 58.0; // ~183 mm
   const secLines = [
     `• Chimie des cellules : Lithium-Fer-Phosphate (LiFePO4 / LFP) — stabilité thermique exceptionnelle, absence totale de risque d'emballement thermique toxique.`,
     `• Normes de sécurité certifiées : CEI 62619 (sécurité industrielle), CEI 62933, NF EN 61000 (CEM) et conformité stricte NFPA 855 / APSAD.`,
