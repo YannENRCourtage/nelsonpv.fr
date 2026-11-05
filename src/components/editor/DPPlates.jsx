@@ -1235,11 +1235,23 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
                         <div style={{ fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             NOTICE D'INSERTION &amp; DESCRIPTIVE DU PROJET
                         </div>
-                        <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.5pt', lineHeight: '1.3', color: '#334155' }}>
-                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.5pt', lineHeight: '1.3', color: '#334155' }}>
+                        <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.2pt', lineHeight: '1.28', color: '#334155' }}>
+                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.2pt', lineHeight: '1.28', color: '#334155' }}>
                                 {cleanNoticeText}
                             </div>
                         </div>
+                        {isBattery && (
+                            <div style={{ marginTop: '1.5mm', padding: '1.8mm 2.5mm', borderRadius: '2mm', background: '#f8fafc', border: '1px solid #0f172a' }}>
+                                <div style={{ fontSize: '6.6pt', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: '0.8mm', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span>CONFORMITÉ ICPE (RUBRIQUE 2925) &amp; TRIPLE BARRIÈRE DE PROTECTION INCENDIE (ART. R.111-2 / SDIS)</span>
+                                    <span style={{ fontSize: '5.6pt', fontWeight: '800', background: '#dcfce7', color: '#166534', padding: '0.4mm 1.4mm', borderRadius: '1mm', border: '0.5px solid #86efac' }}>NON CLASSÉ ICPE (NC)</span>
+                                </div>
+                                <div style={{ fontSize: '5.8pt', lineHeight: '1.22', color: '#334155' }}>
+                                    <div><strong>• Non-soumission ICPE 2925 :</strong> Puissance de charge de 500 kW nominale strictement &le; 600 kW (seuil de Déclaration 2925-2). Absence de dégagement d'hydrogène (2925-1 non concerné). Installation Non Classée (NC).</div>
+                                    <div style={{ marginTop: '0.5mm' }}><strong>• Triple barrière de protection incendie :</strong> (1) Confinement intrinsèque LFP incombustible + Aérosol NFPA 855 interne sans flamme externe ; (2) Coupure minérale dalle béton armé A1 (19,84 m²) + bande stérile graviers 2,00 m + OLD 50 m ; (3) Desserte SDIS voie carrossable &ge; 3,00 m + coupure d'urgence Arrêt d'Urgence (AU) pompier sur clôture.</div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -1331,8 +1343,15 @@ export const PlateNoticeDedicated = ({ project, noticeText }) => {
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
     const isNoBattery = isAcama;
+    const isBattery = !isNoBattery && (
+        project?.solutionType === 'battery' || 
+        Boolean(project?.isBatteryStandAlone) || 
+        Boolean(project?.isBatterySA) || 
+        Boolean(project?.isBattery) || 
+        (project?.type || '').toLowerCase().includes('batterie')
+    );
 
-    const rawNotice = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description || '';
+    const rawNotice = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description || (isBattery ? getBessCadre41Text(project) : '');
     let cleanNotice = rawNotice.replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
 
     if (isNoBattery && cleanNotice) {
@@ -1354,9 +1373,21 @@ export const PlateNoticeDedicated = ({ project, noticeText }) => {
                 <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '2.5mm', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1.5mm' }}>
                     Notice descriptive &amp; Justification du projet
                 </div>
-                <div style={{ flex: 1, overflow: 'hidden', fontSize: '7.2pt', lineHeight: '1.42', color: '#334155', whiteSpace: 'pre-line' }}>
+                <div style={{ flex: 1, overflow: 'hidden', fontSize: '7.0pt', lineHeight: '1.38', color: '#334155', whiteSpace: 'pre-line' }}>
                     {cleanNotice}
                 </div>
+                {isBattery && (
+                    <div style={{ marginTop: '2.5mm', padding: '2.5mm 3.5mm', borderRadius: '2mm', background: '#f8fafc', border: '1.2px solid #0f172a' }}>
+                        <div style={{ fontSize: '7.2pt', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: '1mm', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span>CONFORMITÉ ICPE (RUBRIQUE 2925) &amp; TRIPLE BARRIÈRE DE PROTECTION INCENDIE (ART. R.111-2 / SDIS)</span>
+                            <span style={{ fontSize: '6.2pt', fontWeight: '800', background: '#dcfce7', color: '#166534', padding: '0.4mm 1.8mm', borderRadius: '1mm', border: '0.5px solid #86efac' }}>NON CLASSÉ ICPE (NC)</span>
+                        </div>
+                        <div style={{ fontSize: '6.4pt', lineHeight: '1.3', color: '#334155' }}>
+                            <div><strong>• Non-soumission ICPE 2925 :</strong> Puissance de charge de 500 kW nominale strictement &le; 600 kW (seuil de Déclaration 2925-2). Absence totale de dégagement d'hydrogène en fonctionnement normal (2925-1 non concerné). Installation formellement Non Classée (NC).</div>
+                            <div style={{ marginTop: '0.8mm' }}><strong>• Triple barrière de protection incendie :</strong> (1) Confinement intrinsèque à la source (chimie LFP LiFePO4 ininflammable, enveloppe acier A1/M0 IP55, détection H2/fumée et extinction automatique interne par aérosol NFPA 855 / UL 9540A sans flamme externe) ; (2) Coupure minérale incombustible (dalle béton armé A1 de 19,84 m² entourée d'une bande stérile de graviers concassés de 2,00 m et maintien de la zone débroussaillée OLD sur 50 m) ; (3) Desserte et coupure SDIS (voie carrossable &ge; 3,00 m et bouton coup de poing d'Arrêt d'Urgence sous boîtier bris de glace en limite extérieure de clôture).</div>
+                        </div>
+                    </div>
+                )}
             </div>
             <Footer project={project} />
         </div>
@@ -2175,19 +2206,35 @@ export const PlateNoticeSecuriteIncendieBess = ({ project, docType = 'dp', page 
                         </div>
                     </div>
 
-                    {/* SECTION 1 : OBJET ET CADRE RÉGLEMENTAIRE */}
+                    {/* SECTION 1 : CADRE RÉGLEMENTAIRE & NON-CLASSEMENT ICPE 2925 */}
                     <section className="mb-4">
                         <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
                             <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">1</span>
                             <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
-                                Objet de la Notice &amp; Conformité à l'Article R.111-2 du Code de l'Urbanisme
+                                Contexte Réglementaire, Non-Classement ICPE (Rubrique 2925) &amp; Art. R.111-2
                             </h2>
                         </div>
-                        <p className="text-[10.5px] text-slate-700 leading-relaxed text-justify">
-                            La présente notice technique détaille l'ensemble des dispositifs constructifs, technologiques et opérationnels de sécurité incendie intégrés au projet d'implantation d'une unité compacte de stockage d'énergie par batteries stationnaires (<em>BESS Stand-Alone</em>) d'une puissance nominale de <strong>500 kW</strong> (capacité <strong>1 044 kWh</strong>), installée sur une dalle en béton armé incombustible de <strong>19,84 m²</strong> (&lt; 20 m²) raccordée au réseau public HTA 20 kV.
+                        <p className="text-[10px] text-slate-700 leading-relaxed text-justify">
+                            La présente notice technique détaille l'ensemble des dispositifs constructifs, technologiques et opérationnels de sécurité incendie intégrés au projet d'implantation d'une unité compacte de stockage d'énergie par batteries stationnaires (<em>BESS Stand-Alone</em>) d'une puissance nominale de <strong>500 kW</strong> (capacité <strong>1 044 kWh</strong>), installée sur une dalle en béton armé incombustible de <strong>19,84 m²</strong> (&lt; 20 m²) raccordée au réseau public HTA 20 kV Enedis.
                         </p>
-                        <p className="text-[10.5px] text-slate-700 leading-relaxed text-justify mt-1.5">
-                            Lorsque le terrain d'assiette est situé dans la bande de 200 mètres d'un massif forestier répertorié sensible au risque d'incendie de forêt, l'<strong>article R.111-2 du Code de l'urbanisme</strong> prévoit que le projet peut être accepté <em>« sous réserve de l'observation de prescriptions spéciales »</em> garantissant la sécurité publique. La présente notice établit formellement ces prescriptions selon une triple barrière de protection : <strong>(1) Confinement intrinsèque à la source sans flamme externe</strong>, <strong>(2) Coupure minérale incombustible et débroussaillement OLD sur 50 mètres</strong>, et <strong>(3) Dispositifs dédiés d'accès et de coupure d'urgence pour le SDIS</strong>.
+
+                        <div className="mt-2 p-2.5 rounded-lg border border-emerald-300 bg-emerald-50/70 text-[9.5px] text-slate-800 leading-snug">
+                            <div className="flex items-center justify-between font-bold text-emerald-950 uppercase text-[9px] mb-1">
+                                <span className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
+                                    Justification Formelle du Non-Classement ICPE (Rubrique 2925)
+                                </span>
+                                <span className="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 font-extrabold text-[8.5px]">
+                                    NON CLASSÉ (NC)
+                                </span>
+                            </div>
+                            <p>
+                                L'installation est formellement <strong>Non Classée (NC)</strong> au titre de la nomenclature des Installations Classées pour la Protection de l'Environnement (ICPE). En effet, selon la <strong>rubrique 2925-2</strong>, le seuil de soumission au régime de la Déclaration est fixé à une puissance maximale de courant continu utilisable pour l'opération de charge <strong>strictement supérieure à 600 kW</strong>. La station projetée présente une puissance maximale de charge de <strong>500 kW par site (&le; 600 kW)</strong>. Par ailleurs, les accumulateurs LFP étanches n'émettent aucun hydrogène en fonctionnement normal (rubrique 2925-1 non concernée).
+                            </p>
+                        </div>
+
+                        <p className="text-[10px] text-slate-700 leading-relaxed text-justify mt-2">
+                            Au titre de l'<strong>article R.111-2 du Code de l'urbanisme</strong> (sécurité publique et prévention incendie / DFCI), la présente notice formalise les prescriptions techniques et opérationnelles selon notre <strong>Triple barrière de protection</strong> : <strong>(1) Confinement intrinsèque à la source sans flamme externe</strong> (LFP + Aérosol NFPA 855), <strong>(2) Coupure minérale incombustible et OLD 50 mètres</strong>, et <strong>(3) Dispositifs dédiés d'accès et d'intervention pour le SDIS</strong>.
                         </p>
                     </section>
 

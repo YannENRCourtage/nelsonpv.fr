@@ -1,8 +1,11 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
 import { saveAs } from 'file-saver';
 import { smartFillCerfa, resolveDemandeurNames } from './SmartCerfaService';
+import { PlateNoticeSecuriteIncendieBess } from '@/components/editor/DPPlates';
 import { preloadProjectImages } from '@/utils/imageProxy';
 
 /**
@@ -710,5 +713,104 @@ export async function generateDPDossier(project, plates) {
   } catch (error) {
     console.error("Erreur génération DP:", error);
     throw error;
+  }
+}
+
+
+/**
+ * Télécharge directement la Notice de Sécurité Incendie & ICPE (2 pages PDF) pour les projets Batteries BESS
+ */
+export async function downloadNoticeSecuriteIncendiePdf(project, docType = 'dp') {
+  const isPC = docType === 'pc';
+  const prefix = isPC ? 'dev-pc-plate-notice-incendie' : 'dev-plate-notice-incendie';
+  const altPrefix = 'dp-plate-notice-incendie';
+
+  let p1El = document.getElementById(`${prefix}-p1`) || document.getElementById(`${altPrefix}-p1`);
+  let p2El = document.getElementById(`${prefix}-p2`) || document.getElementById(`${altPrefix}-p2`);
+
+  let tempContainer = null;
+  let root = null;
+
+  try {
+    if (!p1El || !p2El) {
+      tempContainer = document.createElement('div');
+      tempContainer.id = 'temp-notice-incendie-container';
+      tempContainer.style.position = 'fixed';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.top = '0';
+      tempContainer.style.width = '210mm';
+      tempContainer.style.zIndex = '-9999';
+      tempContainer.style.background = '#ffffff';
+      document.body.appendChild(tempContainer);
+
+      root = createRoot(tempContainer);
+      await new Promise((resolve) => {
+        root.render(
+          React.createElement('div', null,
+            React.createElement('div', { id: 'temp-notice-incendie-p1', style: { width: '210mm' }, 'data-portrait': 'true' },
+              React.createElement(PlateNoticeSecuriteIncendieBess, { project, docType, page: 1 })
+            ),
+            React.createElement('div', { id: 'temp-notice-incendie-p2', style: { width: '210mm' }, 'data-portrait': 'true' },
+              React.createElement(PlateNoticeSecuriteIncendieBess, { project, docType, page: 2 })
+            )
+          )
+        );
+        setTimeout(resolve, 800);
+      });
+
+      p1El = document.getElementById('temp-notice-incendie-p1');
+      p2El = document.getElementById('temp-notice-incendie-p2');
+    }
+
+    if (!p1El || !p2El) {
+      throw new Error("Impossible d'accéder aux planches de la Notice de Sécurité Incendie.");
+    }
+
+    const doc = await PDFDocument.create();
+
+    for (const el of [p1El, p2El]) {
+      const images = Array.from(el.querySelectorAll('img'));
+      await Promise.all(
+        images.map(img => {
+          if (!img.src) return Promise.resolve();
+          if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+          return new Promise(res => {
+            img.onload = () => res();
+            img.onerror = () => res();
+            if (img.decode) img.decode().then(res).catch(res);
+            setTimeout(res, 1200);
+          });
+        })
+      );
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        imageTimeout: 20000,
+      });
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.94);
+      const img = await doc.embedJpg(dataUrl);
+      const dims = [595.28, 841.89];
+      const page = doc.addPage(dims);
+      page.drawImage(img, { x: 0, y: 0, width: dims[0], height: dims[1] });
+    }
+
+    const pdfBytes = await doc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const names = resolveDemandeurNames(project);
+    const clientName = (names.demandeur || project?.client_name || project?.name || project?.lastName || 'Projet').trim().replace(/[\s\/\\:]+/g, '_');
+    const fileName = `Notice_Securite_Incendie_ICPE_SDIS_${clientName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    saveAs(blob, fileName);
+    return true;
+  } finally {
+    if (root) {
+      try { root.unmount(); } catch (_) {}
+    }
+    if (tempContainer && tempContainer.parentNode) {
+      tempContainer.parentNode.removeChild(tempContainer);
+    }
   }
 }

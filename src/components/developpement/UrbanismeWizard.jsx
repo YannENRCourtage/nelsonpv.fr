@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { fetchUrbanismeMairiePortal } from '@/services/urbanismeRoutingService';
-import { exportDossierDepotZip } from '@/services/DPGeneratorService';
+import { exportDossierDepotZip, downloadNoticeSecuriteIncendiePdf } from '@/services/DPGeneratorService';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames, parseFrenchAddress, DEFAULT_BESS_CADRE_4_1, getBessCadre41Text } from '@/services/SmartCerfaService';
 import { downloadPieceDwg } from '@/services/DwgExportService';
 import { cadastreService } from '@/services/CadastreService';
@@ -2257,6 +2257,28 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [fieldValues, setFieldValues] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [downloadingPieceId, setDownloadingPieceId] = useState(null);
+  const [isDownloadingNoticeIncendie, setIsDownloadingNoticeIncendie] = useState(false);
+
+  const handleDownloadNoticeIncendieDirect = async () => {
+    setIsDownloadingNoticeIncendie(true);
+    try {
+      const { finalProject } = await prepareProjectPayload();
+      await downloadNoticeSecuriteIncendiePdf(finalProject, type || 'dp');
+      toast({
+        title: "Notice de Sécurité Incendie & ICPE téléchargée",
+        description: "Le document officiel (2 pages PDF) a été généré avec succès.",
+      });
+    } catch (err) {
+      console.error('[UrbanismeWizard] Erreur téléchargement Notice Sécurité Incendie:', err);
+      toast({
+        title: "Erreur lors du téléchargement",
+        description: err.message || "Une erreur est survenue lors de la génération du document.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDownloadingNoticeIncendie(false);
+    }
+  };
   const [noticeText, setNoticeText] = useState('');
   const [isNoticeUserModified, setIsNoticeUserModified] = useState(false);
   const [selectedPages, setSelectedPages] = useState({
@@ -6680,6 +6702,10 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
   };
 
   const handleDownloadSinglePiece = async (item) => {
+    if (item.id === 'notice_incendie') {
+      await handleDownloadNoticeIncendieDirect();
+      return;
+    }
     if (!onGenerate) return;
     setDownloadingPieceId(item.id);
     setIsGenerating(true);
@@ -9474,6 +9500,22 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         Sélection des pièces et planches du dossier ({type.toUpperCase()})
                       </h5>
                       <div className="flex items-center gap-2">
+                        {isBatActive && (
+                          <button
+                            type="button"
+                            disabled={isDownloadingNoticeIncendie}
+                            onClick={handleDownloadNoticeIncendieDirect}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white rounded-lg text-xs font-extrabold shadow-2xs hover:shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                            title="Télécharger la Notice de Sécurité Incendie, DFCI & Dispositions SDIS (PDF)"
+                          >
+                            {isDownloadingNoticeIncendie ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <span>🔥</span>
+                            )}
+                            <span>Télécharger Notice Sécurité Incendie &amp; ICPE (PDF)</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setSelectedPages({

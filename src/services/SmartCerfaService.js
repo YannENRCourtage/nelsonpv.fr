@@ -132,13 +132,18 @@ export function getBessCadre41Text(project = {}) {
   const armoiresCount = is250 ? 2 : (project?.bess_armoires || 4);
   const nominalPower = is250 ? '250 kW' : '500 kW';
   const nominalCapacite = is250 ? '522 kWh' : '1 044 kWh';
+  const armoiresText = is250 ? `2 armoires LFP CESC Mercury 261 de 125 kW` : `${armoiresCount} armoires LFP CESC Mercury 261 de 125 kW`;
 
-  return `Installation d'une station autonome de stockage d'énergie par batteries (BESS Stand-Alone) sur dalle béton (emprise au sol < 20 m², soit 19,84 m²) ceinturée d'une clôture rigide H 2,00 m.
-1. QUALIFICATION : Équipement d'intérêt collectif et services publics (sous-destination : locaux techniques et industriels des administrations publiques et assimilés, art. R.151-27 et R.151-28 du Code de l'urbanisme / L.352-1 du Code de l'énergie). L'installation est indépendante des bâtiments existants (aucun lien fonctionnel ni accessoire avec une installation photovoltaïque).
-2. FONCTIONNEMENT & SOUTIRAGE/INJECTION : Composée de ${armoiresCount} armoires LFP (Phosphate de Fer Lithié - Mercury 261 kWh, refroidissement liquide, extinction automatique NFPA 855, niveau sonore <= 72 dB), la station assure la régulation de fréquence (50 Hz), l'équilibrage et la sécurisation du réseau public d'électricité (Enedis/RTE) en soutirant l'énergie excédentaire sur le réseau public pour la réinjecter lors des pointes de consommation.
-3. PUISSANCES & RACCORDEMENT : Puissance électrique nominale de ${nominalPower} en soutirage et ${nominalPower} en injection (capacité ${nominalCapacite}), raccordée en souterrain au réseau public d'électricité Enedis (HTA 20 kV / Poste de transformation) situé en bordure immédiate de l'unité foncière.
-4. JUSTIFICATION DE L'EMPLACEMENT : Implantation techniquement impérative à cet endroit précis en raison de la proximité immédiate des ouvrages du réseau public Enedis (< 30 m), permettant un raccordement souterrain direct sans extension lourde du réseau ni perte en ligne.
-5. STATIONNEMENT & SURFACE DE PLANCHER : Installation 100 % automatisée et télésurveillée sans personnel sur site (0 place de stationnement créée, accès maintenance ponctuel via l'accès existant). Armoires techniques extérieures non accessibles à l'homme (non closes et couvertes au sens de l'art. R.111-22) : Surface de plancher créée = 0 m² (Emprise au sol créée = 19,84 m²).`;
+  return `Installation d'une station autonome de stockage d'énergie par batteries (BESS Stand-Alone) d'une puissance nominale de ${nominalPower} / ${nominalCapacite} (${armoiresText}) sur dalle béton (emprise au sol : 19,84 m², soit < 20 m² ; surface de plancher : 0 m² ; 0 place de stationnement créée) ceinturée d'une clôture rigide H 2,00 m.
+
+QUALIFICATION & IMPLANTATION : Équipement d'intérêt collectif et services publics (locaux techniques assimilés, art. R.151-27 et R.151-28 C. Urb. / L.352-1 C. Énergie) assurant la régulation de fréquence et l'équilibrage du réseau public Enedis (${nominalPower} en soutirage et ${nominalPower} en injection). Implantation impérative à proximité immédiate des ouvrages du réseau public Enedis (< 30 m) pour un raccordement souterrain direct.
+
+CLASSEMENT ICPE (RUBRIQUE 2925) — NON CLASSÉ (NC) : L'installation est formellement Non Classée (NC) au titre de la rubrique 2925 de la nomenclature ICPE. Le seuil réglementaire de soumission au régime de la Déclaration ICPE (2925-2) est fixé à une puissance maximale de courant continu utilisable pour l'opération de charge strictement supérieure à 600 kW ; or la station présente une puissance nominale maximale de charge de ${nominalPower} par site (<= 600 kW) et n'émet aucun hydrogène en fonctionnement normal (2925-1 non concerné).
+
+DÉFENSE INCENDIE & DISPOSITIONS SDIS (ART. R.111-2 C. URB.) : Bien que ces armoires techniques extérieures (emprise < 20 m²) ne constituent ni des ERP ni des bâtiments clos, la station intègre une triple barrière de protection incendie (détaillée dans la Notice Sécurité Incendie jointe au dossier) :
+1- Confinement intrinsèque à la source sans flamme externe (chimie LFP LiFePO4 ininflammable, enveloppe acier A1/M0 IP55, refroidissement liquide, supervision BMS 24h/24, détection H2/fumée et extinction automatique interne par aérosol certifié NFPA 855 / UL 9540A) ;
+2- Coupure minérale incombustible et débroussaillement (dalle béton armé A1 entourée d'une bande stérile de graviers minéraux de 2,00 m et maintien d'une zone débroussaillée OLD sur 50 mètres) ;
+3- Dispositifs dédiés d'accès et de coupure d'urgence pour le SDIS (voie carrossable >= 3,00 m et bouton coup de poing d'Arrêt d'Urgence général sous boîtier bris de glace en limite extérieure de clôture).`;
 }
 
 export const DEFAULT_BESS_CADRE_4_1 = getBessCadre41Text();
@@ -419,7 +424,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     ) && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
     let objet = project?.objet_travaux || project?.objetTravaux;
     if (isBat) {
-      if (!objet || objet.length < 250 || /ombrière|bâtiment/i.test(objet) || !objet.includes('QUALIFICATION') || objet.includes("d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.")) {
+      if (!objet || objet.length < 250 || /ombrière|bâtiment/i.test(objet) || !objet.includes('QUALIFICATION') || !objet.includes('ICPE') || objet.includes("d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.")) {
         objet = getBessCadre41Text(project);
       }
     } else if (!objet || /batterie|bess|stockage d'énergie/i.test(objet)) {

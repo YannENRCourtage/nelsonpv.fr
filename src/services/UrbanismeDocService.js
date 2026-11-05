@@ -497,9 +497,35 @@ export async function generateFullUrbanismePDF({ type, project, installationType
     }
 
     // 2. Capture des planches graphiques
-    for (let i = 0; i < plateIds.length; i++) {
-      const id = plateIds[i];
-      if (onProgress) onProgress(`Capture planche ${i + 1}/${plateIds.length}...`);
+    const isBatProject = (
+      safeProject?.solutionType === 'battery' ||
+      safeProject?.isBattery === true ||
+      safeProject?.isBatteryStandAlone === true ||
+      installationType === 'battery' ||
+      installationType === 'batterie_standalone' ||
+      (
+        safeProject?.solutionType !== 'building' &&
+        safeProject?.solutionType !== 'ombriere' &&
+        ((installationType || safeProject?.type || '').toLowerCase().includes('batterie') || Boolean(safeProject?.isBatteryStandAlone))
+      )
+    );
+
+    const effectivePlateIds = [...plateIds];
+    if (isBatProject && !effectivePlateIds.some(id => id.includes('notice-incendie'))) {
+      const incP1 = (document.getElementById('dev-plate-notice-incendie-p1') && 'dev-plate-notice-incendie-p1') ||
+                    (document.getElementById('dp-plate-notice-incendie-p1') && 'dp-plate-notice-incendie-p1') ||
+                    (type === 'pc' && document.getElementById('dev-pc-plate-notice-incendie-p1') && 'dev-pc-plate-notice-incendie-p1');
+      const incP2 = (document.getElementById('dev-plate-notice-incendie-p2') && 'dev-plate-notice-incendie-p2') ||
+                    (document.getElementById('dp-plate-notice-incendie-p2') && 'dp-plate-notice-incendie-p2') ||
+                    (type === 'pc' && document.getElementById('dev-pc-plate-notice-incendie-p2') && 'dev-pc-plate-notice-incendie-p2');
+      if (incP1 && incP2) {
+        effectivePlateIds.push(incP1, incP2);
+      }
+    }
+
+    for (let i = 0; i < effectivePlateIds.length; i++) {
+      const id = effectivePlateIds[i];
+      if (onProgress) onProgress(`Capture planche ${i + 1}/${effectivePlateIds.length}...`);
       await captureplate(platesDoc, id);
     }
 
