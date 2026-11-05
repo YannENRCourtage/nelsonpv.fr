@@ -892,7 +892,7 @@ export function generateBankDossierPdf({
 
   // Bloc Présentation du Demandeur & Emplacement (décalé vers le bas sous l'adresse)
   const idY = 39.5;
-  const idH = 30.5;
+  const idH = 32.0;
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(14, idY, 182, idH, 2, 2, 'F');
   doc.setDrawColor(203, 213, 225);
@@ -903,27 +903,28 @@ export function generateBankDossierPdf({
   doc.setTextColor(30, 64, 175);
   doc.text('1. IDENTIFICATION DU PORTEUR DE PROJET & DU SITE', 18, idY + 5.2);
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.0); // +2 points (était 7)
-  doc.setTextColor(30, 41, 59);
-
-  // Colonne Gauche
-  doc.text(`• Raison sociale / Demandeur : ${clientName}`, 18, idY + 11.0);
+  // Ligne 1 : Matériel BESS retenu seul sur toute la largeur
   doc.setFont('helvetica', 'bold');
-  doc.text(`• Matériel BESS retenu : ${equipmentName} (Option ${optNum})`, 18, idY + 16.5);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`• Point de Raccordement et Mesure (PRM) : ${prm}`, 18, idY + 22.0);
-  doc.text(`• Profil d'activité : ${sim.input.profileKey || 'Professionnel'} · Réf : ${formatNum(sim.input.annualKwh || 0)} kWh/an`, 18, idY + 27.5);
+  doc.setFontSize(9.0);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`• Matériel BESS retenu : ${equipmentName} (Option ${optNum})`, 18, idY + 11.2);
 
-  // Colonne Droite
-  doc.text(`• Partenaire technique : ENR COURTAGE SAS (Ingénierie BESS)`, 110, idY + 11.0);
-  doc.text(`• Puissance de pointe souscrite : ${sim.energy.peakKw.toFixed(1)} kW`, 110, idY + 16.5);
-  doc.text(`• Écrêtage souscrit garanti : ${sim.energy.shaveKw.toFixed(1)} kW (sécurisation réseau)`, 110, idY + 22.0);
-  doc.text(`• Garantie constructeur : 10 ans / 6 000 cycles (LFP)`, 110, idY + 27.5);
+  // Ligne 2 : Puissance souscrite à gauche, Puissance cible à droite
+  doc.setFont('helvetica', 'normal');
+  doc.text(`• Puissance de pointe souscrite : ${sim.energy.peakKw.toFixed(1)} kW`, 18, idY + 16.7);
+  doc.text(`• Puissance de pointe cible : ${sim.energy.newPeakKw.toFixed(1)} kW (-${sim.energy.shaveKw.toFixed(1)} kW)`, 110, idY + 16.7);
+
+  // Ligne 3 : PRM à gauche, Écrêtage souscrit garanti à droite
+  doc.text(`• Point de Raccordement et Mesure (PRM) : ${prm}`, 18, idY + 22.2);
+  doc.text(`• Écrêtage souscrit garanti : ${sim.energy.shaveKw.toFixed(1)} kW (sécurisation réseau)`, 110, idY + 22.2);
+
+  // Ligne 4 : Profil d'activité à gauche, Garantie constructeur à droite
+  doc.text(`• Profil d'activité : ${sim.input.profileKey || 'Professionnel'} · Réf : ${formatNum(sim.input.annualKwh || 0)} kWh/an`, 18, idY + 27.7);
+  doc.text(`• Garantie constructeur : 10 ans / 6 000 cycles (LFP)`, 110, idY + 27.7);
 
   // Justification économique et stratégique (Section 2)
-  const justifY = idY + idH + 3.0; // 73 mm
-  const justifH = 47;
+  const justifY = idY + idH + 3.0; // 74.5 mm
+  const justifH = 46;
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(14, justifY, 182, justifH, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
@@ -1028,8 +1029,25 @@ export function generateBankDossierPdf({
   });
 
   // Sécurité technique et garanties (Section 4)
-  const secY = bkpiY + 59.5; // ~182.5 mm
-  const secH = 43;
+  const secY = bkpiY + 59.5; // ~183 mm
+  const secLines = [
+    `• Chimie des cellules : Lithium-Fer-Phosphate (LiFePO4 / LFP) — stabilité thermique exceptionnelle, absence totale de risque d'emballement thermique toxique.`,
+    `• Normes de sécurité certifiées : CEI 62619 (sécurité industrielle), CEI 62933, NF EN 61000 (CEM) et conformité stricte NFPA 855 / APSAD.`,
+    `• Système d'extinction automatique intégré : cartouche aérosol gaz inerte certifiée par compartiment avec détection précoce H2 et fumée.`,
+    `• Supervision & Télémétrie 24/7 : monitoring continu du State-of-Health (SoH), State-of-Charge (SoC) et équilibrage dynamique actif des cellules.`,
+    `• Garantie de performance constructeur : maintien contractuel d'au moins 70 % de capacité résiduelle au terme de 10 ans ou 6 000 cycles complets.`
+  ];
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.2);
+  let totalSecHeight = 0;
+  const wrappedSecLines = secLines.map(pt => {
+    const lines = doc.splitTextToSize(pt, 172);
+    totalSecHeight += lines.length * 4.2 + 1.2;
+    return lines;
+  });
+  const secH = Math.max(48, 11.5 + totalSecHeight + 2.5);
+
   doc.setFillColor(240, 253, 244);
   doc.roundedRect(14, secY, 182, secH, 2, 2, 'F');
   doc.setDrawColor(187, 247, 208);
@@ -1040,20 +1058,13 @@ export function generateBankDossierPdf({
   doc.setTextColor(22, 101, 52);
   doc.text('4. CONFORMITÉ NORMATIVE, SÉCURITÉ INCENDIE & PÉRENNITÉ DE L\'ACTIF', 18, secY + 5.8);
 
-  const secLines = [
-    `• Chimie des cellules : Lithium-Fer-Phosphate (LiFePO4 / LFP) — stabilité thermique exceptionnelle, absence totale de risque d'emballement thermique toxique.`,
-    `• Normes de sécurité certifiées : CEI 62619 (sécurité industrielle), CEI 62933, NF EN 61000 (CEM) et conformité stricte NFPA 855 / APSAD.`,
-    `• Système d'extinction automatique intégré : cartouche aérosol gaz inerte certifiée par compartiment avec détection précoce H2 et fumée.`,
-    `• Supervision & Télémétrie 24/7 : monitoring continu du State-of-Health (SoH), State-of-Charge (SoC) et équilibrage dynamique actif des cellules.`,
-    `• Garantie de performance constructeur : maintien contractuel d'au moins 70 % de capacité résiduelle au terme de 10 ans ou 6 000 cycles complets.`
-  ];
-  let sy = secY + 11.5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.2); // +2 points (était 6.2)
   doc.setTextColor(30, 41, 59);
-  secLines.forEach(l => {
-    doc.text(l, 18, sy);
-    sy += 6.2;
+  let sy = secY + 11.5;
+  wrappedSecLines.forEach(lines => {
+    doc.text(lines, 18, sy);
+    sy += lines.length * 4.2 + 1.2;
   });
 
   drawFooter(doc, 1, totalPages, true);
@@ -1082,8 +1093,8 @@ export function generateBankDossierPdf({
     ['Matériel Batterie BESS', `${formatNum(sim.capex.hardwareCapex)} €`, 'Dette Bancaire Senior sollicitée', `${formatNum(sim.financing.debt)} €`],
     ['Forfait installation, pose & EMS', `${formatNum(sim.capex.installCapex)} €`, `Apport en Fonds Propres (${sim.input.finance?.equityPct || 20} %)`, `${formatNum(sim.financing.equity)} €`],
     ['Remise commerciale déduite', `-${formatNum(sim.capex.discountAmount)} €`, 'Subventions / Aides publiques', '0 €'],
-    ['Centrale photovoltaïque (si applicable)', `${formatNum(sim.capex.pvCapex)} €`, '', ''],
-    ['Raccordement réseau Enedis (si applicable)', `${formatNum(sim.capex.connectionCost)} €`, '', ''],
+    ['Centrale photovoltaïque\n(si applicable)', `${formatNum(sim.capex.pvCapex)} €`, '', ''],
+    ['Raccordement réseau Enedis\n(si applicable)', `${formatNum(sim.capex.connectionCost)} €`, '', ''],
     ['TOTAL EMPLOIS (CAPEX HT)', `${formatNum(sim.capex.totalCapex)} €`, 'TOTAL RESSOURCES MOBILISÉES', `${formatNum(sim.capex.totalCapex)} €`]
   ];
 
@@ -1179,10 +1190,25 @@ export function generateBankDossierPdf({
 
   // Note de conformité DSCR
   const noteY = doc.lastAutoTable.finalY + 4;
+  const dscrPoints = [
+    `• Le ratio DSCR minimal observé sur la durée du crédit s'établit à ${sim.financing.dscrMin || '—'}x, largement supérieur au seuil prudentiel usuel de 1.15x - 1.20x.`,
+    `• Les économies directes sur facture d'électricité générées par la batterie couvrent à 100 % le service de la dette dès la première année d'exploitation.`
+  ];
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.2);
+  let totalDscrHeight = 0;
+  const wrappedDscrPoints = dscrPoints.map(pt => {
+    const lines = doc.splitTextToSize(pt, 172);
+    totalDscrHeight += lines.length * 4.2 + 1.2;
+    return lines;
+  });
+  const dscrBoxH = Math.max(26, 11.0 + totalDscrHeight + 2.5);
+
   doc.setFillColor(240, 253, 244);
-  doc.roundedRect(14, noteY, 182, 20, 2, 2, 'F');
+  doc.roundedRect(14, noteY, 182, dscrBoxH, 2, 2, 'F');
   doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(14, noteY, 182, 20, 2, 2, 'D');
+  doc.roundedRect(14, noteY, 182, dscrBoxH, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.0); // +2 points (était 7.0)
@@ -1192,8 +1218,11 @@ export function generateBankDossierPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.2); // +2 points (était 6.2)
   doc.setTextColor(30, 41, 59);
-  doc.text(`• Le ratio DSCR minimal observé sur la durée du crédit s'établit à ${sim.financing.dscrMin || '—'}x, largement supérieur au seuil prudentiel usuel de 1.15x - 1.20x.`, 18, noteY + 11.0);
-  doc.text(`• Les économies directes sur facture d'électricité générées par la batterie couvrent à 100 % le service de la dette dès la première année d'exploitation.`, 18, noteY + 16.0);
+  let dy = noteY + 11.0;
+  wrappedDscrPoints.forEach(lines => {
+    doc.text(lines, 18, dy);
+    dy += lines.length * 4.2 + 1.2;
+  });
 
   drawFooter(doc, 2, totalPages, true);
 
@@ -1346,31 +1375,39 @@ export function generateBankDossierPdf({
 
   // Conclusion du stress-test
   const cclY = doc.lastAutoTable.finalY + 5;
+  const cclPoints = [
+    `1. Robustesse avérée : Même dans l'hypothèse très conservatrice d'une baisse de 10 % des gains annuels couplée à un renchérissement du taux d'emprunt de +0.50 %, le ratio DSCR demeure au-dessus du seuil bancaire critique de 1.15x sur l'ensemble de la période d'amortissement.`,
+    `2. Actif tangible & garantie réelle : Les équipements de stockage LiFePO4 conservent une valeur marchande résiduelle élevée et sont assortis d'un contrat de maintenance préventive et d'une garantie constructeur ferme de 10 ans.`,
+    `3. Recommandation d'octroi : Le projet présente un profil risque/rendement hautement sécurisé pour les établissements prêteurs, avec un autofinancement intégral des échéances bancaires par les économies d'énergie générées.`
+  ];
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.4);
+  let totalCclHeight = 0;
+  const wrappedCclPoints = cclPoints.map(pt => {
+    const lines = doc.splitTextToSize(pt, 172);
+    totalCclHeight += lines.length * 4.3 + 1.8;
+    return lines;
+  });
+  const cclH = Math.max(50, 11.5 + totalCclHeight + 2.5);
+
   doc.setFillColor(240, 253, 244);
-  doc.roundedRect(14, cclY, 182, 45, 2, 2, 'F');
+  doc.roundedRect(14, cclY, 182, cclH, 2, 2, 'F');
   doc.setDrawColor(187, 247, 208);
-  doc.roundedRect(14, cclY, 182, 45, 2, 2, 'D');
+  doc.roundedRect(14, cclY, 182, cclH, 2, 2, 'D');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10.0); // +2 points (était 8.0)
   doc.setTextColor(22, 101, 52);
   doc.text('CONCLUSION DE LA NOTE D\'ANALYSE DES RISQUES', 18, cclY + 6.0);
 
-  const cclLines = [
-    `1. Robustesse avérée : Même dans l'hypothèse très conservatrice d'une baisse de 10 % des gains annuels couplée à un renchérissement`,
-    `   du taux d'emprunt de +0.50 %, le ratio DSCR demeure au-dessus du seuil bancaire critique de 1.15x sur l'ensemble de la période d'amortissement.`,
-    `2. Actif tangible & garantie réelle : Les équipements de stockage LiFePO4 conservent une valeur marchande résiduelle élevée`,
-    `   et sont assortis d'un contrat de maintenance préventive et d'une garantie constructeur ferme de 10 ans.`,
-    `3. Recommandation d'octroi : Le projet présente un profil risque/rendement hautement sécurisé pour les établissements prêteurs,`,
-    `   avec un autofinancement intégral des échéances bancaires par les économies d'énergie générées.`
-  ];
-  let cy = cclY + 12.0;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.4); // +2 points (était 6.4)
   doc.setTextColor(30, 41, 59);
-  cclLines.forEach(l => {
-    doc.text(l, 18, cy);
-    cy += 5.2;
+  let cy = cclY + 12.0;
+  wrappedCclPoints.forEach(lines => {
+    doc.text(lines, 18, cy);
+    cy += lines.length * 4.3 + 1.8;
   });
 
   drawFooter(doc, 4, totalPages, true);
