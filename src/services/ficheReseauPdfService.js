@@ -492,7 +492,7 @@ export async function generateFicheReseauPdf({
     doc.text(line, card2X + 3.5, by2);
     by2 += 2.8;
   });
-  ay += 1.5;
+  by2 += 1.5;
 
   // B. Points de vigilance
   by2 += 1.5;

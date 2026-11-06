@@ -1,35 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MapPin, Zap, ArrowRight, Loader2, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
-
-// Haversine formula to calculate distance between two points in meters
-const R = 6371000;
-function toRad(d) { return (d * Math.PI) / 180; }
-
-function haversine(lat1, lon1, lat2, lon2) {
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2 + 
-            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
-            Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
+import { loadSubstationsDataset, haversineDistanceKm } from '@/services/capareseauService.js';
 
 function formatDistance(m) {
   if (m < 1000) return `${Math.round(m)} m`;
   return `${(m / 1000).toFixed(2)} km`;
 }
 
-// Paliers normalisés de transformateurs HTA/BT pour le test rapide de faisabilité
+// Paliers normalisés de transformateurs HTA/BT pour le test rapide de faisabilité Caparéseau
 const TEST_CALIBRES = [
-  { kva: 250, label: '250 kVA (BT C4)' },
+  { kva: 250, label: '250 kVA' },
   { kva: 400, label: '400 kVA' },
   { kva: 630, label: '630 kVA' },
   { kva: 800, label: '800 kVA' },
   { kva: 1000, label: '1 000 kVA' },
   { kva: 1250, label: '1 250 kVA' },
-  { kva: 2000, label: '2 000 kVA' },
   { kva: 2500, label: '2 500 kVA' },
 ];
 
@@ -50,38 +36,50 @@ export default function SubstationProximityCards({ gps, isVisible }) {
     return { lat, lng };
   }, [gps]);
 
-  // Fetch substation data
+  // Chargement ultra-rapide des données Caparéseau avec cache partagé
   useEffect(() => {
     if (!isVisible) return;
     
+    let isCancelled = false;
     const fetchData = async () => {
       setLoading(true);
       try {
-        const response = await fetch('/datas/capareseau_map.json');
-        if (!response.ok) throw new Error('Failed to load substation data');
-        const data = await response.json();
-        setSubstations(data);
-        setError(null);
+        const data = await loadSubstationsDataset();
+        if (!isCancelled) {
+          setSubstations(data || []);
+          setError(null);
+        }
       } catch (err) {
         console.error('Error fetching substations:', err);
-        setError(err.message);
+        if (!isCancelled) {
+          setError(err.message);
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
+    return () => {
+      isCancelled = true;
+    };
   }, [isVisible]);
 
-  // Calculate top 4 closest substations
+  // Calcul instantané des 4 postes sources RTE les plus proches
   const closestSubstations = useMemo(() => {
     if (!markerPos || substations.length === 0) return [];
 
     return substations
       .map(s => {
-        const dist = haversine(markerPos.lat, markerPos.lng, parseFloat(s.Y), parseFloat(s.X));
-        return { ...s, distance: dist };
+        const sLat = parseFloat(s.Y ?? s.lat);
+        const sLng = parseFloat(s.X ?? s.lng);
+        if (isNaN(sLat) || isNaN(sLng)) return null;
+        const distKm = haversineDistanceKm(markerPos.lat, markerPos.lng, sLat, sLng);
+        return { ...s, sLat, sLng, distance: distKm * 1000 };
       })
+      .filter(Boolean)
       .sort((a, b) => a.distance - b.distance)
       .slice(0, 4);
   }, [markerPos, substations]);
@@ -120,7 +118,7 @@ export default function SubstationProximityCards({ gps, isVisible }) {
                 type="button"
                 onClick={() => setSelectedTestKva(isSelected ? null : c.kva)}
                 className={cn(
-                  "px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none",
+                  "px-2.5 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none",
                   isSelected
                     ? "bg-orange-500 text-white shadow-xs scale-102"
                     : "bg-white text-slate-700 hover:bg-slate-200 border border-slate-200"
@@ -137,11 +135,11 @@ export default function SubstationProximityCards({ gps, isVisible }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {closestSubstations.map((s, idx) => {
           const vals = s.values || {};
-          const na = parseFloat(vals.INFO_NA) || 0;
+          const na = parseFloat(vals.INFO_NA ?? s.capMw) || 0;
           const hasReste = na > 0;
-          const qp = vals.INFO_QP || 'N/A';
-          const reserved = vals.INFO_ESS3R || '0';
-          const queue = vals.INFO_FAS3R || '0';
+          const qp = vals.INFO_QP ?? s.quotePart ?? 'N/A';
+          const reserved = vals.INFO_ESS3R ?? s.capReserveeMw ?? '0';
+          const queue = vals.INFO_FAS3R ?? s.fileAttenteMw ?? '0';
 
           // Calculs d'ingénierie HTA
           // 1. Injection : directement issue de la capacité réservataire restante S3REnR (INFO_NA)
@@ -159,25 +157,25 @@ export default function SubstationProximityCards({ gps, isVisible }) {
           if (selectedTestKva) {
             const testMw = selectedTestKva / 1000;
             const isDistanceOk = s.distance <= 20000; // Rayon max recommandé de 20 km en 20 kV (chute de tension < 5%)
-            const isCapacityOk = soutirageMw >= testMw;
+            const isCapacityOk = selectedTestKva <= 250 || soutirageMw >= testMw;
 
             if (isCapacityOk && isDistanceOk) {
               feasibility = {
                 type: 'ok',
-                label: `✅ Transfo ${selectedTestKva >= 1000 ? `${(selectedTestKva / 1000).toFixed(1)} MW` : `${selectedTestKva} kVA`} Raccordable au Poste Source`,
-                bg: 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                label: `✅ Raccordable (Transfo ${selectedTestKva >= 1000 ? `${(selectedTestKva / 1000).toFixed(1)} MW` : `${selectedTestKva} kVA`})`,
+                bg: 'bg-emerald-50 text-emerald-800 border-emerald-300'
               };
             } else if (isCapacityOk && !isDistanceOk) {
               feasibility = {
                 type: 'warning',
                 label: `⚠️ Transfo ${selectedTestKva} kVA : Éloignement (${formatDistance(s.distance)}) — Chute de tension HTA à valider`,
-                bg: 'bg-amber-50 text-amber-800 border-amber-200'
+                bg: 'bg-amber-50 text-amber-800 border-amber-300'
               };
             } else {
               feasibility = {
                 type: 'danger',
-                label: `❌ Capacité résiduelle insuffisante (< ${testMw} MW)`,
-                bg: 'bg-rose-50 text-rose-800 border-rose-200'
+                label: `⚠️ Capacité insuffisante (< ${testMw} MW disponible)`,
+                bg: 'bg-rose-50 text-rose-800 border-rose-300'
               };
             }
           }
@@ -234,22 +232,21 @@ export default function SubstationProximityCards({ gps, isVisible }) {
                     <span>Capacité Transfo HTA</span>
                   </div>
 
-                  {/* Puissance Max Transfo (Injection) */}
+                  {/* Puissance Max Raccordable (Soutirage & Injection) */}
                   <div className="bg-slate-50 p-2 rounded-lg border border-slate-200/80 space-y-1.5">
                     <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-slate-600 font-medium">Transfo Max (Injection) :</span>
+                      <span className="text-slate-600 font-medium">Puissance Max (Soutirage) :</span>
+                      <span className="font-extrabold font-mono text-sky-700">
+                        {soutirageMw.toFixed(1)} MW / {soutirageKva.toLocaleString('fr-FR')} kVA
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-slate-600 font-medium">Puissance Max (Injection) :</span>
                       <span className={cn("font-extrabold font-mono", hasReste ? "text-emerald-700" : "text-slate-500")}>
                         {hasReste 
                           ? `${injectionMw.toFixed(1)} MW / ${injectionKva.toLocaleString('fr-FR')} kVA` 
                           : '0 kVA (Saturé)'}
-                      </span>
-                    </div>
-
-                    {/* Puissance Max Transfo (Soutirage / IRVE / BESS) */}
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-slate-600 font-medium">Transfo Max (Soutirage) :</span>
-                      <span className="font-extrabold font-mono text-sky-700">
-                        {soutirageMw.toFixed(1)} MW / {soutirageKva.toLocaleString('fr-FR')} kVA
                       </span>
                     </div>
 

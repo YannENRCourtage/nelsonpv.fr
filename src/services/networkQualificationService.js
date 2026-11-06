@@ -382,3 +382,5 @@ export async function qualifyBessProjectSite({
     }
   };
 }
+
+export { getCapareseauData, getCaparéseauData } from './capareseauService.js';

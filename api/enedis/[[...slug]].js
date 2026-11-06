@@ -2793,6 +2793,32 @@ export default async function handler(req, res) {
     if (route === 'signature-download-pdf' || route === 'download-pdf')       return await handleSignatureDownloadPdf(req, res);
     if (route === 'signature-webhook' || route === 'webhook')                 return await handleSignatureWebhook(req, res);
 
+    // Route Caparéseau / ODRE
+    if (route === 'capareseau') {
+      const { lat, lng } = req.query;
+      try {
+        const latNum = parseFloat(lat);
+        const lngNum = parseFloat(lng);
+        let records = [];
+        if (!isNaN(latNum) && !isNaN(lngNum)) {
+          try {
+            const delta = 0.45;
+            const odreUrl = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/capacites-daccueil-du-reseau-pour-le-raccordement-au-reseau-electrique/records?where=within_box(geo_shape,${latNum + delta},${lngNum - delta},${latNum - delta},${lngNum + delta})&limit=50`;
+            const odreRes = await fetch(odreUrl, { headers: { 'User-Agent': 'Nelson-App/1.0' } });
+            if (odreRes.ok) {
+              const odreData = await odreRes.json();
+              records = odreData.results || [];
+            }
+          } catch (e) {
+            console.warn('[api/enedis/capareseau] ODRE live call failed:', e.message);
+          }
+        }
+        return res.status(200).json({ success: true, results: records, count: records.length });
+      } catch (err) {
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
     if (route === 'contraintes') {
       const { lat1, lng1, lat2, lng2 } = req.query;
       try {

@@ -44,6 +44,7 @@ import {
 import html2canvas from 'html2canvas';
 import { toast } from '@/components/ui/use-toast.js';
 import { generateFicheReseauPdf } from '@/services/ficheReseauPdfService.js';
+import { loadSubstationsDataset } from '@/services/capareseauService.js';
 
 // Haversine distance in meters
 function getDistanceInMeters(lat1, lon1, lat2, lon2) {
@@ -369,7 +370,7 @@ function CadastreTileLayer({ active, currentZoom }) {
 function HtaLinesLayer({ active, lines, showCorridor, onLineClick }) {
   if (!active || !lines || lines.length === 0) return null;
 
-  const STANDARD_CALIBRES = [250, 400, 630, 800, 1000, 1250, 1600, 2000];
+  const STANDARD_CALIBRES = [250, 400, 630, 800, 1000, 1250, 1600, 2000, 2500];
 
   return (
     <>
@@ -714,9 +715,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
     let isMounted = true;
     const fetchSubstations = async () => {
       try {
-        const res = await fetch('/datas/capareseau_map.json');
-        if (!res.ok) throw new Error('Impossible de charger capareseau_map.json');
-        const data = await res.json();
+        const data = await loadSubstationsDataset();
         if (isMounted) {
           setSubstations(data || []);
         }
@@ -1568,14 +1567,15 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
                   <div className="grid grid-cols-3 gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700">
                     <button
                       type="button"
-                      onClick={() => setBessMode('bess')}
+                      onClick={() => setBessMode('soutirage')}
                       className={`py-1 rounded-lg text-[10px] font-extrabold cursor-pointer transition-all ${
-                        bessMode === 'bess'
-                          ? 'bg-amber-500 text-slate-950 shadow-md'
+                        bessMode === 'soutirage'
+                          ? 'bg-sky-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-white'
                       }`}
+                      title="Soutirage seul (IRVE / Stockage / Consommation)"
                     >
-                      BESS (Min)
+                      ⚡ Soutirage
                     </button>
                     <button
                       type="button"
@@ -1585,24 +1585,29 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
                           ? 'bg-emerald-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-white'
                       }`}
+                      title="Injection (Solaire PV)"
                     >
-                      Injection
+                      ☀️ Injection
                     </button>
                     <button
                       type="button"
-                      onClick={() => setBessMode('soutirage')}
+                      onClick={() => setBessMode('bess')}
                       className={`py-1 rounded-lg text-[10px] font-extrabold cursor-pointer transition-all ${
-                        bessMode === 'soutirage'
-                          ? 'bg-sky-600 text-white shadow-md'
+                        bessMode === 'bess'
+                          ? 'bg-amber-500 text-slate-950 shadow-md'
                           : 'text-slate-400 hover:text-white'
                       }`}
+                      title="Mixte BESS : minimum injection et soutirage"
                     >
-                      Soutirage
+                      🔋 Mixte
                     </button>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1.5 leading-snug italic">
-                    Le stockage utilise les deux sens, jamais simultanément : la capacité retenue
-                    est le minimum des deux.
+                    {bessMode === 'soutirage'
+                      ? 'Mode Soutirage : vérifie la capacité du départ HTA et exonère de la quote-part S3REnR (art. L. 342-12).'
+                      : bessMode === 'injection'
+                      ? 'Mode Injection : vérifie la capacité réservataire S3REnR sur le poste source.'
+                      : 'Mode Mixte : capacité conjointe injection (PV) et soutirage (IRVE/BESS).'}
                   </p>
                 </div>
 
@@ -1739,27 +1744,15 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => setBessMode('bess')}
-                        className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold cursor-pointer transition-all ${
-                          bessMode === 'bess'
-                            ? 'bg-amber-500 text-slate-950 shadow-xs'
-                            : 'bg-slate-700/80 text-slate-300 hover:bg-slate-600'
-                        }`}
-                        title="Mode BESS mixte : la capacité retenue est le minimum entre injection et soutirage"
-                      >
-                        🔋 BESS (Mixte)
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => setBessMode('soutirage')}
                         className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold cursor-pointer transition-all ${
                           bessMode === 'soutirage'
                             ? 'bg-sky-500 text-white shadow-xs'
                             : 'bg-slate-700/80 text-slate-300 hover:bg-slate-600'
                         }`}
-                        title="Mode Soutirage seul (IRVE, recharge de bus, consommation) : vérifie le soutirage du tronçon et exonère de la quote-part S3REnR (art. L. 342-12)"
+                        title="Soutirage seul (IRVE / Stockage / Consommation) : vérifie le soutirage du tronçon HTA et exonère de la quote-part S3REnR (art. L. 342-12)"
                       >
-                        ⚡ Soutirage seul (IRVE)
+                        ⚡ Soutirage seul (IRVE / Stockage)
                       </button>
                       <button
                         type="button"
@@ -1769,9 +1762,21 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'bg-slate-700/80 text-slate-300 hover:bg-slate-600'
                         }`}
-                        title="Mode Injection : production photovoltaïque pure"
+                        title="Injection (Solaire) : vérifie la capacité réservataire S3REnR"
                       >
-                        ☀️ Injection (PV)
+                        ☀️ Injection (Solaire)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBessMode('bess')}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold cursor-pointer transition-all ${
+                          bessMode === 'bess'
+                            ? 'bg-amber-500 text-slate-950 shadow-xs'
+                            : 'bg-slate-700/80 text-slate-300 hover:bg-slate-600'
+                        }`}
+                        title="Mixte : capacité conjointe injection et soutirage"
+                      >
+                        🔋 Mixte
                       </button>
                     </div>
                   </div>
@@ -1792,20 +1797,37 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
 
                   {/* Verdict explicite de raccordabilité */}
                   <div
-                    className={`p-2 rounded-lg border text-[10.5px] font-bold leading-snug flex items-center gap-1.5 ${
+                    className={`p-2.5 rounded-lg border text-[10.5px] font-bold leading-snug flex items-center gap-1.5 ${
                       isVerdictFaisable
                         ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/70'
                         : 'bg-rose-950/80 text-rose-300 border-rose-700/70'
                     }`}
                   >
                     {isVerdictFaisable ? (
-                      <span>
-                        ✅ Raccordement Transfo {bessPowerKw >= 1000 ? `${(bessPowerKw / 1000).toFixed(1)} MW` : `${bessPowerKw} kVA`} Faisable sur ce départ HTA (Distance : {distToHtaMeters} m)
-                      </span>
+                      <div>
+                        <div className="flex items-center gap-1">
+                          <span>
+                            ✅ Raccordement Transfo {bessPowerKw >= 1000 ? `${(bessPowerKw / 1000).toFixed(1)} MW` : `${bessPowerKw} kVA`} Certifié Faisable sur ce départ HTA
+                          </span>
+                        </div>
+                        <div className="text-[9.5px] font-normal text-emerald-300/90 mt-0.5">
+                          Capacité disponible : {relevantCapacityKva.toLocaleString('fr-FR')} kVA &gt; {bessPowerKw} kVA • Distance : {distToHtaMeters} m
+                          {bessMode === 'soutirage' && (
+                            <span className="text-sky-300 block font-medium">
+                              ⚡ Soutirage : Exonéré de quote-part S3REnR (art. L. 342-12 du Code de l'énergie).
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     ) : (
-                      <span>
-                        ⚠️ Dépassement de la capacité du tronçon HTA (Max : {relevantCapacityKva.toLocaleString('fr-FR')} kVA) — Départ dédié depuis le Poste Source requis
-                      </span>
+                      <div>
+                        <span>
+                          ⚠️ Dépassement de la capacité du tronçon HTA (Disponible : {relevantCapacityKva.toLocaleString('fr-FR')} kVA &lt; {bessPowerKw} kVA requis)
+                        </span>
+                        <span className="block text-[9.5px] font-normal text-rose-300/90 mt-0.5">
+                          Départ direct Poste Source ou renforcement réseau requis.
+                        </span>
+                      </div>
                     )}
                   </div>
 
