@@ -38,10 +38,12 @@ import {
   Sparkles,
   ArrowRight,
   Home,
-  Camera
+  Camera,
+  FileText
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { toast } from '@/components/ui/use-toast.js';
+import { generateFicheReseauPdf } from '@/services/ficheReseauPdfService.js';
 
 // Haversine distance in meters
 function getDistanceInMeters(lat1, lon1, lat2, lon2) {
@@ -367,6 +369,8 @@ function CadastreTileLayer({ active, currentZoom }) {
 function HtaLinesLayer({ active, lines, showCorridor, onLineClick }) {
   if (!active || !lines || lines.length === 0) return null;
 
+  const STANDARD_CALIBRES = [250, 400, 630, 800, 1000, 1250, 1600, 2000];
+
   return (
     <>
       {lines.map((line) => {
@@ -376,6 +380,10 @@ function HtaLinesLayer({ active, lines, showCorridor, onLineClick }) {
         const estBirdKm = line.distanceToSub
           ? (line.distanceToSub / 1000).toFixed(1)
           : null;
+
+        const soutirageKva = Math.round((line.soutirage || 0) * 1000);
+        const injectionKva = Math.round((line.injection || 0) * 1000);
+        const maxEligibleKva = Math.max(soutirageKva, injectionKva);
 
         return (
           <React.Fragment key={line.id}>
@@ -410,7 +418,7 @@ function HtaLinesLayer({ active, lines, showCorridor, onLineClick }) {
               }}
             >
               <Popup offset={[0, -4]} className="hta-troncon-popup">
-                <div className="p-2 text-slate-800 text-xs min-w-[240px] select-none font-sans">
+                <div className="p-2 text-slate-800 text-xs min-w-[270px] select-none font-sans">
                   <div className="flex items-center justify-between border-b pb-1.5 mb-2">
                     <span className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
                       ⚡ Tronçon HTA
@@ -446,7 +454,7 @@ function HtaLinesLayer({ active, lines, showCorridor, onLineClick }) {
                     )}
                   </div>
 
-                  {/* Capacités */}
+                  {/* Capacités disponibles */}
                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 mb-2 space-y-1">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold text-slate-600">Injection disponible :</span>
@@ -461,6 +469,70 @@ function HtaLinesLayer({ active, lines, showCorridor, onLineClick }) {
                       <span className="font-black text-amber-600 text-xs">
                         {line.bessCapacity} MW
                       </span>
+                    </div>
+                  </div>
+
+                  {/* Encadré bleu/vert : Puissance Max Transformateur Raccordable sur ce Tronçon */}
+                  <div className="bg-gradient-to-br from-sky-50 to-emerald-50 border border-sky-200 rounded-lg p-2.5 mb-2 space-y-2">
+                    <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-sky-900 border-b border-sky-200/60 pb-1">
+                      <span>🔌 Puissance Max Transfo Raccordable</span>
+                    </div>
+
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-600 font-medium">Max Transfo Soutirage (Conso / IRVE) :</span>
+                        <span className="font-extrabold font-mono text-sky-800">
+                          {soutirageKva.toLocaleString('fr-FR')} kVA ({line.soutirage} MW)
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-600 font-medium">Max Transfo Injection (Prod PV) :</span>
+                        <span className="font-extrabold font-mono text-emerald-800">
+                          {line.injection > 0 ? `${injectionKva.toLocaleString('fr-FR')} kVA (${line.injection} MW)` : '0 kVA (Saturé)'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Paliers de Transformateurs HTA/BT Éligibles (NF C 13-100) */}
+                    <div className="pt-1.5 border-t border-sky-200/60">
+                      <span className="text-[10px] font-bold text-slate-700 block mb-1">
+                        Paliers Transfos HTA/BT Éligibles (NF C 13-100) :
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {STANDARD_CALIBRES.map((cal) => {
+                          const isEligibleSoutirage = cal <= soutirageKva;
+                          const isEligibleInjection = cal <= injectionKva;
+
+                          let badgeClass = "bg-slate-100 text-slate-400 border-slate-200";
+                          let icon = "✕";
+                          let tooltip = `${cal} kVA : Non raccordable sans renforcement réseau`;
+
+                          if (isEligibleSoutirage && isEligibleInjection) {
+                            badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-300 font-bold";
+                            icon = "✅";
+                            tooltip = `${cal} kVA : Éligible Soutirage (IRVE) & Injection (PV)`;
+                          } else if (isEligibleSoutirage) {
+                            badgeClass = "bg-sky-100 text-sky-800 border-sky-300 font-bold";
+                            icon = "⚡";
+                            tooltip = `${cal} kVA : Éligible Soutirage (IRVE / Conso) uniquement`;
+                          } else if (isEligibleInjection) {
+                            badgeClass = "bg-amber-100 text-amber-800 border-amber-300 font-bold";
+                            icon = "☀️";
+                            tooltip = `${cal} kVA : Éligible Injection (PV) uniquement`;
+                          }
+
+                          return (
+                            <span
+                              key={cal}
+                              className={`text-[9.5px] px-1.5 py-0.5 rounded border flex items-center gap-0.5 cursor-help ${badgeClass}`}
+                              title={tooltip}
+                            >
+                              <span>{icon}</span>
+                              <span>{cal >= 1000 ? `${(cal / 1000).toFixed(cal % 1000 === 0 ? 0 : 1)}k` : cal} kVA</span>
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
@@ -537,16 +609,16 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Battery BESS Sizing (synchronized with project.kwc if matching one of the 4 standard tiers)
+  // Battery BESS Sizing (synchronized with project.kwc if matching one of the 5 standard tiers)
   const [bessPowerKw, setBessPowerKw] = useState(() => {
     const parsedKwc = parseInt(project?.kwc, 10);
-    if ([250, 500, 1000, 2000].includes(parsedKwc)) return parsedKwc;
-    return 500;
+    if ([250, 500, 800, 1000, 2000].includes(parsedKwc)) return parsedKwc;
+    return 800; // 800 kVA par défaut (standard HTA IRVE / BESS)
   });
 
   useEffect(() => {
     const parsedKwc = parseInt(project?.kwc, 10);
-    if ([250, 500, 1000, 2000].includes(parsedKwc) && parsedKwc !== bessPowerKw) {
+    if ([250, 500, 800, 1000, 2000].includes(parsedKwc) && parsedKwc !== bessPowerKw) {
       setBessPowerKw(parsedKwc);
     }
   }, [project?.kwc]);
@@ -748,7 +820,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
   const distToHtaMeters = customDistanceMeters !== null ? customDistanceMeters : rawDistToHtaMeters;
   const isInsideCorridor = distToHtaMeters <= 350;
 
-  // BESS Cost Estimation Engine (Dynamic BT <= 250 kVA vs HTA 500 kW / 1 MW / 2 MW)
+  // BESS / IRVE / Transfo Cost Estimation Engine (Dynamic BT <= 250 kVA vs HTA 500 kW / 800 kVA / 1 MW / 2 MW)
   const costEstimation = useMemo(() => {
     const powerMw = bessPowerKw / 1000;
     const isBt = bessPowerKw <= 250;
@@ -762,11 +834,24 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
     }
 
     const rawNa = parseFloat(nearestSubstation?.values?.INFO_NA);
-    const availableCapacityMw = !isNaN(rawNa) ? rawNa : 0;
+    const subInjectionMw = !isNaN(rawNa) ? rawNa : 0;
+    const subSoutirageMw = subInjectionMw > 0 ? parseFloat(Math.max(4.9, subInjectionMw * 1.35).toFixed(1)) : 4.9;
+
+    const lineInjectionMw = nearestHtaLine?.injection ?? subInjectionMw;
+    const lineSoutirageMw = nearestHtaLine?.soutirage ?? subSoutirageMw;
+
+    // Capacité retenue selon le mode d'étude (Soutirage IRVE/Conso vs Injection PV vs BESS Mixte)
+    const availableCapacityMw = 
+      bessMode === 'soutirage'
+        ? lineSoutirageMw
+        : bessMode === 'injection'
+        ? lineInjectionMw
+        : Math.min(lineSoutirageMw, lineInjectionMw);
+
     const isCapacitySufficient = isBt ? true : availableCapacityMw >= powerMw;
 
     if (bessPowerKw <= 250) {
-      // CAS A — Palier 250 kW (Domaine Basse Tension BT <= 250 kVA / Tarif C4)
+      // CAS A — Palier 250 kVA (Domaine Basse Tension BT <= 250 kVA / Tarif C4)
       const costQuotePart = 0;
       const linearRate = 45;
       const effectiveDistMeters = Math.min(distToHtaMeters, 30);
@@ -802,7 +887,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
       };
     } else if (bessPowerKw <= 500) {
       // CAS B — Palier 500 kW (Domaine HTA 20 kV — 0.5 MW)
-      const costQuotePart = Math.round(0.5 * qpPerMw * 1000);
+      const costQuotePart = bessMode === 'soutirage' ? 0 : Math.round(0.5 * qpPerMw * 1000);
       const linearRate = 75;
       const costLiaison = Math.round(distToHtaMeters * linearRate);
       const costCelluleEnedis = 22000;
@@ -815,7 +900,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
         powerMw,
         qpPerMw,
         linearRate,
-        quotePartLabel: `Quote-part S3REnR (${qpPerMw} k€/MW) :`,
+        quotePartLabel: bessMode === 'soutirage' ? 'Quote-part S3REnR (0 € — Exonéré Soutirage art. L. 342-12) :' : `Quote-part S3REnR (${qpPerMw} k€/MW) :`,
         liaisonLabel: `Liaison souterraine HTA (${distToHtaMeters} m × ${linearRate} €) :`,
         celluleLabel: 'Cellule comptage & raccordement Enedis :',
         posteLabel: 'Poste de livraison & disjoncteur HTA (630 kVA) :',
@@ -828,9 +913,37 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
         availableCapacityMw,
         isCapacitySufficient
       };
+    } else if (bessPowerKw <= 800) {
+      // CAS C — Palier 800 kVA (Domaine HTA 20 kV — 0.8 MW / Norme NF C 13-100)
+      const costQuotePart = bessMode === 'soutirage' ? 0 : Math.round(0.8 * qpPerMw * 1000);
+      const linearRate = 80;
+      const costLiaison = Math.round(distToHtaMeters * linearRate);
+      const costCelluleEnedis = 20000;
+      const costPosteLivraison = 26000;
+      const totalCost = costQuotePart + costLiaison + costCelluleEnedis + costPosteLivraison;
+
+      return {
+        isBt: false,
+        domainBadge: 'Raccordement HTA 20 kV (800 kVA)',
+        powerMw,
+        qpPerMw,
+        linearRate,
+        quotePartLabel: bessMode === 'soutirage' ? 'Quote-part S3REnR (0 € — Exonéré Soutirage pur IRVE) :' : `Quote-part S3REnR (${qpPerMw} k€/MW) :`,
+        liaisonLabel: `Liaison souterraine HTA (${distToHtaMeters} m × ${linearRate} €) :`,
+        celluleLabel: 'Cellule comptage & disjoncteur Enedis HTA C13-100 :',
+        posteLabel: 'Poste de transformation HTA/BT préfabriqué 800 kVA :',
+        delaiLabel: '12 à 18 mois',
+        costQuotePart,
+        costLiaison,
+        costCelluleEnedis,
+        costPosteLivraison,
+        totalCost,
+        availableCapacityMw,
+        isCapacitySufficient
+      };
     } else if (bessPowerKw <= 1000) {
-      // CAS C — Palier 1 MW (Domaine HTA 20 kV — 1.0 MW)
-      const costQuotePart = Math.round(1.0 * qpPerMw * 1000);
+      // CAS D — Palier 1 MW (Domaine HTA 20 kV — 1.0 MW)
+      const costQuotePart = bessMode === 'soutirage' ? 0 : Math.round(1.0 * qpPerMw * 1000);
       const linearRate = 85;
       const costLiaison = Math.round(distToHtaMeters * linearRate);
       const costCelluleEnedis = 25000;
@@ -843,7 +956,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
         powerMw,
         qpPerMw,
         linearRate,
-        quotePartLabel: `Quote-part S3REnR (${qpPerMw} k€/MW) :`,
+        quotePartLabel: bessMode === 'soutirage' ? 'Quote-part S3REnR (0 € — Exonéré Soutirage art. L. 342-12) :' : `Quote-part S3REnR (${qpPerMw} k€/MW) :`,
         liaisonLabel: `Liaison souterraine HTA (${distToHtaMeters} m × ${linearRate} €) :`,
         celluleLabel: 'Cellule comptage & raccordement Enedis :',
         posteLabel: 'Poste de livraison & transfo HTA (1 250 kVA) :',
@@ -857,8 +970,8 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
         isCapacitySufficient
       };
     } else {
-      // CAS D — Palier 2 MW (Domaine HTA 20 kV — 2.0 MW)
-      const costQuotePart = Math.round(2.0 * qpPerMw * 1000);
+      // CAS E — Palier 2 MW (Domaine HTA 20 kV — 2.0 MW)
+      const costQuotePart = bessMode === 'soutirage' ? 0 : Math.round(2.0 * qpPerMw * 1000);
       const linearRate = 95;
       const costLiaison = Math.round(distToHtaMeters * linearRate);
       const costCelluleEnedis = 30000;
@@ -871,7 +984,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
         powerMw,
         qpPerMw,
         linearRate,
-        quotePartLabel: `Quote-part S3REnR (${qpPerMw} k€/MW) :`,
+        quotePartLabel: bessMode === 'soutirage' ? 'Quote-part S3REnR (0 € — Exonéré Soutirage art. L. 342-12) :' : `Quote-part S3REnR (${qpPerMw} k€/MW) :`,
         liaisonLabel: `Liaison souterraine HTA (${distToHtaMeters} m × ${linearRate} €) :`,
         celluleLabel: 'Cellules HTA & raccordement Enedis :',
         posteLabel: 'Poste de livraison HTA & double transfo (2 500 kVA) :',
@@ -885,7 +998,7 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
         isCapacitySufficient
       };
     }
-  }, [bessPowerKw, nearestSubstation, distToHtaMeters]);
+  }, [bessPowerKw, nearestSubstation, distToHtaMeters, bessMode, nearestHtaLine]);
 
   // Fetch Lines function with clean abort and debounce
   const fetchTimerRef = useRef(null);
@@ -1090,11 +1203,12 @@ export default function HtaCapacityMapTab({ project, onUpdateProject, activeTab 
     }
   };
 
-  const handleCopySummary = () => {
-    const text = `=== FICHE CADRAGE RÉSEAU & BESS (NELSON) ===
-Projet : ${project?.name || 'Projet BESS'}
+  const handleCopySummaryText = () => {
+    const text = `=== FICHE CADRAGE RÉSEAU & TRANSFO HTA / BESS (NELSON) ===
+Projet : ${project?.name || 'Projet Réseau'}
 Coordonnées GPS : ${projectCoords[0].toFixed(5)}, ${projectCoords[1].toFixed(5)}
-Puissance BESS : ${bessPowerKw >= 1000 ? `${bessPowerKw / 1000} MW` : `${bessPowerKw} kW`} (${costEstimation.domainBadge})
+Puissance Étudiée : ${bessPowerKw >= 1000 ? `${bessPowerKw / 1000} MW` : `${bessPowerKw} kVA`} (${costEstimation.domainBadge})
+Mode d'étude : ${bessMode === 'soutirage' ? 'Soutirage seul (IRVE / Flotte de bus)' : bessMode === 'injection' ? 'Injection (Solaire PV)' : 'Mixte BESS'}
 
 1. PROXIMITÉ RÉSEAU :
 • Distance réseau : ${distToHtaMeters} m ${costEstimation.isBt ? `(limite max BT conseillée : 30 m${costEstimation.isDistanceOver30m ? ' — ⚠️ DÉPASSÉE' : ' — ✅ CONFORME'})` : ''}
@@ -1102,11 +1216,12 @@ Puissance BESS : ${bessPowerKw >= 1000 ? `${bessPowerKw / 1000} MW` : `${bessPow
 
 2. POSTE SOURCE DE RATTACHEMENT :
 • Nom du poste : ${nearestSubstation?.name || 'N/A'} (${nearestSubstation?.territory_name || 'N/A'})
-• Distance : ${nearestSubstation ? formatKm(nearestSubstation.distanceMeters) : 'N/A'}
-• Capacité disponible (Reste à affecter) : ${costEstimation.availableCapacityMw} MW
+• Distance : ${nearestSubstation ? formatKm(nearestSubstation.distanceMeters) : 'N/A'} (Longueur électrique estimée × 1,3 : ${nearestSubstation ? ((nearestSubstation.distanceMeters * 1.3) / 1000).toFixed(2) : 'N/A'} km)
+• Capacité disponible (Reste à affecter S3REnR) : ${nearestSubstation?.values?.INFO_NA || '0'} MW
+• Capacité disponible en Soutirage : ${nearestHtaLine?.soutirage || (nearestSubstation?.values?.INFO_NA ? Math.max(4.9, parseFloat(nearestSubstation.values.INFO_NA) * 1.35).toFixed(1) : '4.9')} MW
 • Taux de saturation : ${nearestSubstation?.values?.INFO_TX || 'N/A'}
 • File d'attente S3REnR : ${nearestSubstation?.values?.INFO_FAS3R || '0'} MW
-• Faisabilité puissance : ${costEstimation.isBt ? 'EXONÉRÉ S3REnR (BT ≤ 250 kVA)' : costEstimation.isCapacitySufficient ? 'RÉSEAU FAVORABLE' : 'RÉSEAU CONTRAINT (0 MW)'}
+• Faisabilité puissance : ${costEstimation.isBt ? 'EXONÉRÉ S3REnR (BT ≤ 250 kVA)' : costEstimation.isCapacitySufficient ? 'RÉSEAU FAVORABLE' : 'RÉSEAU CONTRAINT'}
 
 3. CHIFFRAGE RACCORDEMENT ESTIMÉ (${costEstimation.domainBadge}) :
 ${
@@ -1127,12 +1242,58 @@ TOTAL ESTIMÉ RACCORDEMENT : ${costEstimation.totalCost.toLocaleString('fr-FR')}
 }
 Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
 
-    navigator.clipboard.writeText(text);
-    toast({
-      title: 'Fiche d’audit réseau copiée !',
-      description: `Données de raccordement (${bessPowerKw >= 1000 ? `${bessPowerKw / 1000} MW` : `${bessPowerKw} kW`}) copiées dans le presse-papier.`
-    });
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+    }
   };
+
+  const handleGenerateFicheReseau = async () => {
+    try {
+      toast({
+        title: 'Génération de la Fiche Réseau...',
+        description: 'Édition du rapport PDF 1 page A4 en cours...'
+      });
+
+      await generateFicheReseauPdf({
+        project,
+        projectCoords,
+        nearestSubstation,
+        nearestHtaLine,
+        distToHtaMeters,
+        isInsideCorridor,
+        bessPowerKw,
+        bessMode,
+        costEstimation
+      });
+
+      handleCopySummaryText();
+
+      toast({
+        title: 'Fiche Réseau générée avec succès !',
+        description: 'Téléchargement du PDF 1 page A4 lancé et synthèse copiée dans le presse-papier.'
+      });
+    } catch (err) {
+      console.error('Erreur génération Fiche Réseau PDF:', err);
+      toast({
+        title: 'Erreur lors de la génération PDF',
+        description: err.message || 'Impossible de créer la fiche réseau.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Valeurs instantanées de puissance max transfo & verdict de faisabilité
+  const subNaVal = parseFloat(nearestSubstation?.values?.INFO_NA) || 0;
+  const subSoutirageMwVal = subNaVal > 0 ? parseFloat(Math.max(4.9, subNaVal * 1.35).toFixed(1)) : 4.9;
+  const lineSoutirageKva = Math.round((nearestHtaLine?.soutirage ?? subSoutirageMwVal) * 1000);
+  const lineInjectionKva = Math.round((nearestHtaLine?.injection ?? subNaVal) * 1000);
+  const relevantCapacityKva = 
+    bessMode === 'soutirage'
+      ? lineSoutirageKva
+      : bessMode === 'injection'
+      ? lineInjectionKva
+      : Math.min(lineSoutirageKva, lineInjectionKva);
+  const isVerdictFaisable = bessPowerKw <= 250 || bessPowerKw <= relevantCapacityKva;
 
   return (
     <div
@@ -1199,11 +1360,11 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
 
           <button
             type="button"
-            onClick={handleCopySummary}
+            onClick={handleGenerateFicheReseau}
             className="bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md rounded-lg px-3 py-1.5 text-xs font-extrabold flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Copier la fiche de cadrage réseau"
+            title="Générer la Fiche d'Étude de Raccordement & Comparatif d'Architecture (PDF 1 page A4)"
           >
-            <Copy className="w-3.5 h-3.5" />
+            <FileText className="w-3.5 h-3.5" />
             <span>Fiche Réseau</span>
           </button>
 
@@ -1523,7 +1684,7 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
               <div className="flex items-center gap-2">
                 <BatteryCharging className="w-4 h-4 text-amber-400" />
                 <span className="font-extrabold text-xs text-white">
-                  Chiffrage Raccordement BESS
+                  Chiffrage Raccordement BESS / IRVE / Transfo
                 </span>
                 <span
                   className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
@@ -1543,28 +1704,111 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
             </div>
 
             {isCostCardOpen && (
-              <div className="p-3 space-y-3 text-xs">
+              <div className="p-3 space-y-2.5 text-xs">
                 {/* Sizing Selector */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between bg-slate-800/80 p-1.5 rounded-lg border border-slate-700">
-                    <span className="text-[11px] font-bold text-slate-300">Puissance BESS :</span>
-                    <div className="flex items-center gap-1">
-                      {[250, 500, 1000, 2000].map((kw) => (
+                    <span className="text-[10px] font-bold text-slate-300">Puissance :</span>
+                    <div className="flex items-center flex-wrap gap-1">
+                      {[
+                        { kw: 250, label: '250 kVA (BT)' },
+                        { kw: 500, label: '500 kW' },
+                        { kw: 800, label: '800 kVA' },
+                        { kw: 1000, label: '1 MW' },
+                        { kw: 2000, label: '2 MW' }
+                      ].map((p) => (
                         <button
-                          key={kw}
+                          key={p.kw}
                           type="button"
-                          onClick={() => handleSelectBessPower(kw)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-black cursor-pointer transition-colors ${
-                            bessPowerKw === kw
-                              ? 'bg-amber-500 text-slate-950'
+                          onClick={() => handleSelectBessPower(p.kw)}
+                          className={`px-1.5 py-0.5 rounded text-[9.5px] font-black cursor-pointer transition-colors ${
+                            bessPowerKw === p.kw
+                              ? 'bg-amber-500 text-slate-950 shadow-xs'
                               : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                           }`}
                         >
-                          {kw >= 1000 ? `${kw / 1000} MW` : `${kw} kW`}
+                          {p.label}
                         </button>
                       ))}
                     </div>
                   </div>
+
+                  {/* Mode Selector */}
+                  <div className="flex items-center justify-between bg-slate-800/80 p-1.5 rounded-lg border border-slate-700">
+                    <span className="text-[10px] font-bold text-slate-300">Mode :</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setBessMode('bess')}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold cursor-pointer transition-all ${
+                          bessMode === 'bess'
+                            ? 'bg-amber-500 text-slate-950 shadow-xs'
+                            : 'bg-slate-700/80 text-slate-300 hover:bg-slate-600'
+                        }`}
+                        title="Mode BESS mixte : la capacité retenue est le minimum entre injection et soutirage"
+                      >
+                        🔋 BESS (Mixte)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBessMode('soutirage')}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold cursor-pointer transition-all ${
+                          bessMode === 'soutirage'
+                            ? 'bg-sky-500 text-white shadow-xs'
+                            : 'bg-slate-700/80 text-slate-300 hover:bg-slate-600'
+                        }`}
+                        title="Mode Soutirage seul (IRVE, recharge de bus, consommation) : vérifie le soutirage du tronçon et exonère de la quote-part S3REnR (art. L. 342-12)"
+                      >
+                        ⚡ Soutirage seul (IRVE)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBessMode('injection')}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold cursor-pointer transition-all ${
+                          bessMode === 'injection'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-700/80 text-slate-300 hover:bg-slate-600'
+                        }`}
+                        title="Mode Injection : production photovoltaïque pure"
+                      >
+                        ☀️ Injection (PV)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Ligne Puissance Max Transfo sur ce départ HTA */}
+                  <div className="bg-slate-800/90 p-2 rounded-lg border border-slate-700/80 space-y-1 text-[11px]">
+                    <div className="text-slate-400 text-[10px] font-semibold flex items-center justify-between">
+                      <span>Puissance Max Transfo sur ce départ HTA :</span>
+                    </div>
+                    <div className="font-extrabold font-mono text-white flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px]">
+                      <span className="text-sky-400">{lineSoutirageKva.toLocaleString('fr-FR')} kVA (Soutirage)</span>
+                      <span className="text-slate-600">/</span>
+                      <span className={lineInjectionKva > 0 ? "text-emerald-400" : "text-slate-500"}>
+                        {lineInjectionKva > 0 ? `${lineInjectionKva.toLocaleString('fr-FR')} kVA (Injection)` : '0 kVA (Saturé)'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Verdict explicite de raccordabilité */}
+                  <div
+                    className={`p-2 rounded-lg border text-[10.5px] font-bold leading-snug flex items-center gap-1.5 ${
+                      isVerdictFaisable
+                        ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/70'
+                        : 'bg-rose-950/80 text-rose-300 border-rose-700/70'
+                    }`}
+                  >
+                    {isVerdictFaisable ? (
+                      <span>
+                        ✅ Raccordement Transfo {bessPowerKw >= 1000 ? `${(bessPowerKw / 1000).toFixed(1)} MW` : `${bessPowerKw} kVA`} Faisable sur ce départ HTA (Distance : {distToHtaMeters} m)
+                      </span>
+                    ) : (
+                      <span>
+                        ⚠️ Dépassement de la capacité du tronçon HTA (Max : {relevantCapacityKva.toLocaleString('fr-FR')} kVA) — Départ dédié depuis le Poste Source requis
+                      </span>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[10px] text-slate-400">Domaine de tension :</span>
                     <span
@@ -1728,14 +1972,26 @@ Délai raccordement indicatif : ${costEstimation.delaiLabel}`;
                     Délai raccordement :{' '}
                     <strong className="text-white">{costEstimation.delaiLabel}</strong>
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleCopySummary}
-                    className="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer hide-on-capture"
-                  >
-                    <Copy className="w-3 h-3" />
-                    <span>Copier l'audit</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopySummaryText}
+                      className="text-[10px] font-bold text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer hide-on-capture"
+                      title="Copier le résumé d'audit dans le presse-papier"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>Copier</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleGenerateFicheReseau}
+                      className="text-[10px] font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer hide-on-capture transition-colors"
+                      title="Générer et télécharger la Fiche d'Étude Réseau (PDF 1 page A4)"
+                    >
+                      <FileText className="w-3 h-3" />
+                      <span>PDF Fiche</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
