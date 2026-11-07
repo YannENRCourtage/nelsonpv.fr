@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   Folder, Search, MapPin, Zap, User, UserCheck, Building, Sun, Battery,
   CheckCircle2, Clock, AlertCircle, XCircle, Calendar, MessageSquare,
-  Filter, Sparkles, Check, TrendingUp
+  Filter, Sparkles, Check, TrendingUp, FileText
 } from 'lucide-react';
 import { getUserColor } from '@/lib/utils';
 import { apiService } from '@/services/api';
@@ -59,6 +59,65 @@ export default function DossiersListView({
 
   const getCommercial = (p) => {
     return p.commercial || p.commercial_name || p.assignedTo || '-';
+  };
+
+  // Récupération intelligente et normalisée du numéro d'enregistrement officiel (DP, PC ou CU)
+  const getProjectRegisteredNumber = (p) => {
+    if (!p) return null;
+    const steps = p.devWorkflow || p.workflow || p.stepsState || {};
+
+    // 1. Déclaration Préalable (DP prioritaire)
+    const dpNum = p.dp_registration_number || 
+      p.numero_dp || 
+      p.num_dp || 
+      p.dpNumber || 
+      p.dp_num || 
+      p.dp_numero || 
+      steps.dp?.registrationNumber || 
+      steps.dp?.dpNumber;
+
+    if (dpNum && String(dpNum).trim()) {
+      const raw = String(dpNum).trim();
+      return {
+        type: 'DP',
+        raw,
+        label: raw.toUpperCase().startsWith('DP') ? raw : `DP ${raw}`
+      };
+    }
+
+    // 2. Permis de Construire (PC)
+    const pcNum = p.pc_registration_number || 
+      p.numero_pc || 
+      p.num_pc || 
+      p.pcNumber || 
+      steps.pc?.registrationNumber;
+
+    if (pcNum && String(pcNum).trim()) {
+      const raw = String(pcNum).trim();
+      return {
+        type: 'PC',
+        raw,
+        label: raw.toUpperCase().startsWith('PC') ? raw : `PC ${raw}`
+      };
+    }
+
+    // 3. Certificat d'Urbanisme (CU)
+    const cuNum = p.cu_registration_number || 
+      p.numero_cu || 
+      p.num_cu || 
+      p.cuNumber || 
+      steps.cu?.registrationNumber;
+
+    if (cuNum && String(cuNum).trim()) {
+      const raw = String(cuNum).trim();
+      return {
+        type: 'CU',
+        raw,
+        label: raw.toUpperCase().startsWith('CU') ? raw : `CU ${raw}`
+      };
+    }
+
+    return null;
   };
 
   // Calcul du % d'avancement strict sur 7 étapes pour chaque projet
@@ -257,6 +316,10 @@ export default function DossiersListView({
         const zip = (p.zip || p.zipCode || '').toLowerCase();
         const comm = getCommercial(p).toLowerCase();
         const chef = getChefProjet(p).toLowerCase();
+        const reg = getProjectRegisteredNumber(p);
+        const matchReg = reg
+          ? (reg.label.toLowerCase().includes(clean) || reg.raw.toLowerCase().includes(clean) || reg.raw.replace(/\s+/g, '').toLowerCase().includes(clean.replace(/\s+/g, '')))
+          : false;
 
         const matchName = fullProjName.includes(clean);
         const matchClient = client.includes(clean);
@@ -266,7 +329,7 @@ export default function DossiersListView({
         const matchComm = comm.includes(clean);
         const matchChef = chef.includes(clean);
 
-        if (!matchName && !matchClient && !matchCity && !matchAddr && !matchZip && !matchComm && !matchChef) return false;
+        if (!matchName && !matchClient && !matchCity && !matchAddr && !matchZip && !matchComm && !matchChef && !matchReg) return false;
       }
       return true;
     });
@@ -383,7 +446,7 @@ export default function DossiersListView({
         <div className="flex items-center flex-wrap gap-3 max-w-full min-w-0">
           <div className="relative min-w-[200px] flex-1 sm:flex-initial sm:min-w-[240px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input type="text" placeholder="Rechercher nom, client, ville..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
+            <input type="text" placeholder="Rechercher nom, n° DP, client, ville..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
           </div>
           <button onClick={() => setOnlyMyProjects(!onlyMyProjects)} className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border whitespace-nowrap shrink-0 ${onlyMyProjects ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}>
             <UserCheck className="w-3.5 h-3.5" />
@@ -466,7 +529,7 @@ export default function DossiersListView({
             const lastUpdated = formatUpdatedDate(p.updatedAt);
             const isSelected = activeProjectId === p.id;
             const devProgress = getProjectDevProgress(p);
-            const registeredNum = p.dp_registration_number || p.devWorkflow?.dp?.registrationNumber || p.pc_registration_number || p.devWorkflow?.pc?.registrationNumber || p.cu_registration_number || p.devWorkflow?.cu?.registrationNumber;
+            const regInfo = getProjectRegisteredNumber(p);
             const projectPortfolio = getProjectPortfolio(p);
 
             return (
@@ -486,8 +549,8 @@ export default function DossiersListView({
                 <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${statusCfg.bg}`} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-                  {/* ── PARTIE GAUCHE (5/12) : 2 Sous-lignes Élargies ──────────────── */}
-                  <div className="lg:col-span-5 p-4 pl-6 space-y-2 flex flex-col justify-center">
+                  {/* ── PARTIE GAUCHE (6/12) : 2 Sous-lignes Élargies ──────────────── */}
+                  <div className="lg:col-span-6 p-4 pl-6 space-y-2 flex flex-col justify-center">
                     {/* Ligne 1 : N° Dossier (6 chiffres) | Nom du projet | Puissance */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -510,9 +573,22 @@ export default function DossiersListView({
                             {projectPortfolio === 'VOLTA' ? '⚡ VOLTA' : '🔋 FARADAY'}
                           </span>
                         )}
-                        {registeredNum && (
-                          <span className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded flex-shrink-0 truncate max-w-[130px]" title={`N° d'enregistrement : ${registeredNum}`}>
-                            {registeredNum}
+                        {/* Numéro officiel DP / Urbanisme */}
+                        {regInfo ? (
+                          <span 
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg font-mono text-xs font-black bg-indigo-50 text-indigo-900 border border-indigo-300 shadow-2xs shrink-0 whitespace-nowrap tracking-wide"
+                            title={`Numéro officiel ${regInfo.type} : ${regInfo.label}`}
+                          >
+                            <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                            <span>{regInfo.label}</span>
+                          </span>
+                        ) : (
+                          <span 
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-mono text-[10.5px] font-bold bg-slate-50 text-slate-400 border border-dashed border-slate-200 shrink-0 whitespace-nowrap"
+                            title="Numéro officiel DP en attente d'enregistrement"
+                          >
+                            <FileText className="w-3 h-3 text-slate-300 shrink-0" />
+                            <span>DP en attente</span>
                           </span>
                         )}
                         <h3 className="text-base font-extrabold text-slate-900 truncate group-hover:text-blue-600 transition-colors" title={projectName}>
@@ -540,8 +616,8 @@ export default function DossiersListView({
                     </div>
                   </div>
 
-                  {/* ── PARTIE CENTRALE (4/12) : Statut & Avancement Workflow ─────────────── */}
-                  <div className="lg:col-span-4 p-4 space-y-2.5 flex flex-col justify-center bg-slate-50/40">
+                  {/* ── PARTIE CENTRALE (3/12) : Statut & Avancement Workflow ─────────────── */}
+                  <div className="lg:col-span-3 p-4 space-y-2.5 flex flex-col justify-center bg-slate-50/40">
                     {/* Ligne 1 : Statut du projet | Avancement % | Nom du Commercial */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 flex-shrink-0">
