@@ -7002,7 +7002,12 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
   const handleDownloadSinglePiece = async (item) => {
     if (item.id === 'notice_incendie') {
-      await handleDownloadNoticeIncendieDirect();
+      setDownloadingPieceId('notice_incendie');
+      try {
+        await handleDownloadNoticeIncendieDirect();
+      } finally {
+        setDownloadingPieceId(null);
+      }
       return;
     }
     if (!onGenerate) return;
@@ -9831,22 +9836,6 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         Sélection des pièces et planches du dossier ({type.toUpperCase()})
                       </h5>
                       <div className="flex items-center gap-2">
-                        {isBatActive && (
-                          <button
-                            type="button"
-                            disabled={isDownloadingNoticeIncendie}
-                            onClick={handleDownloadNoticeIncendieDirect}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white rounded-lg text-xs font-extrabold shadow-2xs hover:shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                            title="Télécharger la Notice de Sécurité Incendie, DFCI & Dispositions SDIS (PDF)"
-                          >
-                            {isDownloadingNoticeIncendie ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <span>🔥</span>
-                            )}
-                            <span>Télécharger Notice Sécurité Incendie &amp; ICPE (PDF)</span>
-                          </button>
-                        )}
                         <button
                           type="button"
                           onClick={() => setSelectedPages({

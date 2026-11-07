@@ -2284,37 +2284,6 @@ export const PlateNoticeSecuriteIncendieBess = ({ project, docType = 'dp', page 
                         </div>
                     </section>
 
-                    {/* SECTION 3 : SYSTÈME D'EXTINCTION AUTOMATIQUE INTÉGRÉ */}
-                    <section>
-                        <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
-                            <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">3</span>
-                            <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
-                                Système Intégré de Détection Précoce &amp; d'Extinction Automatique (Norme NFPA 855)
-                            </h2>
-                        </div>
-                        <p className="text-[10.5px] text-slate-700 leading-relaxed mb-2">
-                            Chaque armoire CESC Mercury 261 embarque nativement une défense incendie active autonome à <strong>4 niveaux de sécurité redondants</strong> :
-                        </p>
-
-                        <div className="grid grid-cols-2 gap-2.5 text-[10px]">
-                            <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
-                                <strong className="text-slate-900 block mb-0.5">1. Surveillance BMS 24h/24 à la milliseconde</strong>
-                                <span className="text-slate-600 leading-snug block">Contrôle continu de la tension, du courant et de la température de chaque cellule. Coupure galvanique instantanée au moindre écart avant toute surchauffe.</span>
-                            </div>
-                            <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
-                                <strong className="text-slate-900 block mb-0.5">2. Détection précoce multi-capteurs (Gaz / Fumée / T°)</strong>
-                                <span className="text-slate-600 leading-snug block">Capteurs de gaz de dégazage précoce (H₂ et CO), détecteurs optiques de fumée et sondes thermiques vélocimétriques intégrés dans chaque compartiment.</span>
-                            </div>
-                            <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
-                                <strong className="text-slate-900 block mb-0.5">3. Évents de décompression &amp; anti-déflagration</strong>
-                                <span className="text-slate-600 leading-snug block">Soupapes de surpression calibrées et ventilation d'extraction ATEX évitant toute accumulation gazeuse interne.</span>
-                            </div>
-                            <div className="p-2.5 rounded-lg border border-rose-200 bg-rose-50/50">
-                                <strong className="text-rose-900 block mb-0.5">4. Extinction automatique par Aérosol NFPA 855</strong>
-                                <span className="text-slate-700 leading-snug block">Déclenchement automatique d'un <strong>générateur d'aérosol ignifuge condensé</strong> étouffant instantanément tout départ de feu à l'intérieur de l'enveloppe close, sans flamme extérieure.</span>
-                            </div>
-                        </div>
-                    </section>
                 </div>
 
                 {/* PIED DE PAGE 1 */}
@@ -2331,52 +2300,84 @@ export const PlateNoticeSecuriteIncendieBess = ({ project, docType = 'dp', page 
         <div style={portraitPageStyle} data-portrait="true">
             <div>
                 {/* RAPPEL EN-TÊTE PAGE 2 */}
-                <div className="flex items-center justify-between pb-2.5 mb-4 border-b border-slate-200 text-[9.5px] text-slate-500">
+                <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-200 text-[9px] text-slate-500">
                     <span className="font-bold text-slate-800 uppercase">
                         Notice de Sécurité Incendie &amp; DFCI / SDIS — Station BESS 500 kW / 1 044 kWh
                     </span>
                     <span className="font-mono font-semibold text-slate-700">{info.refP2}</span>
                 </div>
 
+                {/* SECTION 3 : SYSTÈME D'EXTINCTION AUTOMATIQUE INTÉGRÉ */}
+                <section className="mb-3">
+                    <div className="flex items-center gap-2 mb-1.5 pb-1 border-b border-slate-200">
+                        <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">3</span>
+                        <h2 className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                            Système Intégré de Détection Précoce &amp; d'Extinction Automatique (Norme NFPA 855)
+                        </h2>
+                    </div>
+                    <p className="text-[9.5px] text-slate-700 leading-snug mb-2">
+                        Chaque armoire CESC Mercury 261 embarque nativement une défense incendie active autonome à <strong>4 niveaux de sécurité redondants</strong> :
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-2 text-[9px]">
+                        <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
+                            <strong className="text-slate-900 block mb-0.5">1. Surveillance BMS 24h/24 à la milliseconde</strong>
+                            <span className="text-slate-600 leading-snug block">Contrôle continu de la tension, du courant et de la température de chaque cellule. Coupure galvanique instantanée au moindre écart avant toute surchauffe.</span>
+                        </div>
+                        <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
+                            <strong className="text-slate-900 block mb-0.5">2. Détection précoce multi-capteurs (Gaz / Fumée / T°)</strong>
+                            <span className="text-slate-600 leading-snug block">Capteurs de gaz de dégazage précoce (H₂ et CO), détecteurs optiques de fumée et sondes thermiques vélocimétriques intégrés dans chaque compartiment.</span>
+                        </div>
+                        <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
+                            <strong className="text-slate-900 block mb-0.5">3. Évents de décompression &amp; anti-déflagration</strong>
+                            <span className="text-slate-600 leading-snug block">Soupapes de surpression calibrées et ventilation d'extraction ATEX évitant toute accumulation gazeuse interne.</span>
+                        </div>
+                        <div className="p-2 rounded-lg border border-rose-200 bg-rose-50/50">
+                            <strong className="text-rose-900 block mb-0.5">4. Extinction automatique par Aérosol NFPA 855</strong>
+                            <span className="text-slate-700 leading-snug block">Déclenchement automatique d'un <strong>générateur d'aérosol ignifuge condensé</strong> étouffant instantanément tout départ de feu à l'intérieur de l'enveloppe close, sans flamme extérieure.</span>
+                        </div>
+                    </div>
+                </section>
+
                 {/* SECTION 4 : AMÉNAGEMENT DU SITE ET COUPURE DE COMBUSTIBLE DFCI */}
-                <section className="mb-4">
-                    <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
+                <section className="mb-3">
+                    <div className="flex items-center gap-2 mb-1.5 pb-1 border-b border-slate-200">
                         <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">4</span>
-                        <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
+                        <h2 className="text-[11px] font-black uppercase tracking-wider text-slate-900">
                             Aménagement du Site &amp; Coupure de Combustible DFCI (Prescriptions Spéciales R.111-2)
                         </h2>
                     </div>
-                    <p className="text-[10.5px] text-slate-700 leading-relaxed mb-3">
+                    <p className="text-[9.5px] text-slate-700 leading-snug mb-2">
                         Bien que le projet soit implanté au sein d'un secteur agricole déjà anthropisé et entretenu (hors massif boisé), le maître d'ouvrage met en œuvre une <strong>triple coupure de combustible minérale et végétale</strong> supprimant tout risque d'éclosion ou de propagation vers l'environnement :
                     </p>
 
-                    <div className="grid grid-cols-12 gap-4 items-center mb-2">
+                    <div className="grid grid-cols-12 gap-3 items-center mb-1">
                         {/* Liste des 4 barrières physiques */}
-                        <div className="col-span-7 space-y-2 text-[10px]">
-                            <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
+                        <div className="col-span-7 space-y-1.5 text-[9px]">
+                            <div className="p-1.5 rounded-lg border border-slate-200 bg-slate-50">
                                 <strong className="text-slate-900">A. Socle 100 % minéral incombustible (Dalle béton A1 / M0) :</strong>
                                 <p className="text-slate-600 mt-0.5">Les 4 armoires reposent sur une dalle pleine en béton armé de <strong>6,20 m × 3,20 m (19,84 m²)</strong>, surélevée de 15 cm par rapport au terrain naturel.</p>
                             </div>
-                            <div className="p-2 rounded-lg border border-amber-200 bg-amber-50/40">
+                            <div className="p-1.5 rounded-lg border border-amber-200 bg-amber-50/40">
                                 <strong className="text-amber-950">B. Ceinture stérile en graviers concassés sur 2,00 mètres :</strong>
                                 <p className="text-slate-700 mt-0.5">Une bande périphérique de <strong>2,00 m de largeur tout autour de la dalle béton</strong> est intégralement décapée, équipée d'un feutre géotextile anti-végétation et recouverte de <strong>graviers concassés minéraux incombustibles (ép. 10 cm)</strong>. Aucune herbe sèche ne peut se trouver au contact de la station.</p>
                             </div>
-                            <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
+                            <div className="p-1.5 rounded-lg border border-slate-200 bg-slate-50">
                                 <strong className="text-slate-900">C. Clôture rigide périmétrique de sécurité (H 2,00 m) :</strong>
                                 <p className="text-slate-600 mt-0.5">Enceinte en panneaux treillis soudés rigides thermolaqués (RAL 6005) avec portillon verrouillé interdisant toute intrusion.</p>
                             </div>
-                            <div className="p-2 rounded-lg border border-emerald-200 bg-emerald-50/40">
+                            <div className="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50/40">
                                 <strong className="text-emerald-950">D. Obligations Légales de Débroussaillement (OLD — Rayon 50 m) :</strong>
                                 <p className="text-slate-700 mt-0.5">Maintien permanent d'une <strong>zone débroussaillée de 50 mètres de rayon</strong> autour de l'installation (fauchage régulier, absence de broussailles ou de stockage de matériaux combustibles, mise à distance des houppiers).</p>
                             </div>
                         </div>
 
                         {/* Schéma technique SVG de la coupe / vue en plan DFCI */}
-                        <div className="col-span-5 border border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col items-center justify-center">
-                            <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-600 mb-2 text-center">
+                        <div className="col-span-5 border border-slate-200 rounded-xl p-2 bg-slate-50 flex flex-col items-center justify-center">
+                            <span className="text-[8px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 text-center">
                                 Schéma de Principe — Ceinture Incombustible DFCI
                             </span>
-                            <svg viewBox="0 0 280 210" className="w-full h-auto max-w-[245px]">
+                            <svg viewBox="0 0 280 210" className="w-full h-auto max-w-[215px]">
                                 <rect x="6" y="6" width="268" height="198" rx="10" fill="#ecfdf5" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4 3" />
                                 <text x="140" y="20" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#047857">ZONE DÉBROUSSAILLÉE ENTRETENUE (OLD 50m)</text>
 
@@ -2411,41 +2412,41 @@ export const PlateNoticeSecuriteIncendieBess = ({ project, docType = 'dp', page 
                 </section>
 
                 {/* SECTION 5 : DISPOSITIONS OPÉRATIONNELLES POUR LE SDIS */}
-                <section className="mb-4">
-                    <div className="flex items-center gap-2 mb-2 pb-1 border-b border-slate-200">
+                <section className="mb-3">
+                    <div className="flex items-center gap-2 mb-1.5 pb-1 border-b border-slate-200">
                         <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10.5px] font-black flex items-center justify-center">5</span>
-                        <h2 className="text-[11.5px] font-black uppercase tracking-wider text-slate-900">
+                        <h2 className="text-[11px] font-black uppercase tracking-wider text-slate-900">
                             Accessibilité &amp; Dispositions Opérationnelles dédiées aux Services de Secours ({info.sdisLabel})
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2.5 text-[10px]">
-                        <div className="p-2.5 rounded-lg border border-slate-200 bg-white">
-                            <strong className="text-slate-900 block mb-1">🚒 Desserte &amp; Accès Engins</strong>
+                    <div className="grid grid-cols-3 gap-2 text-[9px]">
+                        <div className="p-2 rounded-lg border border-slate-200 bg-white">
+                            <strong className="text-slate-900 block mb-0.5">🚒 Desserte &amp; Accès Engins</strong>
                             <p className="text-slate-600 leading-snug">Implantation en bordure immédiate d'une voie carrossable (largeur ≥ 3,00 m, hauteur libre ≥ 3,50 m, portance 16 tonnes) permettant le stationnement d'un fourgon d'incendie à moins de 10 m.</p>
                         </div>
-                        <div className="p-2.5 rounded-lg border border-slate-200 bg-white">
-                            <strong className="text-rose-700 block mb-1">🛑 Coupure d'Urgence Pompier</strong>
+                        <div className="p-2 rounded-lg border border-slate-200 bg-white">
+                            <strong className="text-rose-700 block mb-0.5">🛑 Coupure d'Urgence Pompier</strong>
                             <p className="text-slate-600 leading-snug">Bouton d'<strong>Arrêt d'Urgence (AU) général sous boîtier bris de glace</strong> positionné en limite extérieure de clôture, assurant l'isolement galvanique instantané des batteries et du réseau HTA Enedis.</p>
                         </div>
-                        <div className="p-2.5 rounded-lg border border-slate-200 bg-white">
-                            <strong className="text-slate-900 block mb-1">📞 Affichage &amp; Astreinte 24/7</strong>
+                        <div className="p-2 rounded-lg border border-slate-200 bg-white">
+                            <strong className="text-slate-900 block mb-0.5">📞 Affichage &amp; Astreinte 24/7</strong>
                             <p className="text-slate-600 leading-snug">Panneau inaltérable sur le portillon indiquant la chimie LFP, le schéma unifilaire de coupure, les consignes d'intervention SDIS et le numéro d'astreinte télésurveillance 24h/24.</p>
                         </div>
                     </div>
                 </section>
 
                 {/* SECTION 6 : ENGAGEMENT FORMEL DU PÉTITIONNAIRE */}
-                <section className="p-4 rounded-xl border-2 border-slate-900 bg-slate-50">
-                    <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                <section className="p-2.5 rounded-xl border-2 border-slate-900 bg-slate-50">
+                    <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-900">
                             6. Engagement Formel du Pétitionnaire (Application de l'Article R.111-2 du Code de l'Urbanisme)
                         </span>
-                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 text-[8.5px] font-extrabold border border-emerald-300">
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 text-[8px] font-extrabold border border-emerald-300">
                             ENGAGEMENT FERME &amp; OPPOSABLE
                         </span>
                     </div>
-                    <p className="text-[10px] text-slate-700 leading-relaxed text-justify">
+                    <p className="text-[9px] text-slate-700 leading-snug text-justify">
                         Le demandeur et la société <strong>ENR COURTAGE SAS</strong> s'engagent expressément à mettre en œuvre et à maintenir pendant toute la durée d'exploitation de la station BESS l'intégralité des mesures de sécurité décrites dans la présente notice : <strong>(1) Utilisation exclusive d'armoires certifiées LFP avec extinction automatique par aérosol NFPA 855 intégrée</strong>, <strong>(2) Dalle en béton armé incombustible entourée d'une bande stérile de graviers minéraux de 2,00 m</strong>, <strong>(3) Respect permanent des Obligations Légales de Débroussaillement (OLD) dans un rayon de 50 mètres</strong>, et <strong>(4) Installation d'une coupure d'urgence externe accessible au SDIS</strong>. Le demandeur accepte que ces dispositions soient inscrites à titre de <strong>prescriptions spéciales</strong> dans l'arrêté {info.isPC ? 'accordant le Permis de Construire' : 'de non-opposition à la Déclaration Préalable'}.
                     </p>
                 </section>

@@ -6,7 +6,6 @@ import {
   ExternalLink, ShieldCheck, Check, Info, Search, Paperclip
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { downloadNoticeSecuriteIncendiePdf } from '@/services/DPGeneratorService';
 import { 
   extractInseeFromDpNumber, 
   fetchMairieByInsee, 
@@ -73,38 +72,6 @@ export default function DpInstructionCard({
   const [loadingMairie, setLoadingMairie] = useState(false);
   const [mairieResolvedCode, setMairieResolvedCode] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
-
-  const isBattery = Boolean(
-    project?.solutionType === 'battery' ||
-    project?.isBattery ||
-    project?.isBatteryStandAlone ||
-    project?.bess_model ||
-    project?.bess_puissance ||
-    (project?.type || '').toLowerCase().includes('batterie') ||
-    (project?.installationType || '').toLowerCase().includes('batterie')
-  );
-
-  const [isDownloadingNotice, setIsDownloadingNotice] = useState(false);
-
-  const handleDownloadNoticeSecuriteIncendie = async () => {
-    setIsDownloadingNotice(true);
-    try {
-      await downloadNoticeSecuriteIncendiePdf(project, 'dp');
-      toast({
-        title: "Notice Sécurité Incendie & ICPE téléchargée",
-        description: "Le document PDF officiel (2 pages) a été téléchargé avec succès."
-      });
-    } catch (err) {
-      console.error('[DpInstructionCard] Erreur téléchargement Notice Sécurité Incendie:', err);
-      toast({
-        title: "Erreur de téléchargement",
-        description: err.message || "Impossible de générer la notice incendie.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsDownloadingNotice(false);
-    }
-  };
 
   // Synchronisation avec les props quand le projet change
   useEffect(() => {
@@ -761,24 +728,6 @@ export default function DpInstructionCard({
         >
           <span>Générer le dossier DP complet (Cerfa + Plans)</span>
         </button>
-
-        {/* Bouton dédié BESS : Télécharger Notice Sécurité Incendie & ICPE (PDF) */}
-        {isBattery && (
-          <button
-            type="button"
-            onClick={handleDownloadNoticeSecuriteIncendie}
-            disabled={isDownloadingNotice}
-            className="w-full py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white shadow-2xs hover:shadow-xs transition-all cursor-pointer active:scale-98 disabled:opacity-60"
-            title="Télécharger la Notice de Sécurité Incendie, DFCI & Dispositions SDIS (PDF)"
-          >
-            {isDownloadingNotice ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
-            ) : (
-              <span>🔥</span>
-            )}
-            <span>Télécharger Notice Sécurité Incendie &amp; ICPE (PDF)</span>
-          </button>
-        )}
       </div>
     </div>
   );
