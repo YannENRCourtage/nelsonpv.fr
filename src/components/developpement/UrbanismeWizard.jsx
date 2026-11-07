@@ -6,7 +6,7 @@ import {
   Hash, Ruler, Info, RefreshCw, Mail, Phone, FileText,
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
   Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus,
-  Compass, User, Download, Lock, Unlock, Move, Flame,
+  Compass, User, Download, Lock, Unlock, Move, Flame, Droplets,
   Landmark, ExternalLink, Copy, CheckCheck, Save, Cpu
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -2341,6 +2341,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [masseLockedMaps, setMasseLockedMaps] = useState({}); // { [strId]: boolean } - true par défaut (carte fixe)
   const [masseCapturedToast, setMasseCapturedToast] = useState({}); // { [strId]: string }
   const [masseShowCadastre, setMasseShowCadastre] = useState({}); // { [strId]: boolean } - true par défaut
+  const [masseShowHydro, setMasseShowHydro] = useState({}); // { [strId]: boolean } - false par défaut (couche hydrographie IGN)
   const [masseViewpoints, setMasseViewpoints] = useState({}); // { [strId]: { dp7?: { enabled, lat, lng, angle }, dp8?: { enabled, lat, lng, angle } } }
   const [masseAccess, setMasseAccess] = useState({}); // { [strId]: { enabled, lat, lng, angle } }
   const [sdisPoint, setSdisPoint] = useState(project?.sdisPoint || null);
@@ -2843,6 +2844,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       masseViewpoints: overrides.masseViewpoints || masseViewpoints,
       masseAccess: overrides.masseAccess || masseAccess,
       masseShowCadastre: overrides.masseShowCadastre || masseShowCadastre,
+      masseShowHydro: overrides.masseShowHydro || masseShowHydro,
       masseLockedMaps: overrides.masseLockedMaps || masseLockedMaps,
       hasMasseView2: overrides.hasMasseView2 || hasMasseView2Ref.current,
       hasMasseView3: overrides.hasMasseView3 || hasMasseView3Ref.current,
@@ -4222,6 +4224,9 @@ ${p5Details}${(!isNoBattery && batteryStorage.enabled) ? `\nLe système de stock
       hasMasseView3Ref.current = savedState.hasMasseView3;
       setHasMasseView3(savedState.hasMasseView3);
     }
+    if (savedState?.masseShowHydro) {
+      setMasseShowHydro(savedState.masseShowHydro);
+    }
     if (savedState?.masseViewsConfig) {
       masseViewsConfigRef.current = savedState.masseViewsConfig;
     }
@@ -5362,6 +5367,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       distances: JSON.parse(JSON.stringify(masseDistancesRef.current[strId] || masseDistances[strId] || existingSnap.distances || [])),
       showDimensions: masseShowDimensions[strId] !== undefined ? Boolean(masseShowDimensions[strId]) : (existingSnap.showDimensions !== undefined ? existingSnap.showDimensions : (targetStr?.masse_show_dimensions !== false)),
       showCadastre: masseShowCadastre[strId] !== undefined ? Boolean(masseShowCadastre[strId]) : (existingSnap.showCadastre !== undefined ? existingSnap.showCadastre : true),
+      showHydro: masseShowHydro[strId] !== undefined ? Boolean(masseShowHydro[strId]) : (existingSnap.showHydro !== undefined ? existingSnap.showHydro : false),
       dataUrl: existingSnap.dataUrl || latestMasseCapturesRef.current?.[strId]?.[viewNum]?.dataUrl || (viewNum === 3 ? targetStr?.masse_capture_3 : (viewNum === 2 ? targetStr?.masse_capture_2 : targetStr?.masse_capture)) || null
     };
 
@@ -5381,7 +5387,8 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       transfoPoint: snapshot.transfoPoint,
       distances: snapshot.distances,
       showDimensions: snapshot.showDimensions,
-      showCadastre: snapshot.showCadastre
+      showCadastre: snapshot.showCadastre,
+      showHydro: snapshot.showHydro
     };
 
     const zoomKey = viewNum === 3 ? 'masse_zoom_3' : (viewNum === 2 ? 'masse_zoom_2' : 'masse_zoom');
@@ -5395,6 +5402,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const distKey = viewNum === 3 ? 'masse_distances_3' : (viewNum === 2 ? 'masse_distances_2' : 'masse_distances');
     const dimKey = viewNum === 3 ? 'masse_show_dimensions_3' : (viewNum === 2 ? 'masse_show_dimensions_2' : 'masse_show_dimensions');
     const cadKey = viewNum === 3 ? 'masse_show_cadastre_3' : (viewNum === 2 ? 'masse_show_cadastre_2' : 'masse_show_cadastre');
+    const hydroKey = viewNum === 3 ? 'masse_show_hydro_3' : (viewNum === 2 ? 'masse_show_hydro_2' : 'masse_show_hydro');
 
     setBuildings(prev => prev.map(b => {
       const currentId = b.id ? String(b.id) : '';
@@ -5411,14 +5419,15 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
           [trKey]: snapshot.transfoPoint,
           [distKey]: snapshot.distances,
           [dimKey]: snapshot.showDimensions,
-          [cadKey]: snapshot.showCadastre
+          [cadKey]: snapshot.showCadastre,
+          [hydroKey]: snapshot.showHydro
         };
       }
       return b;
     }));
 
     return snapshot;
-  }, [allConfiguredStructures, masseViewTabs, masseViewpoints, masseAccess, sdisPoint, pdlPoint, transfoPoint, masseDistances, masseShowDimensions, masseShowCadastre]);
+  }, [allConfiguredStructures, masseViewTabs, masseViewpoints, masseAccess, sdisPoint, pdlPoint, transfoPoint, masseDistances, masseShowDimensions, masseShowCadastre, masseShowHydro]);
 
   // Charge l'état exact (zoom, centrage, éléments, annotations) d'une vue spécifique dans l'interface
   const loadViewSnapshot = useCallback((strId, targetViewNum) => {
@@ -5436,6 +5445,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       const distKey = targetViewNum === 3 ? 'masse_distances_3' : (targetViewNum === 2 ? 'masse_distances_2' : 'masse_distances');
       const dimKey = targetViewNum === 3 ? 'masse_show_dimensions_3' : (targetViewNum === 2 ? 'masse_show_dimensions_2' : 'masse_show_dimensions');
       const cadKey = targetViewNum === 3 ? 'masse_show_cadastre_3' : (targetViewNum === 2 ? 'masse_show_cadastre_2' : 'masse_show_cadastre');
+      const hydroKey = targetViewNum === 3 ? 'masse_show_hydro_3' : (targetViewNum === 2 ? 'masse_show_hydro_2' : 'masse_show_hydro');
       const zoomKey = targetViewNum === 3 ? 'masse_zoom_3' : (targetViewNum === 2 ? 'masse_zoom_2' : 'masse_zoom');
       const cLatKey = targetViewNum === 3 ? 'masse_center_lat_3' : (targetViewNum === 2 ? 'masse_center_lat_2' : 'masse_center_lat');
       const cLngKey = targetViewNum === 3 ? 'masse_center_lng_3' : (targetViewNum === 2 ? 'masse_center_lng_2' : 'masse_center_lng');
@@ -5455,6 +5465,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         distances: targetStr?.[distKey] || (targetViewNum === 1 ? (editedProject?.masseDistances?.[strId] || []) : []),
         showDimensions: targetStr?.[dimKey] !== undefined ? Boolean(targetStr[dimKey]) : true,
         showCadastre: targetStr?.[cadKey] !== undefined ? Boolean(targetStr[cadKey]) : true,
+        showHydro: targetStr?.[hydroKey] !== undefined ? Boolean(targetStr[hydroKey]) : false,
         dataUrl: targetStr?.[capKey] || latestMasseCapturesRef.current?.[strId]?.[targetViewNum]?.dataUrl || null
       };
 
@@ -5485,6 +5496,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
     setMasseShowDimensions(prev => ({ ...prev, [strId]: snap.showDimensions !== false }));
     setMasseShowCadastre(prev => ({ ...prev, [strId]: snap.showCadastre !== false }));
+    setMasseShowHydro(prev => ({ ...prev, [strId]: Boolean(snap.showHydro) }));
 
     return snap;
   }, [allConfiguredStructures, editedProject, project]);
@@ -5544,6 +5556,9 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const strShowCadastre = isCurrentViewOnScreen
       ? (masseShowCadastre[strId] !== undefined ? masseShowCadastre[strId] : true)
       : (viewSnap?.showCadastre !== undefined ? viewSnap.showCadastre : true);
+    const strShowHydro = isCurrentViewOnScreen
+      ? Boolean(masseShowHydro[strId])
+      : Boolean(viewSnap?.showHydro);
 
     // 1. Si la vue demandée est actuellement affichée à l'écran, capture directe sur Leaflet
     if (map && isCurrentViewOnScreen) {
@@ -5566,6 +5581,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
         viewpoints: strViewpoints,
         accessPoint: strAccess,
         showCadastre: strShowCadastre,
+        showHydro: strShowHydro,
         pdlPoint: curPdl,
         transfoPoint: curTransfo
       });
@@ -5583,7 +5599,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
       return dataUrl;
     }
     return null;
-  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs, masseDistances, masseViewpoints, masseAccess, masseShowCadastre, sdisPoint, pdlPoint, transfoPoint, captures, editedProject]);
+  }, [allConfiguredStructures, selectedStructureIds, handleSaveMasseCapture, masseShowDimensions, masseViewTabs, masseDistances, masseViewpoints, masseAccess, masseShowCadastre, masseShowHydro, sdisPoint, pdlPoint, transfoPoint, captures, editedProject]);
 
   useEffect(() => {
     captureStructureMasseMapRef.current = captureStructureMasseMap;
@@ -9083,6 +9099,26 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                       );
                                     })()}
 
+                                    {/* Bouton Toggle Hydrographie (IGN Géoportail - Plans d'eau, étangs défense incendie, cours d'eau) */}
+                                    {(() => {
+                                      const isHydroActive = Boolean(masseShowHydro[str.id]);
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleToggleMasseHydro(str.id)}
+                                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 border shadow-2xs ${
+                                            isHydroActive
+                                              ? 'bg-cyan-600 text-white border-cyan-700 shadow-xs'
+                                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                          }`}
+                                          title="Afficher ou masquer la couche Hydrographie IGN (étangs, cours d'eau, points d'eau pour défense incendie)"
+                                        >
+                                          <Droplets className={`w-3.5 h-3.5 ${isHydroActive ? 'text-white' : 'text-cyan-600'}`} />
+                                          <span>Hydrographie</span>
+                                        </button>
+                                      );
+                                    })()}
+
                                     {/* Bouton Angle de vue DP07 (Vue proche) */}
                                     {(() => {
                                       const vp7 = (masseViewpoints[str.id] && masseViewpoints[str.id].dp7) || {};
@@ -9355,6 +9391,18 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                        maxNativeZoom={19}
                                      />
                                    )}
+                                    {Boolean(masseShowHydro[str.id]) && (
+                                      <TileLayer
+                                        key={`hydro-layer-${str.id}`}
+                                        url="https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=HYDROGRAPHY.HYDROGRAPHY&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
+                                        attribution="&copy; IGN Hydrographie"
+                                        opacity={0.85}
+                                        zIndex={12}
+                                        crossOrigin="anonymous"
+                                        maxZoom={21}
+                                        maxNativeZoom={18}
+                                      />
+                                    )}
                                    <MapResizer activeCount={activeStructures.length} center={[strLat, strLng]} />
                                    <MasseMapLockController isLocked={masseLockedMaps[str.id] !== false} />
                                    <MasseMapController 

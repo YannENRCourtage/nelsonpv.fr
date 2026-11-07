@@ -573,6 +573,7 @@ export default function BatteryStationVisualizer({
         align: 'right',
       });
 
+      const cleanProj = (projectName || 'Projet').trim().replace(/\s+/g, '_');
       const safeFilename = cleanProj.replace(/[^a-zA-Z0-9_-]/g, '_');
       doc.save(`Cotations_PlanMasse_Facade_${safeFilename}.pdf`);
 

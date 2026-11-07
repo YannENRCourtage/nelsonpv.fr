@@ -764,12 +764,55 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 18, 
           }
           loadedCount++;
           if (loadedCount === totalImages) {
-            try {
-              drawMarkerAndFinish();
-            } catch (err) {
-              console.warn('[AutoMap] drawMarkerAndFinish error:', err);
-              safeResolve(null);
-            }
+            const onBaseTilesReady = () => {
+              if (options?.showHydro) {
+                const hydroImages = [];
+                for (let dx = -range; dx <= range; dx++) {
+                  for (let dy = -range; dy <= range; dy++) {
+                    const tx = tileCenter.x + dx;
+                    const ty = tileCenter.y + dy;
+                    hydroImages.push({
+                      dx, dy,
+                      url: `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=HYDROGRAPHY.HYDROGRAPHY&TILEMATRIX=${currentZoom}&TILEROW=${ty}&TILECOL=${tx}`
+                    });
+                  }
+                }
+                let hLoaded = 0;
+                const hTotal = hydroImages.length;
+                const finishWithHydro = () => {
+                  try { drawMarkerAndFinish(); } catch (err) { safeResolve(null); }
+                };
+                hydroImages.forEach(hItem => {
+                  const hImg = new Image();
+                  hImg.crossOrigin = 'anonymous';
+                  hImg.onload = () => {
+                    try {
+                      ctx.save();
+                      ctx.globalAlpha = 0.85;
+                      const posX = centerX + hItem.dx * tileSize - offsetX;
+                      const posY = centerY + hItem.dy * tileSize - offsetY;
+                      ctx.drawImage(hImg, posX, posY, tileSize, tileSize);
+                      ctx.restore();
+                    } catch (e) {}
+                    hLoaded++;
+                    if (hLoaded === hTotal) finishWithHydro();
+                  };
+                  hImg.onerror = () => {
+                    hLoaded++;
+                    if (hLoaded === hTotal) finishWithHydro();
+                  };
+                  hImg.src = hItem.url;
+                });
+              } else {
+                try {
+                  drawMarkerAndFinish();
+                } catch (err) {
+                  console.warn('[AutoMap] drawMarkerAndFinish error:', err);
+                  safeResolve(null);
+                }
+              }
+            };
+            onBaseTilesReady();
           }
         };
         img.onerror = () => {
