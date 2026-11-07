@@ -2475,11 +2475,36 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   }, [masseViewTabs]);
 
   const handleToggleMasseCadastre = useCallback((strId) => {
+    const curV = masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1;
     setMasseShowCadastre(prev => {
       const isCurrentlyShown = prev[strId] !== undefined ? prev[strId] : true;
+      const nextVal = !isCurrentlyShown;
+      if (!masseViewsConfigRef.current[strId]) masseViewsConfigRef.current[strId] = {};
+      if (!masseViewsConfigRef.current[strId][curV]) masseViewsConfigRef.current[strId][curV] = {};
+      masseViewsConfigRef.current[strId][curV].showCadastre = nextVal;
       return {
         ...prev,
-        [strId]: !isCurrentlyShown
+        [strId]: nextVal
+      };
+    });
+    setTimeout(() => {
+      if (typeof captureStructureMasseMapRef.current === 'function') {
+        captureStructureMasseMapRef.current(strId, masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1, null, true);
+      }
+    }, 250);
+  }, [masseViewTabs]);
+
+  const handleToggleMasseHydro = useCallback((strId) => {
+    const curV = masseViewTabsRef.current[strId] || masseViewTabs[strId] || 1;
+    setMasseShowHydro(prev => {
+      const isCurrentlyShown = Boolean(prev[strId]);
+      const nextVal = !isCurrentlyShown;
+      if (!masseViewsConfigRef.current[strId]) masseViewsConfigRef.current[strId] = {};
+      if (!masseViewsConfigRef.current[strId][curV]) masseViewsConfigRef.current[strId][curV] = {};
+      masseViewsConfigRef.current[strId][curV].showHydro = nextVal;
+      return {
+        ...prev,
+        [strId]: nextVal
       };
     });
     setTimeout(() => {
