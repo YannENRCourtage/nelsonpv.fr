@@ -511,17 +511,6 @@ export async function generateFullUrbanismePDF({ type, project, installationType
     );
 
     const effectivePlateIds = [...plateIds];
-    if (isBatProject && !effectivePlateIds.some(id => id.includes('notice-incendie'))) {
-      const incP1 = (document.getElementById('dev-plate-notice-incendie-p1') && 'dev-plate-notice-incendie-p1') ||
-                    (document.getElementById('dp-plate-notice-incendie-p1') && 'dp-plate-notice-incendie-p1') ||
-                    (type === 'pc' && document.getElementById('dev-pc-plate-notice-incendie-p1') && 'dev-pc-plate-notice-incendie-p1');
-      const incP2 = (document.getElementById('dev-plate-notice-incendie-p2') && 'dev-plate-notice-incendie-p2') ||
-                    (document.getElementById('dp-plate-notice-incendie-p2') && 'dp-plate-notice-incendie-p2') ||
-                    (type === 'pc' && document.getElementById('dev-pc-plate-notice-incendie-p2') && 'dev-pc-plate-notice-incendie-p2');
-      if (incP1 && incP2) {
-        effectivePlateIds.push(incP1, incP2);
-      }
-    }
 
     for (let i = 0; i < effectivePlateIds.length; i++) {
       const id = effectivePlateIds[i];
