@@ -64,6 +64,7 @@ import { preloadProjectImages } from '@/utils/imageProxy';
 import {
   getProfessionals, addProfessional, updateProfessional, deleteProfessional
 } from '@/services/devWorkflowService';
+import { isCrmProjectAbandoned } from '@/lib/utils';
 
 // ── Sidebar Navigation Items ─────────────────────────────────────────────────
 const SIDEBAR_SECTIONS = [
@@ -155,14 +156,15 @@ export default function Developpement() {
     const setupSubscription = async () => {
       try {
         const unsub = await apiService.subscribeToProjects((data) => {
-          setProjects(data || []);
+          const activeProjects = (data || []).filter(p => !isCrmProjectAbandoned(p));
+          setProjects(activeProjects);
           setLoadingProjects(false);
 
           // Maintenir selectedProject synchronisé en temps réel avec Firestore
           setSelectedProject(prev => {
-            if (!prev) return (data && data.length > 0) ? data[0] : null;
+            if (!prev || isCrmProjectAbandoned(prev)) return (activeProjects && activeProjects.length > 0) ? activeProjects[0] : null;
             const updated = data.find(p => p.id === prev.id);
-            return updated || prev;
+            return updated || ((activeProjects && activeProjects.length > 0) ? activeProjects[0] : null);
           });
         }, activeTenantId);
         if (typeof unsub === 'function') unsubscribe = unsub;
@@ -170,9 +172,10 @@ export default function Developpement() {
         console.error('Erreur souscription temps réel projets:', err);
         try {
           const fallbackData = await apiService.getProjects(activeTenantId);
-          setProjects(fallbackData || []);
-          if (fallbackData && fallbackData.length > 0 && !selectedProject) {
-            setSelectedProject(fallbackData[0]);
+          const activeProjects = (fallbackData || []).filter(p => !isCrmProjectAbandoned(p));
+          setProjects(activeProjects);
+          if (activeProjects && activeProjects.length > 0 && (!selectedProject || isCrmProjectAbandoned(selectedProject))) {
+            setSelectedProject(activeProjects[0]);
           }
         } catch (e) {
           console.error('Erreur fallback projets:', e);
@@ -259,6 +262,7 @@ export default function Developpement() {
 
   // ── Handler Sélection Projet depuis la Liste ────────────────────
   const handleSelectProjectFromList = (proj) => {
+    if (isCrmProjectAbandoned(proj)) return;
     setSelectedProject(proj);
     setActiveSection('etude');
   };
@@ -310,8 +314,21 @@ export default function Developpement() {
   const handleUpdateProjectData = async (projectId, updatedData) => {
     if (!projectId) return;
     try {
-      setSelectedProject(prev => (prev && prev.id === projectId ? { ...prev, ...updatedData } : prev));
-      setProjects(prev => prev.map(p => (p.id === projectId ? { ...p, ...updatedData } : p)));
+      if (updatedData && isCrmProjectAbandoned(updatedData)) {
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+        setSelectedProject(prev => {
+          if (prev?.id === projectId) {
+            const remaining = projects.filter(p => p.id !== projectId && !isCrmProjectAbandoned(p));
+            return remaining.length > 0 ? remaining[0] : null;
+          }
+          return prev;
+        });
+      } else {
+        setSelectedProject(prev => (prev && prev.id === projectId ? { ...prev, ...updatedData } : prev));
+        setProjects(prev => prev.map(p => (p.id === projectId ? { ...p, ...updatedData } : p)));
+  
+      }
+
       if (apiService?.updateProject) {
         await apiService.updateProject(projectId, updatedData);
       }

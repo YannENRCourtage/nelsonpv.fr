@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MapPin, Zap, Map, Ruler, X, Navigation, Building, Battery, Sun, MessageSquare, Save, Check } from 'lucide-react';
 import { formatGps } from '@/utils/formatGps.js';
+import { isCrmProjectAbandoned } from '@/lib/utils';
 
 export default function ProjectSearchHeader({ projects = [], selectedProject, onSelectProject, loading }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,14 +46,14 @@ export default function ProjectSearchHeader({ projects = [], selectedProject, on
     const term = searchTerm.trim().toLowerCase();
 
     if (!term) {
-      setFilteredProjects(projects.slice(0, 15));
+      setFilteredProjects(projects.filter(p => !isCrmProjectAbandoned(p)).slice(0, 15));
       return;
     }
 
     const normalize = (str) => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const cleanTerm = normalize(term);
 
-    const results = projects.filter(p => {
+    const results = projects.filter(p => !isCrmProjectAbandoned(p)).filter(p => {
       const lastName = normalize(p.name || p.lastName || '');
       const firstName = normalize(p.firstName || '');
       const city = normalize(p.city || p.cadastre_commune || '');
@@ -129,7 +130,7 @@ export default function ProjectSearchHeader({ projects = [], selectedProject, on
   const handleInputFocus = () => {
     if (projects.length > 0) {
       if (!searchTerm.trim()) {
-        setFilteredProjects(projects.slice(0, 15));
+        setFilteredProjects(projects.filter(p => !isCrmProjectAbandoned(p)).slice(0, 15));
       }
       setIsDropdownOpen(true);
     }

@@ -31,3 +31,18 @@ export const getUserColor = (name) => {
   }
   return colors[Math.abs(hash) % colors.length];
 };
+
+/**
+ * Vérifie si un projet/dossier est en statut abandonné dans le CRM.
+ * Tout dossier avec un statut 'Abandonné' (ou variantes 'abandonne', etc.)
+ * ne doit pas apparaître dans la page développement.
+ */
+export const isCrmProjectAbandoned = (p) => {
+  if (!p) return false;
+  const s = String(p.status || p.crm_status || p.statut || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+  return s === 'abandonne' || s.includes('abandon');
+};

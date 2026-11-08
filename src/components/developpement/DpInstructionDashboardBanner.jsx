@@ -14,6 +14,7 @@ import {
   formatToIsoDate,
   searchAndSyncDp
 } from '@/services/dpInstructionService';
+import { isCrmProjectAbandoned } from '@/lib/utils';
 
 export default function DpInstructionDashboardBanner({
   projects = [],
@@ -32,7 +33,7 @@ export default function DpInstructionDashboardBanner({
   const analyzedProjects = useMemo(() => {
     if (!projects || projects.length === 0) return [];
 
-    return projects.map(p => {
+    return projects.filter(p => !isCrmProjectAbandoned(p)).map(p => {
       // Détection numéro DP brut et normalisation avec ou sans espaces
       const rawDp = p.dp_registration_number || 
                     p.numero_dp || 

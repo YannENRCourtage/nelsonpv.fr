@@ -7,7 +7,7 @@ import {
   FolderKanban, ExternalLink, Copy
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { getUserColor } from '@/lib/utils';
+import { getUserColor, isCrmProjectAbandoned } from '@/lib/utils';
 import { apiService } from '@/services/api';
 import { formatGps } from '@/utils/formatGps.js';
 import { findBessOdreData } from '@/data/bessOdreMatrix.js';
@@ -584,7 +584,7 @@ export default function EtudeDossierView({
     if (!project) return '263201';
     if (project.dossier_num) return project.dossier_num;
 
-    const list = (allProjects && allProjects.length > 0) ? allProjects : [project];
+    const list = (allProjects && allProjects.length > 0) ? allProjects.filter(p => !isCrmProjectAbandoned(p)) : [project];
     const deptYearCounters = {};
     const map = {};
 

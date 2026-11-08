@@ -5,7 +5,7 @@ import {
   CheckCircle2, Clock, AlertCircle, XCircle, Calendar, MessageSquare,
   Filter, Sparkles, Check, TrendingUp, FileText
 } from 'lucide-react';
-import { getUserColor } from '@/lib/utils';
+import { getUserColor, isCrmProjectAbandoned } from '@/lib/utils';
 import { apiService } from '@/services/api';
 import { BESS_PORTFOLIO_SITES, getProjectBessPortfolio, normalizePortfolioName } from '@/data/bessPortfolioData';
 
@@ -148,6 +148,7 @@ export default function DossiersListView({
   // Calcul du statut de développement réel du dossier
   const getProjectDevStatus = (p) => {
     if (!p) return 'nouveau';
+    if (isCrmProjectAbandoned(p)) return 'abandonne';
 
     // 1. Statut explicite si présent
     const explicitStatus = p.devStatus || p.statut_developpement || p.developmentStatus || p.development_status;
@@ -271,16 +272,19 @@ export default function DossiersListView({
   const portfolioCounts = useMemo(() => {
     let volta = 0;
     let faraday = 0;
-    projects.forEach(p => {
+    const activeProjects = projects.filter(p => !isCrmProjectAbandoned(p));
+    activeProjects.forEach(p => {
       const port = getProjectPortfolio(p);
       if (port === 'VOLTA') volta++;
       else if (port === 'FARADAY') faraday++;
     });
-    return { VOLTA: volta, FARADAY: faraday, all: projects.length };
+    return { VOLTA: volta, FARADAY: faraday, all: activeProjects.length };
   }, [projects]);
 
   const filteredProjects = useMemo(() => {
     return projects.filter(p => {
+      // Exclusion formelle : un dossier abandonné dans le CRM ne doit pas apparaître en développement
+      if (isCrmProjectAbandoned(p)) return false;
       if (onlyMyProjects && currentUser) {
         const uName = (currentUser.name || currentUser.displayName || '').toLowerCase();
         const uFirst = (currentUser.firstName || '').toLowerCase();
@@ -410,7 +414,7 @@ export default function DossiersListView({
   const dossierNumbersMap = useMemo(() => {
     const deptYearCounters = {};
     const map = {};
-    const sorted = [...projects].sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+    const sorted = [...projects].filter(p => !isCrmProjectAbandoned(p)).sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
     sorted.forEach((p, idx) => {
       let year = '26';
       const dateVal = p.createdAt || p.created_at || p.updatedAt;
