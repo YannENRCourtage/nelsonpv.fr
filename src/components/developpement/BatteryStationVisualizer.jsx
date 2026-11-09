@@ -294,14 +294,8 @@ export default function BatteryStationVisualizer({
       });
 
     try {
-      // S'assurer que la clôture est activée pour matérialiser la dalle béton ET la clôture
-      if (!showFenceRef.current) {
-        setShowFence(true);
-        showFenceRef.current = true;
-        await delay(180);
-      } else {
-        await delay(80);
-      }
+      const hasFence = Boolean(showFenceRef.current);
+      await delay(100);
 
       // --- CAPTURE 1 : PLAN DE MASSE (2D_TOP) ---
       camera.up.set(0, 0, -1);
@@ -380,20 +374,26 @@ export default function BatteryStationVisualizer({
         ctx.fillText(`Emprise au sol : ${dLen.toFixed(2)}m × ${dWid.toFixed(2)}m = ${dArea} m²`, 52, 100);
         ctx.fillStyle = '#64748b';
         ctx.font = '600 12.5px system-ui, -apple-system, sans-serif';
-        ctx.fillText(`Dalle béton armé 0.20m • ${qty} armoires 1.15m × 1.44m • Portillon technique Ouest`, 52, 125);
+        const techDesc = hasFence
+          ? `Dalle béton armé 0.20m • ${qty} armoires 1.15m × 1.44m • Portillon technique Ouest`
+          : `Dalle béton armé 0.20m • ${qty} armoires 1.15m × 1.44m • Sans clôture`;
+        ctx.fillText(techDesc, 52, 125);
         ctx.fillStyle = '#059669';
         ctx.font = '800 13px system-ui, -apple-system, sans-serif';
         ctx.fillText('✓ Conforme Déclaration Préalable (< 20 m²)', 52, 149);
 
         // 4. Cotations directes autour de la dalle béton & clôture sur le plan de masse
-        // Cotation horizontale (Longueur dalle + clôture : 6.20 m)
+        // Cotation horizontale (Longueur dalle + clôture ou dalle seule)
         drawRoundedRect(ctx, W / 2 - 190, H - 82, 380, 36, 10, 'rgba(255,255,255,0.96)', '#d8b4fe', 1.5);
         ctx.fillStyle = '#7e22ce';
         ctx.font = '900 14px system-ui, -apple-system, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`←  Longueur Dalle & Clôture : ${dLen.toFixed(2)} M  →`, W / 2, H - 64);
+        const cotationLong = hasFence
+          ? `←  Longueur Dalle & Clôture : ${dLen.toFixed(2)} M  →`
+          : `←  Longueur Dalle Béton : ${dLen.toFixed(2)} M  →`;
+        ctx.fillText(cotationLong, W / 2, H - 64);
 
-        // Cotation verticale à droite (Largeur dalle + clôture : 3.20 m)
+        // Cotation verticale à droite (Largeur dalle + clôture ou dalle seule)
         drawRoundedRect(ctx, W - 175, H / 2 - 48, 145, 96, 12, 'rgba(255,255,255,0.96)', '#d8b4fe', 1.5);
         ctx.fillStyle = '#7e22ce';
         ctx.font = '900 13px system-ui, -apple-system, sans-serif';
@@ -403,22 +403,35 @@ export default function BatteryStationVisualizer({
         ctx.fillText(`Largeur : ${dWid.toFixed(2)} M`, W - 102, H / 2 - 6);
         ctx.fillStyle = '#64748b';
         ctx.font = '700 11.5px system-ui, -apple-system, sans-serif';
-        ctx.fillText(`(Clôture H: 2.00m)`, W - 102, H / 2 + 14);
+        ctx.fillText(hasFence ? `(Clôture H: 2.00m)` : `(Dalle béton armé)`, W - 102, H / 2 + 14);
         ctx.fillStyle = '#7e22ce';
         ctx.font = '900 13px system-ui, -apple-system, sans-serif';
         ctx.fillText('↓', W - 102, H / 2 + 33);
 
-        // 5. Badge bas gauche : "☑ Clôture rigide vert RAL 6005"
-        drawRoundedRect(ctx, 20, H - 56, 250, 38, 12, 'rgba(255,255,255,0.96)', '#e2e8f0', 1.5);
-        drawRoundedRect(ctx, 32, H - 46, 18, 18, 4, '#047857', '#047857', 1);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 13px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('✓', 41, H - 36);
-        ctx.fillStyle = '#334155';
-        ctx.font = '700 14px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('Clôture rigide vert RAL 6005', 58, H - 37);
+        // 5. Badge bas gauche : avec ou sans clôture
+        if (hasFence) {
+          drawRoundedRect(ctx, 20, H - 56, 250, 38, 12, 'rgba(255,255,255,0.96)', '#e2e8f0', 1.5);
+          drawRoundedRect(ctx, 32, H - 46, 18, 18, 4, '#047857', '#047857', 1);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 13px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('✓', 41, H - 36);
+          ctx.fillStyle = '#334155';
+          ctx.font = '700 14px system-ui, -apple-system, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('Clôture rigide vert RAL 6005', 58, H - 37);
+        } else {
+          drawRoundedRect(ctx, 20, H - 56, 240, 38, 12, 'rgba(255,255,255,0.96)', '#e2e8f0', 1.5);
+          drawRoundedRect(ctx, 32, H - 46, 18, 18, 4, '#64748b', '#64748b', 1);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 13px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('–', 41, H - 36);
+          ctx.fillStyle = '#334155';
+          ctx.font = '700 14px system-ui, -apple-system, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('Sans clôture périphérique', 58, H - 37);
+        }
 
         return c.toDataURL('image/jpeg', 0.95);
       };
@@ -468,22 +481,35 @@ export default function BatteryStationVisualizer({
         ctx.fillText('H: 2.38 M', 96, H / 2 - 6);
         ctx.fillStyle = '#64748b';
         ctx.font = '700 12px system-ui, -apple-system, sans-serif';
-        ctx.fillText('(Clôture 2.00M)', 96, H / 2 + 14);
+        ctx.fillText(hasFence ? '(Clôture 2.00M)' : '(Armoires)', 96, H / 2 + 14);
         ctx.fillStyle = '#7e22ce';
         ctx.font = '900 14px system-ui, -apple-system, sans-serif';
         ctx.fillText('↓', 96, H / 2 + 34);
 
-        // 4. Badge bas gauche : "☑ Clôture rigide vert RAL 6005"
-        drawRoundedRect(ctx, 20, H - 56, 250, 38, 12, 'rgba(255,255,255,0.96)', '#e2e8f0', 1.5);
-        drawRoundedRect(ctx, 32, H - 46, 18, 18, 4, '#047857', '#047857', 1);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 13px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('✓', 41, H - 36);
-        ctx.fillStyle = '#334155';
-        ctx.font = '700 14px system-ui, -apple-system, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('Clôture rigide vert RAL 6005', 58, H - 37);
+        // 4. Badge bas gauche : avec ou sans clôture
+        if (hasFence) {
+          drawRoundedRect(ctx, 20, H - 56, 250, 38, 12, 'rgba(255,255,255,0.96)', '#e2e8f0', 1.5);
+          drawRoundedRect(ctx, 32, H - 46, 18, 18, 4, '#047857', '#047857', 1);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 13px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('✓', 41, H - 36);
+          ctx.fillStyle = '#334155';
+          ctx.font = '700 14px system-ui, -apple-system, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('Clôture rigide vert RAL 6005', 58, H - 37);
+        } else {
+          drawRoundedRect(ctx, 20, H - 56, 240, 38, 12, 'rgba(255,255,255,0.96)', '#e2e8f0', 1.5);
+          drawRoundedRect(ctx, 32, H - 46, 18, 18, 4, '#64748b', '#64748b', 1);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '900 13px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('–', 41, H - 36);
+          ctx.fillStyle = '#334155';
+          ctx.font = '700 14px system-ui, -apple-system, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('Sans clôture périphérique', 58, H - 37);
+        }
 
         return c.toDataURL('image/jpeg', 0.95);
       };
@@ -509,8 +535,9 @@ export default function BatteryStationVisualizer({
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(203, 213, 225);
+      const subFenceText = hasFence ? 'Clôture RAL 6005 (H : 2.00 m)' : 'Sans clôture périphérique';
       doc.text(
-        `Dalle béton armé : ${dLen.toFixed(2)} m × ${dWid.toFixed(2)} m (${dArea.toFixed(2)} m² < 20 m²)  |  ${qty} armoires CESC 261 (H : 2.38 m)  |  Clôture RAL 6005 (H : 2.00 m)`,
+        `Dalle béton armé : ${dLen.toFixed(2)} m × ${dWid.toFixed(2)} m (${dArea.toFixed(2)} m² < 20 m²)  |  ${qty} armoires CESC 261 (H : 2.38 m)  |  ${subFenceText}`,
         marginX + 4,
         20.5
       );
@@ -528,8 +555,11 @@ export default function BatteryStationVisualizer({
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
+      const topTitle = hasFence
+        ? `1. PLAN DE MASSE — DALLE BÉTON (${dLen.toFixed(2)}m × ${dWid.toFixed(2)}m = ${dArea} m²) & CLÔTURE RIGIDE VERT RAL 6005`
+        : `1. PLAN DE MASSE — DALLE BÉTON (${dLen.toFixed(2)}m × ${dWid.toFixed(2)}m = ${dArea} m²)`;
       doc.text(
-        `1. PLAN DE MASSE — DALLE BÉTON (${dLen.toFixed(2)}m × ${dWid.toFixed(2)}m = ${dArea} m²) & CLÔTURE RIGIDE VERT RAL 6005`,
+        topTitle,
         marginX + 3.5,
         box1Y + 5.1
       );
@@ -550,8 +580,11 @@ export default function BatteryStationVisualizer({
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
+      const frontTitle = hasFence
+        ? `2. VUE DE FACE (FAÇADE SUD) — ÉLÉVATION COTÉE (LONGUEUR DALLE ${dLen.toFixed(2)} M • HAUTEUR ARMOIRES 2.38 M • CLÔTURE 2.00 M)`
+        : `2. VUE DE FACE (FAÇADE SUD) — ÉLÉVATION COTÉE (LONGUEUR DALLE ${dLen.toFixed(2)} M • HAUTEUR ARMOIRES 2.38 M)`;
       doc.text(
-        `2. VUE DE FACE (FAÇADE SUD) — ÉLÉVATION COTÉE (LONGUEUR DALLE ${dLen.toFixed(2)} M • HAUTEUR ARMOIRES 2.38 M • CLÔTURE 2.00 M)`,
+        frontTitle,
         marginX + 3.5,
         box2Y + 5.1
       );
@@ -582,11 +615,25 @@ export default function BatteryStationVisualizer({
     } catch (err) {
       console.error('Erreur génération PDF Cotations:', err);
     } finally {
-      if (!savedFence) {
-        // On laisse la clôture cochée car demandée sur le plan de masse et vue de face,
-        // et on synchronise le parent si besoin
-        if (onFenceChange) onFenceChange(true);
+      setShowFence(savedFence);
+      showFenceRef.current = savedFence;
+      if (savedMode === '3D') {
+        camera.up.set(0, 1, 0);
+        camera.position.set(dLen * 1.3, 4.2, dWid * 2.3);
+        ctrl.target.set(0, 1.1, 0);
+        camera.lookAt(0, 1.1, 0);
+      } else if (savedMode === '2D_FRONT') {
+        camera.up.set(0, 1, 0);
+        camera.position.set(0, 1.25, Math.max(dLen * 1.45, 9.2));
+        ctrl.target.set(0, 1.25, 0);
+        camera.lookAt(0, 1.25, 0);
+      } else if (savedMode === '2D_TOP') {
+        camera.up.set(0, 0, -1);
+        camera.position.set(0, Math.max(dLen * 1.6, 10.5), 0);
+        ctrl.target.set(0, 0, 0);
+        camera.lookAt(0, 0, 0);
       }
+      ctrl.update();
       setInternalMode(savedMode);
       setIsExportingPdf(false);
     }
@@ -676,7 +723,7 @@ export default function BatteryStationVisualizer({
           <div className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-purple-300 text-[10px] font-black text-purple-700 shadow-md flex flex-col items-center">
             <span>&uarr;</span>
             <span>H: 2.38 M</span>
-            <span className="text-[9px] text-slate-500 font-semibold">(Clôture 2.00M)</span>
+            {showFence && <span className="text-[9px] text-slate-500 font-semibold">(Clôture 2.00M)</span>}
             <span>&darr;</span>
           </div>
         </div>
@@ -698,7 +745,7 @@ export default function BatteryStationVisualizer({
                 Emprise au sol : {dLen.toFixed(2)}m × {dWid.toFixed(2)}m = {dArea} m²
               </div>
               <div className="text-slate-500 text-[9px]">
-                Dalle béton armé 0.20m • {qty} armoires 1.15m × 1.44m • Portillon technique Ouest
+                Dalle béton armé 0.20m • {qty} armoires 1.15m × 1.44m{showFence ? ' • Portillon technique Ouest' : ' • Sans clôture'}
               </div>
               <div className="text-emerald-600 font-extrabold text-[9px]">
                 ✓ Conforme Déclaration Préalable (&lt; 20 m²)

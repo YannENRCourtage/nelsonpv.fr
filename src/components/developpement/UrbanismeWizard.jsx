@@ -8240,7 +8240,17 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                                 cabinetModel={batteryStorage?.model || 'CESC Mercury 261'}
                                 dalleLength={batteryStorage?.dalleLength || activeB.length || 6.20}
                                 dalleWidth={batteryStorage?.dalleWidth || activeB.width || 3.20}
-                                initialShowFence={Boolean(captures?.showFence || activeB?.captures?.showFence || editedProject?.bessShowFence || editedProject?.urbanisme_captures?.showFence)}
+                                initialShowFence={
+                                  captures?.showFence !== undefined
+                                    ? Boolean(captures.showFence)
+                                    : activeB?.captures?.showFence !== undefined
+                                    ? Boolean(activeB.captures.showFence)
+                                    : editedProject?.bessShowFence !== undefined
+                                    ? Boolean(editedProject.bessShowFence)
+                                    : editedProject?.urbanisme_captures?.showFence !== undefined
+                                    ? Boolean(editedProject.urbanisme_captures.showFence)
+                                    : true
+                                }
                                 onFenceChange={(checked) => {
                                   setCaptures(prev => ({ ...prev, showFence: checked }));
                                   setEditedProject(prev => ({
