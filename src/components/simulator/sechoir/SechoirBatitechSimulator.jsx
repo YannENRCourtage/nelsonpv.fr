@@ -283,7 +283,7 @@ export default function SechoirBatitechSimulator({ selectedProject, onStateUpdat
         projectName: selectedProject?.name,
         customClientName: options.customClientName || store.clientName || selectedProject?.name,
         includeCashFlowPage: options.includeCashFlowPage !== undefined ? options.includeCashFlowPage : true,
-        includeAutoconsumptionPage: options.includeAutoconsoPage !== undefined ? options.includeAutoconsoPage : (options.includeAutoconsumptionPage !== undefined ? options.includeAutoconsumptionPage : true),
+        includeAutoconsumptionPage: false,
         includeBenefitsPage: options.includeBenefitsPage !== undefined ? options.includeBenefitsPage : true,
         hasBattery: options.hasBattery !== undefined ? options.hasBattery : store.hasBattery,
         batteryModelId: options.batteryModelId || store.batteryModelId,

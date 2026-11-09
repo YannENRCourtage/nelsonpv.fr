@@ -4,7 +4,7 @@ import {
   FileText, Users, Zap, CheckCircle2, Clock, AlertCircle, AlertTriangle,
   Calendar, MapPin, Building, Sun, Battery, Ruler, Navigation, MessageSquare,
   Sparkles, Mail, ShieldCheck, ChevronRight, Check, ArrowLeft, RefreshCw,
-  FolderKanban, ExternalLink, Copy
+  FolderKanban, ExternalLink, Copy, Save, Loader2
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { getUserColor, isCrmProjectAbandoned } from '@/lib/utils';
@@ -152,13 +152,15 @@ export default function EtudeDossierView({
   ];
 
   const { user } = useAuth();
-  const saveTimeoutRef = useRef(null);
   const stepSaveTimeoutRef = useRef(null);
 
   // État local des étapes pour le projet
   const [stepsState, setStepsState] = useState({});
   const [projectComments, setProjectComments] = useState('');
   const [isCommentSaved, setIsCommentSaved] = useState(false);
+  const [isSavingComment, setIsSavingComment] = useState(false);
+  const lastLoadedProjectIdRef = useRef(null);
+  const isDirtyCommentRef = useRef(false);
 
   // État de la modale de demande de certificat tacite
   const [certificatModalData, setCertificatModalData] = useState({
@@ -172,9 +174,18 @@ export default function EtudeDossierView({
   useEffect(() => {
     if (!project?.id) return;
 
-    // Charger les commentaires
-    const savedComment = project.devComments || project.notes || project.description || localStorage.getItem(`nelson_comment_${project.id}`) || '';
-    setProjectComments(savedComment);
+    // Charger les commentaires uniquement si on change de projet ou si pas de saisie en cours
+    if (lastLoadedProjectIdRef.current !== project.id) {
+      lastLoadedProjectIdRef.current = project.id;
+      isDirtyCommentRef.current = false;
+      const savedComment = project.devComments || project.notes || project.description || localStorage.getItem(`nelson_comment_${project.id}`) || '';
+      setProjectComments(savedComment);
+    } else if (!isDirtyCommentRef.current) {
+      const savedComment = project.devComments || project.notes || project.description || localStorage.getItem(`nelson_comment_${project.id}`) || '';
+      if (savedComment !== projectComments) {
+        setProjectComments(savedComment);
+      }
+    }
 
     // Charger l'état des 9 étapes (Firestore en priorité, fallback localStorage)
     let savedSteps = project.devWorkflow || project.workflow || project.stepsState;
@@ -235,7 +246,7 @@ export default function EtudeDossierView({
       defaultState.dp.depositDate = resolvedDate ? formatToIsoDate(resolvedDate) : '';
       setStepsState(defaultState);
     }
-  }, [project?.id, project?.devWorkflow, project?.devComments]);
+  }, [project?.id, project?.devWorkflow]);
 
   // Sauvegarde d'une étape avec synchronisation mutuelle DP / PC et mise à jour Firestore temps réel
   const updateStep = (stepId, updates) => {
@@ -360,13 +371,23 @@ export default function EtudeDossierView({
     }
   };
 
-  // Sauvegarde des commentaires et synchronisation immédiate en dur dans le chat du projet
-  const saveCommentAndSyncChat = async (val) => {
-    if (!project?.id) return;
-    setIsCommentSaved(true);
-    setTimeout(() => setIsCommentSaved(false), 2000);
+  const handleCommentChange = (val) => {
+    isDirtyCommentRef.current = true;
+    setProjectComments(val);
+    if (project?.id) {
+      localStorage.setItem(`nelson_comment_${project.id}`, val);
+    }
+  };
+
+  // Sauvegarde manuelle des commentaires et synchronisation dans le chat du projet
+  const handleSaveComment = async () => {
+    if (!project?.id || isSavingComment) return;
+    setIsSavingComment(true);
 
     try {
+      const val = projectComments;
+      const cleanText = (val || '').trim();
+
       // 1. Récupérer les chatLines existantes du projet
       let currentLines = Array.isArray(project.chatLines) ? [...project.chatLines] : [];
       try {
@@ -379,7 +400,6 @@ export default function EtudeDossierView({
       }
 
       const author = user?.name || user?.displayName || user?.firstName || project.assignedUser || project.commercial || 'Yann';
-      const cleanText = (val || '').trim();
 
       let updatedLines = [...currentLines];
       if (cleanText) {
@@ -416,6 +436,16 @@ export default function EtudeDossierView({
 
       // 4. Mettre à jour le cache local et notifier les écouteurs (ProjectContext, ChatBox, etc.)
       localStorage.setItem(`nelson_comment_${project.id}`, val);
+      isDirtyCommentRef.current = false;
+
+      if (onUpdateProject) {
+        onUpdateProject(project.id, {
+          devComments: val,
+          notes: val,
+          chatLines: updatedLines,
+        });
+      }
+
       window.dispatchEvent(new Event('projectsUpdated'));
       window.dispatchEvent(new Event('storage'));
 
@@ -430,28 +460,23 @@ export default function EtudeDossierView({
           console.warn('Notification creation failed for devComments:', notifErr);
         }
       }
+
+      setIsCommentSaved(true);
+      setTimeout(() => setIsCommentSaved(false), 2500);
+
+      toast({
+        title: "Commentaire enregistré",
+        description: "Le commentaire a bien été sauvegardé.",
+      });
     } catch (err) {
       console.error('Erreur mise à jour devComments & chatLines Firestore:', err);
-    }
-  };
-
-  const handleCommentChange = (val) => {
-    setProjectComments(val);
-    if (!project?.id) return;
-    localStorage.setItem(`nelson_comment_${project.id}`, val);
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    saveTimeoutRef.current = setTimeout(() => {
-      saveCommentAndSyncChat(val);
-    }, 600);
-  };
-
-  const handleCommentBlur = () => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-      saveCommentAndSyncChat(projectComments);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'enregistrer le commentaire.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingComment(false);
     }
   };
 
@@ -988,25 +1013,47 @@ export default function EtudeDossierView({
           <div className="lg:col-span-4 bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex flex-col justify-between">
             <div className="space-y-1.5 flex-1 flex flex-col">
               <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                <span className="flex items-center gap-1 text-blue-700">
+                <span className="flex items-center gap-1.5 text-blue-700">
                   <MessageSquare className="w-3.5 h-3.5" />
                   Commentaires du dossier
                 </span>
-                <span className="text-[10px] text-slate-400 font-normal italic">
-                  {isCommentSaved ? (
-                    <span className="text-emerald-600 font-bold flex items-center gap-0.5">
-                      <Check className="w-3 h-3" /> Enregistré
+                <div className="flex items-center gap-2">
+                  {isCommentSaved && (
+                    <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 transition-all">
+                      <Check className="w-3 h-3 stroke-[2.5]" /> Enregistré
                     </span>
-                  ) : (
-                    "Synchronisé auto"
                   )}
-                </span>
+                  <button
+                    type="button"
+                    onClick={handleSaveComment}
+                    disabled={isSavingComment}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg text-xs font-semibold shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    title="Sauvegarder le commentaire"
+                  >
+                    {isSavingComment ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Enregistrement...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-3 h-3" />
+                        <span>Sauvegarder</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
               <textarea
                 rows={3}
                 value={projectComments}
                 onChange={(e) => handleCommentChange(e.target.value)}
-                onBlur={handleCommentBlur}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    handleSaveComment();
+                  }
+                }}
                 placeholder="Ajoutez des remarques ou suivis spécifiques..."
                 className="w-full flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none shadow-2xs min-h-[75px]"
               />

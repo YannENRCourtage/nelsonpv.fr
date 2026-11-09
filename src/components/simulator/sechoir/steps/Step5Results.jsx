@@ -95,7 +95,7 @@ export default function Step5Results({ onExportPDF }) {
 
   const [clientName, setClientName] = useState(storeClientName || '');
   const [includeCashFlowPage, setIncludeCashFlowPage] = useState(true);
-  const [includeAutoconsoPage, setIncludeAutoconsoPage] = useState(true);
+  const [includeAutoconsoPage, setIncludeAutoconsoPage] = useState(false);
   const [includeBenefitsPage, setIncludeBenefitsPage] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -944,31 +944,7 @@ export default function Step5Results({ onExportPDF }) {
                 </div>
               </button>
 
-              {/* Option Page 3 : Simulation d'Autoconsommation */}
-              <button
-                type="button"
-                onClick={() => setIncludeAutoconsoPage(!includeAutoconsoPage)}
-                className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all ${
-                  includeAutoconsoPage
-                    ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-200 shadow-sm'
-                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:border-slate-600'
-                }`}
-              >
-                <div className="mt-0.5 shrink-0">
-                  {includeAutoconsoPage ? (
-                    <CheckSquare className="w-5 h-5 text-cyan-400" />
-                  ) : (
-                    <Square className="w-5 h-5 text-slate-500" />
-                  )}
-                </div>
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-cyan-400">Page 3</div>
-                  <div className="text-sm font-semibold text-white mt-0.5">Simulation d'Autoconsommation</div>
-                  <div className="text-xs text-slate-400 mt-1">Matrices d'économies selon la consommation (avec et sans stockage batterie).</div>
-                </div>
-              </button>
-
-              {/* Option Page 6 : Synthèse Bénéfices */}
+              {/* Option Page Finale : Synthèse Bénéfices */}
               <button
                 type="button"
                 onClick={() => setIncludeBenefitsPage(!includeBenefitsPage)}
@@ -986,7 +962,7 @@ export default function Step5Results({ onExportPDF }) {
                   )}
                 </div>
                 <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-amber-400">Page 6 (Recommandée)</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-amber-400">Page 5 (Recommandée)</div>
                   <div className="text-sm font-semibold text-white mt-0.5">Synthèse des Bénéfices d'Exploitation</div>
                   <div className="text-xs text-slate-400 mt-1">Avantages financiers &amp; opérationnels, graphique d'impact sur la baisse des charges.</div>
                 </div>

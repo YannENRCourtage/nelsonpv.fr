@@ -36,12 +36,16 @@ import {
   YAxis,
   Tooltip,
   Legend,
-  CartesianGrid
+  CartesianGrid,
+  ReferenceLine
 } from 'recharts';
 import {
   STORAGE_CATALOG,
   LOAD_PROFILES,
+  computeBessScenario,
   computeStorageProject,
+  computeDailyAverageKwh,
+  getDefaultScenariosConfig,
   findOptimalBattery,
   readPrmCache,
   PRM_HANDOFF_KEY,
@@ -60,13 +64,13 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
   // ── 1. Source des données : 'prm' (Enedis Data Connect) ou 'manual' ──
   const [sourceMode, setSourceMode] = useState('prm');
   const [prmList, setPrmList] = useState([]);
-  const [selectedPrm, setSelectedPrm] = useState('16238205462430');
-  const [clientName, setClientName] = useState('Eric GILBERT');
-  const [siteAddress, setSiteAddress] = useState('594 Chemin des Bois Reynaud 24800 Saint-Martin-de-Fressengeas');
+  const [selectedPrm, setSelectedPrm] = useState('50009371514981');
+  const [clientName, setClientName] = useState('EARL DES TERRES VIEILLES - LATOURNERIE Franck');
+  const [siteAddress, setSiteAddress] = useState('LIEU DIT TERRES VIEILLES, 24310 BRANTOME EN PERIGORD');
 
   // Données de consommation
-  const [annualKwh, setAnnualKwh] = useState(184200);
-  const [peakKw, setPeakKw] = useState(76.0);
+  const [annualKwh, setAnnualKwh] = useState(211781);
+  const [peakKw, setPeakKw] = useState(90.0);
   const [profileKey, setProfileKey] = useState('agricole');
   const [hpPrice, setHpPrice] = useState(0.20);
   const [hcPrice, setHcPrice] = useState(0.14);
@@ -158,19 +162,21 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
   const refreshPrmList = useCallback(async () => {
     const fallbackList = [
       {
+        prm: '50009371514981',
+        name: 'EARL DES TERRES VIEILLES - LATOURNERIE Franck',
+        address: 'LIEU DIT TERRES VIEILLES, 24310 BRANTOME EN PERIGORD',
+        annualKwh: 211781,
+        avgDailyKwh: 578.6,
+        peakKw: 90.0,
+        profile: 'agricole'
+      },
+      {
         prm: '16238205462430',
         name: 'Eric GILBERT',
         address: '594 Chemin des Bois Reynaud 24800 Saint-Martin-de-Fressengeas',
         annualKwh: 184200,
+        avgDailyKwh: 504.3,
         peakKw: 76.0,
-        profile: 'agricole'
-      },
-      {
-        prm: '50009371514981',
-        name: 'EARL DES TERRES VIEILLES',
-        address: 'LIEU DIT TERRES VIEILLES, 24310 BRANTOME EN PERIGORD',
-        annualKwh: 211781,
-        peakKw: 90.0,
         profile: 'agricole'
       },
       {
@@ -255,12 +261,15 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
       if (handoffRaw) {
         const h = JSON.parse(handoffRaw);
         if (h && h.prm) {
+          const newKwh = (h.annualKwh && Number(h.annualKwh) !== 5850) ? Number(h.annualKwh) : 211781;
+          const newPeak = (h.peakKw && Number(h.peakKw) > 0) ? Number(h.peakKw) : 90.0;
           setSelectedPrm(h.prm);
           if (h.titulaire || h.clientName) setClientName(h.titulaire || h.clientName);
           if (h.adresse) setSiteAddress(h.adresse);
-          if (h.annualKwh && Number(h.annualKwh) !== 5850) setAnnualKwh(Number(h.annualKwh));
-          if (h.peakKw && Number(h.peakKw) > 0) setPeakKw(Number(h.peakKw));
+          setAnnualKwh(newKwh);
+          setPeakKw(newPeak);
           if (h.hourlyProfile) setHourlyProfile(h.hourlyProfile);
+          setScenariosConfig(getDefaultScenariosConfig(newKwh, newPeak));
           setSourceMode('prm');
           localStorage.removeItem(PRM_HANDOFF_KEY);
           toast({
@@ -277,11 +286,14 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     setSelectedPrm(prmVal);
     const item = prmList.find(p => p.prm === prmVal);
     if (item) {
+      const newKwh = item.annualKwh || 50000;
+      const newPeak = item.peakKw || 30.0;
       setClientName(item.name || 'Client Professionnel');
       setSiteAddress(item.address || 'France');
-      setAnnualKwh(item.annualKwh || 50000);
-      setPeakKw(item.peakKw || 30.0);
+      setAnnualKwh(newKwh);
+      setPeakKw(newPeak);
       setProfileKey(item.profile || 'agricole');
+      setScenariosConfig(getDefaultScenariosConfig(newKwh, newPeak));
       if (item.hourlyProfile) setHourlyProfile(item.hourlyProfile);
       else setHourlyProfile(null);
     }
@@ -292,43 +304,49 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     return Math.round(((2 * hpPrice + hcPrice) / 3) * 1000) / 1000;
   }, [hpPrice, hcPrice]);
 
-  // Moteur de calcul complet
+  // Moteur de calcul complet (via computeBessScenario — Source Unique de Vérité)
   const sim = useMemo(() => {
-    return computeStorageProject({
-      annualKwh,
-      peakKw,
-      profileKey,
-      hourlyProfileKw: sourceMode === 'prm' ? hourlyProfile : null,
-      hpPrice,
-      hcPrice,
-      turpePowerPrice: turpePrice,
-      solar: {
-        enabled: solarEnabled,
-        isNew: solarIsNew,
-        kwc: Number(solarKwc) || 0,
-        specificYield: Number(solarSpecificYield) || 1180,
-        capexHt: Number(solarCapexHt) || 0,
-        allowSurplusResale,
-        sellPrice: allowSurplusResale ? (Number(solarSellPrice) || avgPrmConsoTariff) : 0,
-        avgConsoTariff: avgPrmConsoTariff
+    return computeBessScenario(
+      {
+        annualKwh,
+        peakKw,
+        profileKey,
+        hourlyProfileKw: sourceMode === 'prm' ? hourlyProfile : null,
+        hpPrice,
+        hcPrice,
+        turpePowerPrice: turpePrice,
+        solar: {
+          enabled: solarEnabled,
+          isNew: solarIsNew,
+          kwc: Number(solarKwc) || 0,
+          specificYield: Number(solarSpecificYield) || 1180,
+          capexHt: Number(solarCapexHt) || 0,
+          allowSurplusResale,
+          sellPrice: allowSurplusResale ? (Number(solarSellPrice) || avgPrmConsoTariff) : 0,
+          avgConsoTariff: avgPrmConsoTariff
+        },
+        indexationPct,
+        horizon: 20
       },
-      model: currentModel,
-      quantity,
-      hardwarePriceHt: customHwPrice !== null ? customHwPrice : (customBatteryPrices[selectedModelId] !== undefined ? customBatteryPrices[selectedModelId] : undefined),
-      installPriceHt: customInstallPrice !== null ? customInstallPrice : undefined,
-      discountPct,
-      opexAnnualHt: customOpex !== null ? customOpex : undefined,
-      indexationPct,
-      gridConnection,
-      gridDistanceM,
-      gridRevenuePerKw: 80,
-      finance: {
-        ratePct: Number(loanRatePct) || 4.2,
-        years: Number(loanYears) || 10,
-        equityPct: Number(equityPct) || 20
+      {
+        model: currentModel,
+        quantity,
+        hardwarePriceHt: customHwPrice !== null ? customHwPrice : (customBatteryPrices[selectedModelId] !== undefined ? customBatteryPrices[selectedModelId] : undefined),
+        installPriceHt: customInstallPrice !== null ? customInstallPrice : undefined,
+        discountPct,
+        opexAnnualHt: customOpex !== null ? customOpex : undefined,
+        gridConnection,
+        gridDistanceM,
+        gridRevenuePerKw: 80
       },
-      horizon: 20
-    });
+      {
+        finance: {
+          ratePct: Number(loanRatePct) || 4.2,
+          years: Number(loanYears) || 10,
+          equityPct: Number(equityPct) || 20
+        }
+      }
+    );
   }, [
     annualKwh,
     peakKw,
@@ -363,88 +381,64 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
   ]);
 
   // ── 3 Scénarios Comparatifs (A, B, C) pour l'affichage interactif & l'export PDF ──
-  const [scenariosConfig, setScenariosConfig] = useState([
-    {
-      id: 'opt1',
-      title: 'Option 1 — Rentabilité Max',
-      modelId: 'ST54K',
-      quantity: 1,
-      customHwPrice: null,
-      customInstallPrice: null,
-      bonusGridFcr: false,
-      includedInPdf: true
-    },
-    {
-      id: 'opt2',
-      title: 'Option 2 — Équilibre',
-      modelId: 'ST62K',
-      quantity: 1,
-      customHwPrice: null,
-      customInstallPrice: null,
-      bonusGridFcr: false,
-      includedInPdf: true
-    },
-    {
-      id: 'opt3',
-      title: 'Option 3 — Haute Autonomie',
-      modelId: 'UNIV_ESS_261_AC',
-      quantity: 1,
-      customHwPrice: null,
-      customInstallPrice: null,
-      bonusGridFcr: false,
-      includedInPdf: true
-    }
-  ]);
+  const [scenariosConfig, setScenariosConfig] = useState(() => getDefaultScenariosConfig(211781, 90.0));
 
   const computedScenarios = useMemo(() => {
     return scenariosConfig.map(sc => {
       const model = STORAGE_CATALOG.find(m => m.id === sc.modelId) || STORAGE_CATALOG[0];
       const hwPrice = sc.customHwPrice !== null ? sc.customHwPrice : (customBatteryPrices[sc.modelId] !== undefined ? customBatteryPrices[sc.modelId] : undefined);
-      const computedSim = computeStorageProject({
-        annualKwh,
-        peakKw,
-        profileKey,
-        hourlyProfileKw: sourceMode === 'prm' ? hourlyProfile : null,
-        hpPrice,
-        hcPrice,
-        turpePowerPrice: turpePrice,
-        solar: {
-          enabled: solarEnabled,
-          isNew: solarIsNew,
-          kwc: Number(solarKwc) || 0,
-          specificYield: Number(solarSpecificYield) || 1180,
-          capexHt: Number(solarCapexHt) || 0,
-          allowSurplusResale,
-          sellPrice: allowSurplusResale ? (Number(solarSellPrice) || avgPrmConsoTariff) : 0,
-          avgConsoTariff: avgPrmConsoTariff
+      const computedSim = computeBessScenario(
+        {
+          annualKwh,
+          peakKw,
+          profileKey,
+          hourlyProfileKw: sourceMode === 'prm' ? hourlyProfile : null,
+          hpPrice,
+          hcPrice,
+          turpePowerPrice: turpePrice,
+          solar: {
+            enabled: solarEnabled,
+            isNew: solarIsNew,
+            kwc: Number(solarKwc) || 0,
+            specificYield: Number(solarSpecificYield) || 1180,
+            capexHt: Number(solarCapexHt) || 0,
+            allowSurplusResale,
+            sellPrice: allowSurplusResale ? (Number(solarSellPrice) || avgPrmConsoTariff) : 0,
+            avgConsoTariff: avgPrmConsoTariff
+          },
+          indexationPct,
+          horizon: 20
         },
-        model,
-        quantity: sc.quantity,
-        hardwarePriceHt: hwPrice,
-        installPriceHt: sc.customInstallPrice !== null ? sc.customInstallPrice : undefined,
-        discountPct,
-        indexationPct,
-        gridConnection: !!sc.bonusGridFcr,
-        gridDistanceM: 25,
-        gridRevenuePerKw: 80,
-        finance: {
-          ratePct: Number(loanRatePct) || 4.2,
-          years: Number(loanYears) || 10,
-          equityPct: Number(equityPct) || 20
+        {
+          model,
+          quantity: sc.quantity,
+          hardwarePriceHt: hwPrice,
+          installPriceHt: sc.customInstallPrice !== null ? sc.customInstallPrice : undefined,
+          discountPct,
+          gridConnection: !!sc.bonusGridFcr,
+          gridDistanceM: 25,
+          gridRevenuePerKw: 80
         },
-        horizon: 20
-      });
+        {
+          finance: {
+            ratePct: Number(loanRatePct) || 4.2,
+            years: Number(loanYears) || 10,
+            equityPct: Number(equityPct) || 20
+          }
+        }
+      );
 
       const triVal = computedSim.kpis.triProject || 0;
+      const pbVal = computedSim.kpis.payback != null ? `${computedSim.kpis.payback.toFixed(1)} ans` : '> 20 ans';
       let badgeLabel = '';
       if (sc.id === 'opt1') {
-        badgeLabel = `Meilleur TRI (${triVal.toFixed(1)} %)`;
+        badgeLabel = `Écrêtage Agile (${pbVal} • TRI Projet ${triVal.toFixed(1)} %)`;
       } else if (sc.id === 'opt2') {
-        badgeLabel = `Équilibre Écrêtage / Budget (TRI ${triVal.toFixed(1)} %)`;
+        badgeLabel = `Meilleur ROI (${pbVal} • TRI Projet ${triVal.toFixed(1)} %)`;
       } else {
         badgeLabel = sc.bonusGridFcr
-          ? `Haute Autonomie + FCR (${triVal.toFixed(1)} %)`
-          : `Haute Autonomie (TRI ${triVal.toFixed(1)} %)`;
+          ? `Haute Autonomie + FCR (TRI Projet ${triVal.toFixed(1)} %)`
+          : `Haute Autonomie (${pbVal} • TRI Projet ${triVal.toFixed(1)} %)`;
       }
 
       return {
@@ -573,12 +567,17 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
     }
   };
 
-  // Export PDF Bancaire avec choix préalable de l'option BESS
+  // Export PDF Bancaire (Direct depuis le bouton global sur l'option active/recommandée, ou depuis chaque carte Option 1/2/3)
   const [isExportingBank, setIsExportingBank] = useState(false);
   const [showBankOptionModal, setShowBankOptionModal] = useState(false);
 
   const handleExportBankPdf = () => {
-    setShowBankOptionModal(true);
+    const activeIdx = computedScenarios.findIndex(
+      sc => sc.modelId === selectedModelId && Number(sc.quantity) === Number(quantity)
+    );
+    const chosenIdx = activeIdx >= 0 ? activeIdx : 1;
+    const targetScenario = computedScenarios[chosenIdx] || computedScenarios[1] || computedScenarios[0];
+    handleGenerateBankPdfForScenario(targetScenario, chosenIdx + 1);
   };
 
   const handleGenerateBankPdfForScenario = (targetScenario, optionNumber = 1) => {
@@ -719,7 +718,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                   {fmtNum(annualKwh)} kWh/an
                 </div>
                 <div className="text-xs font-semibold text-blue-800">
-                  Moyenne {fmtNum(annualKwh / 365, 1)} kWh/j · Pointe max {peakKw.toFixed(1)} kW
+                  Moyenne {fmtNum(sim.dailyKwh, 1)} kWh/j · Pointe max {peakKw.toFixed(1)} kW
                 </div>
                 <div className="text-[11px] font-bold text-blue-900 mt-1 flex items-center gap-1.5">
                   <Zap className="w-3 h-3 text-amber-500" />
@@ -1316,10 +1315,10 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                        {isOpt1 ? '⚡ Proposition 1' : isOpt2 ? '⚖️ Proposition 2' : '🛡️ Proposition 3'}
+                        {isOpt1 ? '⚡ Option 1' : isOpt2 ? '⭐ Option 2 (Recommandée)' : '🛡️ Option 3'}
                       </span>
                       <h4 className="text-sm font-black text-white mt-0.5 leading-snug">
-                        {isOpt1 ? 'Rentabilité Maximale (ROI Rapide)' : isOpt2 ? 'Équilibre Puissance / Écrêtage' : 'Haute Autonomie Industrielle'}
+                        {isOpt1 ? 'Écrêtage Agile & Budget Maîtrisé' : isOpt2 ? 'Équilibre Performance & Autonomie' : 'Haute Autonomie Maximale'}
                       </h4>
                     </div>
 
@@ -1429,7 +1428,7 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                       />
                     </div>
                     <span className="text-[10px] text-slate-500 block mt-0.5">
-                      Part du besoin journalier ({Math.round(annualKwh / 365)} kWh/j) couverte
+                      Part du besoin journalier ({fmtNum(simRes.dailyKwh, 1)} kWh/j) couverte
                     </span>
                   </div>
 
@@ -1449,27 +1448,27 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                   {/* 5. Économies Annuelles & EBITDA Année 1 */}
                   <div className="mt-3 space-y-1 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Économies brutes :</span>
+                      <span className="text-slate-400">Économies Facture An 1 :</span>
                       <span className="font-bold text-slate-200">+{fmtEur((simRes.gains?.batterySavings || 0) + (simRes.gains?.solarSavings || 0))} HT/an</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">EBITDA net Année 1 :</span>
+                      <span className="text-slate-400">Gain Net An 1 (après OPEX) :</span>
                       <span className="font-black text-emerald-400">+{fmtEur(simRes.years?.[0]?.ebitda ?? ((simRes.gains?.totalYear1 || 0) - (simRes.opex?.totalYear1 || 0)))} HT/an</span>
                     </div>
                   </div>
 
-                  {/* 6. TRI PROJET & TRI FONDS PROPRES (Grand affichage) */}
+                  {/* 6. SÉPARATION STRICTE TRI PROJET vs TRI FONDS PROPRES */}
                   <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-slate-950 to-slate-900 border border-amber-400/30 text-center">
                     <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
-                      Taux de Rentabilité Interne (TRI)
+                      TRI Projet (Sans Levier Bancaire)
                     </span>
                     <div className="flex items-baseline justify-center gap-2 mt-0.5">
                       <span className="text-2xl sm:text-3xl font-black text-amber-400">
-                        {(simRes.kpis?.triEquity ?? simRes.kpis?.triProject) != null ? (simRes.kpis?.triEquity ?? simRes.kpis?.triProject).toFixed(1) : '0.0'} %
+                        {simRes.kpis?.triProject != null ? simRes.kpis.triProject.toFixed(1) : '0.0'} %
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-300 font-medium mt-1">
-                      TRI Projet : <strong className="text-amber-300">{simRes.kpis?.triProject != null ? `${simRes.kpis.triProject.toFixed(1)} %` : 'N/A'}</strong> · Fonds Propres ({equityPct}%) : <strong className="text-emerald-400">{simRes.kpis?.triEquity != null ? `${simRes.kpis.triEquity.toFixed(1)} %` : 'N/A'}</strong>
+                      ROI : <strong className="text-white">{simRes.kpis?.payback != null ? `${simRes.kpis.payback.toFixed(1)} ans` : '> 20 ans'}</strong> · TRI Fonds Propres ({equityPct}%) : <strong className="text-emerald-400">{simRes.kpis?.triEquity != null ? `${simRes.kpis.triEquity.toFixed(1)} %` : 'N/A'}</strong>
                     </div>
                   </div>
 
@@ -1597,6 +1596,21 @@ export default function StorageBatterySimulator({ selectedProject, onSaveSimulat
                 ]}
               />
               <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+              {/* Plafond écrêté */}
+              <ReferenceLine
+                yAxisId="left"
+                y={sim.energy.newPeakKw}
+                stroke="#059669"
+                strokeDasharray="5 3"
+                strokeWidth={1.5}
+                label={{
+                  value: `Plafond écrêté : ${sim.energy.newPeakKw.toFixed(1)} kW`,
+                  position: 'insideTopRight',
+                  fill: '#059669',
+                  fontSize: 10,
+                  fontWeight: 700
+                }}
+              />
               {/* Solaire */}
               {solarEnabled && (
                 <Area yAxisId="left" type="monotone" dataKey="solaire" name="Production Solaire (kW)" fill="#fef3c7" stroke="#f59e0b" strokeWidth={2} />
