@@ -645,9 +645,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       // 5. Puissance crête (ex: 499 kW), Destination, Matériaux, Fondations, Emprise au sol
       const kwcValue = cleanKwcVal || (isBat ? '500' : '499');
       if (isBat) {
-        setField(['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'], '500', 9.5);
-        setField(['topmostSubform[0].Page5[0].C2ZP1_crete[0]', 'C2ZP1_crete'], '500', 9.5);
-        setField(['topmostSubform[0].Page5[0].C2ZR1_destination[0]', 'C2ZR1_destination'], 'Injection réseau', 9.5);
+        // Pour un projet Batterie, on laisse le cadre 4.2.1 (ouvrage solaire) entièrement vide par défaut
         setCheck(['C6ZL2_metal', 'topmostSubform[0].Page7[0].C6ZL2_metal[0]'], true);
         setCheck(['C6ZL5_beton', 'topmostSubform[0].Page7[0].C6ZL5_beton[0]'], true);
         setCheck(['C6ZM1_classique', 'topmostSubform[0].Page7[0].C6ZM1_classique[0]'], true);
