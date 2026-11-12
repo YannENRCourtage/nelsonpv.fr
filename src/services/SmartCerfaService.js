@@ -375,8 +375,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const email     = (cerfaChoice === 'email1')
       ? (project?.email || project?.clientEmail || project?.client_email || 'contact@enr-courtage.fr')
       : (project?.email2 || 'contact@enr-courtage.fr');
-    const rawTel    = project?.phone || project?.clientPhone || project?.client_phone || project?.demandeurPhone || project?.demandeur_telephone || '';
-    const tel       = formatFrenchPhoneNumber(rawTel);
+    // Numéro de téléphone ENR Courtage pour le suivi des dossiers CERFA
+    const tel       = formatFrenchPhoneNumber('0763877140');
     const now       = new Date();
     const dayStr    = String(now.getDate()).padStart(2, '0');
     const monthStr  = String(now.getMonth() + 1).padStart(2, '0');
