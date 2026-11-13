@@ -517,6 +517,59 @@ export default function Crm() {
     }
   };
 
+  const handleProjectBessPortfolioChange = async (projectId, newPortfolio, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    const chosen = newPortfolio || null;
+    const patch = {
+      bess_portfolio: chosen,
+      isBatteryStandAlone: chosen ? 'Oui' : 'Non',
+    };
+    setProjects(prev => prev.map(p => p.id === projectId ? {
+      ...p,
+      ...patch,
+      ...(chosen && (!p.type || p.type === 'Construction') ? { type: 'Batterie SA' } : {})
+    } : p));
+    try {
+      await apiService.updateProject(projectId, patch, false, activeTenantId);
+      toast({
+        title: "Portefeuille BESS mis à jour",
+        description: chosen ? `Projet affecté au portefeuille BESS "${chosen}".` : "Projet retiré du portefeuille BESS."
+      });
+    } catch (error) {
+      console.error("Erreur mise à jour portefeuille BESS:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le portefeuille BESS sur le serveur.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleProjectPvPortfolioChange = async (projectId, newPortfolio, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    const chosen = newPortfolio || null;
+    const patch = { pv_portfolio: chosen };
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...patch } : p));
+    try {
+      await apiService.updateProject(projectId, patch, false, activeTenantId);
+      toast({
+        title: "Portefeuille PV mis à jour",
+        description: chosen ? `Projet affecté au portefeuille PV "${chosen}".` : "Projet retiré du portefeuille PV."
+      });
+    } catch (error) {
+      console.error("Erreur mise à jour portefeuille PV:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le portefeuille PV sur le serveur.",
+        variant: "destructive"
+      });
+    }
+  };
+
 
   const navItems = [
     { id: 'dashboard', label: 'Mon tableau de bord', icon: LayoutDashboard },
@@ -1832,6 +1885,7 @@ export default function Crm() {
                   <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[130px]">GPS</th>
                   <th className="px-2 py-3 text-left font-semibold text-blue-600 uppercase whitespace-nowrap">Puissance</th>
                   <th className="px-2 py-3 text-center font-semibold text-slate-700 uppercase whitespace-nowrap">Type</th>
+                  <th className="px-2 py-3 text-center font-semibold text-blue-700 uppercase whitespace-nowrap">Portefeuille BESS</th>
                   <th className="px-2 py-3 text-center font-semibold text-slate-700 uppercase whitespace-nowrap">Statut</th>
                   <th className="pl-2 pr-3 py-3 text-right font-semibold text-slate-700 uppercase w-min whitespace-nowrap">Actions</th>
                 </tr>
@@ -1923,6 +1977,73 @@ export default function Crm() {
                       </span>
                     </td>
                     <td className="px-2 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      {(() => {
+                        const isBattery = project.type === 'Batterie SA' || 
+                                          project.isBatteryStandAlone === 'Oui' || 
+                                          project.isBatteryStandAlone === true || 
+                                          Boolean(getProjectBessPortfolio(project));
+                        const currentBessPort = getProjectBessPortfolio(project) || project.bess_portfolio || '';
+                        const currentPvPort = getProjectPvPortfolio(project) || project.pv_portfolio || '';
+
+                        return (
+                          <div className="flex flex-col gap-1 items-center justify-center">
+                            {/* Sélecteur Portefeuille BESS */}
+                            <div className="relative inline-block w-full min-w-[110px] text-center">
+                              <select
+                                value={currentBessPort}
+                                onChange={(e) => handleProjectBessPortfolioChange(project.id, e.target.value, e)}
+                                onClick={(e) => e.stopPropagation()}
+                                className={`w-full px-2.5 py-1 rounded-lg text-xs font-extrabold shadow-2xs border cursor-pointer text-center appearance-none pr-5 pl-2 transition-all hover:opacity-95 ${
+                                  currentBessPort
+                                    ? 'bg-blue-50 text-blue-800 border-blue-300 font-black'
+                                    : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600'
+                                }`}
+                                style={{
+                                  backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231e40af' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                                  backgroundRepeat: 'no-repeat',
+                                  backgroundPosition: 'right 4px center',
+                                  backgroundSize: '10px'
+                                }}
+                                title="Modifier le portefeuille BESS du projet"
+                              >
+                                <option value="" className="bg-white text-slate-500 font-medium">Aucun (BESS)</option>
+                                {bessPortfolioOptions.map(name => (
+                                  <option key={name} value={name} className="bg-white text-blue-900 font-bold">{name}</option>
+                                ))}
+                                {currentBessPort && !bessPortfolioOptions.includes(currentBessPort) && (
+                                  <option value={currentBessPort} className="bg-white text-blue-900 font-bold">{currentBessPort}</option>
+                                )}
+                              </select>
+                            </div>
+
+                            {/* Optionnel : badge / sélecteur compact Portefeuille PV si présent */}
+                            {currentPvPort && (
+                              <div className="relative inline-block w-full min-w-[110px] text-center">
+                                <select
+                                  value={currentPvPort}
+                                  onChange={(e) => handleProjectPvPortfolioChange(project.id, e.target.value, e)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-full px-2 py-0.5 rounded text-[10px] font-bold shadow-2xs border bg-amber-50 text-amber-800 border-amber-300 cursor-pointer text-center appearance-none pr-4 pl-1.5 transition-all hover:opacity-95"
+                                  style={{
+                                    backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2392400e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                                    backgroundRepeat: 'no-repeat',
+                                    backgroundPosition: 'right 3px center',
+                                    backgroundSize: '8px'
+                                  }}
+                                  title="Modifier le portefeuille PV du projet"
+                                >
+                                  <option value="" className="bg-white text-slate-500 font-medium">Aucun (PV)</option>
+                                  {pvPortfolioOptions.map(name => (
+                                    <option key={name} value={name} className="bg-white text-amber-900 font-bold">{name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-2 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <div className="relative inline-block w-full text-center">
                         <select
                           value={project.status === 'draft' ? 'Nouveau' : (project.status || 'Nouveau')}
@@ -2001,7 +2122,7 @@ export default function Crm() {
                 ))}
                 {filteredProjects.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
+                    <td colSpan="14" className="px-6 py-8 text-center text-slate-500">
                       Aucun projet trouvé. Créez votre premier projet !
                     </td>
                   </tr>

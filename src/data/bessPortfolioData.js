@@ -767,14 +767,14 @@ export function getProjectBessPortfolio(p) {
     return '';
   }
 
-  // Exclusion explicite DUPORT, LABEGUERIE, LARDY et CELERIE du portefeuille VOLTA
+  // Exclusion par défaut de DUPORT, LABEGUERIE, LARDY et CELERIE du portefeuille VOLTA si non explicitement assignés
   const pName = (p.name || '').toLowerCase();
   const pClient = (p.client_name || p.client || `${p.firstName || ''} ${p.name || ''}`).toLowerCase();
   if (pName.includes('duport') || pClient.includes('duport') || 
       pName.includes('labeguerie') || pClient.includes('labeguerie') ||
       pName.includes('lardy') || pClient.includes('lardy') ||
       pName.includes('celerie') || pClient.includes('celerie')) {
-    if (!val || norm === 'VOLTA') {
+    if (!direct && norm === 'VOLTA') {
       return '';
     }
   }
