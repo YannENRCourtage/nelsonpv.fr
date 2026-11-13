@@ -86,12 +86,20 @@ export function initBessDpAutoConfig(project, cadastreOverride = null) {
   const distanceKmPoste = odreSite?.distanceKm || project.substation?.distanceKm || 5.0;
 
   // 6. Rédaction de la Notice Descriptive DP3 & SDIS standardisée
+  const isHoussait = /houssait|young|vendays|33930|site_5/i.test(
+    `${project.name || ''} ${project.client || ''} ${project.demandeur || ''} ${project.lastName || ''} ${terrainCommune || ''} ${project.address || ''} ${project.id || ''}`
+  );
+  const paysagerProjet = isHoussait
+    ? `La station de stockage se compose de 4 armoires compactes CESC Mercury 261 (L 1,30 m x P 1,00 m x H 2,38 m) disposées sur une dalle béton armé étanche de 6,20 m x 3,20 m (emprise au sol : 19,84 m²). L'ensemble est ceinturé par une clôture rigide en grillage vert métallique thermolaqué (RAL 6005 vert mousse) d'une hauteur de 2,00 m avec portillon d'accès sécurisé sous cadenas permettant une insertion paysagère optimale. Entre la route départementale et la plateforme de la station, la haie végétale existante est intégralement conservée et renforcée comme écran visuel naturel.`
+    : `La station de stockage se compose de 4 armoires compactes CESC Mercury 261 (L 1,30 m x P 1,00 m x H 2,38 m) disposées sur une dalle béton armé étanche de 6,20 m x 3,20 m (emprise au sol : 19,84 m²). L'ensemble est ceinturé par une clôture rigide en grillage vert métallique thermolaqué (RAL 6005 vert mousse) d'une hauteur de 2,00 m avec portillon d'accès sécurisé sous cadenas, assurant une intégration paysagère discrète et respectueuse de l'environnement.`;
+
   const noticeCustom = {
-    objet: DEFAULT_BESS_CADRE_4_1,
-    site: `Le projet est implanté sur la commune de ${terrainCommune} (${terrainCp}), sur la parcelle cadastrée section ${primarySection} n° ${primaryNumero} d'une contenance de ${primarySurface.toLocaleString('fr-FR')} m². Le terrain d'assiette présente une topographie plane, sans covisibilité directe avec des monuments historiques.`,
-    projet: `La station de stockage se compose de 4 armoires compactes CESC Mercury 261 (L 1,30 m x P 1,00 m x H 2,38 m) disposées sur une dalle béton armé étanche de 6,20 m x 3,20 m (emprise au sol : 19,84 m²). L'ensemble est ceinturé par une clôture rigide grillagée thermolaquée verte RAL 6005 d'une hauteur de 2,00 m avec portillon d'accès sécurisé sous cadenas.`,
+    objet: getBessCadre41Text(project),
+    site: `Le projet est implanté sur la commune de ${terrainCommune} (${terrainCp}), sur la parcelle cadastrée section ${primarySection} n° ${primaryNumero} d'une contenance de ${primarySurface.toLocaleString('fr-FR')} m². Le terrain d'assiette présente une topographie plane, sans covisibilité directe avec des monuments historiques. Durée d'exploitation prévisionnelle : 20 ans avec démantèlement et remise en état complets du site.`,
+    projet: paysagerProjet,
     raccordement: `Le raccordement électrique s'effectue en HTA 20 kV vers le poste source Enedis "${posteSourceNom}" situé à une distance de ${distanceKmPoste} km, via un câble souterrain respectant les prescriptions techniques du distributeur Enedis.`,
-    sdis: `Sécurité incendie & SDIS : Système d'extinction automatique par aérosol au gaz inerte intégré dans chaque rack batterie, capteurs thermiques et détecteurs de fumée communicants 24h/24. Aire d'accès pompier stabilisée hors gel à moins de 50 m du point d'eau incendie homologué (PEI 120 m³/h).`
+    sdis: `Sécurité incendie & SDIS : Système d'extinction automatique par aérosol au gaz inerte intégré dans chaque rack batterie, capteurs thermiques et détecteurs de fumée communicants 24h/24. Aire d'accès pompier stabilisée hors gel à moins de 50 m du point d'eau incendie homologué (PEI 120 m³/h). Conformité aux dispositions de l'article R. 111-2 du Code de l'urbanisme.`,
+    legislations: `Conformité législative & législations connexes (art. R. 431-14, R. 431-14-1 et R. 441-8-1 C. Urb.) : Installation Non soumise à ICPE (rubrique 2925, puissance nominale 500 kW <= 600 kW), Non soumise à la Loi sur l'eau (emprise < 20 m²) et exempte de toute autre prescription spéciale au titre desdits articles.`
   };
 
   const existingConfig = project.dp_config || project.dpConfig || {};
@@ -175,7 +183,8 @@ export function buildExpressBessProjectPayload(project, dpConfigOverride = null)
   const dpConfig = dpConfigOverride || initBessDpAutoConfig(project);
   const isBattery = true;
 
-  const fullNoticeText = `1- OBJET DU PROJET :\n${dpConfig.notice_custom.objet}\n\n2- SITE D'IMPLANTATION :\n${dpConfig.notice_custom.site}\n\n3- DESCRIPTION DU PROJET :\n${dpConfig.notice_custom.projet}\n\n4- RACCORDEMENT ÉLECTRIQUE :\n${dpConfig.notice_custom.raccordement}\n\n5- SÉCURITÉ INCENDIE ET ACCÈS SDIS :\n${dpConfig.notice_custom.sdis}`;
+  const legSection = dpConfig.notice_custom.legislations ? `\n\n6- CONFORMITÉ LÉGISLATIVE & LÉGISLATIONS CONNEXES :\n${dpConfig.notice_custom.legislations}` : '';
+  const fullNoticeText = `1- OBJET DU PROJET :\n${dpConfig.notice_custom.objet}\n\n2- SITE D'IMPLANTATION :\n${dpConfig.notice_custom.site}\n\n3- DESCRIPTION DU PROJET :\n${dpConfig.notice_custom.projet}\n\n4- RACCORDEMENT ÉLECTRIQUE :\n${dpConfig.notice_custom.raccordement}\n\n5- SÉCURITÉ INCENDIE ET ACCÈS SDIS :\n${dpConfig.notice_custom.sdis}${legSection}`;
 
   return {
     ...project,

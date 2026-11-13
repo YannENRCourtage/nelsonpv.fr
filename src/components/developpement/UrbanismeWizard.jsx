@@ -3585,28 +3585,42 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       const pDalleW = batteryStorage.dalleWidth || 3.20;
       const pFootprintArea = (pDalleL * pDalleW).toFixed(2);
 
-      return `1- OBJET DE LA DEMANDE
-La présente demande porte sur l'installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV sur dalle béton (${pQty} armoires ${pModel}, emprise au sol : ${pFootprintArea} m² < 20 m²), soumise au régime de la Déclaration Préalable de travaux (DP).
+      const isHoussait = /houssait|young|vendays|33930|site_5/i.test(
+        `${editedProject?.name || ''} ${editedProject?.client || ''} ${editedProject?.demandeur || ''} ${editedProject?.lastName || ''} ${projectCity} ${projectAddress} ${project?.id || ''}`
+      );
+      const specificHaiesText = isHoussait
+        ? `\n- Pour ce dossier (94 Route d'Hourtin à Vendays-Montalivet), la haie végétale existante située entre la route départementale et la plateforme de la station est intégralement conservée et densifiée comme écran végétal occultant naturel.`
+        : '';
 
-2- LE SITE
+      return `1- OBJET DE LA DEMANDE
+La présente demande porte sur l'installation d'une station de stockage d'énergie stationnaire par batteries (BESS Stand-Alone) d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV sur dalle béton (${pQty} armoires ${pModel}, emprise au sol : ${pFootprintArea} m² < 20 m²), soumise au régime de la Déclaration Préalable de travaux (DP).
+La durée d'exploitation prévisionnelle de la station est fixée à 20 ans, à l'issue de laquelle l'ensemble de l'installation sera intégralement démantelé avec remise en état du terrain d'origine.
+
+2- LE SITE & JUSTIFICATION DE L'IMPLANTATION
 Le projet s'implante sur la commune de ${projectCity} (${projectZip}), à l'adresse : ${projectAddress}. ${cadastreNoticeTextBattery}.
+L'implantation en zone agricole est strictement justifiée au titre des articles L. 151-11 et R. 151-28 du Code de l'urbanisme et de l'article A-2.2 du PLU en tant qu'équipement d'intérêt collectif et de services publics (ouvrage technique indispensable à la régulation du réseau électrique) nécessitant une proximité immédiate (< 30 m) avec le réseau public HTA. L'ouvrage n'empiète sur aucune surface agricole cultivée.
 Le site dispose d'un accès sécurisé pour les interventions techniques et les services d'incendie et de secours (SDIS).
 
-3- LE PROJET
+3- LE PROJET & TRAITEMENT PAYSAGER
 Le projet comprend :
 - L'implantation de ${pQty} armoires techniques de stockage d'énergie (Modèle ${pModel}, dimensions unitaires : 1.15m (L) × 1.44m (P) × 2.38m (H), teinte sobre gris clair / blanc industriel),
 - La réalisation d'une dalle en béton armé dédiée de ${Number(pDalleL).toFixed(2)}m × ${Number(pDalleW).toFixed(2)}m (surface : ${pFootprintArea} m² < 20 m²),
-- La pose d'une clôture rigide grillagée périphérique (hauteur 2.00m) ceinturant la dalle béton avec portillon d'accès de sécurité.
+- Un traitement paysager prévu d'office par une clôture en grillage vert métallique rigide (RAL 6005 vert mousse, H 2,00m) ceinturant la dalle béton avec portillon d'accès sous cadenas, garantissant une intégration paysagère discrète et respectueuse du cadre naturel environnant (art. A-13.2 du PLU).${specificHaiesText}
 
 4- RACCORDEMENT AUX RESEAUX
 L'installation est raccordée au réseau public de distribution d'électricité ENEDIS HTA 20 kV. Le dispositif est totalement autonome, statique, silencieux et ne requiert aucun raccordement aux réseaux d'eau ni d'assainissement collectif.
 
-5- SECURITE INCENDIE & PRESCRIPTIONS SDIS
+5- CONFORMITE LEGISLATIVE & LEGISLATIONS CONNEXES (ART. R. 431-14, R. 431-14-1 ET R. 441-8-1 C. URB.)
+- Non soumis à ICPE (Rubrique 2925) : L'installation est formellement Non Classée (NC) car la puissance nominale maximale de charge de la station est de 500 kW, strictement inférieure au seuil de Déclaration fixé à 600 kW par la rubrique 2925-2. L'absence d'hydrogène en fonctionnement normal écarte la rubrique 2925-1.
+- Non soumis à la Loi sur l'eau : Emprise inférieure à 20 m², très en-deçà des seuils de déclaration de la rubrique 2.1.5.0 (> 1 ha) et de la rubrique 3.3.1.0 (> 1 000 m²).
+- Le projet est exempt de toute autre prescription spéciale au titre des articles R. 431-14, R. 431-14-1 et R. 441-8-1 du Code de l'urbanisme.
+
+6- SECURITE INCENDIE & PRESCRIPTIONS SDIS (ART. R. 111-2 DU CODE DE L'URBANISME)
 L'installation intègre tous les dispositifs de sécurité et répond strictement aux préconisations SDIS :
-- Système de gestion thermique avancé avec détection précoce asservie et dispositif d'extinction d'urgence intégré aux armoires,
-- Dispositif de coupure générale d'urgence accessible aux services de secours,
-- Rétention étanche sous dalle assurant la sécurité environnementale,
-- Respect des distances d'isolement réglementaires vis-à-vis des tiers.`;
+- Système de gestion thermique avancé avec détection précoce asservie et dispositif d'extinction d'urgence par aérosol certifié NFPA 855 intégré aux armoires (extinction automatique interne sans flamme externe),
+- Dispositif de coupure générale d'urgence (Arrêt d'Urgence coup de poing) accessible aux services de secours sur la clôture extérieure,
+- Rétention étanche sous dalle assurant la sécurité environnementale et bande minérale stérile de graviers concassés de 2,00 m tout autour de la dalle,
+- Respect des distances d'isolement réglementaires vis-à-vis des tiers et maintien des OLD sur un rayon de 50 m.`;
     }
     
     // Liste des structures retenues par l'utilisateur à l'étape Carte DP2 / PC2

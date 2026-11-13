@@ -1247,8 +1247,10 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
                                     <span style={{ fontSize: '5.6pt', fontWeight: '800', background: '#dcfce7', color: '#166534', padding: '0.4mm 1.4mm', borderRadius: '1mm', border: '0.5px solid #86efac' }}>NON CLASSÉ ICPE (NC)</span>
                                 </div>
                                 <div style={{ fontSize: '5.8pt', lineHeight: '1.22', color: '#334155' }}>
-                                    <div><strong>• Non-soumission ICPE 2925 :</strong> Puissance de charge de 500 kW nominale strictement &le; 600 kW (seuil de Déclaration 2925-2). Absence de dégagement d'hydrogène (2925-1 non concerné). Installation Non Classée (NC).</div>
-                                    <div style={{ marginTop: '0.5mm' }}><strong>• Triple barrière de protection incendie :</strong> (1) Confinement intrinsèque LFP incombustible + Aérosol NFPA 855 interne sans flamme externe ; (2) Coupure minérale dalle béton armé A1 (19,84 m²) + bande stérile graviers 2,00 m + OLD 50 m ; (3) Desserte SDIS voie carrossable &ge; 3,00 m + coupure d'urgence Arrêt d'Urgence (AU) pompier sur clôture.</div>
+                                    <div><strong>• Non-soumission ICPE 2925 :</strong> Puissance nominale de charge de 500 kW &le; 600 kW (seuil Déclaration 2925-2). Absence de dégagement d'hydrogène (2925-1 non concerné). Installation formellement Non Classée (NC).</div>
+                                    <div style={{ marginTop: '0.4mm' }}><strong>• Législations connexes (Loi sur l'eau &amp; art. R. 431-14, R. 431-14-1, R. 441-8-1 C. Urb.) :</strong> Non soumis Loi sur l'eau (surface &lt; 20 m²) et exempt de toute autre prescription spéciale au titre desdits articles. Durée d'exploitation : 20 ans.</div>
+                                    <div style={{ marginTop: '0.4mm' }}><strong>• Traitement paysager (Art. A-13.2 PLU) :</strong> Clôture d'office en grillage vert métallique RAL 6005 (H 2,00 m) assurant une excellente insertion dans la végétation locale{/houssait|young|vendays|33930/i.test(`${project?.name || ''} ${project?.client || ''} ${project?.city || ''}`) ? ' et maintien intégral des haies entre la route et la plateforme' : ''}.</div>
+                                    <div style={{ marginTop: '0.4mm' }}><strong>• Triple barrière de protection incendie :</strong> (1) Confinement intrinsèque LFP incombustible + Aérosol NFPA 855 interne sans flamme externe ; (2) Coupure minérale dalle béton armé A1 (19,84 m²) + bande stérile graviers 2,00 m + OLD 50 m ; (3) Desserte SDIS voie carrossable &ge; 3,00 m + coupure d'urgence Arrêt d'Urgence (AU) pompier sur clôture.</div>
                                 </div>
                             </div>
                         )}
@@ -1383,8 +1385,10 @@ export const PlateNoticeDedicated = ({ project, noticeText }) => {
                             <span style={{ fontSize: '6.2pt', fontWeight: '800', background: '#dcfce7', color: '#166534', padding: '0.4mm 1.8mm', borderRadius: '1mm', border: '0.5px solid #86efac' }}>NON CLASSÉ ICPE (NC)</span>
                         </div>
                         <div style={{ fontSize: '6.4pt', lineHeight: '1.3', color: '#334155' }}>
-                            <div><strong>• Non-soumission ICPE 2925 :</strong> Puissance de charge de 500 kW nominale strictement &le; 600 kW (seuil de Déclaration 2925-2). Absence totale de dégagement d'hydrogène en fonctionnement normal (2925-1 non concerné). Installation formellement Non Classée (NC).</div>
-                            <div style={{ marginTop: '0.8mm' }}><strong>• Triple barrière de protection incendie :</strong> (1) Confinement intrinsèque à la source (chimie LFP LiFePO4 ininflammable, enveloppe acier A1/M0 IP55, détection H2/fumée et extinction automatique interne par aérosol NFPA 855 / UL 9540A sans flamme externe) ; (2) Coupure minérale incombustible (dalle béton armé A1 de 19,84 m² entourée d'une bande stérile de graviers concassés de 2,00 m et maintien de la zone débroussaillée OLD sur 50 m) ; (3) Desserte et coupure SDIS (voie carrossable &ge; 3,00 m et bouton coup de poing d'Arrêt d'Urgence sous boîtier bris de glace en limite extérieure de clôture).</div>
+                            <div><strong>• Non-soumission ICPE 2925 :</strong> Puissance nominale de charge de 500 kW &le; 600 kW (seuil Déclaration 2925-2). Absence totale de dégagement d'hydrogène (2925-1 non concerné). Installation formellement Non Classée (NC).</div>
+                            <div style={{ marginTop: '0.4mm' }}><strong>• Législations connexes (Loi sur l'eau &amp; art. R. 431-14, R. 431-14-1, R. 441-8-1 C. Urb.) :</strong> Projet Non soumis à la Loi sur l'eau (surface &lt; 20 m²) et exempt de toute autre prescription spéciale au titre desdits articles. Durée d'exploitation prévisionnelle : 20 ans avec démantèlement et remise en état complets.</div>
+                            <div style={{ marginTop: '0.4mm' }}><strong>• Traitement paysager &amp; Insertion environnementale (Art. A-13.2 PLU) :</strong> Clôture d'office en grillage vert métallique RAL 6005 (H 2,00 m) garantissant une parfaite intégration paysagère{/houssait|young|vendays|33930/i.test(`${project?.name || ''} ${project?.client || ''} ${project?.city || ''}`) ? ' et préservation intégrale des haies végétales entre la route et la plateforme' : ''}.</div>
+                            <div style={{ marginTop: '0.4mm' }}><strong>• Triple barrière de protection incendie :</strong> (1) Confinement intrinsèque à la source (chimie LFP LiFePO4 ininflammable, enveloppe acier A1/M0 IP55, détection H2/fumée et extinction automatique interne par aérosol NFPA 855 / UL 9540A sans flamme externe) ; (2) Coupure minérale incombustible (dalle béton armé A1 de 19,84 m² entourée d'une bande stérile de graviers concassés de 2,00 m et maintien de la zone débroussaillée OLD sur 50 m) ; (3) Desserte et coupure SDIS (voie carrossable &ge; 3,00 m et bouton coup de poing d'Arrêt d'Urgence sous boîtier bris de glace en limite extérieure de clôture).</div>
                         </div>
                     </div>
                 )}
@@ -1730,9 +1734,22 @@ export const PlateFacades = ({ project, captures }) => {
     );
 };
 
-export const DEFAULT_DP6_BESS_JUSTIFICATION = `• Bonne intégration dans le paysage et vis-à-vis des tiers : Installation technique de gabarit très réduit (emprise au sol inférieure à 20 m², soit 19,84 m², et hauteur limitée à 2,38 m). Les teintes mates des armoires et la clôture en treillis rigide vert mousse (RAL 6005) s'intègrent sobrement dans la trame végétale existante, sans nuisance visuelle ni co-visibilité directe pour les habitations riveraines.
-• Absence d'atteinte au caractère de la zone agricole (Art. L. 151-11 C. Urb.) : Équipement d'intérêt collectif et services publics (régulation et sécurisation du réseau public d'électricité Enedis) implanté en bordure immédiate des ouvrages électriques existants (< 30 m) sur un délaissé de parcelle non cultivé de moins de 20 m². Le projet ne consomme aucune terre agricole exploitable et ne génère aucune gêne pour les circulations d'engins agricoles.
-• Mesures paysagères mises en œuvre : Maintien intégral des haies, arbres et écrans végétaux existants aux abords immédiats de la station, et habillage par clôture perméable RAL 6005 conforme au PLU (complétée le cas échéant par une revégétalisation d'essences locales en périphérie).`;
+export const getBessDp6Justification = (project = {}) => {
+  const isHoussait = /houssait|young|vendays|33930|site_5/i.test(
+    `${project?.name || ''} ${project?.client || ''} ${project?.demandeur || ''} ${project?.lastName || ''} ${project?.city || ''} ${project?.address || ''} ${project?.id || ''}`
+  );
+
+  const haiesText = isHoussait
+    ? ` Pour le présent site (94 Route d'Hourtin à Vendays-Montalivet), la haie végétale existante située entre la route départementale et la plateforme est intégralement préservée et confortée, constituant un écran occultant naturel continu qui masque la station depuis la voie publique.`
+    : '';
+
+  return `• Bonne intégration dans le paysage et vis-à-vis des tiers : Installation technique de gabarit très réduit (emprise au sol inférieure à 20 m², soit 19,84 m², et hauteur limitée à 2,38 m). Les teintes sobres des armoires et le grillage vert métallique rigide (RAL 6005 vert mousse) prévu d'office s'intègrent sobrement dans la trame végétale existante, sans nuisance visuelle ni co-visibilité directe pour les habitations riveraines.${haiesText}
+• Absence d'atteinte au caractère de la zone agricole (Art. L. 151-11 C. Urb. / Art. A-2.2 du PLU) : Équipement d'intérêt collectif et services publics (régulation et sécurisation du réseau public d'électricité Enedis) implanté en bordure immédiate des ouvrages électriques existants (< 30 m) sur un délaissé de parcelle non cultivé de moins de 20 m². Le projet ne consomme aucune terre agricole exploitable et ne génère aucune gêne pour les circulations d'engins agricoles. Durée d'exploitation fixée à 20 ans avec démantèlement et remise en état complets.
+• Traitement paysager mis en œuvre (Art. A-13.2 du PLU) : Clôture périphérique rigide en grillage vert métallique RAL 6005 (H 2,00 m) assurant perméabilité visuelle et intégration paysagère harmonieuse, doublée du maintien strict des cordons végétaux et haies en limite de propriété.
+• Législations connexes (Art. R. 431-14, R. 431-14-1 et R. 441-8-1 C. Urb.) : Installation Non soumise à ICPE (rubrique 2925, puissance 500 kW <= 600 kW), Non soumise à la Loi sur l'eau (surface < 20 m²), et exempte de toute autre prescription spéciale au titre desdits articles.`;
+};
+
+export const DEFAULT_DP6_BESS_JUSTIFICATION = getBessDp6Justification();
 
 /**
  * PLANCHE DP6 : DOCUMENT GRAPHIQUE D'INSERTION (Side-by-Side)
@@ -1755,7 +1772,7 @@ export const PlateInsertion = ({ project, captures, photos }) => {
 
     const rawJustification = project?.dp6_justification !== undefined && project?.dp6_justification !== null && String(project.dp6_justification).trim() !== ''
         ? String(project.dp6_justification)
-        : DEFAULT_DP6_BESS_JUSTIFICATION;
+        : getBessDp6Justification(project);
     const justificationLines = rawJustification.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
     return (

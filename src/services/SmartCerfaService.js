@@ -134,13 +134,30 @@ export function getBessCadre41Text(project = {}) {
   const nominalCapacite = is250 ? '522 kWh' : '1 044 kWh';
   const armoiresText = is250 ? `2 armoires LFP CESC Mercury 261 de 125 kW` : `${armoiresCount} armoires LFP CESC Mercury 261 de 125 kW`;
 
+  const isHoussait = /houssait|young|vendays|33930|site_5/i.test(
+    `${project?.name || ''} ${project?.client || ''} ${project?.demandeur || ''} ${project?.lastName || ''} ${project?.city || ''} ${project?.address || ''} ${project?.id || ''}`
+  );
+  const paysagerHoussaitText = isHoussait
+    ? `\n- Mesures paysagères spécifiques : Maintien et renforcement des haies végétales situées entre la route départementale et la plateforme de la station afin d'assurer un parfait écran visuel depuis l'espace public.`
+    : '';
+
   return `Installation d'une station autonome de stockage d'énergie par batteries (BESS Stand-Alone) d'une puissance nominale de ${nominalPower} / ${nominalCapacite} (${armoiresText}) sur dalle béton (emprise au sol : 19,84 m², soit < 20 m² ; surface de plancher : 0 m² ; 0 place de stationnement créée) ceinturée d'une clôture rigide H 2,00 m.
 
-QUALIFICATION & IMPLANTATION : Équipement d'intérêt collectif et services publics (locaux techniques assimilés, art. R.151-27 et R.151-28 C. Urb. / L.352-1 C. Énergie) assurant la régulation de fréquence et l'équilibrage du réseau public Enedis (${nominalPower} en soutirage et ${nominalPower} en injection). Implantation impérative à proximité immédiate des ouvrages du réseau public Enedis (< 30 m) pour un raccordement souterrain direct.
+DURÉE D'EXPLOITATION : La durée d'exploitation prévisionnelle de la station de stockage par batteries est fixée à 20 ans. À l'issue de cette période, l'ensemble des équipements techniques et des aménagements de surface sera intégralement démantelé et le site remis en son état d'origine.
 
-CLASSEMENT ICPE (RUBRIQUE 2925) — NON CLASSÉ (NC) : L'installation est formellement Non Classée (NC) au titre de la rubrique 2925 de la nomenclature ICPE. Le seuil réglementaire de soumission au régime de la Déclaration ICPE (2925-2) est fixé à une puissance maximale de courant continu utilisable pour l'opération de charge strictement supérieure à 600 kW ; or la station présente une puissance nominale maximale de charge de ${nominalPower} par site (<= 600 kW) et n'émet aucun hydrogène en fonctionnement normal (2925-1 non concerné).
+QUALIFICATION & IMPLANTATION EN ZONE AGRICOLE (ART. A-2.2 DU PLU / L.151-11 & R.151-28 DU CODE DE L'URBANISME) :
+- Équipement d'intérêt collectif et de services publics (locaux techniques de réseau assimilés) assurant la régulation de fréquence et l'équilibrage du réseau public d'électricité Enedis (${nominalPower} en soutirage et ${nominalPower} en injection).
+- Justification du choix d'implantation : Implantation impérative à proximité immédiate des ouvrages de distribution publique d'électricité HTA (< 30 m) pour permettre un raccordement souterrain direct, sur un délaissé non cultivé de parcelle agricole (emprise < 20 m²). L'implantation ne porte aucune atteinte à l'économie ni à l'activité agricole environnante.
 
-DÉFENSE INCENDIE & DISPOSITIONS SDIS (ART. R.111-2 C. URB.) : Bien que ces armoires techniques extérieures (emprise < 20 m²) ne constituent ni des ERP ni des bâtiments clos, la station intègre une triple barrière de protection incendie (détaillée dans la Notice Sécurité Incendie jointe au dossier) :
+TRAITEMENT PAYSAGER & INSERTION DANS L'ENVIRONNEMENT (ART. A-13.2 DU PLU) :
+- Pose d'office d'une clôture périphérique en grillage vert métallique rigide (RAL 6005 vert mousse, H 2,00 m) garantissant une perméabilité visuelle et une excellente insertion paysagère au sein de la trame végétale locale.${paysagerHoussaitText}
+
+CONFORMITÉ LÉGISLATIVE ET LÉGISLATIONS CONNEXES (ART. R. 431-14, R. 431-14-1 ET R. 441-8-1 DU CODE DE L'URBANISME) :
+- Non soumis à ICPE (Rubrique 2925) : L'installation est formellement Non Classée (NC). Le seuil de Déclaration ICPE (2925-2) est fixé à une puissance de charge strictement supérieure à 600 kW ; or la station présente une puissance nominale de ${nominalPower} (<= 600 kW) et n'émet aucun hydrogène en fonctionnement normal (2925-1 non concerné).
+- Non soumis à la Loi sur l'eau (IOTA / art. L. 214-1 et R. 214-1 du Code de l'environnement) : L'emprise au sol imperméabilisée (19,84 m²) est très largement inférieure aux seuils de déclaration de la rubrique 2.1.5.0 (rejet d'eaux pluviales > 1 ha) et d'assèchement de zone humide de la rubrique 3.3.1.0 (> 1 000 m²).
+- Aucune autre prescription connexe au titre des articles R. 431-14, R. 431-14-1 et R. 441-8-1 du Code de l'urbanisme n'est requise pour le projet.
+
+DÉFENSE INCENDIE & DISPOSITIONS SDIS (ART. R.111-2 C. URB.) : Bien que ces armoires techniques extérieures (emprise < 20 m²) ne constituent ni des ERP ni des bâtiments clos, la station intègre une triple barrière de protection incendie :
 1- Confinement intrinsèque à la source sans flamme externe (chimie LFP LiFePO4 ininflammable, enveloppe acier A1/M0 IP55, refroidissement liquide, supervision BMS 24h/24, détection H2/fumée et extinction automatique interne par aérosol certifié NFPA 855 / UL 9540A) ;
 2- Coupure minérale incombustible et débroussaillement (dalle béton armé A1 entourée d'une bande stérile de graviers minéraux de 2,00 m et maintien d'une zone débroussaillée OLD sur 50 mètres) ;
 3- Dispositifs dédiés d'accès et de coupure d'urgence pour le SDIS (voie carrossable >= 3,00 m et bouton coup de poing d'Arrêt d'Urgence général sous boîtier bris de glace en limite extérieure de clôture).`;
