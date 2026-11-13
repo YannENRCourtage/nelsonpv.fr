@@ -518,6 +518,8 @@ export default function Developpement() {
         } else if (pieceId === 'notice_incendie') {
           plateIds.push(isPC ? 'dev-pc-plate-notice-incendie-p1' : 'dev-plate-notice-incendie-p1');
           plateIds.push(isPC ? 'dev-pc-plate-notice-incendie-p2' : 'dev-plate-notice-incendie-p2');
+        } else if (pieceId === 'dp_notice_dedicated' || pieceId === 'notice_dedicated' || pieceId === 'dp11') {
+          plateIds.push('dev-plate-notice-dedicated');
         }
       } else {
         includeCover = selectedPages ? selectedPages.cover !== false : true;
