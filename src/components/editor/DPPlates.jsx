@@ -1235,25 +1235,11 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
                         <div style={{ fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             NOTICE D'INSERTION &amp; DESCRIPTIVE DU PROJET
                         </div>
-                        <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.2pt', lineHeight: '1.28', color: '#334155' }}>
-                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.2pt', lineHeight: '1.28', color: '#334155' }}>
+                        <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.3pt', lineHeight: '1.3', color: '#334155' }}>
+                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.3pt', lineHeight: '1.3', color: '#334155' }}>
                                 {cleanNoticeText}
                             </div>
                         </div>
-                        {isBattery && (
-                            <div style={{ marginTop: '1.5mm', padding: '1.8mm 2.5mm', borderRadius: '2mm', background: '#f8fafc', border: '1px solid #0f172a' }}>
-                                <div style={{ fontSize: '6.6pt', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: '0.8mm', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span>CONFORMITÉ ICPE (RUBRIQUE 2925) &amp; TRIPLE BARRIÈRE DE PROTECTION INCENDIE (ART. R.111-2 / SDIS)</span>
-                                    <span style={{ fontSize: '5.6pt', fontWeight: '800', background: '#dcfce7', color: '#166534', padding: '0.4mm 1.4mm', borderRadius: '1mm', border: '0.5px solid #86efac' }}>NON CLASSÉ ICPE (NC)</span>
-                                </div>
-                                <div style={{ fontSize: '5.8pt', lineHeight: '1.22', color: '#334155' }}>
-                                    <div><strong>• Non-soumission ICPE 2925 :</strong> Puissance nominale de charge de 500 kW &le; 600 kW (seuil Déclaration 2925-2). Absence de dégagement d'hydrogène (2925-1 non concerné). Installation formellement Non Classée (NC).</div>
-                                    <div style={{ marginTop: '0.4mm' }}><strong>• Législations connexes (Loi sur l'eau &amp; art. R. 431-14, R. 431-14-1, R. 441-8-1 C. Urb.) :</strong> Non soumis Loi sur l'eau (surface &lt; 20 m²) et exempt de toute autre prescription spéciale au titre desdits articles. Durée d'exploitation : 20 ans.</div>
-                                    <div style={{ marginTop: '0.4mm' }}><strong>• Traitement paysager (Art. A-13.2 PLU) :</strong> Clôture d'office en grillage vert métallique RAL 6005 (H 2,00 m) assurant une excellente insertion dans la végétation locale{/houssait|young|vendays|33930/i.test(`${project?.name || ''} ${project?.client || ''} ${project?.city || ''}`) ? ' et maintien intégral des haies entre la route et la plateforme' : ''}.</div>
-                                    <div style={{ marginTop: '0.4mm' }}><strong>• Triple barrière de protection incendie :</strong> (1) Confinement intrinsèque LFP incombustible + Aérosol NFPA 855 interne sans flamme externe ; (2) Coupure minérale dalle béton armé A1 (19,84 m²) + bande stérile graviers 2,00 m + OLD 50 m ; (3) Desserte SDIS voie carrossable &ge; 3,00 m + coupure d'urgence Arrêt d'Urgence (AU) pompier sur clôture.</div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             ) : (
