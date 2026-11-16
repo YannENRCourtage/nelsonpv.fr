@@ -344,7 +344,7 @@ async function drawCoverPage(doc, project, type, installationType) {
       ? project.description
       : typeInfo.cerfaText;
 
-  if (isBattery && (!project?.objet_travaux && !project?.objetTravaux || /ombrière|bâtiment|hangar/i.test(objetText))) {
+  if (isBattery && (!project?.objet_travaux && !project?.objetTravaux || /ombrière|bâtiment|hangar/i.test(objetText) || (typeof objetText === 'string' && (objetText.length > 900 || objetText.includes("DÉFENSE INCENDIE & DISPOSITIONS SDIS") || objetText.includes("QUALIFICATION & IMPLANTATION"))))) {
     objetText = DEFAULT_BESS_CADRE_4_1;
   } else if (!isBattery && /batterie|bess|stockage d'énergie/i.test(objetText)) {
     objetText = typeInfo.cerfaText;

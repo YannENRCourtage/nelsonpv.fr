@@ -138,32 +138,67 @@ export function getBessCadre41Text(project = {}) {
     `${project?.name || ''} ${project?.client || ''} ${project?.demandeur || ''} ${project?.lastName || ''} ${project?.city || ''} ${project?.address || ''} ${project?.id || ''}`
   );
   const paysagerHoussaitText = isHoussait
-    ? `\n- Mesures paysagères spécifiques : Maintien et renforcement des haies végétales situées entre la route départementale et la plateforme de la station afin d'assurer un parfait écran visuel depuis l'espace public.`
+    ? ` Maintien des haies végétales existantes en écran visuel.`
     : '';
 
-  return `Installation d'une station autonome de stockage d'énergie par batteries (BESS Stand-Alone) d'une puissance nominale de ${nominalPower} / ${nominalCapacite} (${armoiresText}) sur dalle béton (emprise au sol : 19,84 m², soit < 20 m² ; surface de plancher : 0 m² ; 0 place de stationnement créée) ceinturée d'une clôture rigide H 2,00 m.
+  return `Installation d'une station autonome de stockage d'énergie par batteries (BESS Stand-Alone) d'une puissance nominale de ${nominalPower} / ${nominalCapacite} (${armoiresText}) sur dalle béton armé (emprise au sol : 19,84 m², surface de plancher : 0 m² ; 0 place de stationnement), ceinturée d'une clôture rigide H 2,00 m avec portillon d'accès sécurisé.
 
-DURÉE D'EXPLOITATION : La durée d'exploitation prévisionnelle de la station de stockage par batteries est fixée à 20 ans. À l'issue de cette période, l'ensemble des équipements techniques et des aménagements de surface sera intégralement démantelé et le site remis en son état d'origine.
-
-QUALIFICATION & IMPLANTATION EN ZONE AGRICOLE (ART. A-2.2 DU PLU / L.151-11 & R.151-28 DU CODE DE L'URBANISME) :
-- Équipement d'intérêt collectif et de services publics (locaux techniques de réseau assimilés) assurant la régulation de fréquence et l'équilibrage du réseau public d'électricité Enedis (${nominalPower} en soutirage et ${nominalPower} en injection).
-- Justification du choix d'implantation : Implantation impérative à proximité immédiate des ouvrages de distribution publique d'électricité HTA (< 30 m) pour permettre un raccordement souterrain direct, sur un délaissé non cultivé de parcelle agricole (emprise < 20 m²). L'implantation ne porte aucune atteinte à l'économie ni à l'activité agricole environnante.
-
-TRAITEMENT PAYSAGER & INSERTION DANS L'ENVIRONNEMENT (ART. A-13.2 DU PLU) :
-- Pose d'office d'une clôture périphérique en grillage vert métallique rigide (RAL 6005 vert mousse, H 2,00 m) garantissant une perméabilité visuelle et une excellente insertion paysagère au sein de la trame végétale locale.${paysagerHoussaitText}
-
-CONFORMITÉ LÉGISLATIVE ET LÉGISLATIONS CONNEXES (ART. R. 431-14, R. 431-14-1 ET R. 441-8-1 DU CODE DE L'URBANISME) :
-- Non soumis à ICPE (Rubrique 2925) : L'installation est formellement Non Classée (NC). Le seuil de Déclaration ICPE (2925-2) est fixé à une puissance de charge strictement supérieure à 600 kW ; or la station présente une puissance nominale de ${nominalPower} (<= 600 kW) et n'émet aucun hydrogène en fonctionnement normal (2925-1 non concerné).
-- Non soumis à la Loi sur l'eau (IOTA / art. L. 214-1 et R. 214-1 du Code de l'environnement) : L'emprise au sol imperméabilisée (19,84 m²) est très largement inférieure aux seuils de déclaration de la rubrique 2.1.5.0 (rejet d'eaux pluviales > 1 ha) et d'assèchement de zone humide de la rubrique 3.3.1.0 (> 1 000 m²).
-- Aucune autre prescription connexe au titre des articles R. 431-14, R. 431-14-1 et R. 441-8-1 du Code de l'urbanisme n'est requise pour le projet.
-
-DÉFENSE INCENDIE & DISPOSITIONS SDIS (ART. R.111-2 C. URB.) : Bien que ces armoires techniques extérieures (emprise < 20 m²) ne constituent ni des ERP ni des bâtiments clos, la station intègre une triple barrière de protection incendie :
-1- Confinement intrinsèque à la source sans flamme externe (chimie LFP LiFePO4 ininflammable, enveloppe acier A1/M0 IP55, refroidissement liquide, supervision BMS 24h/24, détection H2/fumée et extinction automatique interne par aérosol certifié NFPA 855 / UL 9540A) ;
-2- Coupure minérale incombustible et débroussaillement (dalle béton armé A1 entourée d'une bande stérile de graviers minéraux de 2,00 m et maintien d'une zone débroussaillée OLD sur 50 mètres) ;
-3- Dispositifs dédiés d'accès et de coupure d'urgence pour le SDIS (voie carrossable >= 3,00 m et bouton coup de poing d'Arrêt d'Urgence général sous boîtier bris de glace en limite extérieure de clôture).`;
+Équipement d'intérêt collectif raccordé en souterrain au réseau public Enedis HTA 20 kV assurant la régulation et l'équilibrage du réseau. Installation Non Classée ICPE (rubrique 2925, <= 600 kW), non soumise à la Loi sur l'eau (emprise < 20 m²), avec dispositifs de sécurité incendie et coupure d'urgence conformes aux prescriptions SDIS. Durée d'exploitation : 20 ans avec démantèlement et remise en état intégrale du site.${paysagerHoussaitText}`;
 }
 
 export const DEFAULT_BESS_CADRE_4_1 = getBessCadre41Text();
+
+export function getBessNoticeDescriptiveDetailedText(project = {}) {
+  const powerKw = project?.puissanceKw || project?.bess_puissance || project?.puissance || project?.kwc || 500;
+  const is250 = Number(powerKw) === 250 || project?.bess_armoires === 2 || project?.bess_model === '2x_261';
+
+  const armoiresCount = is250 ? 2 : (project?.bess_armoires || 4);
+  const nominalPower = is250 ? '250 kW' : '500 kW';
+  const nominalCapacite = is250 ? '522 kWh' : '1 044 kWh';
+  const model = project?.bess_model || 'CESC Mercury 261';
+
+  const city = (project?.city || project?.commune || project?.terrain_city || 'la Commune').trim();
+  const zip = String(project?.zip || project?.postalCode || project?.terrain_zip || '').trim();
+  const address = (project?.address || project?.adresse || project?.terrain_address || `${zip} ${city}`).trim();
+
+  const rawParcelles = (Array.isArray(project?.parcelles) && project.parcelles.length > 0)
+    ? project.parcelles
+    : (Array.isArray(project?.cadastre_parcelles) && project.cadastre_parcelles.length > 0)
+      ? project.cadastre_parcelles
+      : [];
+
+  const section = (project?.cadastre_section || project?.section || rawParcelles[0]?.section || 'A').trim();
+  const numero = (project?.cadastre_numero || project?.numero || rawParcelles[0]?.numero || '1').trim();
+  const surface = project?.cadastre_surface || project?.surface || rawParcelles[0]?.surface || '26 102';
+  const altitude = project?.altitude || project?.terrain_altitude || '140 m';
+
+  const cadastreStr = rawParcelles.length > 1
+    ? `sections/parcelles ${rawParcelles.map(p => `${p.section ? `section ${p.section} ` : ''}n° ${p.numero || '—'}${p.surface ? ` (${p.surface} m²)` : ''}`).join(', ')} (surface totale : ${surface} m², altitude : ${altitude})`
+    : `Section/Parcelle section ${section} n° ${numero} (surface de la parcelle : ${surface} m², altitude : ${altitude})`;
+
+  return `1- OBJET DE LA DEMANDE
+La présente demande porte sur l'installation d'une station de stockage d'énergie stationnaire par batteries (BESS) d'une puissance nominale de ${nominalPower} / ${nominalCapacite} raccordée au réseau public HTA 20 kV sur dalle béton (${armoiresCount} armoires ${model}, emprise au sol : 19,84 m² < 20 m²), soumise au régime de la Déclaration Préalable de travaux (DP).
+
+2- LE SITE
+Le projet s'implante sur la commune de ${city} (${zip}), à l'adresse : ${address}. Références cadastrales : ${cadastreStr}.
+Le site dispose d'un accès sécurisé pour les interventions techniques et les services d'incendie et de secours (SDIS).
+
+3- LE PROJET
+Le projet comprend :
+- L'implantation de ${armoiresCount} armoires techniques de stockage d'énergie (Modèle ${model}, dimensions unitaires : 1.15m [L] x 1.44m [P] x 2.38m [H], teinte sobre gris clair / blanc industriel),
+- La réalisation d'une dalle en béton armé dédiée de 6.20m x 3.20m (surface : 19.84 m² <= 20 m²),
+- La pose d'une clôture rigide grillagée périphérique (hauteur 2.00m) ceinturant la dalle béton avec portillon d'accès de sécurité.
+
+4- RACCORDEMENT AUX RESEAUX
+L'installation est raccordée au réseau public de distribution d'électricité ENEDIS HTA 20 kV. Le dispositif est totalement autonome, statique, silencieux et ne requiert aucun raccordement aux réseaux d'eau ni d'assainissement collectif.
+
+5- SECURITE INCENDIE & PRESCRIPTIONS SDIS
+L'installation intègre tous les dispositifs de sécurité et répond strictement aux préconisations SDIS :
+- Système de gestion thermique avancé avec détection précoce asservie et dispositif d'extinction d'urgence intégrée aux armoires,
+- Dispositif de coupure générale d'urgence accessible aux services de secours,
+- Rétention étanche sous la dalle assurant la sécurité environnementale,
+- Respect des distances d'isolement réglementaires vis-à-vis des tiers.`;
+}
 
 export function resolveDemandeurNames(project) {
   if (!project) return { lastName: '', firstName: '' };
@@ -441,7 +476,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     ) && project?.solutionType !== 'building' && project?.solutionType !== 'ombriere';
     let objet = project?.objet_travaux || project?.objetTravaux;
     if (isBat) {
-      if (!objet || objet.length < 250 || /ombrière|bâtiment/i.test(objet) || !objet.includes('QUALIFICATION') || !objet.includes('ICPE') || objet.includes("d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.")) {
+      const isTooLong = typeof objet === 'string' && (objet.length > 900 || objet.includes("DÉFENSE INCENDIE & DISPOSITIONS SDIS") || objet.includes("QUALIFICATION & IMPLANTATION") || objet.includes("1- OBJET DE LA DEMANDE"));
+      if (!objet || /ombrière|bâtiment|hangar/i.test(objet) || isTooLong || objet.includes("d'une puissance nominale de 500 kW / 1 044 kWh raccordée au réseau public HTA 20 kV.")) {
         objet = getBessCadre41Text(project);
       }
     } else if (!objet || /batterie|bess|stockage d'énergie/i.test(objet)) {
@@ -657,7 +693,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         setCheck(['C2ZC3_cloture', 'topmostSubform[0].Page4[0].C2ZC3_cloture[0]'], true);
         setField(['C2ZA7_autres'], 'Station technique de stockage batteries', 9);
       }
-      setField(fieldMap.description,    objet, isBat ? 7.0 : 9.5);
+      setField(fieldMap.description,    objet, isBat ? 8.5 : 9.5);
 
       // 5. Puissance crête (ex: 499 kW), Destination, Matériaux, Fondations, Emprise au sol
       const kwcValue = cleanKwcVal || (isBat ? '500' : '499');

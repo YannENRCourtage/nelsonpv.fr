@@ -4792,7 +4792,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     if ((isBuildingSolution || isOmbriereSolution) && candidateObjet && /batterie|bess|stockage d'énergie/i.test(candidateObjet)) {
       candidateObjet = null;
     }
-    if (isBatterySolution && candidateObjet && /ombrière|bâtiment|hangar/i.test(candidateObjet)) {
+    if (isBatterySolution && candidateObjet && (/ombrière|bâtiment|hangar/i.test(candidateObjet) || candidateObjet.length > 900 || candidateObjet.includes("DÉFENSE INCENDIE & DISPOSITIONS SDIS") || candidateObjet.includes("QUALIFICATION & IMPLANTATION"))) {
       candidateObjet = null;
     }
     const finalObjet = candidateObjet || defaultObjetBySol;
@@ -6481,7 +6481,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     
     let shortObjet = editedProject?.objet_travaux || defaultObjet;
     if (isBattery) {
-      if (!shortObjet || /ombrière|bâtiment|hangar/i.test(shortObjet)) {
+      if (!shortObjet || /ombrière|bâtiment|hangar/i.test(shortObjet) || shortObjet.length > 900 || shortObjet.includes("DÉFENSE INCENDIE & DISPOSITIONS SDIS") || shortObjet.includes("QUALIFICATION & IMPLANTATION")) {
         shortObjet = defaultObjet;
       }
     } else if (isNoBattery || (!isBattery && /batterie|bess|stockage d'énergie/i.test(shortObjet || ''))) {
@@ -6894,9 +6894,12 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
     const finalZip = editedProject?.zip || project?.zip || '';
     const parsedFinalAddr = parseFrenchAddress(finalAddress, finalZip, finalCity);
 
-    const effectiveObjet = (editedProject?.objet_travaux && editedProject.objet_travaux.trim().length > 30)
+    let effectiveObjet = (editedProject?.objet_travaux && editedProject.objet_travaux.trim().length > 30)
       ? editedProject.objet_travaux
       : (defaultObjetTravauxText || shortObjet);
+    if (isBattery && effectiveObjet && (effectiveObjet.length > 900 || effectiveObjet.includes("DÉFENSE INCENDIE & DISPOSITIONS SDIS") || effectiveObjet.includes("QUALIFICATION & IMPLANTATION"))) {
+      effectiveObjet = getBessCadre41Text(editedProject || project);
+    }
 
     const finalProject = {
       ...editedProject,
@@ -10318,7 +10321,7 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
                         value={
                           isBatActive
                             ? (
-                                (editedProject?.objet_travaux && !editedProject.objet_travaux.toLowerCase().includes('ombrière') && !editedProject.objet_travaux.toLowerCase().includes('bâtiment') && !editedProject.objet_travaux.toLowerCase().includes('hangar'))
+                                (editedProject?.objet_travaux && !editedProject.objet_travaux.toLowerCase().includes('ombrière') && !editedProject.objet_travaux.toLowerCase().includes('bâtiment') && !editedProject.objet_travaux.toLowerCase().includes('hangar') && editedProject.objet_travaux.length <= 900 && !editedProject.objet_travaux.includes("DÉFENSE INCENDIE & DISPOSITIONS SDIS") && !editedProject.objet_travaux.includes("QUALIFICATION & IMPLANTATION"))
                                   ? editedProject.objet_travaux
                                   : DEFAULT_BESS_CADRE_4_1
                               )

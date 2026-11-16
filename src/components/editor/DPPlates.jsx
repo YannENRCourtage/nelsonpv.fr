@@ -1,7 +1,7 @@
 import React from 'react';
 import { getInstallationTypeInfo } from '@/services/UrbanismeDocService';
 import { getProxiedImageUrl } from '@/utils/imageProxy';
-import { resolveDemandeurNames, DEFAULT_BESS_CADRE_4_1, getBessCadre41Text } from '@/services/SmartCerfaService';
+import { resolveDemandeurNames, DEFAULT_BESS_CADRE_4_1, getBessCadre41Text, getBessNoticeDescriptiveDetailedText } from '@/services/SmartCerfaService';
 import { findBessOdreData } from '@/data/bessOdreMatrix';
 
 const batteryPhotoDefault = '/images/battery_photo.jpg';
@@ -1207,7 +1207,7 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
     );
 
     const hasNotice = Boolean(includeNotice || project?.includeNotice || project?.hasNotice);
-    const rawNoticeText = noticeText || project?.noticeText || (isBattery ? getBessCadre41Text(project) : (project?.noticeAgricole || project?.pc_notice || project?.description));
+    const rawNoticeText = noticeText || project?.noticeText || (isBattery ? getBessNoticeDescriptiveDetailedText(project) : (project?.noticeAgricole || project?.pc_notice || project?.description));
     let cleanNoticeText = (rawNoticeText || '').replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
 
     if (isNoBattery && cleanNoticeText) {
@@ -1353,7 +1353,7 @@ export const PlateNoticeDedicated = ({ project, noticeText }) => {
         (project?.type || '').toLowerCase().includes('batterie')
     );
 
-    const rawNotice = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description || (isBattery ? getBessCadre41Text(project) : '');
+    const rawNotice = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description || (isBattery ? getBessNoticeDescriptiveDetailedText(project) : '');
     let cleanNotice = rawNotice.replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
 
     if (isNoBattery && cleanNotice) {
@@ -1946,9 +1946,9 @@ export const PlateEnvProche = ({ project, captures, photos }) => {
 export const PlateInsertionNotice = ({ project, noticeText }) => {
     const isBattery = project?.solutionType === 'battery' || Boolean(project?.isBatteryStandAlone) || (project?.type || '').toLowerCase().includes('batterie');
     const defaultDesc = isBattery
-      ? getBessCadre41Text(project)
+      ? getBessNoticeDescriptiveDetailedText(project)
       : `Installation d'une structure ombrière photovoltaïque recevant une centrale solaire intégrée en toiture d'une puissance de ${project?.kwc || 100} kWc.`;
-    const fullText = noticeText || project?.noticeText || (isBattery ? getBessCadre41Text(project) : (project?.description || defaultDesc));
+    const fullText = noticeText || project?.noticeText || (isBattery ? getBessNoticeDescriptiveDetailedText(project) : (project?.description || defaultDesc));
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-notice-insertion">
