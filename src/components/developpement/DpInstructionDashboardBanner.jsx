@@ -42,7 +42,7 @@ export default function DpInstructionDashboardBanner({
                     '';
 
       const norm = normalizeDpNumber(rawDp);
-      const displayDp = norm?.normalized || rawDp;
+      const displayDp = rawDp || norm?.normalized || '';
 
       // Détection date de dépôt DP par ordre de priorité strict (vrais dépôts uniquement)
       const resolvedDate = resolveProjectDepositDate(p);

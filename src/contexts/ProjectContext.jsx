@@ -25,7 +25,13 @@ function sanitizeProjectForLS(p) {
   delete copy.cadastre_geojson;
   delete copy.sun_data;
   delete copy.pdf_blob;
+  delete copy.pdf_data;
+  delete copy.cerfa_pdf;
   delete copy.urbanisme_captures;
+  delete copy.captures_base64;
+  delete copy.photos_base64;
+  delete copy.lastQuote;
+  delete copy.quotes;
 
   // Clean buildings and solutions from heavy nested captures and photos
   if (Array.isArray(copy.buildings)) {
@@ -55,12 +61,22 @@ function sanitizeProjectForLS(p) {
     copy.solutions = sol;
   }
 
+  // Strip large data URLs (base64) or massive strings from direct properties
+  for (const [k, v] of Object.entries(copy)) {
+    if (typeof v === 'string' && (v.startsWith('data:') || v.length > 5000)) {
+      delete copy[k];
+    }
+  }
+
   // Strip large data URLs (base64) which exceed localStorage 5MB quota
   if (Array.isArray(copy.captures)) {
     copy.captures = copy.captures.filter(c => typeof c === 'string' && !c.startsWith('data:') && c.length <= 500);
   }
   if (Array.isArray(copy.photos)) {
     copy.photos = copy.photos.filter(c => typeof c === 'string' && !c.startsWith('data:') && c.length <= 500);
+  }
+  if (Array.isArray(copy.pc_photos)) {
+    copy.pc_photos = copy.pc_photos.filter(c => typeof c === 'string' && !c.startsWith('data:') && c.length <= 500);
   }
 
   return copy;

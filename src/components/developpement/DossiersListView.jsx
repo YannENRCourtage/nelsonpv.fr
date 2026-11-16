@@ -81,7 +81,7 @@ export default function DossiersListView({
       return {
         type: 'DP',
         raw,
-        label: raw.toUpperCase().startsWith('DP') ? raw : `DP ${raw}`
+        label: raw
       };
     }
 

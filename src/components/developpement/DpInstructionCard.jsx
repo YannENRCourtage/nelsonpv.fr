@@ -139,7 +139,7 @@ export default function DpInstructionCard({
     setIsSearching(true);
     try {
       const res = await searchAndSyncDp(dpNumber, project, stepState);
-      if (res.normalizedDp) {
+      if (res.normalizedDp && res.sitadelFound) {
         setDpNumber(res.normalizedDp);
       }
       if (res.mairieInfo) {
@@ -158,10 +158,11 @@ export default function DpInstructionCard({
       });
 
       if (onUpdateStep) {
+        const targetDp = res.sitadelFound ? (res.normalizedDp || dpNumber) : dpNumber;
         onUpdateStep({
-          registrationNumber: res.normalizedDp || dpNumber,
-          dp_registration_number: res.normalizedDp || dpNumber,
-          numero_dp: res.normalizedDp || dpNumber,
+          registrationNumber: targetDp,
+          dp_registration_number: targetDp,
+          numero_dp: targetDp,
           ...(res.mairieInfo ? { dp_mairie_info: res.mairieInfo, mairie_email: res.mairieInfo.email } : {}),
           ...(finalDepositDate ? {
             depositDate: finalDepositDate,
@@ -283,16 +284,14 @@ export default function DpInstructionCard({
     });
   }, [depositDate, regime, hasComplement, complementDate, displayDate, stepState?.status, project?.dp_certificate_obtained, project?.dp_refusal, project?.dp_recours]);
 
-  // Sauvegarde des champs
+  // Sauvegarde des champs : saisie libre en type et en nombre de caractères sans contrainte
   const handleDpNumberChange = (val) => {
-    const norm = normalizeDpNumber(val);
-    const cleaned = norm.formatted || val;
-    setDpNumber(cleaned);
+    setDpNumber(val);
     if (onUpdateStep) {
       onUpdateStep({
-        registrationNumber: cleaned,
-        dp_registration_number: cleaned,
-        numero_dp: cleaned,
+        registrationNumber: val,
+        dp_registration_number: val,
+        numero_dp: val,
       });
     }
   };
