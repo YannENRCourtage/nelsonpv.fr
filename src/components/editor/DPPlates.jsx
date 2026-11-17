@@ -1602,6 +1602,7 @@ export const PlateCoupeMulti = ({ project, buildings = [] }) => {
  * PLANCHE NOTICE DÉDIÉE PLEINE PAGE (POUR PROJET MULTI-BÂTIMENTS)
  */
 export const PlateNoticeDedicated = ({ project, noticeText }) => {
+    const altProfile = useProjectAltimetryProfile(project);
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
     const isNoBattery = isAcama;
@@ -1616,6 +1617,10 @@ export const PlateNoticeDedicated = ({ project, noticeText }) => {
     const rawNotice = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description || (isBattery ? getBessNoticeDescriptiveDetailedText(project) : '');
     let cleanNotice = rawNotice.replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
 
+    if (altProfile?.platformAlt && cleanNotice.includes('140.62')) {
+        cleanNotice = cleanNotice.replace(/140\.62\s*m?/g, `${altProfile.platformAlt.toFixed(2)} m`);
+    }
+
     if (isNoBattery && cleanNotice) {
         cleanNotice = cleanNotice
             .replace(/Le système de stockage batterie est[^\n]*\n?/gi, '')
@@ -1625,30 +1630,45 @@ export const PlateNoticeDedicated = ({ project, noticeText }) => {
             .replace(/Station Batteries \([^\)]*\)/gi, isAcama ? 'Bâtiment' : 'Ombrière');
     }
 
+    const nLen = cleanNotice.length;
+    const nLines = cleanNotice.split('\n').length;
+    const bodyFontSize = isBattery
+        ? ((nLen > 2600 || nLines > 31) ? '5.9pt' : (nLen > 2100 || nLines > 25) ? '6.2pt' : '6.5pt')
+        : ((nLen > 2600 || nLines > 31) ? '6.4pt' : '6.8pt');
+    const bodyLineHeight = isBattery
+        ? ((nLen > 2600 || nLines > 31) ? '1.18' : '1.22')
+        : '1.28';
+    const paragraphs = cleanNotice.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    const paraGap = isBattery ? '1.1mm' : '1.5mm';
+
     return (
-        <div style={PAGE_STYLE} id="dp-plate-notice-dedicated">
+        <div style={{ ...PAGE_STYLE, padding: '6mm 10mm 8mm 10mm' }} id="dp-plate-notice-dedicated">
             <PlateHeader 
                 title="NOTICE D'INSERTION & DESCRIPTIVE DU PROJET" 
                 project={project} 
             />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '5mm 7mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', marginBottom: '6mm' }}>
-                <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '2.5mm', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1.5mm' }}>
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '3mm 5.5mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', marginBottom: '2mm', minHeight: 0 }}>
+                <div style={{ fontSize: '8.2pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1mm', flexShrink: 0 }}>
                     Notice descriptive &amp; Justification du projet
                 </div>
-                <div style={{ flex: 1, overflow: 'hidden', fontSize: '7.0pt', lineHeight: '1.38', color: '#334155', whiteSpace: 'pre-line' }}>
-                    {cleanNotice}
+                <div style={{ flex: 1, overflow: 'hidden', fontSize: bodyFontSize, lineHeight: bodyLineHeight, color: '#334155', display: 'flex', flexDirection: 'column', gap: paraGap, minHeight: 0 }}>
+                    {paragraphs.map((para, pIdx) => (
+                        <div key={pIdx} style={{ whiteSpace: 'pre-line', fontSize: bodyFontSize, lineHeight: bodyLineHeight, color: '#334155' }}>
+                            {para}
+                        </div>
+                    ))}
                 </div>
                 {isBattery && (
-                    <div style={{ marginTop: '2.5mm', padding: '2.5mm 3.5mm', borderRadius: '2mm', background: '#f8fafc', border: '1.2px solid #0f172a' }}>
-                        <div style={{ fontSize: '7.2pt', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: '1mm', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ marginTop: '1.5mm', padding: '1.8mm 3mm', borderRadius: '2mm', background: '#f8fafc', border: '1.2px solid #0f172a', flexShrink: 0 }}>
+                        <div style={{ fontSize: '6.8pt', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: '0.8mm', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span>CONFORMITÉ ICPE (RUBRIQUE 2925) &amp; TRIPLE BARRIÈRE DE PROTECTION INCENDIE (ART. R.111-2 / SDIS)</span>
-                            <span style={{ fontSize: '6.2pt', fontWeight: '800', background: '#dcfce7', color: '#166534', padding: '0.4mm 1.8mm', borderRadius: '1mm', border: '0.5px solid #86efac' }}>NON CLASSÉ ICPE (NC)</span>
+                            <span style={{ fontSize: '5.9pt', fontWeight: '800', background: '#dcfce7', color: '#166534', padding: '0.3mm 1.6mm', borderRadius: '1mm', border: '0.5px solid #86efac' }}>NON CLASSÉ ICPE (NC)</span>
                         </div>
-                        <div style={{ fontSize: '6.4pt', lineHeight: '1.3', color: '#334155' }}>
+                        <div style={{ fontSize: '6.0pt', lineHeight: '1.24', color: '#334155' }}>
                             <div><strong>• Non-soumission ICPE 2925 :</strong> Puissance nominale de charge de 500 kW &le; 600 kW (seuil Déclaration 2925-2). Absence totale de dégagement d'hydrogène (2925-1 non concerné). Installation formellement Non Classée (NC).</div>
-                            <div style={{ marginTop: '0.4mm' }}><strong>• Législations connexes (Loi sur l'eau &amp; art. R. 431-14, R. 431-14-1, R. 441-8-1 C. Urb.) :</strong> Projet Non soumis à la Loi sur l'eau (surface &lt; 20 m²) et exempt de toute autre prescription spéciale au titre desdits articles. Durée d'exploitation prévisionnelle : 20 ans avec démantèlement et remise en état complets.</div>
-                            <div style={{ marginTop: '0.4mm' }}><strong>• Traitement paysager &amp; Insertion environnementale (Art. A-13.2 PLU) :</strong> Clôture d'office en grillage vert métallique RAL 6005 (H 2,00 m) garantissant une parfaite intégration paysagère{/houssait|young|vendays|33930/i.test(`${project?.name || ''} ${project?.client || ''} ${project?.city || ''}`) ? ' et préservation intégrale des haies végétales entre la route et la plateforme' : ''}.</div>
-                            <div style={{ marginTop: '0.4mm' }}><strong>• Triple barrière de protection incendie :</strong> (1) Confinement intrinsèque à la source (chimie LFP LiFePO4 ininflammable, enveloppe acier A1/M0 IP55, détection H2/fumée et extinction automatique interne par aérosol NFPA 855 / UL 9540A sans flamme externe) ; (2) Coupure minérale incombustible (dalle béton armé A1 de 19,84 m² entourée d'une bande stérile de graviers concassés de 2,00 m et maintien de la zone débroussaillée OLD sur 50 m) ; (3) Desserte et coupure SDIS (voie carrossable &ge; 3,00 m et bouton coup de poing d'Arrêt d'Urgence sous boîtier bris de glace en limite extérieure de clôture).</div>
+                            <div style={{ marginTop: '0.3mm' }}><strong>• Législations connexes (Loi sur l'eau &amp; art. R. 431-14, R. 431-14-1, R. 441-8-1 C. Urb.) :</strong> Projet Non soumis à la Loi sur l'eau (surface &lt; 20 m²) et exempt de toute autre prescription spéciale au titre desdits articles. Durée d'exploitation prévisionnelle : 20 ans avec démantèlement et remise en état complets.</div>
+                            <div style={{ marginTop: '0.3mm' }}><strong>• Traitement paysager &amp; Insertion environnementale (Art. A-13.2 PLU) :</strong> Clôture d'office en grillage vert métallique RAL 6005 (H 2,00 m) garantissant une parfaite intégration paysagère{/houssait|young|vendays|33930/i.test(`${project?.name || ''} ${project?.client || ''} ${project?.city || ''}`) ? ' et préservation intégrale des haies végétales entre la route et la plateforme' : ''}.</div>
+                            <div style={{ marginTop: '0.3mm' }}><strong>• Triple barrière de protection incendie :</strong> (1) Confinement intrinsèque à la source (chimie LFP LiFePO4 ininflammable, enveloppe acier A1/M0 IP55, détection H2/fumée et extinction automatique interne par aérosol NFPA 855 / UL 9540A sans flamme externe) ; (2) Coupure minérale incombustible (dalle béton armé A1 de 19,84 m² entourée d'une bande stérile de graviers concassés de 2,00 m et maintien de la zone débroussaillée OLD sur 50 m) ; (3) Desserte et coupure SDIS (voie carrossable &ge; 3,00 m et bouton coup de poing d'Arrêt d'Urgence sous boîtier bris de glace en limite extérieure de clôture).</div>
                         </div>
                     </div>
                 )}
@@ -2209,13 +2229,16 @@ export const PlateInsertionNotice = ({ project, noticeText }) => {
       ? getBessNoticeDescriptiveDetailedText(project)
       : `Installation d'une structure ombrière photovoltaïque recevant une centrale solaire intégrée en toiture d'une puissance de ${project?.kwc || 100} kWc.`;
     const fullText = noticeText || project?.noticeText || (isBattery ? getBessNoticeDescriptiveDetailedText(project) : (project?.description || defaultDesc));
+    const fLen = (fullText || '').length;
+    const fFontSize = fLen > 2400 ? '6.6pt' : fLen > 1800 ? '7.1pt' : '7.5pt';
+    const fLineHeight = fLen > 2400 ? '1.24' : '1.32';
 
     return (
-        <div style={PAGE_STYLE} id="dp-plate-notice-insertion">
+        <div style={{ ...PAGE_STYLE, padding: '6mm 10mm 8mm 10mm' }} id="dp-plate-notice-insertion">
             <PlateHeader title="DP11 — NOTICE DESCRIPTIVE DES TRAVAUX" project={project} showBranding={true} />
-            <div style={{ flex: 1, padding: '5mm 8mm', overflowY: 'hidden', fontSize: '9pt', lineHeight: '1.4', color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', maxHeight: '135mm', marginBottom: '5mm', display: 'flex', flexDirection: 'column' }}>
-                <h3 style={{ fontSize: '10.5pt', fontWeight: 'bold', color: '#00429d', marginBottom: '2mm' }}>Objet & Notice descriptive du Projet</h3>
-                <div style={{ flex: 1, overflowY: 'auto', whiteSpace: 'pre-wrap', fontSize: '8.5pt', lineHeight: '1.45', color: '#334155' }}>
+            <div style={{ flex: 1, padding: '3.5mm 6mm', overflow: 'hidden', fontSize: fFontSize, lineHeight: fLineHeight, color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', marginBottom: '2mm', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <h3 style={{ fontSize: '9pt', fontWeight: 'bold', color: '#00429d', marginBottom: '1.5mm', flexShrink: 0 }}>Objet &amp; Notice descriptive du Projet</h3>
+                <div style={{ flex: 1, overflow: 'hidden', whiteSpace: 'pre-line', fontSize: fFontSize, lineHeight: fLineHeight, color: '#334155' }}>
                     {fullText}
                 </div>
             </div>
