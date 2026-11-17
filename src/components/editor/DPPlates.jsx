@@ -1,6 +1,6 @@
 import React from 'react';
 import { getInstallationTypeInfo } from '@/services/UrbanismeDocService';
-import { getProxiedImageUrl } from '@/utils/imageProxy';
+import { getProxiedImageUrl, fetchProjectAltimetryProfile, buildFallbackAltimetryProfile } from '@/utils/imageProxy';
 import { resolveDemandeurNames, DEFAULT_BESS_CADRE_4_1, getBessCadre41Text, getBessNoticeDescriptiveDetailedText } from '@/services/SmartCerfaService';
 import { findBessOdreData } from '@/data/bessOdreMatrix';
 
@@ -510,9 +510,237 @@ export const PlateMasse = ({ project, captures, viewNumber = 1 }) => {
 };
 
 /**
+ * Hook React pour récupérer le profil altimétrique IGN RGE ALTI du terrain (identique à "Profil Alti")
+ * avec mise à plat à l'emplacement du projet et profils naturels à gauche et à droite.
+ */
+export function useProjectAltimetryProfile(project) {
+    const [profile, setProfile] = React.useState(() => buildFallbackAltimetryProfile(project));
+
+    React.useEffect(() => {
+        let cancelled = false;
+        if (project?.altimetryTerrainProfile && Array.isArray(project.altimetryTerrainProfile.points) && project.altimetryTerrainProfile.points.length >= 5) {
+            setProfile(project.altimetryTerrainProfile);
+            return;
+        }
+        setProfile(buildFallbackAltimetryProfile(project));
+        fetchProjectAltimetryProfile(project).then((res) => {
+            if (!cancelled && res && Array.isArray(res.points)) {
+                setProfile(res);
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        project?.id,
+        project?.lat,
+        project?.lng,
+        project?.gps,
+        project?.bessLatitude,
+        project?.bessLongitude,
+        project?.altitude,
+        project?.altimetryTerrainProfile
+    ]);
+
+    return (project?.altimetryTerrainProfile && Array.isArray(project.altimetryTerrainProfile.points) && project.altimetryTerrainProfile.points.length >= 5)
+        ? project.altimetryTerrainProfile
+        : profile;
+}
+
+/**
+ * Rendu SVG de la couche Profil Altimétrique (style "Profil Alti" de l'éditeur de projet) :
+ * - Grille cartésienne + Axe Y "Altitude (m)" à gauche + Axe X "Distance (m)" en bas
+ * - Aire verte dégradée (#10b981) et courbe émeraude (#059669)
+ * - Terrain strictement mis à plat à l'emplacement de la plateforme réalisée
+ * - Profils altimétriques du terrain naturel conservés à gauche et à droite de la plateforme
+ */
+function renderAltimetryProfileSvgLayer({
+    altProfile,
+    chartLeftX = 46,
+    chartRightX = 676,
+    platLeftX = 208,
+    platRightX = 514,
+    platY = 95,
+    chartTopY = 14,
+    chartBottomY = 120,
+    showDistanceAxis = true,
+    gradId = 'c-alti-grad'
+}) {
+    const pts = Array.isArray(altProfile?.points) && altProfile.points.length >= 2
+        ? altProfile.points
+        : [{ dist: 0, naturalAlt: 271.2 }, { dist: 9, naturalAlt: 271.5 }, { dist: 18, naturalAlt: 271.8 }];
+
+    const platformAlt = Number(altProfile?.platformAlt) || 271.5;
+    const totalDistM = Number(altProfile?.totalDistM) || 18.2;
+    const platStartDist = Number(altProfile?.platStartDist) || 6.0;
+    const platEndDist = Number(altProfile?.platEndDist) || 12.2;
+
+    // Échelle verticale d'amplitude du profil naturel à gauche et à droite de la plateforme
+    const maxDeltaZ = Math.max(0.15, ...pts.map((p) => Math.abs((p.naturalAlt || platformAlt) - platformAlt)));
+    const vertScalePx = Math.min(11.5 / maxDeltaZ, 32);
+
+    const svgXToDist = (svgX) => {
+        if (svgX <= platLeftX) {
+            const ratio = Math.max(0, (svgX - chartLeftX) / Math.max(1, platLeftX - chartLeftX));
+            return ratio * platStartDist;
+        }
+        if (svgX <= platRightX) {
+            const ratio = (svgX - platLeftX) / Math.max(1, platRightX - platLeftX);
+            return platStartDist + ratio * (platEndDist - platStartDist);
+        }
+        const ratio = Math.min(1, (svgX - platRightX) / Math.max(1, chartRightX - platRightX));
+        return platEndDist + ratio * (totalDistM - platEndDist);
+    };
+
+    const interpolateNatAltAtDist = (d) => {
+        if (d <= pts[0].dist) return pts[0].naturalAlt;
+        if (d >= pts[pts.length - 1].dist) return pts[pts.length - 1].naturalAlt;
+        for (let i = 1; i < pts.length; i++) {
+            if (d <= pts[i].dist) {
+                const span = Math.max(0.001, pts[i].dist - pts[i - 1].dist);
+                const t = (d - pts[i - 1].dist) / span;
+                return pts[i - 1].naturalAlt * (1 - t) + pts[i].naturalAlt * t;
+            }
+        }
+        return platformAlt;
+    };
+
+    const evalNatYAtSvgX = (svgX) => {
+        const d = svgXToDist(svgX);
+        const natAlt = interpolateNatAltAtDist(d);
+        const rawY = platY - (natAlt - platformAlt) * vertScalePx;
+        return Math.max(platY - 14, Math.min(chartBottomY - 5, rawY));
+    };
+
+    const talusPx = 9;
+    const xSamples = [];
+    for (let x = chartLeftX; x <= chartRightX; x += 5) {
+        xSamples.push(x);
+    }
+    [chartLeftX, platLeftX - talusPx, platLeftX, platRightX, platRightX + talusPx, chartRightX].forEach((specialX) => {
+        if (specialX >= chartLeftX && specialX <= chartRightX && !xSamples.includes(specialX)) {
+            xSamples.push(specialX);
+        }
+    });
+    xSamples.sort((a, b) => a - b);
+
+    const leftTalusStartNatY = evalNatYAtSvgX(platLeftX - talusPx);
+    const rightTalusEndNatY = evalNatYAtSvgX(platRightX + talusPx);
+
+    const sampled = xSamples.map((x) => {
+        const natY = evalNatYAtSvgX(x);
+        let levY = natY;
+        if (x >= platLeftX && x <= platRightX) {
+            // À l'emplacement du projet : terrain strictement mis à plat
+            levY = platY;
+        } else if (x > platLeftX - talusPx && x < platLeftX) {
+            const t = (x - (platLeftX - talusPx)) / talusPx;
+            levY = leftTalusStartNatY * (1 - t) + platY * t;
+        } else if (x > platRightX && x < platRightX + talusPx) {
+            const t = (x - platRightX) / talusPx;
+            levY = platY * (1 - t) + rightTalusEndNatY * t;
+        }
+        return { x, natY, levY };
+    });
+
+    const leveledLinePath = sampled.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.levY.toFixed(1)}`).join(' ');
+    const areaPath = `${leveledLinePath} L ${chartRightX.toFixed(1)} ${chartBottomY.toFixed(1)} L ${chartLeftX.toFixed(1)} ${chartBottomY.toFixed(1)} Z`;
+    const naturalLinePath = sampled.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.natY.toFixed(1)}`).join(' ');
+
+    const leftMidX = Math.round((chartLeftX + (platLeftX - talusPx)) / 2);
+    const rightMidX = Math.round(((platRightX + talusPx) + chartRightX) / 2);
+    const leftMidY = evalNatYAtSvgX(leftMidX);
+    const rightMidY = evalNatYAtSvgX(rightMidX);
+
+    const baseTickAlt = Math.floor(platformAlt - 2);
+    const yTicks = [
+        { y: chartBottomY, label: `${baseTickAlt}` },
+        { y: platY, label: `${baseTickAlt + 2}` },
+        { y: Math.round(platY - (chartBottomY - platY) * 1.05), label: `${baseTickAlt + 4}` },
+        { y: Math.max(chartTopY + 4, Math.round(platY - (chartBottomY - platY) * 2.1)), label: `${baseTickAlt + 6}` }
+    ];
+
+    const numDistTicks = 9;
+    const distTicks = Array.from({ length: numDistTicks + 1 }, (_, idx) => {
+        const ratio = idx / numDistTicks;
+        const x = chartLeftX + ratio * (chartRightX - chartLeftX);
+        const dLabel = Math.round(ratio * totalDistM);
+        return { x, label: `${dLabel}m` };
+    });
+
+    return (
+        <g>
+            <defs>
+                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity="0.78" />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity="0.12" />
+                </linearGradient>
+            </defs>
+
+            {/* Grille cartésienne (style "Profil Alti") */}
+            {yTicks.map((t, i) => (
+                <g key={`yt-${i}`}>
+                    <line x1={chartLeftX} y1={t.y} x2={chartRightX} y2={t.y} stroke="#e2e8f0" strokeWidth="0.7" strokeDasharray="3 3" />
+                    <line x1={chartLeftX - 3} y1={t.y} x2={chartLeftX} y2={t.y} stroke="#94a3b8" strokeWidth="0.8" />
+                    <text x={chartLeftX - 5} y={t.y + 2} textAnchor="end" fill="#64748b" fontSize="5.5">{t.label}</text>
+                </g>
+            ))}
+            {distTicks.map((dt, i) => (
+                <line key={`xg-${i}`} x1={dt.x} y1={chartTopY} x2={dt.x} y2={chartBottomY} stroke="#e2e8f0" strokeWidth="0.6" strokeDasharray="3 3" />
+            ))}
+
+            {/* Axe Y Altitude (m) */}
+            <line x1={chartLeftX} y1={chartTopY} x2={chartLeftX} y2={chartBottomY} stroke="#94a3b8" strokeWidth="0.9" />
+            <text
+                x={13}
+                y={Math.round((chartTopY + chartBottomY) / 2)}
+                textAnchor="middle"
+                fill="#475569"
+                fontSize="5.8"
+                fontWeight="bold"
+                transform={`rotate(-90, 13, ${Math.round((chartTopY + chartBottomY) / 2)})`}
+            >
+                Altitude (m)
+            </text>
+
+            {/* Aire verte du profil altimétrique (terrain naturel G/D + plateforme mise à plat au centre) */}
+            <path d={areaPath} fill={`url(#${gradId})`} />
+
+            {/* Courbe pointillée du Terrain Naturel initial (TN avant mise à plat de la plateforme) */}
+            <path d={naturalLinePath} fill="none" stroke="#64748b" strokeWidth="1.2" strokeDasharray="4 2.5" opacity="0.85" />
+
+            {/* Courbe continue émeraude du profil après terrassement / mise à plat de la plateforme */}
+            <path d={leveledLinePath} fill="none" stroke="#059669" strokeWidth="2.2" />
+
+            {/* Axe X Distance (m) */}
+            <line x1={chartLeftX} y1={chartBottomY} x2={chartRightX} y2={chartBottomY} stroke="#94a3b8" strokeWidth="0.9" />
+            {showDistanceAxis && distTicks.map((dt, i) => (
+                <g key={`xt-${i}`}>
+                    <line x1={dt.x} y1={chartBottomY} x2={dt.x} y2={chartBottomY + 2.5} stroke="#94a3b8" strokeWidth="0.8" />
+                    <text x={dt.x} y={chartBottomY + 8.5} textAnchor="middle" fill="#64748b" fontSize="5.3">{dt.label}</text>
+                </g>
+            ))}
+
+            {/* Annotations des profils de terrain à gauche et à droite de la plateforme réalisée */}
+            <rect x={leftMidX - 58} y={leftMidY - 15} width="116" height="10.5" rx="2" fill="rgba(255,255,255,0.88)" stroke="#a7f3d0" strokeWidth="0.6" />
+            <text x={leftMidX} y={leftMidY - 7.8} textAnchor="middle" fill="#065f46" fontSize="5.5" fontWeight="bold">
+                Profil TN Gauche ({Number(altProfile?.leftAlt || platformAlt).toFixed(1)} m NGF)
+            </text>
+
+            <rect x={rightMidX - 58} y={rightMidY - 15} width="116" height="10.5" rx="2" fill="rgba(255,255,255,0.88)" stroke="#a7f3d0" strokeWidth="0.6" />
+            <text x={rightMidX} y={rightMidY - 7.8} textAnchor="middle" fill="#065f46" fontSize="5.5" fontWeight="bold">
+                Profil TN Droite ({Number(altProfile?.rightAlt || platformAlt).toFixed(1)} m NGF)
+            </text>
+        </g>
+    );
+}
+
+/**
  * COMPOSANT ATOMIQUE : BOÎTE PLAN EN COUPE TRANSVERSALE SVG
  */
-export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHeight = '62mm' }) => {
+export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHeight = '44mm', codePrefix = 'DP3' }) => {
+    const altProfile = useProjectAltimetryProfile(project);
+
     // Détection stricte du type d'ouvrage
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
@@ -545,23 +773,28 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     );
     
     if (isBattery) {
-        const bQty = 4;
         const bLen = Number(project?.batteryStorage?.dalleLength || project?.longueur || 6.20);
         const bModel = project?.battery_model || project?.batteryStorage?.model || 'CESC Mercury 261';
         const bPower = Number(project?.kwc || project?.puissance || project?.batteryStorage?.powerKw || 500);
+        const platY = 95;
+        const platLeftX = 208;
+        const platRightX = 514;
+        const dalleLeftX = 218;
+        const dalleRightX = 504;
+        const dalleWidthSvg = dalleRightX - dalleLeftX;
 
         return (
-            <div style={{ height: boxHeight, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: isMulti ? '1mm 3.5mm' : '1.5mm 4mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5mm' }}>
-                    <span style={{ fontSize: isMulti ? '8pt' : '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                        DP3 — COUPE DE TERRAIN &amp; DES INSTALLATIONS (COUPE TRANSVERSALE {coupeLetter}) — CENTRALE DE STOCKAGE BATTERIES
+            <div style={{ height: boxHeight, border: '1px solid #cbd5e1', borderRadius: '2.5mm', padding: '1mm 3.5mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4mm', gap: '2mm' }}>
+                    <span style={{ fontSize: '7.4pt', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap' }}>
+                        {codePrefix} — COUPE DE TERRAIN &amp; DES INSTALLATIONS (COUPE {coupeLetter}) — CENTRALE DE STOCKAGE BATTERIES
                     </span>
-                    <span style={{ fontSize: isMulti ? '6.5pt' : '7pt', color: '#64748b' }}>
-                        4× {bModel} ({bPower} kW / 1 044 kWh) • Dalle 6.20m × 3.20m • Échelle indicative
+                    <span style={{ fontSize: '6.3pt', color: '#047857', fontWeight: 'bold', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '0.2mm 1.8mm', borderRadius: '1.5mm', whiteSpace: 'nowrap' }}>
+                        Profil Alti IGN : Alt. {altProfile.platformAlt.toFixed(1)} m NGF • Dénivelé {altProfile.stats.deniveleTotal.toFixed(1)} m • Pente moy. {altProfile.stats.penteMoyenne.toFixed(1)}% • 4× {bModel} ({bPower} kW)
                     </span>
                 </div>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    <svg viewBox="0 0 700 165" style={{ width: '100%', height: '100%', maxHeight: '160px' }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', borderRadius: '1.5mm', border: '1px solid #e2e8f0' }}>
+                    <svg viewBox="0 0 700 134" style={{ width: '100%', height: '100%', maxHeight: '100%' }}>
                         <defs>
                             <linearGradient id="c-bat-grad" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor="#334155" />
@@ -571,59 +804,76 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
                                 <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#2d6a4f" strokeWidth="0.6" opacity="0.6" />
                             </pattern>
                         </defs>
-                        {/* Sol TN */}
-                        <line x1="20" y1="130" x2="680" y2="130" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="5 3" />
-                        <text x="30" y="142" fill="#64748b" fontSize="6.5" fontStyle="italic">Terrain Naturel TN ±0.00</text>
-                        <text x="670" y="142" textAnchor="end" fill="#64748b" fontSize="6.5" fontStyle="italic">Terrain plat conservé</text>
 
-                        {/* Dalle béton armé étanche 6.20m (+0.15m) */}
-                        <rect x="145" y="122" width="410" height="8" fill="#cbd5e1" stroke="#475569" strokeWidth="1" rx="0.5" />
-                        <text x="350" y="128" textAnchor="middle" fill="#1e293b" fontSize="5.5" fontWeight="bold">Dalle béton armé étanche 6,20 m avec bac de rétention (+0,15 m / TN)</text>
+                        {/* 1. Profil Altimétrique du Terrain (style "Profil Alti" : Gauche naturel, Centre mis à plat, Droite naturel) */}
+                        {renderAltimetryProfileSvgLayer({
+                            altProfile,
+                            chartLeftX: 46,
+                            chartRightX: 678,
+                            platLeftX,
+                            platRightX,
+                            platY,
+                            chartTopY: 12,
+                            chartBottomY: 121,
+                            showDistanceAxis: true,
+                            gradId: 'c-alti-grad-bess'
+                        })}
+
+                        {/* Dalle béton armé étanche 6.20m (+0.15m) sur la plateforme mise à plat */}
+                        <rect x={dalleLeftX} y={platY - 6.5} width={dalleWidthSvg} height="6.5" fill="#cbd5e1" stroke="#475569" strokeWidth="0.9" rx="0.5" />
+                        <text x={(dalleLeftX + dalleRightX) / 2} y={platY - 1.8} textAnchor="middle" fill="#1e293b" fontSize="5.1" fontWeight="bold">
+                            Dalle béton armé étanche {bLen.toFixed(2)} m (+0,15 m / Plateforme mise à plat à {altProfile.platformAlt.toFixed(2)} m NGF)
+                        </text>
 
                         {/* 4 Armoires CESC Mercury 261 */}
                         {[0, 1, 2, 3].map((idx) => {
-                            const cw = 65;
-                            const cx = 175 + idx * (cw + 16);
+                            const cw = 46;
+                            const ch = 49;
+                            const cy = platY - 6.5 - ch;
+                            const cx = dalleLeftX + 14 + idx * (cw + 10);
                             return (
                                 <g key={idx}>
-                                    <rect x={cx} y="55" width={cw} height="67" fill="url(#c-bat-grad)" stroke="#0f172a" strokeWidth="1.2" rx="1.5" />
-                                    <rect x={cx + 3} y="51" width={cw - 6} height="4" fill="#0f172a" stroke="#0f172a" strokeWidth="0.8" rx="0.8" />
-                                    <line x1={cx + cw / 2} y1="55" x2={cx + cw / 2} y2="122" stroke="#475569" strokeWidth="0.8" />
-                                    <rect x={cx + cw / 2 - 12} y="62" width="24" height="10" fill="#0284c7" stroke="#38bdf8" strokeWidth="0.6" rx="0.8" />
-                                    <circle cx={cx + cw / 2 - 5} cy="76" r="1.5" fill="#22c55e" />
-                                    <circle cx={cx + cw / 2} cy="76" r="1.5" fill="#facc15" />
-                                    <circle cx={cx + cw / 2 + 5} cy="76" r="1.5" fill="#ef4444" />
-                                    <rect x={cx + 6} y="85" width="23" height="20" fill="#0f172a" rx="0.5" opacity="0.8" />
-                                    <rect x={cx + 36} y="85" width="23" height="20" fill="#0f172a" rx="0.5" opacity="0.8" />
-                                    <text x={cx + cw / 2} y="116" textAnchor="middle" fill="#93c5fd" fontSize="5.5" fontWeight="bold">BESS #{idx + 1}</text>
+                                    <rect x={cx} y={cy} width={cw} height={ch} fill="url(#c-bat-grad)" stroke="#0f172a" strokeWidth="1" rx="1.2" />
+                                    <rect x={cx + 2.5} y={cy - 3} width={cw - 5} height="3" fill="#0f172a" stroke="#0f172a" strokeWidth="0.6" rx="0.6" />
+                                    <line x1={cx + cw / 2} y1={cy} x2={cx + cw / 2} y2={platY - 6.5} stroke="#475569" strokeWidth="0.7" />
+                                    <rect x={cx + cw / 2 - 9} y={cy + 5} width="18" height="7.5" fill="#0284c7" stroke="#38bdf8" strokeWidth="0.5" rx="0.6" />
+                                    <circle cx={cx + cw / 2 - 4} cy={cy + 16} r="1.2" fill="#22c55e" />
+                                    <circle cx={cx + cw / 2} cy={cy + 16} r="1.2" fill="#facc15" />
+                                    <circle cx={cx + cw / 2 + 4} cy={cy + 16} r="1.2" fill="#ef4444" />
+                                    <rect x={cx + 4.5} y={cy + 22} width="16" height="14" fill="#0f172a" rx="0.5" opacity="0.8" />
+                                    <rect x={cx + 25.5} y={cy + 22} width="16" height="14" fill="#0f172a" rx="0.5" opacity="0.8" />
+                                    <text x={cx + cw / 2} y={cy + 44} textAnchor="middle" fill="#93c5fd" fontSize="5" fontWeight="bold">BESS #{idx + 1}</text>
                                 </g>
                             );
                         })}
 
                         {/* Poste de raccordement HTA */}
-                        <rect x="502" y="65" width="36" height="57" fill="#e2e8f0" stroke="#475569" strokeWidth="1" rx="1" />
-                        <text x="520" y="98" textAnchor="middle" fill="#0f172a" fontSize="6" fontWeight="bold">HTA</text>
+                        <rect x={dalleRightX - 42} y={platY - 6.5 - 41} width="28" height="41" fill="#e2e8f0" stroke="#475569" strokeWidth="0.9" rx="1" />
+                        <text x={dalleRightX - 28} y={platY - 24} textAnchor="middle" fill="#0f172a" fontSize="5.5" fontWeight="bold">HTA</text>
 
                         {/* Clôture grillagée thermolaquée verte RAL 6005 (H 2.00m) */}
-                        <rect x="125" y="68" width="450" height="62" fill="url(#c-mesh-pattern)" stroke="#1b4332" strokeWidth="1" />
-                        <line x1="125" y1="68" x2="125" y2="130" stroke="#1b4332" strokeWidth="2.5" />
-                        <line x1="237" y1="68" x2="237" y2="130" stroke="#1b4332" strokeWidth="1.5" />
-                        <line x1="350" y1="68" x2="350" y2="130" stroke="#1b4332" strokeWidth="1.5" />
-                        <line x1="462" y1="68" x2="462" y2="130" stroke="#1b4332" strokeWidth="1.5" />
-                        <line x1="575" y1="68" x2="575" y2="130" stroke="#1b4332" strokeWidth="2.5" />
-                        <text x="120" y="98" textAnchor="end" fill="#1b4332" fontSize="6.2" fontWeight="bold">Clôture RAL 6005 (2.00m)</text>
+                        <rect x={platLeftX} y={platY - 46} width={platRightX - platLeftX} height="46" fill="url(#c-mesh-pattern)" stroke="#1b4332" strokeWidth="0.9" />
+                        <line x1={platLeftX} y1={platY - 46} x2={platLeftX} y2={platY} stroke="#1b4332" strokeWidth="2" />
+                        <line x1={platLeftX + 76} y1={platY - 46} x2={platLeftX + 76} y2={platY} stroke="#1b4332" strokeWidth="1.2" />
+                        <line x1={platLeftX + 153} y1={platY - 46} x2={platLeftX + 153} y2={platY} stroke="#1b4332" strokeWidth="1.2" />
+                        <line x1={platLeftX + 229} y1={platY - 46} x2={platLeftX + 229} y2={platY} stroke="#1b4332" strokeWidth="1.2" />
+                        <line x1={platRightX} y1={platY - 46} x2={platRightX} y2={platY} stroke="#1b4332" strokeWidth="2" />
+                        <text x={platLeftX - 14} y={platY - 34} textAnchor="end" fill="#1b4332" fontSize="5.8" fontWeight="bold">Clôture RAL 6005 (2.00m)</text>
 
                         {/* Cotes de Hauteur BESS (2.38m) */}
-                        <line x1="155" y1="51" x2="155" y2="130" stroke="#ef4444" strokeWidth="0.8" />
-                        <line x1="151" y1="51" x2="159" y2="51" stroke="#ef4444" strokeWidth="0.8" />
-                        <line x1="151" y1="130" x2="159" y2="130" stroke="#ef4444" strokeWidth="0.8" />
-                        <text x="147" y="93" textAnchor="end" fill="#ef4444" fontSize="6.8" fontWeight="bold">H : 2.38m</text>
+                        <line x1={platLeftX - 7} y1={platY - 58.5} x2={platLeftX - 7} y2={platY} stroke="#ef4444" strokeWidth="0.8" />
+                        <line x1={platLeftX - 10} y1={platY - 58.5} x2={platLeftX - 4} y2={platY - 58.5} stroke="#ef4444" strokeWidth="0.8" />
+                        <line x1={platLeftX - 10} y1={platY} x2={platLeftX - 4} y2={platY} stroke="#ef4444" strokeWidth="0.8" />
+                        <text x={platLeftX - 14} y={platY - 46} textAnchor="end" fill="#ef4444" fontSize="6.2" fontWeight="bold">H : 2.38m</text>
 
-                        {/* Cotes de Longueur Dalle (6.20m) */}
-                        <line x1="145" y1="148" x2="555" y2="148" stroke="#2563eb" strokeWidth="0.8" />
-                        <line x1="145" y1="144" x2="145" y2="152" stroke="#2563eb" strokeWidth="0.8" />
-                        <line x1="555" y1="144" x2="555" y2="152" stroke="#2563eb" strokeWidth="0.8" />
-                        <text x="350" y="156" textAnchor="middle" fill="#2563eb" fontSize="7" fontWeight="bold">Longueur dalle : 6.20m (Largeur : 3.20m)</text>
+                        {/* Cotes de Longueur Dalle & Plateforme mise à plat */}
+                        <line x1={dalleLeftX} y1={platY + 12} x2={dalleRightX} y2={platY + 12} stroke="#1d4ed8" strokeWidth="0.9" />
+                        <line x1={dalleLeftX} y1={platY + 9} x2={dalleLeftX} y2={platY + 15} stroke="#1d4ed8" strokeWidth="0.9" />
+                        <line x1={dalleRightX} y1={platY + 9} x2={dalleRightX} y2={platY + 15} stroke="#1d4ed8" strokeWidth="0.9" />
+                        <rect x={(dalleLeftX + dalleRightX) / 2 - 110} y={platY + 6} width="220" height="10" rx="2" fill="rgba(255,255,255,0.92)" stroke="#bfdbfe" strokeWidth="0.6" />
+                        <text x={(dalleLeftX + dalleRightX) / 2} y={platY + 13} textAnchor="middle" fill="#1d4ed8" fontSize="5.8" fontWeight="bold">
+                            Plateforme mise à plat — Dalle : {bLen.toFixed(2)}m (Largeur : 3.20m)
+                        </text>
                     </svg>
                 </div>
             </div>
@@ -694,9 +944,9 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
 
     const totalRealWidth = isOmbriere ? realRoofWidth : ((hasExtLeft ? extLeftWidth : 0) + largeur + (hasExtRight ? extRightWidth : 0));
     const maxRealHeight = Math.max(ridgeHeight, leftEaveHeight, rightEaveHeight) + 1.2;
-    const availableDrawingWidth = 500;
-    const availableDrawingHeight = isMulti ? 95 : 110;
-    const pxPerM = Math.min(availableDrawingWidth / Math.max(8, totalRealWidth), availableDrawingHeight / Math.max(4.0, maxRealHeight), 22);
+    const availableDrawingWidth = 360;
+    const availableDrawingHeight = isMulti ? 88 : 98;
+    const pxPerM = Math.min(availableDrawingWidth / Math.max(8, totalRealWidth), availableDrawingHeight / Math.max(4.0, maxRealHeight), 18);
 
     const mainWidthSvg = (isOmbriere ? realRoofWidth : largeur) * pxPerM;
     const extLeftSvgWidth = (hasExtLeft ? extLeftWidth : 0) * pxPerM;
@@ -709,9 +959,10 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     const extRightSvgX = mainRightSvgX + extRightSvgWidth;
     const centerX = (mainLeftSvgX + mainRightSvgX) / 2;
     const apexSvgX = isOmbriere ? mainLeftSvgX : (isAsym ? (mainLeftSvgX + largeur * 0.25 * pxPerM) : (mainLeftSvgX + mainWidthSvg * 0.5));
-    const groundY = isMulti ? 138 : 142;
-    const groundYLeft = groundY + Math.sin((terrainSlopeDeg * Math.PI) / 180) * (totalSvgWidth * 0.2);
-    const groundYRight = groundY - Math.sin((terrainSlopeDeg * Math.PI) / 180) * (totalSvgWidth * 0.2);
+    const groundY = isMulti ? 132 : 136;
+    // À l'emplacement du projet, la plateforme est mise à plat à groundY
+    const groundYLeft = groundY;
+    const groundYRight = groundY;
     const apexSvgY = groundY - ridgeHeight * pxPerM;
     const leftEaveSvgY = groundY - leftEaveHeight * pxPerM;
     const rightEaveSvgY = groundY - rightEaveHeight * pxPerM;
@@ -748,18 +999,27 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     const roofTypeLabel = (isOmbriere && !(isDouble || isAsym || isSym)) ? 'monopente (ombrière VL/PL)' : isAsym ? (isAsym2 ? 'double pente asymétrique 2 zones' : 'double pente asymétrique') : isSym ? 'double pente symétrique' : 'photovoltaïque';
 
     const coupeSvgContent = (
-        <svg width="680" height="186" viewBox="0 0 680 186" style={{ width: '100%', height: '100%', maxHeight: isMulti ? '50mm' : '85mm' }}>
+        <svg width="680" height="182" viewBox="0 0 680 182" style={{ width: '100%', height: '100%', maxHeight: isMulti ? '48mm' : '100%' }}>
+            {/* 1. Profil Altimétrique du Terrain (style "Profil Alti" : Gauche naturel, Centre mis à plat, Droite naturel) */}
+            {renderAltimetryProfileSvgLayer({
+                altProfile,
+                chartLeftX: 44,
+                chartRightX: 666,
+                platLeftX: Math.max(150, extLeftSvgX - 10),
+                platRightX: Math.min(530, extRightSvgX + 10),
+                platY: groundY,
+                chartTopY: 20,
+                chartBottomY: 166,
+                showDistanceAxis: false,
+                gradId: `c-alti-grad-bldg-${coupeLetter.replace(/[^a-zA-Z0-9]/g, '')}`
+            })}
+
             {/* Badges d'Orientation NORD / SUD */}
-            <rect x="70" y="6" width="44" height="14" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.2" />
-            <text x="92" y="16" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">NORD</text>
+            <rect x="54" y="6" width="42" height="13" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.1" />
+            <text x="75" y="15" textAnchor="middle" fill="#2563eb" fontSize="7" fontWeight="bold">NORD</text>
 
-            <rect x="585" y="6" width="38" height="14" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.2" />
-            <text x="604" y="16" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">SUD</text>
-
-            {/* 1. Ligne de Terrain Naturel (TN) */}
-            <line x1="20" y1={groundYLeft} x2="660" y2={groundYRight} stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="6 3" />
-            <text x="35" y={groundYLeft + 11} fill="#64748b" fontSize="7.5" fontStyle="italic">Terrain naturel conservé (TN Aval) ±0.00</text>
-            <text x="655" y={groundYRight - 4} textAnchor="end" fill="#64748b" fontSize="7.5" fontStyle="italic">TN Amont</text>
+            <rect x="615" y="6" width="36" height="13" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.1" />
+            <text x="633" y="15" textAnchor="middle" fill="#2563eb" fontSize="7" fontWeight="bold">SUD</text>
 
             {/* 2. Dessin selon la typologie */}
             {isOmbriere ? (
@@ -1175,16 +1435,16 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
     const buildingTitle = project?.buildingName ? project.buildingName.toUpperCase() : (isMulti ? `OMBRIÈRE` : 'CONSTRUCTION');
 
     return (
-        <div style={{ height: boxHeight, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: isMulti ? '1mm 3.5mm' : '1.5mm 4mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5mm' }}>
-                <span style={{ fontSize: isMulti ? '8pt' : '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                    DP3 — COUPE DE TERRAIN &amp; DU BÂTIMENT (COUPE TRANSVERSALE {coupeLetter}) — {buildingTitle}
+        <div style={{ height: boxHeight, border: '1px solid #cbd5e1', borderRadius: '2.5mm', padding: '1mm 3.5mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4mm', gap: '2mm' }}>
+                <span style={{ fontSize: '7.4pt', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap' }}>
+                    {codePrefix} — COUPE DE TERRAIN &amp; DU BÂTIMENT (COUPE {coupeLetter}) — {buildingTitle}
                 </span>
-                <span style={{ fontSize: isMulti ? '6.5pt' : '7pt', color: '#64748b' }}>
-                    Dimensions : {realGroundWidth.toFixed(2)}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
+                <span style={{ fontSize: '6.3pt', color: '#047857', fontWeight: 'bold', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '0.2mm 1.8mm', borderRadius: '1.5mm', whiteSpace: 'nowrap' }}>
+                    Profil Alti IGN : Alt. {altProfile.platformAlt.toFixed(1)} m NGF • Dénivelé {altProfile.stats.deniveleTotal.toFixed(1)} m • Pente moy. {altProfile.stats.penteMoyenne.toFixed(1)}% • Dim. {realGroundWidth.toFixed(2)}m × {longueur}m
                 </span>
             </div>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', borderRadius: '1.5mm', border: '1px solid #e2e8f0' }}>
                 {coupeSvgContent}
             </div>
         </div>
@@ -1195,6 +1455,7 @@ export const CoupeBox = ({ project, coupeLetter = "AA'", isMulti = false, boxHei
  * PLANCHE DP3 : PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION (& NOTICE DESCRIPTIVE OPTIONNELLE)
  */
 export const PlateCoupe = ({ project, captures, noticeText, includeNotice = false }) => {
+    const altProfile = useProjectAltimetryProfile(project);
     const isAcama = Boolean(project?.isAcama) || project?.tenantId === 'acama' || false;
     const isGreenInvest = Boolean(project?.isGreenInvest) || project?.tenantId === 'green-invest' || project?.tenantId === 'greeninvest' || project?.tenant === 'greeninvest' || project?.tenant === 'green-invest' || false;
     const isNoBattery = isAcama;
@@ -1210,6 +1471,10 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
     const rawNoticeText = noticeText || project?.noticeText || (isBattery ? getBessNoticeDescriptiveDetailedText(project) : (project?.noticeAgricole || project?.pc_notice || project?.description));
     let cleanNoticeText = (rawNoticeText || '').replace(/^NOTICE\s+D['’]INSERTION\s*&\s*DESCRIPTIVE\s+DU\s+PROJET\s*/i, '').trim();
 
+    if (altProfile?.platformAlt && cleanNoticeText.includes('140.62')) {
+        cleanNoticeText = cleanNoticeText.replace(/140\.62\s*m?/g, `${altProfile.platformAlt.toFixed(2)} m`);
+    }
+
     if (isNoBattery && cleanNoticeText) {
         cleanNoticeText = cleanNoticeText
             .replace(/Le système de stockage batterie est[^\n]*\n?/gi, '')
@@ -1219,24 +1484,29 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
             .replace(/Station Batteries \([^\)]*\)/gi, isAcama ? 'Bâtiment' : 'Ombrière');
     }
 
+    const textLen = cleanNoticeText.length;
+    const lineCount = cleanNoticeText.split('\n').length;
+    const noticeFontSize = (textLen > 2700 || lineCount > 32) ? '5.7pt' : (textLen > 2200 || lineCount > 26) ? '6.0pt' : '6.3pt';
+    const noticeLineHeight = (textLen > 2700 || lineCount > 32) ? '1.18' : (textLen > 2200 || lineCount > 26) ? '1.22' : '1.28';
+
     return (
-        <div style={PAGE_STYLE} id="dp-plate-coupe">
+        <div style={{ ...PAGE_STYLE, padding: hasNotice ? '6mm 10mm 8mm 10mm' : PAGE_STYLE.padding }} id="dp-plate-coupe">
             <PlateHeader 
                 title={hasNotice ? "DP3 : PLAN EN COUPE & NOTICE DESCRIPTIVE" : "DP3 — PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION"} 
                 project={project} 
             />
             {hasNotice ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2.5mm', marginBottom: '8mm' }}>
-                    {/* HAUT : DP3 PLAN EN COUPE TRANSVERSALE */}
-                    <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="62mm" />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.8mm', marginBottom: '1.5mm', minHeight: 0 }}>
+                    {/* HAUT : DP3 PLAN EN COUPE TRANSVERSALE (hauteur réduite pour agrandir le cadre de la notice) */}
+                    <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="43mm" codePrefix="DP3" />
 
-                    {/* BAS : NOTICE DESCRIPTIVE DU PROJET */}
-                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2.5mm 4.5mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                        <div style={{ fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {/* BAS : NOTICE DESCRIPTIVE DU PROJET (cadre agrandi pour afficher l'intégralité du texte) */}
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '2.5mm', padding: '2mm 4mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+                        <div style={{ fontSize: '7.6pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1mm', textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>
                             NOTICE D'INSERTION &amp; DESCRIPTIVE DU PROJET
                         </div>
-                        <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.3pt', lineHeight: '1.3', color: '#334155' }}>
-                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.3pt', lineHeight: '1.3', color: '#334155' }}>
+                        <div style={{ flex: 1, overflow: 'hidden', fontSize: noticeFontSize, lineHeight: noticeLineHeight, color: '#334155' }}>
+                            <div style={{ whiteSpace: 'pre-line', fontSize: noticeFontSize, lineHeight: noticeLineHeight, color: '#334155' }}>
                                 {cleanNoticeText}
                             </div>
                         </div>
@@ -1244,7 +1514,7 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
                 </div>
             ) : (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginBottom: '5mm' }}>
-                    <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="135mm" />
+                    <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="135mm" codePrefix="DP3" />
                 </div>
             )}
             <Footer project={project} />

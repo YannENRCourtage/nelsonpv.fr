@@ -2784,7 +2784,16 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
     const penteMoyenne = totalDist > 0 ? ((denivelePos + deniveleNeg) / totalDist) * 100 : 0;
 
     // On passe deniveleTotal à la place de denivelePos + deniveleNeg pour l'affichage "Dénivelé total"
-    setAltimetryProfile({ data: profileData, line, stats: { distance: totalDist, denivelePos, deniveleNeg, deniveleTotal, penteMoyenne, maxPente }, minAlt, maxAlt });
+    const computedProfile = { data: profileData, line, stats: { distance: totalDist, denivelePos, deniveleNeg, deniveleTotal, penteMoyenne, maxPente }, minAlt, maxAlt };
+    setAltimetryProfile(computedProfile);
+    if (typeof setProject === 'function') {
+      const midAlt = altitudes.length > 0 ? (altitudes.reduce((a, b) => a + b, 0) / altitudes.length) : null;
+      setProject((prev) => prev ? {
+        ...prev,
+        altimetryProfile: computedProfile,
+        ...(midAlt ? { altitude: `${midAlt.toFixed(2)} m` } : {})
+      } : prev);
+    }
   };
 
   const showPointInfo = (latlng) => {
