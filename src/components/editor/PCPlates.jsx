@@ -463,23 +463,27 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
             : bNoticeRaw;
         const bTextLen = bNoticeClean.length;
         const bLineCount = bNoticeClean.split('\n').length;
-        const bFontSize = (bTextLen > 2700 || bLineCount > 32) ? '5.7pt' : (bTextLen > 2200 || bLineCount > 26) ? '6.0pt' : '6.3pt';
-        const bLineHeight = (bTextLen > 2700 || bLineCount > 32) ? '1.18' : (bTextLen > 2200 || bLineCount > 26) ? '1.22' : '1.28';
+        const bFontSize = (bTextLen > 2700 || bLineCount > 32) ? '6.7pt' : (bTextLen > 2200 || bLineCount > 26) ? '7.0pt' : '7.3pt';
+        const bLineHeight = (bTextLen > 2700 || bLineCount > 32) ? '1.16' : (bTextLen > 2200 || bLineCount > 26) ? '1.20' : '1.26';
+        const bParagraphs = bNoticeClean.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+        const bParaGap = (bTextLen > 2200 || bLineCount > 26) ? '1.1mm' : '1.6mm';
 
         return (
-            <div style={{ ...PAGE_STYLE, padding: '6mm 12mm 8mm 12mm' }} id="pc-plate-section-notice">
+            <div style={{ ...PAGE_STYLE, padding: '5.5mm 12mm 7.5mm 12mm' }} id="pc-plate-section-notice">
                 <PlateHeader title="PC3 : PLAN EN COUPE & PC4 : NOTICE DESCRIPTIVE" project={project} />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.8mm', marginBottom: '1.5mm', minHeight: 0 }}>
-                    <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="43mm" codePrefix="PC3" />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5mm', marginBottom: '1mm', minHeight: 0 }}>
+                    <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="41mm" codePrefix="PC3" />
 
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '2.5mm', padding: '2mm 4mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-                        <div style={{ fontSize: '7.6pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1mm', textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>
+                        <div style={{ fontSize: '8.6pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1mm', textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>
                             NOTICE D'INSERTION &amp; DESCRIPTIVE DU PROJET
                         </div>
-                        <div style={{ flex: 1, overflow: 'hidden', fontSize: bFontSize, lineHeight: bLineHeight, color: '#334155' }}>
-                            <div style={{ whiteSpace: 'pre-line', fontSize: bFontSize, lineHeight: bLineHeight, color: '#334155' }}>
-                                {bNoticeClean}
-                            </div>
+                        <div style={{ flex: 1, overflow: 'hidden', fontSize: bFontSize, lineHeight: bLineHeight, color: '#334155', display: 'flex', flexDirection: 'column', gap: bParaGap }}>
+                            {bParagraphs.map((para, pIdx) => (
+                                <div key={pIdx} style={{ whiteSpace: 'pre-line', fontSize: bFontSize, lineHeight: bLineHeight, color: '#334155' }}>
+                                    {para}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -719,20 +723,22 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         : cleanNoticeText;
     const pcTextLen = (finalCleanNotice || default5PointsNotice).length;
     const pcLineCount = (finalCleanNotice || default5PointsNotice).split('\n').length;
-    const pcFontSize = (pcTextLen > 2700 || pcLineCount > 32) ? '5.7pt' : (pcTextLen > 2200 || pcLineCount > 26) ? '6.0pt' : '6.3pt';
-    const pcLineHeight = (pcTextLen > 2700 || pcLineCount > 32) ? '1.18' : (pcTextLen > 2200 || pcLineCount > 26) ? '1.22' : '1.28';
+    const pcFontSize = (pcTextLen > 2700 || pcLineCount > 32) ? '6.7pt' : (pcTextLen > 2200 || pcLineCount > 26) ? '7.0pt' : '7.3pt';
+    const pcLineHeight = (pcTextLen > 2700 || pcLineCount > 32) ? '1.16' : (pcTextLen > 2200 || pcLineCount > 26) ? '1.20' : '1.26';
+    const pcParagraphs = finalCleanNotice ? finalCleanNotice.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean) : [];
+    const pcParaGap = (pcTextLen > 2200 || pcLineCount > 26) ? '1.1mm' : '1.6mm';
 
     return (
-        <div style={{ ...PAGE_STYLE, padding: '6mm 12mm 8mm 12mm' }} id="pc-plate-section-notice">
+        <div style={{ ...PAGE_STYLE, padding: '5.5mm 12mm 7.5mm 12mm' }} id="pc-plate-section-notice">
             <PlateHeader title="PC3 : PLAN EN COUPE & PC4 : NOTICE DESCRIPTIVE" project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.8mm', marginBottom: '1.5mm', minHeight: 0 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5mm', marginBottom: '1mm', minHeight: 0 }}>
                 
                 {/* ── HAUT : PC3 PLAN EN COUPE TRANSVERSALE DYNAMIQUE (hauteur réduite + profil altimétrique IGN) ── */}
-                <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="43mm" codePrefix="PC3" />
+                <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="41mm" codePrefix="PC3" />
 
                 {/* ── BAS : PC4 NOTICE DESCRIPTIVE DU PROJET (cadre agrandi pour afficher l'intégralité du texte) ── */}
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '2.5mm', padding: '2mm 4mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-                    <div style={{ fontSize: '7.6pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1mm', textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>
+                    <div style={{ fontSize: '8.6pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1mm', textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>
                         NOTICE D'INSERTION &amp; DESCRIPTIVE DU PROJET
                     </div>
                     <div style={{ flex: 1, overflow: 'hidden', fontSize: pcFontSize, lineHeight: pcLineHeight, color: '#334155' }}>
@@ -744,8 +750,12 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                 placeholder="Notice descriptive du projet..."
                             />
                         ) : finalCleanNotice ? (
-                            <div style={{ whiteSpace: 'pre-line', fontSize: pcFontSize, lineHeight: pcLineHeight, color: '#334155' }}>
-                                {finalCleanNotice}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: pcParaGap }}>
+                                {pcParagraphs.map((para, pIdx) => (
+                                    <div key={pIdx} style={{ whiteSpace: 'pre-line', fontSize: pcFontSize, lineHeight: pcLineHeight, color: '#334155' }}>
+                                        {para}
+                                    </div>
+                                ))}
                             </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1mm', fontSize: pcFontSize, lineHeight: pcLineHeight }}>

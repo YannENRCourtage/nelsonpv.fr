@@ -1486,29 +1486,33 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
 
     const textLen = cleanNoticeText.length;
     const lineCount = cleanNoticeText.split('\n').length;
-    const noticeFontSize = (textLen > 2700 || lineCount > 32) ? '5.7pt' : (textLen > 2200 || lineCount > 26) ? '6.0pt' : '6.3pt';
-    const noticeLineHeight = (textLen > 2700 || lineCount > 32) ? '1.18' : (textLen > 2200 || lineCount > 26) ? '1.22' : '1.28';
+    const noticeFontSize = (textLen > 2700 || lineCount > 32) ? '6.7pt' : (textLen > 2200 || lineCount > 26) ? '7.0pt' : '7.3pt';
+    const noticeLineHeight = (textLen > 2700 || lineCount > 32) ? '1.16' : (textLen > 2200 || lineCount > 26) ? '1.20' : '1.26';
+    const noticeParagraphs = cleanNoticeText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    const paraGap = (textLen > 2200 || lineCount > 26) ? '1.1mm' : '1.6mm';
 
     return (
-        <div style={{ ...PAGE_STYLE, padding: hasNotice ? '6mm 10mm 8mm 10mm' : PAGE_STYLE.padding }} id="dp-plate-coupe">
+        <div style={{ ...PAGE_STYLE, padding: hasNotice ? '5.5mm 10mm 7.5mm 10mm' : PAGE_STYLE.padding }} id="dp-plate-coupe">
             <PlateHeader 
                 title={hasNotice ? "DP3 : PLAN EN COUPE & NOTICE DESCRIPTIVE" : "DP3 — PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION"} 
                 project={project} 
             />
             {hasNotice ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.8mm', marginBottom: '1.5mm', minHeight: 0 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5mm', marginBottom: '1mm', minHeight: 0 }}>
                     {/* HAUT : DP3 PLAN EN COUPE TRANSVERSALE (hauteur réduite pour agrandir le cadre de la notice) */}
-                    <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="43mm" codePrefix="DP3" />
+                    <CoupeBox project={project} coupeLetter="AA'" isMulti={false} boxHeight="41mm" codePrefix="DP3" />
 
                     {/* BAS : NOTICE DESCRIPTIVE DU PROJET (cadre agrandi pour afficher l'intégralité du texte) */}
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '2.5mm', padding: '2mm 4mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-                        <div style={{ fontSize: '7.6pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1mm', textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>
+                        <div style={{ fontSize: '8.6pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1mm', textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>
                             NOTICE D'INSERTION &amp; DESCRIPTIVE DU PROJET
                         </div>
-                        <div style={{ flex: 1, overflow: 'hidden', fontSize: noticeFontSize, lineHeight: noticeLineHeight, color: '#334155' }}>
-                            <div style={{ whiteSpace: 'pre-line', fontSize: noticeFontSize, lineHeight: noticeLineHeight, color: '#334155' }}>
-                                {cleanNoticeText}
-                            </div>
+                        <div style={{ flex: 1, overflow: 'hidden', fontSize: noticeFontSize, lineHeight: noticeLineHeight, color: '#334155', display: 'flex', flexDirection: 'column', gap: paraGap }}>
+                            {noticeParagraphs.map((para, pIdx) => (
+                                <div key={pIdx} style={{ whiteSpace: 'pre-line', fontSize: noticeFontSize, lineHeight: noticeLineHeight, color: '#334155' }}>
+                                    {para}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
