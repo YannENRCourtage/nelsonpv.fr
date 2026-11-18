@@ -1,28 +1,111 @@
 import { jsPDF } from 'jspdf';
+import { PDFDocument } from 'pdf-lib';
 import JSZip from 'jszip';
 import fileSaver from 'file-saver';
+import { ENR_COURTAGE_LOGO_BASE64 } from '@/assets/logoBase64';
+import { findBessOdreData } from '@/data/bessOdreMatrix';
+
 const saveAs = fileSaver.saveAs || fileSaver;
 
 // ═════════════════════════════════════════════════════════════════════════════
-// CONSTANTES & CONFIGURATION MÉTIER (ENEDIS / RTE / CONSUEL)
+// 1. CONSTANTES OFFICIELLES ENR COURTAGE & RÉFÉRENTIEL ENEDIS 056E / ORA-MP
 // ═════════════════════════════════════════════════════════════════════════════
 
-export const MANDATAIRE_INFO = {
-  raisonSociale: 'SAS ENR COURTAGE',
-  plateforme: 'NELSON (nelsonpv.fr)',
-  capital: '10 000 €',
-  siret: '918 368 530 00015',
-  siren: '918 368 530',
-  rcs: 'R.C.S. BORDEAUX B 918 368 530',
-  adresse: '10 Rue de Penthièvre, 75008 Paris',
-  agenceSudOuest: 'Bordeaux (33000)',
-  emailRaccordement: 'raccordement@enr-courtage.fr',
-  siteWeb: 'https://nelsonpv.fr',
-  telephone: '05 56 00 00 00',
-  qualifications: 'Bureau d\'études Énergies Renouvelables & AMO Raccordement Électrique',
+export const ENR_COURTAGE_INFO = {
+  type: 'Société',
+  raisonSociale: 'ENR COURTAGE',
+  formeJuridique: 'SASU (SAS au capital de 5 000 €)',
+  siren: '881 890 982',
+  siret: '881 890 982 00047',
+  adresse: '7 Rue Gutenberg',
+  codePostal: '33700',
+  ville: 'Mérignac',
+  pays: 'France',
+  cpVillePays: '33700 Mérignac - France',
+  interlocuteurNom: 'BARBERIS',
+  interlocuteurPrenom: 'Yann',
+  interlocuteurNomPrenom: 'BARBERIS Yann',
+  fonction: 'Président',
+  telephone: '07 63 87 71 40',
+  email: 'y.barberis@enr-courtage.fr',
+  emailSecondaire: 'contact@enr-courtage.fr',
 };
 
-// Types de raccordements et natures d'installation
+export const MANDATAIRE_INFO = {
+  raisonSociale: 'ENR COURTAGE',
+  plateforme: 'NELSON (nelsonpv.fr)',
+  capital: '5 000 €',
+  siret: '881 890 982 00047',
+  siren: '881 890 982',
+  rcs: 'R.C.S. BORDEAUX 881 890 982',
+  adresse: '7 Rue Gutenberg, 33700 Mérignac - France',
+  agenceSudOuest: 'Mérignac (33700)',
+  emailRaccordement: 'y.barberis@enr-courtage.fr',
+  siteWeb: 'https://nelsonpv.fr',
+  telephone: '07 63 87 71 40',
+  qualifications: 'Producteur & Mandataire Raccordement Électrique Enedis HTA/BT',
+};
+
+// Texte réglementaire exact pour l'encadré « INFORMATIONS COMPLÉMENTAIRES » (Page 9/41 du 056E)
+export const DEFAULT_INFO_COMPLEMENTAIRES_056E =
+  'Projet BESS standalone 500 kW. Nous sollicitons en priorité l’étude d’une offre de raccordement alternative à modulation de puissance pour stockage, avec un gabarit d’injection interdisant l’injection pendant les heures de congestion photovoltaïque. Voir note annexée “Demande ORA-MP prioritaire”. Si le réseau ne nécessite pas ces restrictions, nous acceptons l’étude d’une solution sans restriction.';
+
+// Corps par défaut de la Note Complémentaire ORA-MP
+export const DEFAULT_NOTE_ORAMP_CORPS = `Notre projet consiste en une installation de stockage d’électricité autonome (BESS standalone), composée de quatre unités de 125 kW, soit 500 kW au total en injection et en soutirage, sans nouvelle production photovoltaïque associée.
+
+Nous souhaitons que l’étude de raccordement examine en priorité une offre de raccordement alternative à modulation de puissance (ORA-MP) adaptée au stockage, avec un gabarit d’injection tenant compte des contraintes locales de production photovoltaïque, en application de l’article 11 de la procédure Enedis-NMO-RES_030E et de la variante 2A (article 3.7 – Gabarit en injection) figurant dans le modèle de Proposition Technique et Financière Enedis-MOP-RES_046E (pages 20 à 21/29, prévoyant par exemple une interdiction d'injecter de mars à octobre sur la plage horaire de congestion solaire type 10h–18h, à contractualiser selon le poste source).
+
+Nous sollicitons l’examen de cette solution dès l’instruction initiale du dossier, afin de ne pas écarter le projet ou lui imposer des travaux de renforcement disproportionnés sur le seul constat d’une saturation du poste source en injection photovoltaïque.
+
+Si aucune restriction n’est nécessaire sur le départ HTA ou le poste source concerné, nous souhaitons conserver la possibilité d’un raccordement de référence sans limitation horaire.`;
+
+export const SCHEMAS_COMPTAGE_056E = [
+  { id: 'S1', label: 'Schéma S1 — Production / Stockage HTA sans auxiliaires dissociés (Comptage 4 quadrants HTA)' },
+  { id: 'S2', label: 'Schéma S2 — Production HTA avec comptage côté BT (transformateur dédié)' },
+  { id: 'S3', label: 'Schéma S3 — Production avec auxiliaires sur PDL distinct' },
+  { id: 'S4', label: 'Schéma S4 — Autoconsommation / Stockage avec injection du surplus' },
+  { id: 'S5', label: 'Schéma S5 — Multi-générateurs HTA avec décompte subordonné' },
+  { id: 'S6', label: 'Schéma S6 — Stockage couplé avec installation de production existante' },
+  { id: 'S7', label: 'Schéma S7 — Stockage stationnaire autonome bidirectionnel (CARD-IS HTA)' },
+  { id: 'S8', label: 'Schéma S8 — Installation hybride PV + Stockage avec comptage dissocié' },
+  { id: 'S9', label: 'Schéma S9 — Configuration spécifique multi-points' },
+  { id: 'Autre', label: 'Autre schéma de comptage (à préciser)' },
+];
+
+export const ENEDIS_056E_CHECKLIST_PIECES = [
+  {
+    id: 'plan_situation',
+    label: 'Plan de situation (1:25000)',
+    desc: 'Extrait cartographique IGN / Cadastre situant le terrain à l’échelle 1/25 000',
+    required: true,
+  },
+  {
+    id: 'plan_masse',
+    label: 'Plan de masse (1:200/1:500) avec point de livraison',
+    desc: 'Implantation cotée des 4 armoires BESS et localisation du PDL accessible depuis le domaine public',
+    required: true,
+  },
+  {
+    id: 'schema_unifilaire',
+    label: 'Schéma unifilaire',
+    desc: 'Schéma électrique HTA/BT : 4 × 125 kW, protections, transformateur élévateur 20 kV, comptage et découplage',
+    required: true,
+  },
+  {
+    id: 'recepisse_dp',
+    label: 'Récépissé / Certificat de non-opposition DP',
+    desc: 'Autorisation d’urbanisme délivrée par la mairie (ou certificat de non-opposition tacite)',
+    required: true,
+  },
+  {
+    id: 'certificats_50549',
+    label: 'Certificats de conformité NF EN 50549-1/2',
+    desc: 'Certificats de conformité réseau des convertisseurs (PCS) et protection de découplage',
+    required: true,
+  },
+];
+
+// Constantes historiques conservées pour rétro-compatibilité
 export const INSTALLATION_TYPES = [
   { id: 'pv_toiture', label: 'Photovoltaïque — Toiture Bâtiment', isPv: true, isBess: false },
   { id: 'ombriere_vl', label: 'Ombrières de parking Véhicules Légers (VL)', isPv: true, isBess: false },
@@ -46,26 +129,18 @@ export const VOLTAGE_LEVELS = [
   { id: 'HTB', label: 'HTB (Haute Tension B > 10 MW / Réseau RTE)', maxKva: 100000 },
 ];
 
-// Checklist standard des pièces jointes Enedis Connect
-export const ENEDIS_CHECKLIST_DOCS = [
-  { id: 'mandat_signe', label: 'Mandat spécial de représentation signé', required: true, desc: 'Délégation légale au mandataire SAS ENR COURTAGE' },
-  { id: 'plan_situation', label: 'Plan de situation du terrain (Extrait IGN ou Cadastre)', required: true, desc: 'Localisation de la parcelle à l\'échelle de la commune' },
-  { id: 'plan_masse', label: 'Plan de masse côté et orienté (Emprise des panneaux/ombrières)', required: true, desc: 'Positionnement de la centrale et du futur poste de livraison' },
-  { id: 'schema_unifilaire', label: 'Schéma unifilaire de principe de l\'installation électrique', required: true, desc: 'Tracé du générateur, onduleurs, protections et point de raccordement' },
-  { id: 'autorisation_urba', label: 'Autorisation d\'urbanisme (Récépissé ou Arrêté DP / PC / CU)', required: true, desc: 'Justificatif des droits d\'urbanisme délivré par la mairie' },
-  { id: 'titre_propriete', label: 'Titre de propriété ou Accord du propriétaire / Bail emphytéotique', required: true, desc: 'Preuve de droit réel sur le foncier d\'implantation' },
-  { id: 'fiches_onduleurs', label: 'Fiches techniques & Certificats de découplage des onduleurs', required: false, desc: 'Certificat DIN VDE 0126-1-1 / VFR 2019 ou Relais HTA C13-100' },
-  { id: 'kbis_demandeur', label: 'Extrait Kbis (< 3 mois) et RIB du producteur', required: true, desc: 'Identité juridique et bancaire de la société porteuse' },
-  { id: 'notice_bess', label: 'Notice descriptive du système de batteries (si BESS)', required: false, desc: 'Spécification cellules, BMS, extinction et gestion thermique' },
-];
+export const ENEDIS_CHECKLIST_DOCS = ENEDIS_056E_CHECKLIST_PIECES;
 
 // ═════════════════════════════════════════════════════════════════════════════
-// OUTILS DE CALCUL & HELPERS DATE / FORMATAGE
+// 2. OUTILS DE FORMATAGE, SANITIZATION PDF & EXTRACTION PROJET
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function formatDateFr(dateInput) {
-  if (!dateInput) return '—';
+  if (!dateInput) return new Date().toLocaleDateString('fr-FR');
   try {
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(String(dateInput).trim())) {
+      return String(dateInput).trim();
+    }
     const d = new Date(dateInput);
     if (isNaN(d.getTime())) return String(dateInput);
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -81,37 +156,37 @@ export function formatEuro(val) {
 }
 
 /**
- * Calcule l'échéance légale de validité de la PTF Enedis (strictement 3 mois selon art. L. 342-1 Code Énergie)
- * @param {string|Date} dateReception 
- * @returns {{ deadlineDate: Date|null, formattedDeadline: string, daysRemaining: number|null, status: 'valid'|'warning'|'critical'|'expired'|'none' }}
+ * Normalise une chaîne pour l'encodage WinAnsi de jsPDF (évite les glyphes manquants sur apostrophes courbes, tirets longs, ≥, espaces insécables)
  */
+export function sanitizePdfText(input) {
+  if (input === null || input === undefined) return '';
+  return String(input)
+    .replace(/[\u2018\u2019\u201B\u2032]/g, "'")
+    .replace(/[\u201C\u201D\u201F\u2033]/g, '"')
+    .replace(/[\u2013\u2014\u2212]/g, '-')
+    .replace(/\u2265/g, '>=')
+    .replace(/\u2264/g, '<=')
+    .replace(/\u2026/g, '...')
+    .replace(/[\u00A0\u202F]/g, ' ');
+}
+
 export function calculatePtfCountdown(dateReception) {
   if (!dateReception) {
     return { deadlineDate: null, formattedDeadline: 'Non renseignée', daysRemaining: null, status: 'none' };
   }
-
   const start = new Date(dateReception);
   if (isNaN(start.getTime())) {
     return { deadlineDate: null, formattedDeadline: 'Date invalide', daysRemaining: null, status: 'none' };
   }
-
-  // La validité légale Enedis d'une PTF est de 3 mois calendaires
   const deadline = new Date(start);
   deadline.setMonth(deadline.getMonth() + 3);
-
   const now = new Date();
   const diffMs = deadline.getTime() - now.getTime();
   const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
   let status = 'valid';
-  if (daysRemaining < 0) {
-    status = 'expired';
-  } else if (daysRemaining <= 15) {
-    status = 'critical';
-  } else if (daysRemaining <= 30) {
-    status = 'warning';
-  }
-
+  if (daysRemaining < 0) status = 'expired';
+  else if (daysRemaining <= 15) status = 'critical';
+  else if (daysRemaining <= 30) status = 'warning';
   return {
     deadlineDate: deadline,
     formattedDeadline: formatDateFr(deadline),
@@ -121,494 +196,1756 @@ export function calculatePtfCountdown(dateReception) {
 }
 
 /**
- * Initialise ou normalise l'objet raccordement d'un projet
+ * Extrait et normalise toutes les variables du projet actif pour le pré-remplissage Enedis 056E & Note ORA-MP
  */
-export function getInitialRaccordementData(project) {
+export function extractProjectEnedisVariables(project, cadastreOverride = null) {
   const p = project || {};
-  const existing = p.raccordement || {};
-  const powerKwc = parseFloat(p.kwc || p.projectSize || 0) || 0;
-  const isHTA = powerKwc >= 250;
-  const isBess = Boolean(p.isBattery || existing.natureInstallation === 'bess_standalone' || existing.natureInstallation === 'hybride_pv_bess');
+  const odreSite = findBessOdreData(
+    p.name || p.projectName || p.client || p.clientName || p.id || '',
+    p.city || p.commune || '',
+    p.address || p.adresse || p.clientAddress || '',
+    p.lat || p.latitude,
+    p.lng || p.longitude
+  );
+
+  const commune = (
+    cadastreOverride?.nom_commune ||
+    p.commune ||
+    p.city ||
+    p.terrain_city ||
+    p.cadastre_commune ||
+    odreSite?.commune ||
+    ''
+  ).trim();
+
+  const codePostal = String(
+    cadastreOverride?.code_postal ||
+    p.codePostal ||
+    p.zip ||
+    p.zipCode ||
+    p.code_postal ||
+    p.terrain_zip ||
+    odreSite?.codePostal ||
+    ''
+  ).trim();
+
+  const codeInsee = String(
+    p.codeInsee ||
+    p.code_insee ||
+    p.insee ||
+    p.cadastre_code_insee ||
+    p.dp_mairie_info?.codeInsee ||
+    (cadastreOverride?.code_departement && cadastreOverride?.code_commune
+      ? `${cadastreOverride.code_departement}${cadastreOverride.code_commune}`
+      : '') ||
+    ''
+  ).trim();
+
+  const adresse = (
+    p.adresse ||
+    p.address ||
+    p.terrain_address ||
+    p.clientAddress ||
+    odreSite?.address ||
+    (commune ? `Lieu-dit / Rue — ${commune}` : '')
+  ).trim();
+
+  // Parcelle cadastrale
+  const rawParcelles = Array.isArray(p.parcelles) && p.parcelles.length > 0
+    ? p.parcelles
+    : Array.isArray(p.cadastre_parcelles) && p.cadastre_parcelles.length > 0
+      ? p.cadastre_parcelles
+      : [];
+
+  const rawSection = (
+    cadastreOverride?.section ||
+    odreSite?.section ||
+    p.cadastre_section ||
+    p.cadastreSection ||
+    p.dp_config?.terrain?.section ||
+    rawParcelles[0]?.section ||
+    (p.cadastre ? String(p.cadastre).split(' ')[0] : '') ||
+    p.section ||
+    ''
+  ).toString().replace(/^Sec\.?\s*/i, '').trim();
+
+  const rawNumero = (
+    cadastreOverride?.numero ||
+    odreSite?.numero ||
+    p.cadastre_numero ||
+    p.cadastreNumero ||
+    p.dp_config?.terrain?.parcelle ||
+    rawParcelles[0]?.numero ||
+    p.parcelle ||
+    p.parcel ||
+    (p.cadastre ? String(p.cadastre).split(' ').slice(1).join(' ') : '') ||
+    ''
+  ).toString().replace(/^n°?\s*/i, '').trim();
+
+  let parcelle = '';
+  if (rawSection && rawNumero) {
+    parcelle = `Section ${rawSection} n° ${rawNumero}`;
+  } else if (p.parcelle || p.cadastre || p.cadastralReference) {
+    parcelle = String(p.parcelle || p.cadastre || p.cadastralReference).trim();
+  } else if (rawSection || rawNumero) {
+    parcelle = `${rawSection} ${rawNumero}`.trim();
+  } else {
+    parcelle = 'À préciser';
+  }
+
+  // Coordonnées GPS WGS84 Décimal
+  let rawLat =
+    p.bessLatitude ??
+    p.bess_lat ??
+    p.implantation?.lat ??
+    p.latitude ??
+    p.lat ??
+    (p.gps ? String(p.gps).split(',')[0]?.trim() : null) ??
+    odreSite?.bessLatitude ??
+    odreSite?.latitude ??
+    '';
+
+  let rawLng =
+    p.bessLongitude ??
+    p.bess_lng ??
+    p.implantation?.lng ??
+    p.longitude ??
+    p.lng ??
+    (p.gps ? String(p.gps).split(',')[1]?.trim() : null) ??
+    odreSite?.bessLongitude ??
+    odreSite?.longitude ??
+    '';
+
+  const latNum = parseFloat(rawLat);
+  const lngNum = parseFloat(rawLng);
+  const latitude = !isNaN(latNum) ? latNum.toFixed(6) : String(rawLat || '');
+  const longitude = !isNaN(lngNum) ? lngNum.toFixed(6) : String(rawLng || '');
+
+  // Nom de l'installation : {{projet.nom}} (ex: BESS Standalone - {{projet.commune}})
+  const clientClean = (p.name || p.lastName || p.clientName || odreSite?.siteName || '').trim();
+  let nomInstallation = '';
+  if (p.nomInstallation) {
+    nomInstallation = p.nomInstallation;
+  } else if (commune) {
+    nomInstallation = clientClean && !commune.toLowerCase().includes(clientClean.toLowerCase())
+      ? `BESS Standalone - ${commune} (${clientClean})`
+      : `BESS Standalone - ${commune}`;
+  } else if (clientClean) {
+    nomInstallation = `BESS Standalone - ${clientClean}`;
+  } else {
+    nomInstallation = 'BESS Standalone - 500 kW';
+  }
+
+  const siretSite = (p.siret || ENR_COURTAGE_INFO.siret).trim();
+  const posteSource = odreSite?.posteSourceEnedis || p.substation?.name || '';
+  const todayStr = new Date().toLocaleDateString('fr-FR');
+
+  // Infos client/SPV du projet (pour le switch "Client/SPV Producteur + ENR COURTAGE Mandataire")
+  const spvRaisonSociale = (p.company || p.societe || p.spvName || `${p.name || ''} ${p.firstName || ''}`).trim() || 'SPV / Client Producteur';
+  const spvSiret = (p.siret && p.siret !== ENR_COURTAGE_INFO.siret) ? p.siret : '';
+  const spvSiren = spvSiret ? spvSiret.replace(/\s+/g, '').slice(0, 9) : '';
 
   return {
-    // 1. Général & Identifiants
-    natureInstallation: existing.natureInstallation || (isBess ? 'hybride_pv_bess' : (p.type === 'ombriere' || p.type === 'ombriere_parking' ? 'ombriere_vl' : 'pv_toiture')),
-    puissanceInjectionKva: existing.puissanceInjectionKva ?? (powerKwc || 100),
-    puissanceSoutirageKva: existing.puissanceSoutirageKva ?? (isBess ? Math.round(powerKwc * 0.8) || 100 : 0),
-    tension: existing.tension || (isHTA ? 'HTA' : 'BT'),
-    typeInjection: existing.typeInjection || (isBess ? 'card_is' : 'injection_totale'),
-    prmPdr: existing.prmPdr || p.prm || '',
-    siretProducteur: existing.siretProducteur || p.siret || '',
-    cadastreParcelles: existing.cadastreParcelles || p.cadastre || p.cadastralReference || 'Section A - Parcelle(s) à confirmer',
-    
-    // Étape 1 : Demande Initiale Connect
-    demandeStatus: existing.demandeStatus || 'a_preparer', // 'a_preparer' | 'deposee' | 'recevable' | 'rejetee'
-    enedisAffaireId: existing.enedisAffaireId || existing.numeroDossierEnedis || '',
-    dateDepotDemande: existing.dateDepotDemande || '',
-    piecesJointes: existing.piecesJointes || {
-      mandat_signe: true,
+    nom: nomInstallation,
+    commune: commune || 'Commune',
+    codePostal: codePostal || '',
+    codeInsee: codeInsee || '',
+    adresse: adresse || '',
+    siret: siretSite,
+    parcelle,
+    latitude,
+    longitude,
+    posteSource,
+    todayStr,
+    spvRaisonSociale,
+    spvSiret,
+    spvSiren,
+    clientNom: p.name || p.lastName || 'BARBERIS',
+    clientPrenom: p.firstName || 'Yann',
+    clientTel: p.phone || p.telephone || ENR_COURTAGE_INFO.telephone,
+    clientEmail: p.email || ENR_COURTAGE_INFO.email,
+  };
+}
+
+/**
+ * Construit la ligne "Site :" de la Note Complémentaire ORA-MP à partir des données du formulaire
+ */
+export function buildNoteOraMpSiteLine(data) {
+  const nom = data?.siteNomInstallation || 'BESS Standalone';
+  const commune = data?.siteCommune || 'Commune';
+  const cp = data?.siteCodePostal || '';
+  const parcelle = data?.siteParcelle || 'À préciser';
+  const lat = data?.siteLatitude || '—';
+  const lng = data?.siteLongitude || '—';
+  return `${nom} — Commune : ${commune}${cp ? ` (${cp})` : ''} — Référence parcelle : ${parcelle} (Coordonnées GPS : ${lat}, ${lng})`;
+}
+
+/**
+ * Génère un cachet officiel ENR COURTAGE + signature vectorielle sous forme d'image PNG Base64
+ */
+let cachedDefaultStampDataUrl = null;
+export function generateDefaultEnrCourtageStampDataUrl() {
+  if (cachedDefaultStampDataUrl) return cachedDefaultStampDataUrl;
+  if (typeof document === 'undefined') return null;
+
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 520;
+    canvas.height = 210;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Rotation légère effet tampon authentique (-2.2 degrés)
+    ctx.save();
+    ctx.translate(260, 105);
+    ctx.rotate(-0.035);
+    ctx.translate(-260, -105);
+
+    const stampBlue = '#153e75';
+    ctx.strokeStyle = stampBlue;
+    ctx.fillStyle = stampBlue;
+
+    // Cadre externe double du cachet commercial
+    ctx.lineWidth = 3.5;
+    ctx.strokeRect(18, 18, 340, 132);
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(24, 24, 328, 120);
+
+    // Texte du cachet commercial ENR COURTAGE
+    ctx.textAlign = 'center';
+    ctx.font = '900 22px Arial, Helvetica, sans-serif';
+    ctx.fillText('ENR COURTAGE', 188, 52);
+
+    ctx.font = 'bold 12px Arial, Helvetica, sans-serif';
+    ctx.fillText('SAS au capital de 5 000 € — Ingénierie & Stockage ENR', 188, 72);
+
+    ctx.font = '600 12.5px Arial, Helvetica, sans-serif';
+    ctx.fillText('7 Rue Gutenberg — 33700 MÉRIGNAC', 188, 92);
+
+    ctx.font = 'bold 12px "Courier New", Courier, monospace';
+    ctx.fillText('SIREN : 881 890 982 | SIRET : 881 890 982 00047', 188, 112);
+
+    ctx.font = '600 11px Arial, Helvetica, sans-serif';
+    ctx.fillText('Tél : 07 63 87 71 40 • y.barberis@enr-courtage.fr', 188, 131);
+
+    ctx.restore();
+
+    // Signature manuscrite vectorielle élégante par-dessus le cachet
+    ctx.save();
+    ctx.strokeStyle = '#0a2558';
+    ctx.lineWidth = 2.8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    // Initiale Y fluide
+    ctx.moveTo(235, 118);
+    ctx.bezierCurveTo(245, 92, 260, 88, 258, 122);
+    ctx.bezierCurveTo(256, 152, 232, 178, 218, 165);
+    ctx.bezierCurveTo(210, 156, 250, 130, 278, 124);
+    // Corps "Barberis" cursif
+    ctx.bezierCurveTo(295, 100, 312, 95, 308, 128);
+    ctx.bezierCurveTo(306, 142, 322, 116, 332, 126);
+    ctx.bezierCurveTo(342, 134, 352, 114, 364, 125);
+    ctx.bezierCurveTo(376, 134, 390, 112, 405, 124);
+    ctx.bezierCurveTo(420, 132, 438, 115, 468, 110);
+    // Paraphe final souligné
+    ctx.bezierCurveTo(485, 108, 495, 122, 450, 136);
+    ctx.bezierCurveTo(390, 152, 310, 164, 265, 172);
+    ctx.stroke();
+
+    ctx.restore();
+
+    cachedDefaultStampDataUrl = canvas.toDataURL('image/png');
+    return cachedDefaultStampDataUrl;
+  } catch (e) {
+    console.warn('Impossible de générer le cachet par défaut:', e);
+    return null;
+  }
+}
+
+/**
+ * Initialise ou restaure l'état complet `enedisData` (Fiches A, C, E4/T1 & Note ORA-MP) d'un projet
+ */
+export function getInitialEnedis056EData(project, cadastreOverride = null) {
+  const p = project || {};
+  const vars = extractProjectEnedisVariables(p, cadastreOverride);
+
+  // Vérifier s'il existe déjà des données sauvegardées sur le projet ou dans localStorage
+  let saved = p.enedisData || null;
+  if (!saved && p.id && typeof window !== 'undefined') {
+    try {
+      const localRaw = localStorage.getItem(`nelson_enedis_data_${p.id}`);
+      if (localRaw) {
+        saved = JSON.parse(localRaw);
+      }
+    } catch (e) {
+      console.warn('Erreur lecture localStorage nelson_enedis_data:', e);
+    }
+  }
+  const s = saved || {};
+
+  const defaultSiteNom = s.siteNomInstallation || vars.nom;
+  const defaultSiteCommune = s.siteCommune || vars.commune;
+  const defaultSiteCp = s.siteCodePostal || vars.codePostal;
+  const defaultSiteParcelle = s.siteParcelle || vars.parcelle;
+  const defaultSiteLat = s.siteLatitude || vars.latitude;
+  const defaultSiteLng = s.siteLongitude || vars.longitude;
+
+  const initialObj = {
+    // ── ONGLET 1 : FICHE A – DONNÉES GÉNÉRALES & LOCALISATION (Enedis-MOP-RES_056E) ──
+    modeRepresentation: s.modeRepresentation || 'enr_producteur', // 'enr_producteur' | 'client_producteur_enr_mandataire'
+
+    // Bénéficiaire du raccordement (Producteur)
+    beneficiaireType: s.beneficiaireType || ENR_COURTAGE_INFO.type, // 'Société' | 'Particulier' | 'Collectivité'
+    beneficiaireRaisonSociale: s.beneficiaireRaisonSociale || ENR_COURTAGE_INFO.raisonSociale,
+    beneficiaireFormeJuridique: s.beneficiaireFormeJuridique || ENR_COURTAGE_INFO.formeJuridique,
+    beneficiaireSiren: s.beneficiaireSiren || ENR_COURTAGE_INFO.siren,
+    beneficiaireSiret: s.beneficiaireSiret || ENR_COURTAGE_INFO.siret,
+    beneficiaireAdresse: s.beneficiaireAdresse || ENR_COURTAGE_INFO.adresse,
+    beneficiaireCodePostal: s.beneficiaireCodePostal || ENR_COURTAGE_INFO.codePostal,
+    beneficiaireVille: s.beneficiaireVille || ENR_COURTAGE_INFO.ville,
+    beneficiairePays: s.beneficiairePays || ENR_COURTAGE_INFO.pays,
+    beneficiaireCpVillePays: s.beneficiaireCpVillePays || ENR_COURTAGE_INFO.cpVillePays,
+    interlocuteurNom: s.interlocuteurNom || ENR_COURTAGE_INFO.interlocuteurNom,
+    interlocuteurPrenom: s.interlocuteurPrenom || ENR_COURTAGE_INFO.interlocuteurPrenom,
+    interlocuteurNomPrenom: s.interlocuteurNomPrenom || ENR_COURTAGE_INFO.interlocuteurNomPrenom,
+    interlocuteurFonction: s.interlocuteurFonction || ENR_COURTAGE_INFO.fonction,
+    interlocuteurTelephone: s.interlocuteurTelephone || ENR_COURTAGE_INFO.telephone,
+    interlocuteurEmail: s.interlocuteurEmail || ENR_COURTAGE_INFO.email,
+
+    // Mandataire (toujours pré-rempli avec ENR COURTAGE, éditable)
+    mandataireRaisonSociale: s.mandataireRaisonSociale || ENR_COURTAGE_INFO.raisonSociale,
+    mandataireFormeJuridique: s.mandataireFormeJuridique || ENR_COURTAGE_INFO.formeJuridique,
+    mandataireSiren: s.mandataireSiren || ENR_COURTAGE_INFO.siren,
+    mandataireSiret: s.mandataireSiret || ENR_COURTAGE_INFO.siret,
+    mandataireAdresse: s.mandataireAdresse || ENR_COURTAGE_INFO.adresse,
+    mandataireCpVillePays: s.mandataireCpVillePays || ENR_COURTAGE_INFO.cpVillePays,
+    mandataireInterlocuteur: s.mandataireInterlocuteur || ENR_COURTAGE_INFO.interlocuteurNomPrenom,
+    mandataireFonction: s.mandataireFonction || ENR_COURTAGE_INFO.fonction,
+    mandataireTelephone: s.mandataireTelephone || ENR_COURTAGE_INFO.telephone,
+    mandataireEmail: s.mandataireEmail || ENR_COURTAGE_INFO.email,
+
+    // Localisation du Site (dynamique selon le projet ouvert)
+    siteNomInstallation: defaultSiteNom,
+    siteSiret: s.siteSiret || vars.siret,
+    siteAdresse: s.siteAdresse || vars.adresse,
+    siteCodePostal: defaultSiteCp,
+    siteCommune: defaultSiteCommune,
+    siteCodeInsee: s.siteCodeInsee || vars.codeInsee,
+    siteParcelle: defaultSiteParcelle,
+    siteLatitude: defaultSiteLat,
+    siteLongitude: defaultSiteLng,
+    sitePosteSource: s.sitePosteSource || vars.posteSource,
+
+    // Raccordement actuel au réseau
+    siteDejaRaccordeRpd: s.siteDejaRaccordeRpd || 'non', // 'non' | 'oui'
+    sitePrmExistant: s.sitePrmExistant || p.prm || '',
+    souhaitDemandeur: s.souhaitDemandeur || 'cas_1', // 'cas_1' | 'cas_2' | 'cas_3'
+
+    // Valorisation & Comptage
+    modaliteValorisation: s.modaliteValorisation || 'Totalité de la production (nette d\'auxiliaires)',
+    schemaComptage: s.schemaComptage || 'S1',
+    schemaComptageAutre: s.schemaComptageAutre || '',
+    attestationAbsenceAutreProjetInsee: s.attestationAbsenceAutreProjetInsee || 'oui', // 'oui' | 'non' (Art. L.336-4)
+    projetsGroupesInjection: s.projetsGroupesInjection || 'non', // 'non' | 'oui'
+
+    // Encadré « INFORMATIONS COMPLÉMENTAIRES » (Page 9/41 du 056E)
+    informationsComplementaires: s.informationsComplementaires ?? DEFAULT_INFO_COMPLEMENTAIRES_056E,
+
+    // Type de demande
+    typeDemande: s.typeDemande || 'offre_raccordement_travaux_enedis', // 'offre_raccordement_travaux_enedis' | 'proposition_avant_completude'
+
+    // ── ONGLET 2 : FICHE C – RACCORDEMENT HTA & OPTIONS DE MODULATION (p. 15-17) ──
+    configPosteLivraison: s.configPosteLivraison || 'reference_domaine_public', // 'reference_domaine_public' | 'autre_configuration'
+    distanceDomainePublicM: s.distanceDomainePublicM ?? '0',
+    puissanceRaccInjectionKw: s.puissanceRaccInjectionKw ?? '500',
+    puissanceRaccSoutirageKw: s.puissanceRaccSoutirageKw ?? '500',
+    puissanceReactiveConforme: s.puissanceReactiveConforme || 'oui', // 'oui' | 'non' (Arrêté du 9 juin 2020)
+
+    // Options pour recevoir plusieurs solutions de raccordement (Page 16/41)
+    devisDivisionParc: s.devisDivisionParc || 'non', // 'oui' | 'non'
+    devisPuissanceInjectionFaible: s.devisPuissanceInjectionFaible || 'non', // 'oui' | 'non'
+    puissanceInjectionMinKw: s.puissanceInjectionMinKw ?? '350',
+    devisOffreModulationPuissance: s.devisOffreModulationPuissance !== undefined ? s.devisOffreModulationPuissance : true, // boolean / checkbox
+    puissanceGarantieInjectionKw: s.puissanceGarantieInjectionKw ?? '350',
+    capaciteAccueil3DepartsHta: s.capaciteAccueil3DepartsHta || 'oui', // 'oui' | 'non'
+    regulationPuissanceActivePf: s.regulationPuissanceActivePf || 'oui', // 'oui' | 'non' (P = f(f))
+
+    // ── ONGLET 3 : FICHES E4 / T1 – CARACTÉRISTIQUES STOCKAGE & BATTERIES ──
+    typeInstallationStockage: s.typeInstallationStockage || 'Stockage stationnaire par batteries autonomes (BESS Stand-alone)',
+    nombreUnitesTexte: s.nombreUnitesTexte || '4 armoires de 125 kW',
+    nombreUnites: s.nombreUnites ?? '4',
+    puissanceUnitaireKw: s.puissanceUnitaireKw ?? '125',
+    modeleBatterie: s.modeleBatterie || 'CESC Mercury 261 - LFP',
+    capaciteUnitaireKwh: s.capaciteUnitaireKwh ?? '261',
+    capaciteTotaleKwh: s.capaciteTotaleKwh ?? '1044',
+    puissanceActiveTotaleInstalleeKw: s.puissanceActiveTotaleInstalleeKw ?? '500',
+    puissanceApparenteMaximaleKva: s.puissanceApparenteMaximaleKva ?? '500',
+    modeRaccordement: s.modeRaccordement || 'Triphasé HTA (20 kV) via transformateur élévateur BT/HTA.',
+    technologieCellules: s.technologieCellules || 'Lithium-Fer-Phosphate (LiFePO4 / LFP) — Refroidissement liquide IP55',
+    onduleursPcsDetail: s.onduleursPcsDetail || '4 × Convertisseurs bidirectionnels (PCS) de 125 kVA / 125 kW (cos φ = 1)',
+    protectionDecouplageDetail: s.protectionDecouplageDetail || 'Relais de protection de découplage HTA conforme NF C 13-100 & Enedis-NOI-RES_43E',
+    conformiteNormative: s.conformiteNormative || 'NF EN 50549-2 / Arrêté du 9 juin 2020 / NF C 13-100 / NF EN 62619',
+
+    // Fiche T1 : Transformateur élévateur BT / HTA
+    transfoPuissanceNominaleKva: s.transfoPuissanceNominaleKva ?? '630',
+    transfoTensionPrimaireHta: s.transfoTensionPrimaireHta || '20 kV (HTA Triphasé 50 Hz)',
+    transfoTensionSecondaireBt: s.transfoTensionSecondaireBt || '400 V (BT Triphasé)',
+    transfoCouplage: s.transfoCouplage || 'Dyn11',
+    transfoUccPercent: s.transfoUccPercent ?? '4.0',
+
+    // Certification des données
+    signataireNomPrenom: s.signataireNomPrenom || 'Yann BARBERIS',
+    signatureLieu: s.signatureLieu || 'Mérignac',
+    signatureDate: s.signatureDate || vars.todayStr,
+
+    // ── ONGLET 4 : NOTE COMPLÉMENTAIRE « DEMANDE PRIORITAIRE D'ORA-MP » ──
+    noteObjet: s.noteObjet || 'Demande prioritaire d’ORA-MP pour stockage autonome — 500 kW',
+    noteSiteLigne: s.noteSiteLigne || buildNoteOraMpSiteLine({
+      siteNomInstallation: defaultSiteNom,
+      siteCommune: defaultSiteCommune,
+      siteCodePostal: defaultSiteCp,
+      siteParcelle: defaultSiteParcelle,
+      siteLatitude: defaultSiteLat,
+      siteLongitude: defaultSiteLng,
+    }),
+    noteSalutation: s.noteSalutation || 'Madame, Monsieur,',
+    noteCorps: s.noteCorps ?? DEFAULT_NOTE_ORAMP_CORPS,
+    noteFaitA: s.noteFaitA || 'Mérignac',
+    noteDate: s.noteDate || vars.todayStr,
+    noteNomQualiteDemandeur: s.noteNomQualiteDemandeur || 'Yann BARBERIS, Président – ENR COURTAGE',
+    inclureCachetSignature: s.inclureCachetSignature !== undefined ? s.inclureCachetSignature : true,
+    signatureImageBase64: s.signatureImageBase64 || null,
+
+    // ── CHECKLIST DES PIÈCES À JOINDRE SUR LE PORTAIL ENEDIS ──
+    checklistPieces: s.checklistPieces || {
       plan_situation: true,
       plan_masse: true,
       schema_unifilaire: true,
-      autorisation_urba: false,
-      titre_propriete: false,
-      kbis_demandeur: true,
-      fiches_onduleurs: true,
+      recepisse_dp: true,
+      certificats_50549: true,
     },
+  };
 
-    // Étape 2 : PTF
-    ptfStatus: existing.ptfStatus || 'en_attente', // 'en_attente' | 'recue' | 'acceptee' | 'refusee' | 'perimee'
-    dateReceptionPtf: existing.dateReceptionPtf || '',
-    coutTravauxEnedisTtc: existing.coutTravauxEnedisTtc ?? '',
-    quotePartS3renr: existing.quotePartS3renr ?? '',
-    solutionTechniquePtf: existing.solutionTechniquePtf || '',
-    delaiTravauxEnedisMois: existing.delaiTravauxEnedisMois ?? (isHTA ? 9 : 4),
+  return initialObj;
+}
 
-    // Étape 3 : CRD (Convention de Raccordement Définitive)
-    crdStatus: existing.crdStatus || 'a_signer', // 'a_signer' | 'signee' | 'acompte_regle'
-    crdReference: existing.crdReference || '',
-    dateSignatureCrd: existing.dateSignatureCrd || '',
-    montantAcompteTtc: existing.montantAcompteTtc ?? '',
-    datePaiementAcompte: existing.datePaiementAcompte || '',
-    refVirementAcompte: existing.refVirementAcompte || '',
+export function getInitialRaccordementData(project) {
+  return getInitialEnedis056EData(project);
+}
 
-    // Étape 4 : Travaux & Consuel
-    travauxEnedisStatus: existing.travauxEnedisStatus || 'non_demarres',
-    travauxClientStatus: existing.travauxClientStatus || 'non_demarres',
-    consuelType: existing.consuelType || (isBess ? 'dossier_violet_bess' : 'sc144b_pv'),
-    consuelNumero: existing.consuelNumero || p.consuel_number || '',
-    consuelStatus: existing.consuelStatus || 'non_depose', // 'non_depose' | 'depose' | 'en_cours' | 'vise' | 'non_conforme'
-    consuelDateDepot: existing.consuelDateDepot || '',
-    consuelDateVisite: existing.consuelDateVisite || '',
-    consuelDateVisa: existing.consuelDateVisa || '',
-    onduleurMarque: existing.onduleurMarque || 'Sungrow / Huawei',
-    onduleurModele: existing.onduleurModele || 'SG125HX / SUN2000',
-    onduleurProtectionDecouplage: existing.onduleurProtectionDecouplage || (isHTA ? 'Relais HTA NF C 13-100 / Enedis-NOI-RES_43E' : 'Conforme DIN VDE 0126-1-1 / VFR 2019'),
+// ═════════════════════════════════════════════════════════════════════════════
+// 3. HELPERS GRAPHIQUES COMMUNS POUR GÉNÉRATION PDF (jsPDF)
+// ═════════════════════════════════════════════════════════════════════════════
 
-    // Étape 5 : CARD & MES
-    cardType: existing.cardType || (isBess ? 'card_is' : (isHTA ? 'card_i' : 'cae')),
-    cardNumber: existing.cardNumber || '',
-    dateSignatureCard: existing.dateSignatureCard || '',
-    datePrevueMes: existing.datePrevueMes || '',
-    dateEffectiveMes: existing.dateEffectiveMes || '',
-    mesStatus: existing.mesStatus || 'en_attente', // 'en_attente' | 'planifiee' | 'effectuee'
-    notes: existing.notes || '',
+/**
+ * Dessine une case à cocher officielle dans un PDF jsPDF
+ */
+function drawPdfCheckbox(doc, x, y, checked, label, options = {}) {
+  const size = options.size || 3.6;
+  const fontSize = options.fontSize || 8;
+  const boldLabel = options.bold || false;
+
+  doc.setDrawColor(0, 94, 184);
+  doc.setLineWidth(0.35);
+  if (checked) {
+    doc.setFillColor(0, 94, 184);
+    doc.roundedRect(x, y - size + 0.6, size, size, 0.5, 0.5, 'FD');
+    // Coche blanche
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(0.55);
+    doc.line(x + 0.7, y - size / 2 + 0.6, x + size * 0.42, y - 0.3);
+    doc.line(x + size * 0.42, y - 0.3, x + size - 0.6, y - size + 1.3);
+  } else {
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(x, y - size + 0.6, size, size, 0.5, 0.5, 'FD');
+  }
+
+  doc.setTextColor(checked ? 15 : 71, checked ? 23 : 85, checked ? 42 : 105);
+  doc.setFont('helvetica', checked || boldLabel ? 'bold' : 'normal');
+  doc.setFontSize(fontSize);
+  doc.text(sanitizePdfText(label), x + size + 2, y);
+}
+
+/**
+ * Dessine l'en-tête officiel Enedis-MOP-RES_056E (Version 2) sur une page
+ */
+function drawEnedis056EHeader(doc, ficheCode, ficheTitle, pageRefText) {
+  const W = 210;
+  const m = 14;
+
+  // Bandeau supérieur Bleu Enedis + Vert Enedis
+  doc.setFillColor(0, 94, 184); // Bleu Enedis #005EB8
+  doc.rect(0, 0, W, 24, 'F');
+  doc.setFillColor(147, 201, 14); // Vert Enedis #93C90E
+  doc.rect(0, 24, W, 2.2, 'F');
+
+  // Bloc marque Enedis à gauche
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(m, 4.5, 36, 15, 2, 2, 'F');
+  doc.setTextColor(0, 94, 184);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('Enedis', m + 4, 12.2);
+  doc.setFillColor(147, 201, 14);
+  doc.rect(m + 4, 13.5, 28, 1.1, 'F');
+  doc.setFontSize(5.3);
+  doc.setTextColor(30, 58, 138);
+  doc.text("L'ELECTRICITE EN RESEAU", m + 4, 17.2);
+
+  // Titre réglementaire au centre/droite
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.text('FICHES DE COLLECTE — Enedis-MOP-RES_056E (Version 2)', m + 40, 9.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(224, 242, 254);
+  doc.text(
+    sanitizePdfText('Installation de Production hors photovoltaïque ou de Stockage de puissance > 36 kVA raccordée au RPD'),
+    m + 40,
+    14.5
+  );
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.3);
+  doc.setTextColor(190, 242, 100);
+  doc.text(sanitizePdfText(pageRefText), m + 40, 19.8);
+
+  // Sous-bandeau de Fiche (Fiche A / Fiche C / Fiche E4 & T1)
+  doc.setFillColor(241, 245, 249);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(m, 29, W - 2 * m, 8.5, 1.5, 1.5, 'FD');
+
+  doc.setFillColor(0, 94, 184);
+  doc.roundedRect(m, 29, 26, 8.5, 1.5, 1.5, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text(sanitizePdfText(ficheCode), m + 13, 34.5, { align: 'center' });
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.8);
+  doc.text(sanitizePdfText(ficheTitle), m + 30, 34.5);
+}
+
+/**
+ * Dessine le pied de page officiel Enedis-MOP-RES_056E (Version 2)
+ */
+function drawEnedis056EFooter(doc, pageNum, totalPages, siteName) {
+  const W = 210;
+  const H = 297;
+  const m = 14;
+
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.line(m, H - 13, W - m, H - 13);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(0, 94, 184);
+  doc.text('Enedis-MOP-RES_056E — Version 2', m, H - 8.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(
+    sanitizePdfText(`Dossier : ${siteName || 'BESS Standalone 500 kW'} • Demandeur / Mandataire : ENR COURTAGE (SIREN 881 890 982)`),
+    W / 2,
+    H - 8.5,
+    { align: 'center' }
+  );
+
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+  doc.text(`Page ${pageNum} / ${totalPages}`, W - m, H - 8.5, { align: 'right' });
+}
+
+/**
+ * Dessine un cadre de section avec bandeau de titre
+ */
+function drawSectionFrame(doc, x, y, w, h, title, accentColor = [0, 94, 184]) {
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.35);
+  doc.roundedRect(x, y, w, h, 1.8, 1.8, 'FD');
+
+  doc.setFillColor(...accentColor);
+  doc.roundedRect(x, y, w, 6.8, 1.8, 1.8, 'F');
+  // Couvrir les coins bas du bandeau
+  doc.rect(x, y + 4.5, w, 2.3, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.text(sanitizePdfText(title), x + 3.5, y + 4.8);
+}
+
+/**
+ * Dessine une paire Libellé / Valeur dans une grille
+ */
+function drawFieldRow(doc, x, y, label, value, labelWidth = 46, maxWidth = 120) {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(sanitizePdfText(label), x, y);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(15, 23, 42);
+  const cleanVal = sanitizePdfText(value || '—');
+  const lines = doc.splitTextToSize(cleanVal, maxWidth);
+  doc.text(lines[0] || '—', x + labelWidth, y);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 4. DOCUMENT 1 : GÉNÉRATION DU FORMULAIRE ENEDIS-MOP-RES_056E (VERSION 2) PDF
+// ═════════════════════════════════════════════════════════════════════════════
+
+export async function generateEnedis056EPdf(project, enedisDataInput, options = {}) {
+  const p = project || {};
+  const d = enedisDataInput || getInitialEnedis056EData(p);
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210;
+  const m = 14;
+  const usableW = W - 2 * m;
+  const totalPages = 4;
+
+  const isEnrProducteur = d.modeRepresentation !== 'client_producteur_enr_mandataire';
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PAGE 1 : FICHE A (1/2) — DONNÉES GÉNÉRALES, PRODUCTEUR, MANDATAIRE & SITE
+  // ═══════════════════════════════════════════════════════════════════════════
+  drawEnedis056EHeader(
+    doc,
+    'FICHE A',
+    'DONNÉES GÉNÉRALES & LOCALISATION DE L’INSTALLATION (1/2)',
+    'Réf. Enedis-MOP-RES_056E — Version 2 — Correspondance Fiche A (Pages 3 à 6/41)'
+  );
+
+  let y = 41;
+
+  // ── CADRE A1 : BÉNÉFICIAIRE DU RACCORDEMENT (PRODUCTEUR) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    66,
+    'A.1 — BÉNÉFICIAIRE DU RACCORDEMENT (PRODUCTEUR / DEMANDEUR)'
+  );
+
+  let cy = y + 12;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Type de Bénéficiaire :', m + 4, cy);
+
+  drawPdfCheckbox(doc, m + 42, cy, d.beneficiaireType === 'Société', 'Société', { bold: true });
+  drawPdfCheckbox(doc, m + 75, cy, d.beneficiaireType === 'Particulier', 'Particulier');
+  drawPdfCheckbox(doc, m + 112, cy, d.beneficiaireType === 'Collectivité', 'Collectivité / Autre');
+
+  // Badge qualité à droite
+  doc.setFillColor(239, 246, 255);
+  doc.setDrawColor(147, 197, 253);
+  doc.roundedRect(m + 144, cy - 4, 34, 6, 1.2, 1.2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(29, 78, 216);
+  doc.text(isEnrProducteur ? 'PRODUCTEUR : ENR' : 'PRODUCTEUR : SPV', m + 161, cy, { align: 'center' });
+
+  cy += 7.5;
+  drawFieldRow(doc, m + 4, cy, 'Nom / Raison sociale :', d.beneficiaireRaisonSociale, 42, 55);
+  drawFieldRow(doc, m + 98, cy, 'Forme juridique :', d.beneficiaireFormeJuridique, 32, 50);
+
+  cy += 6.8;
+  drawFieldRow(doc, m + 4, cy, 'N° SIREN :', d.beneficiaireSiren, 42, 50);
+  drawFieldRow(doc, m + 98, cy, 'N° SIRET :', d.beneficiaireSiret, 32, 50);
+
+  cy += 6.8;
+  drawFieldRow(doc, m + 4, cy, 'Adresse du siège social :', d.beneficiaireAdresse, 42, 130);
+
+  cy += 6.8;
+  const cpVillePaysStr = d.beneficiaireCpVillePays || `${d.beneficiaireCodePostal || ''} ${d.beneficiaireVille || ''} - ${d.beneficiairePays || 'France'}`;
+  drawFieldRow(doc, m + 4, cy, 'Code Postal - Ville - Pays :', cpVillePaysStr, 42, 130);
+
+  // Séparateur interlocuteur
+  cy += 4;
+  doc.setDrawColor(226, 232, 240);
+  doc.line(m + 4, cy, m + usableW - 4, cy);
+
+  cy += 6;
+  const interlocuteurFull = d.interlocuteurNomPrenom || `${d.interlocuteurNom || ''} ${d.interlocuteurPrenom || ''}`.trim();
+  drawFieldRow(doc, m + 4, cy, 'Interlocuteur (Nom, Prénom) :', interlocuteurFull, 44, 52);
+  drawFieldRow(doc, m + 98, cy, 'Fonction du représentant :', d.interlocuteurFonction, 38, 44);
+
+  cy += 6.8;
+  drawFieldRow(doc, m + 4, cy, 'Téléphone :', d.interlocuteurTelephone, 44, 50);
+  drawFieldRow(doc, m + 98, cy, 'E-mail :', d.interlocuteurEmail, 38, 46);
+
+  y += 70;
+
+  // ── CADRE A2 : MANDATAIRE / TIERS HABILITÉ (SI MANDAT OU SUIVI ENR COURTAGE) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    46,
+    'A.2 — MANDATAIRE / SOCIÉTÉ EN CHARGE DU DÉPÔT ET DU SUIVI TECHNIQUE',
+    [15, 43, 92]
+  );
+
+  cy = y + 12;
+  drawPdfCheckbox(
+    doc,
+    m + 4,
+    cy,
+    isEnrProducteur,
+    'ENR COURTAGE agit directement en tant que Producteur / Demandeur',
+    { fontSize: 7.5 }
+  );
+  drawPdfCheckbox(
+    doc,
+    m + 100,
+    cy,
+    !isEnrProducteur,
+    'Client / SPV Producteur + ENR COURTAGE Mandataire',
+    { fontSize: 7.5 }
+  );
+
+  cy += 7.5;
+  drawFieldRow(doc, m + 4, cy, 'Société / Raison sociale :', d.mandataireRaisonSociale || 'ENR COURTAGE', 42, 52);
+  drawFieldRow(doc, m + 98, cy, 'SIREN / SIRET :', `${d.mandataireSiren || '881 890 982'} / ${d.mandataireSiret || '881 890 982 00047'}`, 32, 52);
+
+  cy += 6.8;
+  drawFieldRow(doc, m + 4, cy, 'Adresse du siège :', `${d.mandataireAdresse || '7 Rue Gutenberg'}, ${d.mandataireCpVillePays || '33700 Mérignac - France'}`, 42, 132);
+
+  cy += 6.8;
+  drawFieldRow(doc, m + 4, cy, 'Représentant & Fonction :', `${d.mandataireInterlocuteur || 'BARBERIS Yann'} (${d.mandataireFonction || 'Président'})`, 42, 52);
+  drawFieldRow(doc, m + 98, cy, 'Tél. & E-mail :', `${d.mandataireTelephone || '07 63 87 71 40'} • ${d.mandataireEmail || 'y.barberis@enr-courtage.fr'}`, 32, 52);
+
+  y += 50;
+
+  // ── CADRE A3 : LOCALISATION DU SITE D'IMPLANTATION ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    68,
+    'A.3 — LOCALISATION DU SITE DE L’INSTALLATION À RACCORDER (FICHE A)',
+    [0, 94, 184]
+  );
+
+  cy = y + 12;
+  drawFieldRow(doc, m + 4, cy, 'Nom de l’Installation :', d.siteNomInstallation, 44, 130);
+
+  cy += 7.2;
+  drawFieldRow(doc, m + 4, cy, 'SIRET du site :', d.siteSiret || '881 890 982 00047', 44, 52);
+  drawFieldRow(doc, m + 98, cy, 'Code INSEE Commune :', d.siteCodeInsee || 'À compléter', 38, 44);
+
+  cy += 7.2;
+  drawFieldRow(doc, m + 4, cy, 'Adresse de l’installation :', d.siteAdresse, 44, 130);
+
+  cy += 7.2;
+  drawFieldRow(doc, m + 4, cy, 'Code Postal - Ville :', `${d.siteCodePostal || ''} ${d.siteCommune || ''}`.trim(), 44, 52);
+  drawFieldRow(doc, m + 98, cy, 'Réf. Cadastrale(s) :', d.siteParcelle || 'À préciser', 38, 44);
+
+  cy += 6;
+  // Sous-cadre Coordonnées GPS WGS84 Décimal
+  doc.setFillColor(240, 249, 255);
+  doc.setDrawColor(186, 230, 253);
+  doc.roundedRect(m + 4, cy, usableW - 8, 22, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(3, 105, 161);
+  doc.text(
+    sanitizePdfText('COORDONNÉES GPS DU POINT DE RACCORDEMENT (Système géodésique WGS84 Décimal) :'),
+    m + 8,
+    cy + 6.5
+  );
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.text(sanitizePdfText(`Latitude (WGS84) :  ${d.siteLatitude || '—'}`), m + 8, cy + 15);
+  doc.text(sanitizePdfText(`Longitude (WGS84) :  ${d.siteLongitude || '—'}`), m + 96, cy + 15);
+
+  // Encart rappel pièces jointes bas de page 1
+  y += 72;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(m, y, usableW, 20, 1.5, 1.5, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.3);
+  doc.setTextColor(15, 43, 92);
+  doc.text('PIÈCES JOINTES OBLIGATOIRES AU DOSSIER ENEDIS-MOP-RES_056E :', m + 4, y + 5.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(51, 65, 85);
+  doc.text(
+    sanitizePdfText('1. Note complémentaire « Demande prioritaire d’ORA-MP pour stockage autonome (500 kW) »   •   2. Plan de situation (1:25000)'),
+    m + 4,
+    y + 11
+  );
+  doc.text(
+    sanitizePdfText('3. Plan de masse (1:200 / 1:500) avec PDL   •   4. Schéma unifilaire HTA/BT   •   5. Récépissé / Non-opposition DP   •   6. Certificats NF EN 50549-1/2'),
+    m + 4,
+    y + 16
+  );
+
+  drawEnedis056EFooter(doc, 1, totalPages, d.siteNomInstallation);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PAGE 2 : FICHE A (2/2) — RACCORDEMENT ACTUEL, VALORISATION, PAGE 9/41 & TYPE
+  // ═══════════════════════════════════════════════════════════════════════════
+  doc.addPage();
+  drawEnedis056EHeader(
+    doc,
+    'FICHE A',
+    'RACCORDEMENT ACTUEL, VALORISATION & INFORMATIONS COMPLÉMENTAIRES (2/2)',
+    'Réf. Enedis-MOP-RES_056E — Version 2 — Correspondance Fiche A (Pages 7 à 10/41)'
+  );
+
+  y = 41;
+
+  // ── CADRE A4 : RACCORDEMENT ACTUEL AU RÉSEAU ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    46,
+    'A.4 — RACCORDEMENT ACTUEL AU RÉSEAU PUBLIC DE DISTRIBUTION (RPD)'
+  );
+
+  cy = y + 12;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Site déjà raccordé au RPD ? :', m + 4, cy);
+
+  const isDejaRacc = d.siteDejaRaccordeRpd === 'oui';
+  drawPdfCheckbox(doc, m + 52, cy, !isDejaRacc, 'Non (Nouveau site indépendant)');
+  drawPdfCheckbox(doc, m + 108, cy, isDejaRacc, `Oui${d.sitePrmExistant ? ` (PRM/PDL : ${d.sitePrmExistant})` : ''}`);
+
+  cy += 8;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Souhait du Demandeur :', m + 4, cy);
+
+  cy += 6;
+  drawPdfCheckbox(
+    doc,
+    m + 6,
+    cy,
+    d.souhaitDemandeur === 'cas_1' || !d.souhaitDemandeur,
+    'Cas 1 : la création d’un nouveau Point de Raccordement dédié à la présente demande'
+  );
+  cy += 6;
+  drawPdfCheckbox(
+    doc,
+    m + 6,
+    cy,
+    d.souhaitDemandeur === 'cas_2',
+    'Cas 2 : le raccordement de l’installation sur un Point de Livraison (PDL / PRM) existant'
+  );
+  cy += 6;
+  drawPdfCheckbox(
+    doc,
+    m + 6,
+    cy,
+    d.souhaitDemandeur === 'cas_3',
+    'Cas 3 : la modification d’une installation de production ou de stockage déjà raccordée'
+  );
+
+  y += 50;
+
+  // ── CADRE A5 : VALORISATION & COMPTAGE ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    48,
+    'A.5 — VALORISATION, SCHÉMA DE COMPTAGE & ATTESTATION ART. L.336-4'
+  );
+
+  cy = y + 12;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Modalité de valorisation :',
+    d.modaliteValorisation || "Totalité de la production (nette d'auxiliaires)",
+    46,
+    126
+  );
+
+  cy += 7.5;
+  const schemaObj = SCHEMAS_COMPTAGE_056E.find(sc => sc.id === d.schemaComptage);
+  const schemaDisplay = d.schemaComptage === 'Autre'
+    ? `Autre : ${d.schemaComptageAutre || 'À définir avec Enedis'}`
+    : (schemaObj ? schemaObj.label : `Schéma ${d.schemaComptage || 'S1'}`);
+  drawFieldRow(doc, m + 4, cy, 'Schéma de comptage :', schemaDisplay, 46, 126);
+
+  cy += 8;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(sanitizePdfText('Attestation d’absence d’autre projet sur le même code INSEE (Art. L.336-4) :'), m + 4, cy);
+  const isAbsenceAutre = d.attestationAbsenceAutreProjetInsee !== 'non';
+  drawPdfCheckbox(doc, m + 116, cy, isAbsenceAutre, 'Oui (aucun autre projet)');
+  drawPdfCheckbox(doc, m + 160, cy, !isAbsenceAutre, 'Non');
+
+  cy += 7.5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Projets groupés en injection :', m + 4, cy);
+  const isGroupes = d.projetsGroupesInjection === 'oui';
+  drawPdfCheckbox(doc, m + 56, cy, !isGroupes, 'Non');
+  drawPdfCheckbox(doc, m + 82, cy, isGroupes, 'Oui');
+
+  y += 52;
+
+  // ── CADRE A6 : ENCADRÉ « INFORMATIONS COMPLÉMENTAIRES » (PAGE 9/41 DU 056E) — TRÈS IMPORTANT ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    72,
+    'A.6 — ENCADRÉ « INFORMATIONS COMPLÉMENTAIRES » (PAGE 9/41 DU 056E — DEMANDE ORA-MP PRIORITAIRE)',
+    [180, 83, 9] // Ambre foncé officiel pour mise en évidence réglementaire
+  );
+
+  // Sous-cadre intérieur mis en valeur
+  doc.setFillColor(255, 251, 235);
+  doc.setDrawColor(245, 158, 11);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(m + 4, y + 10, usableW - 8, 44, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.8);
+  doc.setTextColor(15, 23, 42);
+  const infoText = sanitizePdfText(d.informationsComplementaires || DEFAULT_INFO_COMPLEMENTAIRES_056E);
+  const infoLines = doc.splitTextToSize(`« ${infoText} »`, usableW - 16);
+  doc.text(infoLines, m + 8, y + 17);
+
+  // Bandeau de références normatives sous l'encadré
+  doc.setFillColor(241, 245, 249);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(m + 4, y + 56.5, usableW - 8, 12, 1.2, 1.2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.2);
+  doc.setTextColor(0, 94, 184);
+  doc.text(
+    sanitizePdfText('Références réglementaires applicables à l’instruction ORA-MP Stockage :'),
+    m + 7,
+    y + 61.5
+  );
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  doc.text(
+    sanitizePdfText('• Procédure Enedis-NMO-RES_030E (Article 11)   • Modèle de PTF Enedis-MOP-RES_046E — Variante 2A (Article 3.7 – Gabarit en injection, p. 20-21/29)'),
+    m + 7,
+    y + 66.2
+  );
+
+  y += 76;
+
+  // ── CADRE A7 : TYPE DE DEMANDE (PAGE 10/41) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    36,
+    'A.7 — TYPE DE DEMANDE SOLLICITÉE AUPRÈS D’ENEDIS (PAGE 10/41 DU 056E)'
+  );
+
+  cy = y + 13;
+  const isOffreComplete = d.typeDemande !== 'proposition_avant_completude';
+  drawPdfCheckbox(
+    doc,
+    m + 6,
+    cy,
+    isOffreComplete,
+    'Offre de Raccordement avec travaux sur les ouvrages dédiés réalisés par Enedis',
+    { fontSize: 8.3, bold: true }
+  );
+  cy += 8;
+  drawPdfCheckbox(
+    doc,
+    m + 6,
+    cy,
+    !isOffreComplete,
+    'Proposition de raccordement avant complétude du dossier',
+    { fontSize: 8.3 }
+  );
+
+  drawEnedis056EFooter(doc, 2, totalPages, d.siteNomInstallation);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PAGE 3 : FICHE C — CARACTÉRISTIQUES HTA & OPTIONS DE MODULATION (p. 15-17)
+  // ═══════════════════════════════════════════════════════════════════════════
+  doc.addPage();
+  drawEnedis056EHeader(
+    doc,
+    'FICHE C',
+    'RACCORDEMENT SUR LE RÉSEAU PUBLIC HTA & OPTIONS DE MODULATION',
+    'Réf. Enedis-MOP-RES_056E — Version 2 — Correspondance Fiche C (Pages 15 à 17/41)'
+  );
+
+  y = 41;
+
+  // ── CADRE C1 : CONFIGURATION DU POSTE DE LIVRAISON (PAGE 15/41) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    38,
+    'C.1 — CONFIGURATION DU POSTE DE LIVRAISON HTA (PAGE 15/41)'
+  );
+
+  cy = y + 13;
+  const isRefDomainePublic = d.configPosteLivraison !== 'autre_configuration';
+  drawPdfCheckbox(
+    doc,
+    m + 6,
+    cy,
+    isRefDomainePublic,
+    'Raccordement de référence (Poste de livraison HTA accessible directement depuis le domaine public)',
+    { fontSize: 8.2, bold: true }
+  );
+  cy += 8.5;
+  drawPdfCheckbox(
+    doc,
+    m + 6,
+    cy,
+    !isRefDomainePublic,
+    `Autre configuration (Poste situé hors limite du domaine public — Distance d = ${d.distanceDomainePublicM || '0'} mètres)`,
+    { fontSize: 8.2 }
+  );
+
+  y += 42;
+
+  // ── CADRE C2 : PUISSANCE DE RACCORDEMENT DEMANDÉE & PUISSANCE RÉACTIVE (PAGE 15/41) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    50,
+    'C.2 — PUISSANCES DE RACCORDEMENT DEMANDÉES & PUISSANCE RÉACTIVE (PAGE 15/41)'
+  );
+
+  cy = y + 12;
+  // Deux boîtes visuelles pour Pracc inj et Pracc sout
+  const boxW = (usableW - 14) / 2;
+  doc.setFillColor(239, 246, 255);
+  doc.setDrawColor(147, 197, 253);
+  doc.roundedRect(m + 4, cy, boxW, 20, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(30, 58, 138);
+  doc.text('PUISSANCE DEMANDÉE EN INJECTION (Pracc inj) :', m + 8, cy + 6.5);
+  doc.setFontSize(13);
+  doc.setTextColor(0, 94, 184);
+  doc.text(`${d.puissanceRaccInjectionKw || '500'} kW`, m + 8, cy + 15.5);
+
+  doc.setFillColor(245, 243, 255);
+  doc.setDrawColor(196, 181, 253);
+  doc.roundedRect(m + 10 + boxW, cy, boxW, 20, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(88, 28, 135);
+  doc.text('PUISSANCE DEMANDÉE EN SOUTIRAGE (Pracc sout) :', m + 14 + boxW, cy + 6.5);
+  doc.setFontSize(13);
+  doc.setTextColor(109, 40, 217);
+  doc.text(`${d.puissanceRaccSoutirageKw || '500'} kW`, m + 14 + boxW, cy + 15.5);
+
+  cy += 28;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  doc.text(sanitizePdfText('Puissance réactive conforme aux exigences de l’Arrêté du 9 juin 2020 :'), m + 4, cy);
+  const isReactifOui = d.puissanceReactiveConforme !== 'non';
+  drawPdfCheckbox(doc, m + 112, cy, isReactifOui, 'Oui');
+  drawPdfCheckbox(doc, m + 135, cy, !isReactifOui, 'Non');
+
+  y += 54;
+
+  // ── CADRE C3 : OPTIONS POUR RECEVOIR PLUSIEURS SOLUTIONS DE RACCORDEMENT (PAGE 16/41) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    92,
+    'C.3 — OPTIONS POUR RECEVOIR PLUSIEURS SOLUTIONS DE RACCORDEMENT (PAGE 16/41)'
+  );
+
+  cy = y + 13;
+  // Option 1 : Division de parc
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text('1. Devis d’étude pour une division de parc :', m + 4, cy);
+  const isDivParc = d.devisDivisionParc === 'oui';
+  drawPdfCheckbox(doc, m + 105, cy, isDivParc, 'Oui');
+  drawPdfCheckbox(doc, m + 128, cy, !isDivParc, 'Non');
+
+  cy += 9;
+  // Option 2 : Puissance d'injection plus faible
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text('2. Devis d’étude pour une puissance d’injection plus faible :', m + 4, cy);
+  const isPInjFaible = d.devisPuissanceInjectionFaible === 'oui';
+  drawPdfCheckbox(doc, m + 105, cy, isPInjFaible, 'Oui');
+  drawPdfCheckbox(doc, m + 128, cy, !isPInjFaible, 'Non');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`(Pracc inj min = ${d.puissanceInjectionMinKw || '350'} kW)`, m + 148, cy);
+
+  cy += 9;
+  // Option 3 : Offre à modulation de puissance
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text('3. Devis d’étude Offre à modulation de puissance :', m + 4, cy);
+  const isOraCheckbox = d.devisOffreModulationPuissance === true || d.devisOffreModulationPuissance === 'oui';
+  drawPdfCheckbox(doc, m + 105, cy, isOraCheckbox, 'Oui');
+  drawPdfCheckbox(doc, m + 128, cy, !isOraCheckbox, 'Non');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(0, 94, 184);
+  doc.text(`(Pgar inj = ${d.puissanceGarantieInjectionKw || '350'} kW, soit >= 70 %)`, m + 146, cy);
+
+  // Encadré d'alerte réglementaire sur la case générale Pgar inj vs Gabarit Horaire Stockage
+  cy += 5;
+  doc.setFillColor(254, 243, 199);
+  doc.setDrawColor(245, 158, 11);
+  doc.roundedRect(m + 4, cy, usableW - 8, 20, 1.5, 1.5, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.3);
+  doc.setTextColor(146, 64, 14);
+  doc.text('NOTE RÉGLEMENTAIRE IMPORTANTE SUR L’OPTION DE MODULATION DE PUISSANCE :', m + 8, cy + 5.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.1);
+  doc.setTextColor(120, 53, 15);
+  const alertLines = doc.splitTextToSize(
+    sanitizePdfText(
+      'Attention : cette case générale indique une puissance garantie minimale de 70 %. Elle ne remplace pas la demande spécifique de gabarit horaire pour stockage décrite en page 9/41 (Fiche A) et dans la Note complémentaire ORA-MP jointe (Art. 11 Enedis-NMO-RES_030E & Variante 2A Enedis-MOP-RES_046E).'
+    ),
+    usableW - 16
+  );
+  doc.text(alertLines, m + 8, cy + 10.5);
+
+  cy += 27;
+  // Option 4 : Capacité d'accueil des 3 départs HTA existants les plus proches
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text(sanitizePdfText('4. Capacité d’accueil des 3 départs HTA existants les plus proches :'), m + 4, cy);
+  const isCap3Departs = d.capaciteAccueil3DepartsHta !== 'non';
+  drawPdfCheckbox(doc, m + 105, cy, isCap3Departs, 'Oui');
+  drawPdfCheckbox(doc, m + 128, cy, !isCap3Departs, 'Non');
+
+  y += 96;
+
+  // ── CADRE C4 : RÉGULATION DE PUISSANCE ACTIVE P = f(f) (PAGE 17/41) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    30,
+    'C.4 — PARTICIPATION AU RÉGLAGE DE LA FRÉQUENCE (PAGE 17/41)'
+  );
+
+  cy = y + 15;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(30, 41, 59);
+  doc.text(sanitizePdfText('Régulation de puissance active en fonction de la fréquence P = f(f) :'), m + 4, cy);
+  const isRegulPf = d.regulationPuissanceActivePf !== 'non';
+  drawPdfCheckbox(doc, m + 112, cy, isRegulPf, 'Oui (Conforme Arrêté du 9 juin 2020)');
+  drawPdfCheckbox(doc, m + 165, cy, !isRegulPf, 'Non');
+
+  drawEnedis056EFooter(doc, 3, totalPages, d.siteNomInstallation);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PAGE 4 : FICHES E4 & T1 — CARACTÉRISTIQUES STOCKAGE BATTERIES & TRANSFO
+  // ═══════════════════════════════════════════════════════════════════════════
+  doc.addPage();
+  drawEnedis056EHeader(
+    doc,
+    'E4 / T1',
+    'CARACTÉRISTIQUES TECHNIQUES STOCKAGE BATTERIES & TRANSFORMATEUR HTA/BT',
+    'Réf. Enedis-MOP-RES_056E — Version 2 — Fiche E4 (Stockage) & Fiche T1 (Transformateur HTA/BT)'
+  );
+
+  y = 41;
+
+  // ── CADRE E4 : CARACTÉRISTIQUES TECHNIQUES BATTERIES (FICHE E4) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    84,
+    'FICHE E4 — CARACTÉRISTIQUES TECHNIQUES DE L’INSTALLATION DE STOCKAGE & BATTERIES'
+  );
+
+  cy = y + 12;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Type d’installation :',
+    d.typeInstallationStockage || 'Stockage stationnaire par batteries autonomes (BESS Stand-alone)',
+    48,
+    126
+  );
+
+  cy += 7.5;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Nombre d’unités & Modèle :',
+    `${d.nombreUnitesTexte || '4 armoires de 125 kW'} — Modèle : ${d.modeleBatterie || 'CESC Mercury 261 - LFP'}`,
+    48,
+    126
+  );
+
+  cy += 7.5;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Puissance active totale (Pinstallée) :',
+    `${d.puissanceActiveTotaleInstalleeKw || '500'} kW`,
+    52,
+    40
+  );
+  drawFieldRow(
+    doc,
+    m + 98,
+    cy,
+    'Puissance apparente max :',
+    `${d.puissanceApparenteMaximaleKva || '500'} kVA`,
+    44,
+    38
+  );
+
+  cy += 7.5;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Capacité énergétique totale :',
+    `${d.capaciteTotaleKwh || '1044'} kWh (${d.nombreUnites || '4'} × ${d.capaciteUnitaireKwh || '261'} kWh)`,
+    48,
+    126
+  );
+
+  cy += 7.5;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Mode de raccordement :',
+    d.modeRaccordement || 'Triphasé HTA (20 kV) via transformateur élévateur BT/HTA.',
+    48,
+    126
+  );
+
+  cy += 7.5;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Technologie batteries :',
+    d.technologieCellules || 'Lithium-Fer-Phosphate (LiFePO4 / LFP) — Refroidissement liquide IP55',
+    48,
+    126
+  );
+
+  cy += 7.5;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Convertisseurs (PCS) :',
+    d.onduleursPcsDetail || '4 × Convertisseurs bidirectionnels (PCS) de 125 kVA / 125 kW (cos phi = 1)',
+    48,
+    126
+  );
+
+  cy += 7.5;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Découplage & Normes :',
+    `${d.protectionDecouplageDetail || 'Relais HTA NF C 13-100 / Enedis-NOI-RES_43E'} (${d.conformiteNormative || 'NF EN 50549-2'})`,
+    48,
+    126
+  );
+
+  y += 88;
+
+  // ── CADRE T1 : CARACTÉRISTIQUES DU TRANSFORMATEUR ÉLÉVATEUR BT/HTA (FICHE T1) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    46,
+    'FICHE T1 — CARACTÉRISTIQUES DU TRANSFORMATEUR DE PUISSANCE HTA / BT',
+    [15, 43, 92]
+  );
+
+  cy = y + 13;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Puissance apparente nominale :',
+    `${d.transfoPuissanceNominaleKva || '630'} kVA`,
+    50,
+    42
+  );
+  drawFieldRow(
+    doc,
+    m + 98,
+    cy,
+    'Couplage des enroulements :',
+    d.transfoCouplage || 'Dyn11',
+    46,
+    36
+  );
+
+  cy += 8;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Tension primaire (côté Réseau) :',
+    d.transfoTensionPrimaireHta || '20 kV (HTA Triphasé 50 Hz)',
+    50,
+    44
+  );
+  drawFieldRow(
+    doc,
+    m + 98,
+    cy,
+    'Tension secondaire (côté BESS) :',
+    d.transfoTensionSecondaireBt || '400 V (BT Triphasé)',
+    46,
+    36
+  );
+
+  cy += 8;
+  drawFieldRow(
+    doc,
+    m + 4,
+    cy,
+    'Tension de court-circuit (Ucc) :',
+    `${d.transfoUccPercent || '4.0'} %`,
+    50,
+    44
+  );
+  drawFieldRow(
+    doc,
+    m + 98,
+    cy,
+    'Mode d’exploitation :',
+    'Élévateur BT/HTA bidirectionnel',
+    46,
+    36
+  );
+
+  y += 50;
+
+  // ── CADRE CERTIFICATION DES DONNÉES & SIGNATURE (BAS DE PAGE 4) ──
+  drawSectionFrame(
+    doc,
+    m,
+    y,
+    usableW,
+    66,
+    'CERTIFICATION DES DONNÉES & SIGNATURE DU DEMANDEUR (Enedis-MOP-RES_056E)',
+    [0, 94, 184]
+  );
+
+  cy = y + 12;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7.6);
+  doc.setTextColor(51, 65, 85);
+  doc.text(
+    sanitizePdfText(
+      'Je soussigné(e) certifie sur l’honneur l’exactitude des renseignements techniques et administratifs déclarés dans les présentes Fiches de Collecte Enedis-MOP-RES_056E (Version 2) ainsi que dans la Note complémentaire ORA-MP annexée.'
+    ),
+    m + 4,
+    cy,
+    { maxWidth: usableW - 8 }
+  );
+
+  cy += 11;
+  drawFieldRow(doc, m + 4, cy, 'Nom - Prénom du signataire :', d.signataireNomPrenom || 'Yann BARBERIS', 46, 55);
+  cy += 7;
+  drawFieldRow(doc, m + 4, cy, 'Qualité / Société :', `${d.interlocuteurFonction || 'Président'} - ${d.beneficiaireRaisonSociale || 'ENR COURTAGE'}`, 46, 55);
+  cy += 7;
+  drawFieldRow(doc, m + 4, cy, 'Fait à :', d.signatureLieu || 'Mérignac', 46, 55);
+  cy += 7;
+  drawFieldRow(doc, m + 4, cy, 'Date :', formatDateFr(d.signatureDate), 46, 55);
+
+  // Encadré Cachet & Signature à droite
+  const sigBoxX = m + 104;
+  const sigBoxY = y + 20;
+  const sigBoxW = usableW - 108;
+  const sigBoxH = 42;
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(148, 163, 184);
+  doc.roundedRect(sigBoxX, sigBoxY, sigBoxW, sigBoxH, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(15, 43, 92);
+  doc.text('CACHET & SIGNATURE DU DEMANDEUR :', sigBoxX + 3, sigBoxY + 5);
+
+  if (d.inclureCachetSignature !== false) {
+    const stampImg = d.signatureImageBase64 || generateDefaultEnrCourtageStampDataUrl();
+    if (stampImg) {
+      try {
+        doc.addImage(stampImg, 'PNG', sigBoxX + 4, sigBoxY + 6.5, sigBoxW - 8, 33);
+      } catch (err) {
+        console.warn('Erreur insertion image cachet 056E:', err);
+      }
+    }
+  }
+
+  drawEnedis056EFooter(doc, 4, totalPages, d.siteNomInstallation);
+
+  const projSlug = (d.siteCommune || p.name || p.lastName || 'Projet').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `Enedis-MOP-RES_056E_V2_${projSlug}.pdf`;
+
+  if (options.download !== false) {
+    doc.save(filename);
+  }
+
+  return {
+    doc,
+    filename,
+    blob: doc.output('blob'),
+    arrayBuffer: doc.output('arraybuffer'),
   };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 1. GÉNÉRATION DU MANDAT DE REPRÉSENTATION ENEDIS (PDF)
+// 5. DOCUMENT 2 : GÉNÉRATION DE LA NOTE COMPLÉMENTAIRE ORA-MP (PDF 1 PAGE A4)
 // ═════════════════════════════════════════════════════════════════════════════
 
-export async function generateEnedisMandatPdf(project, racData, options = {}) {
+export async function generateOraMpNotePdf(project, enedisDataInput, options = {}) {
   const p = project || {};
-  const rac = racData || {};
+  const d = enedisDataInput || getInitialEnedis056EData(p);
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210;
   const H = 297;
   const m = 18;
-  const usableWidth = W - (2 * m);
+  const usableW = W - 2 * m;
 
-  const clientName = (p.clientName || p.company || `${p.firstName || ''} ${p.lastName || p.name || ''}`).trim() || 'Porteur de Projet';
-  const clientSiret = rac.siretProducteur || p.siret || 'En cours d\'immatriculation';
-  const siteAddress = (p.address || 'Adresse à préciser') + (p.city ? `, ${p.zip || ''} ${p.city}` : '');
-  const pInj = rac.puissanceInjectionKva || p.kwc || 0;
-  const pSout = rac.puissanceSoutirageKva || 0;
-  const isBess = rac.natureInstallation === 'bess_standalone' || rac.natureInstallation === 'hybride_pv_bess';
+  // Bandeau décoratif supérieur ENR COURTAGE
+  doc.setFillColor(15, 43, 92); // Bleu nuit corporate
+  doc.rect(0, 0, W, 4.5, 'F');
+  doc.setFillColor(0, 163, 224); // Liseré cyan
+  doc.rect(0, 4.5, W, 1.2, 'F');
 
-  // ─── PAGE 1 : MANDAT OFFICIEL DE REPRÉSENTATION ────────────────────────────
-  
-  // Bandeau supérieur Corporate
-  doc.setFillColor(15, 43, 92); // Bleu Nuit
-  doc.rect(0, 0, W, 34, 'F');
-  doc.setFillColor(0, 163, 224); // Cyan Accent
-  doc.rect(0, 34, W, 2.5, 'F');
+  let y = 13;
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('MANDAT SPÉCIAL DE REPRÉSENTATION', m, 15);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(215, 235, 255);
-  doc.text('Procédures de Raccordement au Réseau Public de Distribution d\'Électricité (ENEDIS / RTE)', m, 22);
-  doc.setFontSize(7.5);
-  doc.text('Articles 1984 et suivants du Code Civil — Code de l\'Énergie & Référentiel Technique Enedis-NOI-RES_43E', m, 29);
-
-  let y = 45;
-
-  // Helper pour cadre de section
-  const renderSectionBox = (title, height) => {
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(m, y, usableWidth, height, 2, 2, 'FD');
-
-    doc.setFillColor(15, 43, 92);
-    doc.roundedRect(m, y, usableWidth, 7, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text(title.toUpperCase(), m + 4, y + 5);
-
-    y += 10;
-  };
-
-  // ── SECTION 1 : DÉSIGNATION DES PARTIES ──
-  renderSectionBox('1. DÉSIGNATION DES PARTIES CONTRACTANTES', 46);
-
-  // Colonne Gauche : LE MANDANT
-  doc.setTextColor(15, 43, 92);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text('LE MANDANT (Le Producteur / Demandeur) :', m + 4, y + 2);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(51, 65, 85);
-  doc.text(`Raison Sociale / Identité : ${clientName}`, m + 4, y + 8);
-  doc.text(`N° SIRET : ${clientSiret}`, m + 4, y + 14);
-  doc.text(`Adresse du siège : ${siteAddress}`, m + 4, y + 20, { maxWidth: 80 });
-  doc.text(`Représenté par : Le Représentant Légal en exercice`, m + 4, y + 30);
-
-  // Colonne Droite : LE MANDATAIRE
-  const colRightX = m + 90;
-  doc.setTextColor(15, 43, 92);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text('LE MANDATAIRE (La Société Mandatée) :', colRightX, y + 2);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(51, 65, 85);
-  doc.text(`Dénomination : ${MANDATAIRE_INFO.raisonSociale}`, colRightX, y + 8);
-  doc.text(`Plateforme : ${MANDATAIRE_INFO.plateforme}`, colRightX, y + 14);
-  doc.text(`RCS : ${MANDATAIRE_INFO.rcs}`, colRightX, y + 20);
-  doc.text(`Siège : ${MANDATAIRE_INFO.adresse}`, colRightX, y + 26);
-  doc.text(`Contact Réseau : ${MANDATAIRE_INFO.emailRaccordement}`, colRightX, y + 32);
-
-  y += 40;
-
-  // ── SECTION 2 : CARACTÉRISTIQUES DU SITE ET DE L'INSTALLATION ──
-  renderSectionBox('2. CARACTÉRISTIQUES DE L\'INSTALLATION ET DU SITE', 42);
-
-  const gridLeft = m + 4;
-  const gridRight = m + 90;
-
-  doc.setTextColor(51, 65, 85);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-
-  doc.text('Adresse du site :', gridLeft, y + 2);
-  doc.setFont('helvetica', 'normal');
-  doc.text(siteAddress, gridLeft + 35, y + 2, { maxWidth: 50 });
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Parcelle(s) Cadastre :', gridLeft, y + 10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(String(rac.cadastreParcelles || 'À renseigner'), gridLeft + 35, y + 10);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Technologie :', gridLeft, y + 18);
-  doc.setFont('helvetica', 'normal');
-  const typeObj = INSTALLATION_TYPES.find(t => t.id === rac.natureInstallation);
-  doc.text(typeObj ? typeObj.label : 'Photovoltaïque', gridLeft + 35, y + 18, { maxWidth: 50 });
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Tension Raccordement :', gridRight, y + 2);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${rac.tension} (${rac.tension === 'HTA' ? '20 000 V' : '400 V'})`, gridRight + 40, y + 2);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Puissance Injection Pinj :', gridRight, y + 10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${pInj} kVA / kWc`, gridRight + 40, y + 10);
-
-  if (isBess || pSout > 0) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Puissance Soutirage Psout :', gridRight, y + 18);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${pSout} kVA (Charge BESS)`, gridRight + 40, y + 18);
+  // ── 1. EN-TÊTE ENR COURTAGE (LOGO + COORDONNÉES OFFICIELLES) ──
+  if (ENR_COURTAGE_LOGO_BASE64) {
+    try {
+      doc.addImage(ENR_COURTAGE_LOGO_BASE64, 'PNG', m, y, 44, 13);
+    } catch (e) {
+      console.warn('Erreur insertion logo ENR COURTAGE:', e);
+    }
   }
 
+  // Encadré référence réglementaire en haut à droite
+  const badgeW = 78;
+  const badgeX = W - m - badgeW;
+  doc.setFillColor(240, 249, 255);
+  doc.setDrawColor(147, 197, 253);
+  doc.setLineWidth(0.35);
+  doc.roundedRect(badgeX, y, badgeW, 25, 2, 2, 'FD');
+
+  doc.setFillColor(0, 94, 184);
+  doc.roundedRect(badgeX, y, badgeW, 6.2, 2, 2, 'F');
+  doc.rect(badgeX, y + 4, badgeW, 2.2, 'F');
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.text('Point Référence (PRM/PDR) :', gridRight, y + 26);
+  doc.setFontSize(7);
+  doc.text('ANNEXE OBLIGATOIRE AU FORMULAIRE 056E', badgeX + badgeW / 2, y + 4.3, { align: 'center' });
+
+  doc.setTextColor(15, 43, 92);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.2);
+  doc.text('• Fiches de Collecte Enedis-MOP-RES_056E (V2)', badgeX + 3.5, y + 11);
+  doc.text('• Procédure Enedis-NMO-RES_030E (Article 11)', badgeX + 3.5, y + 16);
+  doc.text('• Modèle PTF Enedis-MOP-RES_046E (Variante 2A)', badgeX + 3.5, y + 21);
+
+  // Coordonnées ENR COURTAGE sous le logo à gauche
+  y += 16;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(sanitizePdfText(d.beneficiaireRaisonSociale || 'ENR COURTAGE'), m, y);
+
+  y += 4.5;
   doc.setFont('helvetica', 'normal');
-  doc.text(rac.prmPdr ? `${rac.prmPdr} (Existant)` : 'Création nouveau point de livraison', gridRight + 40, y + 26);
+  doc.setFontSize(8.2);
+  doc.setTextColor(51, 65, 85);
+  doc.text(
+    sanitizePdfText(`${d.beneficiaireAdresse || '7 Rue Gutenberg'} — ${d.beneficiaireCpVillePays || '33700 Mérignac - France'}`),
+    m,
+    y
+  );
 
-  y += 36;
+  y += 4.2;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(15, 43, 92);
+  doc.text(
+    sanitizePdfText(`SIREN : ${d.beneficiaireSiren || '881 890 982'}   |   SIRET : ${d.beneficiaireSiret || '881 890 982 00047'}`),
+    m,
+    y
+  );
 
-  // ── SECTION 3 : OBJET ET ÉTENDUE DES POUVOIRS DU MANDAT ──
-  renderSectionBox('3. ÉTENDUE DES POUVOIRS ET OBJET DU MANDAT', 58);
-
+  y += 4.2;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.8);
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(
+    sanitizePdfText(`Interlocuteur : ${d.interlocuteurNomPrenom || 'BARBERIS Yann'} (${d.interlocuteurFonction || 'Président'}) • Tél : ${d.interlocuteurTelephone || '07 63 87 71 40'} • ${d.interlocuteurEmail || 'y.barberis@enr-courtage.fr'}`),
+    m,
+    y
+  );
+
+  // Ligne de séparation
+  y += 6;
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.4);
+  doc.line(m, y, W - m, y);
+
+  // ── 2. ENCADRÉ OBJET & IDENTIFICATION DU SITE ──
+  y += 6;
+  const siteLineClean = sanitizePdfText(d.noteSiteLigne || buildNoteOraMpSiteLine(d));
+  const siteLinesSplit = doc.splitTextToSize(siteLineClean, usableW - 22);
+  const objBoxH = Math.max(24, 16 + siteLinesSplit.length * 4.5);
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(0, 94, 184);
+  doc.setLineWidth(0.45);
+  doc.roundedRect(m, y, usableW, objBoxH, 2, 2, 'FD');
+
+  // Barre verticale bleue à gauche de l'encadré objet
+  doc.setFillColor(0, 94, 184);
+  doc.roundedRect(m, y, 3, objBoxH, 1, 1, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(0, 94, 184);
+  doc.text('Objet :', m + 6, y + 7.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(
+    sanitizePdfText(d.noteObjet || 'Demande prioritaire d’ORA-MP pour stockage autonome — 500 kW'),
+    m + 20,
+    y + 7.5
+  );
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 94, 184);
+  doc.text('Site :', m + 6, y + 14.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+  doc.text(siteLinesSplit, m + 20, y + 14.5);
+
+  y += objBoxH + 9;
+
+  // ── 3. CORPS DE LA NOTE COMPLÉMENTAIRE ORA-MP ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.8);
+  doc.setTextColor(15, 23, 42);
+  doc.text(sanitizePdfText(d.noteSalutation || 'Madame, Monsieur,'), m, y);
+
+  y += 7.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
   doc.setTextColor(30, 41, 59);
 
-  const clauses = [
-    "Le Mandant donne par les présentes pouvoir exprès, spécial et irrévocable au Mandataire (SAS ENR COURTAGE) d'effectuer en son nom et pour son compte auprès du Gestionnaire du Réseau Public de Distribution d'Électricité (ENEDIS) et/ou du Réseau de Transport (RTE), l'ensemble des démarches nécessaires au raccordement du site susmentionné, notamment :",
-    "1. Constitution, signature et transmission du dossier complet de demande de raccordement sur le portail officiel Enedis Connect / RTE.",
-    "2. Relations techniques avec l'ingénieur d'affaires Enedis : suivi de l'instruction, transmission des pièces et fiches techniques requises.",
-    "3. Réception, étude technique et financière de la Proposition Technique et Financière (PTF) et de la Convention de Raccordement (CRD).",
-    "4. Signature et validation des conventions d'exploitation (CRA/CAE) et contrats d'accès au réseau de distribution (CARD-I / CARD-IS).",
-    "5. Coordination des démarches de conformité auprès du CONSUEL (visas et contrôles) et assistance jusqu'à la Mise En Service (MES) complète.",
-  ];
+  const rawBody = sanitizePdfText(d.noteCorps || DEFAULT_NOTE_ORAMP_CORPS);
+  const paragraphs = rawBody.split(/\n\s*\n/).map(pStr => pStr.trim()).filter(Boolean);
 
-  clauses.forEach((c, idx) => {
-    doc.text(c, m + 4, y + 2 + (idx * 7.5), { maxWidth: usableWidth - 8 });
+  paragraphs.forEach((para) => {
+    const lines = doc.splitTextToSize(para, usableW);
+    doc.text(lines, m, y);
+    y += lines.length * 4.8 + 4.5;
   });
 
-  y += 52;
+  // ── 4. ENCADRÉ SYNTHÉTIQUE DES RÉFÉRENCES RÉGLEMENTAIRES & PARAMÈTRES TECHNIQUES ──
+  y += 2;
+  doc.setFillColor(240, 249, 255);
+  doc.setDrawColor(186, 230, 253);
+  doc.setLineWidth(0.35);
+  doc.roundedRect(m, y, usableW, 27, 1.8, 1.8, 'FD');
 
-  // ── SECTION 4 : SIGNATURES ET MENTIONS LÉGALES ──
-  renderSectionBox('4. SIGNATURES & VALIDITÉ', 40);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(3, 105, 161);
+  doc.text(
+    'SYNTHÈSE DES PARAMÈTRES TECHNIQUES & RÉFÉRENCES RÉGLEMENTAIRES DE LA DEMANDE ORA-MP :',
+    m + 4,
+    y + 5.8
+  );
 
-  const todayStr = new Date().toLocaleDateString('fr-FR');
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.6);
+  doc.setTextColor(15, 23, 42);
+  doc.text(
+    sanitizePdfText(
+      `• Architecture BESS : ${d.nombreUnitesTexte || '4 armoires de 125 kW'} (${d.modeleBatterie || 'CESC Mercury 261 - LFP'}) — Raccordement HTA 20 kV`
+    ),
+    m + 4,
+    y + 11.2
+  );
+  doc.text(
+    sanitizePdfText(
+      `• Puissances sollicitées : Pracc inj = ${d.puissanceRaccInjectionKw || '500'} kW en injection  |  Pracc sout = ${d.puissanceRaccSoutirageKw || '500'} kW en soutirage`
+    ),
+    m + 4,
+    y + 16.4
+  );
+  doc.text(
+    sanitizePdfText(
+      '• Cadre réglementaire Enedis : Article 11 de la procédure Enedis-NMO-RES_030E & Variante 2A (Article 3.7 – Gabarit en injection,'
+    ),
+    m + 4,
+    y + 21.4
+  );
+  doc.text(
+    sanitizePdfText(
+      '  pages 20 à 21/29) du modèle de Proposition Technique et Financière Enedis-MOP-RES_046E.'
+    ),
+    m + 4,
+    y + 25.2
+  );
+
+  // ── 5. BLOC DATE, LIEU, QUALITÉ & SIGNATURE EN BAS DE PAGE ──
+  y = Math.max(y + 33, 224);
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(m, y, usableW, 50, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.2);
+  doc.setTextColor(15, 23, 42);
+  doc.text(
+    sanitizePdfText(`Fait à : ${d.noteFaitA || 'Mérignac'}   —   Le : ${formatDateFr(d.noteDate)}`),
+    m + 6,
+    y + 10
+  );
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.8);
+  doc.setTextColor(15, 43, 92);
+  doc.text('Nom et qualité du demandeur :', m + 6, y + 18.5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(
+    sanitizePdfText(d.noteNomQualiteDemandeur || 'Yann BARBERIS, Président – ENR COURTAGE'),
+    m + 6,
+    y + 25
+  );
+
+  doc.setFont('helvetica', 'italic');
   doc.setFontSize(7.5);
-  doc.setTextColor(71, 85, 105);
-  doc.text(`Fait à ${p.city || 'Bordeaux'}, le ${todayStr}, en deux (2) exemplaires originaux faisant foi.`, m + 4, y + 2);
-  doc.text('Le présent mandat prend effet à compter de sa signature et demeure valable jusqu\'à la mise en service industrielle définitive.', m + 4, y + 6);
+  doc.setTextColor(100, 116, 139);
+  doc.text(
+    sanitizePdfText('Note annexée aux Fiches de Collecte Enedis-MOP-RES_056E (Version 2)'),
+    m + 6,
+    y + 34
+  );
+  doc.text(
+    sanitizePdfText('ENR COURTAGE — 7 Rue Gutenberg, 33700 Mérignac — SIREN 881 890 982'),
+    m + 6,
+    y + 39
+  );
 
-  // Boîtes de signature
-  const boxW = (usableWidth - 12) / 2;
-  const boxY = y + 10;
-  const boxH = 22;
+  // Zone Signature & Cachet à droite
+  const sigX = m + 104;
+  const sigY = y + 4;
+  const sigW = usableW - 108;
+  const sigH = 42;
 
-  // Mandant
   doc.setFillColor(255, 255, 255);
   doc.setDrawColor(148, 163, 184);
-  doc.roundedRect(m + 4, boxY, boxW, boxH, 1.5, 1.5, 'FD');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(15, 43, 92);
-  doc.text('POUR LE MANDANT :', m + 6, boxY + 5);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(6.8);
-  doc.setTextColor(100, 116, 139);
-  doc.text('Mention manuscrite "Bon pour mandat"', m + 6, boxY + 10);
-  doc.text('Nom, Qualité et Signature du représentant légal', m + 6, boxY + 18);
+  doc.roundedRect(sigX, sigY, sigW, sigH, 1.5, 1.5, 'FD');
 
-  // Mandataire
-  doc.roundedRect(m + 8 + boxW, boxY, boxW, boxH, 1.5, 1.5, 'FD');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setTextColor(15, 43, 92);
-  doc.text('POUR LE MANDATAIRE (SAS ENR COURTAGE) :', m + 10 + boxW, boxY + 5);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(6.8);
-  doc.setTextColor(100, 116, 139);
-  doc.text('Mention manuscrite "Bon pour acceptation du mandat"', m + 10 + boxW, boxY + 10);
-  doc.text('Direction Opérations Réseau — Nelson PV', m + 10 + boxW, boxY + 18);
+  doc.text('Signature et cachet de la société :', sigX + 3, sigY + 5);
 
-  // Pied de page
+  if (d.inclureCachetSignature !== false) {
+    const stampImg = d.signatureImageBase64 || generateDefaultEnrCourtageStampDataUrl();
+    if (stampImg) {
+      try {
+        doc.addImage(stampImg, 'PNG', sigX + 4, sigY + 6.5, sigW - 8, 33.5);
+      } catch (err) {
+        console.warn('Erreur insertion image cachet Note ORA-MP:', err);
+      }
+    }
+  }
+
+  // Pied de page officiel 1/1
   doc.setFillColor(15, 43, 92);
-  doc.rect(0, H - 12, W, 12, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.text('Document officiel généré par Nelson PV (nelsonpv.fr) — Plateforme d\'ingénierie SAS ENR COURTAGE — Raccordement Enedis & RTE', m, H - 5);
-  doc.text('Page 1 / 1', W - m - 12, H - 5);
-
-  const filename = `Mandat_Representation_Enedis_${(p.name || p.lastName || 'Projet').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
-
-  if (options.download !== false) {
-    doc.save(filename);
-  }
-
-  return {
-    doc,
-    filename,
-    blob: doc.output('blob'),
-    arrayBuffer: doc.output('arraybuffer'),
-  };
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// 2. GÉNÉRATION DU DOSSIER TECHNIQUE CONSUEL PRÉ-REMPLI (PDF)
-// ═════════════════════════════════════════════════════════════════════════════
-
-export async function generateConsuelCerfaPdf(project, racData, options = {}) {
-  const p = project || {};
-  const rac = racData || {};
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const W = 210;
-  const H = 297;
-  const m = 16;
-  const usableWidth = W - (2 * m);
-
-  const clientName = (p.clientName || p.company || `${p.firstName || ''} ${p.lastName || p.name || ''}`).trim() || 'Porteur de Projet';
-  const siteAddress = (p.address || 'Adresse à préciser') + (p.city ? `, ${p.zip || ''} ${p.city}` : '');
-  const pInj = rac.puissanceInjectionKva || p.kwc || 0;
-  const pSout = rac.puissanceSoutirageKva || 0;
-  const isBess = rac.natureInstallation === 'bess_standalone' || rac.natureInstallation === 'hybride_pv_bess';
-  const isHTA = rac.tension === 'HTA';
-
-  const themeColor = isBess ? [109, 40, 217] : [2, 132, 199]; // Violet si BESS, Bleu Ciel si PV
-  const headerSub = isBess
-    ? 'DOSSIER TECHNIQUE CONSUEL VIOLET — SYSTÈME DE STOCKAGE STATIONNAIRE (BESS)'
-    : 'DOSSIER TECHNIQUE CONSUEL SC 144B — PRODUCTION PHOTOVOLTAÏQUE RACCORDÉE';
-
-  // ── HEADER CONSUEL ──
-  doc.setFillColor(...themeColor);
-  doc.rect(0, 0, W, 32, 'F');
-  doc.setFillColor(30, 41, 59);
-  doc.rect(0, 32, W, 2, 'F');
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('CONSUEL — DOSSIER TECHNIQUE DE CONFORMITÉ', m, 14);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text(headerSub, m, 21);
-  doc.setFontSize(7);
-  doc.text('Normes NF C 15-100, NF C 15-712-1 / NF C 15-712-3 & Spécifications Enedis-NOI-RES_43E', m, 27);
-
-  let y = 42;
-
-  const renderConsuelSection = (title, height) => {
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(m, y, usableWidth, height, 1.5, 1.5, 'FD');
-
-    doc.setFillColor(...themeColor);
-    doc.roundedRect(m, y, usableWidth, 6, 1.5, 1.5, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text(title.toUpperCase(), m + 3, y + 4.5);
-
-    y += 9;
-  };
-
-  // ── 1. IDENTIFICATION DU SITE ET DES INTERVENANTS ──
-  renderConsuelSection('1. IDENTIFICATION DE L\'INSTALLATION ET DES INTERVENANTS', 38);
-  doc.setTextColor(30, 41, 59);
-  doc.setFontSize(7.5);
-
-  doc.setFont('helvetica', 'bold'); doc.text('Titulaire / Demandeur :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(clientName, m + 40, y);
-  doc.setFont('helvetica', 'bold'); doc.text('SIRET :', m + 110, y);
-  doc.setFont('helvetica', 'normal'); doc.text(String(rac.siretProducteur || 'En cours'), m + 130, y);
-  y += 6;
-
-  doc.setFont('helvetica', 'bold'); doc.text('Adresse du site :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(siteAddress, m + 40, y, { maxWidth: 65 });
-  doc.setFont('helvetica', 'bold'); doc.text('PRM / PDR Enedis :', m + 110, y);
-  doc.setFont('helvetica', 'normal'); doc.text(rac.prmPdr || 'Nouveau raccordement', m + 145, y);
-  y += 7;
-
-  doc.setFont('helvetica', 'bold'); doc.text('Installateur / Concepteur :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(`${MANDATAIRE_INFO.raisonSociale} — SIRET ${MANDATAIRE_INFO.siret}`, m + 40, y);
-  y += 6;
-
-  doc.setFont('helvetica', 'bold'); doc.text('Dossier Consuel N° :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(rac.consuelNumero || 'Demande en cours d\'attribution', m + 40, y);
-  doc.setFont('helvetica', 'bold'); doc.text('Régime de raccordement :', m + 110, y);
-  doc.setFont('helvetica', 'normal'); doc.text(`${rac.tension} (${isHTA ? '20 kV' : '400 V'})`, m + 145, y);
-
-  y += 14;
-
-  // ── 2. CARACTÉRISTIQUES TECHNIQUES DE LA SOURCE DE PRODUCTION & STOCKAGE ──
-  renderConsuelSection('2. CARACTÉRISTIQUES DE PRODUCTION ET DE STOCKAGE (BESS)', 44);
-
-  doc.setFont('helvetica', 'bold'); doc.text('Puissance Crête PV (Pcrête) :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(`${p.kwc || pInj} kWc`, m + 48, y);
-  doc.setFont('helvetica', 'bold'); doc.text('Puissance Maximale d\'Injection (Pinj) :', m + 105, y);
-  doc.setFont('helvetica', 'normal'); doc.text(`${pInj} kVA`, m + 160, y);
-  y += 6;
-
-  if (isBess || pSout > 0) {
-    doc.setFont('helvetica', 'bold'); doc.text('Puissance Soutirage Batterie (Psout) :', m + 4, y);
-    doc.setFont('helvetica', 'normal'); doc.text(`${pSout} kVA (Recharge)`, m + 55, y);
-    doc.setFont('helvetica', 'bold'); doc.text('Capacité Stockage Batterie :', m + 105, y);
-    doc.setFont('helvetica', 'normal'); doc.text(`${Math.round(pSout * 2)} kWh (Technologie LFP certifiée NF EN 62619)`, m + 150, y);
-    y += 6;
-  }
-
-  doc.setFont('helvetica', 'bold'); doc.text('Type d\'injection :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(String(rac.typeInjection || 'Injection totale'), m + 48, y);
-  doc.setFont('helvetica', 'bold'); doc.text('Régime de Neutre :', m + 105, y);
-  doc.setFont('helvetica', 'normal'); doc.text(isHTA ? 'IT / TN-S côté BT poste HTA' : 'TT (Réseau public BT)', m + 140, y);
-  y += 6;
-
-  doc.setFont('helvetica', 'bold'); doc.text('Parcelles Cadastrales :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(String(rac.cadastreParcelles || 'À renseigner'), m + 48, y);
-
-  y += 18;
-
-  // ── 3. SYSTÈME DE CONVERSION ET PROTECTION DE DÉCOUPLAGE ──
-  renderConsuelSection('3. MATÉRIEL DE CONVERSION & DISPOSITIF DE DÉCOUPLAGE RÉSEAU', 44);
-
-  doc.setFont('helvetica', 'bold'); doc.text('Onduleur(s) Réseau :', m + 4, y);
-  doc.setFont('helvetica', 'normal'); doc.text(`Marque / Modèle : ${rac.onduleurMarque || 'Sungrow'} ${rac.onduleurModele || 'SG125HX'}`, m + 40, y);
-  y += 6;
-
-  doc.setFont('helvetica', 'bold'); doc.text('Système de Découplage :', m + 4, y);
-  doc.setFont('helvetica', 'normal');
-  const decouplageText = isHTA
-    ? 'Relais de protection de découplage externe HTA homologué selon spécification Enedis-NOI-RES_43E et norme NF C 13-100 (Contrôle U<, U>, F<, F>, Dérivée de Fréquence df/dt asservi au déclencheur du disjoncteur général HTA).'
-    : 'Protection de découplage intégrée homologuée conforme DIN VDE 0126-1-1 / VFR 2019 avec attestation de conformité constructeur en cours de validité.';
-  doc.text(decouplageText, m + 40, y, { maxWidth: usableWidth - 44 });
-  y += 14;
-
-  doc.setFont('helvetica', 'bold'); doc.text('Comptage de l\'énergie :', m + 4, y);
-  doc.setFont('helvetica', 'normal');
-  doc.text(isBess ? 'Comptage 4 quadrants P+, P-, Q+, Q- (Injection et Soutirage simultanés)' : 'Comptage électronique Enedis P+ injection', m + 40, y);
-
-  y += 16;
-
-  // ── 4. SÉCURITÉ ÉLECTRIQUE, TERRE ET PROTECTION DES PERSONNES ──
-  renderConsuelSection('4. SÉCURITÉ ÉLECTRIQUE, PROTECTION INCENDIE ET TERRE (NF C 15-100)', 48);
-
-  const securityItems = [
-    { label: 'Coupure d\'urgence Pompiers :', val: 'Présence d\'une commande d\'arrêt d\'urgence accessible aux services de secours avec étiquetage réglementaire "ATTENTION PRÉSENCE DE DEUX SOURCES DE TENSION".' },
-    { label: 'Parafoudres DC et AC :', val: 'Parafoudres DC Type 2 dimensionnés selon la tension maximale à vide Uoc, et Parafoudres AC Type 2 en tête de tableau TGBT.' },
-    { label: 'Disjoncteur Différentiel Général :', val: isHTA ? 'Poste de livraison HTA avec disjoncteur général sous enveloppe métallique NF C 13-100.' : 'Disjoncteur différentiel 300 mA sélectif conforme NF C 15-100.' },
-    { label: 'Circuit de Terre et Équipotentialité :', val: 'Valeur de prise de terre mesurée ≤ 100 Ω (BT) ou ≤ 10 Ω (HTA). Liaison équipotentielle principale de l\'ensemble des masses métalliques (ombrières/châssis) en câble cuivre ≥ 16 mm².' },
-  ];
-
-  securityItems.forEach(item => {
-    doc.setFont('helvetica', 'bold');
-    doc.text(item.label, m + 4, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(item.val, m + 50, y, { maxWidth: usableWidth - 54 });
-    y += 9.5;
-  });
-
-  y += 8;
-
-  // ── 5. ATTESTATION ET VISA DE L'INSTALLATEUR ──
-  renderConsuelSection('5. ENGAGEMENT DE CONFORMITÉ DE L\'INSTALLATEUR / CONSTRUCTEUR', 34);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.2);
-  doc.text('Je soussigné, représentant légal de l\'entreprise installatrice, certifie sur l\'honneur que la présente installation a été conçue et réalisée en totale conformité avec les normes en vigueur (NF C 15-100, NF C 15-712, NF C 13-100) et les prescriptions Enedis.', m + 4, y, { maxWidth: usableWidth - 8 });
-  y += 7;
-
-  // Signature box
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(m + 4, y, usableWidth - 8, 16, 1, 1, 'FD');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.text(`Fait à Bordeaux, le ${new Date().toLocaleDateString('fr-FR')} — Visa et signature de l\'installateur habilité :`, m + 8, y + 4.5);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(100, 116, 139);
-  doc.text(`${MANDATAIRE_INFO.raisonSociale} — Ingénierie & Conformité Réseau`, m + 8, y + 11);
-
-  // Footer
-  doc.setFillColor(...themeColor);
   doc.rect(0, H - 10, W, 10, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
-  doc.text('Dossier Technique Pré-Rempli Nelson PV — À joindre lors de la commande de l\'attestation sur consuel.com', m, H - 4);
-  doc.text('Page 1 / 1', W - m - 12, H - 4);
+  doc.setFontSize(7);
+  doc.text(
+    sanitizePdfText('ENR COURTAGE — 7 Rue Gutenberg, 33700 Mérignac — SIREN 881 890 982 | Annexe obligatoire Enedis-MOP-RES_056E (V2)'),
+    m,
+    H - 3.8
+  );
+  doc.setFont('helvetica', 'bold');
+  doc.text('Page 1 / 1', W - m, H - 3.8, { align: 'right' });
 
-  const filename = `Dossier_Technique_Consuel_${(p.name || p.lastName || 'Projet').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const projSlug = (d.siteCommune || p.name || p.lastName || 'Projet').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `Note_Complementaire_ORA-MP_500kW_${projSlug}.pdf`;
 
   if (options.download !== false) {
     doc.save(filename);
@@ -623,118 +1960,104 @@ export async function generateConsuelCerfaPdf(project, racData, options = {}) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 3. EXPORT GLOBAL ZIP PRÊT POUR LE PORTAIL ENEDIS CONNECT
+// 6. PACK COMPLET ENEDIS : PDF FUSIONNÉ (056E + NOTE ORA-MP) & ARCHIVE ZIP
 // ═════════════════════════════════════════════════════════════════════════════
 
-export async function generateEnedisGlobalZip(project, racData) {
+/**
+ * Génère un PDF unique fusionnant :
+ * 1. Les Fiches de Collecte Enedis-MOP-RES_056E (Version 2) (4 pages)
+ * 2. La Note complémentaire – Demande prioritaire d'ORA-MP (500 kW) (1 page)
+ */
+export async function generateEnedisCompletePackPdf(project, enedisDataInput, options = {}) {
   const p = project || {};
-  const rac = racData || {};
+  const d = enedisDataInput || getInitialEnedis056EData(p);
+
+  const form056Res = await generateEnedis056EPdf(p, d, { download: false });
+  const noteOraRes = await generateOraMpNotePdf(p, d, { download: false });
+
+  const mergedPdf = await PDFDocument.create();
+
+  const doc056 = await PDFDocument.load(form056Res.arrayBuffer);
+  const pages056 = await mergedPdf.copyPages(doc056, doc056.getPageIndices());
+  pages056.forEach(page => mergedPdf.addPage(page));
+
+  const docOra = await PDFDocument.load(noteOraRes.arrayBuffer);
+  const pagesOra = await mergedPdf.copyPages(docOra, docOra.getPageIndices());
+  pagesOra.forEach(page => mergedPdf.addPage(page));
+
+  const mergedBytes = await mergedPdf.save();
+  const mergedBlob = new Blob([mergedBytes], { type: 'application/pdf' });
+  const projSlug = (d.siteCommune || p.name || p.lastName || 'Projet').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `Pack_Complet_Enedis_056E_et_Note_ORA-MP_${projSlug}.pdf`;
+
+  if (options.download !== false) {
+    saveAs(mergedBlob, filename);
+  }
+
+  return {
+    filename,
+    blob: mergedBlob,
+    uint8Array: mergedBytes,
+    form056Res,
+    noteOraRes,
+  };
+}
+
+/**
+ * Génère une archive ZIP contenant :
+ * - Document 1 : Formulaire Enedis-MOP-RES_056E (Version 2) (PDF)
+ * - Document 2 : Note complémentaire – Demande prioritaire d'ORA-MP (500 kW) (PDF)
+ * - Document 3 : Pack Complet Enedis Fusionné (PDF 5 pages)
+ * - Document 4 : Bordereau & Checklist des pièces à déposer sur le portail Enedis (TXT)
+ */
+export async function generateEnedisCompletePackZip(project, enedisDataInput) {
+  const p = project || {};
+  const d = enedisDataInput || getInitialEnedis056EData(p);
   const zip = new JSZip();
-  const projSlug = (p.name || p.lastName || 'Projet').replace(/[^a-zA-Z0-9]/g, '_');
+  const projSlug = (d.siteCommune || p.name || p.lastName || 'Projet').replace(/[^a-zA-Z0-9_-]/g, '_');
   const dateStr = new Date().toISOString().slice(0, 10);
 
-  // 1. Génération du Mandat PDF en mémoire
-  const mandatRes = await generateEnedisMandatPdf(p, rac, { download: false });
-  zip.file(`01_Mandat_de_representation_ENEDIS_signe.pdf`, mandatRes.arrayBuffer);
+  const packRes = await generateEnedisCompletePackPdf(p, d, { download: false });
 
-  // 2. Génération du Dossier Consuel PDF en mémoire
-  const consuelRes = await generateConsuelCerfaPdf(p, rac, { download: false });
-  zip.file(`02_Dossier_Technique_Consuel_pre_rempli.pdf`, consuelRes.arrayBuffer);
+  zip.file(`01_${packRes.form056Res.filename}`, packRes.form056Res.arrayBuffer);
+  zip.file(`02_${packRes.noteOraRes.filename}`, packRes.noteOraRes.arrayBuffer);
+  zip.file(`03_${packRes.filename}`, packRes.uint8Array);
 
-  // 3. Fichier JSON de métadonnées Enedis Connect
-  const metadata = {
-    plateforme: 'Nelson PV (nelsonpv.fr)',
-    dateGeneration: new Date().toISOString(),
-    projet: {
-      id: p.id || null,
-      nom: p.name || p.lastName || 'Sans titre',
-      client: p.clientName || p.company || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-      siretProducteur: rac.siretProducteur || p.siret || null,
-      adresseSite: p.address || '',
-      ville: p.city || '',
-      codePostal: p.zip || '',
-      coordonneesGps: p.lat && p.lng ? { latitude: p.lat, longitude: p.lng } : null,
-      parcellesCadastre: rac.cadastreParcelles || p.cadastre || null,
-    },
-    caracteristiquesRaccordement: {
-      natureInstallation: rac.natureInstallation,
-      puissanceInjectionKva: rac.puissanceInjectionKva,
-      puissanceSoutirageKva: rac.puissanceSoutirageKva,
-      tensionRaccordement: rac.tension,
-      typeInjection: rac.typeInjection,
-      prmPdrExistant: rac.prmPdr || null,
-      numeroAffaireEnedisConnect: rac.enedisAffaireId || null,
-    },
-    materiel: {
-      onduleurs: `${rac.onduleurMarque} ${rac.onduleurModele}`,
-      decouplage: rac.onduleurProtectionDecouplage,
-    },
-    mandataire: MANDATAIRE_INFO,
-    piecesJointesIncluses: rac.piecesJointes || {},
-  };
-
-  zip.file(`03_Metadonnees_Depot_Enedis_Connect.json`, JSON.stringify(metadata, null, 2));
-
-  // 4. Bordereau Récapitulatif Textuel (prêt à copier-coller)
-  const bordereauText = `═══════════════════════════════════════════════════════════════════════════════
-BORDEREAU DE DÉPÔT ENEDIS CONNECT — RÉCAPITULATIF DE LA DEMANDE
+  const checklistTxt = `═══════════════════════════════════════════════════════════════════════════════
+PACK COMPLET DE DEMANDE DE RACCORDEMENT ENEDIS HTA — STOCKAGE BESS 500 kW
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. INFORMATIONS DU DEMANDEUR :
-• Mandant (Client) : ${metadata.projet.client}
-• SIRET Producteur : ${metadata.projet.siretProducteur || 'En cours'}
-• Adresse de l'installation : ${metadata.projet.adresseSite}, ${metadata.projet.codePostal} ${metadata.projet.ville}
-• Parcelles Cadastrales : ${metadata.projet.parcellesCadastre || 'Non spécifié'}
+PROJET : ${d.siteNomInstallation}
+COMMUNE : ${d.siteCommune} (${d.siteCodePostal}) — Code INSEE : ${d.siteCodeInsee || '—'}
+PARCELLE : ${d.siteParcelle}
+COORDONNÉES GPS (WGS84) : Latitude ${d.siteLatitude} ; Longitude ${d.siteLongitude}
+DEMANDEUR / MANDATAIRE : ${d.beneficiaireRaisonSociale} (SIREN ${d.beneficiaireSiren} | SIRET ${d.beneficiaireSiret})
+INTERLOCUTEUR : ${d.interlocuteurNomPrenom} (${d.interlocuteurFonction}) — ${d.interlocuteurTelephone} — ${d.interlocuteurEmail}
 
-2. CARACTÉRISTIQUES ÉLECTRIQUES :
-• Nature de l'installation : ${rac.natureInstallation}
-• Puissance Maximale d'Injection (Pinj) : ${rac.puissanceInjectionKva} kVA
-• Puissance Maximale de Soutirage (Psout) : ${rac.puissanceSoutirageKva} kVA
-• Domaine de Tension : ${rac.tension} (${rac.tension === 'HTA' ? '20 000 V' : '400 V Triphasé'})
-• Type de Contrat / Injection : ${rac.typeInjection}
-• PRM / PDR Existant : ${rac.prmPdr || 'Création d\'un nouveau PDR'}
-• N° Affaire Enedis Connect : ${rac.enedisAffaireId || 'À créer lors du dépôt'}
-
-3. MANDATAIRE HABILITÉ :
-• Société : ${MANDATAIRE_INFO.raisonSociale} (${MANDATAIRE_INFO.rcs})
-• Plateforme : ${MANDATAIRE_INFO.plateforme}
-• Contact Raccordement : ${MANDATAIRE_INFO.emailRaccordement}
-
-4. PIÈCES REQUISES À GLISSER SUR ENEDIS CONNECT :
-[X] 01 - Mandat de représentation spécial signé (fourni dans ce ZIP)
-[X] 02 - Dossier technique préliminaire / Consuel pré-rempli (fourni dans ce ZIP)
-[ ] 03 - Plan de situation du terrain (Extrait Cadastre / IGN à l'échelle)
-[ ] 04 - Plan de masse orienté avec emprise des générateurs et point de livraison
-[ ] 05 - Schéma unifilaire électrique de l'installation
-[ ] 06 - Récépissé de déclaration préalable (DP) ou permis de construire (PC)
-[ ] 07 - Extrait Kbis < 3 mois du porteur et RIB de la société
-
-Généré le ${new Date().toLocaleDateString('fr-FR')} par la plateforme Nelson PV.
-`;
-  zip.file(`04_Bordereau_Recapitulatif_Demande.txt`, bordereauText);
-
-  // 5. Guide pas-à-pas pour Enedis Connect
-  const guideText = `GUIDE D'UTILISATION — DÉPÔT SUR LE PORTAIL ENEDIS CONNECT
 ───────────────────────────────────────────────────────────────────────────────
-1. Rendez-vous sur le portail officiel Enedis : https://connect.enedis.fr
-2. Connectez-vous avec vos identifiants partenaires / mandataire ou créez votre compte.
-3. Cliquez sur "Nouvelle demande de raccordement" > Choisissez "Producteur d'électricité".
-4. Saisissez les données techniques issues du fichier "03_Metadonnees_Depot_Enedis_Connect.json" :
-   - Puissance d'injection : ${rac.puissanceInjectionKva} kVA
-   - Si stockage BESS : indiquer également la puissance de soutirage ${rac.puissanceSoutirageKva} kVA
-   - Niveau de tension : ${rac.tension}
-5. Téléversez les documents :
-   - Mandat de représentation : joindre le fichier "01_Mandat_de_representation_ENEDIS_signe.pdf"
-   - Ajoutez le Plan de situation, Plan de masse et Schéma unifilaire depuis le dossier Urbanisme Nelson PV.
-6. Validez la demande pour recevoir le Numéro d'Affaire Enedis Connect (à reporter dans l'étape 1 du module Nelson).
+DOCUMENTS GÉNÉRÉS INCLUS DANS CE PACK :
 ───────────────────────────────────────────────────────────────────────────────
-Support Nelson PV : contact@nelsonpv.fr
-`;
-  zip.file(`LISEZMOI_Guide_Depot_Enedis_Connect.txt`, guideText);
+[X] 01 - Fiches de Collecte Enedis-MOP-RES_056E (Version 2) (Fiches A, C, E4 et T1)
+[X] 02 - Note complémentaire – Demande prioritaire d'ORA-MP pour stockage autonome (500 kW)
+         (Réf. Art. 11 Enedis-NMO-RES_030E & Variante 2A Enedis-MOP-RES_046E)
+[X] 03 - Pack Complet Enedis Fusionné (056E + Note ORA-MP en un seul PDF)
 
-  // Génération du ZIP binaire et déclenchement du téléchargement
+───────────────────────────────────────────────────────────────────────────────
+CHECKLIST DES PIÈCES TECHNIQUES & ADMINISTRATIVES À JOINDRE SUR LE PORTAIL ENEDIS :
+───────────────────────────────────────────────────────────────────────────────
+[${d.checklistPieces?.plan_situation ? 'X' : ' '}] Plan de situation (1:25000)
+[${d.checklistPieces?.plan_masse ? 'X' : ' '}] Plan de masse (1:200/1:500) avec point de livraison
+[${d.checklistPieces?.schema_unifilaire ? 'X' : ' '}] Schéma unifilaire
+[${d.checklistPieces?.recepisse_dp ? 'X' : ' '}] Récépissé / Certificat de non-opposition DP
+[${d.checklistPieces?.certificats_50549 ? 'X' : ' '}] Certificats de conformité NF EN 50549-1/2
+
+Généré le ${new Date().toLocaleDateString('fr-FR')} par l'application NELSON — ENR COURTAGE.
+`;
+
+  zip.file(`04_Checklist_Depot_Portail_Enedis_${projSlug}.txt`, checklistTxt);
+
   const zipBlob = await zip.generateAsync({ type: 'blob' });
-  const zipFilename = `Dossier_Raccordement_Enedis_${projSlug}_${dateStr}.zip`;
+  const zipFilename = `Pack_Complet_Enedis_056E_ORA-MP_${projSlug}_${dateStr}.zip`;
   saveAs(zipBlob, zipFilename);
 
   return {
@@ -744,16 +2067,43 @@ Support Nelson PV : contact@nelsonpv.fr
   };
 }
 
+// Alias rétro-compatibles
+export async function generateEnedisMandatPdf(project, racData, options = {}) {
+  return generateOraMpNotePdf(project, racData, options);
+}
+
+export async function generateConsuelCerfaPdf(project, racData, options = {}) {
+  return generateEnedis056EPdf(project, racData, options);
+}
+
+export async function generateEnedisGlobalZip(project, racData) {
+  return generateEnedisCompletePackZip(project, racData);
+}
+
 export default {
+  ENR_COURTAGE_INFO,
   MANDATAIRE_INFO,
+  DEFAULT_INFO_COMPLEMENTAIRES_056E,
+  DEFAULT_NOTE_ORAMP_CORPS,
+  SCHEMAS_COMPTAGE_056E,
+  ENEDIS_056E_CHECKLIST_PIECES,
   INSTALLATION_TYPES,
   INJECTION_TYPES,
   VOLTAGE_LEVELS,
   ENEDIS_CHECKLIST_DOCS,
   formatDateFr,
   formatEuro,
+  sanitizePdfText,
   calculatePtfCountdown,
+  extractProjectEnedisVariables,
+  buildNoteOraMpSiteLine,
+  generateDefaultEnrCourtageStampDataUrl,
+  getInitialEnedis056EData,
   getInitialRaccordementData,
+  generateEnedis056EPdf,
+  generateOraMpNotePdf,
+  generateEnedisCompletePackPdf,
+  generateEnedisCompletePackZip,
   generateEnedisMandatPdf,
   generateConsuelCerfaPdf,
   generateEnedisGlobalZip,

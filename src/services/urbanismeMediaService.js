@@ -317,24 +317,41 @@ export async function persistProjectUrbanismeMedia(projectId, activeTenantId, ca
       await Promise.all(uploadTasks);
     }
 
-    // 4. Filtrer les chaînes base64 restantes pour ne pas dépasser la limite de 1MB de Firestore
-    const stripDataUrls = (obj) => {
-      const sanitized = {};
-      for (const [k, v] of Object.entries(obj || {})) {
-        if (typeof v === 'string' && v.startsWith('data:')) {
-          continue; // Conservé dans IndexedDB localement, non envoyé à Firestore pour éviter l'erreur de quota
-        }
-        sanitized[k] = v;
+    // 4. Filtrer les chaînes base64 restantes et normaliser les tableaux imbriqués (interdits par Firestore)
+    const sanitizeForFirestore = (val) => {
+      if (val === undefined) return null;
+      if (val === null || typeof val !== 'object') {
+        if (typeof val === 'string' && val.startsWith('data:')) return null;
+        return val;
       }
-      return sanitized;
+      if (Array.isArray(val)) {
+        return val
+          .map(item => {
+            if (Array.isArray(item)) {
+              // Firestore interdit les tableaux directement imbriqués dans un tableau (ex: [[lat, lng]])
+              return item.length === 2 && typeof item[0] === 'number'
+                ? { lat: item[0], lng: item[1] }
+                : JSON.stringify(item);
+            }
+            return sanitizeForFirestore(item);
+          })
+          .filter(item => item !== null && item !== undefined);
+      }
+      const clean = {};
+      for (const [k, v] of Object.entries(val)) {
+        if (v === undefined) continue;
+        if (typeof v === 'string' && v.startsWith('data:')) continue;
+        clean[k] = sanitizeForFirestore(v);
+      }
+      return clean;
     };
 
-    const firestoreCaptures = stripDataUrls(cleanCaptures);
-    const firestorePhotos = stripDataUrls(cleanPhotos);
+    const firestoreCaptures = sanitizeForFirestore(cleanCaptures);
+    const firestorePhotos = sanitizeForFirestore(cleanPhotos);
     const firestoreBuildings = cleanBuildings.map(b => ({
-      ...stripDataUrls(b),
-      captures: stripDataUrls(b.captures),
-      photos: stripDataUrls(b.photos),
+      ...sanitizeForFirestore(b),
+      captures: sanitizeForFirestore(b.captures || {}),
+      photos: sanitizeForFirestore(b.photos || {}),
     }));
 
     // 5. Mettre à jour Firestore avec les URLs Firebase Storage nettoyées

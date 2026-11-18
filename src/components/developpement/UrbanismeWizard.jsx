@@ -7077,10 +7077,11 @@ Les dimensions des panneaux sont de 1762 x 1134 mm pour une puissance unitaire d
 
     // 1. Tenter l'ouverture du guichet unique dans un nouvel onglet
     try {
-      const newWin = window.open(portalUrl, '_blank', 'noopener,noreferrer');
-      if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
+      const newWin = window.open(portalUrl, '_blank');
+      if (!newWin) {
         setPopupBlocked(true);
       } else {
+        try { newWin.opener = null; } catch (_) {}
         setPopupBlocked(false);
       }
     } catch (e) {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Download,
   FolderOpen,
@@ -157,16 +158,22 @@ export default function DownloadHistoryMenu() {
     return item.objectUrl || item.dataUrl || null;
   };
 
-  // Ouvrir le fichier (nouvel onglet ou visionneuse intégrée)
+  // Ouvrir le fichier dans un nouvel onglet (sans ouvrir de visionneuse superposée en arrière-plan)
   const handleOpenFile = (item) => {
     const url = getValidUrl(item);
     if (!url) return;
 
-    const isPdf = (item.fileName || '').toLowerCase().endsWith('.pdf') || (item.mimeType || '').includes('pdf');
-    const win = window.open(url, '_blank', 'noopener,noreferrer');
-    if (!win && isPdf) {
-      setPreviewItem({ ...item, url });
-    }
+    setShowDownloadsPanel(false);
+    setShowMoreMenu(false);
+
+    const a = document.createElement('a');
+    a.dataset.nelsonIgnoreIntercept = 'true';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   // Téléchargement direct dans le dossier Téléchargements en local
@@ -501,11 +508,17 @@ export default function DownloadHistoryMenu() {
         </div>
       )}
 
-      {/* Visionneuse PDF intégrée au cas où l'utilisateur clique sur "Aperçu" ou si la fenêtre pop-up est bloquée */}
-      {previewItem && (
-        <div className="fixed inset-x-0 bottom-0 top-[64px] z-[10000] bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-6xl h-[calc(100vh-96px)] bg-white rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col">
-            <div className="px-5 py-3 bg-slate-900 text-white flex items-center justify-between gap-3">
+      {/* Visionneuse PDF intégrée rendue dans document.body (via Portal) pour éviter tout décalage causé par backdrop-blur du header */}
+      {previewItem && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={() => setPreviewItem(null)}
+          className="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-6xl h-[calc(100vh-64px)] bg-white rounded-2xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col"
+          >
+            <div className="px-5 py-3 bg-slate-900 text-white flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <FileText className="w-4 h-4 text-blue-400 shrink-0" />
                 <span className="text-xs font-bold truncate">{previewItem.fileName}</span>
@@ -521,7 +534,10 @@ export default function DownloadHistoryMenu() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => window.open(previewItem.url, '_blank')}
+                  onClick={() => {
+                    handleOpenFile(previewItem);
+                    setPreviewItem(null);
+                  }}
                   className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -531,6 +547,7 @@ export default function DownloadHistoryMenu() {
                   type="button"
                   onClick={() => setPreviewItem(null)}
                   className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-600 text-white transition-colors cursor-pointer"
+                  title="Fermer l'aperçu"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -544,7 +561,8 @@ export default function DownloadHistoryMenu() {
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

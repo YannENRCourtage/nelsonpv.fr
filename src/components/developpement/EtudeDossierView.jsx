@@ -576,16 +576,6 @@ export default function EtudeDossierView({
     } else if (step.actionType === 'mandatement') {
       onOpenEmailMandatement(step.mandatementType);
     } else if (step.actionType === 'raccordement') {
-      // Trigger conditionnel Enedis pour projet batterie Stand-Alone
-      const dpStatus = stepsState.dp?.status;
-      if (isBatterySA && dpStatus !== 'validated') {
-        toast({
-          title: 'Demande Enedis verrouillée 🔒',
-          description: 'La demande de raccordement Enedis HTA ne peut être soumise que lorsque le statut de la DP est à "Validée / Arrêté de non-opposition obtenu".',
-          variant: 'destructive',
-        });
-        return;
-      }
       onOpenRaccordementModal();
     } else if (step.actionType === 'aos_ao') {
       onOpenAosModal();

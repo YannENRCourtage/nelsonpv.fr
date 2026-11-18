@@ -194,7 +194,7 @@ class ApiService {
                         city: data.city || null,
                         address: data.address || null,
                         zipCode: data.zip || null,
-                        status: data.status || undefined,
+                        ...(data.status ? { status: data.status } : {}),
                         projectId: id
                     }, true, tId);
                 }
