@@ -25,15 +25,15 @@ export async function generateStaticMapImage({ lat, lng, parcelGeometry, parcelL
   try {
     const numLat = Number(lat);
     const numLng = Number(lng);
-    const dLat = 0.0011;
-    const dLng = dLat * 1.8;
+    const dLat = 0.0011 * 1.3;
+    const dLng = 0.0011 * 1.8;
     const minLng = numLng - dLng;
     const minLat = numLat - dLat;
     const maxLng = numLng + dLng;
     const maxLat = numLat + dLat;
 
     const width = 800;
-    const height = 260;
+    const height = 338;
 
     const esriUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${minLng},${minLat},${maxLng},${maxLat}&bboxSR=4326&imageSR=4326&size=${width},${height}&format=png&f=image`;
 
@@ -276,15 +276,15 @@ export async function generateBessProspectingPdfBlob(prospect, options = {}) {
               Cette proximité réseau immédiate rend votre terrain idéal pour l’accueil d’une <strong>unité autonome de stockage par batterie (BESS)</strong> de soutien réseau d’une puissance de <strong>500 kW / 1 044 kWh</strong> (4 armoires de 125 kW).
             </p>
 
-            <!-- ENCART CARTE DU TRANSFORMATEUR ET DE LA PARCELLE -->
+            <!-- ENCART CARTE DU TRANSFORMATEUR ET DE LA PARCELLE (HAUTEUR +30% : 65MM) -->
             ${mapImageBase64 ? `
-              <div style="margin: 8px 0 12px 0; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #0f172a; box-shadow: 0 1px 4px rgba(0,0,0,0.08); max-height: 50mm;">
-                <img src="${mapImageBase64}" style="width: 100%; max-height: 50mm; object-fit: cover; display: block;" />
+              <div style="margin: 8px 0 10px 0; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #0f172a; box-shadow: 0 1px 4px rgba(0,0,0,0.08); height: 65mm; max-height: 65mm;">
+                <img src="${mapImageBase64}" style="width: 100%; height: 65mm; max-height: 65mm; object-fit: cover; display: block;" />
               </div>
             ` : ''}
 
             <!-- CADRE OFFRE FINANCIÈRE -->
-            <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 6px; padding: 7px 12px; margin: 12px 0 12px 0;">
+            <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 6px; padding: 7px 12px; margin: 10px 0 10px 0;">
               <div style="font-size: 9.2pt; font-weight: 900; color: #15803d; margin-bottom: 3px; text-transform: uppercase;">
                 Notre proposition de bail notarié :
               </div>
@@ -296,7 +296,7 @@ export async function generateBessProspectingPdfBlob(prospect, options = {}) {
             </div>
 
             <!-- CADRE ATOUTS BATTERIE DE SOUTIEN RÉSEAU -->
-            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 6px; padding: 7px 12px; margin: 12px 0 10px 0;">
+            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 6px; padding: 7px 12px; margin: 10px 0 8px 0;">
               <div style="font-size: 8.9pt; font-weight: 800; color: #00429d; margin-bottom: 3px; text-transform: uppercase;">
                 Les atouts concrets de l'installation pour votre propriété :
               </div>
