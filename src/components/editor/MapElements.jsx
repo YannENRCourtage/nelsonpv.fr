@@ -5329,7 +5329,7 @@ function MiniMap() {
 
 function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setShowInfoPanel, project, setProject }) {
   const map = useMap();
-  const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...', zoning: '...' });
+  const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...', parcelSurface: '', zoning: '...' });
   const [loading, setLoading] = useState(false);
   const [hasInitializedFromProject, setHasInitializedFromProject] = useState(false);
 
@@ -5406,13 +5406,25 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
           ? addrRes.value.features[0].properties.label
           : 'N/A';
 
-        // Traiter la parcelle
+        // Traiter la parcelle et sa surface cadastrale
         let parcel = 'N/A';
+        let parcelSurface = '';
+        let rawSection = '';
+        let rawNumero = '';
+        let rawPrefixe = '000';
+        let rawContenance = null;
         if (parcRes.status === 'fulfilled' && parcRes.value?.features?.[0]) {
           const props = parcRes.value.features[0].properties;
           const section = props.section || props.code_section || '';
           const numero = props.numero || '';
+          rawSection = section;
+          rawNumero = numero;
+          rawPrefixe = props.code_arr && props.code_arr !== '000' ? props.code_arr : (props.com_abs || '000');
           parcel = (section || numero) ? `${section} ${numero}`.trim() : 'N/A';
+          if (props.contenance != null && Number(props.contenance) > 0) {
+            rawContenance = Number(props.contenance);
+            parcelSurface = `${rawContenance.toLocaleString('fr-FR')} m²`;
+          }
         }
 
         // Traiter le zonage urbanistique
@@ -5437,20 +5449,44 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
           }
         }
 
-        setInfo(prev => ({ ...prev, alt, address, parcel, zoning }));
+        setInfo(prev => ({ ...prev, alt, address, parcel, parcelSurface, zoning }));
 
-        if (targetPos.isManual && setProject) {
+        if (setProject && (rawSection || rawNumero || rawContenance || targetPos.isManual)) {
           setProject(prev => {
             if (!prev) return prev;
-            const latFmt = typeof targetPos.lat === 'number' ? Number(targetPos.lat.toFixed(6)) : parseFloat(targetPos.lat)?.toFixed(6);
-            const lngFmt = typeof targetPos.lng === 'number' ? Number(targetPos.lng.toFixed(6)) : parseFloat(targetPos.lng)?.toFixed(6);
-            const currentGps = `${latFmt}, ${lngFmt}`;
-            if (prev.gps === currentGps) return prev;
-            return {
-              ...prev,
-              gps: currentGps,
-              address: (address !== 'N/A' && address !== 'Adresse non trouvée') ? address : prev.address
-            };
+            const next = { ...prev };
+            let changed = false;
+
+            if (rawSection && (!prev.cadastre_section || targetPos.isManual)) {
+              next.cadastre_section = rawSection;
+              changed = true;
+            }
+            if (rawNumero && (!prev.cadastre_numero || targetPos.isManual)) {
+              next.cadastre_numero = rawNumero;
+              changed = true;
+            }
+            if (rawPrefixe && (!prev.cadastre_prefixe || targetPos.isManual)) {
+              next.cadastre_prefixe = rawPrefixe;
+              changed = true;
+            }
+            if (rawContenance && (!prev.cadastre_surface || targetPos.isManual)) {
+              next.cadastre_surface = rawContenance;
+              changed = true;
+            }
+
+            if (targetPos.isManual) {
+              const latFmt = typeof targetPos.lat === 'number' ? Number(targetPos.lat.toFixed(6)) : parseFloat(targetPos.lat)?.toFixed(6);
+              const lngFmt = typeof targetPos.lng === 'number' ? Number(targetPos.lng.toFixed(6)) : parseFloat(targetPos.lng)?.toFixed(6);
+              const currentGps = `${latFmt}, ${lngFmt}`;
+              if (prev.gps !== currentGps) {
+                next.gps = currentGps;
+                if (address !== 'N/A' && address !== 'Adresse non trouvée') {
+                  next.address = address;
+                }
+                changed = true;
+              }
+            }
+            return changed ? next : prev;
           });
         }
       } catch (e) {
@@ -5513,7 +5549,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
   return (
     <div 
       ref={containerRef}
-      className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg border border-gray-200 text-xs min-w-[220px] max-w-[280px] z-[1000]"
+      className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg border border-gray-200 text-xs min-w-[230px] max-w-[330px] z-[1000]"
     >
       <div className="flex justify-between items-center mb-1">
         <span className="font-bold text-blue-600 cursor-pointer hover:bg-blue-50 p-1 rounded transition-colors flex items-center gap-1" onClick={copyCoords} title="Copier les coordonnées">
@@ -5538,9 +5574,21 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
         <Copy size={12} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
       </div>
 
-      <div className="flex justify-between items-center border-t pt-1 text-gray-600">
-        <span className="flex items-center gap-1" title="Altitude">⛰️ {info.alt}</span>
-        <span className="flex items-center gap-1" title="Parcelle">🏷️ {info.parcel}</span>
+      <div className="flex justify-between items-center border-t pt-1 text-gray-600 gap-2">
+        <span className="flex items-center gap-1 shrink-0" title="Altitude">⛰️ {info.alt}</span>
+        <div className="flex items-center gap-2 ml-auto">
+          {(() => {
+            const rawProjSurf = project?.cadastre_surface || project?.dp_config?.terrain?.contenance_m2 || project?.surface_terrain;
+            const projSurfNum = rawProjSurf ? Number(String(rawProjSurf).replace(/[^\d.]/g, '')) : 0;
+            const displaySurf = info.parcelSurface || (projSurfNum > 0 ? `${Math.round(projSurfNum).toLocaleString('fr-FR')} m²` : '');
+            return displaySurf ? (
+              <span className="flex items-center gap-0.5 font-semibold text-gray-800 whitespace-nowrap" title="Surface cadastrale de la parcelle">
+                📐 {displaySurf}
+              </span>
+            ) : null;
+          })()}
+          <span className="flex items-center gap-1 whitespace-nowrap font-medium" title="Parcelle">🏷️ {info.parcel}</span>
+        </div>
       </div>
 
       {/* Zonage urbanistique */}

@@ -40,6 +40,7 @@ import { formatGps, formatCoordinate } from "@/utils/formatGps";
 import { BATTERY_MODELS } from "@/data/batteryModels.js";
 import GoogleSolarPanel from "@/components/solar/GoogleSolarPanel";
 import QuoteEditorModal from "@/components/devis/QuoteEditorModal";
+import PromesseBailFaradayModal from "@/components/developpement/PromesseBailFaradayModal";
 import { extractProjectCreationDate, formatProjectCreationDate, parseDateValue } from "@/utils/projectCreationDate";
 
 const INCLINATION_OPTIONS = Array.from({ length: 91 }, (_, i) => {
@@ -231,6 +232,7 @@ export default function ProjectEditor() {
   const [selectedCompany, setSelectedCompany] = useState(null);
 
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const [promesseFaradayModalOpen, setPromesseFaradayModalOpen] = useState(false);
   const { pvPortfolios, bessPortfolios, canManagePortfolios } = usePortfolios();
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
 
@@ -1026,6 +1028,16 @@ export default function ProjectEditor() {
               >
                 <span>📑</span>
                 <span>Éditeur de Devis &amp; Offre</span>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setPromesseFaradayModalOpen(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 rounded-md shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                title="Générer la Promesse de Bail Emphytéotique Batterie FARADAY au format Word (.docx) 100 % modifiable"
+              >
+                <span>📄</span>
+                <span>Promesse de Bail FARADAY (.docx)</span>
               </Button>
             </div>
             {/* Date de création + Dropdowns: sur une ligne sur mobile, 6 colonnes sur desktop */}
@@ -2918,6 +2930,14 @@ export default function ProjectEditor() {
         onQuoteSaved={(savedQuote) => {
           updateProject({ lastQuote: savedQuote });
         }}
+      />
+
+      {/* Pop-up de génération de la Promesse de Bail Emphytéotique Batterie FARADAY (.docx modifiable) */}
+      <PromesseBailFaradayModal
+        isOpen={promesseFaradayModalOpen}
+        onClose={() => setPromesseFaradayModalOpen(false)}
+        project={{ ...p, captures: Array.isArray(p?.captures) && p.captures.some(Boolean) ? p.captures : captures }}
+        onUpdateProject={(updates) => updateProject(updates)}
       />
 
       {/* Pop-up de gestion et création de portefeuilles (Admin) */}

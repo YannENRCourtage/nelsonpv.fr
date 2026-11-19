@@ -15,6 +15,7 @@ import { cadastreService } from '@/services/CadastreService.js';
 import { useAuth } from '@/contexts/AuthContext';
 import DpInstructionCard from './DpInstructionCard';
 import DemandeCertificatTaciteModal from './DemandeCertificatTaciteModal';
+import PromesseBailFaradayModal from './PromesseBailFaradayModal';
 import { resolveProjectDepositDate, formatToIsoDate } from '@/services/dpInstructionService';
 
 /**
@@ -169,6 +170,7 @@ export default function EtudeDossierView({
     timeline: null,
     mairieInfo: null,
   });
+  const [isPromesseFaradayOpen, setIsPromesseFaradayOpen] = useState(false);
 
   // Charger les données sauvegardées pour ce projet (Firestore en priorité)
   useEffect(() => {
@@ -784,6 +786,16 @@ export default function EtudeDossierView({
             {step.actionLabel}
             <ChevronRight className="w-4 h-4" />
           </button>
+          {step.id === 'notaire' && (
+            <button
+              type="button"
+              onClick={() => setIsPromesseFaradayOpen(true)}
+              className="w-full py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              <FileText className="w-3.5 h-3.5 text-indigo-600" />
+              Générer Promesse de Bail FARADAY (.docx)
+            </button>
+          )}
         </div>
       </div>
     );
@@ -886,7 +898,7 @@ export default function EtudeDossierView({
   return (
     <div className="w-full space-y-4">
       {/* ── BOUTON RETOUR & BARRE DU DOSSIER ──────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <button
           onClick={onBackToDossiers}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold shadow-2xs transition-all"
@@ -895,9 +907,21 @@ export default function EtudeDossierView({
           Retour aux dossiers
         </button>
 
-        <span className="text-xs font-bold text-slate-400">
-          Dossier : <strong className="text-slate-800 font-black px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-md font-mono">{dossierNumber}</strong>
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsPromesseFaradayOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer"
+            title="Générer la Promesse de Bail Emphytéotique Batterie FARADAY au format Word (.docx) 100 % modifiable"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Promesse de Bail FARADAY (.docx)
+          </button>
+
+          <span className="text-xs font-bold text-slate-400">
+            Dossier : <strong className="text-slate-800 font-black px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-md font-mono">{dossierNumber}</strong>
+          </span>
+        </div>
       </div>
 
       {/* ── EN-TÊTE PROJET (2 Colonnes : Infos Clés & Commentaires) ──── */}
@@ -1135,6 +1159,23 @@ export default function EtudeDossierView({
         mairieInfo={certificatModalData.mairieInfo}
         onUpdateProject={(updates) => {
           updateStep('dp', updates);
+        }}
+      />
+
+      {/* ── MODALE PROMESSE DE BAIL EMPHYTÉOTIQUE BATTERIE FARADAY (.DOCX) ── */}
+      <PromesseBailFaradayModal
+        isOpen={isPromesseFaradayOpen}
+        onClose={() => setIsPromesseFaradayOpen(false)}
+        project={{
+          ...project,
+          cadastre_section: displaySection || project?.cadastre_section,
+          cadastre_numero: displayNumero || project?.cadastre_numero,
+          cadastre_surface: displaySurface || project?.cadastre_surface,
+        }}
+        onUpdateProject={(updates) => {
+          if (typeof onUpdateProject === 'function') {
+            onUpdateProject(updates);
+          }
         }}
       />
     </div>
